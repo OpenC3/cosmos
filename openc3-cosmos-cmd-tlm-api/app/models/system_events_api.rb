@@ -19,9 +19,9 @@
 require 'topics_thread'
 
 class SystemEventsApi
-  def initialize(uuid, channel, history_count = 0, scope:)
+  def initialize(subscription_key, history_count = 0, scope:)
     topics = ["OPENC3__SYSTEM__EVENTS"]
-    @thread = TopicsThread.new(topics, channel, history_count)
+    @thread = TopicsThread.new(topics, subscription_key, history_count)
     @thread.start
   end
 

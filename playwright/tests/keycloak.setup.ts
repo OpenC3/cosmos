@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2025 OpenC3. Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,9 +13,10 @@
 # GNU Affero General Public License for more details.
 */
 
-import { test as setup } from '@playwright/test'
+// @ts-check
+import { test } from '@playwright/test'
 
-setup('keycloak setup', async ({ page }) => {
+test('configure keycloak', async ({ page }) => {
   // Log into keycloak and setup the client redirect
   await page.goto(process.env.KEYCLOAK_URL)
   await page.getByLabel('Username or email').fill('admin')

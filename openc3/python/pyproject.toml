@@ -1,6 +1,6 @@
 [project]
 name = "openc3"
-version = "6.2.2-beta0"
+version = "6.4.1-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = [
   {name = "Support", email = "support@openc3.com"}
@@ -17,6 +17,7 @@ dependencies = [
     "redis[hiredis] (>=5.0.0,<6.0.0)",
     "requests (>=2.32.3,<3.0.0)",
     "websockets (>=14.2,<16.0)",
+    "watchdog (>=6.0.0,<7.0.0)",
 ]
 
 [tool.poetry.requires-plugins]
@@ -97,5 +98,5 @@ line-length = 120
 # Allow unused variables when underscore-prefixed.
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-# Assume Python 3.10.
-target-version = "py310"
+# Assume Python 3.12
+target-version = "py312"

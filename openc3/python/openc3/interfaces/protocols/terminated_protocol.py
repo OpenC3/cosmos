@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -65,7 +65,7 @@ class TerminatedProtocol(BurstProtocol):
             data.append(byte)
         return (data, extra)
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         try:
             index = self.data.index(self.read_termination_characters)
 
@@ -81,6 +81,6 @@ class TerminatedProtocol(BurstProtocol):
                 else:  # Keep everything
                     packet_data = self.data[0 : (len(self.read_termination_characters))]
             self.data = self.data[(index + len(self.read_termination_characters)) :]
-            return (packet_data, extra)
+            return (packet_data, self.extra)
         except ValueError:  # sync_index = None
-            return ("STOP", extra)
+            return ("STOP", self.extra)

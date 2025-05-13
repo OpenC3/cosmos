@@ -167,17 +167,17 @@ module OpenC3
       end
     end
 
-    def running_script_list(scope: $openc3_scope)
+    def running_script_list(limit: 10, offset: 0, scope: $openc3_scope)
       endpoint = "/script-api/running-script"
-      response = $script_runner_api_server.request('get', endpoint, scope: scope)
+      response = $script_runner_api_server.request('get', endpoint, query: {"limit" => limit, "offset" => offset}, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Running script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)['items']
       end
     end
 
-    def running_script_get(id, scope: $openc3_scope)
+    def script_get(id, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}"
       response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.status != 200
@@ -186,6 +186,7 @@ module OpenC3
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
+    alias running_script_get script_get # Deprecated alias for compatibility
 
     def _running_script_action(id, action_name, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/#{action_name}"
@@ -249,13 +250,27 @@ module OpenC3
       end
     end
 
-    def completed_script_list(scope: $openc3_scope)
+    def running_script_execute_while_paused(id, filename, line_no, end_line_no = nil, scope: $openc3_scope)
+      endpoint = "/script-api/running-script/#{id}/executewhilepaused"
+      if end_line_no
+        response = $script_runner_api_server.request('post', endpoint, json: true, data: {'args' => [filename, line_no, end_line_no]}, scope: scope)
+      else
+        response = $script_runner_api_server.request('post', endpoint, json: true, data: {'args' => [filename, line_no]}, scope: scope)
+      end
+      if response.nil? || response.status != 200
+        _script_response_error(response, "Running script executewhilepaused request failed", scope: scope)
+      else
+        return true
+      end
+    end
+
+    def completed_script_list(limit: 10, offset: 0, scope: $openc3_scope)
       endpoint = "/script-api/completed-scripts"
-      response = $script_runner_api_server.request('get', endpoint, scope: scope)
+      response = $script_runner_api_server.request('get', endpoint, query: {"limit" => limit, "offset" => offset}, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Completed script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)['items']
       end
     end
   end

@@ -29,8 +29,8 @@ require 'openc3/tools/test_runner/test'
 OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
-  def self.all(scope)
-    super(scope, nil, include_temp: true) # No path matchers
+  def self.all(scope, target = nil)
+    super(scope, nil, target: target) # No path matchers
   end
 
   def self.lock(scope, name, username)
@@ -201,9 +201,11 @@ class Script < OpenC3::TargetFile
     disconnect = false,
     environment = nil,
     user_full_name = nil,
-    username = nil
+    username = nil,
+    line_no = nil,
+    end_line_no = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no)
   end
 
   def self.instrumented(filename, text)

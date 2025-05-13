@@ -21,8 +21,9 @@
 */
 
 import { h } from 'vue'
-import CosmosRuxIcon from './CosmosRuxIcon.vue'
 import AstroStatusIndicator from './AstroStatusIndicator.vue'
+import CosmosRuxIcon from './CosmosRuxIcon.vue'
+import CustomIcon from './CustomIcon.vue'
 
 const UnknownToAstroStatus = {
   fatal: 'critical',
@@ -120,11 +121,22 @@ const AstroIconVuetifySets = {
   },
 }
 
+const CustomIconSet = {
+  extras: {
+    component: (props) => {
+      return h(CustomIcon, {
+        ...props,
+      })
+    },
+  },
+}
+
 export {
   AstroIconVuetifySets,
   AstroStatuses,
   AstroStatusColors,
   AstroStatusIndicator,
+  CustomIconSet,
   getStatusColorContrast,
   UnknownToAstroStatus,
   UnknownToCosmosStatus,

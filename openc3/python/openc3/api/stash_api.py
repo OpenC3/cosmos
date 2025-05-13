@@ -40,8 +40,8 @@ def stash_get(key, scope=OPENC3_SCOPE):
 def stash_all(scope=OPENC3_SCOPE):
     authorize(permission="script_view", scope=scope)
     all = StashModel.all(scope=scope)
-    for key, hash in all.items():
-        all[key] = json.loads(hash["value"])
+    for key, values in all.items():
+        all[key] = json.loads(values["value"])
     return all
 
 

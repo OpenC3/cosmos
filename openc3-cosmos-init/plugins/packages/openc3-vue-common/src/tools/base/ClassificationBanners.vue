@@ -26,7 +26,6 @@ import { OpenC3Api } from '@openc3/js-common/services'
 export default {
   data: function () {
     return {
-      api: null,
       classification: {
         text: '',
         fontColor: 'white',
@@ -51,67 +50,17 @@ export default {
     },
   },
   created: function () {
-    this.api = new OpenC3Api()
-    this.load()
-  },
-  methods: {
-    load: function () {
-      this.api
-        .get_setting('classification_banner')
-        .then((response) => {
-          if (response) {
-            this.classification = JSON.parse(response)
-          }
-        })
-        .catch((error) => {
-          // Do nothing
-        })
-    },
+    const api = new OpenC3Api()
+    api
+      .get_setting('classification_banner')
+      .then((response) => {
+        if (response) {
+          this.classification = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
 }
 </script>
-
-<style>
-/* push things up and down to make room for the classification banners */
-#app,
-header,
-#openc3-nav-drawer {
-  margin-top: var(--classification-height-top);
-}
-#openc3-app-toolbar {
-  top: var(--classification-height-top);
-}
-#openc3-nav-drawer .v-navigation-drawer__content {
-  height: calc(
-    100% - var(--classification-height-top) -
-      var(--classification-height-bottom)
-  );
-}
-#openc3-nav-drawer,
-#footer {
-  margin-bottom: var(--classification-height-bottom);
-}
-
-/* make the classification banners */
-#app::before,
-#app::after {
-  z-index: 9999;
-  position: fixed;
-  left: 0;
-  right: 0;
-  text-align: center;
-  content: var(--classification-text);
-  color: var(--classification-font-color);
-  background-color: var(--classification-background-color);
-}
-#app::before {
-  top: 0;
-  font-size: calc(var(--classification-height-top) * 0.7);
-  height: var(--classification-height-top);
-}
-#app::after {
-  bottom: 0;
-  font-size: calc(var(--classification-height-bottom) * 0.7);
-  height: var(--classification-height-bottom);
-}
-</style>

@@ -88,7 +88,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_example and include_example_int %>
-  # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
+  # This expression builds the correct hostname for Core or Enterprise in Kubernetes
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= example_int_name %> example_interface.rb <%= example_host %> <%= example_port %>
     MAP_TARGET <%= example_target_name %>
@@ -99,7 +99,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_templated and include_templated_int %>
-  # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
+  # This expression builds the correct hostname for Core or Enterprise in Kubernetes
   <% templated_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{templated_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= templated_int_name %> templated_interface.rb <%= templated_host %> <%= templated_port %> <%= templated_port %> 5.0 nil TEMPLATE 0xA 0xA
     MAP_TARGET <%= templated_target_name %>

@@ -116,30 +116,30 @@ class JsonRpcRequest(JsonRpc):
         """
         msg = "invalid json-rpc 2.0 request"
         try:
-            hash = json.loads(request_data)
+            request = json.loads(request_data)
             if request_headers.get("HTTP_AUTHORIZATION"):
-                hash["keyword_params"]["token"] = request_headers["HTTP_AUTHORIZATION"]
+                request["keyword_params"]["token"] = request_headers["HTTP_AUTHORIZATION"]
             # Verify the jsonrpc version is correct and there is a method and id
-            if hash["jsonrpc"] != "2.0" or not hash["method"] or not hash["id"]:
-                raise ValueError("message jsonrpc version: {}".format(hash["jsonrpc"]))
-            return cls.from_hash(hash)
+            if request["jsonrpc"] != "2.0" or not request["method"] or not request["id"]:
+                raise ValueError("message jsonrpc version: {}".format(request["jsonrpc"]))
+            return cls.from_hash(request)
         except (ValueError, KeyError) as e:
             raise RequestError(msg, request_data) from e
         except Exception as e:
             raise RuntimeError(msg) from e
 
     @classmethod
-    def from_hash(cls, hash):
-        """Creates a JsonRpcRequest object from a Hash
+    def from_hash(cls, request):
+        """Creates a JsonRpcRequest object from a request dict
 
         Parameters:
-        hash -- Hash containing the following keys: method, params, id, and keyword_params
+        request -- dict containing the following keys: method, params, id, and keyword_params
         """
         return cls(
-            hash["id"],
-            hash["method"],
-            *hash.get("params", []),
-            **hash.get("keyword_params", {}),
+            request["id"],
+            request["method"],
+            *request.get("params", []),
+            **request.get("keyword_params", {}),
         )
 
 

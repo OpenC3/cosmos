@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,12 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 import json
 from openc3.api import WHITELIST
@@ -44,6 +50,7 @@ WHITELIST.extend(
         "get_all_telemetry",  # DEPRECATED
         "get_all_tlm_names",
         "get_all_telemetry_names",  # DEPRECATED
+        "get_all_tlm_item_names",
         "get_tlm",
         "get_telemetry",  # DEPRECATED
         "get_item",
@@ -330,6 +337,21 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
                 names.append(packet["packet_name"])
     return names
 
+def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE):
+    """Returns an array of all the item names for every packet in a target
+
+    Args:
+        target_name (str) Name of the target
+
+    Return:
+        List[str] Array of all telemetry item names
+    """
+    authorize(permission="tlm", target_name=target_name, scope=scope)
+    try:
+        items = TargetModel.all_item_names(target_name, scope=scope)
+    except RuntimeError:
+        items = []
+    return items
 
 # get_all_telemetry_names is DEPRECATED
 get_all_telemetry_names = get_all_tlm_names
@@ -416,11 +438,11 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2]))
     packets = []
-    for topic, _, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
+    for topic, topic_id, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
         # # Return the original ID and empty array if we didn't get anything
         # for topic, data in xread:
         # for id, msg_hash in data:
-        lookup[topic] = id  # save the new ID
+        lookup[topic] = topic_id  # save the new ID
         # decode the binary string keys and values to strings
         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
         json_hash = json.loads(msg_hash["json_data"])
@@ -445,7 +467,7 @@ def get_tlm_cnt(*args, scope: str = OPENC3_SCOPE):
     target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
     authorize(permission="system", target_name=target_name, packet_name=packet_name, scope=scope)
     TargetModel.packet(target_name, packet_name, scope=scope)
-    return Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
+    return TargetModel.get_telemetry_count(target_name, packet_name, scope=scope)
 
 
 def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
@@ -458,13 +480,7 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
         [Numeric] Transmit count for the command
     """
     authorize(permission="system", scope=scope)
-    counts = []
-    for target_name, packet_name in target_packets:
-        target_name = target_name.upper()
-        packet_name = packet_name.upper()
-        counts.append(Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"))
-    return counts
-
+    return TargetModel.get_telemetry_counts(target_packets, scope=scope)
 
 def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
     """Get the list of derived telemetry items for a packet

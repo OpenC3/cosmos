@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4 # Latest version is fine here because we are scanning released containers not built from code
-      - name: Set up Ruby 3.2
+      - name: Set up Ruby 3.3
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.2
+          ruby-version: 3.3
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
       - name: Create clamav_results folder

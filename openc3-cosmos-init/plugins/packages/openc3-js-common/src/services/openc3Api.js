@@ -18,14 +18,21 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 */
 
 import axios from './axios.js'
-import { parse, stringify, isSafeNumber } from 'lossless-json'
+import { parse, stringify, isInteger, isSafeNumber } from 'lossless-json'
 
 // parse huge integer values into a bigint, and use a regular number otherwise
 export function customNumberParser(value) {
-  return isSafeNumber(value) ? parseFloat(value) : BigInt(value)
+  if (isInteger(value) && !isSafeNumber(value)) {
+    return BigInt(value)
+  } else {
+    return parseFloat(value)
+  }
 }
 export default class OpenC3Api {
   id = 1
@@ -114,7 +121,8 @@ export default class OpenC3Api {
         err.message = 'Request error, no response received'
       } else {
         // Something happened in setting up the request and triggered an Error
-        err.name = 'Unknown error'
+        // Simply return the original error so we don't lose information
+        err = error
       }
       throw err
     }
@@ -285,6 +293,10 @@ export default class OpenC3Api {
   // DEPRECATED for get_all_tlm_names
   get_all_telemetry_names(target_name) {
     return this.exec('get_all_tlm_names', [target_name])
+  }
+
+  get_all_tlm_item_names(target_name) {
+    return this.exec('get_all_tlm_item_names', [target_name])
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {

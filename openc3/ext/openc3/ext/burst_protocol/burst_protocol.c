@@ -81,7 +81,11 @@ static VALUE burst_protocol_read_data(int argc, VALUE *argv, VALUE self)
   };
 
   rb_str_concat(rb_ivar_get(self, id_ivar_data), data);
-  rb_ivar_set(self, id_ivar_extra, extra);
+
+  /* Maintain extra from last read read_data */
+  if (!((RSTRING_LEN(data) == 0) && (!(RTEST(extra))))) {
+    rb_ivar_set(self, id_ivar_extra, extra);
+  }
 
   while (1)
   {

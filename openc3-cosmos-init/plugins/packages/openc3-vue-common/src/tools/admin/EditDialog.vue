@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,25 +21,21 @@
 -->
 
 <template>
-  <v-dialog :persistent="!readonly" v-model="show" width="80vw">
+  <v-dialog v-model="show" :persistent="!readonly" width="80vw">
     <v-card>
-      <form v-on:submit.prevent="submit">
+      <form @submit.prevent="submit">
         <v-toolbar height="24">
           <v-spacer />
           <span v-text="title" />
           <v-spacer />
-          <div class="mx-2">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="downloadIcon" @click="download">
-                    mdi-download
-                  </v-icon>
-                </div>
-              </template>
-              <span> Download </span>
-            </v-tooltip>
-          </div>
+          <v-btn
+            class="mx-2"
+            icon="mdi-download"
+            variant="text"
+            density="compact"
+            data-test="downloadIcon"
+            @click="download"
+          />
         </v-toolbar>
 
         <v-card-text>
@@ -51,13 +47,13 @@
                   <v-btn
                     block
                     color="success"
-                    @click="loadFile"
                     :disabled="!file || loadingFile || readonly"
                     :loading="loadingFile"
                     data-test="editScreenLoadBtn"
+                    @click="loadFile"
                   >
                     Load
-                    <template v-slot:loader>
+                    <template #loader>
                       <span>Loading...</span>
                     </template>
                   </v-btn>
@@ -73,18 +69,31 @@
               </v-row>
             </div>
             <v-row no-gutters>
-              <pre class="editor" ref="editor"></pre>
+              <pre
+                ref="editor"
+                class="editor"
+                @contextmenu.prevent="showContextMenu"
+              ></pre>
+              <v-menu v-model="contextMenu" :target="[menuX, menuY]">
+                <v-list>
+                  <v-list-item
+                    title="Toggle Vim mode"
+                    prepend-icon="extras:vim"
+                    @click="toggleVimMode"
+                  />
+                </v-list>
+              </v-menu>
             </v-row>
             <v-row class="my-3">
-              <span class="text-red" v-show="error" v-text="error" />
+              <span v-show="error" class="text-red" v-text="error" />
             </v-row>
             <v-row>
               <v-spacer />
               <v-btn
-                @click.prevent="close"
                 variant="outlined"
                 class="mx-2"
                 data-test="editCancelBtn"
+                @click.prevent="close"
               >
                 Cancel
               </v-btn>
@@ -113,6 +122,7 @@ import 'ace-builds/src-min-noconflict/mode-json'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
+import { AceEditorUtils } from '../../components/ace'
 
 export default {
   props: {
@@ -128,27 +138,9 @@ export default {
   data() {
     return {
       editor: null,
-    }
-  },
-  mounted() {
-    const openPluginMode = this.buildPluginMode()
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
-    this.editor.session.setMode(new openPluginMode())
-    this.editor.session.setTabSize(2)
-    this.editor.session.setUseWrapMode(true)
-    this.editor.$blockScrolling = Infinity
-    this.editor.setHighlightActiveLine(false)
-    this.editor.setValue(this.content)
-    this.editor.clearSelection()
-    this.editor.focus()
-    if (this.readonly) {
-      this.editor.setReadOnly(true)
-    }
-  },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
+      contextMenu: false,
+      menuX: 0,
+      menuY: 0,
     }
   },
   computed: {
@@ -169,6 +161,28 @@ export default {
       }
       return null
     },
+  },
+  mounted() {
+    const openPluginMode = this.buildPluginMode()
+    this.editor = ace.edit(this.$refs.editor)
+    this.editor.setTheme('ace/theme/twilight')
+    this.editor.session.setMode(new openPluginMode())
+    this.editor.session.setTabSize(2)
+    this.editor.session.setUseWrapMode(true)
+    this.editor.$blockScrolling = Infinity
+    this.editor.setHighlightActiveLine(false)
+    this.editor.setValue(this.content)
+    this.editor.clearSelection()
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    this.editor.focus()
+    if (this.readonly) {
+      this.editor.setReadOnly(true)
+    }
+  },
+  beforeUnmount() {
+    if (this.editor) {
+      this.editor.destroy()
+    }
   },
   methods: {
     submit: function () {
@@ -218,6 +232,25 @@ export default {
       }).call(Mode.prototype)
       return Mode
     },
+    showContextMenu: function (event) {
+      this.menuX = event.pageX
+      this.menuY = event.pageY
+
+      let position = this.editor.getCursorPosition()
+      let token = this.editor.session.getTokenAt(position.row, position.column)
+      if (token) {
+        let value = token.value.trim()
+        if (value.includes(' ')) {
+          this.docsKeyword = value.split(' ')[0]
+        } else {
+          this.docsKeyword = value
+        }
+        this.contextMenu = true
+      }
+    },
+    toggleVimMode: function () {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
   },
 }
 </script>
@@ -229,6 +262,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
 }

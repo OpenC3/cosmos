@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 import copy
 import base64
@@ -506,7 +509,9 @@ class Packet(Structure):
         try:
             return super().get_item(name)
         except ValueError as error:
-            raise RuntimeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist") from error
+            raise RuntimeError(
+                f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist"
+            ) from error
 
     # Read an item in the packet
     #
@@ -658,7 +663,9 @@ class Packet(Structure):
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
                     if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
-                        raise ValueError(f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
+                        raise ValueError(
+                            f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}"
+                        ) from error
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":
@@ -845,6 +852,28 @@ class Packet(Structure):
         )
         item.description = "OpenC3 packet received count"
 
+    # Reset the packet to just derived items
+    def clear_all_non_derived_items(self):
+        self.defined_length = 0
+        self.defined_length_bits = 0
+        self.pos_bit_size = 0
+        self.neg_bit_size = 0
+        self.fixed_size = True
+        self.short_buffer_allowed = False
+        self.id_items = None
+        self.limits_items = None
+        new_items = {}
+        new_sorted_items = []
+        for name, item in self.items.items():
+            if item.data_type == "DERIVED":
+                new_items[name] = item
+        for item in self.sorted_items:
+            if item.data_type == "DERIVED":
+                new_sorted_items.append(item)
+        self.items = new_items
+        self.sorted_items = new_sorted_items
+        self.config_name = None
+
     # Enable limits on an item by name
     #
     # self.param name [String] Name of the item to enable limits
@@ -896,7 +925,7 @@ class Packet(Structure):
     # self.param ignore_persistence [Boolean] Whether to ignore persistence case
     #   checking for out of limits
     def check_limits(self, limits_set="DEFAULT", ignore_persistence=False):
-        if len(self.limits_items) == 0:
+        if not self.limits_items or len(self.limits_items) == 0:
             return
 
         for item in self.limits_items:
@@ -971,6 +1000,9 @@ class Packet(Structure):
             config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
         if self.validator:
             config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
+        # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
+        if self.template:
+            config += f"  TEMPLATE '{self.template}'\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:

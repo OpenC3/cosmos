@@ -300,7 +300,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
 
             InterfaceTopic.disconnect_interface("INST_INT")
-            time.sleep(0.02)  # Allow disconnect
+            time.sleep(0.1)  # Allow disconnect
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertIn("Disconnect requested", stdout.getvalue())

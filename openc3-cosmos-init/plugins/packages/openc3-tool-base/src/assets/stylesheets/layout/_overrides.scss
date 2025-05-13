@@ -120,7 +120,7 @@ body,
 .v-navigation-drawer,
 .v-theme--cosmosDark.v-toolbar,
 .v-theme--cosmosDark.v-date-picker-header {
-  background-color: var(--color-background-surface-header) !important;
+  background-color: var(--color-background-surface-header); // don't do !important here (it breaks TlmGrapher)
 }
 
 .v-navigation-drawer .v-treeview-item {
@@ -310,7 +310,6 @@ input {
 // Revert card behavior to Vuetify2 to allow components such as RawDialog to float correctly
 .v-card {
   overflow: initial !important;
-  z-index: initial !important;
 }
 
 // Allow tooltips to be clickable (Packet Viewer uses this)

@@ -108,6 +108,12 @@ def get_all_interface_info(scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
     info = []
     for int_name, int in InterfaceStatusModel.all(scope=scope).items():
+        # Get the interface configuration to access disable_disconnect
+        interface_model = InterfaceModel.get(name=int_name, scope=scope)
+        if interface_model and interface_model['disable_disconnect']:
+            disable_disconnect = True
+        else:
+            disable_disconnect = False
         info.append(
             [
                 int["name"],
@@ -119,9 +125,9 @@ def get_all_interface_info(scope=OPENC3_SCOPE):
                 int["rxbytes"],
                 int["txcnt"],
                 int["rxcnt"],
+                disable_disconnect,
             ]
         )
-    #   info.sort! { |a, b| a[0] <: b[0] }
     return info
 
 

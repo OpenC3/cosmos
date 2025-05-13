@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -100,7 +100,8 @@ module OpenC3
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
       cycle_minute = nil,
-      enforce_time_order = true
+      enforce_time_order = true,
+      cycle_thread: true
     )
       @remote_log_directory = remote_log_directory
       @logging_enabled = ConfigParser.handle_true_false(logging_enabled)
@@ -135,13 +136,15 @@ module OpenC3
       # each time we create an entry which we do a LOT!
       @entry = String.new
 
-      # Always make sure there is a cycle thread - (because it does trimming)
-      @@mutex.synchronize do
-        @@instances << self
+      if cycle_thread
+        # Always make sure there is a cycle thread - (because it does trimming)
+        @@mutex.synchronize do
+          @@instances << self
 
-        unless @@cycle_thread
-          @@cycle_thread = OpenC3.safe_thread("Log cycle") do
-            cycle_thread_body()
+          unless @@cycle_thread
+            @@cycle_thread = OpenC3.safe_thread("Log cycle") do
+              cycle_thread_body()
+            end
           end
         end
       end

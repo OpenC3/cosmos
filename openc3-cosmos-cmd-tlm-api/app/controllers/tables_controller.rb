@@ -28,7 +28,8 @@ class TablesController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render json: Table.all(scope)
+    target = params[:target]
+    render json: Table.all(scope, target)
   end
 
   def binary

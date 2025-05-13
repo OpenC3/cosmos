@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,60 +24,77 @@
 -->
 
 <template>
-  <div :style="computedStyle" ref="bar">
-    <v-card :min-height="height" :min-width="width" style="cursor: default">
+  <div ref="bar" :style="computedStyle">
+    <v-card
+      v-if="!inline"
+      :min-height="height"
+      :min-width="width"
+      style="cursor: default"
+    >
       <v-toolbar height="24">
-        <div v-show="errors.length !== 0">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon
-                  data-test="error-graph-icon"
-                  @click="errorDialog = true"
-                >
-                  mdi-alert
-                </v-icon>
-              </div>
-            </template>
-            <span> Errors </span>
-          </v-tooltip>
-        </div>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+        <v-btn
+          v-show="errors.length !== 0"
+          icon="mdi-alert"
+          variant="text"
+          density="compact"
+          data-test="error-graph-icon"
+          aria-label="Show Errors"
+          @click="
+            () => {
+              errorDialog = true
+            }
+          "
+        />
+        <v-btn
+          icon="mdi-pencil"
+          variant="text"
+          density="compact"
+          data-test="edit-screen-icon"
+          aria-label="Edit Screen"
+          @click="openEdit"
+        />
+        <v-tooltip v-if="!fixFloated" :open-delay="600" location="top">
+          <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="edit-screen-icon" @click="openEdit">
-                mdi-pencil
-              </v-icon>
-            </div>
-          </template>
-          <span> Edit Screen </span>
-        </v-tooltip>
-        <v-tooltip location="top" v-if="!fixFloated">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon data-test="float-screen-icon" @click="floatScreen">
-                {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
-              </v-icon>
+              <v-btn
+                :icon="floated ? 'mdi-balloon' : 'mdi-view-grid-outline'"
+                variant="text"
+                data-test="float-screen-icon"
+                :aria-label="floated ? 'Unfloat Screen' : 'Float Screen'"
+                @click="floatScreen"
+              />
             </div>
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
         </v-tooltip>
-        <v-tooltip location="top" v-if="floated">
-          <template v-slot:activator="{ props }">
+        <v-tooltip v-if="floated" :open-delay="600" location="top">
+          <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="up-screen-icon" @click="upScreen">
-                mdi-arrow-up
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-up"
+                variant="text"
+                data-test="up-screen-icon"
+                aria-label="Move Screen Up"
+                @click="upScreen"
+              />
             </div>
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip location="top" v-if="floated && zIndex > minZ">
-          <template v-slot:activator="{ props }">
+        <v-tooltip
+          v-if="floated && zIndex > minZ"
+          :open-delay="600"
+          location="top"
+        >
+          <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="down-screen-icon" @click="downScreen">
-                mdi-arrow-down
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-down"
+                variant="text"
+                data-test="down-screen-icon"
+                aria-label="Move Screen Down"
+                @click="downScreen"
+              />
             </div>
           </template>
           <span> Move Screen Down </span>
@@ -85,48 +102,39 @@
         <v-spacer />
         <span> {{ target }} {{ screen }} </span>
         <v-spacer />
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon
-                data-test="minimize-screen-icon"
-                @click="minMaxTransition"
-                v-show="expand"
-              >
-                mdi-window-minimize
-              </v-icon>
-              <v-icon
-                data-test="maximize-screen-icon"
-                @click="minMaxTransition"
-                v-show="!expand"
-              >
-                mdi-window-maximize
-              </v-icon>
-            </div>
-          </template>
-          <span v-show="expand"> Minimize Screen </span>
-          <span v-show="!expand"> Maximize Screen </span>
-        </v-tooltip>
-        <v-tooltip v-if="showClose" location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon
-                data-test="close-screen-icon"
-                @click="$emit('close-screen')"
-              >
-                mdi-close-box
-              </v-icon>
-            </div>
-          </template>
-          <span> Close Screen </span>
-        </v-tooltip>
+        <v-btn
+          v-if="expand"
+          icon="mdi-window-minimize"
+          variant="text"
+          density="compact"
+          data-test="minimize-screen-icon"
+          aria-label="Minimize Screen"
+          @click="minMaxTransition"
+        />
+        <v-btn
+          v-else
+          icon="mdi-window-maximize"
+          variant="text"
+          data-test="maximize-screen-icon"
+          aria-label="Maximize Screen"
+          @click="minMaxTransition"
+        />
+        <v-btn
+          v-if="showClose"
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          data-test="close-screen-icon"
+          aria-label="Close Screen"
+          @click="$emit('close-screen')"
+        />
       </v-toolbar>
       <v-expand-transition v-if="!editDialog">
         <div
+          v-show="expand"
+          ref="screen"
           class="pa-1"
           style="position: relative"
-          ref="screen"
-          v-show="expand"
         >
           <v-overlay
             style="pointer-events: none"
@@ -134,21 +142,58 @@
             opacity="0.8"
             absolute
             attach
+            scroll-strategy="none"
           />
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
-            v-on:open="open"
-            v-on:close="close"
-            v-on:close-all="closeAll"
+            @add-item="addItem"
+            @delete-item="deleteItem"
+            @open="open"
+            @close="close"
+            @close-all="closeAll"
           />
         </div>
       </v-expand-transition>
     </v-card>
+
+    <div v-if="inline" class="pa-1" style="position: relative">
+      <v-overlay
+        style="pointer-events: none"
+        :model-value="errors.length !== 0"
+        opacity="0.8"
+        absolute
+        attach
+        scroll-strategy="none"
+      />
+      <v-btn
+        v-show="errors.length !== 0"
+        icon="mdi-alert"
+        variant="text"
+        density="compact"
+        data-test="error-graph-icon"
+        aria-label="Show Errors"
+        @click="
+          () => {
+            errorDialog = true
+          }
+        "
+      />
+      <vertical-widget
+        :key="screenKey"
+        :widgets="layoutStack[0].widgets"
+        :screen-values="screenValues"
+        :screen-time-zone="timeZone"
+        @add-item="addItem"
+        @delete-item="deleteItem"
+        @open="open"
+        @close="close"
+        @close-all="closeAll"
+      />
+    </div>
+
     <edit-screen-dialog
       v-if="editDialog"
       v-model="editDialog"
@@ -185,10 +230,10 @@ import EditScreenDialog from './EditScreenDialog.vue'
 const MAX_ERRORS = 20
 
 export default {
-  mixins: [WidgetComponents],
   components: {
     EditScreenDialog,
   },
+  mixins: [WidgetComponents],
   props: {
     target: {
       type: String,
@@ -242,6 +287,10 @@ export default {
       type: String,
       default: 'local',
     },
+    inline: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -281,14 +330,6 @@ export default {
       screenId: uniqueId('openc3-screen_'),
     }
   },
-  watch: {
-    count: {
-      handler(newValue, oldValue) {
-        this.currentDefinition = this.definition
-        this.rerender()
-      },
-    },
-  },
   computed: {
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
@@ -319,15 +360,19 @@ export default {
       return style
     },
   },
+  watch: {
+    count: {
+      handler(newValue, oldValue) {
+        this.currentDefinition = this.definition
+        this.rerender()
+      },
+    },
+  },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
-    // eslint-disable-next-line no-console
-    console.log({ err, vm, info })
     if (this.errors.length < MAX_ERRORS) {
-      // eslint-disable-next-line no-console
-      console.log({ errors: this.errors })
       if (err.usage) {
         this.errors.push({
           type: 'usage',
@@ -344,6 +389,8 @@ export default {
           time: new Date().getTime(),
         })
       }
+      // eslint-disable-next-line no-console
+      console.log(this.errors)
       this.configError = true
     }
     return false
@@ -712,7 +759,12 @@ export default {
             widget.type.toLowerCase() ===
             setting[0].toLowerCase() + 'widget'
           ) {
-            widget.settings.push(setting.slice(1))
+            const existingSetting = widget.settings.find(
+              (s) => s[0] === setting[1],
+            )
+            if (!existingSetting) {
+              widget.settings.push(setting.slice(1))
+            }
           }
         })
         // Recursively apply to all widgets contained in layouts
@@ -776,6 +828,7 @@ export default {
   padding-top: 0px;
   margin-top: 0px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
   -webkit-mask-image: unset;

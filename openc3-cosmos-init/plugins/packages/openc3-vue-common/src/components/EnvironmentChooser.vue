@@ -22,23 +22,19 @@
 
 <template>
   <div>
-    <v-table dense>
-      <span> Add environment variables (optional)</span>
+    <span> Add environment variables (optional)</span>
+    <v-table density="compact">
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
-          <th scope="col" class="text-right">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="new-metadata-icon" @click="addEnvVar">
-                    mdi-plus
-                  </v-icon>
-                </div>
-              </template>
-              <span> Add Environment </span>
-            </v-tooltip>
+          <th scope="col" class="text-right" width="52px">
+            <v-btn
+              icon="mdi-plus"
+              variant="text"
+              data-test="new-metadata-icon"
+              @click="addEnvVar"
+            />
           </th>
         </tr>
         <tr v-for="(env, i) in selected" :key="`tr-${i}`">
@@ -47,6 +43,7 @@
               v-model="env.key"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`key-${i}`"
             />
@@ -56,24 +53,18 @@
               v-model="env.value"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`value-${i}`"
             />
           </td>
           <td>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon
-                    :data-test="`remove-env-icon-${i}`"
-                    @click="delEnvVar(i)"
-                  >
-                    mdi-delete
-                  </v-icon>
-                </div>
-              </template>
-              <span> Delete Environment </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              :data-test="`remove-env-icon-${i}`"
+              @click="delEnvVar(i)"
+            />
           </td>
         </tr>
       </tbody>

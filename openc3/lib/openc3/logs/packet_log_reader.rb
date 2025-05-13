@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -309,7 +309,7 @@ module OpenC3
         if cbor
           extra = CBOR.decode(extra_encoded)
         else
-          extra = JSON.parse(extra_encode, allow_nan: true, create_additions: true)
+          extra = JSON.parse(extra_encoded, allow_nan: true, create_additions: true)
         end
       end
       data = entry[next_offset..-1]

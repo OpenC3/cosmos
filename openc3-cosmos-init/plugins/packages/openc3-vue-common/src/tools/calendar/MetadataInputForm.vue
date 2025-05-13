@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,55 +22,47 @@
 
 <template>
   <div>
-    <v-table dense>
+    <span> Add metadata key value(s)</span>
+    <v-table density="compact">
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
-          <th scope="col" class="text-right">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="new-metadata-icon" @click="newMetadata">
-                    mdi-plus
-                  </v-icon>
-                </div>
-              </template>
-              <span> New Metadata </span>
-            </v-tooltip>
+          <th scope="col" class="text-right" width="52px">
+            <v-btn
+              icon="mdi-plus"
+              variant="text"
+              data-test="new-metadata-icon"
+              @click="newMetadata"
+            />
           </th>
         </tr>
         <tr v-for="(meta, i) in metadata" :key="`tr-${i}`">
           <td>
             <v-text-field
               v-model="meta.key"
-              type="text"
               density="compact"
+              type="text"
+              hide-details
               :data-test="`key-${i}`"
             />
           </td>
           <td>
             <v-text-field
               v-model="meta.value"
-              type="text"
               density="compact"
+              type="text"
+              hide-details
               :data-test="`value-${i}`"
             />
           </td>
           <td>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon
-                    :data-test="`delete-metadata-icon-${i}`"
-                    @click="rm(i)"
-                  >
-                    mdi-delete
-                  </v-icon>
-                </div>
-              </template>
-              <span> Delete Metadata </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              :data-test="`delete-metadata-icon-${i}`"
+              @click="rm(i)"
+            />
           </td>
         </tr>
       </tbody>

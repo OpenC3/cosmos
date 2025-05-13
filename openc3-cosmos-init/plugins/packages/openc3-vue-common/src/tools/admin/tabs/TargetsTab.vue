@@ -26,37 +26,38 @@
       <div v-for="target in targets" :key="target">
         <v-list-item>
           <v-list-item-title>{{ target.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            >Plugin: {{ target.plugin }}</v-list-item-subtitle
-          >
+          <v-list-item-subtitle>
+            Plugin: {{ target.plugin }}
+          </v-list-item-subtitle>
 
-          <template v-slot:append>
-            <div class="mx-3" v-if="target.modified">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" @click="downloadTarget(target.name)">
-                    mdi-download
-                  </v-icon>
-                </template>
-                <span>Download Target Modified Files</span>
-              </v-tooltip>
-            </div>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showTarget(target.name)">
-                  mdi-eye
-                </v-icon>
+          <template #append>
+            <v-tooltip v-if="target.modified" :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  class="mx-3"
+                  icon="mdi-folder-download"
+                  variant="text"
+                  aria-label="Download Modified Files"
+                  @click="downloadTarget(target.name)"
+                />
               </template>
-              <span>Show Target Details</span>
+              <span>Download Modified Files</span>
             </v-tooltip>
+            <v-btn
+              icon="mdi-eye"
+              variant="text"
+              aria-label="View Target"
+              @click="showTarget(target.name)"
+            />
           </template>
         </v-list-item>
         <v-divider />
       </div>
     </v-list>
     <output-dialog
-      v-model="showDialog"
       v-if="showDialog"
+      v-model="showDialog"
       :content="jsonContent"
       type="Target"
       :name="dialogTitle"

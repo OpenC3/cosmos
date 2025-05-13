@@ -26,9 +26,9 @@
       <v-col class="pa-2 mt-2">
         <v-btn @click="selectFile">Install Package</v-btn>
         <input
+          ref="fileInput"
           style="display: none"
           type="file"
-          ref="fileInput"
           @change="fileChange"
         />
       </v-col>
@@ -41,8 +41,8 @@
       class="list"
       data-test="process-list"
     >
-      <v-row no-gutters class="px-4"
-        ><v-col class="text-h6">Process List</v-col>
+      <v-row no-gutters class="px-4">
+        <v-col class="text-h6">Process List</v-col>
         <v-col align="right">
           <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
           <div>Showing last 10 min of activity</div>
@@ -62,12 +62,16 @@
             <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
           </v-list-item-subtitle>
 
-          <template v-slot:append v-if="process.state !== 'Running'">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showOutput(process)">
-                  mdi-eye
-                </v-icon>
+          <template v-if="process.state !== 'Running'" #append>
+            <v-tooltip :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-eye"
+                  variant="text"
+                  aria-label="Show Output"
+                  @click="showOutput(process)"
+                />
               </template>
               <span>Show Output</span>
             </v-tooltip>
@@ -82,15 +86,13 @@
         <v-list-item>
           <v-list-item-title>{{ gem }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="deletePackage(gem)">
-                  mdi-delete
-                </v-icon>
-              </template>
-              <span>Delete Package</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              aria-label="Delete Ruby Gem"
+              @click="deletePackage(gem)"
+            />
           </template>
         </v-list-item>
         <v-divider />
@@ -100,15 +102,13 @@
         <v-list-item>
           <v-list-item-title>{{ pkg }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="deletePackage(pkg)">
-                  mdi-delete
-                </v-icon>
-              </template>
-              <span>Delete Package</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              aria-label="Delete Python Package"
+              @click="deletePackage(pkg)"
+            />
           </template>
         </v-list-item>
         <v-divider />

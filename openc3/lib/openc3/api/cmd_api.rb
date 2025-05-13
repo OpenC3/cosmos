@@ -19,6 +19,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/api/interface_api'
 require 'openc3/models/target_model'
@@ -387,7 +390,7 @@ module OpenC3
       target_name, command_name = _extract_target_command_names('get_cmd_cnt', *args)
       authorize(permission: 'system', target_name: target_name, packet_name: command_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
-      Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{command_name}")
+      return TargetModel.get_command_count(target_name, command_name, scope: scope)
     end
 
     # Get the transmit counts for command packets
@@ -399,13 +402,7 @@ module OpenC3
       unless target_commands.is_a?(Array) and target_commands[0].is_a?(Array)
         raise "get_cmd_cnts takes an array of arrays containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
       end
-      counts = []
-      target_commands.each do |target_name, command_name|
-        target_name = target_name.upcase
-        command_name = command_name.upcase
-        counts << Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{command_name}")
-      end
-      counts
+      return TargetModel.get_command_counts(target_commands, scope: scope)
     end
 
     ###########################################################################

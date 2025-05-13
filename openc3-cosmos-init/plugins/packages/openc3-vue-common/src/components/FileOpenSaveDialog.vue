@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" scrollable @keydown.enter="success()">
+  <v-dialog v-model="show" width="600" @keydown.enter="success()">
     <v-card>
       <v-overlay :model-value="loading">
         <v-progress-circular
@@ -30,7 +30,7 @@
           size="64"
         ></v-progress-circular>
       </v-overlay>
-      <form v-on:submit.prevent="success">
+      <form @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
@@ -52,39 +52,17 @@
                 data-test="file-open-save-search"
               />
             </v-row>
-            <v-row dense class="mt-2">
-              <!-- return-object doesn't work until vuetify 3.7.3 -->
-              <v-treeview
-                v-model="tree"
-                @update:activated="activeFile"
-                density="compact"
-                activatable
-                ref="tree"
-                style="width: 100%; max-height: 60vh; overflow: auto"
-                item-value="id"
-                :items="items"
+            <div class="overflow-y-auto tree-container">
+              <tree-node
+                v-for="node in items"
+                :key="`${node.id}`"
+                :node="node"
                 :search="search"
-                :open-on-click="type === 'open'"
-                :open-all="!!search"
-              >
-                <template v-slot:prepend="{ item, open }">
-                  <v-icon v-if="!item.file">
-                    {{ open ? 'mdi-folder-open' : 'mdi-folder' }}
-                  </v-icon>
-                  <v-icon v-else> {{ calcIcon(item.title) }} </v-icon>
-                </template>
-                <template v-slot:append="{ item }">
-                  <!-- See ScriptRunner.vue const TEMP_FOLDER -->
-                  <v-btn
-                    v-if="item.title === '__TEMP__'"
-                    icon
-                    @click="deleteTemp"
-                  >
-                    <v-icon> mdi-delete </v-icon>
-                  </v-btn>
-                </template>
-              </v-treeview>
-            </v-row>
+                :type="type"
+                @request="activeFile"
+                @delete="deleteTemp"
+              ></tree-node>
+            </div>
             <v-row class="my-2">
               <v-text-field
                 v-model="selectedFile"
@@ -96,9 +74,9 @@
             </v-row>
             <v-row dense>
               <div
+                v-show="error"
                 class="my-2 text-red"
                 style="white-space: pre-line"
-                v-show="error"
               >
                 {{ error }}
               </div>
@@ -106,22 +84,22 @@
             <v-row class="mt-2">
               <v-spacer />
               <v-btn
-                @click="show = false"
                 variant="outlined"
                 class="mx-2"
                 data-test="file-open-save-cancel-btn"
                 :disabled="disableButtons"
+                @click="show = false"
               >
                 Cancel
               </v-btn>
               <v-btn
-                @click.prevent="success"
                 ref="submitBtn"
                 type="submit"
                 color="primary"
                 class="mx-2"
                 data-test="file-open-save-submit-btn"
                 :disabled="disableButtons || !!error"
+                @click.prevent="success"
               >
                 {{ submit }}
               </v-btn>
@@ -136,8 +114,12 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { fileIcon } from '@/util/fileIcon'
+import TreeNode from './TreeNode.vue'
 
 export default {
+  components: {
+    TreeNode,
+  },
   props: {
     type: {
       type: String,
@@ -156,11 +138,11 @@ export default {
     return {
       tree: [],
       items: [],
-      id: 1,
       search: null,
       selectedFile: null,
       disableButtons: false,
       targets: [],
+      targetsRetrieved: [],
       loading: true,
     }
   },
@@ -189,7 +171,7 @@ export default {
     },
     helpText: function () {
       if (this.type === 'open') {
-        return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results.'
+        return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results. You can also Tab to the files and Enter to select.'
       } else {
         return 'Click on the folder to save into. Then complete the filename path with the desired name. Use the search box to filter the results.'
       }
@@ -229,34 +211,50 @@ export default {
     },
   },
   created() {
-    this.loadFiles()
-    if (this.requireTargetParentDir) {
-      Api.get('/openc3-api/targets').then((response) => {
-        this.targets = response.data
-        this.targets.push('__TEMP__') // Also support __TEMP__
+    Api.get('/openc3-api/targets').then((response) => {
+      this.targets = response.data
+      this.targets.push('__TEMP__') // Also support __TEMP__
+      this.targets.forEach((target) => {
+        // Name not found so push the item and add a children array
+        this.items.push({
+          id: target,
+          disabled: true,
+          title: target,
+          children: [],
+          path: target,
+        })
+        // Load the targets 1 by 1 in the background
+        this.loadFiles(target)
       })
-    }
+      this.loading = false
+    })
   },
   methods: {
     calcIcon: function (filename) {
       return fileIcon(filename)
     },
-    loadFiles: function () {
-      Api.get(this.apiUrl)
+    loadFiles: function (target) {
+      Api.get(this.apiUrl, { params: { target } })
         .then((response) => {
-          this.items = []
-          this.id = 1
-          for (let file of response.data) {
+          if (response.data.length === 0) {
+            // Delete from items since there is no data
+            this.items = this.items.filter((item) => item.id !== target)
+            return
+          }
+          for (let file of response.data.sort()) {
             // Make a copy of the entire file path before calling insertFile
             // because insertFile does recursion and needs the original path
             this.filepath = file
-            this.insertFile(this.items, 1, file)
-            this.id++
+            this.insertFile(this.items, 2, file)
           }
           if (this.inputFilename) {
             this.selectedFile = this.inputFilename
           }
-          this.loading = false
+          // Enable the target we just populated
+          const index = this.items.findIndex((item) => item.id === target)
+          if (index !== -1) {
+            this.items[index].disabled = false
+          }
         })
         .catch((error) => {
           this.$emit('error', `Failed to connect to OpenC3. ${error}`)
@@ -271,11 +269,8 @@ export default {
       if (file.length === 0) {
         this.selectedFile = null
       } else {
-        // This works when return-object is enabled
-        // this.selectedFile = file[0].path
-
         // Search through items to find the item with id
-        this.selectedFile = this.findItem(this.items, file[0])
+        this.selectedFile = this.findItem(this.items, file.id)
         // Select the Submit button so return opens the file
         setTimeout(() => {
           this.$refs.submitBtn.$el.focus()
@@ -337,7 +332,7 @@ export default {
         })
         .then((response) => {
           this.$emit('clear-temp')
-          this.loadFiles()
+          this.loadFiles('__TEMP__')
         })
         .catch((error) => {
           this.$notify.serious({
@@ -397,12 +392,11 @@ export default {
       // When there is only 1 part we're at the root so push the filename
       if (parts.length === 1) {
         root.push({
-          id: this.id,
+          id: this.filepath,
           title: parts[0],
           file: 'ruby',
           path: this.filepath,
         })
-        this.id++
         return
       }
       // Look for the first part of the path
@@ -410,12 +404,17 @@ export default {
       if (index === -1) {
         // Name not found so push the item and add a children array
         root.push({
-          id: this.id,
+          id: this.filepath
+            .split('/')
+            .slice(0, level - 1)
+            .join('/'),
           title: parts[0],
           children: [],
-          path: this.filepath.split('/').slice(0, level).join('/'),
+          path: this.filepath
+            .split('/')
+            .slice(0, level - 1)
+            .join('/'),
         })
-        this.id++
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
@@ -434,3 +433,13 @@ export default {
   },
 }
 </script>
+
+<style>
+.tree-container {
+  background-color: var(--color-background-base-default);
+  padding: 10px;
+  margin-top: 5px;
+  max-height: 60vh;
+  font-size: large;
+}
+</style>

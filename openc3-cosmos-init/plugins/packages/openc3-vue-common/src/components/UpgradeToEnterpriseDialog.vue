@@ -1,5 +1,5 @@
 <!--
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -20,36 +20,33 @@
   <v-dialog v-model="show" width="650px">
     <v-toolbar height="24">
       <v-spacer />
-      <span> Upgrade to COSMOS Enterprise Edition </span>
+      <span> Upgrade to COSMOS Enterprise </span>
       <v-spacer />
     </v-toolbar>
     <v-card>
       <v-card-text class="mt-4">
         <div class="logo">
           <img :src="logo" alt="OpenC3" />
-          <div class="cosmos">Enterprise Edition</div>
+          <div class="cosmos">COSMOS Enterprise</div>
         </div>
-        <div class="pb-4">
-          Thank you for using the COSMOS Open Source Edition!
-        </div>
+        <div class="pb-4">Thank you for using the COSMOS Core!</div>
         <div v-if="reason">
           <div class="pb-4 pl-4 reason">
             {{ reason }}
           </div>
         </div>
-        COSMOS Enterprise Edition removes all restrictions and offers users with
-        role based access control, scaling on kubernetes, cloud platform
-        support, multiple scopes, Calendar and Autonomic, various integrations
-        with common protocols and hardware, commercial licensing, and much
-        more!<br /><br />
+        COSMOS Enterprise removes all restrictions and offers users with role
+        based access control, scaling on kubernetes, cloud platform support,
+        multiple scopes, Calendar and Autonomic, various integrations with
+        common protocols and hardware, commercial licensing, and much more!<br /><br />
         Learn more at
         <a href="https://openc3.com/enterprise">
           https://openc3.com/enterprise
         </a>
-        and help support COSMOS Open Source by supporting our business. Contact
-        us at <a href="mailto:support@openc3.com">support@openc3.com</a> for
-        more information about Enterprise Edition, COSMOS training, COSMOS
-        support, and custom COSMOS development.
+        and help support COSMOS Core by supporting our business. Contact us at
+        <a href="mailto:support@openc3.com">support@openc3.com</a> for more
+        information about COSMOS Enterprise, COSMOS training, COSMOS support,
+        and custom COSMOS development.
       </v-card-text>
       <v-card-actions class="px-2">
         <v-spacer />
@@ -89,10 +86,12 @@ export default {
   float: right;
   margin: 15px;
 }
+
 .cosmos {
   text-align: center;
   font-size: 18pt;
 }
+
 .reason {
   font-weight: bold;
 }

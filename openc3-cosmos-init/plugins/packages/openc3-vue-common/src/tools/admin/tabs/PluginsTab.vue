@@ -24,16 +24,21 @@
   <div>
     <v-row no-gutters align="center" class="px-2">
       <v-col class="pa-2 mt-2">
-        <v-btn @click="openStore" append-icon="mdi-store"> Browse Plugins </v-btn>
-        <v-btn @click="selectFile" append-icon="mdi-paperclip" class="mx-2"> Install From File </v-btn>
+        <v-btn append-icon="mdi-store" @click="openStore">
+          Browse Plugins
+        </v-btn>
+        <v-btn append-icon="mdi-paperclip" class="mx-2" @click="selectFile">
+          Install From File
+        </v-btn>
         <input
+          ref="fileInput"
           style="display: none"
           type="file"
-          ref="fileInput"
           @change="fileChange"
         />
         <br />
-        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed Plugins list to upgrade existing plugins
+        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed
+        Plugins list to upgrade existing plugins
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress" />
@@ -41,29 +46,29 @@
     </v-row>
     <v-row no-gutters class="px-2">
       <v-col align="right" class="mr-2">
-        <div> * indicates a modified plugin </div>
-        <div> Click target link to download modifications </div>
+        <div>* indicates a modified plugin</div>
+        <div>Click target link to download modifications</div>
       </v-col>
     </v-row>
     <v-divider />
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
+      v-model="showAlert"
       closable
       :type="alertType"
-      v-model="showAlert"
       :text="alert"
       data-test="plugin-alert"
     />
     <v-list
-      class="list"
       v-if="Object.keys(processes).length > 0"
+      class="list"
       data-test="process-list"
     >
       <v-row no-gutters class="px-4">
         <v-col class="text-h5"> Process List </v-col>
         <v-col align="right">
           <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
-          <div> Showing last 10 min of activity </div>
+          <div>Showing last 10 min of activity</div>
         </v-col>
       </v-row>
       <div v-for="process in processes" :key="process.name">
@@ -80,17 +85,21 @@
             <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
           </v-list-item-subtitle>
 
-          <template v-slot:append>
-            <div v-if="process.state === 'Running'">
-              <v-progress-circular indeterminate color="primary" />
-            </div>
-            <v-tooltip v-else location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon
+          <template #append>
+            <v-progress-circular
+              v-if="process.state === 'Running'"
+              indeterminate
+              color="primary"
+            />
+            <v-tooltip v-else :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
                   v-bind="props"
-                  @click="showOutput(process)"
                   icon="mdi-eye"
+                  variant="text"
+                  aria-label="Show Output"
                   data-test="show-output"
+                  @click="showOutput(process)"
                 />
               </template>
               <span> Show Output </span>
@@ -101,9 +110,7 @@
       </div>
     </v-list>
     <v-row class="px-4">
-      <v-col class="text-h5">
-        Installed Plugins
-      </v-col>
+      <v-col class="text-h5"> Installed Plugins </v-col>
       <v-col class="v-col-auto">
         <v-switch
           v-model="showDefaultTools"
@@ -121,11 +128,11 @@
       class="list"
       data-test="plugin-list"
     >
-      <template v-slot:item="{ item: plugin }">
+      <template #item="{ item: plugin }">
         <plugin-list-item
           v-bind="plugin"
           :targets="pluginTargets(plugin.name)"
-          :isModified="isModified(plugin.name)"
+          :is-modified="isModified(plugin.name)"
           @edit="() => editPlugin(plugin.name)"
           @upgrade="() => upgradePlugin(plugin.name)"
           @delete="() => deletePrompt(plugin.name)"
@@ -141,18 +148,18 @@
     <plugin-dialog
       v-if="showPluginDialog"
       v-model="showPluginDialog"
-      :pluginName="pluginName"
+      :plugin-name="pluginName"
       :variables="variables"
-      :pluginTxt="pluginTxt"
-      :existingPluginTxt="existingPluginTxt"
+      :plugin-txt="pluginTxt"
+      :existing-plugin-txt="existingPluginTxt"
       @callback="pluginCallback"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
       v-model="showModifiedPluginDialog"
-      :pluginName="currentPlugin"
+      :plugin-name="currentPlugin"
       :targets="pluginTargets(currentPlugin)"
-      :pluginDelete="pluginDelete"
+      :plugin-delete="pluginDelete"
       @submit="modifiedSubmit"
     />
     <!-- <download-dialog v-model="showDownloadDialog" /> -->
@@ -162,7 +169,10 @@
       :text="processOutput"
     />
     <v-bottom-sheet v-model="showPluginStore" fullscreen>
-      <plugin-store @close="() => showPluginStore = false" @triggerInstall="installFromUrl" />
+      <plugin-store
+        @close="() => (showPluginStore = false)"
+        @trigger-install="installFromUrl"
+      />
     </v-bottom-sheet>
   </div>
 </template>
@@ -237,6 +247,27 @@ export default {
       ],
     }
   },
+  computed: {
+    shownPlugins() {
+      return Object.entries(this.plugins)
+        .filter(([pluginName, plugin]) => {
+          const pluginNameFirst = pluginName.split('__')[0]
+          const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
+          const pluginNameShort = pluginNameSplit.join('-')
+          return (
+            !this.defaultPlugins.includes(pluginNameShort) ||
+            this.showDefaultTools
+          )
+        })
+        .map(([pluginName, plugin]) => {
+          const storePlugin = PluginApi.getBySha(plugin.gem_sha)
+          return {
+            ...storePlugin,
+            ...plugin,
+          }
+        })
+    },
+  },
   watch: {
     // watcher to reset the file input when the dialog is closed
     showPluginDialog: function (newValue, oldValue) {
@@ -244,23 +275,6 @@ export default {
         this.file = null
         this.$refs.fileInput.value = null
       }
-    },
-  },
-  computed: {
-    shownPlugins() {
-      return Object.entries(this.plugins).filter(([pluginName, plugin]) => {
-        const pluginNameFirst = pluginName.split('__')[0]
-        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-        const pluginNameShort = pluginNameSplit.join('-')
-        return !this.defaultPlugins.includes(pluginNameShort) ||
-          this.showDefaultTools
-      }).map(([pluginName, plugin]) => {
-        const storePlugin = PluginApi.getBySha(plugin.gem_sha)
-        return {
-          ...storePlugin,
-          ...plugin,
-        }
-      })
     },
   },
   mounted() {
@@ -293,8 +307,7 @@ export default {
     },
     isModified: function (plugin) {
       return Object.entries(this.targets).some(([targetName, target]) => {
-        return target['plugin'] === plugin &&
-        target['modified'] === true
+        return target['plugin'] === plugin && target['modified'] === true
       })
     },
     showOutput: function (process) {
@@ -306,7 +319,9 @@ export default {
         this.plugins = response.data
 
         // TODO: delete me
-        const demoKey = Object.keys(this.plugins).find(k => k.includes('demo'))
+        const demoKey = Object.keys(this.plugins).find((k) =>
+          k.includes('demo'),
+        )
         this.plugins[demoKey].gem_sha = 'demosha256'
       })
       Api.get('/openc3-api/targets_modified').then((response) => {
@@ -555,10 +570,12 @@ export default {
 .crashed {
   color: red;
 }
+
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
 }
+
 .v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
   background-color: var(--color-background-base-selected) !important;
 }

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,12 +30,12 @@ module OpenC3
 
     # @param sync_pattern (see BurstProtocol#initialize)
     # @param max_length [Integer] The maximum allowed value of the length field
+    # @param _unused [Integer] Legacy version number - unused
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def initialize(sync_pattern = nil, max_length = nil, mode = 4, allow_empty_data = nil)
+    def initialize(sync_pattern = nil, max_length = nil, _unused = nil, allow_empty_data = nil)
       super(0, sync_pattern, false, allow_empty_data)
       @max_length = ConfigParser.handle_nil(max_length)
       @max_length = Integer(@max_length) if @max_length
-      @mode = Integer(mode)
     end
 
     def reset
@@ -47,13 +47,11 @@ module OpenC3
       packet.received_time = @read_received_time
       packet.target_name = @read_target_name
       packet.packet_name = @read_packet_name
-      if @mode == 4 # COSMOS4.3+ Protocol
-        packet.stored = @read_stored
-        if packet.extra and @read_extra
-          packet.extra.merge(@read_extra)
-        else
-          packet.extra = @read_extra
-        end
+      packet.stored = @read_stored
+      if packet.extra and @read_extra
+        packet.extra.merge(@read_extra)
+      else
+        packet.extra = @read_extra
       end
       return packet
     end
@@ -67,14 +65,12 @@ module OpenC3
       @write_target_name = 'UNKNOWN' unless @write_target_name
       @write_packet_name = packet.packet_name
       @write_packet_name = 'UNKNOWN' unless @write_packet_name
-      if @mode == 4 # COSMOS4.3+ Protocol
-        @write_flags = 0
-        @write_flags |= COSMOS4_STORED_FLAG_MASK if packet.stored
-        @write_extra = nil
-        if packet.extra
-          @write_flags |= COSMOS4_EXTRA_FLAG_MASK
-          @write_extra = packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true)
-        end
+      @write_flags = 0
+      @write_flags |= COSMOS4_STORED_FLAG_MASK if packet.stored
+      @write_extra = nil
+      if packet.extra
+        @write_flags |= COSMOS4_EXTRA_FLAG_MASK
+        @write_extra = packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true)
       end
       return packet
     end
@@ -83,12 +79,10 @@ module OpenC3
       data_length = [data.length].pack('N') # UINT32
       data_to_send = ''
       data_to_send << @sync_pattern if @sync_pattern
-      if @mode == 4 # COSMOS4.3+ Protocol
-        data_to_send << @write_flags
-        if @write_extra
-          data_to_send << [@write_extra.length].pack('N')
-          data_to_send << @write_extra
-        end
+      data_to_send << @write_flags
+      if @write_extra
+        data_to_send << [@write_extra.length].pack('N')
+        data_to_send << @write_extra
       end
       data_to_send << @write_time_seconds
       data_to_send << @write_time_microseconds
@@ -146,7 +140,7 @@ module OpenC3
         @reduction_state = :SYNC_REMOVED
       end
 
-      if @reduction_state == :SYNC_REMOVED and @mode == 4
+      if @reduction_state == :SYNC_REMOVED
         # Read and remove flags
         return :STOP if @data.length < 1
 
@@ -171,7 +165,7 @@ module OpenC3
         @reduction_state = :FLAGS_REMOVED
       end
 
-      if @reduction_state == :FLAGS_REMOVED or (@reduction_state == :SYNC_REMOVED and @mode != 4)
+      if @reduction_state == :FLAGS_REMOVED
         # Read and remove packet received time
         return :STOP if @data.length < 8
 

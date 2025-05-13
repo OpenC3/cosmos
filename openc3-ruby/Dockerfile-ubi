@@ -1,6 +1,6 @@
 ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
-ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi8-minimal
-ARG OPENC3_UBI_TAG=8.10
+ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
+ARG OPENC3_UBI_TAG=9.5
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -39,8 +39,8 @@ COPY shoreman.sh /usr/bin/shoreman
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
-    python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
-    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps"
+    python3.12 python3.12-devel python3.12-pip python3.12-numpy	ca-certificates less git \
+    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel"
 
 RUN rm /etc/yum.repos.d/*
 COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
@@ -48,8 +48,8 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y \
     && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
     && mkdir -p /usr/src \
-    && tar -xzf /tmp/ruby-3.2.tar.gz -C /usr/src/ \
-    && rm -f /tmp/ruby-3.2.tar.gz \
+    && tar -xzf /tmp/ruby-3.3.7.tar.gz -C /usr/src/ \
+    && rm -f /tmp/ruby-3.3.7.tar.gz \
     && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
     && cd /usr/src/${RUBY_DIR} \
     && ./configure --disable-install-doc --enable-shared \
@@ -67,7 +67,7 @@ RUN cd / \
     && make install \
     && rm -rf /usr/src/${TINI_DIR}
 RUN cd / \
-    && gem update --system 3.3.14 \
+    && gem update --system \
     && gem install rake \
     && gem install google-protobuf \
     && gem install grpc \
@@ -75,8 +75,12 @@ RUN cd / \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
-    && ln /bin/python3 /bin/python \
-    && ln /bin/pip3 /bin/pip \
+    && rm /bin/python \
+    && rm /bin/python3 \
+    && ln -s /bin/python3.12 /bin/python \
+    && ln -s /bin/python3.12 /bin/python3 \
+    && ln -s /bin/pip3.12 /bin/pip \
+    && ln -s /bin/pip3.12 /bin/pip3 \
     && python3 -m venv /openc3/venv \
     && source /openc3/venv/bin/activate \
     && pip3 config --global set global.index $PYPI_URL/pypi \
@@ -85,16 +89,73 @@ RUN cd / \
     && pip3 install poetry \
     && pip3 install poetry-plugin-export
 
-# Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
+# rbspy - https://github.com/rbspy/rbspy
+COPY rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
+RUN cd /opt \
+  && tar -xzf rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz \
+  && cp rbspy-x86_64-unknown-linux-gnu /usr/local/bin/rbspy \
+  && chmod +x /usr/local/bin/rbspy \
+  && cd /opt \
+  && rm rbspy-x86_64-unknown-linux-gnu \
+  && rm rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
 
-# Update uri as a default gem and
-# Remove default status from old uri version 0.12.1 by moving it up one directory because default gems cannot be removed
-RUN gem update uri --default \
-    && mv /usr/local/lib/ruby/gems/3.2.0/specifications/default/uri-0.12.1.gemspec /usr/local/lib/ruby/gems/3.2.0/specifications/ \
-    && gem uninstall uri --version 0.12.1
-#  End fix CVE-2023-36617
+# htop - https://github.com/htop-dev/htop
+COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
+RUN cd /opt \
+  && tar -xzf htop-3.4.1.tar.gz \
+  && cd htop-3.4.1 \
+  && ./autogen.sh \
+  && ./configure \
+  && make \
+  && make install \
+  && cd /opt \
+  && rm -rf htop-3.4.1 \
+  && rm htop-3.4.1.tar.gz
 
-# TODO: Add rbspy and htop support
+# libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
+COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
+RUN cd /opt \
+  && tar -xzf libsocketcan-0.0.12.tar.gz \
+  && cd libsocketcan-0.0.12 \
+  && autoreconf --force --install --symlink -Wall \
+  && ./configure --libdir=/usr/lib64 \
+  && make \
+  && make install \
+  && cd /opt \
+  && rm -rf libsocketcan-0.0.12 \
+  && rm libsocketcan-0.0.12.tar.gz
+
+# libzmq - used by libcsp - https://github.com/zeromq/libzmq
+COPY libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip /opt/libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
+RUN cd /opt \
+  && unzip libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip \
+  && cd libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834 \
+  && mkdir build \
+  && cd build \
+  && cmake .. -D WITH_PERF_TOOL=OFF -D ZMQ_BUILD_TESTS=OFF -D ENABLE_CPACK=OFF -D CMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR=/usr/lib64 \
+  && make \
+  && make install \
+  && cd /opt \
+  && rm -rf libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834 \
+  && rm libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
+
+# libcsp - https://github.com/libcsp/libcsp
+COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+RUN cd /opt \
+  && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
+  && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
+  # Patches to fix compilation issues
+  && sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c \
+  && sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c \
+  && mkdir build \
+  && cd build \
+  && cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 \
+  && make \
+  && make install \
+  && cp libcsp_py3* /lib64/python3.12/lib-dynload/. \
+  && cd /opt \
+  && rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
+  && rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3
@@ -103,7 +164,7 @@ ENV USER_ID=1001
 ENV GROUP_ID=1001
 # The build time venv is at /openc3/venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
-ENV PYTHONPATH=/openc3/venv/lib/python3.11/site-packages/:/gems/python_packages/lib/python3.11/site-packages/
+ENV PYTHONPATH=/openc3/venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
 RUN groupadd -g ${GROUP_ID} ${IMAGE_GROUP}
 RUN useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/sh ${IMAGE_USER}
 

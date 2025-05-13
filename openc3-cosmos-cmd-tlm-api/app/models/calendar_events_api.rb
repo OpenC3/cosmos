@@ -23,9 +23,9 @@
 require_relative 'topics_thread'
 
 class CalendarEventsApi
-  def initialize(uuid, channel, history_count = 0, scope:)
+  def initialize(subscription_key, history_count = 0, scope:)
     topics = ["#{scope}__openc3_calendar"] # MUST be equal to CalendarTopic::PRIMARY_KEY
-    @thread = TopicsThread.new(topics, channel, history_count)
+    @thread = TopicsThread.new(topics, subscription_key, history_count)
     @thread.start
   end
 
