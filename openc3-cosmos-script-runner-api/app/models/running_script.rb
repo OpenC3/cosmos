@@ -795,6 +795,7 @@ class RunningScript
   end
 
   def pre_line_instrumentation(filename, line_number)
+    @pre_line_time = Time.now.sys
     @script_status.current_filename = filename
     @script_status.line_no = line_number
     if @use_instrumentation
@@ -1250,7 +1251,6 @@ class RunningScript
       sleep_time = @@line_delay - (Time.now.sys - @pre_line_time)
       sleep(sleep_time) if sleep_time > 0.0
     end
-    @pre_line_time = Time.now.sys
   end
 
   def handle_exception(error, fatal, filename = nil, line_number = 0)

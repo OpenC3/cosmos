@@ -174,7 +174,6 @@ rescue Exception => e
   script_status.state = 'crashed'
   script_status.errors ||= []
   script_status.errors << e.formatted
-  script_status.update
 ensure
   begin
     # Dump all queued redis messages

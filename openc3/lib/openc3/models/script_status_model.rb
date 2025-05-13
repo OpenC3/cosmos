@@ -208,9 +208,9 @@ module OpenC3
     def destroy
       @destroyed = true
       undeploy()
-      self.class.store.hdel(@primary_key, @name)
+      self.class.store_queued.hdel(@primary_key, @name)
       # Also remove from ordered set
-      self.class.store.zremrangebyscore(@primary_key + "__LIST", @name.to_i, @name.to_i)
+      self.class.store_queued.zremrangebyscore(@primary_key + "__LIST", @name.to_i, @name.to_i)
     end
 
     def as_json(*a)
