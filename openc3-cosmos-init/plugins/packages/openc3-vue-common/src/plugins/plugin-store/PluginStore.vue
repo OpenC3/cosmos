@@ -20,16 +20,16 @@
   <v-sheet class="pb-11 pt-8 px-8" height="100%">
     <div class="d-flex justify-content-space-between">
       <div>
-        <div class="text-h3 mb-3">
-          OpenC3 Plugin Store
-        </div>
+        <div class="text-h3 mb-3">OpenC3 Plugin Store</div>
         <div class="text-subtitle-1">
           Browse plugins made by OpenC3 and the COSMOS community
         </div>
       </div>
       <v-spacer />
+      <v-btn icon="mdi-cog" variant="text" @click="openSettings" />
+
       <v-tooltip location="top">
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <div v-bind="props">
             <v-btn
               href="https://plugins.openc3.com"
@@ -43,7 +43,7 @@
         <span> Open plugins.openc3.com </span>
       </v-tooltip>
 
-      <v-btn @click="close" icon="mdi-close" variant="text" />
+      <v-btn icon="mdi-close" variant="text" @click="close" />
     </div>
     <div class="d-inline-flex align-center w-100">
       <v-text-field
@@ -69,27 +69,35 @@
     <span class=""> Click on a plugin to see more information about it </span>
     <v-container>
       <v-row>
-        <v-col v-for="plugin in filteredPlugins" cols="4">
-          <plugin-card v-bind="plugin" @triggerInstall="install" />
+        <v-col v-for="plugin in filteredPlugins" :key="plugin.id" cols="4">
+          <plugin-card v-bind="plugin" @trigger-install="install" />
         </v-col>
       </v-row>
     </v-container>
   </v-sheet>
+  <plugin-store-settings-dialog
+    v-model="showSettingsDialog"
+    @update:store-url="updateStoreUrl"
+  />
 </template>
 
 <script>
 import { PluginCard } from '@/plugins/plugin-store'
-import { PluginApi } from '@/tools/admin/tabs/plugins'
+import PluginStoreSettingsDialog from './PluginStoreSettingsDialog.vue' // idk why importing from @/plugins/plugin-store isn't working
+import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 
 export default {
-  emits: ['close', 'triggerInstall'],
   components: {
     PluginCard,
+    PluginStoreSettingsDialog,
   },
+  emits: ['close', 'triggerInstall'],
   data() {
     return {
+      pluginStoreApi: new PluginStoreApi(),
       search: '',
       verifiedOnly: false,
+      showSettingsDialog: false,
       plugins: [],
     }
   },
@@ -97,16 +105,20 @@ export default {
     filteredPlugins: function () {
       let filtered = this.plugins
       if (this.verifiedOnly) {
-        filtered = filtered.filter(plugin => plugin.verified)
+        filtered = filtered.filter((plugin) => plugin.verified)
       }
       if (this.search.length) {
-        filtered = filtered.filter(plugin => plugin.title.toLowerCase().includes(this.search.toLowerCase()))
+        filtered = filtered.filter((plugin) =>
+          plugin.title.toLowerCase().includes(this.search.toLowerCase()),
+        )
       }
       return filtered
     },
   },
   mounted: function () {
-    this.plugins = PluginApi.getAll()
+    this.pluginStoreApi.getAll().then((response) => {
+      this.plugins = response.data
+    })
     // TODO: do something with plugins that are already installed (show uninstall button instead?)
   },
   methods: {
@@ -115,6 +127,12 @@ export default {
     },
     install: function (gemUrl) {
       this.$emit('triggerInstall', gemUrl)
+    },
+    openSettings: function () {
+      this.showSettingsDialog = true
+    },
+    updateStoreUrl: function () {
+      this.pluginStoreApi.refreshPluginStoreUrl()
     },
   },
 }
