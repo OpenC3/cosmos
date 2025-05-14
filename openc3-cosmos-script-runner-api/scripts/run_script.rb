@@ -184,7 +184,7 @@ ensure
       script_status.state = 'completed'
     end
     script_status.end_time = Time.now.utc.iso8601
-    script_status.update
+    script_status.update()
 
     running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
 

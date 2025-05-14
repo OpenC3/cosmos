@@ -138,6 +138,11 @@ test('runs a script', async ({ page, utils }) => {
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
+  await utils.sleep(1000)
+  await page.getByText('Running Scripts').click()
+  await expect(
+    page.locator('[data-test="running-scripts"] thead').getByText('Connect'),
+  ).toBeVisible()
   await page
     .locator(
       '[data-test="running-scripts"] tr:has-text("INST/procedures/disconnect.rb")',
