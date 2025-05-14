@@ -141,7 +141,7 @@ class ScriptStatusModel(Model):
         if not self.is_complete():
             self.__state = new_state
             # If setting to complete, check for errors
-            # and set the state to complete_errors if they exist
+            # and set the state to completed_errors if they exist
             if self.__state == 'completed' and self.errors:
                 self.__state = 'completed_errors'
 
@@ -166,7 +166,7 @@ class ScriptStatusModel(Model):
         # Magically handle the change from running to completed
         if self.is_complete() and self.primary_key == f"{self.RUNNING_PRIMARY_KEY}__{self.scope}":
             # Destroy the running key
-            self.destroy()
+            self.destroy(queued = queued)
             self.destroyed = False
 
             # Move to completed
@@ -176,12 +176,16 @@ class ScriptStatusModel(Model):
             self.create(update = True, force = force, queued = queued, isoformat = True)
 
     # Delete the model from the Store
-    def destroy(self):
+    def destroy(self, queued = False):
         self.destroyed = True
         self.undeploy()
-        self.store().hdel(self.primary_key, self.name)
+        if queued:
+            write_store = self.store_queued()
+        else:
+            write_store = self.store()
+        write_store.hdel(self.primary_key, self.name)
         # Also remove from ordered set
-        self.store().zremrangebyscore(self.primary_key + "__LIST", int(self.name), int(self.name))
+        write_store.zremrangebyscore(self.primary_key + "__LIST", int(self.name), int(self.name))
 
     def as_json(self):
         return {

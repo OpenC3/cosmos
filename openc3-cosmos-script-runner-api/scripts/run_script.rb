@@ -174,7 +174,6 @@ rescue Exception => e
   script_status.state = 'crashed'
   script_status.errors ||= []
   script_status.errors << e.formatted
-  script_status.update
 ensure
   begin
     # Dump all queued redis messages
@@ -185,7 +184,7 @@ ensure
       script_status.state = 'completed'
     end
     script_status.end_time = Time.now.utc.iso8601
-    script_status.update
+    script_status.update()
 
     running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
 

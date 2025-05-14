@@ -348,9 +348,8 @@ class RunningScript
 
     running_script_id = OpenC3::Store.incr('running-script-id')
 
-    # Open Source full name (EE has the actual name)
+    # COSMOS Core username (Enterprise has the actual name)
     username ||= 'Anonymous'
-
     # COSMOS Core full name (Enterprise has the actual name)
     user_full_name ||= 'Anonymous'
     start_time = Time.now.utc.iso8601
@@ -630,7 +629,7 @@ class RunningScript
     }
     if @@message_log
       @script_status.log = @@message_log.stop(true, metadata: metadata)
-      @script_status.update
+      @script_status.update()
     end
     @@message_log = nil
   end
@@ -796,6 +795,7 @@ class RunningScript
   end
 
   def pre_line_instrumentation(filename, line_number)
+    @pre_line_time = Time.now.sys
     @script_status.current_filename = filename
     @script_status.line_no = line_number
     if @use_instrumentation
@@ -1251,7 +1251,6 @@ class RunningScript
       sleep_time = @@line_delay - (Time.now.sys - @pre_line_time)
       sleep(sleep_time) if sleep_time > 0.0
     end
-    @pre_line_time = Time.now.sys
   end
 
   def handle_exception(error, fatal, filename = nil, line_number = 0)
