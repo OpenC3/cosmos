@@ -272,7 +272,6 @@ except Exception:
     if script_status.errors is None:
         script_status.errors = []
     script_status.errors.append(tb)
-    script_status.update()
 finally:
     try:
         # Dump all queued redis messages

@@ -166,7 +166,7 @@ module OpenC3
       if not is_complete?()
         @state = new_state
         # If setting to complete, check for errors
-        # and set the state to complete_errors if they exist
+        # and set the state to completed_errors if they exist
         if @state == 'completed' and @errors
           @state = 'completed_errors'
         end
@@ -193,7 +193,7 @@ module OpenC3
       # Magically handle the change from running to completed
       if is_complete?() and @primary_key == "#{RUNNING_PRIMARY_KEY}__#{@scope}"
         # Destroy the running key
-        destroy()
+        destroy(queued: queued)
         @destroyed = false
 
         # Move to completed
@@ -205,12 +205,17 @@ module OpenC3
     end
 
     # Delete the model from the Store
-    def destroy
+    def destroy(queued: false)
       @destroyed = true
       undeploy()
-      self.class.store.hdel(@primary_key, @name)
+      if queued
+        write_store = self.class.store_queued
+      else
+        write_store = self.class.store
+      end
+      write_store.hdel(@primary_key, @name)
       # Also remove from ordered set
-      self.class.store.zremrangebyscore(@primary_key + "__LIST", @name.to_i, @name.to_i)
+      write_store.zremrangebyscore(@primary_key + "__LIST", @name.to_i, @name.to_i)
     end
 
     def as_json(*a)

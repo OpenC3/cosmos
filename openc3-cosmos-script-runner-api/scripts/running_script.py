@@ -461,6 +461,7 @@ class RunningScript:
     def pre_line_instrumentation(
         self, filename, line_number, global_variables, local_variables
     ):
+        self.pre_line_time = time.time()
         self.script_binding = [global_variables, local_variables]
         self.script_status.current_filename = filename
         self.script_status.line_no = line_number
@@ -1062,7 +1063,6 @@ class RunningScript:
             sleep_time = RunningScript.line_delay - (time.time() - self.pre_line_time)
             if sleep_time > 0.0:
                 time.sleep(sleep_time)
-        self.pre_line_time = time.time()
 
     def handle_exception(
         self, exc_type, exc_value, exc_traceback, fatal, filename=None, line_number=0
