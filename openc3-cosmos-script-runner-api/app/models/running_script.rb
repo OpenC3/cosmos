@@ -629,7 +629,7 @@ class RunningScript
     }
     if @@message_log
       @script_status.log = @@message_log.stop(true, metadata: metadata)
-      @script_status.update
+      @script_status.update()
     end
     @@message_log = nil
   end
