@@ -8,6 +8,8 @@ sidebar_custom_props:
 
 OpenC3 COSMOS is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
 
+![Docker Security Diagram](/img/docker-security.png)
+
 ## Understanding SSL, TLS, and Public Key Infrastructure (PKI)
 
 Security on the internet is built on the technologies SSL and TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangeably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.

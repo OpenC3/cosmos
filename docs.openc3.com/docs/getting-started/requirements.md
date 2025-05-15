@@ -45,13 +45,13 @@ The COSMOS system uses several terms that are important to understand. The follo
 
 ## Overall Architecture and Context Diagram
 
-The following diagram shows the COSMOS 5 architecture.
+The following diagram shows the current COSMOS architecture.
 
 ![COSMOS Architecture](/img/architecture.png)
 
 Key aspects of this architecture:
 
-COSMOS 5 is a cloud native, containerized, microservice oriented command and control system. All the COSMOS microservices are docker containers which is why Docker is shown containing the entire COSMOS system. The green boxes on the left represent external embedded systems (Targets) which COSMOS connects to. The Redis data store contains the configuration for all the microservices, the current value table, as well as data streams containing decommutated data. The Minio data store contains plugins, targets, configuration data, text logs as well as binary logs of all the raw, decommutated, and reduced data. Users interact with COSMOS from a web browser which routes through the internal Traefik load balancer.
+Starting with the release of version 5, COSMOS is a cloud native, containerized, microservice oriented command and control system. All the COSMOS microservices are docker containers which is why Docker is shown containing the entire COSMOS system. The green boxes on the left represent external embedded systems (Targets) which COSMOS connects to. The Redis data store contains the configuration for all the microservices, the current value table, as well as data streams containing decommutated data. The Minio data store contains plugins, targets, configuration data, text logs as well as binary logs of all the raw, decommutated, and reduced data. Users interact with COSMOS from a web browser which routes through the internal Traefik load balancer.
 
 - COSMOS can connect to many different kinds of targets. The examples include things like Flight software (FSW), Ground Support Equipment (GSE), Labview, and COTS targets such as an Agilent power supply. Any embedded system that provides a communication interface can be connected to COSMOS.
 - COSMOS ships with interfaces for connecting over TCP/IP, UDP, MQTT, and serial connections. This covers most systems, but custom interfaces can also be written to connect to anything.
