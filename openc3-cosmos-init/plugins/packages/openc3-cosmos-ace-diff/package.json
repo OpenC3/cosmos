@@ -1,17 +1,22 @@
 {
   "name": "@openc3/ace-diff",
   "version": "6.4.2-beta0",
-  "private": true,
   "description": "Custom AceDiff build for OpenC3 COSMOS",
+  "homepage": "https://openc3.com",
   "source": "src/index.js",
   "main": "dist/ace-diff.min.js",
+  "module": "src/index.js",
+  "bugs": {
+    "url": "https://github.com/OpenC3/cosmos/issues"
+  },
   "scripts": {
     "build": "vite build",
     "lint": "eslint src"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ace-diff/ace-diff.git"
+    "url": "git+https://github.com/OpenC3/cosmos.git",
+    "directory": "openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff"
   },
   "author": "Ben Keen, Jason Thomas",
   "license": "MIT",
