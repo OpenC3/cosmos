@@ -102,7 +102,7 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    2. On Windows: openc3.bat run
 6. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20User's%20Manual.pdf)
 
 #### Using a global certificate from Let's Encrypt
 
@@ -123,7 +123,7 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    2. On Windows: openc3.bat run
 4. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20User's%20Manual.pdf)
 
 ### Configure COSMOS Enterprise for TLS when running in Kubernetes
 
