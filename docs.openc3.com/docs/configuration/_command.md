@@ -8,6 +8,12 @@ sidebar_custom_props:
 
 <!-- Be sure to edit _command.md because command.md is a generated file -->
 
+## Command Concepts
+
+The COSMOS front end provides multiple ways to send commands. They can come from a script (e.g. in [Script Runner](../tools/script-runner)), a tool like [Command Sender](../tools/cmd-sender), or just generally through an API call. These requests will go to the CmdTlmApi Server to start the flow through the rest of the COSMOS architecture and out to the target as follows:
+
+![Command Processing Diagram](/img/cmd-processing.png)
+
 ## Command Definition Files
 
 Command definition files define the command packets that can be sent to COSMOS targets. One large file can be used to define the command packets, or multiple files can be used at the user's discretion. Command definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some command files that depend on others, e.g. they override or extend existing commands, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have cmd.txt you can create cmd_override.txt for commands that depends on the definitions in cmd.txt. Also note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
