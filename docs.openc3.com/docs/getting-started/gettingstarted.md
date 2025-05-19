@@ -49,7 +49,7 @@ This guide assumes we're on Windows and COSMOS is installed in C:\COSMOS. On Mac
 1. Now we need to create a plugin. Plugins are how we add targets and microservices to COSMOS. Our plugin will contain a single target which contains all the information defining the packets (command and telemetry) that are needed to communicate with the target. Use the COSMOS plugin generator to create the correct structure.
 
 :::info Python vs Ruby
-Each CLI command requires the use of `--python` or `--ruby` unless you see the OPENC3_LANGUAGE environment variable to 'python' or 'ruby'.
+Each CLI command requires the use of `--python` or `--ruby` unless you set the OPENC3_LANGUAGE environment variable to 'python' or 'ruby'.
 :::
 
 ```batch
