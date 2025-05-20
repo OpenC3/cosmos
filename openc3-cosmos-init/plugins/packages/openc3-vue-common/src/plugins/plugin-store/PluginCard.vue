@@ -21,7 +21,7 @@
     <template #activator="{ props }">
       <v-card v-bind="props" height="350" class="d-flex flex-column">
         <v-card-title class="d-flex align-center justify-content-space-between">
-          {{ title }}
+          {{ name }}
           <v-spacer />
           <v-badge
             v-if="verified"

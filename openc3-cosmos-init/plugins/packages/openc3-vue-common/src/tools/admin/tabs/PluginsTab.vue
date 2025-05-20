@@ -201,7 +201,7 @@ export default {
       currentPlugin: null,
       showPluginDetails: false,
       detailPlugin: null,
-      plugins: {},
+      plugins: [],
       targets: {},
       processes: {},
       alert: '',
@@ -250,23 +250,15 @@ export default {
   },
   computed: {
     shownPlugins() {
-      return Object.entries(this.plugins)
-        .filter(([pluginName, plugin]) => {
-          const pluginNameFirst = pluginName.split('__')[0]
-          const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-          const pluginNameShort = pluginNameSplit.join('-')
-          return (
-            !this.defaultPlugins.includes(pluginNameShort) ||
-            this.showDefaultTools
-          )
-        })
-        .map(([pluginName, plugin]) => {
-          const storePlugin = this.pluginStoreApi.getBySha(plugin.gem_sha)
-          return {
-            ...storePlugin,
-            ...plugin,
-          }
-        })
+      return this.plugins.filter((plugin) => {
+        const pluginNameFirst = plugin.name.split('__')[0]
+        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
+        const pluginNameShort = pluginNameSplit.join('-')
+        return (
+          !this.defaultPlugins.includes(pluginNameShort) ||
+          this.showDefaultTools
+        )
+      })
     },
   },
   watch: {
@@ -317,13 +309,19 @@ export default {
     },
     update: function () {
       Api.get('/openc3-api/plugins/all').then((response) => {
-        this.plugins = response.data
-
-        // TODO: delete me
-        const demoKey = Object.keys(this.plugins).find((k) =>
-          k.includes('demo'),
+        this.plugins = Object.entries(response.data).map(
+          ([pluginName, plugin]) => {
+            return {
+              title: pluginName,
+              ...plugin,
+            }
+          },
         )
-        this.plugins[demoKey].gem_sha = 'demosha256'
+        // TODO: might need/want to pull in store data that we don't have locally?
+        // const promises = response.data.map((plugin) => {
+        //   return this.pluginStoreApi.getBySha(plugin.gem_sha)
+        // })
+        // return Promise.all(promises)
       })
       Api.get('/openc3-api/targets_modified').then((response) => {
         this.targets = response.data
