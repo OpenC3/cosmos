@@ -48,11 +48,11 @@ RUN cd packages/openc3-vue-common && npm run build
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh
 
+FROM openc3-frontend-tmp AS openc3-tmp1
 COPY ./plugins/packages/openc3-tool-base/ packages/openc3-tool-base/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-tool-base"]
 
 # Build admin tool
-FROM openc3-frontend-tmp AS openc3-tmp1
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
 
@@ -65,6 +65,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/ packages/openc3-cosmos-too
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdsender"]
 
 # Build cmdtlmserver tool
+FROM openc3-frontend-tmp AS openc3-tmp2
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/ packages/openc3-cosmos-tool-cmdtlmserver/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdtlmserver"]
 
@@ -73,7 +74,6 @@ COPY ./plugins/packages/openc3-cosmos-tool-tablemanager/ packages/openc3-cosmos-
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tablemanager"]
 
 # Build dataextractor tool
-FROM openc3-frontend-tmp AS openc3-tmp2
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/ packages/openc3-cosmos-tool-dataextractor/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataextractor"]
 
@@ -82,6 +82,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/ packages/openc3-cosmos-to
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataviewer"]
 
 # Build iframe tool
+FROM openc3-frontend-tmp AS openc3-tmp3
 COPY ./plugins/packages/openc3-cosmos-tool-iframe/ packages/openc3-cosmos-tool-iframe/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-iframe"]
 
@@ -94,7 +95,6 @@ COPY ./plugins/packages/openc3-cosmos-tool-limitsmonitor/ packages/openc3-cosmos
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-limitsmonitor"]
 
 # Build packetviewer tool
-FROM openc3-frontend-tmp AS openc3-tmp3
 COPY ./plugins/packages/openc3-cosmos-tool-packetviewer/ packages/openc3-cosmos-tool-packetviewer/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-packetviewer"]
 
