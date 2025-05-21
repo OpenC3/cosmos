@@ -20,6 +20,9 @@
     },
     {
       "path": "../openc3-cosmos-cfdp"
+    },
+    {
+      "path": "../app-store"
     }
   ],
   "settings": {

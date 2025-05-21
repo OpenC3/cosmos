@@ -3529,10 +3529,10 @@ Ruby / Python Syntax:
 clear_screen("<Target Name>", "<Screen Name>")
 ```
 
-| Parameter   | Description                             |
-| ----------- | --------------------------------------- |
-| Target Name | Telemetry screen target name            |
-| Screen Name | Screen name within the specified target |
+| Parameter   | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| Target Name | Telemetry screen target name. Note for local screens the target is 'LOCAL'. |
+| Screen Name | Screen name within the specified target                                     |
 
 Ruby / Python Example:
 
@@ -3683,6 +3683,9 @@ screen_def = '
 '
 # Here we pass in the screen definition as a string
 local_screen("TESTING", screen_def, 600, 75)
+wait 5
+# The local screen 'target' is 'LOCAL'
+clear_screen("LOCAL", "TESTING")
 ```
 
 Python Example:
@@ -3699,6 +3702,9 @@ screen_def = """
 """
 # Here we pass in the screen definition as a string
 local_screen("TESTING", screen_def, 600, 75)
+wait(5)
+# The local screen 'target' is 'LOCAL'
+clear_screen("LOCAL", "TESTING")
 ```
 
 ## Script Runner Scripts
