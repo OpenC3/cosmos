@@ -152,6 +152,7 @@
       :variables="variables"
       :plugin-txt="pluginTxt"
       :existing-plugin-txt="existingPluginTxt"
+      :store-id="storeId"
       @callback="pluginCallback"
     />
     <modified-plugin-dialog
@@ -179,11 +180,10 @@
 
 <script>
 import { toDate, format } from 'date-fns'
-import { Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
 import { PluginListItem } from '@/tools/admin/tabs/plugins'
-import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
@@ -196,7 +196,7 @@ export default {
   },
   data() {
     return {
-      pluginStoreApi: new PluginStoreApi(),
+      api: new OpenC3Api(),
       file: null,
       currentPlugin: null,
       showPluginDetails: false,
@@ -209,6 +209,7 @@ export default {
       showAlert: false,
       pluginName: null,
       variables: {},
+      storeId: null,
       pluginTxt: '',
       pluginHashTmp: null,
       existingPluginTxt: null,
@@ -270,6 +271,9 @@ export default {
       }
     },
   },
+  created() {
+    this.api.update_plugin_store()
+  },
   mounted() {
     this.update()
     this.updateProcesses()
@@ -317,11 +321,6 @@ export default {
             }
           },
         )
-        // TODO: might need/want to pull in store data that we don't have locally?
-        // const promises = response.data.map((plugin) => {
-        //   return this.pluginStoreApi.getBySha(plugin.gem_sha)
-        // })
-        // return Promise.all(promises)
       })
       Api.get('/openc3-api/targets_modified').then((response) => {
         this.targets = response.data
@@ -355,7 +354,7 @@ export default {
       if (storeData === null) {
         formData.append('plugin', this.file, this.file.name)
       } else {
-        formData.append('gem_url', storeData.gem_url)
+        formData.append('store_id', storeData.id)
       }
       let self = this
       const promise = Api[method](path, {
@@ -386,6 +385,7 @@ export default {
           let pluginTxt = response.data.plugin_txt_lines.join('\n')
           this.pluginName = response.data.name
           this.variables = response.data.variables
+          this.storeId = response.data.store_id
           this.pluginTxt = pluginTxt
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
@@ -437,6 +437,7 @@ export default {
         this.variables = {}
         this.pluginTxt = ''
         this.existingPluginTxt = null
+        this.storeId = null
         setTimeout(() => {
           this.showAlert = false
           this.updateProcesses()
