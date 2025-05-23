@@ -20,7 +20,6 @@ import json
 from openc3.environment import OPENC3_SCOPE
 import openc3.script
 
-
 # Group Methods
 def autonomic_group_list(scope=None):
     """List all autonomic groups

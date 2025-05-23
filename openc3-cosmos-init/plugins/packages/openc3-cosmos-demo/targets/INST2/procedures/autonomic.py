@@ -111,7 +111,6 @@ reactions = autonomic_reaction_list()
 print(f"Current reactions: {reactions}")
 
 # Create a test reaction
-test_reaction = "TEST_REACTION"
 triggers = [{
     'name': test_trigger,
     'group': group,

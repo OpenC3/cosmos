@@ -5200,3 +5200,613 @@ Ruby / Python Example:
 ```ruby
 set_offline_access(offline_access_token)
 ```
+
+## Autonomic
+
+Autonomic provides automated reactions to telemetry conditions through triggers and reactions. These methods allow you to manage autonomic groups, triggers, and reactions programmatically.
+
+### autonomic_group_list
+
+Returns a list of all autonomic groups.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_group_list(scope: $openc3_scope)
+```
+
+```python
+autonomic_group_list(scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+groups = autonomic_group_list()
+```
+
+### autonomic_group_create
+
+Creates a new autonomic group.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_group_create(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_group_create(name, scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| name      | Name of the group to create    |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+group = autonomic_group_create("SAFETY")
+```
+
+### autonomic_group_show
+
+Shows details about a specific autonomic group.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_group_show(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_group_show(name, scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| name      | Name of the group              |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+group_info = autonomic_group_show("SAFETY")
+```
+
+### autonomic_group_destroy
+
+Destroys an autonomic group.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_group_destroy(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_group_destroy(name, scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| name      | Name of the group to destroy   |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_group_destroy("SAFETY")
+```
+
+### autonomic_trigger_list
+
+Returns a list of triggers in a specific group.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_list(group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_list(group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                      |
+| --------- | ------------------------------------------------ |
+| group     | Group to list triggers from (default: 'DEFAULT') |
+| scope     | Scope to operate in (optional)                   |
+
+Ruby / Python Example:
+
+```ruby
+triggers = autonomic_trigger_list(group: "SAFETY")
+```
+
+```python
+triggers = autonomic_trigger_list(group="SAFETY")
+```
+
+### autonomic_trigger_create
+
+Creates a new trigger with the specified condition.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_create(left:, operator:, right:, group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                                |
+| --------- | ---------------------------------------------------------- |
+| left      | Left side of the trigger condition (e.g., telemetry point) |
+| operator  | Comparison operator (e.g., '>', '<', '==', '!=')           |
+| right     | Right side of the trigger condition (e.g., value)          |
+| group     | Group to create the trigger in (default: 'DEFAULT')        |
+| scope     | Scope to operate in (optional)                             |
+
+Ruby Example:
+
+```ruby
+# Create a test trigger
+left = {
+  type: "item",
+  target: "INST",
+  packet: "HEALTH_STATUS",
+  item: "TEMP1",
+  valueType: "CONVERTED",
+}
+operator = ">"
+right = {
+  type: "float",
+  float: 0,
+}
+trigger = autonomic_trigger_create(left: left, operator: operator, right: right, group: "SAFETY")
+```
+
+Python Example:
+
+```python
+left = {
+    "type": "item",
+    "target": "INST",
+    "packet": "HEALTH_STATUS",
+    "item": "TEMP1",
+    "valueType": "CONVERTED",
+}
+operator = ">"
+right = {
+    "type": "float",
+    "float": 0,
+}
+trigger = autonomic_trigger_create(left=left, operator=operator, right=right, group="SAFETY")
+```
+
+### autonomic_trigger_show
+
+Shows details about a specific trigger.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_show(name, group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_show(name, group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                       |
+| --------- | ------------------------------------------------- |
+| name      | Name of the trigger                               |
+| group     | Group the trigger belongs to (default: 'DEFAULT') |
+| scope     | Scope to operate in (optional)                    |
+
+Ruby / Python Example:
+
+```ruby
+trigger_info = autonomic_trigger_show("TRIG1", group: "SAFETY")
+```
+
+```python
+trigger_info = autonomic_trigger_show("TRIG1", group="SAFETY")
+```
+
+### autonomic_trigger_enable
+
+Enables a trigger.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_enable(name, group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_enable(name, group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                       |
+| --------- | ------------------------------------------------- |
+| name      | Name of the trigger to enable                     |
+| group     | Group the trigger belongs to (default: 'DEFAULT') |
+| scope     | Scope to operate in (optional)                    |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_trigger_enable("TRIG1", group: "SAFETY")
+```
+
+```python
+autonomic_trigger_enable("TRIG1", group="SAFETY")
+```
+
+### autonomic_trigger_disable
+
+Disables a trigger.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_disable(name, group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_disable(name, group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                       |
+| --------- | ------------------------------------------------- |
+| name      | Name of the trigger to disable                    |
+| group     | Group the trigger belongs to (default: 'DEFAULT') |
+| scope     | Scope to operate in (optional)                    |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_trigger_disable("TRIG1", group: "SAFETY")
+```
+
+```python
+autonomic_trigger_disable("TRIG1", group="SAFETY")
+```
+
+### autonomic_trigger_update
+
+Updates an existing trigger with new parameters.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_update(name, group: 'DEFAULT', left: left, operator: operator, right: right, scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_update(name, group='DEFAULT', left=left, operator=operator, right=right, scope=None)
+```
+
+| Parameter | Description                                        |
+| --------- | -------------------------------------------------- |
+| name      | Name of the trigger to update                      |
+| group     | Group the trigger belongs to (default: 'DEFAULT')  |
+| left      | New left side of the trigger condition (optional)  |
+| operator  | New comparison operator (optional)                 |
+| right     | New right side of the trigger condition (optional) |
+| scope     | Scope to operate in (optional)                     |
+
+Ruby Example:
+
+```ruby
+right = {
+  type: "float",
+  float: 100,
+}
+updated_trigger = autonomic_trigger_update(
+  "TRIG1",
+  group: "SAFETY",
+  right: right
+)
+```
+
+Python Example:
+
+```python
+right = {
+    "type": "float",
+    "float": 100,
+}
+updated_trigger = autonomic_trigger_update(
+    "TRIG1",
+    group="SAFETY",
+    right=right
+)
+```
+
+### autonomic_trigger_destroy
+
+Destroys a trigger.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_trigger_destroy(name, group: 'DEFAULT', scope: $openc3_scope)
+```
+
+```python
+autonomic_trigger_destroy(name, group='DEFAULT', scope=None)
+```
+
+| Parameter | Description                                       |
+| --------- | ------------------------------------------------- |
+| name      | Name of the trigger to destroy                    |
+| group     | Group the trigger belongs to (default: 'DEFAULT') |
+| scope     | Scope to operate in (optional)                    |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_trigger_destroy("TRIG1", group: "SAFETY")
+```
+
+```python
+autonomic_trigger_destroy("TRIG1", group="SAFETY")
+```
+
+### autonomic_reaction_list
+
+Returns a list of all reactions.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_list(scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_list(scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+reactions = autonomic_reaction_list()
+```
+
+### autonomic_reaction_create
+
+Creates a new reaction that executes actions when triggers are activated.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_create(triggers:, actions:, trigger_level: 'EDGE', snooze: 0, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0, scope=None)
+```
+
+| Parameter     | Description                                             |
+| ------------- | ------------------------------------------------------- |
+| triggers      | List of trigger names that activate this reaction       |
+| actions       | List of actions to perform when triggered               |
+| trigger_level | Trigger level: 'EDGE' or 'LEVEL' (default: 'EDGE')      |
+| snooze        | Snooze time in seconds between activations (default: 0) |
+| scope         | Scope to operate in (optional)                          |
+
+Ruby Example:
+
+```ruby
+triggers = [{
+  'name' => 'TRIG1',
+  'group' => 'SAFETY',
+}]
+actions = [{
+  'type' => 'command',
+  'value' => 'INST ABORT'
+}]
+reaction = autonomic_reaction_create(
+  triggers: triggers,
+  actions: actions,
+  trigger_level: 'EDGE',
+  snooze: 300
+)
+```
+
+Python Example:
+
+```python
+triggers = [{
+    'name': 'TRIG1',
+    'group': 'SAFETY',
+}]
+actions = [{
+    'type': 'command',
+    'value': 'INST ABORT'
+}]
+reaction = autonomic_reaction_create(
+  triggers=triggers,
+  actions=actions,
+  trigger_level='EDGE',
+  snooze=300
+)
+```
+
+### autonomic_reaction_show
+
+Shows details about a specific reaction.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_show(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_show(name, scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| name      | Name of the reaction           |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+reaction_info = autonomic_reaction_show("REACT1")
+```
+
+### autonomic_reaction_enable
+
+Enables a reaction.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_enable(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_enable(name, scope=None)
+```
+
+| Parameter | Description                    |
+| --------- | ------------------------------ |
+| name      | Name of the reaction to enable |
+| scope     | Scope to operate in (optional) |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_reaction_enable("REACT1")
+```
+
+### autonomic_reaction_disable
+
+Disables a reaction.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_disable(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_disable(name, scope=None)
+```
+
+| Parameter | Description                     |
+| --------- | ------------------------------- |
+| name      | Name of the reaction to disable |
+| scope     | Scope to operate in (optional)  |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_reaction_disable("REACT1")
+```
+
+### autonomic_reaction_execute
+
+Manually executes a reaction's actions.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_execute(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_execute(name, scope=None)
+```
+
+| Parameter | Description                     |
+| --------- | ------------------------------- |
+| name      | Name of the reaction to execute |
+| scope     | Scope to operate in (optional)  |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_reaction_execute("REACT1")
+```
+
+### autonomic_reaction_update
+
+Updates an existing reaction with new parameters.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_update(name, triggers: nil, actions: nil, trigger_level: nil, snooze: nil, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None, snooze=None, scope=None)
+```
+
+| Parameter     | Description                           |
+| ------------- | ------------------------------------- |
+| name          | Name of the reaction to update        |
+| triggers      | New list of trigger names (optional)  |
+| actions       | New list of actions (optional)        |
+| trigger_level | New trigger level (optional)          |
+| snooze        | New snooze time in seconds (optional) |
+| scope         | Scope to operate in (optional)        |
+
+Ruby / Python Example:
+
+```ruby
+updated_reaction = autonomic_reaction_update(
+  "REACT1",
+  snooze: 600
+)
+```
+
+```python
+updated_reaction = autonomic_reaction_update(
+  "REACT1",
+  snooze=600
+)
+```
+
+### autonomic_reaction_destroy
+
+Destroys a reaction.
+
+Ruby / Python Syntax:
+
+```ruby
+autonomic_reaction_destroy(name, scope: $openc3_scope)
+```
+
+```python
+autonomic_reaction_destroy(name, scope=None)
+```
+
+| Parameter | Description                     |
+| --------- | ------------------------------- |
+| name      | Name of the reaction to destroy |
+| scope     | Scope to operate in (optional)  |
+
+Ruby / Python Example:
+
+```ruby
+autonomic_reaction_destroy("REACT1")
+```

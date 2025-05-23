@@ -53,7 +53,7 @@ check_expression("'#{result['left']['valueType']}' == 'CONVERTED'")
 check_expression("'#{result['operator']}' == '>'")
 check_expression("'#{result['right']['type']}' == 'float'")
 check_expression("#{result['right']['float']} == 0")
-wait # Allow the playright spec to see the trigger
+wait # Allow the playwright spec to see the trigger
 
 # Show the trigger info
 result = autonomic_trigger_show(test_trigger, group: group)
@@ -76,7 +76,7 @@ puts "Updated triggers: #{triggers.inspect}"
 
 # Disable the trigger
 autonomic_trigger_disable(test_trigger, group: group)
-wait # Allow the playright spec to see the disable
+wait # Allow the playwright spec to see the disable
 
 # Show the trigger info after disabling
 trigger_info = autonomic_trigger_show(test_trigger, group: group)
@@ -84,7 +84,7 @@ puts "Trigger info after disabling: #{trigger_info.inspect}"
 
 # Enable the trigger
 autonomic_trigger_enable(test_trigger, group: group)
-wait # Allow the playright spec to see the enable
+wait # Allow the playwright spec to see the enable
 
 # Show the trigger info after enabling
 trigger_info = autonomic_trigger_show(test_trigger, group: group)
@@ -99,7 +99,7 @@ right = {
 
 result = autonomic_trigger_update(test_trigger, operator: operator, right: right, group: group)
 puts "Trigger updated: #{result.inspect}"
-wait # Allow the playright spec to see the update
+wait # Allow the playwright spec to see the update
 
 # Show the trigger info after updating
 trigger_info = autonomic_trigger_show(test_trigger, group: group)
@@ -111,7 +111,6 @@ reactions = autonomic_reaction_list()
 puts "Current reactions: #{reactions.inspect}"
 
 # Create a test reaction
-test_reaction = "TEST_REACTION"
 triggers = [{
   'name' => test_trigger,
   'group' => group,
@@ -124,7 +123,7 @@ actions = [{
 result = autonomic_reaction_create(triggers: triggers, actions: actions, trigger_level: 'EDGE', snooze: 0)
 puts "Reaction created: #{result.inspect}"
 test_reaction = result['name']
-wait # Allow the playright spec to see the reaction
+wait # Allow the playwright spec to see the reaction
 
 # Show the reaction info
 reaction_info = autonomic_reaction_show(test_reaction)
@@ -136,7 +135,7 @@ puts "Updated reactions: #{reactions.inspect}"
 
 # Disable the reaction
 autonomic_reaction_disable(test_reaction)
-wait # Allow the playright spec to see the disable
+wait # Allow the playwright spec to see the disable
 
 # Show the reaction info after disabling
 reaction_info = autonomic_reaction_show(test_reaction)
@@ -144,7 +143,7 @@ puts "Reaction info after disabling: #{reaction_info.inspect}"
 
 # Enable the reaction
 autonomic_reaction_enable(test_reaction)
-wait # Allow the playright spec to see the enable
+wait # Allow the playwright spec to see the enable
 
 # Show the reaction info after enabling
 reaction_info = autonomic_reaction_show(test_reaction)
@@ -152,7 +151,7 @@ puts "Reaction info after enabling: #{reaction_info.inspect}"
 
 result = autonomic_reaction_update(test_reaction, trigger_level: 'LEVEL', snooze: 300)
 puts "Reaction updated: #{result.inspect}"
-wait # Allow the playright spec to see the update
+wait # Allow the playwright spec to see the update
 
 # Show the reaction info after updating
 reaction_info = autonomic_reaction_show(test_reaction)
@@ -160,11 +159,11 @@ puts "Reaction info after updating: #{reaction_info.inspect}"
 
 # Execute the reaction
 autonomic_reaction_execute(test_reaction)
-wait # Allow the playright spec to see the execution
+wait # Allow the playwright spec to see the execution
 
 # CLEANUP
 autonomic_reaction_destroy(test_reaction)
-wait # Allow the playright spec to see the deletion
+wait # Allow the playwright spec to see the deletion
 autonomic_trigger_destroy(test_trigger, group: group)
-wait # Allow the playright spec to see the deletion
+wait # Allow the playwright spec to see the deletion
 autonomic_group_destroy(group)
