@@ -20,6 +20,7 @@ import json
 from openc3.environment import OPENC3_SCOPE
 import openc3.script
 
+
 # Group Methods
 def autonomic_group_list(scope=None):
     """List all autonomic groups
@@ -34,12 +35,13 @@ def autonomic_group_list(scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = "/openc3-api/autonomic/group"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_group_list: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_group_list failed due to {error}")
+
 
 def autonomic_group_create(name, scope=None):
     """Create an autonomic group
@@ -55,7 +57,7 @@ def autonomic_group_create(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = "/openc3-api/autonomic/group"
-        response = openc3.script.API_SERVER.request('post', endpoint, data={"name": name}, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, data={"name": name}, json=True, scope=scope)
         if response is None or response.status_code != 201:
             if response:
                 parsed = json.loads(response.text)
@@ -65,6 +67,7 @@ def autonomic_group_create(name, scope=None):
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_group_create failed due to {error}")
+
 
 def autonomic_group_show(name, scope=None):
     """Show details about an autonomic group
@@ -80,12 +83,13 @@ def autonomic_group_show(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/group/{name}"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_group_show: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_group_show failed due to {error}")
+
 
 def autonomic_group_destroy(name, scope=None):
     """Destroy an autonomic group
@@ -98,7 +102,7 @@ def autonomic_group_destroy(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/group/{name}"
-        response = openc3.script.API_SERVER.request('delete', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -109,8 +113,9 @@ def autonomic_group_destroy(name, scope=None):
     except Exception as error:
         raise RuntimeError(f"autonomic_group_destroy failed due to {error}")
 
+
 # Trigger Methods
-def autonomic_trigger_list(group='DEFAULT', scope=None):
+def autonomic_trigger_list(group="DEFAULT", scope=None):
     """List all triggers in a group
 
     Args:
@@ -124,14 +129,15 @@ def autonomic_trigger_list(group='DEFAULT', scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_trigger_list: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_list failed due to {error}")
 
-def autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None):
+
+def autonomic_trigger_create(left, operator, right, group="DEFAULT", scope=None):
     """Create a new trigger
 
     Args:
@@ -148,13 +154,8 @@ def autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger"
-        config = {
-            'group': group,
-            'left': left,
-            'operator': operator,
-            'right': right
-        }
-        response = openc3.script.API_SERVER.request('post', endpoint, data=config, json=True, scope=scope)
+        config = {"group": group, "left": left, "operator": operator, "right": right}
+        response = openc3.script.API_SERVER.request("post", endpoint, data=config, json=True, scope=scope)
         if response is None or response.status_code != 201:
             if response:
                 parsed = json.loads(response.text)
@@ -165,7 +166,8 @@ def autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_create failed due to {error}")
 
-def autonomic_trigger_show(name, group='DEFAULT', scope=None):
+
+def autonomic_trigger_show(name, group="DEFAULT", scope=None):
     """Show a trigger
 
     Args:
@@ -180,14 +182,15 @@ def autonomic_trigger_show(name, group='DEFAULT', scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger/{name}"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_trigger_show: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_show failed due to {error}")
 
-def autonomic_trigger_enable(name, group='DEFAULT', scope=None):
+
+def autonomic_trigger_enable(name, group="DEFAULT", scope=None):
     """Enable a trigger
 
     Args:
@@ -199,7 +202,7 @@ def autonomic_trigger_enable(name, group='DEFAULT', scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger/{name}/enable"
-        response = openc3.script.API_SERVER.request('post', endpoint, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -210,7 +213,8 @@ def autonomic_trigger_enable(name, group='DEFAULT', scope=None):
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_enable failed due to {error}")
 
-def autonomic_trigger_disable(name, group='DEFAULT', scope=None):
+
+def autonomic_trigger_disable(name, group="DEFAULT", scope=None):
     """Disable a trigger
 
     Args:
@@ -222,7 +226,7 @@ def autonomic_trigger_disable(name, group='DEFAULT', scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger/{name}/disable"
-        response = openc3.script.API_SERVER.request('post', endpoint, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -233,7 +237,8 @@ def autonomic_trigger_disable(name, group='DEFAULT', scope=None):
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_disable failed due to {error}")
 
-def autonomic_trigger_update(name, group='DEFAULT', left=None, operator=None, right=None, scope=None):
+
+def autonomic_trigger_update(name, group="DEFAULT", left=None, operator=None, right=None, scope=None):
     """Update a trigger
 
     Args:
@@ -253,12 +258,12 @@ def autonomic_trigger_update(name, group='DEFAULT', left=None, operator=None, ri
         endpoint = f"/openc3-api/autonomic/{group}/trigger/{name}"
         config = {}
         if left is not None:
-            config['left'] = left
+            config["left"] = left
         if operator is not None:
-            config['operator'] = operator
+            config["operator"] = operator
         if right is not None:
-            config['right'] = right
-        response = openc3.script.API_SERVER.request('put', endpoint, data=config, json=True, scope=scope)
+            config["right"] = right
+        response = openc3.script.API_SERVER.request("put", endpoint, data=config, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -269,7 +274,8 @@ def autonomic_trigger_update(name, group='DEFAULT', left=None, operator=None, ri
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_update failed due to {error}")
 
-def autonomic_trigger_destroy(name, group='DEFAULT', scope=None):
+
+def autonomic_trigger_destroy(name, group="DEFAULT", scope=None):
     """Destroy a trigger
 
     Args:
@@ -281,7 +287,7 @@ def autonomic_trigger_destroy(name, group='DEFAULT', scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/{group}/trigger/{name}"
-        response = openc3.script.API_SERVER.request('delete', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -291,6 +297,7 @@ def autonomic_trigger_destroy(name, group='DEFAULT', scope=None):
         return
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_destroy failed due to {error}")
+
 
 # Reaction Methods
 def autonomic_reaction_list(scope=None):
@@ -306,14 +313,15 @@ def autonomic_reaction_list(scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = "/openc3-api/autonomic/reaction"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_reaction_list: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_list failed due to {error}")
 
-def autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0, scope=None):
+
+def autonomic_reaction_create(triggers, actions, trigger_level="EDGE", snooze=0, scope=None):
     """Create a new reaction
 
     Args:
@@ -331,12 +339,12 @@ def autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0,
     try:
         endpoint = "/openc3-api/autonomic/reaction"
         config = {
-            'triggers': triggers,
-            'actions': actions,
-            'trigger_level': trigger_level,
-            'snooze': snooze,
+            "triggers": triggers,
+            "actions": actions,
+            "trigger_level": trigger_level,
+            "snooze": snooze,
         }
-        response = openc3.script.API_SERVER.request('post', endpoint, data=config, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, data=config, json=True, scope=scope)
         if response is None or response.status_code != 201:
             if response:
                 parsed = json.loads(response.text)
@@ -346,6 +354,7 @@ def autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0,
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_create failed due to {error}")
+
 
 def autonomic_reaction_show(name, scope=None):
     """Show details of a reaction
@@ -361,12 +370,13 @@ def autonomic_reaction_show(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/reaction/{name}"
-        response = openc3.script.API_SERVER.request('get', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to autonomic_reaction_show: {response}")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_show failed due to {error}")
+
 
 def autonomic_reaction_enable(name, scope=None):
     """Enable a reaction
@@ -379,7 +389,7 @@ def autonomic_reaction_enable(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/reaction/{name}/enable"
-        response = openc3.script.API_SERVER.request('post', endpoint, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -389,6 +399,7 @@ def autonomic_reaction_enable(name, scope=None):
         return
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_enable failed due to {error}")
+
 
 def autonomic_reaction_disable(name, scope=None):
     """Disable a reaction
@@ -401,7 +412,7 @@ def autonomic_reaction_disable(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/reaction/{name}/disable"
-        response = openc3.script.API_SERVER.request('post', endpoint, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -411,6 +422,7 @@ def autonomic_reaction_disable(name, scope=None):
         return
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_disable failed due to {error}")
+
 
 def autonomic_reaction_execute(name, scope=None):
     """Execute a reaction
@@ -423,7 +435,7 @@ def autonomic_reaction_execute(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/reaction/{name}/execute"
-        response = openc3.script.API_SERVER.request('post', endpoint, json=True, scope=scope)
+        response = openc3.script.API_SERVER.request("post", endpoint, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -433,6 +445,7 @@ def autonomic_reaction_execute(name, scope=None):
         return
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_execute failed due to {error}")
+
 
 def autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None, snooze=None, scope=None):
     """Update a reaction
@@ -454,14 +467,14 @@ def autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=N
         endpoint = f"/openc3-api/autonomic/reaction/{name}"
         config = {}
         if triggers is not None:
-            config['triggers'] = triggers
+            config["triggers"] = triggers
         if actions is not None:
-            config['actions'] = actions
+            config["actions"] = actions
         if trigger_level is not None:
-            config['trigger_level'] = trigger_level
+            config["trigger_level"] = trigger_level
         if snooze is not None:
-            config['snooze'] = snooze
-        response = openc3.script.API_SERVER.request('put', endpoint, data=config, json=True, scope=scope)
+            config["snooze"] = snooze
+        response = openc3.script.API_SERVER.request("put", endpoint, data=config, json=True, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -471,6 +484,7 @@ def autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=N
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_reaction_update failed due to {error}")
+
 
 def autonomic_reaction_destroy(name, scope=None):
     """Destroy a reaction
@@ -483,7 +497,7 @@ def autonomic_reaction_destroy(name, scope=None):
         scope = OPENC3_SCOPE
     try:
         endpoint = f"/openc3-api/autonomic/reaction/{name}"
-        response = openc3.script.API_SERVER.request('delete', endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)
         if response is None or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
