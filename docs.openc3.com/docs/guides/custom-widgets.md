@@ -13,7 +13,11 @@ This guide will walk you through the process of building custom widgets for use 
 
 If you have an existing plugin, start in the root directory for that plugin. If you do not yet have a plugin, start by using the [Plugin Generator](../getting-started/generators#plugin-generator) to create one.
 
-In your plugin directory, use the [Widget Generator](../getting-started/generators#widget-generator) to scaffold the widget.
+:::warning Use separate plugins for tools and widgets
+If your existing plugin contains a custom tool, you may run into build issues. In this instance, we recommend having one plugin for your custom tool, and a second plugin for you custom custom widgets.
+:::
+
+In your plugin's root directory, use the [Widget Generator](../getting-started/generators#widget-generator) to scaffold the widget.
 
 Ensure your plugin has the correct directory structure:
 
@@ -156,23 +160,6 @@ export default {
       const nextIndex = (currentIndex + 1) % this.greetings.length
       this.greeting = this.greetings[nextIndex]
     }
-  },
-  // If you need to access telemetry data:
-  created() {
-    // This is provided by the Widget mixin
-    this.addSubscription({ item: this.itemName })
-  },
-  watch: {
-    // Watch for telemetry updates
-    packets: {
-      handler: function(newPackets) {
-        if (newPackets.length > 0) {
-          // Process telemetry data
-          console.log("Received new telemetry:", newPackets[0].value)
-        }
-      },
-      deep: true
-    }
   }
 }
 </script>
@@ -200,8 +187,8 @@ Ensure your `vite.config.js` file is configured to properly build your widgets:
 
 ```javascript
 import { defineConfig } from 'vite'
+import VitePluginStyleInject from 'vite-plugin-style-inject'
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
 
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
@@ -219,6 +206,10 @@ export default defineConfig({
     rollupOptions: {
       external: ['vue', 'vuetify'],
     },
+  },
+  plugins: [vue(), VitePluginStyleInject()],
+  resolve: {
+    extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
   },
 })
 ```
