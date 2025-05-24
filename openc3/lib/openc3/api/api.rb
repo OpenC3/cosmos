@@ -38,7 +38,7 @@ require 'openc3/topics/topic'
 begin
   require 'openc3-enterprise/api/cmd_authority_api'
 rescue LoadError
-  # LoadError expected for Open Source Edition
+  # LoadError expected for Core
 end
 
 

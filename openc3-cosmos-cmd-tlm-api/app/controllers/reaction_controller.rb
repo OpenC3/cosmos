@@ -87,26 +87,26 @@ class ReactionController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "snooze": 300,
-  #    "trigger_level": 'EDGE',
   #    "triggers": [
   #      {
   #        "name": "TV0-1234",
   #        "group": "foo",
   #      }
   #    ],
+  #    "trigger_level": 'EDGE',
   #    "actions": [
   #      {
   #        "type": "command",
   #        "value": "INST CLEAR",
   #      }
-  #    ]
+  #    ],
+  #    "snooze": 300,
   #  }
   #```
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:snooze, :triggers, :trigger_level, :actions).to_h
+      hash = params.to_unsafe_h.slice(:triggers, :trigger_level, :actions, :snooze).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = username()
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
@@ -152,10 +152,10 @@ class ReactionController < ApplicationController
         return
       end
       hash = params.to_unsafe_h.slice(:snooze, :triggers, :trigger_level, :actions).to_h
-      model.snooze = hash['snooze']
-      model.triggers = hash['triggers']
-      model.trigger_level = hash['trigger_level']
-      model.actions = hash['actions']
+      model.triggers = hash['triggers'] if hash['triggers']
+      model.actions = hash['actions'] if hash['actions']
+      model.trigger_level = hash['trigger_level'] if hash['trigger_level']
+      model.snooze = hash['snooze'] if hash['snooze']
       # Notify the ReactionMicroservice to update the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the reaction

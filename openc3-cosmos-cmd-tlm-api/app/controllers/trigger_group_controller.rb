@@ -123,8 +123,8 @@ class TriggerGroupController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      @model_class.delete(name: params[:group], scope: params[:scope])
-      render json: { delete: true, group: params[:group] }
+      @model_class.delete(name: params[:name], scope: params[:scope])
+      render json: { delete: true, group: params[:name] }
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 404
