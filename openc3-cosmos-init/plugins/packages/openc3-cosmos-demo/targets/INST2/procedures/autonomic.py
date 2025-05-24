@@ -43,7 +43,7 @@ right = {
 result = autonomic_trigger_create(left=left, operator=operator, right=right, group=group)
 print(f"Trigger created: {result}")
 test_trigger = result['name']
-check_expression(f"'{result['enabled']}' == 'true'")
+check_expression(f"'{result['enabled']}' == 'True'")
 check_expression(f"'{result['group']}' == '{group}'")
 check_expression(f"'{result['left']['type']}' == 'item'")
 check_expression(f"'{result['left']['target']}' == 'INST'")
@@ -59,7 +59,7 @@ wait()  # Allow the playwright spec to see the trigger
 result = autonomic_trigger_show(test_trigger, group=group)
 print(f"Trigger info: {result}")
 check_expression(f"'{result['name']}' == '{test_trigger}'")
-check_expression(f"'{result['enabled']}' == 'true'")
+check_expression(f"'{result['enabled']}' == 'True'")
 check_expression(f"'{result['group']}' == '{group}'")
 check_expression(f"'{result['left']['type']}' == 'item'")
 check_expression(f"'{result['left']['target']}' == 'INST'")
