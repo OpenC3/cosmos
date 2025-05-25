@@ -8,6 +8,8 @@ sidebar_custom_props:
 
 ## COSMOS Upgrades
 
+OpenC3 releases new versions of COSMOS on a monthy or better cadence. This is done for several reasons: to incorporate new features, fix existing bugs, update dependencies, and close CVEs. We extensively test each release at both the unit level, API level, and system level using Playwright against a deployed COSMOS. Thus we recommend upgrading COSMOS as quickly as possible when new releases become available. While COSMOS itself is tested extensively, we obviously can not test against customer plugins and custom deployments. We recommend having another installation of COSMOS which you can upgrade with your own plugins and verify functionality before upgrading your production environment.
+
 COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, then download and run the new release.
 
 :::info Release Notes
@@ -25,7 +27,7 @@ This example assumes an existing COSMOS project at C:\cosmos-project.
 1. Change the release in the .env file to the desired release
 
    ```batch
-   OPENC3_TAG=5.1.1
+   OPENC3_TAG=6.4.1
    ```
 
 1. Run the new COSMOS application
@@ -33,6 +35,19 @@ This example assumes an existing COSMOS project at C:\cosmos-project.
    ```batch
    C:\cosmos-project> openc3.bat run
    ```
+
+### Upgrade Migration Process
+
+COSMOS doesn't use strict [semantic versioning](https://semver.org/) for our releases. Our major releases (5.0.0, 6.0.0, etc) are for major architectural changes and backward incompatibilities. Minor releases (6.1.0, 6.2.0, etc) add functionality but can also modify our configuration files. Thus certain minor releases are more important than others when skiping releases.
+
+The following table identifies key release milestones which should be incrementally upgraded to by following the linked release notes. Versions not listed can be safely skipped while upgrading. For example, upgrading COSMOS 5.9.0 can go straight to 5.13.0 at which point the release notes should be carefully followed to avoid breaking changes.
+
+| Version                                                         | Summary                                                                                                                                                                                                     |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0) | Breaking change to non-root containers and renamed minio volume. Requires running the migration script and updating compose.yaml and traefik configuration.                                                 |
+| [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0) | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments. Requires updating .env, compose.yaml, and traefik configuration. |
+| [6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)   | May require no changes but follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6) for custom GUI tools.                                                                       |
+| [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)   | Changed from ActionCable to AnyCable which requires updates to compose.yaml, redis.acl, and traefik configuration. We also broke apart the COSMOS helm charts from a single chart to 3 charts.              |
 
 :::warning Downgrades
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
