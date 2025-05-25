@@ -38,7 +38,7 @@ This example assumes an existing COSMOS project at C:\cosmos-project.
 
 ### Upgrade Migration Process
 
-COSMOS doesn't use strict [semantic versioning](https://semver.org/) for our releases. Our major releases (5.0.0, 6.0.0, etc) are for major architectural changes and backward incompatibilities. Minor releases (6.1.0, 6.2.0, etc) add functionality but can also modify our configuration files. Thus certain minor releases are more important than others when skiping releases.
+COSMOS doesn't use strict [semantic versioning](https://semver.org/) for our releases. Our major releases (5.0.0, 6.0.0, etc) are for major architectural changes and backward incompatibilities. Minor releases (6.1.0, 6.2.0, etc) add functionality but can also modify our configuration files. Thus certain minor releases are more important than others when skipping releases.
 
 The following table identifies key release milestones which should be incrementally upgraded to by following the linked release notes. Versions not listed can be safely skipped while upgrading. For example, upgrading COSMOS 5.9.0 can go straight to 5.13.0 at which point the release notes should be carefully followed to avoid breaking changes.
 
