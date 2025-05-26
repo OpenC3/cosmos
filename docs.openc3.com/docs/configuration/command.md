@@ -243,7 +243,7 @@ values to the command. That can be used to check parameter values passed in.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. Note the built-in Python conversions must specify the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
 Ruby Example:
@@ -281,7 +281,64 @@ class TheGreatConversion(Conversion):
         return value * self.multiplier
 ```
 
-#### POLY_WRITE_CONVERSION
+#### BIT_REVERSE_CONVERSION
+**Reverses the bits of the current command parameter**
+
+
+Ruby Example:
+```ruby
+WRITE_CONVERSION bit_reverse_conversion.rb
+```
+
+Python Example:
+```python
+WRITE_CONVERSION openc3/conversions/bit_reverse_conversion.py
+```
+
+#### IP_WRITE_CONVERSION
+**Write an ip address string into a packed 32 bit integer**
+
+This command writes an IP address string into a packed 32 bit integer. The IP address
+string should be in the format 'x.x.x.x' where x is a number between 0 and 255.
+For example, '255.255.128.0' would be converted to 0xFFFF8000.
+
+
+
+Ruby Example:
+```ruby
+WRITE_CONVERSION ip_write_conversion.rb
+```
+
+Python Example:
+```python
+WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
+```
+
+#### OBJECT_WRITE_CONVERSION
+**Writes values into the given packet object**
+
+This command writes values into the given packet object. The values are specified
+in a hash format where the keys are the field names in the packet and the values
+are the values to write. The packet object must be defined in the target's configuration.
+
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Command or Telemetry | Whether the packet is a command or telemetry<br/><br/>Valid Values: <span class="values">CMD, TLM</span> | True |
+| Target Name | Name of the target | True |
+| Packet Name | Name of the packet | True |
+
+Ruby Example:
+```ruby
+WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
+```
+
+Python Example:
+```python
+WRITE_CONVERSION openc3/conversions/object_write_conversion.py CMD INST COLLECT
+```
+
+#### POLYNOMIAL_CONVERSION
 **Adds a polynomial conversion factor to the current command parameter**
 
 The conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent.
@@ -291,12 +348,21 @@ The conversion factor is applied to the value entered by the user before it is w
 | C0 | Coefficient | True |
 | Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
+WRITE_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+# Since this is a common conversion it has an alias:
 POLY_WRITE_CONVERSION 10 0.5 0.25
 ```
 
-#### SEG_POLY_WRITE_CONVERSION
+Python Example:
+```python
+WRITE_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
+# Since this is a common conversion it has an alias:
+POLY_WRITE_CONVERSION 10 0.5 0.25
+```
+
+#### SEGMENTED_POLYNOMIAL_CONVERSION
 **Adds a segmented polynomial conversion factor to the current command parameter**
 
 This conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent.
@@ -307,9 +373,20 @@ This conversion factor is applied to the value entered by the user before it is 
 | C0 | Coefficient | True |
 | Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
-SEG_POLY_WRITE_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
+WRITE_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+# Since this is a common conversion it has an alias:
+SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+```
+
+Python Example:
+```python
+WRITE_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
+# Since this is a common conversion it has an alias:
+SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
 SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
 SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
 ```

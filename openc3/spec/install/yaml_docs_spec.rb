@@ -32,10 +32,13 @@ module OpenC3
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC CMD_RESPONSE OVERRIDE IGNORE_PACKET))
+    # These are documented as GENERIC_READ_CONVERSION_START, GENERIC_WRITE_CONVERSION_START, POLYNOMIAL_CONVERSION and SEGMENTED_POLYNOMIAL_CONVERSION
+    EXCEPTIONS.concat(%w(GENERIC_CONVERSION POLY_READ_CONVERSION POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION))
     # These yaml keywords aren't obvious in the source so we explicitly add them
     # They're primarily SETTINGs used by the widgets
     ADDITIONS = %w(UNKNOWN NEEDS_DEPENDENCIES VALUE_EQ STARTTIME HISTORY SECONDSGRAPHED POINTSSAVED)
     ADDITIONS.concat(%w(POINTSGRAPHED SIZE WIDTH HEIGHT MARGIN PADDING BACKCOLOR TEXTCOLOR BORDERCOLOR RAW))
+    ADDITIONS.concat(%w(GENERIC_READ_CONVERSION_START GENERIC_READ_CONVERSION_END GENERIC_WRITE_CONVERSION_START GENERIC_WRITE_CONVERSION_END))
 
     def process_line(line)
       line.split(',').each do |item|
@@ -100,10 +103,36 @@ module OpenC3
       end
 
       # All the protocols are referenced as keywords in INTERFACES
+      ruby_keywords = []
       path = File.expand_path(File.join(File.dirname(__FILE__), "../../lib/openc3/interfaces/protocols/*_protocol.rb"))
       Dir[path].each do |filename|
-        @src_keywords << filename.split('/')[-1].split('_protocol.rb')[0].upcase
+        ruby_keywords << filename.split('/')[-1].split('_protocol.rb')[0].upcase
       end
+      @src_keywords += ruby_keywords
+
+      # Make sure the Ruby and Python protocols are the same
+      py_keywords = []
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../python/openc3/interfaces/protocols/*_protocol.py"))
+      Dir[path].each do |filename|
+        py_keywords << filename.split('/')[-1].split('_protocol.py')[0].upcase
+      end
+      expect((ruby_keywords - py_keywords).length).to eq(0), "Ruby protocols not in Python: #{(ruby_keywords - py_keywords).join(', ')}"
+
+      # All the conversions are referenced as keywords in parameters and items
+      ruby_keywords = []
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../lib/openc3/conversions/*_conversion.rb"))
+      Dir[path].each do |filename|
+        ruby_keywords << File.basename(filename).split('.')[0].upcase
+      end
+      @src_keywords += ruby_keywords
+
+      # Make sure the Ruby and Python conversions are the same
+      py_keywords = []
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../python/openc3/conversions/*_conversion.py"))
+      Dir[path].each do |filename|
+        py_keywords << File.basename(filename).split('.')[0].upcase
+      end
+      expect((ruby_keywords - py_keywords).length).to eq(0), "Ruby conversions not in Python: #{(ruby_keywords - py_keywords).join(', ')}"
 
       # Remove things we don't document
       @src_keywords.uniq!

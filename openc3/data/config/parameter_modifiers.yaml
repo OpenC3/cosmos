@@ -125,55 +125,15 @@ WRITE_CONVERSION:
       description: The filename which contains the Ruby or Python class. The filename must
         be named after the class such that the class is a CamelCase version of the
         underscored filename. For example, 'the_great_conversion.rb' should contain
-        'class TheGreatConversion'.
+        'class TheGreatConversion'. Note the built-in Python conversions must specify
+        the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'.
       values: .*
     - name: Parameter
       required: false
       description: Additional parameter values for the conversion which are passed
         to the class constructor.
       values: .*
-POLY_WRITE_CONVERSION:
-  summary: Adds a polynomial conversion factor to the current command parameter
-  description: The conversion factor is applied to the value entered by the user
-    before it is written into the binary command packet and sent.
-  example: POLY_WRITE_CONVERSION 10 0.5 0.25
-  parameters:
-    - name: C0
-      required: true
-      description: Coefficient
-      values: .*
-    - name: Cx
-      required: false
-      description: Additional coefficient values for the conversion. Any order
-        polynomial conversion may be used so the value of 'x' will vary with the
-        order of the polynomial. Note that larger order polynomials take longer
-        to process than shorter order polynomials, but are sometimes more accurate.
-      values: .*
-SEG_POLY_WRITE_CONVERSION:
-  summary: Adds a segmented polynomial conversion factor to the current command parameter
-  description: This conversion factor is applied to the value entered by the user
-    before it is written into the binary command packet and sent.
-  example: |
-    SEG_POLY_WRITE_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
-    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
-  parameters:
-    - name: Lower Bound
-      required: true
-      description: Defines the lower bound of the range of values that this segmented
-        polynomial applies to. Is ignored for the segment with the smallest lower bound.
-      values: .*
-    - name: C0
-      required: true
-      description: Coefficient
-      values: .*
-    - name: Cx
-      required: false
-      description: Additional coefficient values for the conversion. Any order
-        polynomial conversion may be used so the value of 'x' will vary with the
-        order of the polynomial. Note that larger order polynomials take longer
-        to process than shorter order polynomials, but are sometimes more accurate.
-      values: .*
+<%= MetaConfigParser.load('write_conversions.yaml').to_meta_config_yaml(0) %>
 GENERIC_WRITE_CONVERSION_START:
   summary: Start a generic write conversion
   description: |

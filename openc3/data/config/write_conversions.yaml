@@ -1,0 +1,92 @@
+BIT_REVERSE_CONVERSION:
+  summary: Reverses the bits of the current command parameter
+  ruby_example: WRITE_CONVERSION bit_reverse_conversion.rb
+  python_example: WRITE_CONVERSION openc3/conversions/bit_reverse_conversion.py
+IP_WRITE_CONVERSION:
+  summary: Write an ip address string into a packed 32 bit integer
+  description: |
+    This command writes an IP address string into a packed 32 bit integer. The IP address
+    string should be in the format 'x.x.x.x' where x is a number between 0 and 255.
+    For example, '255.255.128.0' would be converted to 0xFFFF8000.
+  ruby_example: WRITE_CONVERSION ip_write_conversion.rb
+  python_example: WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
+OBJECT_WRITE_CONVERSION:
+  summary: Writes values into the given packet object
+  description: |
+    This command writes values into the given packet object. The values are specified
+    in a hash format where the keys are the field names in the packet and the values
+    are the values to write. The packet object must be defined in the target's configuration.
+  parameters:
+    - name: Command or Telemetry
+      required: true
+      description: Whether the packet is a command or telemetry
+      values: [CMD, TLM]
+    - name: Target Name
+      required: true
+      description: Name of the target
+      values: .*
+    - name: Packet Name
+      required: true
+      description: Name of the packet
+      values: .*
+  ruby_example: WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
+  python_example: WRITE_CONVERSION openc3/conversions/object_write_conversion.py CMD INST COLLECT
+POLYNOMIAL_CONVERSION:
+  summary: Adds a polynomial conversion factor to the current command parameter
+  description: The conversion factor is applied to the value entered by the user
+    before it is written into the binary command packet and sent.
+  parameters:
+    - name: C0
+      required: true
+      description: Coefficient
+      values: .*
+    - name: Cx
+      required: false
+      description: Additional coefficient values for the conversion. Any order
+        polynomial conversion may be used so the value of 'x' will vary with the
+        order of the polynomial. Note that larger order polynomials take longer
+        to process than shorter order polynomials, but are sometimes more accurate.
+      values: .*
+  ruby_example: |
+    WRITE_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_WRITE_CONVERSION 10 0.5 0.25
+  python_example: |
+    WRITE_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_WRITE_CONVERSION 10 0.5 0.25
+SEGMENTED_POLYNOMIAL_CONVERSION:
+  summary: Adds a segmented polynomial conversion factor to the current command parameter
+  description:
+    This conversion factor is applied to the value entered by the user
+    before it is written into the binary command packet and sent.
+  parameters:
+    - name: Lower Bound
+      required: true
+      description:
+        Defines the lower bound of the range of values that this segmented
+        polynomial applies to. Is ignored for the segment with the smallest lower bound.
+      values: .*
+    - name: C0
+      required: true
+      description: Coefficient
+      values: .*
+    - name: Cx
+      required: false
+      description: Additional coefficient values for the conversion. Any order
+        polynomial conversion may be used so the value of 'x' will vary with the
+        order of the polynomial. Note that larger order polynomials take longer
+        to process than shorter order polynomials, but are sometimes more accurate.
+      values: .*
+  ruby_example: |
+    WRITE_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+  python_example: |
+    WRITE_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
