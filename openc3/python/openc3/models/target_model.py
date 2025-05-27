@@ -253,17 +253,17 @@ class TargetModel(Model):
         result = []
         with Store.instance().redis_pool.get() as redis:
             if openc3_redis_cluster:
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    result.append(redis.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name))
+            else:
                 pipeline = redis.pipeline(transaction=False)
                 for target_name, packet_name in target_packets:
                     target_name = target_name.upper()
                     packet_name = packet_name.upper()
                     pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
                 result = pipeline.execute()
-            else:
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    result.append(redis.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name))
 
         counts = []
         for count in result:
@@ -307,17 +307,17 @@ class TargetModel(Model):
         result = []
         with Store.instance().redis_pool.get() as redis:
             if openc3_redis_cluster:
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    result.append(redis.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name))
+            else:
                 pipeline = redis.pipeline(transaction=False)
                 for target_name, packet_name in target_packets:
                     target_name = target_name.upper()
                     packet_name = packet_name.upper()
                     pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
                 result = pipeline.execute()
-            else:
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    result.append(redis.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name))
 
         counts = []
         for count in result:
