@@ -43,6 +43,7 @@ module OpenC3
       @cycle_time = 600 unless @cycle_time # 10 minutes
       @cycle_size = 50_000_000 unless @cycle_size # ~50 MB
 
+      @tlws = {}
       @error_count = 0
       @metric.set(name: 'text_log_total', value: @count, type: 'counter')
       @metric.set(name: 'text_error_total', value: @error_count, type: 'counter')
@@ -50,15 +51,26 @@ module OpenC3
 
     def run
       setup_tlws()
+
+      individual_topics = []
+      @topics.each do |topic|
+        individual_topics << [topic]
+      end
+
       while true
         break if @cancel_thread
 
-        Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
+        # Read each topic separately to support multiple redis shards
+        individual_topics.each do |individual_topic|
           break if @cancel_thread
+          # 500ms timeout
+          Topic.read_topics(individual_topic, nil, 500) do |topic, msg_id, msg_hash, redis|
+            break if @cancel_thread
 
-          log_data(topic, msg_id, msg_hash, redis)
-          @count += 1
-          @metric.set(name: 'text_log_total', value: @count, type: 'counter')
+            log_data(topic, msg_id, msg_hash, redis)
+            @count += 1
+            @metric.set(name: 'text_log_total', value: @count, type: 'counter')
+          end
         end
       end
     end
@@ -104,6 +116,6 @@ end
 
 if __FILE__ == $0
   OpenC3::TextLogMicroservice.run
-  ThreadManager.instance.shutdown
-  ThreadManager.instance.join
+  OpenC3::ThreadManager.instance.shutdown
+  OpenC3::ThreadManager.instance.join
 end
