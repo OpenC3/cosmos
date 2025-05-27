@@ -18,6 +18,7 @@ const config = {
 
   future: {
     experimental_faster: true,
+    v4: true
   },
 
   // Set the production url of your site here

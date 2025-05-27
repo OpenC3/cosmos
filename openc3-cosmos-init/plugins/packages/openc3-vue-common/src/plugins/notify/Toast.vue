@@ -36,7 +36,12 @@
           v-if="toastNotification.title"
           class="text-subtitle-1 mr-1 notification-text"
         >
-          {{ toastNotification.title }}:
+          <template v-if="toastNotification.body || toastNotification.message">
+            {{ toastNotification.title }}:
+          </template>
+          <template v-else>
+            {{ toastNotification.title }}
+          </template>
         </span>
         <span
           v-if="toastNotification.body"
@@ -52,7 +57,7 @@
         </span>
       </div>
       <v-spacer />
-      <v-btn variant="text" @click.stop="hide" class="notification-text">
+      <v-btn variant="text" class="notification-text" @click.stop="hide">
         Dismiss
       </v-btn>
     </v-sheet>

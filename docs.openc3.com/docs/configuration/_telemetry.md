@@ -8,6 +8,12 @@ sidebar_custom_props:
 
 <!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->
 
+## Telemetry Concepts
+
+When COSMOS receives a telemetry packet from a target, the system will log the raw packet, decommutate it to engineering values, and log the decommutated data. This data is stored in log files and in Redis, and it is made available via the CmdTlmApi Server:
+
+![Telemetry Processing Diagram](/img/tlm-processing.png)
+
 ## Telemetry Definition Files
 
 Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.

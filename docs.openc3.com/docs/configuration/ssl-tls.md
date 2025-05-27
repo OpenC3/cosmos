@@ -8,6 +8,8 @@ sidebar_custom_props:
 
 OpenC3 COSMOS is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
 
+![Docker Security Diagram](/img/docker-security.png)
+
 ## Understanding SSL, TLS, and Public Key Infrastructure (PKI)
 
 Security on the internet is built on the technologies SSL and TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangeably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
@@ -100,7 +102,7 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    2. On Windows: openc3.bat run
 6. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20User's%20Manual.pdf)
 
 #### Using a global certificate from Let's Encrypt
 
@@ -121,7 +123,7 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    2. On Windows: openc3.bat run
 4. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20User's%20Manual.pdf)
 
 ### Configure COSMOS Enterprise for TLS when running in Kubernetes
 
@@ -144,5 +146,5 @@ Additionally the following secrets will need to be defined based on how you set 
 | Secret Name         | Description                                                                                                                                                                                                                                                                                         |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
-| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                          |
-| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                         |
+| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.crt. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.crt=/Users/ryanmelt/192.168.1.109.pem                                                                           |
+| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.key. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.key=/Users/ryanmelt/192.168.1.109-key.pem                                                                      |
