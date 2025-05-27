@@ -17,6 +17,7 @@
 import json
 from datetime import datetime, timezone
 from openc3.models.model import Model
+from openc3.utilities.store import openc3_redis_cluster
 
 class ScriptStatusModel(Model):
     # Note: ScriptRunner only has permissions for keys that start with running-script
@@ -52,10 +53,15 @@ class ScriptStatusModel(Model):
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                for key in keys:
-                    pipeline.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key)
-                result = pipeline.execute()
+                result = []
+                if openc3_redis_cluster:
+                    pipeline = redis.pipeline(transaction=False)
+                    for key in keys:
+                        pipeline.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key)
+                    result = pipeline.execute()
+                else:
+                    for key in keys:
+                        result.append(redis.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key))
                 for i in range(len(result)):
                     if result[i] is not None:
                         result[i] = json.loads(result[i])
@@ -65,10 +71,15 @@ class ScriptStatusModel(Model):
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                for key in keys:
-                    pipeline.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key)
-                result = pipeline.execute()
+                result = []
+                if openc3_redis_cluster:
+                    pipeline = redis.pipeline(transaction=False)
+                    for key in keys:
+                        pipeline.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key)
+                    result = pipeline.execute()
+                else:
+                    for key in keys:
+                        result.append(redis.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key))
                 for i in range(len(result)):
                     if result[i] is not None:
                         result[i] = json.loads(result[i])
@@ -102,6 +113,7 @@ class ScriptStatusModel(Model):
         pid = None,
         log = None,
         report = None,
+        # script_engine = None,
         updated_at = None,
         scope = None
     ):
@@ -127,6 +139,7 @@ class ScriptStatusModel(Model):
         self.pid = pid
         self.log = log
         self.report = report
+        # self.script_engine = script_engine
 
     def is_complete(self):
         return (self.__state == 'completed' or self.__state == 'completed_errors' or self.__state == 'stopped' or self.__state == 'crashed' or self.__state == 'killed')
@@ -208,6 +221,7 @@ class ScriptStatusModel(Model):
             'pid': self.pid,
             'log': self.log,
             'report': self.report,
+            # 'script_engine': self.script_engine,
             'updated_at': self.updated_at,
             'scope': self.scope
         }

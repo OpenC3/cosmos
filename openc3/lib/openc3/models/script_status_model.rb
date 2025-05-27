@@ -45,6 +45,7 @@ module OpenC3
     attr_accessor :pid
     attr_accessor :log
     attr_accessor :report
+    # attr_accessor :script_engine
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -69,9 +70,16 @@ module OpenC3
       if type == "running"
         keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
-        result = self.store.redis_pool.pipelined do
+        result = []
+        if $openc3_redis_cluster
           keys.each do |key|
-            self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
+            result << self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
+          end
+        else
+          result = self.store.redis_pool.pipelined do
+            keys.each do |key|
+              self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
+            end
           end
         end
         result = result.map do |r|
@@ -85,9 +93,16 @@ module OpenC3
       else
         keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
-        result = self.store.redis_pool.pipelined do
+        result = []
+        if $openc3_redis_cluster
           keys.each do |key|
-            self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
+            result << self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
+          end
+        else
+          result = self.store.redis_pool.pipelined do
+            keys.each do |key|
+              self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
+            end
           end
         end
         result = result.map do |r|
@@ -129,6 +144,7 @@ module OpenC3
       pid: nil,
       log: nil,
       report: nil,
+      # script_engine: nil,
       updated_at: nil,
       scope:
     )
@@ -155,6 +171,7 @@ module OpenC3
       @pid = pid
       @log = log
       @report = report
+      # @script_engine = script_engine
     end
 
     def is_complete?
@@ -239,6 +256,7 @@ module OpenC3
         'pid' => @pid,
         'log' => @log,
         'report' => @report,
+        # 'script_engine' => @script_engine,
         'updated_at' => @updated_at,
         'scope' => @scope
       }

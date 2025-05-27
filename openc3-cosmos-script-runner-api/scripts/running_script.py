@@ -19,7 +19,13 @@ from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
 from openc3.models.script_status_model import ScriptStatusModel
+from openc3.top_level import get_class_from_module, add_to_search_path
+from openc3.utilities.string import (
+    filename_to_module,
+    filename_to_class_name,
+)
 import os
+import glob
 
 SCRIPT_API = "script-api"
 
@@ -270,6 +276,17 @@ class RunningScript:
         if script_status.disconnect:
             openc3.script.disconnect_script()
 
+        for path in glob.glob("/gems/gems/**/lib"):
+            add_to_search_path(path, True)
+
+        self.script_engine = None
+        if self.script_status.script_engine:
+            klass = get_class_from_module(
+                filename_to_module(self.script_status.script_engine),
+                filename_to_class_name(self.script_status.script_engine),
+            )
+            self.script_engine = klass(self)
+
         # Retrieve file
         self.body = TargetFile.body(self.script_status.scope, self.script_status.filename)
         if not self.body:
@@ -291,7 +308,7 @@ class RunningScript:
                 "breakpoints": breakpoints,
             },
         )
-        if self.PYTHON_SUITE_REGEX.findall(self.body):
+        if self.script_status.script_engine is None and self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
             load_utility(self.script_status.filename)
 
@@ -445,7 +462,34 @@ class RunningScript:
         self.retry_needed = True
 
     def run(self):
-        self.run_text(self.body)
+        if self.script_status.suite_runner is not None:
+            self.script_status.suite_runner = json.loads(self.script_status.suite_runner)  # Convert to hash
+            self.parse_options(self.script_status.suite_runner["options"])
+            if "script" in self.script_status.suite_runner:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']}, '{self.script_status.suite_runner['script']}')",
+                    initial_filename="SCRIPTRUNNER",
+                )
+            elif "group" in self.script_status.suite_runner:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']})",
+                    initial_filename="SCRIPTRUNNER",
+                )
+            else:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']})",
+                    initial_filename="SCRIPTRUNNER",
+                )
+        else:
+            if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
+                if self.script_status.end_line_no is None:
+                    # Goto line
+                    self.run_text(f"start('{self.script_status.filename}', line_no = {self.script_status.start_line_no}, complete = True)", initial_filename = "SCRIPTRUNNER")
+                else:
+                    # Execute selection
+                    self.run_text(f"start('{self.script_status.filename}', line_no = {self.script_status.start_line_no}, end_line_no = {self.script_status.end_line_no})", initial_filename = "SCRIPTRUNNER")
+            else:
+                self.run_text(self.body)
 
     @classmethod
     def instrument_script(cls, text, filename, line_offset = 0, cache = True):
@@ -922,8 +966,6 @@ class RunningScript:
     def run_thread_body(
         self,
         text,
-        saved_instance,
-        saved_run_thread,
         initial_filename=None,
     ):
         try:
@@ -945,20 +987,31 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            if initial_filename == 'SCRIPTRUNNER':
-                # Don't instrument pseudo scripts
-                instrument_filename = initial_filename
-                instrumented_script = text
+            if self.script_engine is not None:
+                if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
+                    if self.script_status.end_line_no is None:
+                        # Goto line
+                        self.script_engine.run_text(text, filename = self.script_status.filename, line_no = self.script_status.start_line_no)
+                    else:
+                        # Execute selection
+                        self.script_engine.run_text(text, filename = self.script_status.filename, line_no = self.script_status.start_line_no, end_line_no = self.script_status.end_line_no)
+                else:
+                    self.script_engine.run_text(text, filename = self.script_status.filename)
             else:
-                # Instrument everything else
-                instrument_filename = self.script_status.filename
-                if initial_filename:
+                if initial_filename == 'SCRIPTRUNNER':
+                    # Don't instrument pseudo scripts
                     instrument_filename = initial_filename
-                instrumented_script = self.instrument_script(text, instrument_filename)
+                    instrumented_script = text
+                else:
+                    # Instrument everything else
+                    instrument_filename = self.script_status.filename
+                    if initial_filename:
+                        instrument_filename = initial_filename
+                    instrumented_script = self.instrument_script(text, instrument_filename)
 
-            # Execute the script
-            self.pre_line_time = time.time()
-            exec(instrumented_script, self.script_globals)
+                # Execute the script
+                self.pre_line_time = time.time()
+                exec(instrumented_script, self.script_globals)
 
             self.handle_output_io()
             self.scriptrunner_puts(
@@ -993,9 +1046,6 @@ class RunningScript:
             if hasattr(sys.stderr, "remove_stream"):
                 sys.stderr.remove_stream(self.output_io)
 
-            # Clear run thread and instance to indicate we are no longer running
-            RunningScript.instance = saved_instance
-            RunningScript.run_thread = saved_run_thread
             self.script_binding = None
             # Set the current_filename to the original file and the current_line_number to 0
             # so the mark_complete method will signal the frontend to reset to the original
@@ -1015,16 +1065,12 @@ class RunningScript:
         initial_filename=None,
     ):
         self.initialize_variables()
-        saved_instance = RunningScript.instance
-        saved_run_thread = RunningScript.run_thread
         RunningScript.instance = self
 
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
             args=[
                 text,
-                saved_instance,
-                saved_run_thread,
                 initial_filename,
             ],
             daemon=True,
