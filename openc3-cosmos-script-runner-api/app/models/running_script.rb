@@ -34,7 +34,6 @@ require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
-require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
@@ -339,31 +338,12 @@ class RunningScript
   end
 
   def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil)
-    extension = File.extname(name).to_s.downcase
-    script_engine = nil
-    if extension == '.py'
+    if File.extname(name) == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
-    elsif extension == '.rb'
+    else
       process_name = 'ruby'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
-    else
-      raise "Suite Runner is not supported for this file type: #{extension}" if suite_runner
-
-      # Extension possibly supported by a script engine
-      script_engine_model = OpenC3::ScriptEngineModel.get_model(name: extension, scope: scope)
-      if script_engine_model
-        script_engine = script_engine_model.filename
-        if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = 'python'
-          runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
-        else
-          process_name = 'ruby'
-          runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
-        end
-      else
-        raise "Unsupported script file type: #{extension}"
-      end
     end
 
     running_script_id = OpenC3::Store.incr('running-script-id')
@@ -416,7 +396,6 @@ class RunningScript
       suite_runner: suite_runner ? suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) : nil,
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
-      script_engine: script_engine, # script engine filename
       updated_at: nil, # Set by create/update - ISO format
       scope: scope # Scope of the script
     )
@@ -489,19 +468,13 @@ class RunningScript
     mark_breakpoints(@script_status.filename)
     disconnect_script() if @script_status.disconnect
 
-    @script_engine = nil
-    if @script_status.script_engine
-      klass = OpenC3.require_class(@script_status.script_engine)
-      @script_engine = klass.new(self)
-    end
-
     # Retrieve file
     @body = ::Script.body(@script_status.scope, @script_status.filename)
     raise "Script not found: #{@script_status.filename}" if @body.nil?
     breakpoints = @@breakpoints[@script_status.filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: @script_status.filename, scope: @script_status.scope, text: @body.to_utf8, breakpoints: breakpoints })
-    if not @script_status.script_engine and @body =~ SUITE_REGEX
+    if (@body =~ SUITE_REGEX)
       # Process the suite file in this context so we can load it
       # TODO: Do we need to worry about success or failure of the suite processing?
       ::Script.process_suite(@script_status.filename, @body, new_process: false, scope: @script_status.scope)
@@ -722,29 +695,7 @@ class RunningScript
   end
 
   def run
-    if @script_status.suite_runner
-      @script_status.suite_runner = JSON.parse(@script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
-      parse_options(@script_status.suite_runner['options'])
-      if @script_status.suite_runner['script']
-        run_text("OpenC3::SuiteRunner.start(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']}, '#{@script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
-      elsif script_status.suite_runner['group']
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
-      else
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
-      end
-    else
-      if not @script_engine and (@script_status.start_line_no != 1 or !@script_status.end_line_no.nil?)
-        if @script_status.end_line_no.nil?
-          # Goto line
-          run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, complete: true)", initial_filename: "SCRIPTRUNNER")
-        else
-          # Execute selection
-          run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, end_line_no: #{script_status.end_line_no})", initial_filename: "SCRIPTRUNNER")
-        end
-      else
-        run_text(@body)
-      end
-    end
+    run_text(@body)
   end
 
   def self.instrument_script(text, filename, mark_private = false, line_offset: 0, cache: true)
@@ -1205,35 +1156,21 @@ class RunningScript
         # Start Output Thread
         @@output_thread = Thread.new { output_thread() } unless @@output_thread
 
-        if @script_engine
-          if @script_status.start_line_no != 1 or !@script_status.end_line_no.nil?
-            if @script_status.end_line_no.nil?
-              # Goto line
-              @script_engine.run_text(text, filename: @script_status.filename, line_no: @script_status.start_line_no)
-            else
-              # Execute selection
-              @script_engine.run_text(text, filename: @script_status.filename, line_no: @script_status.start_line_no, end_line_no: @script_status.end_line_no)
-            end
-          else
-            @script_engine.run_text(text, filename: @script_status.filename)
-          end
+        if initial_filename == 'SCRIPTRUNNER'
+          # Don't instrument pseudo scripts
+          instrument_filename = initial_filename
+          instrumented_script = text
         else
-          if initial_filename == 'SCRIPTRUNNER'
-            # Don't instrument pseudo scripts
-            instrument_filename = initial_filename
-            instrumented_script = text
-          else
-            # Instrument everything else
-            instrument_filename = @script_status.filename
-            instrument_filename = initial_filename if initial_filename
-            instrumented_script = self.class.instrument_script(text, instrument_filename, true)
-          end
+          # Instrument everything else
+          instrument_filename = @script_status.filename
+          instrument_filename = initial_filename if initial_filename
+          instrumented_script = self.class.instrument_script(text, instrument_filename, true)
+        end
 
-          # Execute the script with warnings disabled
-          OpenC3.disable_warnings do
-            @pre_line_time = Time.now.sys
-            Object.class_eval(instrumented_script, instrument_filename, 1)
-          end
+        # Execute the script with warnings disabled
+        OpenC3.disable_warnings do
+          @pre_line_time = Time.now.sys
+          Object.class_eval(instrumented_script, instrument_filename, 1)
         end
 
         handle_output_io()

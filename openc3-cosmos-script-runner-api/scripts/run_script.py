@@ -98,7 +98,34 @@ try:
         run_script_log(id, message, "YELLOW")
 
     # Start the script in another thread
-    running_script.run()
+    if script_status.suite_runner is not None:
+        script_status.suite_runner = json.loads(script_status.suite_runner)  # Convert to hash
+        running_script.parse_options(script_status.suite_runner["options"])
+        if "script" in script_status.suite_runner:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({script_status.suite_runner['suite']}, {script_status.suite_runner['group']}, '{script_status.suite_runner['script']}')",
+                initial_filename="SCRIPTRUNNER",
+            )
+        elif "group" in script_status.suite_runner:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script_status.suite_runner['method']}({script_status.suite_runner['suite']}, {script_status.suite_runner['group']})",
+                initial_filename="SCRIPTRUNNER",
+            )
+        else:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script_status.suite_runner['method']}({script_status.suite_runner['suite']})",
+                initial_filename="SCRIPTRUNNER",
+            )
+    else:
+        if script_status.start_line_no != 1 or script_status.end_line_no is not None:
+            if script_status.end_line_no is None:
+                # Goto line
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, complete = True)", initial_filename = "SCRIPTRUNNER")
+            else:
+                # Execute selection
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, end_line_no = {script_status.end_line_no})", initial_filename = "SCRIPTRUNNER")
+        else:
+            running_script.run()
 
     # Notify frontend of number of running scripts in this scope
     running = ScriptStatusModel.all(scope = scope, type = "running")

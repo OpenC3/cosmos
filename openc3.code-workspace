@@ -20,15 +20,6 @@
     },
     {
       "path": "../openc3-cosmos-cfdp"
-    },
-    {
-      "path": "../app-store"
-    },
-    {
-      "path": "../openc3-cosmos-nemesis"
-    },
-    {
-      "path": "../core"
     }
   ],
   "settings": {

@@ -107,8 +107,8 @@ def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 #
 # @param args [String|Array<String>] See the description for calling style
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", cache_timeout=cache_timeout, scope=scope)
+def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -181,7 +181,7 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
 #   description).
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
+    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -582,7 +582,7 @@ def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
     return target_name, packet_name, item_name
 
 
-def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
             target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -597,10 +597,7 @@ def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCO
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    else:
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    # Determine if this item exists, it will raise appropriate errors if not
+    TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
     return target_name, packet_name, item_name, value

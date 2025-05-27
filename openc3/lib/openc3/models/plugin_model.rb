@@ -31,7 +31,6 @@ require 'openc3/models/gem_model'
 require 'openc3/models/target_model'
 require 'openc3/models/interface_model'
 require 'openc3/models/router_model'
-require 'openc3/models/script_engine_model'
 require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
 require 'openc3/models/microservice_model'
@@ -250,7 +249,7 @@ module OpenC3
               case keyword
               when 'VARIABLE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
-              when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
+              when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET'
                 begin
                   if current_model
                     current_model.create unless validate_only
@@ -261,7 +260,7 @@ module OpenC3
                 # Otherwise we're stuck constantly iterating on the last model
                 ensure
                   current_model = nil
-                  current_model = OpenC3.const_get((keyword.split('_').collect(&:capitalize).join + 'Model').intern).handle_config(parser,
+                  current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
                     keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
                 end
               else
@@ -340,7 +339,7 @@ module OpenC3
       sleep 15 if microservice_count > 0 # Cycle time 5s times 2 plus 5s wait for soft stop and then hard stop
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
-      [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel, ScriptEngineModel].each do |model|
+      [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           begin
             model_instance.destroy
@@ -370,7 +369,7 @@ module OpenC3
     ensure
       # Double check everything is gone
       found = []
-      [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel, ScriptEngineModel].each do |model|
+      [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           found << model_instance
         end
