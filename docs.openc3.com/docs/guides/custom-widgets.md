@@ -5,28 +5,97 @@ sidebar_custom_props:
   myEmoji: 🔨
 ---
 
-COSMOS allows you to build custom widgets which can be deployed with your [plugin](../configuration/plugins.md) and used in [Telemetry Viewer](../tools/tlm-viewer.md). Building custom widgets can utilize any javascript frameworks but since COSMOS is written with Vue.js, we will use that framework in this tutorial. Please see the [Widget Generator](../getting-started/generators#widget-generator) guide for information about generating the scaffolding for a custom widget.
+# Custom Widgets
 
-## Custom Widgets
+This guide will walk you through the process of building custom widgets for use in COSMOS [Telemetry Viewer](../tools/tlm-viewer.md). While you can use any JavaScript framework, we'll use Vue.js since COSMOS is built with it. Before starting, you may want to check out the [Widget Generator](../getting-started/generators#widget-generator) guide to create the initial scaffolding.
 
-We're basically going to follow the COSMOS [Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo) and explain how that custom widget was created.
+## Step 1: Set Up Your Plugin Structure
 
-If you look at the bottom of the Demo's [plugin.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/plugin.txt) file you'll see we declare the widgets:
+If you have an existing plugin, start in the root directory for that plugin. If you do not yet have a plugin, start by using the [Plugin Generator](../getting-started/generators#plugin-generator) to create one.
+
+:::warning Use separate plugins for tools and widgets
+If your existing plugin contains a custom tool, you may run into build issues. In this instance, we recommend having one plugin for your custom tool, and a second plugin for you custom custom widgets.
+:::
+
+In your plugin's root directory, use the [Widget Generator](../getting-started/generators#widget-generator) to scaffold the widget.
+
+Ensure your plugin has the correct directory structure:
+
+```
+your-plugin/
+├── LICENSE.txt
+├── your-plugin.gemspec
+├── package.json
+├── plugin.txt
+├── Rakefile
+├── README.md
+├── src/
+│   └── YourcustomWidget.vue
+└── vite.config.js
+```
+
+## Step 2: Declare Your Widget in plugin.txt
+
+In your plugin's `plugin.txt` file, declare each custom widget you want to create:
+
+```ruby
+WIDGET YOURCUSTOM
+```
+
+For example, in the COSMOS Demo plugin, two widgets are declared:
 
 ```ruby
 WIDGET BIG
 WIDGET HELLOWORLD
 ```
 
-When the plugin is deployed this causes COSMOS to look for the as-built widgets. For the BIG widget it will look for the widget at `tools/widgets/BigWidget/BigWidget.umd.min.js`. Similarly it looks for HELLOWORLD at `tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`. These directories and file names may seem mysterious but it's all about how the widgets get built.
+## Step 3: Configure Your Build Process
 
-### Helloworld Widget
+### Set Up package.json
 
-The Helloworld Widget source code is found in the plugin's src directory and is called [HelloworldWidget.vue](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/src/HelloworldWidget.vue). The basic structure is as follows:
+Ensure your `package.json` includes the necessary build script:
+
+```json
+{
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@openc3/vue-common": "latest"
+  },
+  "devDependencies": {
+    "vite": "latest"
+  }
+}
+```
+
+### Update Your Rakefile
+
+Ensure your `Rakefile` is configured to run the build script in its `:build` task:
+
+*(This should happen automatically if you use our code generators mentioned above.)*
+
+```ruby
+task :build do
+  # ...
+
+  # Build the widget and gem using sh built into Rake:
+  # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
+  sh('yarn', 'run', 'build')
+
+  # ...
+end
+```
+
+## Step 4: Create Your Widget Component
+
+If it doesn't exist already, create a Vue component file in the `src` directory, following this naming convention: `YourcustomWidget.vue`. 
+
+For example, to create a widget called "HELLOWORLD", you would create `HelloworldWidget.vue`:
 
 ```vue
 <template>
-  <!-- Implement widget here -->
+  <!-- Your widget's HTML structure goes here -->
 </template>
 
 <script>
@@ -41,35 +110,140 @@ export default {
 };
 </script>
 <style scoped>
-/* widget specific style */
+/* Widget-specific styles */
 </style>
+```
+
+## Step 5: Develop Your Widget
+
+This is where you'll design the actual layout and functionality of your widget. Let's expand on this using the Helloworld Widget as an example:
+
+### Designing Your Widget Layout
+
+In the `<template>` section, you'll define your widget's visual structure. For a simple Hello World widget:
+
+```vue
+<template>
+  <div class="hello-world-container">
+    <h3>{{ greeting }}</h3>
+    <p>This is a custom COSMOS widget</p>
+    <v-btn @click="updateGreeting" color="primary">
+      Change Greeting
+    </v-btn>
+  </div>
+</template>
 ```
 
 :::info Vue & Vuetify
 For more information about how the COSMOS frontend is built (including all the Widgets) please check out [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com).
 :::
 
-To build this custom widget we changed the Demo [Rakefile](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/Rakefile) to call `yarn run build` when the plugin is built. `yarn run XXX` looks for 'scripts' to run in the [package.json](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json) file. If we open package.json we find the following:
+### Adding Widget Logic
 
-```json
-  "scripts": {
-    "build": "vue-cli-service build --target lib --dest tools/widgets/HelloworldWidget --formats umd-min src/HelloworldWidget.vue --name HelloworldWidget && vue-cli-service build --target lib --dest tools/widgets/BigWidget --formats umd-min src/BigWidget.vue --name BigWidget"
+In the `<script>` section, define the behavior of your widget:
+
+```vue
+<script>
+import { Widget } from "@openc3/vue-common/widgets" // Make sure you import Widget
+export default {
+  mixins: [Widget], // Make sure you include Widget in the mixins here
+  data() {
+    return {
+      greeting: "Hello, COSMOS!",
+      greetings: ["Hello, COSMOS!", "Greetings, User!", "Welcome to COSMOS!"]
+    }
   },
+  methods: {
+    updateGreeting() {
+      // Cycle through different greetings
+      const currentIndex = this.greetings.indexOf(this.greeting)
+      const nextIndex = (currentIndex + 1) % this.greetings.length
+      this.greeting = this.greetings[nextIndex]
+    }
+  }
+}
+</script>
 ```
 
-This uses the `vue-cli-service` to build the code found at `src/HelloworldWidget.vue` and formats as `umd-min` and puts it in the `tools/widgets/HelloworldWidget` directory. So this is why the plugin looks for the plugin at `tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`. Click [here](https://cli.vuejs.org/guide/cli-service.html#vue-cli-service-build) for the `vue-cli-service build` documentation.
+### Styling Your Widget
 
-If you look at the Demo plugin's [simple.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/screens/simple.txt) screen you'll see we're using the widgets:
+Add custom styles in the `<style>` section:
+
+```vue
+<style scoped>
+.hello-world-container {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  background-color: #f9f9f9;
+}
+</style>
+```
+
+## Step 6: Configure Your Build Output
+
+Ensure your `vite.config.js` file is configured to properly build your widgets:
+
+```javascript
+import { defineConfig } from 'vite'
+import VitePluginStyleInject from 'vite-plugin-style-inject'
+import vue from '@vitejs/plugin-vue'
+
+const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+
+export default defineConfig({
+  build: {
+    outDir: 'tools/widgets/YourcustomWidget',
+    emptyOutDir: true,
+    sourcemap: true,
+    lib: {
+      entry: './src/YourcustomWidget.vue',
+      name: 'YourcustomWidget',
+      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
+      formats: ['umd'],
+    },
+    rollupOptions: {
+      external: ['vue', 'vuetify'],
+    },
+  },
+  plugins: [vue(), VitePluginStyleInject()],
+  resolve: {
+    extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
+  },
+})
+```
+
+## Step 7: Use Your Widget in a Screen Definition
+
+Create a screen definition file in your target's screens directory:
 
 ```ruby
 SCREEN AUTO AUTO 0.5
 LABELVALUE <%= target_name %> HEALTH_STATUS CCSDSSEQCNT
 HELLOWORLD
-BIG <%= target_name %> HEALTH_STATUS TEMP1
 ```
 
-Opening this screen in Telemetry Viewer results in the following:
+In this example, we're using the HELLOWORLD widget from the demo, which will result in a screen that looks like this:
 
 ![Simple Screen](/img/guides/simple_screen.png)
 
-While this is a simple example the possibilities with custom widgets are limitless!
+The widget name follows the convention from `plugin.txt` file. The screen definition for a screen that has only your custom widget created here, ensure your screen definition looks like this:
+```ruby
+SCREEN AUTO AUTO 0.5
+YOURCUSTOM
+```
+
+If your widget requires telemetry data, make sure you include the target and telemetry information:
+
+```ruby
+YOURCUSTOM <%= target_name %> HEALTH_STATUS TEMP1
+```
+
+## Step 8: Build and Deploy Your Plugin
+
+Follow the instructions [here](../getting-started/gettingstarted#building-your-plugin) to build and install your plugin containing your custom widget.
+
+Now open Telemetry Viewer and select your screen to see your custom widget in action!
+
+While this example is simple, the possibilities with custom widgets are limitless!
