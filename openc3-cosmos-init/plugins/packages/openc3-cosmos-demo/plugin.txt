@@ -129,3 +129,7 @@ WIDGET BIG
 WIDGET HELLOWORLD
 WIDGET DATAVIEWERTIME "Current Time"
 WIDGET DATAVIEWERQUATERNION
+
+SCRIPT_ENGINE .puts puts_script_engine.rb
+SCRIPT_ENGINE .print print_script_engine.py
+SCRIPT_ENGINE .cstol cstol_script_engine.py

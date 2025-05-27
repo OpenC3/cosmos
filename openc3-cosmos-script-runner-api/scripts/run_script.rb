@@ -73,29 +73,7 @@ begin
   end
 
   # Start the script in another thread
-  if script_status.suite_runner
-    script_status.suite_runner = JSON.parse(script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
-    running_script.parse_options(script_status.suite_runner['options'])
-    if script_status.suite_runner['script']
-      running_script.run_text("OpenC3::SuiteRunner.start(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']}, '#{script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
-    elsif script_status.suite_runner['group']
-      running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
-    else
-      running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
-    end
-  else
-    if script_status.start_line_no != 1 or !script_status.end_line_no.nil?
-      if script_status.end_line_no.nil?
-        # Goto line
-        running_script.run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, complete: true)", initial_filename: "SCRIPTRUNNER")
-      else
-        # Execute selection
-        running_script.run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, end_line_no: #{script_status.end_line_no})", initial_filename: "SCRIPTRUNNER")
-      end
-    else
-      running_script.run
-    end
-  end
+  running_script.run
 
   # Notify frontend of number of running scripts in this scope
   running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")

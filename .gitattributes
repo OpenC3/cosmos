@@ -19,3 +19,7 @@
 *.acl text eol=lf
 # Declare files that will always have CRLF line endings on checkout.
 *.bat text eol=crlf
+
+Dockerfile* text eol=lf
+Procfile* text eol=lf
+Rakefile* text eol=lf

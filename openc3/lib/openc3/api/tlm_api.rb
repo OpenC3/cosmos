@@ -114,8 +114,8 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-    def set_tlm(*args, type: :CONVERTED, manual: false, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name, value = _set_tlm_process_args(args, __method__, scope: scope)
+    def set_tlm(*args, type: :CONVERTED, manual: false, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
+      target_name, packet_name, item_name, value = _set_tlm_process_args(args, __method__, cache_timeout: cache_timeout, scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       CvtModel.set_item(target_name, packet_name, item_name, value, type: type.intern, scope: scope)
     end
@@ -528,7 +528,7 @@ module OpenC3
       return [target_name, packet_name, item_name]
     end
 
-    def _set_tlm_process_args(args, method_name, scope: $openc3_scope, token: $openc3_token)
+    def _set_tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
       case args.length
       when 1
         target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -544,8 +544,13 @@ module OpenC3
       target_name = target_name.upcase
       packet_name = packet_name.upcase
       item_name = item_name.upcase
-      # Determine if this item exists, it will raise appropriate errors if not
-      TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+
+      if packet_name == 'LATEST'
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      else
+        # Determine if this item exists, it will raise appropriate errors if not
+        TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+      end
 
       return [target_name, packet_name, item_name, value]
     end
