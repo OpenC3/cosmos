@@ -61,9 +61,10 @@ module OpenC3
         break if @cancel_thread
 
         # Read each topic separately to support multiple redis shards
+        # This is needed with Redis cluster because the topics will likely be on different shards and we don't use {} in the topic names
         individual_topics.each do |individual_topic|
           break if @cancel_thread
-          # 500ms timeout
+          # 500ms timeout - To support completing within 1 second with two topics (DEFAULT and NOSCOPE)
           Topic.read_topics(individual_topic, nil, 500) do |topic, msg_id, msg_hash, redis|
             break if @cancel_thread
 

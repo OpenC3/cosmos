@@ -1302,6 +1302,8 @@ module OpenC3
     def self.get_telemetry_counts(target_packets, scope:)
       result = []
       if $openc3_redis_cluster
+        # No pipelining for cluster mode
+        # because it requires using the same shard for all keys
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase
@@ -1362,6 +1364,8 @@ module OpenC3
     def self.get_command_counts(target_packets, scope:)
       result = []
       if $openc3_redis_cluster
+        # No pipelining for cluster mode
+        # because it requires using the same shard for all keys
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase

@@ -45,7 +45,6 @@ module OpenC3
     attr_accessor :pid
     attr_accessor :log
     attr_accessor :report
-    # attr_accessor :script_engine
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -72,6 +71,8 @@ module OpenC3
         return [] if keys.empty?
         result = []
         if $openc3_redis_cluster
+          # No pipelining for cluster mode
+          # because it requires using the same shard for all keys
           keys.each do |key|
             result << self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
           end
@@ -95,6 +96,8 @@ module OpenC3
         return [] if keys.empty?
         result = []
         if $openc3_redis_cluster
+          # No pipelining for cluster mode
+          # because it requires using the same shard for all keys
           keys.each do |key|
             result << self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
           end
@@ -144,7 +147,6 @@ module OpenC3
       pid: nil,
       log: nil,
       report: nil,
-      # script_engine: nil,
       updated_at: nil,
       scope:
     )
@@ -171,7 +173,6 @@ module OpenC3
       @pid = pid
       @log = log
       @report = report
-      # @script_engine = script_engine
     end
 
     def is_complete?
@@ -256,7 +257,6 @@ module OpenC3
         'pid' => @pid,
         'log' => @log,
         'report' => @report,
-        # 'script_engine' => @script_engine,
         'updated_at' => @updated_at,
         'scope' => @scope
       }

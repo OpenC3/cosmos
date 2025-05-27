@@ -253,6 +253,8 @@ class TargetModel(Model):
         result = []
         with Store.instance().redis_pool.get() as redis:
             if openc3_redis_cluster:
+                # No pipelining for cluster mode
+                # because it requires using the same shard for all keys
                 for target_name, packet_name in target_packets:
                     target_name = target_name.upper()
                     packet_name = packet_name.upper()
@@ -307,6 +309,8 @@ class TargetModel(Model):
         result = []
         with Store.instance().redis_pool.get() as redis:
             if openc3_redis_cluster:
+                # No pipelining for cluster mode
+                # because it requires using the same shard for all keys
                 for target_name, packet_name in target_packets:
                     target_name = target_name.upper()
                     packet_name = packet_name.upper()
