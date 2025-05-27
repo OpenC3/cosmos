@@ -824,7 +824,7 @@ module OpenC3
     end
 
     def sync_tlm_packet_counts(packet)
-      if @sync_packet_count_delay_seconds <= 0
+      if @sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
         # Perfect but slow method
         packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       else
@@ -880,6 +880,6 @@ end
 
 if __FILE__ == $0
   OpenC3::InterfaceMicroservice.run
-  ThreadManager.instance.shutdown
-  ThreadManager.instance.join
+  OpenC3::ThreadManager.instance.shutdown
+  OpenC3::ThreadManager.instance.join
 end
