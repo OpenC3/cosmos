@@ -22,7 +22,7 @@
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
-        <span v-text="name" />
+        <span v-text="title" />
         <v-spacer />
         <v-tooltip location="top">
           <template #activator="{ props }">
@@ -73,11 +73,46 @@
         <v-img v-if="image_url" :src="image_url" />
         <div v-text="description" />
         <div class="mt-3 text-caption font-italic">License: {{ license }}</div>
-        <div class="text-caption font-italic">SHA256: {{ checksum }}</div>
+        <v-text-field
+          v-model="checksum"
+          label="SHA256"
+          variant="solo"
+          density="compact"
+          hide-details
+          readonly
+        >
+          <template #append>
+            <v-tooltip
+              v-model="showCopiedTooltip"
+              location="top"
+              :open-on-hover="false"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-content-copy"
+                  variant="text"
+                  density="compact"
+                  @click="copyChecksum"
+                />
+              </template>
+              <span>Copied!</span>
+            </v-tooltip>
+          </template>
+        </v-text-field>
       </v-card-text>
 
       <v-card-actions class="justify-start px-6">
         <v-btn
+          v-if="isPluginInstalled"
+          text="Uninstall"
+          append-icon="mdi-puzzle-remove"
+          variant="outlined"
+          color="red"
+          @click="uninstall"
+        />
+        <v-btn
+          v-else
           text="Install"
           append-icon="mdi-puzzle-plus"
           variant="elevated"
@@ -110,10 +145,11 @@ export default {
   props: {
     modelValue: Boolean,
   },
-  emits: ['triggerInstall', 'update:modelValue'],
+  emits: ['triggerInstall', 'triggerUninstall', 'update:modelValue'],
   data() {
     return {
       showDialog: false,
+      showCopiedTooltip: false,
     }
   },
   computed: {
@@ -133,6 +169,16 @@ export default {
     },
     install: function () {
       this.$emit('triggerInstall', this.gemUrl)
+    },
+    uninstall: function () {
+      this.$emit('triggerUninstall', this.gemUrl)
+    },
+    copyChecksum: function () {
+      navigator.clipboard.writeText(this.checksum)
+      this.showCopiedTooltip = true
+      setTimeout(() => {
+        this.showCopiedTooltip = false
+      }, 1000);
     },
   },
 }

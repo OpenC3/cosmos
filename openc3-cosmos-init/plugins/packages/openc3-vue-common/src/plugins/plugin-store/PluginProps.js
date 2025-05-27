@@ -23,6 +23,7 @@ export default {
   props: {
     id: Number,
     name: String,
+    title: String,
     // titleSlug: String,
     author: String,
     // authorSlug: String,
@@ -49,6 +50,7 @@ export default {
       return {
         id: this.id,
         name: this.name,
+        title: this.title,
         // titleSlug: this.titleSlug,
         author: this.author,
         // authorSlug: this.authorSlug,
@@ -62,11 +64,20 @@ export default {
         homepage: this.homepage,
         repository: this.repository,
         gem_url: this.gem_url,
-        checksum: this.gemSha,
+        checksum: this.checksum,
       }
     },
     storeLink: function () {
-      return new URL(`/cosmos_plugins/${this.id}`, this._storeUrl)
+      if (this.hasStoreListing) {
+        return new URL(`/cosmos_plugins/${this.id}`, this._storeUrl)
+      }
+      return null
+    },
+    hasStoreListing: function () {
+      return !!this.id
+    },
+    isPluginInstalled: function () {
+      return !!this.name // Plugins only have a title, not a name, from the store
     },
   },
   created: function () {

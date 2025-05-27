@@ -17,12 +17,16 @@
 -->
 
 <template>
-  <tr data-test="plugin-list-item" @click="openDetails">
+  <tr
+    :class="{ 'cursor-pointer': hasStoreListing }"
+    data-test="plugin-list-item"
+    @click="openDetails"
+  >
     <td>
-      <v-img v-if="image" :src="image" max-height="56" min-width="56" />
+      <v-img v-if="image_url" :src="image_url" max-height="56" min-width="56" />
     </td>
     <td>
-      <!-- <div class="text-h6" v-text="name" /> -->
+      <div class="text-h6" v-text="title || name" />
       <div class="text-subtitle-2">
         <!-- subtitle -->
         <template v-if="isModified"> * </template>
@@ -76,7 +80,7 @@
       </v-menu>
     </td>
   </tr>
-  <plugin-details-dialog v-model="showCard" v-bind="plugin" />
+  <plugin-details-dialog v-model="showCard" v-bind="plugin" @trigger-uninstall="deletePrompt" />
 </template>
 
 <script>
@@ -110,7 +114,9 @@ export default {
   },
   methods: {
     openDetails: function () {
-      this.showCard = true
+      if (this.hasStoreListing) {
+        this.showCard = true
+      }
     },
     downloadPlugin: function () {
       Api.post(`/openc3-api/packages/${this.name}/download`).then(
@@ -155,6 +161,7 @@ export default {
       this.$emit('upgrade')
     },
     deletePrompt: function () {
+      this.showCard = false
       this.$emit('delete')
     },
   },
