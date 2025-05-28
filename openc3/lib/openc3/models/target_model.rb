@@ -1300,11 +1300,22 @@ module OpenC3
     end
 
     def self.get_telemetry_counts(target_packets, scope:)
-      result = Store.redis_pool.pipelined do
+      result = []
+      if $openc3_redis_cluster
+        # No pipelining for cluster mode
+        # because it requires using the same shard for all keys
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase
-          Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+          result << Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+        end
+      else
+        result = Store.redis_pool.pipelined do
+          target_packets.each do |target_name, packet_name|
+            target_name = target_name.upcase
+            packet_name = packet_name.upcase
+            Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+          end
         end
       end
       counts = []
@@ -1351,11 +1362,22 @@ module OpenC3
     end
 
     def self.get_command_counts(target_packets, scope:)
-      result = Store.redis_pool.pipelined do
+      result = []
+      if $openc3_redis_cluster
+        # No pipelining for cluster mode
+        # because it requires using the same shard for all keys
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase
-          Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+          result << Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+        end
+      else
+        result = Store.redis_pool.pipelined do
+          target_packets.each do |target_name, packet_name|
+            target_name = target_name.upcase
+            packet_name = packet_name.upcase
+            Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+          end
         end
       end
       counts = []

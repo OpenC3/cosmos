@@ -1,0 +1,273 @@
+BIT_REVERSE_CONVERSION:
+  summary: Reverses the bits of the current telemetry item. Can be used as both a read and write conversion.
+  ruby_example: |
+    READ_CONVERSION bit_reverse_conversion.rb
+    WRITE_CONVERSION bit_reverse_conversion.rb
+  python_example: |
+    READ_CONVERSION openc3/conversions/bit_reverse_conversion.py
+    WRITE_CONVERSION openc3/conversions/bit_reverse_conversion.py
+IP_READ_CONVERSION:
+  summary: Reads a packed 32 bit integer into an IP address string
+  description: |
+    This command reads a packed 32 bit integer into an IP address string.
+    For example, 0xFFFF8000 would be converted to '255.255.128.0'.
+  ruby_example: READ_CONVERSION ip_read_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/ip_read_conversion.py
+IP_WRITE_CONVERSION:
+  summary: Write an ip address string into a packed 32 bit integer
+  description: |
+    This command writes an IP address string into a packed 32 bit integer. The IP address
+    string should be in the format 'x.x.x.x' where x is a number between 0 and 255.
+    For example, '255.255.128.0' would be converted to 0xFFFF8000.
+  ruby_example: WRITE_CONVERSION ip_write_conversion.rb
+  python_example: WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
+OBJECT_READ_CONVERSION:
+  summary: Reads values from the given packet object
+  description: |
+    This command reads all the values from the given packet object. The values are
+    returned as a Ruby hash or Python dict. The packet object must be defined in the target's configuration.
+  parameters:
+    - name: Command or Telemetry
+      required: true
+      description: Whether the packet is a command or telemetry
+      values: [CMD, TLM]
+    - name: Target Name
+      required: true
+      description: Name of the target
+      values: .*
+    - name: Packet Name
+      required: true
+      description: Name of the packet
+      values: .*
+  ruby_example: READ_CONVERSION object_read_conversion.rb CMD INST COLLECT
+  python_example: READ_CONVERSION openc3/conversions/object_read_conversion.py CMD INST COLLECT
+OBJECT_WRITE_CONVERSION:
+  summary: Writes values into the given packet object
+  description: |
+    This command writes values into the given packet object. The values are specified
+    in a hash format where the keys are the field names in the packet and the values
+    are the values to write. The packet object must be defined in the target's configuration.
+  parameters:
+    - name: Command or Telemetry
+      required: true
+      description: Whether the packet is a command or telemetry
+      values: [CMD, TLM]
+    - name: Target Name
+      required: true
+      description: Name of the target
+      values: .*
+    - name: Packet Name
+      required: true
+      description: Name of the packet
+      values: .*
+  ruby_example: WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
+  python_example: WRITE_CONVERSION openc3/conversions/object_write_conversion.py CMD INST COLLECT
+PACKET_TIME_FORMATTED_CONVERSION:
+  summary: Converts the packet time to a formatted string like "YYYY/MM/DD HH:MM:SS.US"
+  description: |
+    This in an internal conversion which is automatically applied to the
+    'PACKET_TIMEFORMATTED' derived telemetry item. It is typically not explicitly used.
+    For more information see the [Received Time and Packet Time](/docs/configuration/telemetry#received-time-and-packet-time) documentation.
+  ruby_example: READ_CONVERSION packet_time_formatted_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/packet_time_formatted_conversion.py
+PACKET_TIME_SECONDS_CONVERSION:
+  summary: Converts the packet time to a floating point number of seconds since the epoch
+  description: |
+    This in an internal conversion which is automatically applied to the
+    'PACKET_TIMESECONDS' derived telemetry item. It is typically not explicitly used.
+    For more information see the [Received Time and Packet Time](/docs/configuration/telemetry#received-time-and-packet-time) documentation.
+  ruby_example: READ_CONVERSION packet_time_seconds_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/packet_time_seconds_conversion.py
+POLYNOMIAL_CONVERSION:
+  summary: Adds a polynomial conversion factor to the current item. Can be used as both a read and write conversion.
+  description:
+    For commands, the conversion factor is applied to raw value set by the user (via tool or script)
+    before it is written into the binary command packet and sent. For telemetry, the conversion factor
+    is applied to the raw value in the telemetry packet before it is displayed to the user. The user still
+    has the ability to see the raw unconverted value in a details dialog.
+  parameters:
+    - name: C0
+      required: true
+      description: Coefficient
+      values: .*
+    - name: Cx
+      required: false
+      description: Additional coefficient values for the conversion. Any order
+        polynomial conversion may be used so the value of 'x' will vary with the
+        order of the polynomial. Note that larger order polynomials take longer
+        to process than shorter order polynomials, but are sometimes more accurate.
+      values: .*
+  ruby_example: |
+    READ_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_READ_CONVERSION 10 0.5 0.25
+
+    WRITE_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_WRITE_CONVERSION 10 0.5 0.25
+  python_example: |
+    READ_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_READ_CONVERSION 10 0.5 0.25
+
+    WRITE_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
+    # Since this is a common conversion it has an alias:
+    POLY_WRITE_CONVERSION 10 0.5 0.25
+PROCESSOR_CONVERSION:
+  summary: Read a value from a processor
+  description: |
+    This command reads a value from a processor. The value is read from the
+    processor's available values. The processor must be defined in the target's configuration.
+  parameters:
+    - name: Processor Name
+      required: true
+      description: Name of the processor
+      values: .*
+    - name: Processor Value
+      required: true
+      description: Published processor value
+      values: .*
+  ruby_example: |
+    PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+    ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+      READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+  python_example: |
+    PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+    ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+      READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
+RECEIVED_COUNT_CONVERSION:
+  summary: Converts the packet received count to a UINT 32 value
+  description: |
+    This in an internal conversion which is automatically applied to the
+    'RECEIVED_COUNT' derived telemetry item. It is typically not explicitly used.
+  ruby_example: READ_CONVERSION received_count_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/received_count_conversion.py
+RECEIVED_TIME_FORMATTED_CONVERSION:
+  summary: Converts the packet received time to a formatted string like "YYYY/MM/DD HH:MM:SS.US"
+  description: |
+    This in an internal conversion which is automatically applied to the
+    'RECEIVED_TIMEFORMATTED' derived telemetry item. It is typically not explicitly used.
+    For more information see the [Received Time and Packet Time](/docs/configuration/telemetry#received-time-and-packet-time) documentation.
+  ruby_example: READ_CONVERSION received_time_formatted_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
+RECEIVED_TIME_SECONDS_CONVERSION:
+  summary: Converts the packet received to a floating point number of seconds since the epoch
+  description: |
+    This in an internal conversion which is automatically applied to the
+    'RECEIVED_TIMESECONDS' derived telemetry item. It is typically not explicitly used.
+    For more information see the [Received Time and Packet Time](/docs/configuration/telemetry#received-time-and-packet-time) documentation.
+  ruby_example: READ_CONVERSION received_time_formatted_conversion.rb
+  python_example: READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
+SEGMENTED_POLYNOMIAL_CONVERSION:
+  summary: Adds a segmented polynomial conversion factor to the current item. Can be used as both a read and write conversion.
+  description:
+    For commands, this conversion factor is applied to the raw value set by the user
+    (via tool or script) before it is written into the binary command packet and sent.
+    For telemetry, the conversion factor is applied to the raw value in the telemetry packet
+    before it is displayed to the user. The user still has the ability to see the raw
+    unconverted value in a details dialog.
+  parameters:
+    - name: Lower Bound
+      required: true
+      description:
+        Defines the lower bound of the range of values that this segmented
+        polynomial applies to. Is ignored for the segment with the smallest lower bound.
+      values: .*
+    - name: C0
+      required: true
+      description: Coefficient
+      values: .*
+    - name: Cx
+      required: false
+      description: Additional coefficient values for the conversion. Any order
+        polynomial conversion may be used so the value of 'x' will vary with the
+        order of the polynomial. Note that larger order polynomials take longer
+        to process than shorter order polynomials, but are sometimes more accurate.
+      values: .*
+  ruby_example: |
+    READ_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+
+    WRITE_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+  python_example: |
+    READ_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+
+    WRITE_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    # Since this is a common conversion it has an alias:
+    SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+UNIX_TIME_CONVERSION:
+  summary: Converts values to a native Ruby or Python time object
+  parameters:
+    - name: Seconds Item Name
+      required: true
+      description: The name of the item which contains the seconds since the epoch.
+      values: .*
+    - name: Microseconds Item Name
+      required: false
+      description: The name of the item which contains the microseconds since the epoch.
+      values: .*
+    - name: Seconds Type
+      required: false
+      description: How to read the seconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+    - name: Microseconds Type
+      required: false
+      description: How to read the microseconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+  ruby_example: READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+  python_example: READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+UNIX_TIME_FORMATTED_CONVERSION:
+  summary: Converts values to a formatted time string like "YYYY/MM/DD HH:MM:SS.US"
+  parameters:
+    - name: Seconds Item Name
+      required: true
+      description: The name of the item which contains the seconds since the epoch.
+      values: .*
+    - name: Microseconds Item Name
+      required: false
+      description: The name of the item which contains the microseconds since the epoch.
+      values: .*
+    - name: Seconds Type
+      required: false
+      description: How to read the seconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+    - name: Microseconds Type
+      required: false
+      description: How to read the microseconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+  ruby_example: READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  python_example: READ_CONVERSION openc3/conversions/unix_time_formatted_conversion.py TIMESEC TIMEUS
+UNIX_TIME_SECONDS_CONVERSION:
+  summary: Converts values to a floating point number of seconds since the epoch
+  parameters:
+    - name: Seconds Item Name
+      required: true
+      description: The name of the item which contains the seconds since the epoch.
+      values: .*
+    - name: Microseconds Item Name
+      required: false
+      description: The name of the item which contains the microseconds since the epoch.
+      values: .*
+    - name: Seconds Type
+      required: false
+      description: How to read the seconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+    - name: Microseconds Type
+      required: false
+      description: How to read the microseconds item. Defaults to 'RAW'.
+      values: [RAW, CONVERTED]
+  ruby_example: READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
+  python_example: READ_CONVERSION openc3/conversions/unix_time_seconds_conversion.py TIMESEC TIMEUS

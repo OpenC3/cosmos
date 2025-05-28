@@ -30,5 +30,5 @@ from .tlm_api import *
 try:
     from openc3enterprise.api.cmd_authority_api import *
 except ModuleNotFoundError:
-    # ModuleNotFoundError expected in Open Source Edition
+    # ModuleNotFoundError expected in COSMOS Core
     pass

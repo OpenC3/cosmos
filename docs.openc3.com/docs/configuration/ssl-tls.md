@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 title: SSL-TLS
 description: How to configure SSL and TLS
 sidebar_custom_props:
@@ -146,5 +146,5 @@ Additionally the following secrets will need to be defined based on how you set 
 | Secret Name         | Description                                                                                                                                                                                                                                                                                         |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
-| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                          |
-| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                         |
+| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.crt. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.crt=/Users/ryanmelt/192.168.1.109.pem                                                                           |
+| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.key. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.key=/Users/ryanmelt/192.168.1.109-key.pem                                                                      |

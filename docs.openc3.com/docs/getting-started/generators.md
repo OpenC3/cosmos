@@ -113,13 +113,13 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## Conversion Generator
 
-The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#read_conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
+The conversion generator creates the scaffolding for a new COSMOS [Conversion](/docs/configuration/conversions). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
 Usage: cli generate conversion <TARGET> <NAME> (--ruby or --python)
 
-openc3-cosmos-gse % openc3.sh cli generate limits_response GSE double
+openc3-cosmos-gse % openc3.sh cli generate conversion GSE double
 Conversion targets/GSE/lib/double_conversion.rb successfully generated!
 To use the conversion add the following to a telemetry item:
   READ_CONVERSION double_conversion.rb
@@ -213,7 +213,7 @@ The tool generator creates the scaffolding for a new COSMOS Tool. It's It must o
 openc3-cosmos-gse % openc3.sh cli generate tool
 Usage: cli generate tool 'Tool Name'
 
-openc3-cosmos-gse % openc3.sh cli generate widget DataVis
+openc3-cosmos-gse % openc3.sh cli generate tool DataVis
 Tool datavis successfully generated!
 Please be sure datavis does not conflict with any other tools
 ```

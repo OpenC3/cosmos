@@ -55,6 +55,8 @@ module OpenC3
       @cycle_size = 50_000_000 unless @cycle_size # ~50 MB
 
       @buffer_depth = DEFAULT_BUFFER_DEPTH unless @buffer_depth
+      @plws = {}
+
       @error_count = 0
       @metric.set(name: 'log_total', value: @count, type: 'counter')
       @metric.set(name: 'log_error_total', value: @error_count, type: 'counter')
@@ -144,6 +146,6 @@ end
 
 if __FILE__ == $0
   OpenC3::LogMicroservice.run
-  ThreadManager.instance.shutdown
-  ThreadManager.instance.join
+  OpenC3::ThreadManager.instance.shutdown
+  OpenC3::ThreadManager.instance.join
 end

@@ -37,36 +37,7 @@ READ_CONVERSION:
     takes extra parameters and must always implement the `call` method. The conversion
     factor is applied to the raw value in the telemetry packet before it is displayed
     to the user. The user still has the ability to see the raw unconverted value
-    in a details dialog.
-  ruby_example: |
-    READ_CONVERSION the_great_conversion.rb 1000
-
-    Defined in the_great_conversion.rb:
-
-    require 'openc3/conversions/conversion'
-    module OpenC3
-      class TheGreatConversion < Conversion
-        def initialize(multiplier)
-          super()
-          @multiplier = multiplier.to_f
-        end
-        def call(value, packet, buffer)
-          return value * @multiplier
-        end
-      end
-    end
-  python_example: |
-    READ_CONVERSION the_great_conversion.py 1000
-
-    Defined in the_great_conversion.py:
-
-    from openc3.conversions.conversion import Conversion
-    class TheGreatConversion(Conversion):
-        def __init__(self, multiplier):
-            super().__init__()
-            self.multiplier = float(multiplier)
-        def call(self, value, packet, buffer):
-            return value * self.multiplier
+    in a details dialog. For more information see the [Conversion](/docs/configuration/conversions) documentation.
   parameters:
     - name: Class Filename
       required: true
@@ -80,7 +51,10 @@ READ_CONVERSION:
       description: Additional parameter values for the conversion which are passed
         to the class constructor.
       values: .*
-<%= MetaConfigParser.load('read_conversions.yaml').to_meta_config_yaml(0) %>
+  ruby_example: |
+    READ_CONVERSION ip_read_conversion.rb
+  python_example: |
+    READ_CONVERSION openc3/conversions/ip_read_conversion.rb
 GENERIC_READ_CONVERSION_START:
   summary: Start a generic read conversion
   description: Adds a generic conversion function to the current telemetry item.
