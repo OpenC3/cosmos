@@ -55,6 +55,12 @@ READ_CONVERSION:
     READ_CONVERSION ip_read_conversion.rb
   python_example: |
     READ_CONVERSION openc3/conversions/ip_read_conversion.rb
+POLY_READ_CONVERSION:
+  summary: Adds a polynomial conversion factor to the current telemetry item
+  description: See [Polynomial Conversion](/docs/configuration/conversions#polynomial_conversion) for more information.
+SEG_POLY_READ_CONVERSION:
+  summary: Adds a segmented polynomial conversion factor to the current telemetry item
+  description: See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_polynomial_conversion) for more information.
 GENERIC_READ_CONVERSION_START:
   summary: Start a generic read conversion
   description: Adds a generic conversion function to the current telemetry item.

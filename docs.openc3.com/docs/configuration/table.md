@@ -254,6 +254,18 @@ Python Example:
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
 
+#### POLY_WRITE_CONVERSION
+**Adds a polynomial conversion factor to the current command parameter**
+
+See [Polynomial Conversion](/docs/configuration/conversions#polynomial_conversion) for more information.
+
+
+#### SEG_POLY_WRITE_CONVERSION
+**Adds a segmented polynomial conversion factor to the current command parameter**
+
+See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_polynomial_conversion) for more information.
+
+
 #### GENERIC_WRITE_CONVERSION_START
 **Start a generic write conversion**
 

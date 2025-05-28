@@ -108,6 +108,12 @@ WRITE_CONVERSION:
     WRITE_CONVERSION ip_write_conversion.rb
   python_example: |
     WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
+POLY_WRITE_CONVERSION:
+  summary: Adds a polynomial conversion factor to the current command parameter
+  description: See [Polynomial Conversion](/docs/configuration/conversions#polynomial_conversion) for more information.
+SEG_POLY_WRITE_CONVERSION:
+  summary: Adds a segmented polynomial conversion factor to the current command parameter
+  description: See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_polynomial_conversion) for more information.
 GENERIC_WRITE_CONVERSION_START:
   summary: Start a generic write conversion
   description: |
