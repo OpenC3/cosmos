@@ -20,8 +20,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/scope_model'
-require 'openc3/models/metric_model'
+require "openc3/models/scope_model"
+require "openc3/models/metric_model"
 
 # This Controller is designed to output metrics from the openc3/utilities/metric.rb
 # Find all scopes currently active in the openc3 system, we use the openc3/models/scope_model
@@ -39,11 +39,12 @@ class InternalMetricsController < ApplicationController
   def index
     OpenC3::Logger.debug("request for aggregator metrics")
     begin
-      scopes = OpenC3::ScopeModel.names()
+      scopes = OpenC3::ScopeModel.names
     rescue RuntimeError => e
       log_error(e)
       OpenC3::Logger.error("failed to connect to redis to pull scopes")
       render plain: "failed to access datastore", status: 500
+      return # Return to stop execution
     end
     OpenC3::Logger.debug("ScopeModels: #{scopes}")
     data_hash = {}
@@ -55,19 +56,20 @@ class InternalMetricsController < ApplicationController
         log_error(e)
         OpenC3::Logger.error("failed to connect to redis to pull metrics")
         render plain: "failed to access datastore", status: 500
+        return # Return to stop execution
       end
       OpenC3::Logger.debug("metrics search for scope: #{scope}, returned: #{scope_resp}")
       scope_resp.each do |_key, label_json|
         name = label_json.delete("metric_name")
-        if not data_hash.has_key?(name)
+        if !data_hash.has_key?(name)
           data_hash[name] = [
-              "# TYPE #{name} histogram",
-              "# HELP #{name} internal metric generated from openc3/utilities/metric.rb."
+            "# TYPE #{name} histogram",
+            "# HELP #{name} internal metric generated from openc3/utilities/metric.rb."
           ]
         end
         label_json["label_list"].each do |labels|
           value = labels.delete("metric__value")
-          label_str = labels.map {|k,v| "#{k}=\"#{v}\""}.join(",")
+          label_str = labels.map { |k, v| "#{k}=\"#{v}\"" }.join(",")
           data_hash[name].append("#{name}{#{label_str}} #{value}")
         end
       end
