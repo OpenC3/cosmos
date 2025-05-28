@@ -17,6 +17,7 @@
 import json
 from datetime import datetime, timezone
 from openc3.models.model import Model
+from openc3.utilities.store import openc3_redis_cluster
 
 class ScriptStatusModel(Model):
     # Note: ScriptRunner only has permissions for keys that start with running-script
@@ -52,10 +53,17 @@ class ScriptStatusModel(Model):
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                for key in keys:
-                    pipeline.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key)
-                result = pipeline.execute()
+                result = []
+                if openc3_redis_cluster:
+                    # No pipelining for cluster mode
+                    # because it requires using the same shard for all keys
+                    for key in keys:
+                        result.append(redis.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key))
+                else:
+                    pipeline = redis.pipeline(transaction=False)
+                    for key in keys:
+                        pipeline.hget(f"{cls.RUNNING_PRIMARY_KEY}__{scope}", key)
+                    result = pipeline.execute()
                 for i in range(len(result)):
                     if result[i] is not None:
                         result[i] = json.loads(result[i])
@@ -65,10 +73,17 @@ class ScriptStatusModel(Model):
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                for key in keys:
-                    pipeline.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key)
-                result = pipeline.execute()
+                result = []
+                if openc3_redis_cluster:
+                    # No pipelining for cluster mode
+                    # because it requires using the same shard for all keys
+                    for key in keys:
+                        result.append(redis.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key))
+                else:
+                    pipeline = redis.pipeline(transaction=False)
+                    for key in keys:
+                        pipeline.hget(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}", key)
+                    result = pipeline.execute()
                 for i in range(len(result)):
                     if result[i] is not None:
                         result[i] = json.loads(result[i])

@@ -30,7 +30,7 @@ For more information about how Interfaces fit with Protocols and Accessors see [
 
 COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
-COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, GEMS, InfluxDB.
+COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, GEMS, InfluxDB.
 
 #### All Interface Options
 

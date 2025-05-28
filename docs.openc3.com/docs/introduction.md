@@ -4,16 +4,11 @@ sidebar_position: 0
 slug: /
 ---
 
-This site aims to be a comprehensive guide to OpenC3 COSMOS. We'll cover topics such
-as getting your configuration up and running, developing test and operations scripts,
-building custom telemetry screens, and give you some advice on participating in the future
-development of COSMOS itself.
+This site aims to be a comprehensive guide to OpenC3 COSMOS. We'll cover topics such as getting your configuration up and running, developing test and operations scripts, building custom telemetry screens, and give you some advice on participating in the future development of COSMOS itself.
 
 ## So what is COSMOS, exactly?
 
-COSMOS is a suite of applications that can be used to control a set of embedded systems. These systems can be
-anything from test equipment (power supplies, oscilloscopes, switched power strips, UPS devices, etc), to
-development boards (Arduinos, Raspberry Pi, Beaglebone, etc), to satellites.
+COSMOS is a suite of applications that can be used to control a set of embedded systems. These systems can be anything from test equipment (power supplies, oscilloscopes, switched power strips, UPS devices, etc), to development boards (Arduinos, Raspberry Pi, Beaglebone, etc), to satellites.
 
 ### COSMOS Architecture
 

@@ -46,7 +46,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
 from openc3.utilities.json import JsonDecoder
-from openc3.utilities.store import Store
+from openc3.utilities.store import Store, openc3_redis_cluster
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.top_level import kill_thread
@@ -837,7 +837,7 @@ class InterfaceMicroservice(Microservice):
         pass  # Just to avoid warning
 
     def sync_tlm_packet_counts(self, packet):
-        if self.sync_packet_count_delay_seconds <= 0:
+        if self.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
             # Perfect but slow method
             packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=self.scope)
         else:

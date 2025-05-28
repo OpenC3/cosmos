@@ -102,6 +102,6 @@ end
 
 if __FILE__ == $0
   OpenC3::CleanupMicroservice.run
-  ThreadManager.instance.shutdown
-  ThreadManager.instance.join
+  OpenC3::ThreadManager.instance.shutdown
+  OpenC3::ThreadManager.instance.join
 end
