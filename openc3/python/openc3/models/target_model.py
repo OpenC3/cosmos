@@ -28,7 +28,7 @@ from openc3.topics.topic import Topic
 from openc3.models.model import Model
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.utilities.json import JsonEncoder
-from openc3.utilities.store import Store
+from openc3.utilities.store import Store, openc3_redis_cluster
 from openc3.utilities.logger import Logger
 from openc3.utilities.bucket import Bucket
 from openc3.environment import OPENC3_CONFIG_BUCKET
@@ -252,12 +252,20 @@ class TargetModel(Model):
     def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
         result = []
         with Store.instance().redis_pool.get() as redis:
-            pipeline = redis.pipeline(transaction=False)
-            for target_name, packet_name in target_packets:
-                target_name = target_name.upper()
-                packet_name = packet_name.upper()
-                pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
-            result = pipeline.execute()
+            if openc3_redis_cluster:
+                # No pipelining for cluster mode
+                # because it requires using the same shard for all keys
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    result.append(redis.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name))
+            else:
+                pipeline = redis.pipeline(transaction=False)
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+                result = pipeline.execute()
 
         counts = []
         for count in result:
@@ -300,12 +308,20 @@ class TargetModel(Model):
     def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
         result = []
         with Store.instance().redis_pool.get() as redis:
-            pipeline = redis.pipeline(transaction=False)
-            for target_name, packet_name in target_packets:
-                target_name = target_name.upper()
-                packet_name = packet_name.upper()
-                pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
-            result = pipeline.execute()
+            if openc3_redis_cluster:
+                # No pipelining for cluster mode
+                # because it requires using the same shard for all keys
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    result.append(redis.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name))
+            else:
+                pipeline = redis.pipeline(transaction=False)
+                for target_name, packet_name in target_packets:
+                    target_name = target_name.upper()
+                    packet_name = packet_name.upper()
+                    pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
+                result = pipeline.execute()
 
         counts = []
         for count in result:

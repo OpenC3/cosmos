@@ -106,8 +106,8 @@ Rails.application.routes.draw do
 
     get '/autonomic/group', to: 'trigger_group#index'
     post '/autonomic/group', to: 'trigger_group#create'
-    get '/autonomic/group/:group', to: 'trigger_group#show', group: /[^\/]+/
-    delete '/autonomic/group/:group', to: 'trigger_group#destroy', group: /[^\/]+/
+    get '/autonomic/group/:name', to: 'trigger_group#show', name: /[^\/]+/
+    delete '/autonomic/group/:name', to: 'trigger_group#destroy', name: /[^\/]+/
 
     get '/autonomic/:group/trigger', to: 'trigger#index', group: /[^\/]+/
     post '/autonomic/:group/trigger', to: 'trigger#create', group: /[^\/]+/
@@ -120,7 +120,6 @@ Rails.application.routes.draw do
     get '/autonomic/reaction', to: 'reaction#index'
     post '/autonomic/reaction', to: 'reaction#create'
     get '/autonomic/reaction/:name', to: 'reaction#show', name: /[^\/]+/
-    # match '/autonomic/reaction/:name, to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
     post '/autonomic/reaction/:name/enable', to: 'reaction#enable', name: /[^\/]+/
     post '/autonomic/reaction/:name/disable', to: 'reaction#disable', name: /[^\/]+/
     post '/autonomic/reaction/:name/execute', to: 'reaction#execute', name: /[^\/]+/
