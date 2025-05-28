@@ -127,7 +127,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
 
   describe 'DELETE' do
     it 'returns a json hash of name and status code 404 when not found' do
-      delete :destroy, params: { scope: 'DEFAULT', group: 'test'}
+      delete :destroy, params: { scope: 'DEFAULT', name: 'test'}
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json['status']).to eql('error')
@@ -140,7 +140,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      delete :destroy, params: { scope: 'DEFAULT', group: json['name'] }
+      delete :destroy, params: { scope: 'DEFAULT', name: json['name'] }
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json['group']).to eql('SystemGroup')

@@ -139,6 +139,7 @@ def run_mode():
     pass
 
 from .api_shared import *
+from .autonomic import *
 from .commands import *
 from .cosmos_calendar import *
 from .critical_cmd import *

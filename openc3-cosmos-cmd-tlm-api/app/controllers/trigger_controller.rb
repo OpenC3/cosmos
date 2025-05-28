@@ -77,7 +77,6 @@ class TriggerController < ApplicationController
   # Create a new trigger and return the object/hash of the trigger in json.
   #
   # group [String] the group name, `systemGroup`
-  # name [String] the trigger name, `TV1-12345`
   # scope [String] the scope of the trigger, `TEST`
   # json [String] The json of the event (see #trigger_model)
   # @return [String] the trigger converted into json format
@@ -94,11 +93,14 @@ class TriggerController < ApplicationController
   #    "group": "mango",
   #    "left": {
   #      "type": "item",
-  #      "item": "POSX",
+  #      "target": "INST",
+  #      "packet": "HEALTH_STATUS",
+  #      "item": "TEMP1",
+  #      "valueType": "CONVERTED",
   #    },
   #    "operator": ">",
   #    "right": {
-  #      "type": "value",
+  #      "type": "float",
   #      "value": 690000,
   #    }
   #  }
@@ -129,30 +131,7 @@ class TriggerController < ApplicationController
   # group [String] the group name, `systemGroup`
   # name [String] the trigger name, `TV1-12345`
   # scope [String] the scope of the trigger, `TEST`
-  # json [String] The json of the event (see #trigger_model)
   # @return [String] the trigger converted into json format
-  # Request Headers
-  #```json
-  #  {
-  #    "Authorization": "token/password",
-  #    "Content-Type": "application/json"
-  #  }
-  #```
-  # Request Post Body
-  #```json
-  #  {
-  #    "group": "mango",
-  #    "left": {
-  #      "type": "item",
-  #      "item": "POSX",
-  #    },
-  #    "operator": ">",
-  #    "right": {
-  #      "type": "value",
-  #      "value": 690000,
-  #    }
-  #  }
-  #```
   def update
     return unless authorization('script_run')
     hash = nil
@@ -163,9 +142,9 @@ class TriggerController < ApplicationController
         return
       end
       hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
-      model.left = hash['left']
-      model.operator = hash['operator']
-      model.right = hash['right']
+      model.left = hash['left'] if hash['left']
+      model.operator = hash['operator'] if hash['operator']
+      model.right = hash['right'] if hash['right']
       # Notify the TriggerGroupMicroservice to update the TriggerModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the trigger

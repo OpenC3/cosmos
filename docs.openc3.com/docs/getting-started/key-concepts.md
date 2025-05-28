@@ -39,7 +39,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                         |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://redis.io/docs/data-types/streams) containing the raw and decomutated data |
 
-The container list for [Enterprise COSMOS](https://openc3.com/enterprise) consists of the following:
+The container list for [COSMOS Enterprise](https://openc3.com/enterprise) consists of the following:
 
 | Name                                  | Description                                                                                   |
 | ------------------------------------- | --------------------------------------------------------------------------------------------- |
