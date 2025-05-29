@@ -20,17 +20,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/version'
-require 'openc3/models/model'
-require 'openc3/models/plugin_model'
-require 'openc3/models/microservice_model'
-require 'openc3/models/setting_model'
-require 'openc3/models/trigger_group_model'
-require 'openc3/topics/system_events_topic'
+require "openc3/version"
+require "openc3/models/model"
+require "openc3/models/plugin_model"
+require "openc3/models/microservice_model"
+require "openc3/models/setting_model"
+require "openc3/models/trigger_group_model"
+require "openc3/topics/system_events_topic"
 
 begin
-  require 'openc3-enterprise/models/cmd_authority_model'
-  require 'openc3-enterprise/models/critical_cmd_model'
+  require "openc3-enterprise/models/cmd_authority_model"
+  require "openc3-enterprise/models/critical_cmd_model"
   module OpenC3
     class ScopeModel < Model
       ENTERPRISE = true
@@ -46,7 +46,7 @@ end
 
 module OpenC3
   class ScopeModel < Model
-    PRIMARY_KEY = 'openc3_scopes'
+    PRIMARY_KEY = "openc3_scopes"
 
     attr_accessor :children
     attr_accessor :text_log_cycle_time
@@ -76,17 +76,17 @@ module OpenC3
     end
 
     def self.from_json(json, scope: nil)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
-      self.new(**json.transform_keys(&:to_sym))
+      new(**json.transform_keys(&:to_sym))
     end
 
     def self.get_model(name:, scope: nil)
       json = get(name: name)
       if json
-        return from_json(json)
+        from_json(json)
       else
-        return nil
+        nil
       end
     end
 
@@ -99,8 +99,7 @@ module OpenC3
       command_authority: false,
       critical_commanding: "OFF",
       shard: 0,
-      updated_at: nil
-    )
+      updated_at: nil)
       super(
         PRIMARY_KEY,
         name: name,
@@ -117,7 +116,7 @@ module OpenC3
       @command_authority = command_authority
       @critical_commanding = critical_commanding.to_s.upcase
       @critical_commanding = "OFF" if @critical_commanding.length == 0
-      if not ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
+      if !["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
         raise "Invalid value for critical_commanding: #{@critical_commanding}"
       end
       @shard = shard.to_i # to_i to handle nil
@@ -126,7 +125,7 @@ module OpenC3
 
     def create(update: false, force: false, queued: false)
       # Ensure there are no "." in the scope name - prevents gems accidentally becoming scope names
-      raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
+      raise "Invalid scope name: #{@name}" if !/^[a-zA-Z0-9_-]+$/.match?(@name)
       @name = @name.upcase
       @scope = @name # Ensure @scope matches @name
       # Ensure the various cycle and retain times are integers
@@ -135,7 +134,7 @@ module OpenC3
       @text_log_retain_time = @text_log_retain_time.to_i if @text_log_retain_time
       @tool_log_retain_time = @tool_log_retain_time.to_i if @tool_log_retain_time
       @cleanup_poll_time = @cleanup_poll_time.to_i
-      super(update: update, force: force, queued: queued)
+      super
 
       if ENTERPRISE
         # If we're updating the scope and disabling command_authority
@@ -157,50 +156,49 @@ module OpenC3
         end
       end
 
-      SystemEventsTopic.write(:scope, as_json())
+      SystemEventsTopic.write(:scope, as_json)
     end
 
     def destroy
-      if @name != 'DEFAULT'
+      if @name != "DEFAULT"
         # Remove all the plugins for this scope
         plugins = PluginModel.get_all_models(scope: @name)
         plugins.each do |_plugin_name, plugin|
           plugin.destroy
         end
-        super()
+        super
       else
         raise "DEFAULT scope cannot be destroyed"
       end
     end
 
     def as_json(*_a)
-      { 'name' => @name,
-        'updated_at' => @updated_at,
-        'text_log_cycle_time' => @text_log_cycle_time,
-        'text_log_cycle_size' => @text_log_cycle_size,
-        'text_log_retain_time' => @text_log_retain_time,
-        'tool_log_retain_time' => @tool_log_retain_time,
-        'cleanup_poll_time' => @cleanup_poll_time,
-        'command_authority' => @command_authority,
-        'critical_commanding' => @critical_commanding,
-        'shard' => @shard,
-       }
+      {"name" => @name,
+       "updated_at" => @updated_at,
+       "text_log_cycle_time" => @text_log_cycle_time,
+       "text_log_cycle_size" => @text_log_cycle_size,
+       "text_log_retain_time" => @text_log_retain_time,
+       "tool_log_retain_time" => @tool_log_retain_time,
+       "cleanup_poll_time" => @cleanup_poll_time,
+       "command_authority" => @command_authority,
+       "critical_commanding" => @critical_commanding,
+       "shard" => @shard}
     end
 
     def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__OPENC3__LOG"
       topics = ["#{@scope}__openc3_log_messages"]
       # Also log the NOSCOPE messages with this microservice for the DEFAULT scope
-      if @scope == 'DEFAULT'
+      if @scope == "DEFAULT"
         topics << "NOSCOPE__openc3_log_messages"
       end
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "text_log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         options: [
           ["CYCLE_TIME", @text_log_cycle_time],
-          ["CYCLE_SIZE", @text_log_cycle_size],
+          ["CYCLE_SIZE", @text_log_cycle_size]
         ],
         topics: topics,
         parent: parent,
@@ -218,11 +216,11 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         options: [
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "CMD"],
-          ["CYCLE_TIME", "3600"], # Keep at most 1 hour per log
+          ["CYCLE_TIME", "3600"] # Keep at most 1 hour per log
         ],
         topics: ["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"],
         target_names: [],
@@ -241,11 +239,11 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         options: [
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "TLM"],
-          ["CYCLE_TIME", "3600"], # Keep at most 1 hour per log
+          ["CYCLE_TIME", "3600"] # Keep at most 1 hour per log
         ],
         topics: ["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"],
         target_names: [],
@@ -264,7 +262,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "periodic_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         parent: parent,
         shard: @shard,
         scope: @scope
@@ -280,7 +278,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "scope_cleanup_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         parent: parent,
         shard: @shard,
         scope: @scope
@@ -296,7 +294,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
-        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
+        work_dir: "/openc3-enterprise/lib/openc3-enterprise/microservices",
         parent: parent,
         shard: @shard,
         scope: @scope
@@ -312,7 +310,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "multi_microservice.rb", *@children],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: "/openc3/lib/openc3/microservices",
         target_names: [],
         shard: @shard,
         scope: @scope
@@ -323,15 +321,15 @@ module OpenC3
     end
 
     def deploy(gem_path, variables)
-      seed_database()
+      seed_database
 
       if ENTERPRISE
         # Create DEFAULT trigger group model
-        model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
+        model = TriggerGroupModel.get(name: "DEFAULT", scope: @scope)
         unless model
-          model = TriggerGroupModel.new(name: 'DEFAULT', shard: @shard, scope: @scope)
-          model.create()
-          model.deploy()
+          model = TriggerGroupModel.new(name: "DEFAULT", shard: @shard, scope: @scope)
+          model.create
+          model.deploy
         end
       end
 
@@ -351,7 +349,7 @@ module OpenC3
       deploy_unknown_packetlog_microservice(gem_path, variables, @parent)
 
       # Only DEFAULT scope
-      if @scope == 'DEFAULT'
+      if @scope == "DEFAULT"
         # Periodic Microservice
         deploy_periodic_microservice(gem_path, variables, @parent)
       end
@@ -403,14 +401,46 @@ module OpenC3
     end
 
     def seed_database
-      setting = SettingModel.get(name: 'source_url')
-      SettingModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
-      setting = SettingModel.get(name: 'rubygems_url')
-      SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
-      setting = SettingModel.get(name: 'pypi_url')
-      SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
+      setting = SettingModel.get(name: "source_url")
+      SettingModel.set({name: "source_url", data: "https://github.com/OpenC3/cosmos"}, scope: @scope) unless setting
+      setting = SettingModel.get(name: "rubygems_url")
+      SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || "https://rubygems.org"}, scope: @scope) unless setting
+      setting = SettingModel.get(name: "pypi_url")
+      SettingModel.set({name: "pypi_url", data: ENV["PYPI_URL"] || "https://pypi.org"}, scope: @scope) unless setting
       # Set the news feed to true by default, don't bother checking if it's already set
-      SettingModel.set({ name: 'news_feed', data: true }, scope: @scope)
+      SettingModel.set({name: "news_feed", data: true}, scope: @scope)
+
+      setting = SettingModel.get(name: "system_health")
+      system_health_data = {
+        "cpu" => {
+          "redThreshold" => 90.0,
+          "yellowThreshold" => 80.0,
+          "snoozeMinutes" => 15,
+          "lastTriggerTimeRed" => nil,  # timestamp or nil
+          "lastTriggerTimeYellow" => nil,  # timestamp or nil
+          "sustainedSeconds" => 15
+        },
+        "memory" => {
+          "redThreshold" => 90.0,
+          "yellowThreshold" => 80.0,
+          "snoozeMinutes" => 15,
+          "lastTriggerTimeRed" => nil,  # timestamp or nil
+          "lastTriggerTimeYellow" => nil,  # timestamp or nil
+          "sustainedSeconds" => 15
+        },
+        "disk" => {
+          "redThreshold" => 90.0,
+          "yellowThreshold" => 80.0,
+          "snoozeMinutes" => 720,  # 12 hours
+          "lastTriggerTimeRed" => nil,  # timestamp or nil
+          "lastTriggerTimeYellow" => nil,  # timestamp or nil
+          "sustainedSeconds" => 15
+        },
+        "global" => {
+          "enableAlerts" => true
+        }
+      }
+      SettingModel.set({name: "system_health", data: system_health_data}, scope: "DEFAULT") unless setting
     end
   end
 end
