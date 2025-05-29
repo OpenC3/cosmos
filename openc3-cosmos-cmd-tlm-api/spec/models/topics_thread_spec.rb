@@ -27,20 +27,19 @@ RSpec.describe TopicsThread, type: :model do
   before(:each) do
     mock_redis
     setup_system
-    allow(ActionCable.server).to receive(:broadcast)
-    allow(OpenC3::Logger).to receive(:error)
 
-    # Define OpenC3::Topic methods for testing if they don't exist
-    unless OpenC3::Topic.respond_to?(:read_topics)
-      OpenC3::Topic.define_singleton_method(:read_topics) do |topics, offsets, &block|
-        # Mock implementation
-      end
-    end
-
-    unless OpenC3::Topic.respond_to?(:xrevrange)
+    # Stubbing xrevrange by adding it as a method
+    @topic_had_xrevrange = OpenC3::Topic.respond_to?(:xrevrange)
+    unless @topic_had_xrevrange
       OpenC3::Topic.define_singleton_method(:xrevrange) do |topic, start_id, end_id, **options|
         []
       end
+    end
+  end
+
+  after(:each) do
+    if !@topic_had_xrevrange
+      RSpec::Mocks.space.proxy_for(OpenC3::Topic).reset
     end
   end
 
