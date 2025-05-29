@@ -69,7 +69,7 @@ WRITE_CONVERSION:
     It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
     takes extra parameters and must always implement the `call` method. The conversion
     factor is applied to the value entered by the user before it is written into
-    the binary command packet and sent.
+    the binary command packet and sent. For more information see the [Conversion](/docs/configuration/conversions) documentation.
 
     When applying a write_conversion sometimes the data type changes,
     e.g. creating a UINT from an input STRING (for an example of this see
@@ -90,90 +90,30 @@ WRITE_CONVERSION:
     given_values() method which can be used to retrieve a hash of the user provided
     values to the command. That can be used to check parameter values passed in.
     :::
-  ruby_example: |
-    WRITE_CONVERSION the_great_conversion.rb 1000
-
-    Defined in the_great_conversion.rb:
-
-    require 'openc3/conversions/conversion'
-    module OpenC3
-      class TheGreatConversion < Conversion
-        def initialize(multiplier)
-          super()
-          @multiplier = multiplier.to_f
-        end
-        def call(value, packet, buffer)
-          return value * multiplier
-        end
-      end
-    end
-  python_example: |
-    WRITE_CONVERSION the_great_conversion.py 1000
-
-    Defined in the_great_conversion.py:
-
-    from openc3.conversions.conversion import Conversion
-    class TheGreatConversion(Conversion):
-        def __init__(self, multiplier):
-            super().__init__()
-            self.multiplier = float(multiplier)
-        def call(self, value, packet, buffer):
-            return value * self.multiplier
   parameters:
     - name: Class Filename
       required: true
       description: The filename which contains the Ruby or Python class. The filename must
         be named after the class such that the class is a CamelCase version of the
         underscored filename. For example, 'the_great_conversion.rb' should contain
-        'class TheGreatConversion'.
+        'class TheGreatConversion'. Note the built-in Python conversions must specify
+        the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'.
       values: .*
     - name: Parameter
       required: false
       description: Additional parameter values for the conversion which are passed
         to the class constructor.
       values: .*
+  ruby_example: |
+    WRITE_CONVERSION ip_write_conversion.rb
+  python_example: |
+    WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 POLY_WRITE_CONVERSION:
   summary: Adds a polynomial conversion factor to the current command parameter
-  description: The conversion factor is applied to the value entered by the user
-    before it is written into the binary command packet and sent.
-  example: POLY_WRITE_CONVERSION 10 0.5 0.25
-  parameters:
-    - name: C0
-      required: true
-      description: Coefficient
-      values: .*
-    - name: Cx
-      required: false
-      description: Additional coefficient values for the conversion. Any order
-        polynomial conversion may be used so the value of 'x' will vary with the
-        order of the polynomial. Note that larger order polynomials take longer
-        to process than shorter order polynomials, but are sometimes more accurate.
-      values: .*
+  description: See [Polynomial Conversion](/docs/configuration/conversions#polynomial_conversion) for more information.
 SEG_POLY_WRITE_CONVERSION:
   summary: Adds a segmented polynomial conversion factor to the current command parameter
-  description: This conversion factor is applied to the value entered by the user
-    before it is written into the binary command packet and sent.
-  example: |
-    SEG_POLY_WRITE_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
-    SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-    SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
-  parameters:
-    - name: Lower Bound
-      required: true
-      description: Defines the lower bound of the range of values that this segmented
-        polynomial applies to. Is ignored for the segment with the smallest lower bound.
-      values: .*
-    - name: C0
-      required: true
-      description: Coefficient
-      values: .*
-    - name: Cx
-      required: false
-      description: Additional coefficient values for the conversion. Any order
-        polynomial conversion may be used so the value of 'x' will vary with the
-        order of the polynomial. Note that larger order polynomials take longer
-        to process than shorter order polynomials, but are sometimes more accurate.
-      values: .*
+  description: See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_polynomial_conversion) for more information.
 GENERIC_WRITE_CONVERSION_START:
   summary: Start a generic write conversion
   description: |

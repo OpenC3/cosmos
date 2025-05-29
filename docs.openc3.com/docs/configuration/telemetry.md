@@ -220,7 +220,7 @@ APPEND_ITEM STRING 1024 STRING "String"
 #### READ_CONVERSION
 **Applies a conversion to the current telemetry item**
 
-Conversions are implemented in a custom Ruby or Python file which should be located in the target's lib folder. The class must inherit from Conversion. It must implement the `initialize` (Ruby) or `__init__` (Python) method if it takes extra parameters and must always implement the `call` method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+Conversions are implemented in a custom Ruby or Python file which should be located in the target's lib folder. The class must inherit from Conversion. It must implement the `initialize` (Ruby) or `__init__` (Python) method if it takes extra parameters and must always implement the `call` method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. For more information see the [Conversion](/docs/configuration/conversions) documentation.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -229,71 +229,25 @@ Conversions are implemented in a custom Ruby or Python file which should be loca
 
 Ruby Example:
 ```ruby
-READ_CONVERSION the_great_conversion.rb 1000
-
-Defined in the_great_conversion.rb:
-
-require 'openc3/conversions/conversion'
-module OpenC3
-  class TheGreatConversion < Conversion
-    def initialize(multiplier)
-      super()
-      @multiplier = multiplier.to_f
-    end
-    def call(value, packet, buffer)
-      return value * @multiplier
-    end
-  end
-end
+READ_CONVERSION ip_read_conversion.rb
 ```
 
 Python Example:
 ```python
-READ_CONVERSION the_great_conversion.py 1000
-
-Defined in the_great_conversion.py:
-
-from openc3.conversions.conversion import Conversion
-class TheGreatConversion(Conversion):
-    def __init__(self, multiplier):
-        super().__init__()
-        self.multiplier = float(multiplier)
-    def call(self, value, packet, buffer):
-        return value * self.multiplier
+READ_CONVERSION openc3/conversions/ip_read_conversion.rb
 ```
 
 #### POLY_READ_CONVERSION
 **Adds a polynomial conversion factor to the current telemetry item**
 
-The conversion factor is applied to raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+See [Polynomial Conversion](/docs/configuration/conversions#polynomial_conversion) for more information.
 
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
-
-Example Usage:
-```ruby
-POLY_READ_CONVERSION 10 0.5 0.25
-```
 
 #### SEG_POLY_READ_CONVERSION
 **Adds a segmented polynomial conversion factor to the current telemetry item**
 
-This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_polynomial_conversion) for more information.
 
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Lower Bound | Defines the lower bound of the range of values that this segmented polynomial applies to. Is ignored for the segment with the smallest lower bound. | True |
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
-
-Example Usage:
-```ruby
-SEG_POLY_READ_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
-SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
-```
 
 #### GENERIC_READ_CONVERSION_START
 **Start a generic read conversion**
