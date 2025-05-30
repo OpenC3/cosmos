@@ -98,7 +98,6 @@ end
 
 package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-tool-base/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/package.json',
@@ -143,14 +142,6 @@ package_dot_json_files.each do |rel_path|
       end
     elsif line =~ /\"@openc3\/vue-common\":/
       mod_data << "    \"@openc3/vue-common\": \"#{version}\""
-      # Don't assume the line has a comma because it could be at the end
-      if line.include?(',')
-        mod_data << ",\n"
-      else
-        mod_data << "\n"
-      end
-    elsif line =~ /\"@openc3\/ace-diff\":/
-      mod_data << "    \"@openc3/ace-diff\": \"#{version}\""
       # Don't assume the line has a comma because it could be at the end
       if line.include?(',')
         mod_data << ",\n"

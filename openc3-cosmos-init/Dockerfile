@@ -33,7 +33,6 @@ COPY ./plugins/packages/openc3-cosmos-tool-tlmgrapher/*.json packages/openc3-cos
 COPY ./plugins/packages/openc3-cosmos-tool-tlmviewer/*.json packages/openc3-cosmos-tool-tlmviewer/
 COPY ./plugins/packages/openc3-js-common/ packages/openc3-js-common/
 COPY ./plugins/packages/openc3-vue-common/ packages/openc3-vue-common/
-COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
 ARG NPM_URL=https://registry.npmjs.org
@@ -41,7 +40,6 @@ RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
 # yarn build hangs for some reason on vue tools in UBI
 # So we use npm run build instead
-RUN cd packages/openc3-cosmos-ace-diff && npm run build
 RUN cd packages/openc3-js-common && npm run build
 RUN cd packages/openc3-vue-common && npm run build
 
@@ -128,7 +126,6 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
 USER ${USER_ID}:${GROUP_ID}
 
-COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.25.1",
-    "@openc3/ace-diff": "6.4.3-beta0",
+    "@openc3/ace-diff": "3.1.0",
     "@openc3/js-common": "6.4.3-beta0",
     "@openc3/vue-common": "6.4.3-beta0",
     "ace-builds": "1.40.1",
