@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,9 +32,9 @@ module OpenC3
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def initialize(seconds_item_name, microseconds_item_name = nil)
+    def initialize(seconds_item_name, microseconds_item_name = nil, seconds_type = 'RAW', microseconds_type = 'RAW')
       # @params is set by the parent class in super()
-      super(seconds_item_name, microseconds_item_name)
+      super(seconds_item_name, microseconds_item_name, seconds_type, microseconds_type)
       @converted_type = :FLOAT
       @converted_bit_size = 64
     end

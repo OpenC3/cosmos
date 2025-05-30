@@ -40,7 +40,7 @@ Microservices are persistent running backend code that runs within the COSMOS en
 
 ## Plugin Directory Structure
 
-COSMOS plugins have a well-defined directory structure described in detail in the [Code Generator](../getting-started/generators) documentation.
+COSMOS plugins have a well-defined directory structure described in detail in the [Code Generator](/docs/getting-started/generators) documentation.
 
 ## plugin.txt Configuration File
 

@@ -25,23 +25,11 @@ RSpec.describe TopicsThread, type: :model do
   let(:max_batch_size) { 10 }
 
   before(:each) do
-    mock_redis
+    @redis = mock_redis
     setup_system
-    allow(ActionCable.server).to receive(:broadcast)
-    allow(OpenC3::Logger).to receive(:error)
 
-    # Define OpenC3::Topic methods for testing if they don't exist
-    unless OpenC3::Topic.respond_to?(:read_topics)
-      OpenC3::Topic.define_singleton_method(:read_topics) do |topics, offsets, &block|
-        # Mock implementation
-      end
-    end
-
-    unless OpenC3::Topic.respond_to?(:xrevrange)
-      OpenC3::Topic.define_singleton_method(:xrevrange) do |topic, start_id, end_id, **options|
-        []
-      end
-    end
+    # Mock xrevrange method on the Redis instance
+    allow(@redis).to receive(:xrevrange).and_return([])
   end
 
   describe "#initialize" do
@@ -206,12 +194,12 @@ RSpec.describe TopicsThread, type: :model do
       msg_hash_1 = {"data" => "message1"}
       msg_hash_2 = {"data" => "message2"}
 
-      allow(OpenC3::Topic).to receive(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 5).and_return([[msg_id_1, msg_hash_1]])
-      allow(OpenC3::Topic).to receive(:xrevrange).with("DEFAULT__another_topic", "+", "-", count: 5).and_return([[msg_id_2, msg_hash_2]])
+      allow(@redis).to receive(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 5).and_return([[msg_id_1, msg_hash_1]])
+      allow(@redis).to receive(:xrevrange).with("DEFAULT__another_topic", "+", "-", count: 5).and_return([[msg_id_2, msg_hash_2]])
 
       thread_instance.send(:thread_setup)
 
-      expect(OpenC3::Topic).to have_received(:xrevrange).twice
+      expect(@redis).to have_received(:xrevrange).twice
       offsets = thread_instance.instance_variable_get(:@offsets)
       expect(offsets).to eq([msg_id_1, msg_id_2])
       expect(thread_instance).to have_received(:transmit_results).twice
@@ -223,12 +211,12 @@ RSpec.describe TopicsThread, type: :model do
       zero_history_thread.instance_variable_set(:@offsets, ["0-0", "0-0"])
       allow(zero_history_thread).to receive(:transmit_results)
 
-      allow(OpenC3::Topic).to receive(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 1).and_return([["123-0", {"data" => "test"}]])
+      allow(@redis).to receive(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 1).and_return([["123-0", {"data" => "test"}]])
 
       zero_history_thread.send(:thread_setup)
 
-      expect(OpenC3::Topic).not_to have_received(:xrevrange).with("DEFAULT__openc3_ephemeral_messages", anything, anything, anything)
-      expect(OpenC3::Topic).to have_received(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 1)
+      expect(@redis).not_to have_received(:xrevrange).with("DEFAULT__openc3_ephemeral_messages", anything, anything, anything)
+      expect(@redis).to have_received(:xrevrange).with("DEFAULT__test_topic", "+", "-", count: 1)
       expect(zero_history_thread).not_to have_received(:transmit_results)
     end
   end
