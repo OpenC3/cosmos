@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -57,24 +57,16 @@ export default {
   },
   methods: {
     calculatePacketText: function (packet) {
-      let text = ''
-      if (this.currentConfig.showTimestamp) {
-        const milliseconds = packet.__time / 1000000
-        const receivedDate = new Date(milliseconds).toISOString()
-        text = `Time: ${receivedDate}  `
-      }
-      text += Object.keys(packet)
-        .map((item) => {
-          if (item.includes('DECOM__TLM')) {
-            let name = item.split('__')[4]
-            return `${name}: ${packet[item]}`
-          } else {
-            return undefined
+      return Object.keys(packet)
+        .filter((item) => item.includes('DECOM__TLM'))
+        .flatMap((item) => {
+          const val = packet[item]
+          if (Array.isArray(val)) {
+            return val.join('\n')
           }
+          return `${val}`
         })
-        .filter((item) => item !== undefined)
-        .join('  ')
-      return text
+        .join('\n')
     },
   },
 }
