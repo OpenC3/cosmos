@@ -202,9 +202,9 @@
       :definition="currentDefinition"
       :keywords="keywords"
       :errors="errors"
-      @save="saveEdit($event)"
-      @cancel="cancelEdit()"
-      @delete="deleteScreen()"
+      @save="saveEdit"
+      @cancel="cancelEdit"
+      @delete="deleteScreen"
     />
 
     <!-- Error dialog -->
@@ -292,6 +292,15 @@ export default {
       default: false,
     },
   },
+  emits: [
+    'close-screen',
+    'delete-screen',
+    'drag-screen',
+    'edit-screen',
+    'float-screen',
+    'min-max-screen',
+    'unfloat-screen',
+  ],
   data() {
     return {
       api: null,
@@ -442,6 +451,7 @@ export default {
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
       this.clearErrors()
+      this.screenItems = []
       this.namedWidgets = {}
       this.layoutStack = []
       this.dynamicWidgets = []
