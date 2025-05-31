@@ -27,7 +27,7 @@ from openc3.utilities.store_queued import StoreQueued
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
 from openc3.environment import OPENC3_CONFIG_BUCKET
-from running_script import RunningScript, running_script_anycable_publish
+from openc3.utilities.running_script import RunningScript, running_script_anycable_publish
 from openc3.models.script_status_model import ScriptStatusModel
 
 start_time = time.time()

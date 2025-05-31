@@ -27,7 +27,7 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 require 'json'
 require '../app/models/script'
-require '../app/models/running_script'
+require 'openc3/utilities/running_script'
 
 # Load the bucket client code to ensure we authenticate outside ENV vars
 OpenC3::Bucket.getClient()

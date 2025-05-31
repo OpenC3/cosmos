@@ -17,14 +17,13 @@
 class ScriptEngine:
     def __init__(self, running_script):
         self.running_script = running_script
-        self.variables = {}
 
     # Override this method in the subclass to implement the script engine
     def run_line(self, line, lines, filename, line_no):
         print(line)
         return line_no + 1
 
-    def run_text(self, text, filename = None, line_no = 1, end_line_no = None):
+    def run_text(self, text, filename = None, line_no = 1, end_line_no = None, bind_variables = False):
         lines = text.splitlines()
 
         while True:

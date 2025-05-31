@@ -115,7 +115,7 @@ from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.script.suite import Group
-from script_instrumentor import ScriptInstrumentor
+from openc3.utilities.script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
@@ -1289,7 +1289,11 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
         # Cache instrumentation into RAM
         if line_no == 1 and end_line_no is None:
-            instrumented_script = RunningScript.instrument_script(text, path)
+            if RunningScript.instance.script_engine is not None:
+                # Don't instrument if using a script engine
+                instrumented_script = text
+            else:
+                instrumented_script = RunningScript.instrument_script(text, path)
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
         else:
             if line_no > 1 or end_line_no is not None:
@@ -1310,8 +1314,11 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
                 text = "\n".join(text_lines[(line_no - 1):end_line_no])
 
-            instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
-
+            if RunningScript.instance.script_engine is not None:
+                # Don't instrument if using a script engine
+                instrumented_script = text
+            else:
+                instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
         cached = False
 
     running = ScriptStatusModel.all(scope = RunningScript.instance.scope(), type = "running")
@@ -1325,10 +1332,21 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
         },
     )
 
-    if bind_variables:
-        exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+    if RunningScript.instance.script_engine is not None:
+        if line_no != 1 or end_line_no is not None:
+            if end_line_no is None:
+                # Goto line
+                RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name, line_no = line_no)
+            else:
+                # Execute selection
+                RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name, line_no = line_no, end_line_no = end_line_no)
+        else:
+            RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name)
     else:
-        exec(instrumented_script, RunningScript.instance.script_globals)
+        if bind_variables:
+            exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+        else:
+            exec(instrumented_script, RunningScript.instance.script_globals)
 
     if complete:
         RunningScript.instance.script_status.state = 'completed'

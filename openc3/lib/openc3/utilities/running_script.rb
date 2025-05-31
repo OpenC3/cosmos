@@ -133,7 +133,12 @@ module OpenC3
 
           # Cache instrumentation into RAM
           if line_no == 1 and end_line_no.nil?
-            instrumented_script = RunningScript.instrument_script(text, path, true)
+            if RunningScript.instance.script_engine
+              # Don't instrument if using a script engine
+              instrumented_script = text
+            else
+              instrumented_script = RunningScript.instrument_script(text, path, true)
+            end
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
           else
             if line_no > 1 or not end_line_no.nil?
@@ -159,10 +164,14 @@ module OpenC3
               text = text_lines[(line_no - 1)...end_line_no].join
             end
 
-            if bind_variables
-              instrumented_script = RunningScript.instrument_script(text, path, false, line_offset: line_no - 1, cache: false)
+            if RunningScript.instance.script_engine
+              instrumented_script = text
             else
-              instrumented_script = RunningScript.instrument_script(text, path, true, line_offset: line_no - 1, cache: false)
+              if bind_variables
+                instrumented_script = RunningScript.instrument_script(text, path, false, line_offset: line_no - 1, cache: false)
+              else
+                instrumented_script = RunningScript.instrument_script(text, path, true, line_offset: line_no - 1, cache: false)
+              end
             end
           end
 
@@ -171,10 +180,24 @@ module OpenC3
         running = ScriptStatusModel.all(scope: RunningScript.instance.scope, type: 'running')
         running_script_anycable_publish("all-scripts-channel", { type: :start, filename: procedure_name, active_scripts: running.length, scope: RunningScript.instance.scope })
 
-        if bind_variables
-          eval(instrumented_script, RunningScript.instance.script_binding, path, line_no)
+        if RunningScript.instance.script_engine
+          if line_no != 1 or !end_line_no.nil?
+            if end_line_no.nil?
+              # Goto line
+              RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name, line_no: line_no)
+            else
+              # Execute selection
+              RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name, line_no: line_no, end_line_no: end_line_no)
+            end
+          else
+            RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name)
+          end
         else
-          Object.class_eval(instrumented_script, path, line_no)
+          if bind_variables
+            eval(instrumented_script, RunningScript.instance.script_binding, path, line_no)
+          else
+            Object.class_eval(instrumented_script, path, line_no)
+          end
         end
 
         if complete

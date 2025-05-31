@@ -19,11 +19,9 @@
 module OpenC3
   class ScriptEngine
     attr_accessor :running_script
-    attr_accessor :variables
 
     def initialize(running_script)
       @running_script = running_script
-      @variables = {}
     end
 
     # Override this method in the subclass to implement the script engine
@@ -32,7 +30,7 @@ module OpenC3
       return line_no + 1
     end
 
-    def run_text(text, filename: nil, line_no: 1, end_line_no: nil)
+    def run_text(text, filename: nil, line_no: 1, end_line_no: nil, bind_variables: false)
       lines = text.lines
       loop do
         line = lines[line_no - 1]

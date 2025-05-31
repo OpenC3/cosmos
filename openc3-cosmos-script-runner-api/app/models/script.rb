@@ -22,6 +22,7 @@
 
 require 'tempfile'
 require 'openc3/utilities/target_file'
+require 'openc3/utilities/running_script'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
 require 'openc3/tools/test_runner/test'
