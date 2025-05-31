@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -198,7 +198,12 @@ import DataViewerComponent from './DataViewerComponent'
 
 export default {
   mixins: [DataViewerComponent],
-  props: ['calculatePacketText'],
+  props: {
+    calculatePacketText: {
+      type: Function,
+      default: (packet) => `${packet}`,
+    },
+  },
   data: function () {
     return {
       history: [],
@@ -372,6 +377,7 @@ i.v-icon.mdi-chevron-down {
   position: relative;
   .v-textarea {
     font-family: 'Courier New', Courier, monospace;
+    min-height: 82px;
   }
 
   .floating-buttons {

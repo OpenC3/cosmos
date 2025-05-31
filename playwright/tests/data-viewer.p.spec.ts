@@ -404,6 +404,33 @@ test('adds multiple packet items', async ({ page, utils }) => {
     )
 })
 
+test('displays event message format', async ({ page, utils }) => {
+  await page.locator('[data-test="data-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+
+  await page.locator('[data-test="new-tab"]').click()
+  await page.locator('[data-test="select-component"]').click()
+  await page.getByText('COSMOS Event Message').click()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSVER')
+  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test=add-component]').click()
+  await page.locator('[data-test="start-button"]').click()
+
+  await expect(page.locator('[data-test=history-component-text-area] textarea'))
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
+    .toHaveValue(
+      /\d*/,
+    )
+  await expect(page.locator('[data-test=history-component-text-area] textarea'))
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
+    .not
+    .toHaveValue(
+      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+CCSDSVER: .*/,
+    )
+})
+
 // TODO: Additional testing to cover the following:
 // - Multiple tabs, packet vs items
 // - Multiple tabs with the same packet, then delete a tab and verify the other continues

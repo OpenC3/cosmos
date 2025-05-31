@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -35,7 +35,7 @@ module OpenC3
       super()
       @seconds_item_name = seconds_item_name
       @microseconds_item_name = microseconds_item_name
-      @converted_type = :RUBY_TIME
+      @converted_type = :TIME
       @converted_bit_size = 0
       @seconds_type = seconds_type.to_sym
       @microseconds_type = microseconds_type.to_sym

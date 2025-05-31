@@ -72,6 +72,8 @@ module OpenC3
         return [] if keys.empty?
         result = []
         if $openc3_redis_cluster
+          # No pipelining for cluster mode
+          # because it requires using the same shard for all keys
           keys.each do |key|
             result << self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
           end
@@ -95,6 +97,8 @@ module OpenC3
         return [] if keys.empty?
         result = []
         if $openc3_redis_cluster
+          # No pipelining for cluster mode
+          # because it requires using the same shard for all keys
           keys.each do |key|
             result << self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
           end
