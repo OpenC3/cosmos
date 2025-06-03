@@ -69,7 +69,7 @@ There are a lot of comments to help you know what to do. The only thing you need
 
 ### call
 
-The call method is where the limits response logic is implemented. As an example, suppose we want to send the `INST ABORT` command everytime we enter a RED_HIGH or RED_LOW state. The final result with comments removed looks like the following:
+The call method is where the limits response logic is implemented. As an example, suppose we want to send the `INST ABORT` command every time we enter a RED_HIGH or RED_LOW state. The final result with comments removed looks like the following:
 
 ```python
 from openc3.packets.limits_response import LimitsResponse
