@@ -12,7 +12,7 @@ sidebar_custom_props:
 
 Processors execute code every time a packet is received to calculate values that can be retrieved by a [ProcessorConversion](/docs/configuration/conversions#processor_conversion). Processors are applied using the [PROCESSOR](/docs/configuration/telemetry#processor) keyword and generate values unique to the processor.
 
-If you only want to perform a single calculation to modify a single telemetry value you probably want to use a [Conversion](/docs/configuration/conversions). Processors are used when you're deriving a number of values from a single telemetry item.
+If you only want to perform calculations using a single packet to modify a telemetry value you probably want to use a [Conversion](/docs/configuration/conversions). Processors are used when you're deriving a number of values from a single telemetry item.
 
 ## Custom Processors
 
@@ -25,7 +25,9 @@ To use the processor add the following to a telemetry packet:
   PROCESSOR SLOPE slope_processor.py
 ```
 
-To create a Ruby processor simply replace `--python` with `--ruby`. This creates a processor called `slope_processor.py` at `targets/GSE/lib/slope_processor.py`. The code which is generated looks like the following:
+Note: To create a Ruby processor simply replace `--python` with `--ruby`.
+
+The above command creates a processor called `slope_processor.py` at `targets/GSE/lib/slope_processor.py`. The code which is generated looks like the following:
 
 ```python
 import math
@@ -79,13 +81,13 @@ The reset method initializes the samples and clears any state by setting the res
 
 ### Instantiate Processor
 
-Now that we have implemented the processor logic we need to create the processor by adding it to a telemetry packet with the line `PROCESSOR slope_conversion.rb` in the [telemetry](/docs/configuration/telemetry) definition file. We also need a [ProcessorConversion](/docs/configuration/conversions#processor_conversion) to pull the calculated values out of the processor and into a [derived](/docs/configuration/telemetry#derived-items) telemetry item. This could look something like this:
+Now that we have implemented the processor logic we need to create the processor by adding it to a telemetry packet with the line `PROCESSOR SLOPE slope_processor.py` in the [telemetry](/docs/configuration/telemetry) definition file. We also need a [ProcessorConversion](/docs/configuration/conversions#processor_conversion) to pull the calculated values out of the processor and into a [derived](/docs/configuration/telemetry#derived-items) telemetry item. This could look something like this:
 
 ```bash
 TELEMETRY GSE DATA BIG_ENDIAN "Data packet"
   ... # Telemetry items
   ITEM TEMP1SLOPE 0 0 DERIVED "Rate of change for the last 60 samples of TEMP1"
-    READ_CONVERSION processor_conversion.rb SLOPE RATE_OF_CHANGE
+    READ_CONVERSION openc3/conversions/processor_conversion.py SLOPE RATE_OF_CHANGE
   # Calculate the slope of TEMP1 over the last 60 samples (1 minute)
   PROCESSOR SLOPE slope_processor.py TEMP1 60
 ```
