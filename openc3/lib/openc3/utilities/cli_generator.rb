@@ -370,6 +370,7 @@ module OpenC3
       response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
       response_basename = "#{response_name.downcase}.#{@@language}"
       response_filename = "targets/#{target_name}/lib/#{response_basename}"
+      response_class = response_basename.filename_to_class_name # NOSONAR
       if File.exist?(response_filename)
         abort("response #{response_filename} already exists!")
       end

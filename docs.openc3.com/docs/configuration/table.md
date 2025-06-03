@@ -1,7 +1,9 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 title: Tables
 description: Table definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 🪑
 ---
 
 <!-- Be sure to edit _table.md because table.md is a generated file -->

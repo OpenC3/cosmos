@@ -162,6 +162,7 @@ LIMITS:
       values: .+
 LIMITS_RESPONSE:
   summary: Defines a response class that is called when the limits state of the current item changes
+  description: See the [Limits Response](/docs/configuration/limits-response) documentation for more information.
   ruby_example: LIMITS_RESPONSE example_limits_response.rb 10
   python_example: LIMITS_RESPONSE example_limits_response.py 10
   parameters:

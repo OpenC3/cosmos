@@ -22,7 +22,7 @@ You can easily create your own custom processors by using the [Processor Code Ge
 openc3-cosmos-gse % openc3.sh cli generate processor GSE slope --python
 Processor targets/GSE/lib/slope_processor.py successfully generated!
 To use the processor add the following to a telemetry packet:
-  PROCESSOR SLOPE slope_processor.py
+  PROCESSOR SLOPE slope_processor.py <PARAMS...>
 ```
 
 Note: To create a Ruby processor simply replace `--python` with `--ruby`.
