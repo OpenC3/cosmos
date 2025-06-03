@@ -113,6 +113,8 @@ module OpenC3
         abort("Target #{target_path} already exists!")
       end
       target_lib_filename = "#{target_name.downcase}.#{@@language}"
+      target_class = target_lib_filename.filename_to_class_name # NOSONAR
+      target_object = target_name.downcase # NOSONAR
 
       process_template("#{TEMPLATES_DIR}/target", binding) do |filename|
         # Rename the template TARGET to our actual target named after the plugin
@@ -173,6 +175,7 @@ module OpenC3
         abort("Microservice #{microservice_path} already exists!")
       end
       microservice_filename = "#{microservice_name.downcase}.#{@@language}"
+      microservice_class = microservice_filename.filename_to_class_name # NOSONAR
 
       process_template("#{TEMPLATES_DIR}/microservice", binding) do |filename|
         # Rename the template MICROSERVICE to our actual microservice name
@@ -308,6 +311,7 @@ module OpenC3
       end
       conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
       conversion_basename = "#{conversion_name.downcase}.#{@@language}"
+      conversion_class = conversion_basename.filename_to_class_name # NOSONAR
       conversion_filename = "targets/#{target_name}/lib/#{conversion_basename}"
       if File.exist?(conversion_filename)
         abort("Conversion #{conversion_filename} already exists!")
@@ -336,6 +340,7 @@ module OpenC3
       end
       processor_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_PROCESSOR"
       processor_basename = "#{processor_name.downcase}.#{@@language}"
+      processor_class = processor_basename.filename_to_class_name # NOSONAR
       processor_filename = "targets/#{target_name}/lib/#{processor_basename}"
       if File.exist?(processor_filename)
         abort("Processor #{processor_filename} already exists!")
