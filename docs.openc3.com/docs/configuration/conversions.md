@@ -282,6 +282,7 @@ POLY_WRITE_CONVERSION 10 0.5 0.25
 
 This command reads a value from a processor. The value is read from the
 processor's available values. The processor must be defined in the target's configuration.
+See the [Processor](/docs/configuration/processors) documentation for more information.
 
 
 | Parameter | Description | Required |
@@ -298,7 +299,7 @@ ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
 
 Python Example:
 ```python
-PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```

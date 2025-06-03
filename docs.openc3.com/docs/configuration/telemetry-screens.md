@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 title: Screens
 description: Telemetry Viewer screen definition and widget documentation
 sidebar_custom_props:
@@ -637,10 +637,10 @@ The following settings apply to ARRAYPLOT. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1038,10 +1038,10 @@ VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1058,10 +1058,10 @@ The following settings apply to LINEGRAPH. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1113,10 +1113,10 @@ The following settings apply to LINEGRAPH. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1134,10 +1134,10 @@ The following settings apply to SPARKLINE. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1189,10 +1189,10 @@ The following settings apply to SPARKLINE. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
@@ -1209,10 +1209,10 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Target Name | The target name | True |
+| Packet Name | The packet name | True |
+| Item Name | The item name | True |
+| Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 

@@ -1,0 +1,51 @@
+---
+WATERMARK_PROCESSOR:
+  summary: Calculates high and low values for a given item
+  description: |
+    Stores high and low values for a given item as HIGH_WATER and LOW_WATER.
+    Values are retrieved using a [ProcessorConversion](/docs/configuration/conversions#processor_conversion).
+  parameters:
+    - name: Item Name
+      description: The item name to calculate high and low values for
+      required: true
+      values: .+
+    - name: Value Type
+      required: false
+      description: The type of the value to display. Default is CONVERTED.
+      values: <%= %w(RAW CONVERTED) %>
+  ruby_example: |
+    PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+    ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+      READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+  python_example: |
+    PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
+    ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+      READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
+STATISTICS_PROCESSOR:
+  summary: Calculates statistics for a given item
+  description: |
+    This processor calculates statistics for a given item as MIN, MAX, MEAN, and STDDEV
+    over a specified number of samples. Values are retrieved using a [ProcessorConversion](/docs/configuration/conversions#processor_conversion).
+  parameters:
+    - name: Item Name
+      description: The item name to calculate statistics for
+      required: true
+      values: .+
+    - name: Samples to Average
+      required: true
+      description: The number of samples to average for statistics
+      values: .*
+    - name: Value Type
+      required: false
+      description: The type of the value to display. Default is CONVERTED.
+      values: <%= %w(RAW CONVERTED) %>
+  ruby_example: PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
+  python_example: PROCESSOR TEMP1STAT openc3/processors/statistics_processor.rb TEMP1 100
+  ruby_example: |
+    PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
+    ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
+      READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64
+  python_example: |
+    PROCESSOR TEMP1STAT openc3/conversions/statistics_processor.py TEMP1 100
+    ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
+      READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT STDDEV FLOAT 64
