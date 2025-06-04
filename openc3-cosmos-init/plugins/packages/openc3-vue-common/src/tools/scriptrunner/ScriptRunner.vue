@@ -96,148 +96,159 @@
         </div>
       </div>
     </div>
-    <v-card style="padding: 10px">
-      <suite-runner
-        v-if="suiteRunner"
-        class="suite-runner"
-        :suite-map="suiteMap"
-        :disable-buttons="disableSuiteButtons"
-        :filename="fullFilename"
-        @button="suiteRunnerButton"
-        @loaded="doResize"
-      />
-      <div id="sr-controls">
-        <v-row no-gutters justify="space-between">
-          <v-icon v-if="showDisconnect" class="mt-2" color="red">
-            mdi-connection
-          </v-icon>
-          <v-tooltip :open-delay="600" location="top">
-            <template #activator="{ props }">
-              <v-btn
-                v-if="!scriptId"
-                v-bind="props"
-                icon="mdi-cached"
-                variant="text"
-                :disabled="filename === NEW_FILENAME"
-                aria-label="Reload File"
-                @click="reloadFile"
-              />
-              <v-btn
-                v-else
-                v-bind="props"
-                icon="mdi-arrow-left"
-                variant="text"
-                @click="backToNewScript"
-              />
-            </template>
-            <span v-if="!scriptId"> Reload File </span>
-            <span v-else> Back to New Script </span>
-          </v-tooltip>
-          <v-select
-            id="filename"
-            v-model="filenameSelect"
-            :items="fileList"
-            :disabled="fileList.length <= 1"
-            label="Filename"
-            data-test="filename"
-            style="width: 300px"
-            density="compact"
-            variant="outlined"
-            hide-details
-            @update:model-value="fileNameChanged"
-          />
-          <v-text-field
-            v-model="scriptId"
-            label="Script ID"
-            data-test="id"
-            class="shrink ml-2 script-state"
-            style="max-width: 100px"
-            density="compact"
-            variant="outlined"
-            readonly
-            hide-details
-          />
-          <v-text-field
-            v-model="stateTimer"
-            label="Script State"
-            data-test="state"
-            class="shrink ml-2 script-state"
-            style="max-width: 120px"
-            density="compact"
-            variant="outlined"
-            readonly
-            hide-details
-          />
-          <v-progress-circular
-            v-if="state === 'Connecting...'"
-            :size="40"
-            class="ml-2 mr-2"
-            indeterminate
-            color="primary"
-          />
-          <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
+    <v-card>
+      <v-card-text>
+        <suite-runner
+          v-if="suiteRunner"
+          class="suite-runner"
+          :suite-map="suiteMap"
+          :disable-buttons="disableSuiteButtons"
+          :filename="fullFilename"
+          @button="suiteRunnerButton"
+          @loaded="doResize"
+        />
+        <div id="sr-controls">
+          <v-row no-gutters justify="space-between">
+            <v-icon v-if="showDisconnect" class="mt-2" color="red">
+              mdi-connection
+            </v-icon>
+            <div class="d-flex align-center mr-1">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-if="!scriptId"
+                    v-bind="props"
+                    icon="mdi-cached"
+                    variant="text"
+                    density="compact"
+                    :disabled="filename === NEW_FILENAME"
+                    aria-label="Reload File"
+                    @click="reloadFile"
+                  />
+                  <v-btn
+                    v-else
+                    v-bind="props"
+                    icon="mdi-arrow-left"
+                    variant="text"
+                    density="compact"
+                    @click="backToNewScript"
+                  />
+                </template>
+                <span v-if="!scriptId"> Reload File </span>
+                <span v-else> Back to New Script </span>
+              </v-tooltip>
+            </div>
+            <v-select
+              id="filename"
+              v-model="filenameSelect"
+              :items="fileList"
+              :disabled="fileList.length <= 1"
+              label="Filename"
+              data-test="filename"
+              style="width: 300px"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @update:model-value="fileNameChanged"
+            />
+            <v-text-field
+              v-model="scriptId"
+              label="Script ID"
+              data-test="id"
+              class="shrink ml-2 script-state"
+              style="max-width: 100px"
+              density="compact"
+              variant="outlined"
+              readonly
+              hide-details
+            />
+            <v-text-field
+              v-model="stateTimer"
+              label="Script State"
+              data-test="state"
+              class="shrink ml-2 script-state"
+              style="max-width: 120px"
+              density="compact"
+              variant="outlined"
+              readonly
+              hide-details
+            />
+            <v-progress-circular
+              v-if="state === 'Connecting...'"
+              :size="40"
+              class="ml-2 mr-2"
+              indeterminate
+              color="primary"
+            />
+            <div
+              v-else
+              style="width: 40px; height: 40px"
+              class="ml-2 mr-2"
+            ></div>
 
-          <v-spacer />
-          <div v-if="startOrGoButton === 'Start'">
-            <v-tooltip :open-delay="600" location="top">
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  class="mx-1"
-                  icon
-                  variant="text"
-                  :disabled="envDisabled"
-                  data-test="env-button"
-                  aria-label="Script Environment"
-                  @click="scriptEnvironment.show = !scriptEnvironment.show"
-                >
-                  <v-badge v-model="environmentModified" floating dot>
-                    <v-icon icon="mdi-application-variable" />
-                  </v-badge>
-                </v-btn>
-              </template>
-              <span>
-                Script Environment
-                <template v-if="environmentModified"> (modified) </template>
-              </span>
-            </v-tooltip>
-            <v-btn
-              class="mx-1"
-              color="primary"
-              text="Start"
-              data-test="start-button"
-              :disabled="startOrGoDisabled || !executeUser"
-              :hidden="suiteRunner"
-              @click="startHandler"
-            />
-          </div>
-          <div v-else>
-            <v-btn
-              color="primary"
-              class="mr-2"
-              text="Go"
-              :disabled="startOrGoDisabled"
-              data-test="go-button"
-              @click="go"
-            />
-            <v-btn
-              color="primary"
-              class="mr-2"
-              :text="pauseOrRetryButton"
-              :disabled="pauseOrRetryDisabled"
-              data-test="pause-retry-button"
-              @click="pauseOrRetry"
-            />
-            <v-btn
-              color="primary"
-              text="Stop"
-              data-test="stop-button"
-              :disabled="stopDisabled"
-              @click="stop"
-            />
-          </div>
-        </v-row>
-      </div>
+            <v-spacer />
+            <div v-if="startOrGoButton === 'Start'">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    class="mx-1"
+                    icon
+                    variant="text"
+                    density="compact"
+                    :disabled="envDisabled"
+                    data-test="env-button"
+                    aria-label="Script Environment"
+                    @click="scriptEnvironment.show = !scriptEnvironment.show"
+                  >
+                    <v-badge v-model="environmentModified" floating dot>
+                      <v-icon icon="mdi-application-variable" />
+                    </v-badge>
+                  </v-btn>
+                </template>
+                <span>
+                  Script Environment
+                  <template v-if="environmentModified"> (modified) </template>
+                </span>
+              </v-tooltip>
+              <v-btn
+                class="mx-1"
+                color="primary"
+                text="Start"
+                data-test="start-button"
+                :disabled="startOrGoDisabled || !executeUser"
+                :hidden="suiteRunner"
+                @click="startHandler"
+              />
+            </div>
+            <div v-else>
+              <v-btn
+                color="primary"
+                class="mr-2"
+                text="Go"
+                :disabled="startOrGoDisabled"
+                data-test="go-button"
+                @click="go"
+              />
+              <v-btn
+                color="primary"
+                class="mr-2"
+                :text="pauseOrRetryButton"
+                :disabled="pauseOrRetryDisabled"
+                data-test="pause-retry-button"
+                @click="pauseOrRetry"
+              />
+              <v-btn
+                color="primary"
+                text="Stop"
+                data-test="stop-button"
+                :disabled="stopDisabled"
+                @click="stop"
+              />
+            </div>
+          </v-row>
+        </div>
+      </v-card-text>
     </v-card>
     <splitpanes horizontal style="height: 100%" @resize="calcHeight">
       <pane class="editorbox" size="50">
