@@ -309,6 +309,8 @@ LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
 #### LIMITS_RESPONSE
 **Defines a response class that is called when the limits state of the current item changes**
 
+See the [Limits Response](/docs/configuration/limits-response) documentation for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
@@ -459,6 +461,8 @@ META FSW_TYPE "struct tlm_packet"
 
 ### PROCESSOR
 **Defines a processor class that executes code every time a packet is received**
+
+See the [Processor](/docs/configuration/processors) documentation for more information.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
