@@ -94,6 +94,26 @@ Right clicking a script brings up several options:
 
 'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
 
+## Script Environment Variables
+
+Environment variables are used for storing information about the runtime environment of a running script. If your script depends on environment variables, you can access the "Script Environment Variables" dialog by clicking on the "(x)" icon next to the "Start" button.
+
+![environment-variables](/img/script_runner/environment_variables.png)
+
+Click the "+" icon to add a new environment variable, and set its name and value in the text fields. These can then be read in your Ruby and Python scripts.
+
+```ruby
+# Ruby
+puts ENV['MYVAR'] # prints "foo"
+```
+
+```python
+# Python
+import os
+
+print(os.environ['MYVAR']) # prints "foo"
+```
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.

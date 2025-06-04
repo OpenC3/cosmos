@@ -21,54 +21,54 @@
 -->
 
 <template>
-  <div>
-    <v-card>
-      <v-card-title>
-        <v-row class="pt-2">
-          <v-btn
-            class="mx-2"
-            icon="mdi-download"
-            variant="text"
-            data-test="download-log"
-            aria-label="Download Log"
-            @click="downloadLog"
-          />
-          Script Messages
-          <v-spacer />
-          <v-select
-            v-model="messageOrder"
-            density="compact"
-            hide-details
-            variant="outlined"
-            :items="messageOrderOptions"
-            class="mr-2"
-            style="max-width: 200px"
-            data-test="message-order"
-          />
-          <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            density="compact"
-            single-line
-            hide-details
-            class="search"
-            data-test="search-messages"
-          />
+  <v-card>
+    <v-card-title class="d-flex align-center">
+      <v-btn
+        class="mx-2"
+        icon="mdi-download"
+        variant="text"
+        density="compact"
+        data-test="download-log"
+        aria-label="Download Log"
+        @click="downloadLog"
+      />
+      Script Messages
+      <v-spacer />
+      <v-select
+        v-model="messageOrder"
+        density="compact"
+        hide-details
+        variant="outlined"
+        :items="messageOrderOptions"
+        class="mr-2"
+        style="max-width: 200px"
+        data-test="message-order"
+      />
+      <v-spacer />
+      <v-text-field
+        v-model="search"
+        label="Search"
+        prepend-inner-icon="mdi-magnify"
+        clearable
+        variant="outlined"
+        density="compact"
+        single-line
+        hide-details
+        class="search"
+        data-test="search-messages"
+      />
 
-          <v-btn
-            class="mx-2"
-            icon="mdi-delete-sweep"
-            variant="text"
-            data-test="clear-log"
-            aria-label="Clear Log"
-            @click="clearLog"
-          />
-        </v-row>
-      </v-card-title>
+      <v-btn
+        class="mx-2"
+        icon="mdi-delete-sweep"
+        variant="text"
+        density="compact"
+        data-test="clear-log"
+        aria-label="Clear Log"
+        @click="clearLog"
+      />
+    </v-card-title>
+    <v-card-text>
       <v-data-table
         id="script-log-messages"
         style="overflow: auto"
@@ -84,8 +84,8 @@
           <div :class="messageClass(item.message)">{{ item.message }}</div>
         </template>
       </v-data-table>
-    </v-card>
-  </div>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script>
@@ -98,6 +98,7 @@ export default {
       required: true,
     },
   },
+  emits: ['sort', 'update:modelValue'],
   data() {
     return {
       search: '',
