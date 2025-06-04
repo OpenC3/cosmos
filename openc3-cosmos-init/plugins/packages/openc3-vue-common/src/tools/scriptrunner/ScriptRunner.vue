@@ -176,15 +176,11 @@
             <v-progress-circular
               v-if="state === 'Connecting...'"
               :size="40"
-              class="ml-2 mr-2"
+              class="mx-2"
               indeterminate
               color="primary"
             />
-            <div
-              v-else
-              style="width: 40px; height: 40px"
-              class="ml-2 mr-2"
-            ></div>
+            <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
 
             <v-spacer />
             <div v-if="startOrGoButton === 'Start'">
@@ -192,7 +188,7 @@
                 <template #activator="{ props }">
                   <v-btn
                     v-bind="props"
-                    class="mx-1"
+                    class="mr-2"
                     icon
                     variant="text"
                     density="compact"
