@@ -73,22 +73,22 @@ case $1 in
     ./openc3.sh run-ubi
     ;;
   stop )
-    ${DOCKER_COMPOSE_COMMAND} stop openc3-operator
-    ${DOCKER_COMPOSE_COMMAND} stop openc3-cosmos-script-runner-api
-    ${DOCKER_COMPOSE_COMMAND} stop openc3-cosmos-cmd-tlm-api
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
     sleep 5
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
   cleanup )
     # They can specify 'cleanup force' or 'cleanup local force'
     if [ "$2" == "force" ] || [ "$3" == "force" ]
     then
-      ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
     else
       echo "Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v; break;;
+          Yes ) ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
           No ) exit;;
         esac
       done
@@ -105,10 +105,10 @@ case $1 in
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r .
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-ruby
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-base
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
     set -a
@@ -122,14 +122,14 @@ case $1 in
     set +a
     ;;
   run )
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
-    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     scripts/linux/openc3_setup.sh
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     scripts/linux/openc3_test.sh "${@:2}"
     ;;
   util )
