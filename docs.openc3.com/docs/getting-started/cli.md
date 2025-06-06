@@ -16,13 +16,7 @@ Usage:
   cli help                          # Displays this information
   cli rake                          # Runs rake in the local directory
   cli irb                           # Runs irb in the local directory
-  cli script list /PATH SCOPE       # lists script names filtered by path within scope, 'DEFAULT' if not given
-  cli script spawn NAME SCOPE  variable1=value1 variable2=value2  # Starts named script remotely
-  cli script run NAME SCOPE variable1=value1 variable2=value2  # Starts named script, monitoring status on console,  by default until error or exit
-    PARAMETERS name-value pairs to form the script's runtime environment
-    OPTIONS: --wait 0 seconds to monitor status before detaching from the running script; ie --wait 100
-             --disconnect run the script in disconnect mode
-  cli script init                   # initialize running scripts (Enterprise Only)
+  cli script                        # Interact with scripts. Run with --help for more info.
   cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file
   cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
@@ -70,9 +64,13 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in COSMOS Core and both the OPENC3_API_USER and OPENC3_API_PASSWORD in COSMOS Enterprise.
 
-:::note Offline Access Token
+:::note Offline Access Token (since 6.3.0)
 You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.
 :::
+
+### Init (Enterprise Only since 6.3.0)
+
+Obtain an offline access token without visiting the frontend GUI. This is required when running in a headless CI/CD environment before accessing any of the other commands.
 
 ### List
 
@@ -92,8 +90,8 @@ EXAMPLE/cmd_tlm/example_tlm.txt
 The ID of the spawned script is returned. You can connect to it in Script Runner by visiting `http://localhost:2900/tools/scriptrunner/1` where the final value is the ID.
 
 ```bash
-% openc3.sh spawn INST/procedures/checks.rb
-1
+% openc3.sh cli script spawn INST/procedures/checks.rb
+4
 ```
 
 ### Run
@@ -139,6 +137,35 @@ At [INST/procedures/stash.rb:24] state [running]
 At [INST/procedures/stash.rb:0] state [stopped]
 script complete
 %
+```
+
+### Running (since 6.5.0)
+
+List all the running scripts. Add the --verbose option to print the raw output.
+
+```bash
+% openc3.sh cli script running
+ID    User                 Filename                       Start Time             State
+5     The Operator         INST/procedures/collect.rb     2025-06-06T22:40:48Z   paused
+4     The Operator         INST/procedures/checks.rb      2025-06-06T22:40:21Z   error
+```
+
+### Status (since 6.5.0)
+
+List status for a specific script based on the script ID. Add the --verbose option to print the raw output.
+
+```bash
+% openc3.sh cli script status 5
+ID    User                 Filename                       Start Time             State
+5     The Operator         INST/procedures/collect.rb     2025-06-06T22:40:48Z   paused
+```
+
+### Stop (since 6.5.0)
+
+Stop a script based on the script ID.
+
+```bash
+% openc3.sh cli script stop 5
 ```
 
 ## Validate
