@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -790,6 +790,8 @@ if not ARGV[0].nil? # argument(s) given
     cli_pkg_uninstall(ARGV[1], scope: ARGV[2])
 
   when 'generate'
+    # To test against a local copy call this file from the root cosmos directory like this:
+    # ruby -Iopenc3/lib openc3/bin/openc3cli generate ...
     OpenC3::CliGenerator.generate(ARGV[1..-1])
 
   when 'rubysloc'

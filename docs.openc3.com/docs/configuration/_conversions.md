@@ -23,7 +23,9 @@ To use the conversion add the following to a telemetry item:
   READ_CONVERSION double_conversion.py
 ```
 
-To create a Ruby conversion simply replace `--python` with `--ruby`. This creates a conversion called `double_conversion.py` at `targets/GSE/lib/double_conversion.py`. The code which is generated looks like the following:
+Note: To create a Ruby conversion simply replace `--python` with `--ruby`.
+
+The above command creates a conversion called `double_conversion.py` at `targets/GSE/lib/double_conversion.py`. The code which is generated looks like the following:
 
 ```python
 from openc3.conversions.conversion import Conversion
@@ -95,13 +97,13 @@ class DoubleConversion(Conversion):
 
 ### Apply Conversion
 
-Now that we have implemented the conversion logic we need to apply it to a telemetry item by adding the line `READ_CONVERSION double_conversion.rb` in the [telemetry](/docs/configuration/telemetry) definition file. This could look something like this:
+Now that we have implemented the conversion logic we need to apply it to a telemetry item by adding the line `READ_CONVERSION double_conversion.py` in the [telemetry](/docs/configuration/telemetry) definition file. This could look something like this:
 
 ```bash
 TELEMETRY GSE DATA BIG_ENDIAN "Data packet"
   ... # Header items
   APPEND_ITEM VALUE 16 UINT "Value I want to double"
-    READ_CONVERSION double_conversion.rb
+    READ_CONVERSION double_conversion.py
 ```
 
 # Built-in Conversions

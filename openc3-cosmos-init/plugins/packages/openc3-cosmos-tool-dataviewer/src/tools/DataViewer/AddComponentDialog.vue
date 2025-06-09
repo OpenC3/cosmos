@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -79,6 +79,7 @@
                   :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
                   :choose-item="chooseItem"
+                  :allow-all-array-index="arrayComponent"
                   @add-item="addValue"
                 />
               </v-col>
@@ -165,8 +166,12 @@ export default {
   },
   props: {
     modelValue: Boolean,
-    components: Object,
+    components: {
+      type: Array,
+      default: null,
+    },
   },
+  emits: ['add', 'cancel', 'update:modelValue'],
   data() {
     return {
       selectedComponent: this.components[0],
@@ -205,6 +210,9 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+    arrayComponent: function () {
+      return this.selectedComponent.array
     },
   },
   watch: {

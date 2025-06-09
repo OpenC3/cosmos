@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -28,31 +28,31 @@
     <v-row :no-gutters="!vertical">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
+          v-model="selectedTargetName"
           label="Select Target"
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="targetNameChanged"
           :items="targetNames"
           item-title="label"
           item-value="value"
-          v-model="selectedTargetName"
+          @update:model-value="targetNameChanged"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
         <v-autocomplete
+          v-model="selectedPacketName"
           label="Select Packet"
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-title="label"
           item-value="value"
-          v-model="selectedPacketName"
+          @update:model-value="packetNameChanged"
         >
-          <template v-if="includeLatestPacketInDropdown" v-slot:prepend-item>
+          <template v-if="includeLatestPacketInDropdown" #prepend-item>
             <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
             <v-divider />
           </template>
@@ -65,37 +65,37 @@
         data-test="select-item"
       >
         <v-autocomplete
+          v-model="selectedItemName"
           label="Select Item"
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-title="label"
           item-value="value"
-          v-model="selectedItemName"
+          @update:model-value="itemNameChanged($event)"
         />
       </v-col>
       <!-- min-width: 105px is enough to display a 2 digit index -->
       <v-col
-        v-if="chooseItem && itemIsArray()"
+        v-if="chooseItem && itemIsArray"
         cols="1"
         class="tpic-select pr-4"
         data-test="array-index"
         style="min-width: 105px"
       >
         <v-combobox
+          v-model="selectedArrayIndex"
           label="Index"
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
-          :items="arrayIndexes()"
+          :items="arrayIndexes"
           item-title="label"
           item-value="value"
-          v-model="selectedArrayIndex"
+          @update:model-value="indexChanged($event)"
         />
       </v-col>
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
@@ -109,36 +109,36 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row no-gutters v-if="selectTypes" class="pt-6">
+    <v-row v-if="selectTypes" class="pt-6" no-gutters>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
+          v-model="selectedValueType"
           label="Value Type"
           hide-details
           density="compact"
           variant="outlined"
           :items="valueTypes"
-          v-model="selectedValueType"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced">
         <v-autocomplete
+          v-model="selectedReduced"
           label="Reduced"
           hide-details
           density="compact"
           variant="outlined"
           :items="reductionModes"
-          v-model="selectedReduced"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced-type">
         <v-autocomplete
+          v-model="selectedReducedType"
           label="Reduced Type"
           hide-details
           density="compact"
           variant="outlined"
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
-          v-model="selectedReducedType"
         />
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
@@ -162,6 +162,10 @@ export default {
       default: false,
     },
     allowAllTargets: {
+      type: Boolean,
+      default: false,
+    },
+    allowAllArrayIndex: {
       type: Boolean,
       default: false,
     },
@@ -218,6 +222,7 @@ export default {
       default: false,
     },
   },
+  emits: ['on-set', 'addItem'],
   data() {
     return {
       targetNames: [],
@@ -256,6 +261,106 @@ export default {
         description: 'UNKNOWN',
       },
     }
+  },
+  computed: {
+    actualButtonText: function () {
+      if (this.selectedPacketName === 'ALL') {
+        return 'Add Target'
+      }
+      if (this.selectedItemName === 'ALL') {
+        return 'Add Packet'
+      }
+      return this.buttonText
+    },
+    autocompleteDisabled: function () {
+      return this.disabled || this.internalDisabled
+    },
+    buttonDisabled: function () {
+      return (
+        this.disabled ||
+        this.internalDisabled ||
+        this.selectedTargetName === null ||
+        this.selectedPacketName === null ||
+        this.selectedItemNameWIndex === null
+      )
+    },
+    colSize: function () {
+      return this.vertical ? 12 : false
+    },
+    selectedItemNameWIndex: function () {
+      if (
+        this.itemIsArray &&
+        this.selectedArrayIndex !== null &&
+        this.selectedArrayIndex !== this.ALL.label
+      ) {
+        return `${this.selectedItemName}[${this.selectedArrayIndex}]`
+      } else {
+        return this.selectedItemName
+      }
+    },
+    includeLatestPacketInDropdown: function () {
+      return this.showLatest && this.mode === 'tlm' // because LATEST cmd doesn't have much use and thus isn't currently implemented
+    },
+    arrayIndexes: function () {
+      let i = this.itemNames.findIndex(
+        (item) => item.value === this.selectedItemName,
+      )
+      let indexes = [...Array(this.itemNames[i].array).keys()]
+      if (this.allowAll || this.allowAllArrayIndex) {
+        indexes.unshift(this.ALL.label)
+      }
+      return indexes
+    },
+    itemIsArray: function () {
+      let i = this.itemNames.findIndex(
+        (item) => item.value === this.selectedItemName,
+      )
+      if (i === -1 || isNaN(this.itemNames[i].array)) {
+        return false
+      } else {
+        return true
+      }
+    },
+  },
+  watch: {
+    initialTargetName: function (val) {
+      // These three "initial" watchers are here in case the parent component doesn't figure out its initial values
+      // until after this component has already been created. All this logic incl. the "on-set" events could be
+      // simplified with a refactor to use named v-models, but that's probably a significant breaking change.
+      if (val) {
+        this.selectedTargetName = val.toUpperCase()
+      }
+    },
+    initialPacketName: function (val) {
+      if (val) {
+        this.selectedPacketName = val.toUpperCase()
+      }
+    },
+    initialItemName: function (val) {
+      if (val) {
+        this.selectedItemName = val.toUpperCase()
+      }
+    },
+    mode: function (newVal, oldVal) {
+      this.selectedPacketName = null
+      this.selectedItemName = null
+      // This also updates packets and items as needed
+      this.targetNameChanged(this.selectedTargetName)
+    },
+    chooseItem: function (newVal, oldVal) {
+      if (newVal) {
+        this.updateItems()
+      } else {
+        this.itemNames = []
+      }
+    },
+    itemIsArray: function (val) {
+      if (val) {
+        this.selectedArrayIndex ||= 0
+      } else {
+        this.selectedArrayIndex = null
+      }
+    },
   },
   created() {
     this.internalDisabled = true
@@ -296,79 +401,6 @@ export default {
         this.targetNames.push(this.UNKNOWN)
       }
     })
-  },
-  computed: {
-    actualButtonText: function () {
-      if (this.selectedPacketName === 'ALL') {
-        return 'Add Target'
-      }
-      if (this.selectedItemName === 'ALL') {
-        return 'Add Packet'
-      }
-      return this.buttonText
-    },
-    autocompleteDisabled: function () {
-      return this.disabled || this.internalDisabled
-    },
-    buttonDisabled: function () {
-      return (
-        this.disabled ||
-        this.internalDisabled ||
-        this.selectedTargetName === null ||
-        this.selectedPacketName === null ||
-        this.selectedItemNameWIndex === null
-      )
-    },
-    colSize: function () {
-      return this.vertical ? 12 : false
-    },
-    selectedItemNameWIndex: function () {
-      if (
-        this.itemIsArray() &&
-        this.selectedArrayIndex !== null &&
-        this.selectedArrayIndex !== this.ALL.label
-      ) {
-        return `${this.selectedItemName}[${this.selectedArrayIndex}]`
-      } else {
-        return this.selectedItemName
-      }
-    },
-    includeLatestPacketInDropdown: function () {
-      return this.showLatest && this.mode === 'tlm' // because LATEST cmd doesn't have much use and thus isn't currently implemented
-    },
-  },
-  watch: {
-    initialTargetName: function (val) {
-      // These three "initial" watchers are here in case the parent component doesn't figure out its initial values
-      // until after this component has already been created. All this logic incl. the "on-set" events could be
-      // simplified with a refactor to use named v-models, but that's probably a significant breaking change.
-      if (val) {
-        this.selectedTargetName = val.toUpperCase()
-      }
-    },
-    initialPacketName: function (val) {
-      if (val) {
-        this.selectedPacketName = val.toUpperCase()
-      }
-    },
-    initialItemName: function (val) {
-      if (val) {
-        this.selectedItemName = val.toUpperCase()
-      }
-    },
-    mode: function (newVal, oldVal) {
-      this.selectedPacketName = null
-      this.selectedItemName = null
-      // This also updates packets and items as needed
-      this.targetNameChanged(this.selectedTargetName)
-    },
-    chooseItem: function (newVal, oldVal) {
-      if (newVal) {
-        this.updateItems()
-      } else {
-        this.itemNames = []
-      }
-    },
   },
   methods: {
     updatePackets: function () {
@@ -463,7 +495,6 @@ export default {
         this.selectedItemName = this.itemNames[0].value
       }
       this.description = this.itemNames[0].description
-      this.itemIsArray()
       this.$emit('on-set', {
         targetName: this.selectedTargetName,
         packetName: this.selectedPacketName,
@@ -473,34 +504,6 @@ export default {
         reducedType: this.selectedReducedType,
       })
       this.internalDisabled = false
-    },
-    itemIsArray: function () {
-      let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
-      )
-      if (i === -1) {
-        this.selectedArrayIndex = null
-        return false
-      }
-      if (isNaN(this.itemNames[i].array)) {
-        this.selectedArrayIndex = null
-        return false
-      } else {
-        if (this.selectedArrayIndex === null) {
-          this.selectedArrayIndex = 0
-        }
-        return true
-      }
-    },
-    arrayIndexes: function () {
-      let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
-      )
-      let indexes = [...Array(this.itemNames[i].array).keys()]
-      if (this.allowAll) {
-        indexes.unshift(this.ALL.label)
-      }
-      return indexes
     },
 
     targetNameChanged: function (value) {
@@ -567,7 +570,6 @@ export default {
         return value === item.value
       })
       if (item) {
-        this.itemIsArray()
         this.selectedItemName = item.value
         this.description = item.description
         this.$emit('on-set', {

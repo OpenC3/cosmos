@@ -134,6 +134,22 @@ module OpenC3
       end
       expect((ruby_keywords - py_keywords).length).to eq(0), "Ruby conversions not in Python: #{(ruby_keywords - py_keywords).join(', ')}"
 
+      # All the processors are referenced as keywords in parameters and items
+      ruby_keywords = []
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../lib/openc3/processors/*_processor.rb"))
+      Dir[path].each do |filename|
+        ruby_keywords << File.basename(filename).split('.')[0].upcase
+      end
+      @src_keywords += ruby_keywords
+
+      # Make sure the Ruby and Python processors are the same
+      py_keywords = []
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../python/openc3/processors/*_processor.py"))
+      Dir[path].each do |filename|
+        py_keywords << File.basename(filename).split('.')[0].upcase
+      end
+      expect((ruby_keywords - py_keywords).length).to eq(0), "Ruby processors not in Python: #{(ruby_keywords - py_keywords).join(', ')}"
+
       # Remove things we don't document
       @src_keywords.uniq!
       @src_keywords -= (DEPRECATED + EXCEPTIONS)

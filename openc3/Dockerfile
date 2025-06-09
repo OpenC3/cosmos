@@ -23,11 +23,10 @@ RUN mkdir -p lib/openc3/ext \
   && ln -s $openc3_gem/openc3 $openc3_gem/cosmos \
   && mkdir -p gems \
   && mv *.gem gems/. \
-  # These need to be uninstalled with the --platform flag to avoid errors on linux-musl
+  # grpc needs to be uninstalled with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
-  # Should be fixed April 2025
+  # Should be fixed June 2025, look for grpc > 1.72.0 with a x86-linux-musl platform
   && gem uninstall grpc --platform aarch64-linux --all --force \
-  && gem uninstall google-protobuf --platform aarch64-linux --all --force \
   && gem cleanup \
   && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 

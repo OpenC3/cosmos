@@ -83,10 +83,10 @@ RUN apk update \
   zeromq-dev \
   && gem update --system \
   && gem install rake \
-  # These need to be installed with the --platform flag to avoid errors on linux-musl
+  && gem install google-protobuf \
+  # This needs to be installed with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
-  # Should be fixed April 2025
-  && gem install google-protobuf --platform ruby \
+  # Should be fixed June 2025, look for grpc > 1.72.0 with a x86-linux-musl platform
   && gem install grpc --platform ruby \
   && strip /usr/lib/ruby/gems/3.3.0/gems/grpc-*/src/ruby/ext/grpc/libs/opt/*.a \
   && rm -rf /usr/lib/ruby/gems/3.3.0/gems/grpc-*/src/ruby/ext/grpc/objs \

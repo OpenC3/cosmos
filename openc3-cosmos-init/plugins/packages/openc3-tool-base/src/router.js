@@ -31,6 +31,11 @@ const DEFAULT_TOOL_URL = '/tools/cmdtlmserver' // where to redirect to if we can
 
 const getFirstTool = async () => {
   // Tools are global and are always installed into the DEFAULT scope
+
+  // Skip API call if not authenticated to avoid redirect loop
+  if (!localStorage.openc3Token) {
+    return { url: DEFAULT_TOOL_URL }
+  }
   const { data } = await Api.get('/openc3-api/tools/all', {
     params: { scope: 'DEFAULT' },
   })
