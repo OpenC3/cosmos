@@ -1,17 +1,17 @@
 ---
-- name: Target name
+- name: Target Name
   required: true
   description: The target name
   values: .+
-- name: Packet name
+- name: Packet Name
   required: true
   description: The packet name
   values: .+
-- name: Item name
+- name: Item Name
   required: true
   description: The item name
   values: .+
-- name: Value type
+- name: Value Type
   required: false
   description: The type of the value to display. Default is CONVERTED.
   values: <%= %w(RAW CONVERTED) %>

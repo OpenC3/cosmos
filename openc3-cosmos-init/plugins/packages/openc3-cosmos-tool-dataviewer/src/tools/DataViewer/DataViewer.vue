@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -133,11 +133,7 @@
         :key="`v-tabs-window_${config.tabs.length}`"
         :model-value="curTab"
       >
-        <v-tabs-window-item
-          v-for="(tab, index) in config.tabs"
-          :key="tab.ref"
-          eager
-        >
+        <v-tabs-window-item v-for="tab in config.tabs" :key="tab.ref" eager>
           <keep-alive>
             <v-card flat>
               <v-divider />
@@ -249,6 +245,7 @@ import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 import DynamicComponent from '@/tools/DataViewer/DynamicComponent'
 // Import the built-in DataViewer components
 import DumpComponent from '@/tools/DataViewer/DumpComponent'
+import EventMessageComponent from '@/tools/DataViewer/EventMessageComponent'
 import ValueComponent from '@/tools/DataViewer/ValueComponent'
 
 export default {
@@ -258,6 +255,7 @@ export default {
     SaveConfigDialog,
     DynamicComponent,
     DumpComponent,
+    EventMessageComponent,
     ValueComponent,
     TopBar,
   },
@@ -279,6 +277,12 @@ export default {
           label: 'COSMOS Item Value',
           value: 'ValueComponent',
           items: true,
+        },
+        {
+          label: 'COSMOS Event Message',
+          value: 'EventMessageComponent',
+          items: true,
+          array: true,
         },
       ],
       counter: 0,

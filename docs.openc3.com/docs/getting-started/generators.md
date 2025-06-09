@@ -13,7 +13,7 @@ If you followed the [Installation Guide](installation.md) you should already be 
 ```bash
 % openc3.sh cli generate
 Unknown generator ''. Valid generators: plugin, target, microservice, widget, conversion,
-limits_response, tool, tool_vue, tool_angular, tool_react, tool_svelte
+  processor, limits_response, tool, tool_vue, tool_angular, tool_react, tool_svelte
 ```
 
 :::note Training Available
@@ -54,26 +54,26 @@ The target generator creates the scaffolding for a new COSMOS Target. It must op
 openc3-cosmos-gse % openc3.sh cli generate target
 Usage: cli generate target <NAME> (--ruby or --python)
 
-openc3-cosmos-gse % openc3.sh cli generate target GSE
+openc3-cosmos-gse % openc3.sh cli generate target GSE --python
 Target GSE successfully generated!
 ```
 
 This creates the following files and directories:
 
-| Name                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| targets/GSE                            | Contains the configuration for the GSE target. The target name is always defined in all caps. This is typically the default name of the target, but well-designed targets will allow themselves to be renamed at installation.                                                                                                                                                                                                 |
-| targets/GSE/cmd_tlm                    | Contains the command and telemetry definition files for the GSE target. These files capture the format of the commands that can be sent to the target, and the telemetry packets that are expected to be received by COSMOS from the target. Note that the files in this folder are processed in alphabetical order by default. That can matter if you reference a packet in another file (it must already have been defined). |
-| targets/GSE/cmd_tlm/cmd.txt            | Example [command](../configuration/command) configuration. Will need to be edited for the target specific commands.                                                                                                                                                                                                                                                                                                            |
-| targets/GSE/cmd_tlm/tlm.txt            | Example [telemetry](../configuration/telemetry) configuration. Will need to be edited for the target specific telemetry.                                                                                                                                                                                                                                                                                                       |
-| targets/GSE/lib                        | Contains any custom code required by the target. Good examples of custom code are library files, custom [interface](../configuration/interfaces) classes and [protocols](../configuration/protocols).                                                                                                                                                                                                                          |
-| targets/GSE/lib/gse.rb/py              | Example library file which can be expanded as the target is developed. COSMOS recommends building up library methods to avoid code duplication and ease reuse.                                                                                                                                                                                                                                                                 |
-| targets/GSE/procedures                 | This folder contains target specific procedures and helper methods which exercise functionality of the target. These procedures should be kept simple and only use the command and telemetry definitions associated with this target. See the [Scripting Guide](../guides/script-writing#script-organization) for more information.                                                                                            |
-| targets/GSE/procedures/procedure.rb/py | Procedure with an example of sending a command and checking telemetry                                                                                                                                                                                                                                                                                                                                                          |
-| targets/GSE/public                     | Put image files here for use in Telemetry Viewer Canvas Image widgets such as [CANVASIMAGE](../configuration/telemetry-screens.md#canvasimage) and [CANVASIMAGEVALUE](../configuration/telemetry-screens.md#canvasimagevalue)                                                                                                                                                                                                  |
-| targets/GSE/screens                    | Contains telemetry [screens](../configuration/telemetry-screens.md) for the target                                                                                                                                                                                                                                                                                                                                             |
-| targets/GSE/screens/status.txt         | Example [screen](../configuration/telemetry-screens.md) to display telemetry values                                                                                                                                                                                                                                                                                                                                            |
-| targets/GSE/target.txt                 | [Target](../configuration/target) configuration such as ignoring command and telemetry items and how to process the cmd/tlm files                                                                                                                                                                                                                                                                                              |
+| Name                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| targets/GSE                                | Contains the configuration for the GSE target. The target name is always defined in all caps. This is typically the default name of the target, but well-designed targets will allow themselves to be renamed at installation.                                                                                                                                                                                                 |
+| targets/GSE/cmd_tlm                        | Contains the command and telemetry definition files for the GSE target. These files capture the format of the commands that can be sent to the target, and the telemetry packets that are expected to be received by COSMOS from the target. Note that the files in this folder are processed in alphabetical order by default. That can matter if you reference a packet in another file (it must already have been defined). |
+| targets/GSE/cmd_tlm/cmd.txt                | Example [command](../configuration/command) configuration. Will need to be edited for the target specific commands.                                                                                                                                                                                                                                                                                                            |
+| targets/GSE/cmd_tlm/tlm.txt                | Example [telemetry](../configuration/telemetry) configuration. Will need to be edited for the target specific telemetry.                                                                                                                                                                                                                                                                                                       |
+| targets/GSE/lib                            | Contains any custom code required by the target. Good examples of custom code are library files, custom [interface](../configuration/interfaces) classes and [protocols](../configuration/protocols).                                                                                                                                                                                                                          |
+| targets/GSE/lib/gse.\[rb/py\]              | Example library file which can be expanded as the target is developed. COSMOS recommends building up library methods to avoid code duplication and ease reuse.                                                                                                                                                                                                                                                                 |
+| targets/GSE/procedures                     | This folder contains target specific procedures and helper methods which exercise functionality of the target. These procedures should be kept simple and only use the command and telemetry definitions associated with this target. See the [Scripting Guide](../guides/script-writing#script-organization) for more information.                                                                                            |
+| targets/GSE/procedures/procedure.\[rb/py\] | Procedure with an example of sending a command and checking telemetry                                                                                                                                                                                                                                                                                                                                                          |
+| targets/GSE/public                         | Put image files here for use in Telemetry Viewer Canvas Image widgets such as [CANVASIMAGE](../configuration/telemetry-screens.md#canvasimage) and [CANVASIMAGEVALUE](../configuration/telemetry-screens.md#canvasimagevalue)                                                                                                                                                                                                  |
+| targets/GSE/screens                        | Contains telemetry [screens](../configuration/telemetry-screens.md) for the target                                                                                                                                                                                                                                                                                                                                             |
+| targets/GSE/screens/status.txt             | Example [screen](../configuration/telemetry-screens.md) to display telemetry values                                                                                                                                                                                                                                                                                                                                            |
+| targets/GSE/target.txt                     | [Target](../configuration/target) configuration such as ignoring command and telemetry items and how to process the cmd/tlm files                                                                                                                                                                                                                                                                                              |
 
 It also updates the plugin.txt file to add the new target:
 
@@ -81,7 +81,8 @@ It also updates the plugin.txt file to add the new target:
 VARIABLE gse_target_name GSE
 
 TARGET GSE <%= gse_target_name %>
-INTERFACE <%= gse_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+INTERFACE <%= gse_target_name %>_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
+# INTERFACE <%= gse_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET <%= gse_target_name %>
 ```
 
@@ -93,96 +94,75 @@ The microservice generator creates the scaffolding for a new COSMOS Microservice
 openc3-cosmos-gse % openc3.sh cli generate microservice
 Usage: cli generate microservice <NAME> (--ruby or --python)
 
-openc3-cosmos-gse % openc3.sh cli generate microservice background
+openc3-cosmos-gse % openc3.sh cli generate microservice background --python
 Microservice BACKGROUND successfully generated!
 ```
 
 This creates the following files and directories:
 
-| Name                                   | Description                                                                                                                                                                                                                                                                                                                             |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| microservices/BACKGROUND               | Contains the code and any necessary configuration for the BACKGROUND microservice. The name is always defined in all caps. This is typically the default name of the microservice, but well-designed microservices will allow themselves to be renamed at installation.                                                                 |
-| microservices/BACKGROUND/background.rb | Fully functional microservice which will run every minute and log a message. Edit to implement any custom logic that you want to run in the background. Potential uses are safety microservices which can check and autonomously respond to complex events and take action (NOTE: Simple actions might just require a Limits Response). |
+| Name                                   | Description                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| microservices/BACKGROUND               | Contains the code and any necessary configuration for the BACKGROUND microservice. The name is always defined in all caps. This is typically the default name of the microservice, but well-designed microservices will allow themselves to be renamed at installation.                                                                                                        |
+| microservices/BACKGROUND/background.py | Fully functional microservice which will run every minute and log a message. Edit to implement any custom logic that you want to run in the background. Potential uses are safety microservices which can check and autonomously respond to complex events and take action (NOTE: Simple actions might just require a [Limits Response](/docs/configuration/limits-response)). |
 
 It also updates the plugin.txt file to add the new microservice:
 
 ```ruby
 MICROSERVICE BACKGROUND background-microservice
-  CMD ruby background.rb
+  CMD python background.py
 ```
 
 ## Conversion Generator
 
-The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#read_conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
+The conversion generator creates the scaffolding for a new COSMOS [Conversion](/docs/configuration/conversions). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
 Usage: cli generate conversion <TARGET> <NAME> (--ruby or --python)
 
-openc3-cosmos-gse % openc3.sh cli generate limits_response GSE double
-Conversion targets/GSE/lib/double_conversion.rb successfully generated!
+openc3-cosmos-gse % openc3.sh cli generate conversion GSE double --python
+Conversion targets/GSE/lib/double_conversion.py successfully generated!
 To use the conversion add the following to a telemetry item:
-  READ_CONVERSION double_conversion.rb
+  READ_CONVERSION double_conversion.py
 ```
 
-This creates the following files and directories:
+For more information about creating custom conversions and how to apply them, see the [Conversion](/docs/configuration/conversions) documentation.
 
-| Name                                 | Description                                                                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| targets/GSE/lib/double_conversion.rb | Fully functional Conversion which has an example implementation of the call() method to convert any existing COSMOS values. |
+## Processor Generator
 
-As the generator states, to use this conversion code you must add it to a telemetry item. For example:
+The processor generator creates the scaffolding for a new COSMOS [Processor](/docs/configuration/processors). It must operate inside an existing COSMOS plugin and requires both a target name and processor name. For example:
 
-```ruby
-TELEMETRY GSE STATUS BIG_ENDIAN "Telemetry description"
-  # Keyword      Name  BitSize Type   ID Description
-  APPEND_ID_ITEM ID    16      INT    1  "Identifier"
-  APPEND_ITEM    VALUE 32      FLOAT     "Value"
-    READ_CONVERSION double_conversion.rb
-  APPEND_ITEM    BOOL  8       UINT      "Boolean"
-    STATE FALSE 0
-    STATE TRUE 1
-  APPEND_ITEM    LABEL 0       STRING    "The label to apply"
+```bash
+openc3-cosmos-gse % openc3.sh cli generate processor
+Usage: cli generate processor <TARGET> <NAME> (--ruby or --python)
+
+openc3-cosmos-gse % openc3.sh cli generate processor GSE slope --python
+Processor targets/GSE/lib/slope_processor.py successfully generated!
+To use the processor add the following to a telemetry packet:
+  PROCESSOR SLOPE slope_processor.py <PARAMS...>
 ```
+
+For more information about creating custom processors and how to apply them, see the [Processor](/docs/configuration/processors) documentation.
 
 ## Limits Response Generator
 
-The limits_response generator creates the scaffolding for a new COSMOS [Limits Response](../configuration/telemetry#limits_response). It must operate inside an existing COSMOS plugin and requires both a target name and limits response name. For example:
+The limits_response generator creates the scaffolding for a new COSMOS [Limits Response](/docs/configuration/limits-response). It must operate inside an existing COSMOS plugin and requires both a target name and limits response name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate limits_response
 Usage: cli generate limits_response <TARGET> <NAME> (--ruby or --python)
 
-openc3-cosmos-gse % openc3.sh cli generate limits_response GSE safe
-Limits response targets/GSE/lib/safe_limits_response.rb successfully generated!
+openc3-cosmos-gse % openc3.sh cli generate limits_response GSE safe --python
+Limits response targets/GSE/lib/safe_limits_response.py successfully generated!
 To use the limits response add the following to a telemetry item:
-  LIMITS_RESPONSE safe_limits_response.rb
+  LIMITS_RESPONSE safe_limits_response.py
 ```
 
-This creates the following files and directories:
-
-| Name                                    | Description                                                                                                                                                          |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| targets/GSE/lib/safe_limits_response.rb | Fully functional Limits Response which has an example implementation of the call() method and taking action based on the current limits state of the particular item |
-
-As the generator states, to use this limits code you must add it to a telemetry item which has limits defined. In the generated GSE target, none of the items have limits defined so you first need to add limits and then add the response.
-
-```ruby
-TELEMETRY GSE STATUS BIG_ENDIAN "Telemetry description"
-  # Keyword      Name  BitSize Type   ID Description
-  APPEND_ID_ITEM ID    16      INT    1  "Identifier"
-  APPEND_ITEM    VALUE 32      FLOAT     "Value"
-    LIMITS DEFAULT 1 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
-    LIMITS_RESPONSE safe_limits_response.rb
-  APPEND_ITEM    BOOL  8       UINT      "Boolean"
-    STATE FALSE 0
-    STATE TRUE 1
-  APPEND_ITEM    LABEL 0       STRING    "The label to apply"
-```
+For more information about creating limits responses and how to apply them, see the [Limits Response](/docs/configuration/limits-response) documentation.
 
 ## Widget Generator
 
-The conversion generator creates the scaffolding for a new COSMOS Widget for use in [Telemetry Viewer Screens](../configuration/telemetry-screens). For more information see the [Custom Widget](../guides/custom-widgets) guide. It must operate inside an existing COSMOS plugin and requires a widget name. For example:
+The widget generator creates the scaffolding for a new COSMOS Widget for use in [Telemetry Viewer Screens](/docs/configuration/telemetry-screens). For more information see the [Custom Widget](/docs/guides/custom-widgets) guide. It must operate inside an existing COSMOS plugin and requires a widget name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate widget
@@ -213,7 +193,7 @@ The tool generator creates the scaffolding for a new COSMOS Tool. It's It must o
 openc3-cosmos-gse % openc3.sh cli generate tool
 Usage: cli generate tool 'Tool Name'
 
-openc3-cosmos-gse % openc3.sh cli generate widget DataVis
+openc3-cosmos-gse % openc3.sh cli generate tool DataVis
 Tool datavis successfully generated!
 Please be sure datavis does not conflict with any other tools
 ```

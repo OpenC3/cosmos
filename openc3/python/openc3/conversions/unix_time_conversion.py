@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,20 +27,22 @@ class UnixTimeConversion(Conversion):
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def __init__(self, seconds_item_name, microseconds_item_name=None):
+    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type='RAW', microseconds_type='RAW'):
         super().__init__()
         self.seconds_item_name = seconds_item_name
         self.microseconds_item_name = microseconds_item_name
-        self.converted_type = "RUBY_TIME"
+        self.seconds_type = seconds_type
+        self.microseconds_type = microseconds_type
+        self.converted_type = "TIME"
         self.converted_bit_size = 0
         self.params = [seconds_item_name, microseconds_item_name]
 
     # @param (see Conversion#call)
     # @return [Float] Packet time in seconds since UNIX epoch
     def call(self, value, packet, buffer):
-        time = packet.read(self.seconds_item_name, "RAW", buffer)
+        time = packet.read(self.seconds_item_name, self.seconds_type, buffer)
         if self.microseconds_item_name:
-            time += packet.read(self.microseconds_item_name, "RAW", buffer) / 1000000.0
+            time += packet.read(self.microseconds_item_name, self.microseconds_type, buffer) / 1000000.0
         return datetime.fromtimestamp(time, tz=timezone.utc)
 
     # @return [String] The name of the class followed by the time conversion

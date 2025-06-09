@@ -249,19 +249,12 @@ class Time
     Time.total_seconds(self.hour, self.min, self.sec, self.usec)
   end
 
-  # @return [String] Date formatted as YYYY/MM/DD HH:MM:SS.US UTC_OFFSET
-  def formatted(include_year = true, fractional_digits = 3, include_utc_offset = false)
+  # @return [String] Date formatted as YYYY/MM/DD HH:MM:SS.US
+  def formatted(include_year = true, fractional_digits = 3)
     str =  ""
     str << "%Y/%m/%d " if include_year
     str << "%H:%M:%S"
     str << ".%#{fractional_digits}N" if fractional_digits > 0
-    if include_utc_offset
-      if self.utc?
-        str << " UTC"
-      else
-        str << " %z"
-      end
-    end
     self.strftime(str)
   end
 

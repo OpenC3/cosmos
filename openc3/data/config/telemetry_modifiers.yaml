@@ -135,6 +135,7 @@ META:
       values: .*
 PROCESSOR:
   summary: Defines a processor class that executes code every time a packet is received
+  description: See the [Processor](/docs/configuration/processors) documentation for more information.
   ruby_example: PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
   python_example: PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
   parameters:

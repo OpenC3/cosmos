@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,7 +18,7 @@
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice widget conversion limits_response tool tool_vue tool_angular tool_react tool_svelte)
+    GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Called by openc3cli with ARGV[1..-1]
@@ -32,8 +32,8 @@ module OpenC3
 
     def self.check_args(args)
       args.each do |arg|
-        if arg =~ /\s/
-          abort("#{args[0].to_s.downcase} arguments can not have spaces!") unless args[0].to_s.downcase[0..3] == 'tool'
+        if arg =~ /\s/ and args[0].to_s.downcase[0..3] != 'tool'
+          abort("#{args[0].to_s.downcase} arguments can not have spaces!")
         end
       end
       # All generators except 'plugin' must be within an existing plugin
@@ -58,12 +58,12 @@ module OpenC3
     def self.process_template(template_dir, the_binding)
       Dir.glob("#{template_dir}/**/*", File::FNM_DOTMATCH).each do |file|
         next if File.basename(file) == '.'
-        if @@language == 'rb'
+        if @@language == 'rb' and File.extname(file) == '.py'
           # Ignore python files if we're ruby
-          next if File.extname(file) == '.py'
-        elsif @@language == 'py'
+          next
+        elsif @@language == 'py' and File.extname(file) == '.rb'
           # Ignore ruby files if we're python
-          next if File.extname(file) == '.rb'
+          next
         end
         base_name = file.sub("#{template_dir}/", '')
         next if yield base_name
@@ -113,8 +113,8 @@ module OpenC3
         abort("Target #{target_path} already exists!")
       end
       target_lib_filename = "#{target_name.downcase}.#{@@language}"
-      target_class = target_lib_filename.filename_to_class_name
-      target_object = target_name.downcase
+      target_class = target_lib_filename.filename_to_class_name # NOSONAR
+      target_object = target_name.downcase # NOSONAR
 
       process_template("#{TEMPLATES_DIR}/target", binding) do |filename|
         # Rename the template TARGET to our actual target named after the plugin
@@ -175,7 +175,7 @@ module OpenC3
         abort("Microservice #{microservice_path} already exists!")
       end
       microservice_filename = "#{microservice_name.downcase}.#{@@language}"
-      microservice_class = microservice_filename.filename_to_class_name
+      microservice_class = microservice_filename.filename_to_class_name # NOSONAR
 
       process_template("#{TEMPLATES_DIR}/microservice", binding) do |filename|
         # Rename the template MICROSERVICE to our actual microservice name
@@ -310,9 +310,8 @@ module OpenC3
         abort("Target '#{target_name}' does not exist! Conversions must be created for existing targets.")
       end
       conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
-      conversion_path = "targets/#{target_name}/lib/"
       conversion_basename = "#{conversion_name.downcase}.#{@@language}"
-      conversion_class = conversion_basename.filename_to_class_name
+      conversion_class = conversion_basename.filename_to_class_name # NOSONAR
       conversion_filename = "targets/#{target_name}/lib/#{conversion_basename}"
       if File.exist?(conversion_filename)
         abort("Conversion #{conversion_filename} already exists!")
@@ -329,6 +328,35 @@ module OpenC3
       return conversion_name
     end
 
+    def self.generate_processor(args)
+      if args.length < 3 or args.length > 4
+        abort("Usage: cli generate processor <TARGET> <NAME> (--ruby or --python)")
+      end
+
+      # Create the local variables
+      target_name = args[1].upcase
+      unless File.exist?("targets/#{target_name}")
+        abort("Target '#{target_name}' does not exist! Processors must be created for existing targets.")
+      end
+      processor_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_PROCESSOR"
+      processor_basename = "#{processor_name.downcase}.#{@@language}"
+      processor_class = processor_basename.filename_to_class_name # NOSONAR
+      processor_filename = "targets/#{target_name}/lib/#{processor_basename}"
+      if File.exist?(processor_filename)
+        abort("Processor #{processor_filename} already exists!")
+      end
+
+      process_template("#{TEMPLATES_DIR}/processor", binding) do |filename|
+        filename.sub!("processor.#{@@language}", processor_filename)
+        false
+      end
+
+      puts "Processor #{processor_filename} successfully generated!"
+      puts "To use the processor add the following to a telemetry packet:"
+      puts "  PROCESSOR #{args[2].upcase} #{processor_basename} <PARAMS...>"
+      return processor_name
+    end
+
     def self.generate_limits_response(args)
       if args.length < 3 or args.length > 4
         abort("Usage: cli generate limits_response <TARGET> <NAME> (--ruby or --python)")
@@ -340,10 +368,9 @@ module OpenC3
         abort("Target '#{target_name}' does not exist! Limits responses must be created for existing targets.")
       end
       response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
-      response_path = "targets/#{target_name}/lib/"
       response_basename = "#{response_name.downcase}.#{@@language}"
-      response_class = response_basename.filename_to_class_name
       response_filename = "targets/#{target_name}/lib/#{response_basename}"
+      response_class = response_basename.filename_to_class_name # NOSONAR
       if File.exist?(response_filename)
         abort("response #{response_filename} already exists!")
       end

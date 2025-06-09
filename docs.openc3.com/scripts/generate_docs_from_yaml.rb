@@ -208,27 +208,21 @@ class CosmosMetaTag
   end
 end
 
-if ARGV[0] == 'PLUGIN'
-  docs = [
-    ['../docs/configuration/_target.md', '/openc3/data/config/target_config.yaml'],
-    ['../docs/configuration/_table.md', '/openc3/data/config/table_manager.yaml'],
-    ['../docs/configuration/_telemetry-screens.md', '/openc3/data/config/screen.yaml'],
-    ['../docs/configuration/_command.md', '/openc3/data/config/command.yaml'],
-    ['../docs/configuration/_plugins.md', '/openc3/data/config/plugins.yaml'],
-    ['../docs/configuration/_telemetry.md', '/openc3/data/config/telemetry.yaml'],
-  ]
-else
-  docs = [
-    ['../docs/configuration/_target.md', '../../openc3/data/config/target_config.yaml'],
-    ['../docs/configuration/_table.md', '../../openc3/data/config/table_manager.yaml'],
-    ['../docs/configuration/_telemetry-screens.md', '../../openc3/data/config/screen.yaml'],
-    ['../docs/configuration/_command.md', '../../openc3/data/config/command.yaml'],
-    ['../docs/configuration/_plugins.md', '../../openc3/data/config/plugins.yaml'],
-    ['../docs/configuration/_telemetry.md', '../../openc3/data/config/telemetry.yaml'],
-  ]
-end
+docs = [
+  ['../docs/configuration/_target.md', '/openc3/data/config/target_config.yaml'],
+  ['../docs/configuration/_table.md', '/openc3/data/config/table_manager.yaml'],
+  ['../docs/configuration/_telemetry-screens.md', '/openc3/data/config/screen.yaml'],
+  ['../docs/configuration/_command.md', '/openc3/data/config/command.yaml'],
+  ['../docs/configuration/_plugins.md', '/openc3/data/config/plugins.yaml'],
+  ['../docs/configuration/_telemetry.md', '/openc3/data/config/telemetry.yaml'],
+  ['../docs/configuration/_conversions.md', '/openc3/data/config/conversions.yaml'],
+  ['../docs/configuration/_processors.md', '/openc3/data/config/processors.yaml'],
+]
 
 docs.each do |partial, yaml_file|
+  if ARGV[0] != 'PLUGIN'
+    yaml_file = "../..#{yaml_file}"
+  end
   tag = CosmosMetaTag.new(yaml_file)
   content = tag.render
   partial_contents = File.open(partial, "r:UTF-8", &:read)

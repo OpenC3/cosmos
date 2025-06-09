@@ -86,14 +86,14 @@
         <!-- Make the error messages a max height and scrollable -->
         <v-row style="max-height: 120px; overflow-y: auto">
           <div v-for="(error, index) in editErrors" :key="index">
-            <span class="text-red" v-text="error"></span>
+            <span class="text-red" v-text="error" />
           </div>
         </v-row>
         <v-row class="mt-5">
-          <span
-            >Ctrl-space brings up autocomplete. Right click keywords for
-            documentation.</span
-          >
+          <span>
+            Ctrl-space brings up autocomplete. Right click keywords for
+            documentation.
+          </span>
           <v-spacer />
           <v-btn
             class="mx-2"
@@ -150,6 +150,7 @@ export default {
       default: () => [],
     },
   },
+  emits: ['cancel', 'delete', 'save', 'update:modelValue'],
   data() {
     return {
       file: null,
