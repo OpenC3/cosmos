@@ -54,7 +54,7 @@ case $1 in
 
     run-aws )
         sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
-        KEYCLOAK_URL=https://aws.openc3.com/auth REDIRECT_URL=https://aws.openc3.com/* yarn test:keycloak
+        KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* yarn test:keycloak
         yarn test:enterprise
         ;;
 esac
