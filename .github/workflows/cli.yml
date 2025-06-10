@@ -120,6 +120,8 @@ jobs:
           ./openc3.sh cli script spawn INST/procedures/checks.rb | grep -v "^\s*\d+\s*$"
           # run a script that will fail and look for the failure message
           ./openc3.sh cli script run --wait 20 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
+          # Check the running list for the first spawned script
+          ./openc3.sh cli script running | tee /dev/tty | grep -q "INST/procedures/checks.rb"
           # run a script that will complete successfully
           ./openc3.sh cli script run INST/procedures/stash.rb | tee /dev/tty | grep "script complete"
       # Removing due to write tmp/.docker_temp_3200699358: no space left on device
