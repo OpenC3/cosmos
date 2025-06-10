@@ -25,6 +25,8 @@ def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.
 
 Here is an example of using this method:
 
+Ruby:
+
 ```ruby
 # Create a new packet
 packet = Packet.new('INST', 'NEW_PACKET')
@@ -37,6 +39,8 @@ target_model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
 # Update the target model with the new packet
 target_model.dynamic_update([packet])
 ```
+
+Python:
 
 ```python
 # Create a new packet
