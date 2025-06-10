@@ -1,4 +1,6 @@
 coverage:
+  ignore:
+    - "openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff/**/*"
   status:
     # Disable patch reporting which we don't really use anyway
     # See https://docs.codecov.com/docs/commit-status#patch-status

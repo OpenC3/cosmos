@@ -19,7 +19,7 @@ export default defineConfig((options) => {
           chunkFileNames: '[name]-[hash:20].js',
           assetFileNames: 'assets/[name]-[hash][extname]',
         },
-        external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify', '@openc3/ace-diff'],
+        external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
         preserveEntrySignatures: 'strict',
       },
     },
