@@ -54,6 +54,7 @@ module OpenC3
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
     attr_accessor :needs_dependencies
+    attr_accessor :store_id
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -71,7 +72,7 @@ module OpenC3
 
     # Called by the PluginsController to parse the plugin variables
     # Doesn't actually create the plugin during the phase
-    def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, process_existing: false, scope:, validate_only: false)
+    def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, store_id: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
 
       temp_dir = Dir.mktmpdir
@@ -129,7 +130,8 @@ module OpenC3
           end
         end
 
-        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, scope: scope)
+        store_id = Integer(store_id) if store_id
+        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, scope: scope)
         result = model.as_json(:allow_nan => true)
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
@@ -298,6 +300,7 @@ module OpenC3
       variables: {},
       plugin_txt_lines: [],
       needs_dependencies: false,
+      store_id: nil,
       updated_at: nil,
       scope:
     )
@@ -305,6 +308,7 @@ module OpenC3
       @variables = variables
       @plugin_txt_lines = plugin_txt_lines
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
+      @store_id = store_id
     end
 
     def create(update: false, force: false, queued: false)
@@ -318,6 +322,7 @@ module OpenC3
         'variables' => @variables,
         'plugin_txt_lines' => @plugin_txt_lines,
         'needs_dependencies' => @needs_dependencies,
+        'store_id' => @store_id,
         'updated_at' => @updated_at
       }
     end
