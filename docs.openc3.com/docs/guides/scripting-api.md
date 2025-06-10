@@ -3402,7 +3402,7 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 
 ## Stashing Data
 
-These methods allow the user to store temporary data into COSMOS and retrieve it. The storage is implemented as a key / value storage (Ruby hash or Python dict). This can be used in scripts to store information that applies across multiple scripts or multiple runs of a single script.
+These methods allow the user to store data into COSMOS and retrieve it. The storage is implemented as a key / value storage (Ruby hash or Python dict). This can be used in scripts to store information that applies across multiple scripts or multiple runs of a single script. As a best practice, use stashes to store transient data, since duplicate keys will be overwritten by the most recent write.
 
 ### stash_set
 
