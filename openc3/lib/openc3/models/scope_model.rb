@@ -433,7 +433,8 @@ module OpenC3
           "yellowThreshold" => 80.0,
           "snoozeMinutes" => 720,  # 12 hours
           "lastTriggerTimeRed" => nil,  # timestamp or nil
-          "lastTriggerTimeYellow" => nil  # timestamp or nil
+          "lastTriggerTimeYellow" => nil,  # timestamp or nil
+          "sustainedSeconds" => 60
         },
         "global" => {
           "enableAlerts" => true
