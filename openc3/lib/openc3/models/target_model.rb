@@ -676,6 +676,8 @@ module OpenC3
       LimitsEventTopic.delete(@name, scope: @scope)
       Store.del("#{@scope}__openc3tlm__#{@name}")
       Store.del("#{@scope}__openc3cmd__#{@name}")
+      Store.del("#{@scope}__TELEMETRYCNTS__{#{@name}}")
+      Store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
       # Note: these match the names of the services in deploy_microservices
       %w(MULTI DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
@@ -795,6 +797,7 @@ module OpenC3
         if clear_old
           Store.del("#{@scope}__openc3tlm__#{target_name}")
           Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+          Store.del("#{@scope}__TELEMETRYCNTS__{#{target_name}}")
         end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
@@ -816,7 +819,10 @@ module OpenC3
 
     def update_store_commands(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
-        Store.del("#{@scope}__openc3cmd__#{target_name}") if clear_old
+        if clear_old
+          Store.del("#{@scope}__openc3cmd__#{target_name}")
+          Store.del("#{@scope}__COMMANDCNTS__{#{target_name}}")
+        end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
