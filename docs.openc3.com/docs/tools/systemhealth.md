@@ -49,15 +49,15 @@ The refresh interval sets a timer for how often the page is automatically refres
 
 ### System Health Configurations
 
-The System Health configurations allow admins to change the yellow/red thresholds, enable/disable notifications, snooze duration, and sustained overload period for CPU, Memory, and Disk Utilization.
+The System Health configurations allow admins to change the yellow/red thresholds, enable/disable notifications, snooze duration, and sustained overload period for CPU, Memory, and Disk Utilization. The default configurations can be adjusted from the File -> Configurations menu.
 
 - Yellow Threshold: The percent (%) utilization needed to exceed to trigger a "warning" notification, and sets gauge colors to yellow. 
 - Red Threshold: The percent (%) utilization needed to exceed to trigger an "error" notification, and set gauge colors to red.
-- Snooze Duration: Number of minutes to snooze notifications after a threshold is hit. Example: with 15 minute snooze, if CPU utilization hits 100% consistently for an hour, the notification would get triggered a total of 4 times (every 15 minutes).
-- Sustained Overload: Number of seconds that the threshold would have to be met by a single service in order for the notification to trigger. This prevents noisy notifications, as CPU / Memory spikes are normal behavior (while sustained overload is necessary to be monitored).
+- Snooze Duration: Number of minutes to snooze notifications after a threshold is hit. (Example: with a 15 minute snooze, if CPU utilization hits 100% consistently for an hour, the notification would get triggered a total of 4 times (every 15 minutes)).
+- Sustained Overload: Number of seconds that the threshold would have to be met by a single service in order for the notification to trigger. This prevents noisy notifications, as CPU / Memory spikes can be normal (while sustained overload is suggests an anomaly).
 - Enable Alert Notifications: Enable or disable the alert notifications on system health. System Health will continue to be monitored and tracked, but the notifications will not be triggered.
 
-![System Health Configurations]()
+![System Health Configurations](/img/systemhealth/system_health_configuration.png)
 
 
 ## Alerting Mechanism
@@ -68,4 +68,8 @@ If alert notifications are enabled through the System Health configurations, use
 
 If thresholds are met, users will see the log message indicating the system health issues, as well as be notified through the notification bell.
 
-![System Health Notifications]()
+Logs are displayed if System Health thresholds are met.
+![System Health Log Notifications](/img/systemhealth/alert_logs.png)
+
+The notification bell will also contain the notifications if System Health thresholds are met.
+![System Health Notification Bell](/img/systemhealth/alert_notifications.png)
