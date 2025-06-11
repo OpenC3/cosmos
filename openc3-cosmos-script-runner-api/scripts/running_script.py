@@ -37,7 +37,7 @@ def running_script_anycable_publish(channel_name, data):
 
 # sleep in a script - returns true if canceled mid sleep
 def _openc3_script_sleep(sleep_time=None):
-    if openc3.script.DISCONNECT:
+    if openc3.script.DISCONNECT or RunningScript.instance.use_instrumentation is False:
         return True
     RunningScript.instance.update_running_script_store("waiting")
 

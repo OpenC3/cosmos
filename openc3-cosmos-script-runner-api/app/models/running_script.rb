@@ -221,7 +221,7 @@ module OpenC3
 
       # sleep in a script - returns true if canceled mid sleep
       def openc3_script_sleep(sleep_time = nil)
-        return true if $disconnect
+        return true if $disconnect or RunningScript.instance.use_instrumentation == false
         RunningScript.instance.update_running_script_store("waiting")
         running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting })
 
