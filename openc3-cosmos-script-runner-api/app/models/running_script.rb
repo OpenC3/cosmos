@@ -223,7 +223,9 @@ module OpenC3
       def openc3_script_sleep(sleep_time = nil)
         return true if $disconnect
         RunningScript.instance.update_running_script_store("waiting")
-        running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting })
+        if RunningScript.instance.use_instrumentation
+          running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting })
+        end
 
         sleep_time = 30000000 unless sleep_time # Handle infinite wait
         if sleep_time > 0.0
@@ -232,7 +234,7 @@ module OpenC3
           until Time.now.sys >= end_time
             sleep(0.01)
             count += 1
-            if (count % 100) == 0 # Approximately Every Second
+            if RunningScript.instance.use_instrumentation and (count % 100) == 0 # Approximately Every Second
               running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting })
             end
             if RunningScript.instance.pause?
