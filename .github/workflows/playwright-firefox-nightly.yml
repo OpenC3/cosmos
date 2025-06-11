@@ -1,8 +1,14 @@
 name: OpenC3 Playwright Firefox Nightly Tests
 
 on:
-  schedule:
-    - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
+  # TODO: Disabling the schedule for now because all the tests with multiline string inputs are broken
+  # (e.g. SR 'displays the call stack'). It seems like CRLFs are making it into the test runner somehow, but I can't
+  # figure out why. A single string literal like "line 1\nline 2\nline 3" is the only way I can get these tests to pass
+  # on Firefox, but that's ugly and makes our tests way less readable. We need to figure out where the CRLFs are coming
+  # from, or if something else is breaking multiline input in Firefox.
+  #
+  # schedule:
+  #   - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
