@@ -37,19 +37,20 @@ def running_script_anycable_publish(channel_name, data):
 
 # sleep in a script - returns true if canceled mid sleep
 def _openc3_script_sleep(sleep_time=None):
-    if openc3.script.DISCONNECT or RunningScript.instance.use_instrumentation is False:
+    if openc3.script.DISCONNECT:
         return True
     RunningScript.instance.update_running_script_store("waiting")
 
-    running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id()}",
-        {
-            "type": "line",
-            "filename": RunningScript.instance.current_filename(),
-            "line_no": RunningScript.instance.current_line_number(),
-            "state": "waiting",
-        },
-    )
+    if RunningScript.instance.use_instrumentation:
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.instance.id()}",
+            {
+                "type": "line",
+                "filename": RunningScript.instance.current_filename(),
+                "line_no": RunningScript.instance.current_line_number(),
+                "state": "waiting",
+            },
+        )
 
     if sleep_time is None:  # Handle infinite wait
         sleep_time = 30000000
@@ -59,7 +60,7 @@ def _openc3_script_sleep(sleep_time=None):
         while time.time() < end_time:
             time.sleep(0.01)
             count += 1
-            if (count % 100) == 0:  # Approximately Every Second
+            if RunningScript.instance.use_instrumentation and (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
                     f"running-script-channel:{RunningScript.instance.id()}",
                     {
