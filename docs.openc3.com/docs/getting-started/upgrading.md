@@ -46,7 +46,7 @@ The following table identifies key release milestones which should be incrementa
 | :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0) | Breaking change to non-root containers and renamed minio volume. Requires running the migration script and updating compose.yaml and traefik configuration.                                                 |
 | [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0) | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments. Requires updating .env, compose.yaml, and traefik configuration. |
-| [6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)   | May require no changes but follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6) for custom GUI tools.                                                                       |
+| [6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)   | The switch to Traefik 3 requires traefik configuration changes. If you have custom GUI tools follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                          |
 | [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)   | Changed from ActionCable to AnyCable which requires updates to compose.yaml, redis.acl, and traefik configuration. We also broke apart the COSMOS helm charts from a single chart to 3 charts.              |
 
 :::warning Downgrades

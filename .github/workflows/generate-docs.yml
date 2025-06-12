@@ -1,0 +1,36 @@
+name: Auto Build Docs
+
+on:
+  push:
+    paths:
+      - 'docs.openc3.com/**'
+    branches:
+      - main
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required to push commits
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      
+      - name: Install dependencies
+        run: yarn
+        working-directory: docs.openc3.com
+
+      - name: Build docs
+        run: yarn build
+        working-directory: docs.openc3.com
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Automated Doc Build Change

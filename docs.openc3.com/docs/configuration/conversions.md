@@ -23,7 +23,9 @@ To use the conversion add the following to a telemetry item:
   READ_CONVERSION double_conversion.py
 ```
 
-To create a Ruby conversion simply replace `--python` with `--ruby`. This creates a conversion called `double_conversion.py` at `targets/GSE/lib/double_conversion.py`. The code which is generated looks like the following:
+Note: To create a Ruby conversion simply replace `--python` with `--ruby`.
+
+The above command creates a conversion called `double_conversion.py` at `targets/GSE/lib/double_conversion.py`. The code which is generated looks like the following:
 
 ```python
 from openc3.conversions.conversion import Conversion
@@ -95,13 +97,13 @@ class DoubleConversion(Conversion):
 
 ### Apply Conversion
 
-Now that we have implemented the conversion logic we need to apply it to a telemetry item by adding the line `READ_CONVERSION double_conversion.rb` in the [telemetry](/docs/configuration/telemetry) definition file. This could look something like this:
+Now that we have implemented the conversion logic we need to apply it to a telemetry item by adding the line `READ_CONVERSION double_conversion.py` in the [telemetry](/docs/configuration/telemetry) definition file. This could look something like this:
 
 ```bash
 TELEMETRY GSE DATA BIG_ENDIAN "Data packet"
   ... # Header items
   APPEND_ITEM VALUE 16 UINT "Value I want to double"
-    READ_CONVERSION double_conversion.rb
+    READ_CONVERSION double_conversion.py
 ```
 
 # Built-in Conversions
@@ -282,6 +284,7 @@ POLY_WRITE_CONVERSION 10 0.5 0.25
 
 This command reads a value from a processor. The value is read from the
 processor's available values. The processor must be defined in the target's configuration.
+See the [Processor](/docs/configuration/processors) documentation for more information.
 
 
 | Parameter | Description | Required |
@@ -298,7 +301,7 @@ ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
 
 Python Example:
 ```python
-PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```

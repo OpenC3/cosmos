@@ -164,6 +164,8 @@ from openc3.api import WHITELIST
 # script_run("INST/procedures/collect.rb")
 #
 def initialize_offline_access():
+    if not OPENC3_KEYCLOAK_URL:
+        raise RuntimeError("initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set.")
     auth = OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
     auth.token(include_bearer=True, openid_scope='openid%20offline_access')
     set_offline_access(auth.refresh_token)

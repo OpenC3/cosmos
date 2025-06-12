@@ -1,0 +1,79 @@
+name: OpenC3 Playwright Firefox Nightly Tests
+
+on:
+  # TODO: Disabling the schedule for now because all the tests with multiline string inputs are broken
+  # (e.g. SR 'displays the call stack'). It seems like CRLFs are making it into the test runner somehow, but I can't
+  # figure out why. A single string literal like "line 1\nline 2\nline 3" is the only way I can get these tests to pass
+  # on Firefox, but that's ugly and makes our tests way less readable. We need to figure out where the CRLFs are coming
+  # from, or if something else is breaking multiline input in Firefox.
+  #
+  # schedule:
+  #   - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  openc3-firefox-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: openc3.sh build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
+      - name: Install playwright dependencies
+        run: ./playwright.sh install-playwright
+        working-directory: playwright
+      - name: Check for test.only
+        run: yarn playwright test --list --forbid-only
+        working-directory: playwright
+      - name: openc3.sh run
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh run
+        # Allow the containers to spin up
+      - name: Sleep for 2min
+        run: sleep 120s
+        shell: bash
+        # Check container status
+      - name: Check container status
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          docker ps
+          docker logs cosmos-openc3-cosmos-init-1
+          docker logs cosmos-openc3-operator-1
+          docker logs cosmos-openc3-cosmos-cmd-tlm-api-1
+          docker logs cosmos-openc3-cosmos-script-runner-api-1
+        # Build a test plugin for playwright and a copy so we can 'upgrade'
+      - name: Build plugin
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./playwright.sh build-plugin
+        working-directory: playwright
+        # Ensure we're connected and running
+      - name: Wait for build
+        run: yarn playwright test --project=firefox tests/wait-for-build.spec.ts
+        working-directory: playwright
+      - name: Run Playwright Firefox tests
+        run: |
+          yarn playwright test --project=firefox ./tests/**/*.p.spec.ts --grep-invert='enterprise'
+          yarn playwright test --project=firefox ./tests/**/*.s.spec.ts --workers=1 --grep-invert='enterprise'
+        working-directory: playwright
+      - name: Generate coverage
+        run: yarn fixlinux; yarn cobertura
+        working-directory: playwright
+      - uses: codecov/codecov-action@v5
+        with:
+          directory: playwright/coverage
+          flags: firefox-nightly
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test artifacts
+        if: always() # Upload on pass or fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-firefox
+          path: playwright/test-results
+          retention-days: 30

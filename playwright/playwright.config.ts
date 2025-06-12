@@ -82,11 +82,14 @@ export default defineConfig({
         storageState: STORAGE_STATE,
       },
     },
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    //   dependencies: ['setup'],
-    // },
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        storageState: STORAGE_STATE,
+      },
+      dependencies: ['setup'],
+    },
     // {
     //   name: 'webkit',
     //   use: { ...devices['Desktop Safari'] },

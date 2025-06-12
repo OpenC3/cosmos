@@ -97,12 +97,18 @@ jobs:
           ls targets/MY_CLI/lib | grep upcase_conversion.rb
           ../openc3.sh cli rake build VERSION=1.0.3
           ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.3.gem
+          ### PROCESSOR ###
+          ../openc3.sh cli generate processor MY_CLI slope --ruby
+          # Verify the conversion filename 'slope_processor.rb'
+          ls targets/MY_CLI/lib | grep slope_processor.rb
+          ../openc3.sh cli rake build VERSION=1.0.4
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.4.gem
           ### LIMITS_RESPONSE ###
           ../openc3.sh cli generate limits_response MY_CLI example --ruby
           # Verify the conversion filename 'example_limits_response.rb'
           ls targets/MY_CLI/lib | grep example_limits_response.rb
-          ../openc3.sh cli rake build VERSION=1.0.3
-          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.3.gem
+          ../openc3.sh cli rake build VERSION=1.0.5
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.5.gem
       - name: openc3.sh cli script list, run, spawn
         shell: 'script -q -e -c "bash {0}"'
         run: |
@@ -114,6 +120,8 @@ jobs:
           ./openc3.sh cli script spawn INST/procedures/checks.rb | grep -v "^\s*\d+\s*$"
           # run a script that will fail and look for the failure message
           ./openc3.sh cli script run --wait 20 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
+          # Check the running list for the first spawned script
+          ./openc3.sh cli script running | tee /dev/tty | grep -q "INST/procedures/checks.rb"
           # run a script that will complete successfully
           ./openc3.sh cli script run INST/procedures/stash.rb | tee /dev/tty | grep "script complete"
       # Removing due to write tmp/.docker_temp_3200699358: no space left on device

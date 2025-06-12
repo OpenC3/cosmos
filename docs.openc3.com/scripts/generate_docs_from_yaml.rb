@@ -216,6 +216,7 @@ docs = [
   ['../docs/configuration/_plugins.md', '/openc3/data/config/plugins.yaml'],
   ['../docs/configuration/_telemetry.md', '/openc3/data/config/telemetry.yaml'],
   ['../docs/configuration/_conversions.md', '/openc3/data/config/conversions.yaml'],
+  ['../docs/configuration/_processors.md', '/openc3/data/config/processors.yaml'],
 ]
 
 docs.each do |partial, yaml_file|

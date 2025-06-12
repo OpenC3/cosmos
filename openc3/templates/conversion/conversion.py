@@ -3,7 +3,7 @@ from openc3.conversions.conversion import Conversion
 # from openc3.api.tlm_api import tlm
 
 # Custom conversion class
-# See https://docs.openc3.com/docs/configuration/telemetry#read_conversion
+# See https://docs.openc3.com/docs/configuration/conversions
 class <%= conversion_class %>(Conversion):
     def __init__(self):
         super().__init__()
