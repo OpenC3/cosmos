@@ -39,7 +39,7 @@ class ScriptEngine:
                     self.running_script.pre_line_instrumentation(filename, line_no, globals(), locals())
                     next_line_no = self.run_line(line, lines, filename, line_no)
                     break
-                except Exception as e:
+                except Exception:
                     retry_needed = self.running_script.exception_instrumentation(filename, line_no)
                     if retry_needed:
                         continue
@@ -73,9 +73,6 @@ class ScriptEngine:
             s: Input string
             special_chars: String of characters to separate
         """
-        # Escape special characters for the regex pattern
-        escaped_chars = re.escape(special_chars)
-
         result = []
         i = 0
         while i < len(s):

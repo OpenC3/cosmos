@@ -65,9 +65,6 @@ module OpenC3
     end
 
     def tokenizer(s, special_chars = '()><+-*/=;,')
-      # Escape special characters for the regex pattern
-      escaped_chars = Regexp.escape(special_chars)
-
       result = []
       i = 0
       while i < s.length
