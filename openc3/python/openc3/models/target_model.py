@@ -392,6 +392,7 @@ class TargetModel(Model):
             if clear_old:
                 Store.delete(f"{self.scope}__openc3tlm__{target_name}")
                 Store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
+                Store.delete(f"{self.scope}__TELEMETRYCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
@@ -414,6 +415,7 @@ class TargetModel(Model):
         for target_name, packets in packet_hash.items():
             if clear_old:
                 Store.delete(f"{self.scope}__openc3cmd__{target_name}")
+                Store.delete(f"{self.scope}__COMMANDCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
                 try:
