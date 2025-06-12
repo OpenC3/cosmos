@@ -73,6 +73,8 @@ jobs:
           directory: playwright/coverage
           flags: frontend # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
+          clean: true
+          verbose: true
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v4
