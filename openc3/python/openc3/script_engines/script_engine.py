@@ -14,8 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
-
 class ScriptEngine:
     def __init__(self, running_script):
         self.running_script = running_script
