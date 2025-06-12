@@ -49,5 +49,73 @@ module OpenC3
         return if end_line_no and line_no > end_line_no
       end
     end
+
+    def debug(text)
+      run_line(text, [text], "DEBUG", 1)
+    end
+
+    def syntax_check(text, filename: nil)
+      puts "Not Implemented"
+      return 1
+    end
+
+    def mnemonic_check(text, filename: nil)
+      puts "Not Implemented"
+      return 1
+    end
+
+    def tokenizer(s, special_chars = '()><+-*/=;,')
+      # Escape special characters for the regex pattern
+      escaped_chars = Regexp.escape(special_chars)
+
+      result = []
+      i = 0
+      while i < s.length
+        # Skip whitespace
+        if s[i].match?(/\s/)
+          i += 1
+          next
+        end
+
+        # Handle quoted strings (single or double quotes)
+        if ['"', "'"].include?(s[i])
+          quote_char = s[i]
+          quote_start = i
+          i += 1
+          # Find the closing quote
+          while i < s.length
+            if s[i] == '\\' && i + 1 < s.length  # Handle escaped characters
+              i += 2
+            elsif s[i] == quote_char  # Found closing quote
+              i += 1
+              break
+            else
+              i += 1
+            end
+          end
+          # Include the quotes in the token
+          result << s[quote_start...i]
+          next
+        end
+
+        # Handle special characters
+        if special_chars.include?(s[i])
+          result << s[i]
+          i += 1
+          next
+        end
+
+        # Handle regular tokens
+        token_start = i
+        while i < s.length && !s[i].match?(/\s/) && !special_chars.include?(s[i]) && !['"', "'"].include?(s[i])
+          i += 1
+        end
+        if i > token_start
+          result << s[token_start...i]
+        end
+      end
+
+      return result
+    end
   end
 end

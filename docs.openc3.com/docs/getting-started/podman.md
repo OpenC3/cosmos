@@ -48,9 +48,14 @@ NFS does not work for holding container storage due to issues with user ids and 
    ```bash
    sudo cp /usr/share/containers/containers.conf /etc/containers/.
    sudo vi /etc/containers/containers.conf
+   sudo sh -c 'echo ip_tables > /etc/modules-load.d/ip_tables.conf'
    ```
 
    Then edit the network_backend line to be "netavark" instead of "cni"
+
+:::warning Netavark needs the ip_tables module
+The above "echo ip_tables" line is added because RHEL 9.x uses nftables by default. The legacy ip_tables kernel module is not guaranteed to be loaded at boot — particularly on cloud images such as AWS EC2. However, netavark still requires ip_tables to implement NAT and forwarding for rootless Podman containers. Rootless users cannot load kernel modules, so if ip_tables is missing, netavark networking fails silently. If using rootless Podman with netavark ensure the ip_tables kernel module is preload.
+:::
 
 1. Start rootless podman socket service
 

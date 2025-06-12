@@ -187,8 +187,11 @@ for method in SCRIPT_METHODS:
 
 from openc3.script import *
 
-RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
-
+rails_root = os.getenv("RAILS_ROOT")
+if rails_root is not None:
+    RAILS_ROOT = rails_root
+else:
+    RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
 class RunningScript:
     # Matches the following test cases:
@@ -482,12 +485,7 @@ class RunningScript:
                 )
         else:
             if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
-                if self.script_status.end_line_no is None:
-                    # Goto line
-                    self.run_text(f"start('{self.script_status.filename}', line_no = {self.script_status.start_line_no}, complete = True)", initial_filename = "SCRIPTRUNNER")
-                else:
-                    # Execute selection
-                    self.run_text(f"start('{self.script_status.filename}', line_no = {self.script_status.start_line_no}, end_line_no = {self.script_status.end_line_no})", initial_filename = "SCRIPTRUNNER")
+                self.run_text("", initial_filename = "SCRIPTRUNNER")
             else:
                 self.run_text(self.body)
 
@@ -576,19 +574,27 @@ class RunningScript:
         try:
             self.handle_output_io()
 
-            if self.script_binding:
-                # Check for accessing an instance variable or local
-                if debug_text in self.script_binding[1]:  # In local variables
-                    debug_text = (
-                        f"print({debug_text})"  # Automatically add print to print it
+            use_script_engine = False
+            extension = str(os.path.splitext(self.current_filename())[1]).lower()
+            if self.script_engine and extension != ".py":
+                use_script_engine = True
+
+            if not use_script_engine:
+                if self.script_binding:
+                    # Check for accessing an instance variable or local
+                    if debug_text in self.script_binding[1]:  # In local variables
+                        debug_text = (
+                            f"print({debug_text})"  # Automatically add print to print it
+                        )
+                    exec(
+                        debug_text,
+                        self.script_binding[0],
+                        self.script_binding[1],
                     )
-                exec(
-                    debug_text,
-                    self.script_binding[0],
-                    self.script_binding[1],
-                )
+                else:
+                    exec(debug_text, self.script_globals)
             else:
-                exec(debug_text, self.script_globals)
+                self.script_engine.debug(debug_text)
 
             self.handle_output_io()
         except Exception as error:
@@ -632,7 +638,7 @@ class RunningScript:
         if self.script_status.state == 'paused' or self.script_status.state == 'error' or self.script_status.state == 'breakpoint':
             self.execute_while_paused_info = { "filename": filename, "line_no": line_no, "end_line_no": end_line_no }
         else:
-            scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
+            self.scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
 
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
@@ -991,10 +997,10 @@ class RunningScript:
                 if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
                     if self.script_status.end_line_no is None:
                         # Goto line
-                        self.script_engine.run_text(text, filename = self.script_status.filename, line_no = self.script_status.start_line_no)
+                        start(self.script_status.filename, line_no = self.script_status.start_line_no, complete = True)
                     else:
                         # Execute selection
-                        self.script_engine.run_text(text, filename = self.script_status.filename, line_no = self.script_status.start_line_no, end_line_no = self.script_status.end_line_no)
+                        start(self.script_status.filename, line_no = self.script_status.start_line_no, end_line_no = self.script_status.end_line_no, complete = True)
                 else:
                     self.script_engine.run_text(text, filename = self.script_status.filename)
             else:
@@ -1241,6 +1247,13 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
     RunningScript.instance.execute_while_paused_info = None
     path = procedure_name
 
+    # Decide if using script engine
+    use_script_engine = False
+    if RunningScript.instance.script_engine is not None and procedure_name:
+        extension = str(os.path.splitext(procedure_name)[1]).lower()
+        if extension != ".py":
+            use_script_engine = True
+
     # Check RAM based instrumented cache
     breakpoints = []
     if path in RunningScript.breakpoints:
@@ -1289,7 +1302,7 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
         # Cache instrumentation into RAM
         if line_no == 1 and end_line_no is None:
-            if RunningScript.instance.script_engine is not None:
+            if use_script_engine:
                 # Don't instrument if using a script engine
                 instrumented_script = text
             else:
@@ -1312,9 +1325,10 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
                 if line_no > end_line_no:
                     raise RuntimeError(f"Start line number {line_no} is greater than end line number {end_line_no} for {procedure_name}")
 
-                text = "\n".join(text_lines[(line_no - 1):end_line_no])
+                if not use_script_engine:
+                    text = "\n".join(text_lines[(line_no - 1):end_line_no])
 
-            if RunningScript.instance.script_engine is not None:
+            if use_script_engine:
                 # Don't instrument if using a script engine
                 instrumented_script = text
             else:
@@ -1332,7 +1346,7 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
         },
     )
 
-    if RunningScript.instance.script_engine is not None:
+    if use_script_engine:
         if line_no != 1 or end_line_no is not None:
             if end_line_no is None:
                 # Goto line

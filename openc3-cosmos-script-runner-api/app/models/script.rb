@@ -221,7 +221,7 @@ class Script < OpenC3::TargetFile
             true,
           ).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
       }
-    else
+    elsif language == 'python'
       start = Time.now
       temp = Tempfile.new(%w[instrument .py])
       temp.write(text)
@@ -267,15 +267,23 @@ class Script < OpenC3::TargetFile
             (stdout_results.to_s + stderr_results.to_s).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
         }
       end
+    else
+      return {
+        'title' => 'Instrumenting Not Supported',
+        'description' => ['Only Ruby and Python Support Viewing Instrumentation'].as_json.to_json,
+      }
     end
   end
 
   def self.detect_language(text, filename = nil)
     if filename
-      if File.extname(filename) == '.rb'
+      extension = File.extname(filename)
+      if extension == '.rb'
         return 'ruby'
-      elsif File.extname(filename) == '.py'
+      elsif extension == '.py'
         return 'python'
+      elsif extension.length > 0
+        return 'other'
       end
     end
 
@@ -284,6 +292,51 @@ class Script < OpenC3::TargetFile
     return 'ruby' if text =~ /^\s*end\s*$/
     return 'python' if text =~ /^\s*(if|def|while|else|elif|class).*:\s*$/
     return 'ruby' # otherwise guess Ruby
+  end
+
+  def self.mnemonics(filename, text)
+    # Ruby and Python are currently handled in-browser
+    # Script Engine Possibly
+    extension = File.extname(filename).to_s.downcase
+    script_engine_model = OpenC3::ScriptEngineModel.get_model(name: extension, scope: 'DEFAULT')
+    if script_engine_model
+      script_engine = script_engine_model.filename
+      if File.extname(script_engine).to_s.downcase == '.py'
+        process_name = 'python'
+        runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.py')
+      else
+        process_name = 'ruby'
+        runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.rb')
+      end
+
+      tf = nil
+      begin
+        tf = Tempfile.new((['mnemonics', extension]))
+        tf.write(text)
+        tf.close()
+        results, status = Open3.capture2e("#{process_name} \"#{runner_path}\" mnemonic_check \"#{tf.path}\"")
+        lines = []
+        if results and results.length > 0
+          results.each_line do |line|
+            lines << line
+          end
+          return(
+            { 'title' => 'Mnemonics Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+          )
+        else
+          return(
+            {
+              'title' => 'Mnemonics Check Successful',
+              'description' => ["Mnemonics OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+            }
+          )
+        end
+      ensure
+        tf.unlink if tf
+      end
+    else
+      raise "Unsupported script file type: #{extension}"
+    end
   end
 
   def self.syntax(filename, text)
@@ -324,7 +377,7 @@ class Script < OpenC3::TargetFile
           }
         )
       end
-    else
+    elsif language == 'python'
       # Python
       tf = nil
       begin
@@ -350,6 +403,48 @@ class Script < OpenC3::TargetFile
         end
       ensure
         tf.unlink if tf
+      end
+    else
+      # Script Engine Possibly
+      extension = File.extname(filename).to_s.downcase
+      script_engine_model = OpenC3::ScriptEngineModel.get_model(name: extension, scope: 'DEFAULT')
+      if script_engine_model
+        script_engine = script_engine_model.filename
+        if File.extname(script_engine).to_s.downcase == '.py'
+          process_name = 'python'
+          runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.py')
+        else
+          process_name = 'ruby'
+          runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.rb')
+        end
+
+        tf = nil
+        begin
+          tf = Tempfile.new((['syntax', extension]))
+          tf.write(text)
+          tf.close()
+          results, status = Open3.capture2e("#{process_name} \"#{runner_path}\" syntax_check \"#{tf.path}\"")
+          lines = []
+          if results and results.length > 0
+            results.each_line do |line|
+              lines << line
+            end
+            return(
+              { 'title' => 'Syntax Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+            )
+          else
+            return(
+              {
+                'title' => 'Syntax Check Successful',
+                'description' => ["Syntax OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+              }
+            )
+          end
+        ensure
+          tf.unlink if tf
+        end
+      else
+        raise "Unsupported script file type: #{extension}"
       end
     end
   end

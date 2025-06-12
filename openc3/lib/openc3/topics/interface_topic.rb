@@ -24,6 +24,8 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class InterfaceTopic < Topic
+    COMMAND_ACK_TIMEOUT_S = 30
+
     # Generate a list of topics for this interface. This includes the interface itself
     # and all the targets which are assigned to this interface.
     def self.topics(interface, scope:)
@@ -48,9 +50,27 @@ module OpenC3
       end
     end
 
-    def self.write_raw(interface_name, data, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100)
-      # Todo: This should wait for the ack
+    def self.write_raw(interface_name, data, timeout: nil, scope:)
+      interface_name = interface_name.upcase
+
+      timeout = COMMAND_ACK_TIMEOUT_S unless timeout
+      ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
+      Topic.update_topic_offsets([ack_topic])
+
+      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == cmd_id
+            if msg_hash["result"] == "SUCCESS"
+              return
+            else
+              raise msg_hash["result"]
+            end
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for cmd ack"
     end
 
     def self.connect_interface(interface_name, *interface_params, scope:)
