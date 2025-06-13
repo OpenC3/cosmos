@@ -9,19 +9,18 @@ on:
 
 jobs:
   build-and-commit:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required to push commits
+          token: ${{ secrets.QA_PAT }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: "https://registry.npmjs.org"
       
       - name: Install dependencies
         run: yarn
