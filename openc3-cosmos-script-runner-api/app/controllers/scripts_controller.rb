@@ -158,6 +158,21 @@ class ScriptsController < ApplicationController
     render json: { status: 'error', message: e.message }, status: 500
   end
 
+  def mnemonics
+    name = sanitize_params([:name], :allow_forward_slash => true)
+    return unless name
+    name = name[0]
+    # Extract the target that this script lives under
+    target_name = name.split('/')[0]
+    return unless authorization('script_run', target_name: target_name)
+    script = Script.mnemonics(name, request.body.read)
+    if script
+      render json: script
+    else
+      head :error
+    end
+  end
+
   def syntax
     name = sanitize_params([:name], :allow_forward_slash => true)
     return unless name

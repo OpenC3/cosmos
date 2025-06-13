@@ -15,11 +15,13 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 
 
 class InterfaceTopic(Topic):
+    COMMAND_ACK_TIMEOUT_S = 30
     while_receive_commands = False
 
     # Generate a list of topics for this interface. This includes the interface itself
@@ -45,9 +47,25 @@ class InterfaceTopic(Topic):
                 Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
 
     @classmethod
-    def write_raw(cls, interface_name, data, scope):
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100)
-        # TODO: This should wait for the ack
+    def write_raw(cls, interface_name, data, scope, timeout = None):
+        interface_name = interface_name.upper()
+
+        if timeout is None:
+            timeout = cls.COMMAND_ACK_TIMEOUT_S
+        ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
+        Topic.update_topic_offsets([ack_topic])
+
+        cmd_id = Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100)
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == cmd_id:
+                    result = msg_hash[b"result"].decode()
+                    if result == "SUCCESS":
+                        return
+                    else:
+                        raise RuntimeError(result)
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     @classmethod
     def connect_interface(cls, interface_name, *interface_params, scope=OPENC3_SCOPE):

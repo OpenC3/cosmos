@@ -16,7 +16,7 @@
 
 import sys
 import ast
-from script_instrumentor import ScriptInstrumentor
+from openc3.utilities.script_instrumentor import ScriptInstrumentor
 
 text = None
 with open(sys.argv[1]) as file:

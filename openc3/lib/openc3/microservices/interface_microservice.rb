@@ -128,15 +128,21 @@ module OpenC3
             end
             if msg_hash['raw']
               if @interface.connected?
-                @logger.info "#{@interface.name}: Write raw"
-                # A raw interface write results in an UNKNOWN packet
-                command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
-                command = command.clone
-                command.buffer = msg_hash['raw']
-                command.received_time = Time.now
-                CommandTopic.write_packet(command, scope: @scope)
-                @interface.write_raw(msg_hash['raw'])
+                begin
+                  @logger.info "#{@interface.name}: Write raw"
+                  # A raw interface write results in an UNKNOWN packet
+                  command = System.commands.packet('UNKNOWN', 'UNKNOWN')
+                  command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
+                  command = command.clone
+                  command.buffer = msg_hash['raw']
+                  command.received_time = Time.now
+                  CommandTopic.write_packet(command, scope: @scope)
+                  @logger.info("write_raw sent #{msg_hash['raw'].length} bytes to #{@interface.name}", scope: @scope)
+                  @interface.write_raw(msg_hash['raw'])
+                rescue => e
+                  @logger.error "#{@interface.name}: write_raw: #{e.formatted}"
+                  next e.message
+                end
                 next 'SUCCESS'
               else
                 next "Interface not connected: #{@interface.name}"

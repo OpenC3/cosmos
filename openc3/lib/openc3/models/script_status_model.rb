@@ -45,6 +45,7 @@ module OpenC3
     attr_accessor :pid
     attr_accessor :log
     attr_accessor :report
+    attr_accessor :script_engine
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -147,6 +148,7 @@ module OpenC3
       pid: nil,
       log: nil,
       report: nil,
+      script_engine: nil,
       updated_at: nil,
       scope:
     )
@@ -173,6 +175,7 @@ module OpenC3
       @pid = pid
       @log = log
       @report = report
+      @script_engine = script_engine
     end
 
     def is_complete?
@@ -257,6 +260,7 @@ module OpenC3
         'pid' => @pid,
         'log' => @log,
         'report' => @report,
+        'script_engine' => @script_engine,
         'updated_at' => @updated_at,
         'scope' => @scope
       }

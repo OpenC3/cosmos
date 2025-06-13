@@ -34,9 +34,19 @@ require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
+require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
 
-RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
+if not defined? RAILS_ROOT
+  if ENV['RAILS_ROOT']
+    RAILS_ROOT = ENV['RAILS_ROOT']
+  elsif defined? Rails
+    RAILS_ROOT = Rails.root
+  else
+    RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
+  end
+end
+
 SCRIPT_API = 'script-api'
 
 def running_script_publish(channel_name, data)
@@ -108,6 +118,15 @@ module OpenC3
         RunningScript.instance.execute_while_paused_info = nil
         path = procedure_name
 
+        # Decide if using script engine
+        use_script_engine = false
+        if RunningScript.instance.script_engine and procedure_name
+          extension = File.extname(procedure_name).to_s.downcase
+          if extension != ".rb"
+            use_script_engine = true
+          end
+        end
+
         # Check RAM based instrumented cache
         breakpoints = RunningScript.breakpoints[path]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
         breakpoints ||= []
@@ -132,7 +151,12 @@ module OpenC3
 
           # Cache instrumentation into RAM
           if line_no == 1 and end_line_no.nil?
-            instrumented_script = RunningScript.instrument_script(text, path, true)
+            if use_script_engine
+              # Don't instrument if using a script engine
+              instrumented_script = text
+            else
+              instrumented_script = RunningScript.instrument_script(text, path, true)
+            end
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
           else
             if line_no > 1 or not end_line_no.nil?
@@ -155,13 +179,19 @@ module OpenC3
                 raise "Start line number #{line_no} is greater than end line number #{end_line_no} for #{procedure_name}"
               end
 
-              text = text_lines[(line_no - 1)...end_line_no].join
+              if not use_script_engine
+                text = text_lines[(line_no - 1)...end_line_no].join
+              end
             end
 
-            if bind_variables
-              instrumented_script = RunningScript.instrument_script(text, path, false, line_offset: line_no - 1, cache: false)
+            if use_script_engine
+              instrumented_script = text
             else
-              instrumented_script = RunningScript.instrument_script(text, path, true, line_offset: line_no - 1, cache: false)
+              if bind_variables
+                instrumented_script = RunningScript.instrument_script(text, path, false, line_offset: line_no - 1, cache: false)
+              else
+                instrumented_script = RunningScript.instrument_script(text, path, true, line_offset: line_no - 1, cache: false)
+              end
             end
           end
 
@@ -170,10 +200,24 @@ module OpenC3
         running = ScriptStatusModel.all(scope: RunningScript.instance.scope, type: 'running')
         running_script_anycable_publish("all-scripts-channel", { type: :start, filename: procedure_name, active_scripts: running.length, scope: RunningScript.instance.scope })
 
-        if bind_variables
-          eval(instrumented_script, RunningScript.instance.script_binding, path, line_no)
+        if use_script_engine
+          if line_no != 1 or !end_line_no.nil?
+            if end_line_no.nil?
+              # Goto line
+              RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name, line_no: line_no)
+            else
+              # Execute selection
+              RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name, line_no: line_no, end_line_no: end_line_no)
+            end
+          else
+            RunningScript.instance.script_engine.run_text(instrumented_script, filename: procedure_name)
+          end
         else
-          Object.class_eval(instrumented_script, path, line_no)
+          if bind_variables
+            eval(instrumented_script, RunningScript.instance.script_binding, path, line_no)
+          else
+            Object.class_eval(instrumented_script, path, line_no)
+          end
         end
 
         if complete
@@ -294,6 +338,7 @@ class RunningScript
   attr_accessor :continue_after_error
   attr_accessor :exceptions
   attr_accessor :script_binding
+  attr_accessor :script_engine
   attr_accessor :user_input
   attr_accessor :prompt_id
   attr_reader :script_status
@@ -340,12 +385,31 @@ class RunningScript
   end
 
   def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil)
-    if File.extname(name) == '.py'
+    extension = File.extname(name).to_s.downcase
+    script_engine = nil
+    if extension == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
-    else
+    elsif extension == '.rb'
       process_name = 'ruby'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
+    else
+      raise "Suite Runner is not supported for this file type: #{extension}" if suite_runner
+
+      # Extension possibly supported by a script engine
+      script_engine_model = OpenC3::ScriptEngineModel.get_model(name: extension, scope: scope)
+      if script_engine_model
+        script_engine = script_engine_model.filename
+        if File.extname(script_engine).to_s.downcase == '.py'
+          process_name = 'python'
+          runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
+        else
+          process_name = 'ruby'
+          runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
+        end
+      else
+        raise "Unsupported script file type: #{extension}"
+      end
     end
 
     running_script_id = OpenC3::Store.incr('running-script-id')
@@ -398,6 +462,7 @@ class RunningScript
       suite_runner: suite_runner ? suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) : nil,
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
+      script_engine: script_engine, # script engine filename
       updated_at: nil, # Set by create/update - ISO format
       scope: scope # Scope of the script
     )
@@ -443,6 +508,7 @@ class RunningScript
     end
     process.environment['RUBYOPT'] = nil # Removes loading bundler setup
     process.environment['OPENC3_SCOPE'] = scope
+    process.environment['RAILS_ROOT'] = RAILS_ROOT
 
     process.detach = true
     process.start
@@ -470,13 +536,19 @@ class RunningScript
     mark_breakpoints(@script_status.filename)
     disconnect_script() if @script_status.disconnect
 
+    @script_engine = nil
+    if @script_status.script_engine
+      klass = OpenC3.require_class(@script_status.script_engine)
+      @script_engine = klass.new(self)
+    end
+
     # Retrieve file
     @body = ::Script.body(@script_status.scope, @script_status.filename)
     raise "Script not found: #{@script_status.filename}" if @body.nil?
     breakpoints = @@breakpoints[@script_status.filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: @script_status.filename, scope: @script_status.scope, text: @body.to_utf8, breakpoints: breakpoints })
-    if (@body =~ SUITE_REGEX)
+    if not @script_status.script_engine and @body =~ SUITE_REGEX
       # Process the suite file in this context so we can load it
       # TODO: Do we need to worry about success or failure of the suite processing?
       ::Script.process_suite(@script_status.filename, @body, new_process: false, scope: @script_status.scope)
@@ -697,7 +769,23 @@ class RunningScript
   end
 
   def run
-    run_text(@body)
+    if @script_status.suite_runner
+      @script_status.suite_runner = JSON.parse(@script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
+      parse_options(@script_status.suite_runner['options'])
+      if @script_status.suite_runner['script']
+        run_text("OpenC3::SuiteRunner.start(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']}, '#{@script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
+      elsif script_status.suite_runner['group']
+        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
+      else
+        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
+      end
+    else
+      if not @script_engine and (@script_status.start_line_no != 1 or !@script_status.end_line_no.nil?)
+        run_text("", initial_filename: "SCRIPTRUNNER")
+      else
+        run_text(@body)
+      end
+    end
   end
 
   def self.instrument_script(text, filename, mark_private = false, line_offset: 0, cache: true)
@@ -860,21 +948,32 @@ class RunningScript
   def debug(debug_text)
     handle_output_io()
 
-    if @script_binding
-      # Check for accessing an instance variable or local
-      if debug_text =~ /^@\S+$/ || @script_binding.local_variables.include?(debug_text.to_sym)
-        debug_text = "puts #{debug_text}" # Automatically add puts to print it
-      end
-      eval(debug_text, @script_binding, 'debug', 1)
-    else
-      Object.class_eval(debug_text, 'debug', 1)
+    use_script_engine = false
+    extension = File.extname(current_filename()).to_s.downcase
+    if @script_engine and extension != ".py"
+      use_script_engine = true
     end
+
+    if not use_script_engine
+      if @script_binding
+        # Check for accessing an instance variable or local
+        if debug_text =~ /^@\S+$/ || @script_binding.local_variables.include?(debug_text.to_sym)
+          debug_text = "puts #{debug_text}" # Automatically add puts to print it
+        end
+        eval(debug_text, @script_binding, 'debug', 1)
+      else
+        Object.class_eval(debug_text, 'debug', 1)
+      end
+    else
+      @script_engine.debug(debug_text)
+    end
+
     handle_output_io()
   rescue Exception => e
     if e.class == DRb::DRbConnError
       OpenC3::Logger.error("Error Connecting to Command and Telemetry Server")
     else
-      OpenC3::Logger.error(e.class.to_s.split('::')[-1] + ' : ' + e.message)
+      OpenC3::Logger.error(e.formatted)
     end
     handle_output_io()
   end
@@ -1158,21 +1257,35 @@ class RunningScript
         # Start Output Thread
         @@output_thread = Thread.new { output_thread() } unless @@output_thread
 
-        if initial_filename == 'SCRIPTRUNNER'
-          # Don't instrument pseudo scripts
-          instrument_filename = initial_filename
-          instrumented_script = text
+        if @script_engine
+          if @script_status.start_line_no != 1 or !@script_status.end_line_no.nil?
+            if @script_status.end_line_no.nil?
+              # Goto line
+              start(@script_status.filename, line_no: @script_status.start_line_no, complete: true)
+            else
+              # Execute selection
+              start(@script_status.filename, line_no: @script_status.start_line_no, end_line_no: @script_status.end_line_no, complete: true)
+            end
+          else
+            @script_engine.run_text(text, filename: @script_status.filename)
+          end
         else
-          # Instrument everything else
-          instrument_filename = @script_status.filename
-          instrument_filename = initial_filename if initial_filename
-          instrumented_script = self.class.instrument_script(text, instrument_filename, true)
-        end
+          if initial_filename == 'SCRIPTRUNNER'
+            # Don't instrument pseudo scripts
+            instrument_filename = initial_filename
+            instrumented_script = text
+          else
+            # Instrument everything else
+            instrument_filename = @script_status.filename
+            instrument_filename = initial_filename if initial_filename
+            instrumented_script = self.class.instrument_script(text, instrument_filename, true)
+          end
 
-        # Execute the script with warnings disabled
-        OpenC3.disable_warnings do
-          @pre_line_time = Time.now.sys
-          Object.class_eval(instrumented_script, instrument_filename, 1)
+          # Execute the script with warnings disabled
+          OpenC3.disable_warnings do
+            @pre_line_time = Time.now.sys
+            Object.class_eval(instrumented_script, instrument_filename, 1)
+          end
         end
 
         handle_output_io()

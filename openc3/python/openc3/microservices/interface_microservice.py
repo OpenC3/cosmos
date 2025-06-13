@@ -150,15 +150,20 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"raw"):
                 if self.interface.connected():
-                    self.logger.info(f"{self.interface.name}: Write raw")
-                    # A raw interface write results in an UNKNOWN packet
-                    command = System.commands.packet("UNKNOWN", "UNKNOWN")
-                    command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
-                    command = command.clone()
-                    command.buffer = msg_hash[b"raw"]
-                    command.received_time = datetime.now(timezone.utc)
-                    CommandTopic.write_packet(command, scope=self.scope)
-                    self.interface.write_raw(msg_hash[b"raw"])
+                    try:
+                        self.logger.info(f"{self.interface.name}: Write raw")
+                        # A raw interface write results in an UNKNOWN packet
+                        command = System.commands.packet("UNKNOWN", "UNKNOWN")
+                        command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
+                        command = command.clone()
+                        command.buffer = msg_hash[b"raw"]
+                        command.received_time = datetime.now(timezone.utc)
+                        CommandTopic.write_packet(command, scope=self.scope)
+                        self.logger.info(f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope = self.scope)
+                        self.interface.write_raw(msg_hash[b"raw"])
+                    except RuntimeError as error:
+                        self.logger.error(f"{self.interface.name}: write_raw: {repr(error)}")
+                        return repr(error)
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"

@@ -19,7 +19,13 @@ from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
 from openc3.models.script_status_model import ScriptStatusModel
+from openc3.top_level import get_class_from_module, add_to_search_path
+from openc3.utilities.string import (
+    filename_to_module,
+    filename_to_class_name,
+)
 import os
+import glob
 
 SCRIPT_API = "script-api"
 
@@ -110,7 +116,7 @@ from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.script.suite import Group
-from script_instrumentor import ScriptInstrumentor
+from openc3.utilities.script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
@@ -182,8 +188,11 @@ for method in SCRIPT_METHODS:
 
 from openc3.script import *
 
-RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
-
+rails_root = os.getenv("RAILS_ROOT")
+if rails_root is not None:
+    RAILS_ROOT = rails_root
+else:
+    RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
 class RunningScript:
     # Matches the following test cases:
@@ -271,6 +280,17 @@ class RunningScript:
         if script_status.disconnect:
             openc3.script.disconnect_script()
 
+        for path in glob.glob("/gems/gems/**/lib"):
+            add_to_search_path(path, True)
+
+        self.script_engine = None
+        if self.script_status.script_engine:
+            klass = get_class_from_module(
+                filename_to_module(self.script_status.script_engine),
+                filename_to_class_name(self.script_status.script_engine),
+            )
+            self.script_engine = klass(self)
+
         # Retrieve file
         self.body = TargetFile.body(self.script_status.scope, self.script_status.filename)
         if not self.body:
@@ -292,7 +312,7 @@ class RunningScript:
                 "breakpoints": breakpoints,
             },
         )
-        if self.PYTHON_SUITE_REGEX.findall(self.body):
+        if self.script_status.script_engine is None and self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
             load_utility(self.script_status.filename)
 
@@ -446,7 +466,29 @@ class RunningScript:
         self.retry_needed = True
 
     def run(self):
-        self.run_text(self.body)
+        if self.script_status.suite_runner is not None:
+            self.script_status.suite_runner = json.loads(self.script_status.suite_runner)  # Convert to hash
+            self.parse_options(self.script_status.suite_runner["options"])
+            if "script" in self.script_status.suite_runner:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']}, '{self.script_status.suite_runner['script']}')",
+                    initial_filename="SCRIPTRUNNER",
+                )
+            elif "group" in self.script_status.suite_runner:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']})",
+                    initial_filename="SCRIPTRUNNER",
+                )
+            else:
+                self.run_text(
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']})",
+                    initial_filename="SCRIPTRUNNER",
+                )
+        else:
+            if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
+                self.run_text("", initial_filename = "SCRIPTRUNNER")
+            else:
+                self.run_text(self.body)
 
     @classmethod
     def instrument_script(cls, text, filename, line_offset = 0, cache = True):
@@ -533,19 +575,27 @@ class RunningScript:
         try:
             self.handle_output_io()
 
-            if self.script_binding:
-                # Check for accessing an instance variable or local
-                if debug_text in self.script_binding[1]:  # In local variables
-                    debug_text = (
-                        f"print({debug_text})"  # Automatically add print to print it
+            use_script_engine = False
+            extension = str(os.path.splitext(self.current_filename())[1]).lower()
+            if self.script_engine and extension != ".py":
+                use_script_engine = True
+
+            if not use_script_engine:
+                if self.script_binding:
+                    # Check for accessing an instance variable or local
+                    if debug_text in self.script_binding[1]:  # In local variables
+                        debug_text = (
+                            f"print({debug_text})"  # Automatically add print to print it
+                        )
+                    exec(
+                        debug_text,
+                        self.script_binding[0],
+                        self.script_binding[1],
                     )
-                exec(
-                    debug_text,
-                    self.script_binding[0],
-                    self.script_binding[1],
-                )
+                else:
+                    exec(debug_text, self.script_globals)
             else:
-                exec(debug_text, self.script_globals)
+                self.script_engine.debug(debug_text)
 
             self.handle_output_io()
         except Exception as error:
@@ -589,7 +639,7 @@ class RunningScript:
         if self.script_status.state == 'paused' or self.script_status.state == 'error' or self.script_status.state == 'breakpoint':
             self.execute_while_paused_info = { "filename": filename, "line_no": line_no, "end_line_no": end_line_no }
         else:
-            scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
+            self.scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
 
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
@@ -923,8 +973,6 @@ class RunningScript:
     def run_thread_body(
         self,
         text,
-        saved_instance,
-        saved_run_thread,
         initial_filename=None,
     ):
         try:
@@ -946,20 +994,31 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            if initial_filename == 'SCRIPTRUNNER':
-                # Don't instrument pseudo scripts
-                instrument_filename = initial_filename
-                instrumented_script = text
+            if self.script_engine is not None:
+                if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
+                    if self.script_status.end_line_no is None:
+                        # Goto line
+                        start(self.script_status.filename, line_no = self.script_status.start_line_no, complete = True)
+                    else:
+                        # Execute selection
+                        start(self.script_status.filename, line_no = self.script_status.start_line_no, end_line_no = self.script_status.end_line_no, complete = True)
+                else:
+                    self.script_engine.run_text(text, filename = self.script_status.filename)
             else:
-                # Instrument everything else
-                instrument_filename = self.script_status.filename
-                if initial_filename:
+                if initial_filename == 'SCRIPTRUNNER':
+                    # Don't instrument pseudo scripts
                     instrument_filename = initial_filename
-                instrumented_script = self.instrument_script(text, instrument_filename)
+                    instrumented_script = text
+                else:
+                    # Instrument everything else
+                    instrument_filename = self.script_status.filename
+                    if initial_filename:
+                        instrument_filename = initial_filename
+                    instrumented_script = self.instrument_script(text, instrument_filename)
 
-            # Execute the script
-            self.pre_line_time = time.time()
-            exec(instrumented_script, self.script_globals)
+                # Execute the script
+                self.pre_line_time = time.time()
+                exec(instrumented_script, self.script_globals)
 
             self.handle_output_io()
             self.scriptrunner_puts(
@@ -994,9 +1053,6 @@ class RunningScript:
             if hasattr(sys.stderr, "remove_stream"):
                 sys.stderr.remove_stream(self.output_io)
 
-            # Clear run thread and instance to indicate we are no longer running
-            RunningScript.instance = saved_instance
-            RunningScript.run_thread = saved_run_thread
             self.script_binding = None
             # Set the current_filename to the original file and the current_line_number to 0
             # so the mark_complete method will signal the frontend to reset to the original
@@ -1016,16 +1072,12 @@ class RunningScript:
         initial_filename=None,
     ):
         self.initialize_variables()
-        saved_instance = RunningScript.instance
-        saved_run_thread = RunningScript.run_thread
         RunningScript.instance = self
 
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
             args=[
                 text,
-                saved_instance,
-                saved_run_thread,
                 initial_filename,
             ],
             daemon=True,
@@ -1196,6 +1248,13 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
     RunningScript.instance.execute_while_paused_info = None
     path = procedure_name
 
+    # Decide if using script engine
+    use_script_engine = False
+    if RunningScript.instance.script_engine is not None and procedure_name:
+        extension = str(os.path.splitext(procedure_name)[1]).lower()
+        if extension != ".py":
+            use_script_engine = True
+
     # Check RAM based instrumented cache
     breakpoints = []
     if path in RunningScript.breakpoints:
@@ -1244,7 +1303,11 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
         # Cache instrumentation into RAM
         if line_no == 1 and end_line_no is None:
-            instrumented_script = RunningScript.instrument_script(text, path)
+            if use_script_engine:
+                # Don't instrument if using a script engine
+                instrumented_script = text
+            else:
+                instrumented_script = RunningScript.instrument_script(text, path)
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
         else:
             if line_no > 1 or end_line_no is not None:
@@ -1263,10 +1326,14 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
                 if line_no > end_line_no:
                     raise RuntimeError(f"Start line number {line_no} is greater than end line number {end_line_no} for {procedure_name}")
 
-                text = "\n".join(text_lines[(line_no - 1):end_line_no])
+                if not use_script_engine:
+                    text = "\n".join(text_lines[(line_no - 1):end_line_no])
 
-            instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
-
+            if use_script_engine:
+                # Don't instrument if using a script engine
+                instrumented_script = text
+            else:
+                instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
         cached = False
 
     running = ScriptStatusModel.all(scope = RunningScript.instance.scope(), type = "running")
@@ -1280,10 +1347,21 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
         },
     )
 
-    if bind_variables:
-        exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+    if use_script_engine:
+        if line_no != 1 or end_line_no is not None:
+            if end_line_no is None:
+                # Goto line
+                RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name, line_no = line_no)
+            else:
+                # Execute selection
+                RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name, line_no = line_no, end_line_no = end_line_no)
+        else:
+            RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name)
     else:
-        exec(instrumented_script, RunningScript.instance.script_globals)
+        if bind_variables:
+            exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+        else:
+            exec(instrumented_script, RunningScript.instance.script_globals)
 
     if complete:
         RunningScript.instance.script_status.state = 'completed'

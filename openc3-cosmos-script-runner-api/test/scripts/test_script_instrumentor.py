@@ -16,7 +16,7 @@
 
 import ast
 import pytest
-from scripts.script_instrumentor import ScriptInstrumentor
+from openc3.utilities.script_instrumentor import ScriptInstrumentor
 
 
 class MockRunningScript:

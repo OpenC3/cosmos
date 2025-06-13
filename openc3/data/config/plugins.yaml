@@ -89,3 +89,16 @@ WIDGET:
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
           values: .+
+SCRIPT_ENGINE:
+  summary: Define a script engine to add language support to Script Runner
+  example: SCRIPT_ENGINE .print print_script_engine.py
+  description: Defines a script engine to add language support to Script Runner
+  parameters:
+    - name: Extension
+      description: Extension that will use this script engine
+      required: true
+      values: .+
+    - name: Script Engine Filename
+      description: Filename that implements the script engine. Should be in top level lib folder in plugin.
+      required: true
+      values: .+

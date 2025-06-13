@@ -1474,6 +1474,25 @@ export default {
       }
     },
     checkMnemonics: function () {
+      let filename = this.filename
+      if (this.filename !== NEW_FILENAME) {
+        // Check if the extension is not .rb or .py
+        if (!(filename.endsWith('.rb') || filename.endsWith('.py'))) {
+          Api.post(`/script-api/scripts/${this.filename}/mnemonics`, {
+            data: this.editor.getValue(),
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'plain/text',
+            },
+          }).then((response) => {
+            let alertText = ''
+            alertText += `<strong>${response.data.title}</strong><br/><br/>`
+            alertText += JSON.parse(response.data.description)
+            this.$dialog.alert(alertText.trim(), { html: true })
+            return
+          })
+        }
+      }
       this.mnemonicChecker
         .checkText(this.editor.getValue())
         .then(({ skipped, problems }) => {

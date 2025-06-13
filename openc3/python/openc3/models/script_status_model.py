@@ -117,6 +117,7 @@ class ScriptStatusModel(Model):
         pid = None,
         log = None,
         report = None,
+        script_engine = None,
         updated_at = None,
         scope = None
     ):
@@ -142,6 +143,7 @@ class ScriptStatusModel(Model):
         self.pid = pid
         self.log = log
         self.report = report
+        self.script_engine = script_engine
 
     def is_complete(self):
         return (self.__state == 'completed' or self.__state == 'completed_errors' or self.__state == 'stopped' or self.__state == 'crashed' or self.__state == 'killed')
@@ -223,6 +225,7 @@ class ScriptStatusModel(Model):
             'pid': self.pid,
             'log': self.log,
             'report': self.report,
+            'script_engine': self.script_engine,
             'updated_at': self.updated_at,
             'scope': self.scope
         }

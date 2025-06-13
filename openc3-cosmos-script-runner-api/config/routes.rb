@@ -32,6 +32,7 @@ Rails.application.routes.draw do
     post "/scripts/*name/lock" => "scripts#lock"
     post "/scripts/*name/unlock" => "scripts#unlock"
     post "/scripts/*name/syntax" => "scripts#syntax"
+    post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
