@@ -10,7 +10,7 @@ COPY Gemfile ./
 
 USER root
 
-RUN bundle config set --local without 'development' \
+RUN bundle config set --local without 'development test' \
   && bundle install --quiet \
   && rm Gemfile.lock \
   && rm -rf /usr/lib/ruby/gems/*/cache/* \

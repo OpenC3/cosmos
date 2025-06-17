@@ -10,7 +10,7 @@ COPY Gemfile ./
 
 USER root
 
-RUN bundle config set --local without 'development' \
+RUN bundle config set --local without 'development test' \
   && bundle install --quiet \
   # grpc needs to be uninstalled with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716

@@ -15,7 +15,7 @@ USER root
 
 RUN mkdir -p lib/openc3/ext \
   && git config --global http.sslCAinfo /devel/cacert.pem \
-  && bundle config set --local without 'development' \
+  && bundle config set --local without 'development test' \
   && bundle install --quiet \
   && rake gems \
   && gem install --local ./openc3-*.gem \
