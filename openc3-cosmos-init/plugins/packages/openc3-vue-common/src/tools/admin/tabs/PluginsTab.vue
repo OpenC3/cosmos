@@ -256,6 +256,7 @@ export default {
         'openc3-cosmos-tool-autonomic', // Enterprise only
         'openc3-cosmos-tool-calendar', // Enterprise only
         'openc3-cosmos-tool-grafana', // Enterprise only
+        'openc3-cosmos-tool-systemhealth', // Enterprise only
         'openc3-enterprise-tool-base', // Enterprise only
         'openc3-tool-base',
       ],
