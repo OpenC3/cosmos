@@ -2,7 +2,7 @@
 title: Bucket Explorer
 description: File browser to the COSMOS backend bucket storage system
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🪣
 ---
 
 ## Introduction

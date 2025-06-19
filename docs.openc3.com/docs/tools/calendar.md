@@ -2,7 +2,7 @@
 title: Calendar (Enterprise)
 description: Calendar visualization of metadata, notes, and timelines
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🗓️
 ---
 
 ## Introduction

@@ -2,7 +2,7 @@
 title: Command Sender
 description: Send individual commands
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 📢
 ---
 
 ## Introduction

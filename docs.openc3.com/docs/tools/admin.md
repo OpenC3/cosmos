@@ -2,7 +2,7 @@
 title: Admin
 description: Administer COSMOS, install plugins, change settings
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🧑‍⚖️
 ---
 
 ## Introduction
