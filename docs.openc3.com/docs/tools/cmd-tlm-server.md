@@ -2,7 +2,7 @@
 title: Command and Telemetry Server
 description: Status about interfaces, targets and log messages
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 📡
 ---
 
 ## Introduction

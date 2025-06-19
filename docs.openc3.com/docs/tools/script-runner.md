@@ -2,7 +2,7 @@
 title: Script Runner
 description: Run Python or Ruby scripts to send commands and check telemetry
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🏃‍➡️
 ---
 
 ## Introduction

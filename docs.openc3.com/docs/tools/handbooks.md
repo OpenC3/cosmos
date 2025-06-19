@@ -2,7 +2,7 @@
 title: Handbooks
 description: Format the command and telemetry definition into a webpage
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 📖
 ---
 
 ## Introduction

@@ -2,7 +2,7 @@
 title: Data Viewer
 description: View packet or item data
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🖥️
 ---
 
 ## Introduction
