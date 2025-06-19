@@ -3,7 +3,7 @@ name: Auto Build Docs
 on:
   push:
     paths:
-      - 'docs.openc3.com/**'
+      - "docs.openc3.com/**"
     branches:
       - main
 
@@ -11,7 +11,9 @@ jobs:
   build-and-commit:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-
+    # 'environment: Release' is required to access the secrets.QA_PAT
+    # See https://github.com/OpenC3/cosmos/settings/secrets/actions
+    environment: Release
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,7 +23,7 @@ jobs:
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
-      
+
       - name: Install dependencies
         run: yarn
         working-directory: docs.openc3.com
@@ -30,6 +32,6 @@ jobs:
         run: yarn build
         working-directory: docs.openc3.com
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_message: Automated Doc Build Change
