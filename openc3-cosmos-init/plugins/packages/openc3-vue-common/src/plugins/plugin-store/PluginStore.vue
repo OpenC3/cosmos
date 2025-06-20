@@ -125,8 +125,9 @@ export default {
     close: function () {
       this.$emit('close')
     },
-    install: function (gemUrl) {
-      this.$emit('triggerInstall', gemUrl)
+    install: function (plugin) {
+      this.$emit('triggerInstall', plugin)
+      this.close()
     },
     openSettings: function () {
       this.showSettingsDialog = true

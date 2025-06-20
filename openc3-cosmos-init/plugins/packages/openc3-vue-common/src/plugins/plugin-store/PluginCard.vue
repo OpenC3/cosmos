@@ -82,7 +82,7 @@ export default {
   emits: ['triggerInstall'],
   methods: {
     install: function () {
-      this.$emit('triggerInstall', this.gemUrl)
+      this.$emit('triggerInstall', this.plugin)
     },
   },
 }

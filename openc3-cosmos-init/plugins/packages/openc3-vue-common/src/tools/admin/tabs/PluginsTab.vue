@@ -168,7 +168,10 @@
       :text="processOutput"
     />
     <v-bottom-sheet v-model="showPluginStore" fullscreen>
-      <plugin-store @close="() => showPluginStore = false" @triggerInstall="installFromUrl" />
+      <plugin-store
+        @close="() => (showPluginStore = false)"
+        @trigger-install="(storeData) => upload(null, storeData)"
+      />
     </v-bottom-sheet>
   </div>
 </template>
@@ -344,13 +347,17 @@ export default {
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
-    upload: function (existing = null) {
+    upload: function (existing = null, storeData = null) {
       const method = existing ? 'put' : 'post'
       const path = existing
         ? `/openc3-api/plugins/${existing}`
         : '/openc3-api/plugins'
       const formData = new FormData()
-      formData.append('plugin', this.file, this.file.name)
+      if (storeData === null) {
+        formData.append('plugin', this.file, this.file.name)
+      } else {
+        formData.append('gem_url', storeData.gem_url)
+      }
       let self = this
       const promise = Api[method](path, {
         data: formData,
@@ -437,12 +444,6 @@ export default {
         }, 5000)
         this.update()
       })
-    },
-    installFromUrl: function (gemUrl) {
-      // TODO
-      this.showPluginStore = false
-      // eslint-disable-next-line
-      console.log(`Install ${gemUrl}`)
     },
     editPlugin: function (plugin) {
       Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {

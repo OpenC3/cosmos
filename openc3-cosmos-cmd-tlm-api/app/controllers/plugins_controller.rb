@@ -22,6 +22,7 @@
 
 require 'openc3/utilities/process_manager'
 require 'openc3/models/plugin_model'
+require 'down'
 require 'fileutils'
 require 'tmpdir'
 
@@ -33,15 +34,23 @@ class PluginsController < ModelController
   # Add a new plugin
   def create(update = false)
     return unless authorization('admin')
-    file = params[:plugin]
+    file = if params[:gem_url]
+      tempfile = Down.download(params[:gem_url])
+      original_filename = File.basename(params[:gem_url])
+      tempfile
+    else
+      params[:plugin]
+    end
     if file
+      tempfile = file.tempfile unless tempfile
+      original_filename = file.original_filename unless original_filename
       scope = sanitize_params([:scope])
       return unless scope
       scope = scope[0]
       temp_dir = Dir.mktmpdir
       begin
-        gem_file_path = temp_dir + '/' + file.original_filename
-        FileUtils.cp(file.tempfile.path, gem_file_path)
+        gem_file_path = temp_dir + '/' + original_filename
+        FileUtils.cp(tempfile.path, gem_file_path)
         if @existing_model
           result = OpenC3::PluginModel.install_phase1(gem_file_path, existing_variables: @existing_model['variables'], existing_plugin_txt_lines: @existing_model['plugin_txt_lines'], scope: scope)
         else
