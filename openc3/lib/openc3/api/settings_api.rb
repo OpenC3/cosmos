@@ -110,7 +110,8 @@ module OpenC3
     def update_plugin_store(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'admin', manual: manual, scope: scope, token: token)
       setting = SettingModel.get(name: 'store_url', scope: scope)
-      store_url = setting['data'] || 'https://store.openc3.com'
+      store_url = setting['data'] if setting
+      store_url = 'https://store.openc3.com' if not store_url or store_url.strip.empty?
       conn = Faraday.new(
         url: store_url,
       )
