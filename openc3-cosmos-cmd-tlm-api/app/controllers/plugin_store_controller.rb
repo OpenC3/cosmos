@@ -1,4 +1,5 @@
-/*
+# encoding: ascii-8bit
+
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -14,8 +15,11 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
 
-import PluginListItem from './PluginListItem.vue'
+require 'openc3/models/plugin_store_model'
 
-export { PluginListItem }
+class PluginStoreController < ApplicationController
+  def index
+    render json: OpenC3::PluginStoreModel.all()
+  end
+end

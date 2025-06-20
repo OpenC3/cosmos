@@ -77,14 +77,14 @@
   </v-sheet>
   <plugin-store-settings-dialog
     v-model="showSettingsDialog"
-    @update:store-url="updateStoreUrl"
+    @update:store-url="updatePluginStore"
   />
 </template>
 
 <script>
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { PluginCard } from '@/plugins/plugin-store'
 import PluginStoreSettingsDialog from './PluginStoreSettingsDialog.vue' // idk why importing from @/plugins/plugin-store isn't working
-import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 
 export default {
   components: {
@@ -94,7 +94,7 @@ export default {
   emits: ['close', 'triggerInstall'],
   data() {
     return {
-      pluginStoreApi: new PluginStoreApi(),
+      api: new OpenC3Api(),
       search: '',
       verifiedOnly: false,
       showSettingsDialog: false,
@@ -116,12 +116,17 @@ export default {
     },
   },
   mounted: function () {
-    this.pluginStoreApi.getAll().then((response) => {
-      this.plugins = response.data
-    })
+    // Don't call updatePluginStore() here. It should be called in the background before the user opens this store
+    // view (e.g. in PluginsTab) to keep this feeling fast
+    this.fetchPluginStoreData()
     // TODO: do something with plugins that are already installed (show uninstall button instead?)
   },
   methods: {
+    fetchPluginStoreData: function () {
+      Api.get('/openc3-api/pluginstore').then((response) => {
+        this.plugins = response.data
+      })
+    },
     close: function () {
       this.$emit('close')
     },
@@ -132,8 +137,10 @@ export default {
     openSettings: function () {
       this.showSettingsDialog = true
     },
-    updateStoreUrl: function () {
-      this.pluginStoreApi.refreshPluginStoreUrl()
+    updatePluginStore: function () {
+      this.api.update_plugin_store().then((response) => {
+        this.fetchPluginStoreData()
+      })
     },
   },
 }

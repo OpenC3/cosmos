@@ -16,8 +16,9 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
+import { OpenC3Api } from '@openc3/js-common/services'
 
+const settingName = 'store_url'
 export default {
   props: {
     id: Number,
@@ -39,7 +40,7 @@ export default {
   },
   data: function () {
     return {
-      _storeApi: new PluginStoreApi(),
+      _api: new OpenC3Api(),
       _storeUrl: '',
     }
   },
@@ -69,6 +70,8 @@ export default {
     },
   },
   created: function () {
-    this._storeApi.getStoreUrl().then((storeUrl) => (this._storeUrl = storeUrl))
+    this._api
+      .get_setting(settingName)
+      .then((storeUrl) => (this._storeUrl = storeUrl))
   },
 }
