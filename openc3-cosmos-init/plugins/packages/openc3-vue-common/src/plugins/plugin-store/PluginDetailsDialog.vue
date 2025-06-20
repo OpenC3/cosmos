@@ -22,7 +22,7 @@
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
-        <span v-text="title" />
+        <span v-text="name" />
         <v-spacer />
         <v-tooltip location="top">
           <template #activator="{ props }">
