@@ -17,98 +17,107 @@
 -->
 
 <template>
-  <v-list-item data-test="plugin-list-item">
-    <v-list-item-title>
-      <template v-if="isModified"> * </template>
-      {{ plugin.name }}
-    </v-list-item-title>
-    <v-list-item-subtitle v-if="pluginTargets(plugin.name).length !== 0">
-      <span
-        v-for="(target, index) in pluginTargets(plugin.name)"
-        :key="index"
-        class="mr-2"
-      >
-        <a
-          v-if="target.modified"
-          @click.prevent="downloadTarget(target.name)"
+  <tr data-test="plugin-list-item" @click="openDetails">
+    <td>
+      <v-img v-if="image" :src="image" max-height="56" min-width="56" />
+    </td>
+    <td>
+      <div
+        v-text="title"
+        class="text-h6"
+      />
+      <div class="text-subtitle-2">
+        <!-- subtitle -->
+        <template v-if="isModified"> * </template>
+        {{ name }}
+      </div>
+      <div v-if="targets?.length">
+        <!-- sub-subtitle -->
+        <span
+          v-for="(target, index) in targets"
+          :key="index"
+          class="mr-2"
         >
-          {{ target.name }}
-        </a>
-        <span v-else> {{ target.name }} </span>
-      </span>
-    </v-list-item-subtitle>
+          <a
+            v-if="target.modified"
+            v-text="target.name"
+            @click.prevent="downloadTarget(target.name)"
+            style="cursor: pointer"
+          />
+          <span
+            v-else
+            v-text="target.name"
+          />
+        </span>
+      </div>
+    </td>
 
-    <template v-slot:append>
-      <div class="mx-3">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="downloadPlugin"
-              icon="mdi-download"
-              data-test="download-plugin"
-            />
-          </template>
-          <span> Download Plugin </span>
-        </v-tooltip>
-      </div>
-      <div class="mx-3">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="editPlugin"
-              icon="mdi-pencil"
-              data-test="edit-plugin"
-            />
-          </template>
-          <span> Edit Plugin Details </span>
-        </v-tooltip>
-      </div>
-      <div class="mx-3">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="upgradePlugin"
-              icon="mdi-update"
-              data-test="upgrade-plugin"
-            />
-          </template>
-          <span> Upgrade Plugin </span>
-        </v-tooltip>
-      </div>
-      <div class="mx-3">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="deletePrompt"
-              icon="mdi-delete"
-              data-test="delete-plugin"
-            />
-          </template>
-          <span> Delete Plugin </span>
-        </v-tooltip>
-      </div>
-    </template>
-  </v-list-item>
+    <td>
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-icon
+            v-bind="props"
+            icon="mdi-dots-horizontal"
+          />
+        </template>
+        <v-list>
+          <v-list-item
+            title="Download"
+            prepend-icon="mdi-download"
+            @click="downloadPlugin"
+            data-test="download-plugin"
+          />
+          <v-list-item
+            title="Edit Details"
+            prepend-icon="mdi-pencil"
+            @click="edit"
+            data-test="edit-plugin"
+          />
+          <v-list-item
+            title="Upgrade"
+            prepend-icon="mdi-update"
+            @click="upgrade"
+            data-test="upgrade-plugin"
+          />
+          <v-list-item
+            title="Delete"
+            prepend-icon="mdi-delete"
+            @click="deletePrompt"
+            data-test="delete-plugin"
+          />
+        </v-list>
+      </v-menu>
+    </td>
+  </tr>
+  <plugin-details-dialog v-model="showCard" v-bind="plugin" />
 </template>
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import PluginTargets from './PluginTargets'
+import { PluginCard, PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {
-  mixins: [PluginTargets],
-  emits: ['edit', 'upgrade'],
+  mixins: [PluginProps],
+  components: {
+    PluginCard,
+    PluginDetailsDialog,
+  },
+  emits: ['edit', 'upgrade', 'showDetails'],
   props: {
-    plugin: Object,
+    targets: Array,
     isModified: Boolean,
   },
+  data() {
+    return {
+      showCard: false,
+    }
+  },
   methods: {
+    openDetails: function () {
+      this.showCard = true
+    },
     downloadPlugin: function () {
-      Api.post(`/openc3-api/packages/${this.plugin.name}/download`).then((response) => {
+      Api.post(`/openc3-api/packages/${this.name}/download`).then((response) => {
         // Decode Base64 string
         const decodedData = window.atob(response.data.contents)
         // Create UNIT8ARRAY of size same as row data length
@@ -141,11 +150,14 @@ export default {
         link.click()
       })
     },
-    editPlugin: function () {
+    edit: function () {
       this.$emit('edit')
     },
-    upgradePlugin: function () {
+    upgrade: function () {
       this.$emit('upgrade')
+    },
+    deletePrompt: function () {
+      this.$emit('delete')
     },
   },
 }
