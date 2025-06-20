@@ -56,12 +56,10 @@ export default class PluginStoreApi {
   async refreshPluginStoreUrl(newUrl = null) {
     this.refreshingUrl = true
     if (newUrl) {
-      console.log('storing: ' + newUrl)
       this.storeUrl = newUrl
       await this.cosmosApi.set_setting(SETTING_NAME, this.storeUrl)
     } else {
       const response = await this.cosmosApi.get_setting(SETTING_NAME)
-      console.log('got: ' + response)
       if (response) {
         this.storeUrl = response
       }
