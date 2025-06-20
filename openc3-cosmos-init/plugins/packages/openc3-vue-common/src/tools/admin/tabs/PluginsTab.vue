@@ -181,7 +181,7 @@ import { Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
 import { PluginListItem } from '@/tools/admin/tabs/plugins'
-import { PluginApi } from '@/tools/admin/tabs/plugins'
+import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
@@ -194,6 +194,7 @@ export default {
   },
   data() {
     return {
+      pluginStoreApi: new PluginStoreApi(),
       file: null,
       currentPlugin: null,
       showPluginDetails: false,
@@ -248,19 +249,23 @@ export default {
   },
   computed: {
     shownPlugins() {
-      return Object.entries(this.plugins).filter(([pluginName, plugin]) => {
-        const pluginNameFirst = pluginName.split('__')[0]
-        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-        const pluginNameShort = pluginNameSplit.join('-')
-        return !this.defaultPlugins.includes(pluginNameShort) ||
-          this.showDefaultTools
-      }).map(([pluginName, plugin]) => {
-        const storePlugin = PluginApi.getBySha(plugin.gem_sha)
-        return {
-          ...storePlugin,
-          ...plugin,
-        }
-      })
+      return Object.entries(this.plugins)
+        .filter(([pluginName, plugin]) => {
+          const pluginNameFirst = pluginName.split('__')[0]
+          const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
+          const pluginNameShort = pluginNameSplit.join('-')
+          return (
+            !this.defaultPlugins.includes(pluginNameShort) ||
+            this.showDefaultTools
+          )
+        })
+        .map(([pluginName, plugin]) => {
+          const storePlugin = this.pluginStoreApi.getBySha(plugin.gem_sha)
+          return {
+            ...storePlugin,
+            ...plugin,
+          }
+        })
     },
   },
   watch: {
