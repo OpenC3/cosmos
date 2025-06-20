@@ -25,7 +25,7 @@
         <span v-text="title" />
         <v-spacer />
         <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-btn
                 :href="storeLink"
@@ -39,15 +39,20 @@
           <span> View at plugins.openc3.com </span>
         </v-tooltip>
       </v-toolbar>
-      <v-card-subtitle class="d-flex align-center justify-content-space-between">
-        <div> {{ author }} </div>
+      <v-card-subtitle
+        class="d-flex align-center justify-content-space-between"
+      >
+        <div>{{ author }}</div>
         <v-spacer />
         <div v-if="verified">
           Verified
           <v-badge inline icon="mdi-shield-check" color="success" />
         </div>
       </v-card-subtitle>
-      <v-card-subtitle class="d-flex align-center justify-content-space-between">
+      <!--
+      <v-card-subtitle
+        class="d-flex align-center justify-content-space-between"
+      >
         <div>
           <v-icon icon="mdi-cloud-download" size="x-small" />
           {{ downloads }} downloads
@@ -63,11 +68,12 @@
           />
         </div>
       </v-card-subtitle>
+      -->
       <v-card-text>
-        <v-img v-if="image" :src="image" />
+        <v-img v-if="image_url" :src="image_url" />
         <div v-text="description" />
-        <div class="mt-3 text-caption font-italic"> License: {{ license }} </div>
-        <div class="text-caption font-italic"> SHA256: {{ gemSha }} </div>
+        <div class="mt-3 text-caption font-italic">License: {{ license }}</div>
+        <div class="text-caption font-italic">SHA256: {{ checksum }}</div>
       </v-card-text>
 
       <v-card-actions class="justify-start px-6">
@@ -101,10 +107,10 @@ import PluginProps from './PluginProps'
 
 export default {
   mixins: [PluginProps],
-  emits: ['triggerInstall'],
   props: {
     modelValue: Boolean,
   },
+  emits: ['triggerInstall', 'update:modelValue'],
   data() {
     return {
       showDialog: false,
