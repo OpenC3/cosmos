@@ -18,15 +18,23 @@
 
 <template>
   <plugin-details-dialog v-bind="plugin" @trigger-install="install">
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-card v-bind="props" height="350" class="d-flex flex-column">
         <v-card-title class="d-flex align-center justify-content-space-between">
           {{ title }}
           <v-spacer />
-          <v-badge inline v-if="verified" icon="mdi-shield-check" color="success" />
+          <v-badge
+            v-if="verified"
+            inline
+            icon="mdi-shield-check"
+            color="success"
+          />
         </v-card-title>
-        <v-card-subtitle class="d-flex align-center justify-content-space-between">
-          <div> {{ author }} </div>
+        <v-card-subtitle
+          class="d-flex align-center justify-content-space-between"
+        >
+          <div>{{ author }}</div>
+          <!--
           <v-spacer />
           <v-rating
             :model-value="rating"
@@ -35,17 +43,18 @@
             readonly
             half-increments
           />
+          -->
         </v-card-subtitle>
         <v-card-text>
-          <v-img v-if="image" :src="image" max-height="160" />
-            <div
-              :class="{
-                'truncate-description': true,
-                'truncate-2': !!image,
-                'truncate-10': !image,
-              }"
-              v-text="description"
-            />
+          <v-img v-if="image_url" :src="image_url" max-height="160" />
+          <div
+            :class="{
+              'truncate-description': true,
+              'truncate-2': !!image_url,
+              'truncate-10': !image_url,
+            }"
+            v-text="description"
+          />
         </v-card-text>
         <v-spacer />
         <v-card-actions class="flex-wrap">
@@ -66,14 +75,14 @@ import PluginProps from './PluginProps'
 import PluginDetailsDialog from './PluginDetailsDialog.vue'
 
 export default {
-  mixins: [PluginProps],
   components: {
     PluginDetailsDialog,
   },
+  mixins: [PluginProps],
   emits: ['triggerInstall'],
   computed: {
     storeLink: function () {
-      return `https://plugins.openc3.com/${this.authorSlug}/${this.titleSlug}`
+      return `https://plugins.openc3.com/cosmos_plugins/${this.id}`
     },
   },
   methods: {
@@ -93,12 +102,12 @@ export default {
 }
 
 .truncate-2 {
-  line-clamp: 2; 
+  line-clamp: 2;
   -webkit-line-clamp: 2;
 }
 
 .truncate-10 {
-  line-clamp: 10; 
+  line-clamp: 10;
   -webkit-line-clamp: 10;
 }
 </style>

@@ -20,5 +20,12 @@ import PluginCard from './PluginCard.vue'
 import PluginDetailsDialog from './PluginDetailsDialog.vue'
 import PluginProps from './PluginProps'
 import PluginStore from './PluginStore.vue'
+import PluginStoreSettingsDialog from './PluginStoreSettingsDialog.vue'
 
-export { PluginCard, PluginDetailsDialog, PluginProps, PluginStore }
+export {
+  PluginCard,
+  PluginDetailsDialog,
+  PluginProps,
+  PluginStore,
+  PluginStoreSettingsDialog,
+}
