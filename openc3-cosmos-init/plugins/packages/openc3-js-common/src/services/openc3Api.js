@@ -713,6 +713,10 @@ export default class OpenC3Api {
     return this.exec('update_news', [])
   }
 
+  update_plugin_store() {
+    return this.exec('update_plugin_store', [])
+  }
+
   // DEPRECATED for set_setting
   save_setting(name, data) {
     return this.exec('set_setting', [name, data])

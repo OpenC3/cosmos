@@ -24,6 +24,20 @@
       <v-spacer />
     </v-toolbar>
     <v-card class="pa-3">
+      <v-alert v-model="errorLoading" type="error" closable density="compact">
+        Error loading previous configuration due to {{ errorText }}
+      </v-alert>
+      <v-alert v-model="errorSaving" type="error" closable density="compact">
+        Error saving due to {{ errorText }}
+      </v-alert>
+      <v-alert
+        v-model="successSaving"
+        type="success"
+        closable
+        density="compact"
+      >
+        Saved!
+      </v-alert>
       <v-card-text>
         <v-text-field
           v-model="storeUrl"
@@ -45,19 +59,17 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
-import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
+import Settings from '@/tools/admin/tabs/settings/settings.js'
 
 const settingName = 'store_url'
 export default {
+  mixins: [Settings],
   props: {
     modelValue: Boolean,
   },
   emits: ['update:modelValue', 'update:storeUrl'],
   data() {
     return {
-      cosmosApi: new OpenC3Api(),
-      storeApi: new PluginStoreApi(),
       showDialog: false,
       storeUrl: '',
       rules: {
@@ -86,24 +98,21 @@ export default {
     },
   },
   created: function () {
-    this.storeApi.getStoreUrl().then((storeUrl) => (this.storeUrl = storeUrl))
+    this.loadSetting(settingName)
   },
   methods: {
     save() {
-      this.storeApi
-        .refreshPluginStoreUrl(this.storeUrl)
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved store URL',
-          })
-          this.$emit('update:storeUrl', this.storeUrl)
-          this.showDialog = false
-        })
-        .catch(() => {
-          this.$notify.caution({
-            title: 'Failed to save store URL',
-          })
-        })
+      this.saveSetting(settingName, this.storeUrl)
+      this.$emit('update:storeUrl', this.storeUrl)
+      this.showDialog = false
+    },
+    parseSetting: function (response) {
+      if (response) {
+        this.storeUrl = response
+      } else {
+        // Default URL if setting is not found
+        this.storeUrl = 'https://store.openc3.com'
+      }
     },
   },
 }
