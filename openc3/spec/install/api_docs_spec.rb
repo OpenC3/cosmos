@@ -25,7 +25,7 @@ module OpenC3
     DEPRECATED_APIS.concat(%w(tlm_variable save_setting))
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
-    IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news))
+    IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
     IGNORED_APIS.concat(%w(package_install package_uninstall package_status package_download))
     IGNORED_APIS.concat(%w(plugin_install_phase1 plugin_install_phase2 plugin_update_phase1 plugin_uninstall plugin_status))
 
