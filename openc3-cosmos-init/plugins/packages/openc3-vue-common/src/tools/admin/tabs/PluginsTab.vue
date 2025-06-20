@@ -108,10 +108,8 @@
         <v-divider />
       </div>
     </v-list>
-    <v-row class="px-4">
-      <v-col class="text-h5">
-        Installed Plugins
-      </v-col>
+    <v-row no-gutters class="px-4">
+      <v-col class="text-h5"> Installed Plugins </v-col>
       <v-col class="v-col-auto">
         <v-switch
           v-model="showDefaultTools"
