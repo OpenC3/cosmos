@@ -80,7 +80,11 @@
       </v-menu>
     </td>
   </tr>
-  <plugin-details-dialog v-model="showCard" v-bind="plugin" @trigger-uninstall="deletePrompt" />
+  <plugin-details-dialog
+    v-model="showCard"
+    v-bind="plugin"
+    @trigger-uninstall="deletePrompt"
+  />
 </template>
 
 <script>
