@@ -204,8 +204,8 @@
       title="Process Output"
       :text="processOutput"
     />
-    <v-bottom-sheet v-model="showPluginStore">
-      <plugin-store @trigger-install="installFromUrl" />
+    <v-bottom-sheet v-model="showPluginStore" fullscreen>
+      <plugin-store @close="() => showPluginStore = false" @triggerInstall="installFromUrl" />
     </v-bottom-sheet>
   </div>
 </template>
@@ -332,6 +332,16 @@ export default {
   mounted() {
     this.update()
     this.updateProcesses()
+
+    // Handle going "back" from the plugin store
+    // (idk why v-bottom-sheet's close-on-back prop isn't working)
+    const that = this
+    window.onpopstate = function () {
+      if (that.showPluginStore) {
+        that.showPluginStore = false
+        history.go(1)
+      }
+    }
   },
   methods: {
     showOutput: function (process) {

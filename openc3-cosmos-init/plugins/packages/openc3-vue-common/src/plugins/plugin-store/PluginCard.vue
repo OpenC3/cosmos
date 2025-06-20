@@ -25,7 +25,17 @@
           <v-spacer />
           <v-badge inline v-if="verified" icon="mdi-shield-check" color="success" />
         </v-card-title>
-        <v-card-subtitle> Author: {{ author }} </v-card-subtitle>
+        <v-card-subtitle class="d-flex align-center justify-content-space-between">
+          <div> {{ author }} </div>
+          <v-spacer />
+          <v-rating
+            :model-value="rating"
+            density="compact"
+            size="small"
+            readonly
+            half-increments
+          />
+        </v-card-subtitle>
         <v-card-text>
           <v-img v-if="image" :src="image" max-height="160" />
             <div
@@ -71,7 +81,7 @@
           </v-tooltip>
         </v-toolbar>
         <v-card-subtitle class="d-flex align-center justify-content-space-between">
-          <div> Author: {{ author }} </div>
+          <div> {{ author }} </div>
           <v-spacer />
           <div v-if="verified">
             Verified
@@ -79,8 +89,12 @@
           </div>
         </v-card-subtitle>
         <v-card-subtitle class="d-flex align-center justify-content-space-between">
+          <div>
+            <v-icon icon="mdi-cloud-download" size="x-small" />
+            {{ downloads }} downloads
+          </div>
+          <v-spacer />
           <div class="d-flex align-center">
-            Rating:
             <v-rating
               :model-value="rating"
               density="compact"
@@ -88,11 +102,6 @@
               readonly
               half-increments
             />
-          </div>
-          <v-spacer />
-          <div>
-            <v-icon icon="mdi-cloud-download" size="x-small" />
-            {{ downloads }} downloads
           </div>
         </v-card-subtitle>
         <v-card-text>
@@ -136,12 +145,21 @@
 export default {
   emits: ['triggerInstall'],
   props: {
-    plugin: Object,
-  },
-  data() {
-    return {
-      ...this.plugin,
-    }
+    title: String,
+    titleSlug: String,
+    author: String,
+    authorSlug: String,
+    description: String,
+    keywords: Array,
+    image: String,
+    license: String,
+    rating: Number,
+    downloads: Number,
+    verified: Boolean,
+    homepage: String,
+    repository: String,
+    gemUrl: String,
+    sha256: String,
   },
   computed: {
     storeLink: function () {
