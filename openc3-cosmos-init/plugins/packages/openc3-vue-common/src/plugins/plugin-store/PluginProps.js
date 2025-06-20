@@ -21,7 +21,7 @@ import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 export default {
   props: {
     id: Number,
-    title: String,
+    name: String,
     // titleSlug: String,
     author: String,
     // authorSlug: String,
@@ -47,7 +47,7 @@ export default {
     plugin: function () {
       return {
         id: this.id,
-        title: this.title,
+        name: this.name,
         // titleSlug: this.titleSlug,
         author: this.author,
         // authorSlug: this.authorSlug,
