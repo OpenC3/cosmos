@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-sheet class="pb-11 pt-8 px-8">
+  <v-sheet class="pb-11 pt-8 px-8" height="100%">
     <div class="d-flex justify-content-space-between">
       <div>
         <div class="text-h3 mb-3">
@@ -43,25 +43,34 @@
         <span> Open plugins.openc3.com </span>
       </v-tooltip>
 
-      <v-btn icon="mdi-close" variant="text" />
+      <v-btn @click="close" icon="mdi-close" variant="text" />
     </div>
-    <v-text-field
-      v-model="search"
-      label="Search"
-      prepend-inner-icon="mdi-magnify"
-      clearable
-      variant="outlined"
-      density="compact"
-      single-line
-      hide-details
-      data-test="search-plugin-store"
-    />
+    <div class="d-inline-flex align-center w-100">
+      <v-text-field
+        v-model="search"
+        label="Search"
+        prepend-inner-icon="mdi-magnify"
+        clearable
+        variant="outlined"
+        density="compact"
+        single-line
+        hide-details
+        data-test="search-plugin-store"
+      />
+      <v-switch
+        v-model="verifiedOnly"
+        label="Verified only"
+        density="compact"
+        hide-details
+        class="ml-4"
+      />
+    </div>
     <v-spacer />
     <span class=""> Click on a plugin to see more information about it </span>
     <v-container>
       <v-row>
         <v-col v-for="plugin in filteredPlugins" cols="4">
-          <plugin-card :plugin="plugin" @triggerInstall="install" />
+          <plugin-card v-bind="plugin" @triggerInstall="install" />
         </v-col>
       </v-row>
     </v-container>
@@ -72,13 +81,14 @@
 import { PluginCard } from '@/plugins/plugin-store'
 
 export default {
-  emits: ['triggerInstall'],
+  emits: ['close', 'triggerInstall'],
   components: {
     PluginCard,
   },
   data() {
     return {
       search: '',
+      verifiedOnly: false,
       plugins: [
         {
           title: 'An awesome plugin',
@@ -135,16 +145,29 @@ export default {
   },
   computed: {
     filteredPlugins: function () {
-      if (this.search.length) {
-        return this.plugins.filter(plugin => plugin.title.toLowerCase().includes(this.search.toLowerCase()))
+      let filtered = this.plugins
+      if (this.verifiedOnly) {
+        filtered = filtered.filter(plugin => plugin.verified)
       }
-      return this.plugins
+      if (this.search.length) {
+        filtered = filtered.filter(plugin => plugin.title.toLowerCase().includes(this.search.toLowerCase()))
+      }
+      return filtered
     },
   },
   methods: {
+    close: function () {
+      this.$emit('close')
+    },
     install: function (gemUrl) {
       this.$emit('triggerInstall', gemUrl)
     },
   },
 }
 </script>
+
+<style>
+.v-sheet {
+  background-color: var(--color-background-base-default);
+}
+</style>
