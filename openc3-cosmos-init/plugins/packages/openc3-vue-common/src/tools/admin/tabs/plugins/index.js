@@ -17,9 +17,6 @@
 */
 
 import PluginListItem from './PluginListItem.vue'
-import PluginApi from './TempPluginDb'
+import PluginStoreApi from './PluginStoreApi'
 
-export {
-  PluginListItem,
-  PluginApi,
-}
+export { PluginListItem, PluginStoreApi }
