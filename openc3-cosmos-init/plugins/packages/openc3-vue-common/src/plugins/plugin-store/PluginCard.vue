@@ -80,11 +80,6 @@ export default {
   },
   mixins: [PluginProps],
   emits: ['triggerInstall'],
-  computed: {
-    storeLink: function () {
-      return `https://plugins.openc3.com/cosmos_plugins/${this.id}`
-    },
-  },
   methods: {
     install: function () {
       this.$emit('triggerInstall', this.gemUrl)
