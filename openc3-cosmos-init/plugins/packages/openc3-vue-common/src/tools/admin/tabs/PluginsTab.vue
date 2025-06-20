@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,17 +24,22 @@
   <div>
     <v-row no-gutters align="center" class="px-2">
       <v-col class="pa-2 mt-2">
-        <v-btn @click="selectFile">Install New Plugin</v-btn>
+        <v-btn append-icon="mdi-store" @click="openStore">
+          Browse Plugins
+        </v-btn>
+        <v-btn append-icon="mdi-paperclip" class="mx-2" @click="selectFile">
+          Install From File
+        </v-btn>
         <input
           ref="fileInput"
           style="display: none"
           type="file"
           @change="fileChange"
         />
-        &nbsp;Note: Use <v-icon>mdi-update</v-icon> to upgrade existing plugins
+        Note: Use <v-icon> mdi-update </v-icon> to upgrade existing plugins
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
-        <rux-progress :value="progress"></rux-progress>
+        <rux-progress :value="progress" />
       </v-col>
     </v-row>
     <v-row no-gutters class="px-2">
@@ -57,16 +62,16 @@
       v-model="showAlert"
       closable
       :type="alertType"
+      :text="alert"
       data-test="plugin-alert"
-      >{{ alert }}</v-alert
-    >
+    />
     <v-list
       v-if="Object.keys(processes).length > 0"
       class="list"
       data-test="process-list"
     >
-      <v-row no-gutters class="px-4"
-        ><v-col class="text-h6">Process List</v-col>
+      <v-row no-gutters class="px-4">
+        <v-col class="text-h6"> Process List </v-col>
         <v-col align="right">
           <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
           <div>Showing last 10 min of activity</div>
@@ -103,7 +108,7 @@
                   @click="showOutput(process)"
                 />
               </template>
-              <span>Show Output</span>
+              <span> Show Output </span>
             </v-tooltip>
           </template>
         </v-list-item>
@@ -111,25 +116,28 @@
       </div>
     </v-list>
     <v-list class="list" data-test="plugin-list">
-      <v-row class="px-4"><v-col class="text-h6">Plugin List</v-col></v-row>
+      <v-row class="px-4">
+        <v-col class="text-h6"> Plugin List </v-col>
+      </v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item data-test="plugin-list-item">
-          <v-list-item-title
-            ><span v-if="isModified(plugin)">* </span
-            >{{ plugin }}</v-list-item-title
-          >
+          <v-list-item-title>
+            <span v-if="isModified(plugin)">* </span>
+            {{ plugin }}
+          </v-list-item-title>
           <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
             <span
-              v-for="(target, index) in pluginTargets(plugin)"
-              :key="index"
+              v-for="(target, targetIndex) in pluginTargets(plugin)"
+              :key="targetIndex"
               class="mr-2"
             >
               <a
                 v-if="target.modified"
                 @click.prevent="downloadTarget(target.name)"
-                >{{ target.name }}
+              >
+                {{ target.name }}
               </a>
-              <span v-else>{{ target.name }} </span>
+              <span v-else> {{ target.name }} </span>
             </span>
           </v-list-item-subtitle>
 
@@ -196,6 +204,9 @@
       title="Process Output"
       :text="processOutput"
     />
+    <v-bottom-sheet v-model="showPluginStore">
+      <plugin-store @trigger-install="installFromUrl" />
+    </v-bottom-sheet>
   </div>
 </template>
 
@@ -204,10 +215,12 @@ import { toDate, format } from 'date-fns'
 import { Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
+import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
   components: {
     PluginDialog,
+    PluginStore,
     ModifiedPluginDialog,
     SimpleTextDialog,
   },
@@ -229,6 +242,7 @@ export default {
       showDownloadDialog: false,
       showProcessOutput: false,
       processOutput: '',
+      showPluginStore: false,
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
@@ -445,6 +459,12 @@ export default {
         this.update()
       })
     },
+    installFromUrl: function (gemUrl) {
+      // TODO
+      this.showPluginStore = false
+      // eslint-disable-next-line
+      console.log(`Install ${gemUrl}`)
+    },
     downloadTarget: function (name) {
       Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
         // Decode Base64 string
@@ -591,6 +611,9 @@ export default {
         // Reset the input element
         this.$refs.fileInput.value = null
       }
+    },
+    openStore() {
+      this.showPluginStore = true
     },
   },
 }
