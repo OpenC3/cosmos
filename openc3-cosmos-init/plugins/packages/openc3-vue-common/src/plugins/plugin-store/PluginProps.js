@@ -16,6 +16,8 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
+
 export default {
   props: {
     id: Number,
@@ -35,9 +37,16 @@ export default {
     gem_url: String,
     checksum: String,
   },
+  data: function () {
+    return {
+      _storeApi: new PluginStoreApi(),
+      _storeUrl: '',
+    }
+  },
   computed: {
     plugin: function () {
       return {
+        id: this.id,
         title: this.title,
         // titleSlug: this.titleSlug,
         author: this.author,
@@ -55,5 +64,11 @@ export default {
         checksum: this.gemSha,
       }
     },
+    storeLink: function () {
+      return new URL(`/cosmos_plugins/${this.id}`, this._storeUrl)
+    },
+  },
+  created: function () {
+    this._storeApi.getStoreUrl().then((storeUrl) => (this._storeUrl = storeUrl))
   },
 }

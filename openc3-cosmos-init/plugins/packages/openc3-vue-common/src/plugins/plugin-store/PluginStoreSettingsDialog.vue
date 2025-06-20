@@ -25,10 +25,20 @@
     </v-toolbar>
     <v-card class="pa-3">
       <v-card-text>
-        <v-text-field v-model="storeUrl" label="Store URL" :rules="[rules.required, rules.url]" />
+        <v-text-field
+          v-model="storeUrl"
+          label="Store URL"
+          :rules="[rules.required, rules.url]"
+        />
       </v-card-text>
       <v-card-actions>
-        <v-btn color="success" variant="text" text="Save" data-test="save-store-settings-btn" @click="save" />
+        <v-btn
+          color="success"
+          variant="text"
+          text="Save"
+          data-test="save-store-settings-btn"
+          @click="save"
+        />
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -36,6 +46,7 @@
 
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
+import { PluginStoreApi } from '@/tools/admin/tabs/plugins'
 
 const settingName = 'store_url'
 export default {
@@ -45,9 +56,10 @@ export default {
   emits: ['update:modelValue', 'update:storeUrl'],
   data() {
     return {
-      api: new OpenC3Api(),
+      cosmosApi: new OpenC3Api(),
+      storeApi: new PluginStoreApi(),
       showDialog: false,
-      storeUrl: 'https://store.openc3.com',
+      storeUrl: '',
       rules: {
         required: (value) => !!value || 'Required',
         url: (value) => {
@@ -74,23 +86,12 @@ export default {
     },
   },
   created: function () {
-    this.api
-      .get_setting(settingName)
-      .then((response) => {
-        if (response) {
-          this.storeUrl = response
-        }
-      })
-      .catch((error) => {
-        this.$notify.caution({
-          title: 'Failed to load settings',
-        })
-      })
+    this.storeApi.getStoreUrl().then((storeUrl) => (this.storeUrl = storeUrl))
   },
   methods: {
     save() {
-      this.api
-        .set_setting(settingName, this.storeUrl)
+      this.storeApi
+        .refreshPluginStoreUrl(this.storeUrl)
         .then(() => {
           this.$notify.normal({
             title: 'Saved store URL',
