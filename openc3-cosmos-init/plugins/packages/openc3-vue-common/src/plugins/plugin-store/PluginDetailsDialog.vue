@@ -178,7 +178,7 @@ export default {
       this.showCopiedTooltip = true
       setTimeout(() => {
         this.showCopiedTooltip = false
-      }, 1000);
+      }, 1000)
     },
   },
 }

@@ -37,7 +37,8 @@
           @change="fileChange"
         />
         <br />
-        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed Plugins list to upgrade existing plugins
+        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed
+        Plugins list to upgrade existing plugins
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress" />
@@ -127,11 +128,11 @@
       class="list"
       data-test="plugin-list"
     >
-      <template v-slot:item="{ item: plugin }">
+      <template #item="{ item: plugin }">
         <plugin-list-item
           v-bind="plugin"
           :targets="pluginTargets(plugin.name)"
-          :isModified="isModified(plugin.name)"
+          :is-modified="isModified(plugin.name)"
           @edit="() => editPlugin(plugin.name)"
           @upgrade="() => upgradePlugin(plugin.name)"
           @delete="() => deletePrompt(plugin.name)"
@@ -304,8 +305,7 @@ export default {
     },
     isModified: function (plugin) {
       return Object.entries(this.targets).some(([targetName, target]) => {
-        return target['plugin'] === plugin &&
-        target['modified'] === true
+        return target['plugin'] === plugin && target['modified'] === true
       })
     },
     showOutput: function (process) {
