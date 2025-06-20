@@ -29,6 +29,9 @@
     },
     {
       "path": "../openc3-cosmos-load-sim"
+    },
+    {
+      "path": "../openc3-schedule"
     }
   ],
   "settings": {

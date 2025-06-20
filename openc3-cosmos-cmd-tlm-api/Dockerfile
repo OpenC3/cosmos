@@ -10,13 +10,12 @@ COPY Gemfile ./
 
 USER root
 
-RUN bundle config set --local without 'development' \
+RUN bundle config set --local without 'development test' \
   && bundle install --quiet \
   # grpc needs to be uninstalled with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
   # Should be fixed June 2025, look for grpc > 1.72.0 with a x86-linux-musl platform
   && gem uninstall grpc --platform aarch64-linux --all --force \
-  && rm Gemfile.lock \
   && rm -rf /usr/lib/ruby/gems/*/cache/* \
   /var/cache/apk/* \
   /tmp/* \
