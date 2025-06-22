@@ -93,6 +93,9 @@ module OpenC3
     # @return [PacketItemLimits] All information regarding limits for this PacketItem
     attr_reader :limits
 
+    # @return [Boolean] Whether the parameter must be obfuscated from logs or not
+    attr_accessor :obfuscate 
+
     # (see StructureItem#initialize)
     # It also initializes the attributes of the PacketItem.
     def initialize(name, bit_offset, bit_size, data_type, endianness, array_size = nil, overflow = :ERROR)
@@ -109,6 +112,7 @@ module OpenC3
       @range = nil
       @required = false
       @hazardous = nil
+      @obfuscate = false
       @messages_disabled = nil
       @state_colors = nil
       @limits = PacketItemLimits.new
@@ -314,6 +318,7 @@ module OpenC3
       item.state_colors = self.state_colors.clone if self.state_colors
       item.limits = self.limits.clone if self.limits
       item.meta = self.meta.clone if @meta
+      item.obfuscate = self.obfuscate.clone if @obfuscate
       item
     end
     alias dup clone
@@ -345,6 +350,7 @@ module OpenC3
       hash['limits'] = self.limits.to_hash
       hash['meta'] = nil
       hash['meta'] = @meta if @meta
+      hash['obfuscate'] = self.obfuscate
       hash
     end
 
@@ -404,6 +410,8 @@ module OpenC3
       config << "    FORMAT_STRING #{self.format_string.to_s.quote_if_necessary}\n" if self.format_string
       config << "    UNITS #{self.units_full.to_s.quote_if_necessary} #{self.units.to_s.quote_if_necessary}\n" if self.units
       config << "    OVERFLOW #{self.overflow}\n" if self.overflow != :ERROR
+      #TODO: Add Obfuscate
+      config << "    OBFUSCATE\n" if self.obfuscate 
 
       if @states
         @states.each do |state_name, state_value|
@@ -512,6 +520,8 @@ module OpenC3
 
       config['meta'] = @meta if @meta
       config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
+      # TODO: Add obfuscate
+      config['obfuscate'] = self.obfuscate
       config
     end
 
@@ -573,6 +583,8 @@ module OpenC3
         item.limits.values = values if values.length > 0
       end
       item.meta = hash['meta']
+      #TODO: Add Obfuscate
+      item.obfuscate = hash['obfuscate']
       item.variable_bit_size = hash['variable_bit_size']
       item
     end

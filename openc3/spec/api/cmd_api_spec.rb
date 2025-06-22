@@ -619,5 +619,12 @@ module OpenC3
         expect(cnts).to eql([3, 2])
       end
     end
+
+    describe "obfuscate cmd" do
+      it "obfuscates parameters in command" do
+        @api.cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password")
+        sleep 0.001
+      end
+    end
   end
 end

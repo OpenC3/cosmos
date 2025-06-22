@@ -234,7 +234,8 @@ module OpenC3
               'POLY_WRITE_CONVERSION', 'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',\
               'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'REQUIRED',\
               'LIMITS', 'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',\
-              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY', 'VARIABLE_BIT_SIZE'
+              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY', 'VARIABLE_BIT_SIZE',\
+              'OBFUSCATE'
             raise parser.error("No current item for #{keyword}") unless @current_item
 
             process_current_item(parser, keyword, params)
@@ -691,6 +692,12 @@ module OpenC3
         parser.verify_num_parameters(2, 2, usage)
         @current_item.units_full = params[0]
         @current_item.units = params[1]
+
+      # TODO: Obfuscate arg here
+      when 'OBFUSCATE'
+        usage = "OBFUSCATE"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_item.obfuscate = true
 
       # Update the description for the current telemetry item
       when 'DESCRIPTION'

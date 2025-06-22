@@ -1403,5 +1403,7 @@ module OpenC3
       end
       item
     end
+
+    # TODO: Add obfuscate method
   end
 end

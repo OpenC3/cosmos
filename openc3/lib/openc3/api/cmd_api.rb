@@ -500,6 +500,10 @@ module OpenC3
         #   end
         # end
       end
+      
+      # TODO: packet[obfuscate]
+      puts packet
+
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new
@@ -520,7 +524,6 @@ module OpenC3
           end
         end
       end
-
       cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       username = user && user['username'] ? user['username'] : 'anonymous'
       command = {
@@ -550,7 +553,7 @@ module OpenC3
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
           item = packet['items'].find { |find_item| find_item['name'] == key.to_s }
-
+          # TODO: item check to find obfuscated params
           begin
             item_type = item['data_type'].intern
           rescue

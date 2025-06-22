@@ -45,6 +45,8 @@ module OpenC3
         cmd_params.each do |key, value|
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
+          # TODO: Check if obfuscate
+
           if value.is_a?(String)
             if !value.is_printable?
               value = "BINARY"

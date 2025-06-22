@@ -118,15 +118,15 @@ class AwsBucket(Bucket):
         if self.exist(bucket):
             self.client.delete_bucket(Bucket=bucket)
 
-    def get_object(self, bucket, key, path=None):
+    def get_object(self, bucket, key, path=None, **kwargs):
         try:
             if path:
-                response = self.client.get_object(Bucket=bucket, Key=key)
+                response = self.client.get_object(Bucket=bucket, Key=key, **kwargs)
                 with open(path, "wb") as f:
                     f.write(response["Body"].read())
                 return response
             else:
-                return self.client.get_object(Bucket=bucket, Key=key)
+                return self.client.get_object(Bucket=bucket, Key=key, **kwargs)
         # If the key is not found return nil
         except ClientError:
             return None
