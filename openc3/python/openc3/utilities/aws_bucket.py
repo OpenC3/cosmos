@@ -118,7 +118,7 @@ class AwsBucket(Bucket):
         if self.exist(bucket):
             self.client.delete_bucket(Bucket=bucket)
 
-    def get_object(self, bucket, key, path=None, range=None):
+    def get_object(self, bucket, key, path=None, range=""):
         try:
             if path:
                 response = self.client.get_object(Bucket=bucket, Key=key, Range=range)
