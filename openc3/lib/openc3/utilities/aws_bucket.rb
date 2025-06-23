@@ -100,11 +100,11 @@ module OpenC3
       end
     end
 
-    def get_object(bucket:, key:, path: nil)
+    def get_object(bucket:, key:, path: nil, **kwargs)
       if path
-        @client.get_object(bucket: bucket, key: key, response_target: path)
+        @client.get_object(bucket: bucket, key: key, response_target: path, **kwargs)
       else
-        @client.get_object(bucket: bucket, key: key)
+        @client.get_object(bucket: bucket, key: key, **kwargs)
       end
     # If the key is not found return nil
     rescue Aws::S3::Errors::NoSuchKey
