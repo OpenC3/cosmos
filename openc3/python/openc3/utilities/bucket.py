@@ -59,7 +59,7 @@ class Bucket:
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )
 
-    def get_object(self, bucket, key, path=None):
+    def get_object(self, bucket, key, path=None, range=None):
         raise NotImplementedError(
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )
