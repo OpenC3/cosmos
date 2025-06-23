@@ -501,9 +501,6 @@ module OpenC3
         # end
       end
       
-      # TODO: packet[obfuscate]
-      puts packet
-
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new
@@ -553,32 +550,35 @@ module OpenC3
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
           item = packet['items'].find { |find_item| find_item['name'] == key.to_s }
-          # TODO: item check to find obfuscated params
           begin
             item_type = item['data_type'].intern
           rescue
             item_type = nil
           end
 
-          if value.is_a?(String)
-            value = value.dup
-            if item_type == :BLOCK or item_type == :STRING
-              if !value.is_printable?
-                value = "0x" + value.simple_formatted
+          if item['obfuscate']
+            params << "#{key} *****"
+          else
+            if value.is_a?(String)
+              value = value.dup
+              if item_type == :BLOCK or item_type == :STRING
+                if !value.is_printable?
+                  value = "0x" + value.simple_formatted
+                else
+                  value = value.inspect
+                end
               else
-                value = value.inspect
+                value = value.convert_to_value.to_s
               end
-            else
-              value = value.convert_to_value.to_s
+              if value.length > 256
+                value = value[0..255] + "...'"
+              end
+              value.tr!('"', "'")
+            elsif value.is_a?(Array)
+              value = "[#{value.join(", ")}]"
             end
-            if value.length > 256
-              value = value[0..255] + "...'"
-            end
-            value.tr!('"', "'")
-          elsif value.is_a?(Array)
-            value = "[#{value.join(", ")}]"
+            params << "#{key} #{value}"
           end
-          params << "#{key} #{value}"
         end
         params = params.join(", ")
         output_string << (' with ' + params + '")')

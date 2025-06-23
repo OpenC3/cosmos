@@ -106,3 +106,8 @@ COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden 
   HIDDEN
   <%= render "_ccsds_cmd.txt", locals: {id: 13} %>
   APPEND_PARAMETER COUNT 32 UINT MIN MAX 0 "Count to set"
+
+COMMAND INST SET_PASSWORD BIG_ENDIAN "Set Password Command"
+  APPEND_PARAMETER USERNAME  256 STRING "username"
+  APPEND_PARAMETER PASSWORD  256 STRING "password"
+    OBFUSCATE

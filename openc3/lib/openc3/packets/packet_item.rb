@@ -410,7 +410,6 @@ module OpenC3
       config << "    FORMAT_STRING #{self.format_string.to_s.quote_if_necessary}\n" if self.format_string
       config << "    UNITS #{self.units_full.to_s.quote_if_necessary} #{self.units.to_s.quote_if_necessary}\n" if self.units
       config << "    OVERFLOW #{self.overflow}\n" if self.overflow != :ERROR
-      #TODO: Add Obfuscate
       config << "    OBFUSCATE\n" if self.obfuscate 
 
       if @states
@@ -520,7 +519,6 @@ module OpenC3
 
       config['meta'] = @meta if @meta
       config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
-      # TODO: Add obfuscate
       config['obfuscate'] = self.obfuscate
       config
     end
@@ -583,7 +581,6 @@ module OpenC3
         item.limits.values = values if values.length > 0
       end
       item.meta = hash['meta']
-      #TODO: Add Obfuscate
       item.obfuscate = hash['obfuscate']
       item.variable_bit_size = hash['variable_bit_size']
       item

@@ -182,6 +182,13 @@ module OpenC3
               end
             end
           end
+
+          it "handles obfuscation" do
+            capture_io do |stdout|
+              expect { cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password") }.not_to raise_error
+              expect(stdout.string).to match(/cmd\("INST SET_PASSWORD with USERNAME \w+, PASSWORD \*{5}"\)/)
+            end
+          end
         end
 
         describe "cmd_no_range_check" do

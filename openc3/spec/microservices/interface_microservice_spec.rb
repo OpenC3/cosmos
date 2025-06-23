@@ -243,6 +243,27 @@ module OpenC3
         sleep 0.01
         im.shutdown
       end
+
+      it "handles obfuscated params" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
+
+        expect(CommandDecomTopic).to receive(:write_packet) do |command, scope|
+          expect(command.target_name).to eql("INST")
+          expect(command.packet_name).to eql("SET_PASSWORD")
+          expect(command.extra['cmd_string']).to eql("cmd(\"INST SET_PASSWORD with USERNAME 'username', PASSWORD *****\")")
+          expect(scope).to eql({:scope => "DEFAULT"})
+        end
+        Thread.new { im.run }
+        sleep 0.01
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+        @api.cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password") 
+        sleep 0.01
+        im.shutdown 
+      end
     end
 
     describe "connect" do

@@ -693,7 +693,7 @@ module OpenC3
         @current_item.units_full = params[0]
         @current_item.units = params[1]
 
-      # TODO: Obfuscate arg here
+      # Obfuscate the parameter in logs
       when 'OBFUSCATE'
         usage = "OBFUSCATE"
         parser.verify_num_parameters(0, 0, usage)

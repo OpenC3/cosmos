@@ -299,6 +299,7 @@ module OpenC3
 
                 # TODO: After the write, obfuscate params
                 # command.obfuscate
+                # UPDATE: Is this necessary?
 
                 if command.validator and validate
                   begin
