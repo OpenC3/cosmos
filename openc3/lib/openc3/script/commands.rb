@@ -30,7 +30,7 @@ module OpenC3
     private
 
     # Format the command like it appears in a script
-    def _cmd_string(target_name, cmd_name, cmd_params, raw, scope)
+    def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscate: nil)
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw
         output_string += 'cmd_raw("'
@@ -43,13 +43,10 @@ module OpenC3
       else
         params = []
         # TODO: On the client side, decide if obfuscation is needed
-        packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
         cmd_params.each do |key, value|
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
-          item = packet['items'].find { |find_item| find_item['name'] == key.to_s }
-
-          if item['obfuscate']
+          if obfuscate != nil and obfuscate.is_a?(Array) and obfuscate.include?(key)
             params << "#{key} *****"
           else
             if value.is_a?(String)
@@ -73,17 +70,17 @@ module OpenC3
 
     # Log any warnings about disabling checks and log the command itself
     # NOTE: This is a helper method and should not be called directly
-    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope)
+    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: nil)
       if no_range
         puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring range checks"
       end
       if no_hazardous
         puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
       end
-      puts _cmd_string(target_name, cmd_name, cmd_params, raw, scope)
+      puts _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscate: obfuscate)
     end
 
-    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
+    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope, obfuscate: nil)
       case args.length
       when 1
         target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -108,7 +105,7 @@ module OpenC3
           raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
         end
       end
-      _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope)
+      _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
    end
 
     # Send the command and log the results
@@ -116,20 +113,20 @@ module OpenC3
     # except for range_check, hazardous_check, and raw as they are part of the cmd name
     # manual is always false since this is called from script and that is the default
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, scope: $openc3_scope, token: $openc3_token, obfuscate: nil, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
 
       if $disconnect
-        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
+        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope, obfuscate: obfuscate)
       else
         begin
           begin
             target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope)
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
             end
           rescue HazardousError => e
             # This opens a prompt at which point they can cancel and stop the script
@@ -137,14 +134,14 @@ module OpenC3
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
             target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope)
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
             end
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
           prompt_for_critical_cmd(e.uuid, e.username, e.target_name, e.cmd_name, e.cmd_params, e.cmd_string)
           if log_message.nil? or log_message
-            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous, scope)
+            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
           end
         end
       end
