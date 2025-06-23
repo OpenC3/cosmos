@@ -156,6 +156,7 @@ module OpenC3
         @virtual = false
         @restricted = false
         @validator = nil
+        @obfuscated_items = nil # TODO: Build similar to limits_item
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -1405,5 +1406,16 @@ module OpenC3
     end
 
     # TODO: Add obfuscate method
+    def obfuscate()
+      # Look through the parameters
+
+      # If any are marked as obfuscated
+
+      # Binary packet, so it must be "0" of the same
+
+      # INT UINT FLOAT BLOCK STRING
+
+      # Array Size for arrays
+    end
   end
 end

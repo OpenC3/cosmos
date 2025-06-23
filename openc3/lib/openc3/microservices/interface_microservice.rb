@@ -299,7 +299,8 @@ module OpenC3
 
                 # TODO: After the write, obfuscate params
                 # command.obfuscate
-                # UPDATE: Is this necessary?
+                # *** the data in the binary
+                # interace.written_raw_data = command.buffer
 
                 if command.validator and validate
                   begin

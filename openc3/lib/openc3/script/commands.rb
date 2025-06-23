@@ -42,6 +42,7 @@ module OpenC3
         output_string << '")'
       else
         params = []
+        # TODO: On the client side, decide if obfuscation is needed
         packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
         cmd_params.each do |key, value|
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
