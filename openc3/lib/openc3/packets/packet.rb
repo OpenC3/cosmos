@@ -156,7 +156,7 @@ module OpenC3
         @virtual = false
         @restricted = false
         @validator = nil
-        @obfuscated_items = nil # TODO: Build similar to limits_item
+        @obfuscated_items = nil
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -557,6 +557,7 @@ module OpenC3
       item = super(item)
       update_id_items(item)
       update_limits_items_cache(item)
+      update_obfuscated_items_cache(item)
       item
     end
 
@@ -906,6 +907,7 @@ module OpenC3
       @short_buffer_allowed = false
       @id_items = nil
       @limits_items = nil
+      @obfuscated_items = nil
       new_items = {}
       new_sorted_items = []
       @items.each do |name, item|
@@ -954,6 +956,21 @@ module OpenC3
         unless @limits_items_hash[item]
           @limits_items << item
           @limits_items_hash[item] = true
+        end
+      end
+    end
+
+    # Add an item to the limits items cache if necessary.
+    # You MUST call this after adding limits to an item
+    # This is an optimization so we don't have to iterate through all the items when
+    # checking for limits.
+    def update_obfuscated_items_cache(item)
+      if item.obfuscate
+        @obfuscated_items ||= []
+        @obfuscated_items_hash ||= {}
+        unless @obfuscated_items_hash[item]
+          @obfuscated_items << item
+          @obfuscated_items_hash[item] = true
         end
       end
     end
@@ -1288,6 +1305,32 @@ module OpenC3
       end
     end
 
+    def obfuscate()
+      return unless @buffer
+      return unless @obfuscated_items
+      
+      @obfuscated_items.each do |item|
+        next if item.data_type == :DERIVED
+
+        begin
+          byte_offset = item.bit_offset / 8
+          # TODO: Array size can be zero / negative?
+          if item.array_size && item.array_size > 0
+            byte_size = item.array_size / 8
+          else
+            byte_size = item.bit_size / 8
+          end
+
+          next if byte_offset + byte_size > @buffer.length
+          
+          @buffer[byte_offset, byte_size] = "\x00" * byte_size
+        rescue => e
+          # Skip items that can't be processed
+          next
+        end
+      end
+    end
+
     protected
 
     def handle_limits_states(item, value)
@@ -1403,19 +1446,6 @@ module OpenC3
         update_id_items(item)
       end
       item
-    end
-
-    # TODO: Add obfuscate method
-    def obfuscate()
-      # Look through the parameters
-
-      # If any are marked as obfuscated
-
-      # Binary packet, so it must be "0" of the same
-
-      # INT UINT FLOAT BLOCK STRING
-
-      # Array Size for arrays
     end
   end
 end

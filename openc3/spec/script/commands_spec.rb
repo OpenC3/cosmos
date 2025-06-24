@@ -185,7 +185,7 @@ module OpenC3
 
           it "handles obfuscation" do
             capture_io do |stdout|
-              expect { cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password") }.not_to raise_error
+              expect { cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password", obfuscate: ["PASSWORD"]) }.not_to raise_error
               expect(stdout.string).to match(/cmd\("INST SET_PASSWORD with USERNAME \w+, PASSWORD \*{5}"\)/)
             end
           end

@@ -556,7 +556,7 @@ module OpenC3
             item_type = nil
           end
 
-          if item['obfuscate']
+          if item and item['obfuscate']
             params << "#{key} *****"
           else
             if value.is_a?(String)

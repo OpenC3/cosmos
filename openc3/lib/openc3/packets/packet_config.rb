@@ -698,6 +698,7 @@ module OpenC3
         usage = "OBFUSCATE"
         parser.verify_num_parameters(0, 0, usage)
         @current_item.obfuscate = true
+        @current_packet.update_obfuscated_items_cache(@current_item)
 
       # Update the description for the current telemetry item
       when 'DESCRIPTION'

@@ -206,6 +206,7 @@ module OpenC3
       return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
     end
 
+    # TODO : Need obfuscation here?
     def build_cmd_output_string(target_name, cmd_name, cmd_params, raw = false)
       if raw
         output_string = 'cmd_raw("'
