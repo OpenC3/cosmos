@@ -26,6 +26,7 @@ require 'openc3/models/plugin_model'
 require 'down'
 require 'fileutils'
 require 'tmpdir'
+require 'digest'
 
 class PluginsController < ModelController
   def initialize
@@ -71,6 +72,14 @@ class PluginsController < ModelController
       end
       tempfile = Down.download(store_data['gem_url'])
       original_filename = File.basename(store_data['gem_url'])
+
+      checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
+      expected = store_data['checksum'].downcase
+      unless checksum == expected
+        render json: { status: 'error', message: "Checksum verification failed. Expected #{expected} but got #{checksum}" }, status: 500
+        return
+      end
+
       tempfile
     else
       params[:plugin]
