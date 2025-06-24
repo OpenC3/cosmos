@@ -210,7 +210,7 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
@@ -601,7 +601,7 @@ module OpenC3
         key = "DEFAULT/targets_modified/INST/procedures/mod.rb"
         full_path = "#{@tmp_dir}/#{key}"
         rubys3_client = double()
-        expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+        expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         LocalMode.sync_remote_to_local(Bucket.getClient, key)
       end
@@ -716,7 +716,7 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
@@ -735,12 +735,12 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         4.times do |index|
           key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
@@ -759,7 +759,7 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
@@ -778,22 +778,22 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         3.times do |index|
           key = "DEFAULT/targets_modified/ANOTHER/tables/mod#{index}.bin"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         4.times do |index|
           key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         2.times do |index|
           key = "DEFAULT/targets_modified/__TEMP__/temp#{index}.rb"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
@@ -830,12 +830,12 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         4.times do |index|
           key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
         5.times do |index|
@@ -869,7 +869,7 @@ module OpenC3
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
-          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path, range: nil })
         end
         LocalMode.sync_targets_modified
       end
