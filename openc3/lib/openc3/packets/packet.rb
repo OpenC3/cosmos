@@ -1308,22 +1308,42 @@ module OpenC3
     def obfuscate()
       return unless @buffer
       return unless @obfuscated_items
-      
+
       @obfuscated_items.each do |item|
         next if item.data_type == :DERIVED
 
         begin
-          byte_offset = item.bit_offset / 8
-          # TODO: Array size can be zero / negative?
-          if item.array_size && item.array_size > 0
-            byte_size = item.array_size / 8
-          else
-            byte_size = item.bit_size / 8
-          end
-
-          next if byte_offset + byte_size > @buffer.length
+          current_value = read(item.name, :RAW)
           
-          @buffer[byte_offset, byte_size] = "\x00" * byte_size
+          case current_value
+          when Array
+            # For arrays, create a new array of zeros with the same size
+            case item.data_type
+              when :INT, :UINT
+                obfuscated_value = Array.new(current_value.size, 0)
+              when :FLOAT
+                obfuscated_value = Array.new(current_value.size, 0.0)
+              when :STRING, :BLOCK
+                obfuscated_value = Array.new(current_value.size) { |i| 
+                  "\x00" * current_value[i].length if current_value[i]
+                }
+            else
+              obfuscated_value = Array.new(current_value.size, 0)
+            end
+          when String
+            # For strings/blocks, create null bytes of the same length
+            obfuscated_value = "\x00" * current_value.length
+          else
+            case item.data_type
+            when :INT, :UINT
+              obfuscated_value = 0
+            when :FLOAT
+              obfuscated_value = 0.0
+            else
+              obfuscated_value = 0
+            end
+          end
+          write(item.name, obfuscated_value, :RAW)
         rescue => e
           # Skip items that can't be processed
           next

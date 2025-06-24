@@ -42,7 +42,6 @@ module OpenC3
         output_string << '")'
       else
         params = []
-        # TODO: On the client side, decide if obfuscation is needed
         cmd_params.each do |key, value|
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
@@ -124,7 +123,8 @@ module OpenC3
       else
         begin
           begin
-            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            # TODO : Send to the method_missing method
+            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token, obfuscate: obfuscate)
             if log_message.nil? or log_message
               _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
             end
@@ -132,7 +132,7 @@ module OpenC3
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token, obfuscate: obfuscate)
             if log_message.nil? or log_message
               _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
             end
