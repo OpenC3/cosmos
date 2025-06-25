@@ -118,29 +118,29 @@ module OpenC3
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
       if $disconnect
-        command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token, disconnect: $disconnect)
-        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope, obfuscate: command["obfuscated_items"])
+        command, options = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token, disconnect: $disconnect)
+        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope, obfuscate: options&.[]("obfuscated_items") || [])
       else
         begin
           begin
-            command, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            target_name, cmd_name, cmd_params, options = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(command["target_name"], command["cmd_name"], cmd_params, raw, no_range, no_hazardous, obfuscate: command["obfuscated_items"])
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: options&.[]("obfuscated_items") || [])
             end
           rescue HazardousError => e
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            command, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            target_name, cmd_name, cmd_params, options = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(command["target_name"], command["cmd_name"], cmd_params, raw, no_range, no_hazardous, obfuscate: command["obfuscated_items"])
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: options&.[]("obfuscated_items") || [])
             end
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
           prompt_for_critical_cmd(e.uuid, e.username, e.target_name, e.cmd_name, e.cmd_params, e.cmd_string)
           if log_message.nil? or log_message
-            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous, obfuscate: e.options["obfuscated_items"])
+            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous, obfuscate: e.options&.[]("obfuscated_items") || [])
           end
         end
       end

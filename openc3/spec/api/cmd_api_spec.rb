@@ -108,9 +108,9 @@ module OpenC3
 
         it "processes a string" do
           type = method.include?('raw') ? 0 : 'NORMAL'
-          command, params = @api.send(method, "inst Collect with type #{type}, Duration 5")
-          expect(command["target_name"]).to eql 'INST'
-          expect(command["cmd_name"]).to eql 'COLLECT'
+          target_name, cmd_name, params = @api.send(method, "inst Collect with type #{type}, Duration 5")
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'COLLECT'
           expect(params).to include('TYPE' => type, 'DURATION' => 5)
         end
 
@@ -124,16 +124,16 @@ module OpenC3
 
         it "processes parameters" do
           type = method.include?('raw') ? 0 : 'NORMAL'
-          command, params = @api.send(method, "inst", "Collect", "TYPE" => type, "Duration" => 5)
-          expect(command["target_name"]).to eql 'INST'
-          expect(command["cmd_name"]).to eql 'COLLECT'
+          target_name, cmd_name, params = @api.send(method, "inst", "Collect", "TYPE" => type, "Duration" => 5)
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'COLLECT'
           expect(params).to include('TYPE' => type, 'DURATION' => 5)
         end
 
         it "processes commands without parameters" do
-          command, params = @api.send(method, "INST", "ABORT")
-          expect(command["target_name"]).to eql 'INST'
-          expect(command["cmd_name"]).to eql 'ABORT'
+          target_name, cmd_name, params = @api.send(method, "INST", "ABORT")
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'ABORT'
           expect(params).to be {}
         end
 

@@ -79,6 +79,11 @@ module OpenC3
       tf.puts '  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"'
       tf.puts '  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN'
       tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"'
+      tf.puts 'COMMAND tgt2 pkt7 BIG_ENDIAN "TGT2 PKT7 Description"'
+      tf.puts '  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"'
+      tf.puts '  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN'
+      tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"'
+      tf.puts '    OBFUSCATE'
       tf.close
 
       pc = PacketConfig.new
@@ -111,11 +116,12 @@ module OpenC3
 
       it "returns all packets target TGT2" do
         pkts = @cmd.packets("TGT2")
-        expect(pkts.length).to eql 4
+        expect(pkts.length).to eql 5
         expect(pkts.keys).to include("PKT3")
         expect(pkts.keys).to include("PKT4")
         expect(pkts.keys).to include("PKT5")
         expect(pkts.keys).to include("PKT6")
+        expect(pkts.keys).to include("PKT7")
       end
     end
 
@@ -430,6 +436,11 @@ module OpenC3
       it "ignores parameters" do
         pkt = @cmd.packet("TGT1", "PKT1")
         expect(@cmd.format(pkt, ['ITEM3', 'ITEM4'])).to eql "cmd(\"TGT1 PKT1 with ITEM1 0, ITEM2 0\")"
+      end
+
+      it "handles obfuscated items" do
+        pkt = @cmd.packet("TGT2", "PKT7")
+        expect(@cmd.format(pkt, [])).to eql "cmd(\"TGT2 PKT7 with ITEM1 0, ITEM2 0, ITEM3 *****\")"
       end
     end
 

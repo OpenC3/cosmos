@@ -156,7 +156,7 @@ module OpenC3
         @virtual = false
         @restricted = false
         @validator = nil
-        @obfuscated_items = nil
+        @obfuscated_items = []
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -907,7 +907,7 @@ module OpenC3
       @short_buffer_allowed = false
       @id_items = nil
       @limits_items = nil
-      @obfuscated_items = nil
+      @obfuscated_items = []
       new_items = {}
       new_sorted_items = []
       @items.each do |name, item|
@@ -1176,7 +1176,7 @@ module OpenC3
       config['validator'] = @validator.class.to_s if @validator
       config['template'] = Base64.encode64(@template) if @template
       config['config_name'] = self.config_name
-      config['obfuscated_items'] = @obfuscated_items.map(&:name) if @obfuscated_items
+      config['obfuscated_items'] = @obfuscated_items&.map(&:name) || []
 
       if @processors
         processors = []

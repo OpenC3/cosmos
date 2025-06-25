@@ -535,12 +535,14 @@ module OpenC3
         'validate' => validate.to_s,
         'manual' => manual.to_s,
         'log_message' => log_message.to_s,
-        'obfuscated_items' => packet['obfuscated_items'],
       }
+      obfuscated_items = packet['obfuscated_items'] || []
+      options = { "obfuscated_items" => obfuscated_items }
       if disconnect
-        command
+        [command, options]
       else
-        CommandTopic.send_command(command, timeout: timeout, scope: scope)
+        target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout: timeout, scope: scope, obfuscated_items: obfuscated_items)
+        [target_name, cmd_name, cmd_params, options]
       end
     end
 

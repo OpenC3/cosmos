@@ -841,26 +841,23 @@ export default {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
       let msg = ''
-      const command = response[0]
-      const target_name = command['target_name']
-      const cmd_name = command['cmd_name']
-      const cmd_params = response[1]
+      const options = response[3]
       if (success) {
-        msg = `${cmd_sent}("${target_name} ${cmd_name}`
-        let keys = Object.keys(cmd_params)
+        msg = `${cmd_sent}("${response[0]} ${response[1]}`
+        let keys = Object.keys(response[2])
         if (keys.length > 0) {
           msg += ' with '
           for (let i = 0; i < keys.length; i++) {
             let key = keys[i]
             let value = ""
-            if (command && command["obfuscated_items"].includes(key)) {
+            if (options && options["obfuscated_items"].includes(key)) {
               value = '*****'
             } else {
-              value = this.convertToString(cmd_params[key])
+              value = this.convertToString(response[2][key])
             } 
             // If the response has unquoted string data we add quotes
             if (
-              typeof cmd_params[key] === 'string' &&
+              typeof response[2][key] === 'string' &&
               value.charAt(0) !== "'" &&
               value.charAt(0) !== '"'
             ) {

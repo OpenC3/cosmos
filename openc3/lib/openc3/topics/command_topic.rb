@@ -41,7 +41,7 @@ module OpenC3
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic
-    def self.send_command(command, timeout: COMMAND_ACK_TIMEOUT_S, scope:)
+    def self.send_command(command, timeout: COMMAND_ACK_TIMEOUT_S, scope:, obfuscated_items: [])
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{command['target_name']}"
       Topic.update_topic_offsets([ack_topic])
@@ -55,12 +55,13 @@ module OpenC3
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
-              return [command, cmd_params]
+              return [command['target_name'], command['cmd_name'], cmd_params]
             # Check for HazardousError which is a special case
             elsif msg_hash["result"].include?("HazardousError")
               raise_hazardous_error(msg_hash, command, cmd_params)
             elsif msg_hash["result"].include?("CriticalCmdError")
-              raise_critical_cmd_error(msg_hash, command, cmd_params)
+              options = { "obfuscated_items" => obfuscated_items }
+              raise_critical_cmd_error(msg_hash, command, cmd_params, options)
             else
               raise msg_hash["result"]
             end
@@ -89,7 +90,7 @@ module OpenC3
       raise error
     end
 
-    def self.raise_critical_cmd_error(msg_hash, command, cmd_params)
+    def self.raise_critical_cmd_error(msg_hash, command, cmd_params, options)
       _, uuid = msg_hash["result"].split("\n")
       # Create and populate a new CriticalCmdError and raise it up
       # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
@@ -100,7 +101,7 @@ module OpenC3
       error.cmd_name = command["cmd_name"]
       error.cmd_params = cmd_params
       error.cmd_string = command["cmd_string"]
-      error.options = { "obfuscated_items" => command["obfuscated_items"] }
+      error.options = options
       raise error
     end
   end
