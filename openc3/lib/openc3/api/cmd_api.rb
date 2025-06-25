@@ -451,7 +451,7 @@ module OpenC3
 
     # NOTE: When adding new keywords to this method, make sure to update script/commands.rb
     def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true,
-                            scope: $openc3_scope, token: $openc3_token, obfuscate: nil, **kwargs)
+                            scope: $openc3_scope, token: $openc3_token, disconnect: false, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
         raise "Invalid log_message parameter: #{log_message}. Must be true or false."
@@ -521,7 +521,7 @@ module OpenC3
           end
         end
       end
-      cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet, obfuscate: obfuscate)
+      cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       username = user && user['username'] ? user['username'] : 'anonymous'
       command = {
         'target_name' => target_name,
@@ -535,11 +535,16 @@ module OpenC3
         'validate' => validate.to_s,
         'manual' => manual.to_s,
         'log_message' => log_message.to_s,
+        'obfuscated_items' => packet['obfuscated_items'],
       }
-      CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      if disconnect
+        command
+      else
+        CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      end
     end
 
-    def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet, obfuscate: nil)
+    def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       output_string = "#{method_name}(\""
       output_string << (target_name + ' ' + cmd_name)
       if cmd_params.nil? or cmd_params.empty?
@@ -556,8 +561,7 @@ module OpenC3
             item_type = nil
           end
 
-          # TODO: get the arg from the script runner Key word arguments
-          if (item and item['obfuscate']) or (obfuscate and obfuscate.include?(key.to_s))
+          if (item and item['obfuscate'])
             params << "#{key} *****"
           else
             if value.is_a?(String)

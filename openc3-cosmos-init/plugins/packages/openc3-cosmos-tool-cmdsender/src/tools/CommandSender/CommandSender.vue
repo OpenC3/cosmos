@@ -290,7 +290,6 @@ export default {
       lastTargetName: '',
       lastCommandName: '',
       lastParamList: '',
-      lastObfuscateList: [],
       ignoreRangeChecks: false,
       statesInHex: false,
       showIgnoredParams: false,
@@ -604,8 +603,7 @@ export default {
                   description: parameter.description,
                   range: range,
                   units: parameter.units,
-                  type: parameter.data_type,
-                  obfuscate: parameter.obfuscate,
+                  type: parameter.data_type
                 })
               }
             })
@@ -653,31 +651,19 @@ export default {
       return paramList
     },
 
-    createObfuscateList() {
-      let obfuscateList = []
-      for (const row of this.rows) {
-        if (row.obfuscate) {
-          obfuscateList.push(row.parameter_name)
-        }
-      }
-      return obfuscateList
-    },
-
     buildCmd() {
-      this.sendCmd(this.targetName, this.commandName, this.createParamList(), this.createObfuscateList())
+      this.sendCmd(this.targetName, this.commandName, this.createParamList())
     },
 
     // Note targetName can also be the entire command to send, e.g. "INST ABORT" or
     // "INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 10" when being
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
-    sendCmd(targetName, commandName, paramList, obfuscateList) {
-      console.log(obfuscateList)
+    sendCmd(targetName, commandName, paramList) {
       // Store what was actually sent for use in resending hazardous commands
       this.lastTargetName = targetName
       this.lastCommandName = commandName
       this.lastParamList = paramList
-      this.lastObfuscateList = obfuscateList
 
       this.sendDisabled = true
       let hazardous = false
@@ -746,8 +732,7 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  response,
-                  obfuscateList
+                  response
                 )
               },
               (error) => {
@@ -756,15 +741,14 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  error,
-                  obfuscateList
+                  error
                 )
               },
             )
           }
         },
         (error) => {
-          this.processCmdResponse(false, targetName, commandName, cmd, error, obfuscateList)
+          this.processCmdResponse(false, targetName, commandName, cmd, error)
         },
       )
     },
@@ -830,8 +814,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            response,
-            this.lastObfuscateList,
+            response
           )
         },
         (error) => {
@@ -840,8 +823,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            error,
-            this.lastObfuscateList,
+            error
           )
         },
       )
@@ -853,28 +835,32 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdResponse(success, targetName, commandName, cmd_sent, response, obfuscateList = []) {
+    processCmdResponse(success, targetName, commandName, cmd_sent, response) {
       // If it was sent from history it's all in targetName, see sendCmd for details
       if (commandName === undefined) {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
       let msg = ''
+      const command = response[0]
+      const target_name = command['target_name']
+      const cmd_name = command['cmd_name']
+      const cmd_params = response[1]
       if (success) {
-        msg = `${cmd_sent}("${response[0]} ${response[1]}`
-        let keys = Object.keys(response[2])
+        msg = `${cmd_sent}("${target_name} ${cmd_name}`
+        let keys = Object.keys(cmd_params)
         if (keys.length > 0) {
           msg += ' with '
           for (let i = 0; i < keys.length; i++) {
             let key = keys[i]
             let value = ""
-            if (obfuscateList.includes(key)) {
+            if (command && command["obfuscated_items"].includes(key)) {
               value = '*****'
             } else {
-              value = this.convertToString(response[2][key])
+              value = this.convertToString(cmd_params[key])
             } 
             // If the response has unquoted string data we add quotes
             if (
-              typeof response[2][key] === 'string' &&
+              typeof cmd_params[key] === 'string' &&
               value.charAt(0) !== "'" &&
               value.charAt(0) !== '"'
             ) {

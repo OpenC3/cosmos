@@ -1176,6 +1176,7 @@ module OpenC3
       config['validator'] = @validator.class.to_s if @validator
       config['template'] = Base64.encode64(@template) if @template
       config['config_name'] = self.config_name
+      config['obfuscated_items'] = @obfuscated_items.map(&:name) if @obfuscated_items
 
       if @processors
         processors = []
