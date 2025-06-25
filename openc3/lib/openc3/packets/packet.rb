@@ -960,10 +960,10 @@ module OpenC3
       end
     end
 
-    # Add an item to the limits items cache if necessary.
-    # You MUST call this after adding limits to an item
+    # Add an item to the obfuscate items cache if necessary.
+    # You MUST call this after adding obfuscation to an item
     # This is an optimization so we don't have to iterate through all the items when
-    # checking for limits.
+    # checking for obfuscation.
     def update_obfuscated_items_cache(item)
       if item.obfuscate
         @obfuscated_items ||= []
