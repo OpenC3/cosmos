@@ -619,5 +619,17 @@ module OpenC3
         expect(cnts).to eql([3, 2])
       end
     end
+
+    describe "obfuscate cmd" do
+      it "obfuscates parameters in command" do
+        message = nil
+        allow(Logger).to receive(:info) do |args|
+          message = args
+        end
+        expect { @api.cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password, KEY key") }.not_to raise_error
+        sleep 0.001
+        expect(message).to eql "cmd(\"INST SET_PASSWORD with USERNAME 'username', PASSWORD *****, KEY *****\")"
+      end
+    end
   end
 end

@@ -169,7 +169,7 @@ module OpenC3
                'GENERIC_WRITE_CONVERSION_START', 'REQUIRED', 'LIMITS',
                'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',
                'HIDDEN', 'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE',
-               'OVERFLOW', 'UNEDITABLE'
+               'OVERFLOW', 'UNEDITABLE', 'OBFUSCATE'
             unless @current_item
               raise parser.error("No current item for #{keyword}")
             end

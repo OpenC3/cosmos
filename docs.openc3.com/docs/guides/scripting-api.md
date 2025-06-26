@@ -3104,7 +3104,7 @@ connect_router("<Router Name>", <Router Parameters (optional)>)
 Ruby / Python Example:
 
 ```ruby
-connect_ROUTER("INST_ROUTER")
+connect_router("INST_ROUTER")
 connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 ```
 

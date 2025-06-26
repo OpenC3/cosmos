@@ -56,6 +56,7 @@ class CriticalCmdError < StandardError
   attr_accessor :cmd_name
   attr_accessor :cmd_params
   attr_accessor :cmd_string
+  attr_accessor :options
 end
 
 # If a disabled command is sent through the {OpenC3::Api} this error is raised.

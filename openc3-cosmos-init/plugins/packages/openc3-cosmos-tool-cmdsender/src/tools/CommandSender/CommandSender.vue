@@ -603,7 +603,7 @@ export default {
                   description: parameter.description,
                   range: range,
                   units: parameter.units,
-                  type: parameter.data_type,
+                  type: parameter.data_type
                 })
               }
             })
@@ -732,7 +732,7 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  response,
+                  response
                 )
               },
               (error) => {
@@ -741,7 +741,7 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  error,
+                  error
                 )
               },
             )
@@ -814,7 +814,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            response,
+            response
           )
         },
         (error) => {
@@ -823,7 +823,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            error,
+            error
           )
         },
       )
@@ -841,6 +841,7 @@ export default {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
       let msg = ''
+      const options = response[3]
       if (success) {
         msg = `${cmd_sent}("${response[0]} ${response[1]}`
         let keys = Object.keys(response[2])
@@ -848,7 +849,12 @@ export default {
           msg += ' with '
           for (let i = 0; i < keys.length; i++) {
             let key = keys[i]
-            let value = this.convertToString(response[2][key])
+            let value = ""
+            if (options && options["obfuscated_items"].includes(key)) {
+              value = '*****'
+            } else {
+              value = this.convertToString(response[2][key])
+            } 
             // If the response has unquoted string data we add quotes
             if (
               typeof response[2][key] === 'string' &&
