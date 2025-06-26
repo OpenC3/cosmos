@@ -62,7 +62,7 @@ jobs:
           args: >
             -Dsonar.organization=openc3
             -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.ruby.coverage.reportPaths=coverage/.resultset.json
+            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.xml
             -Dsonar.sources=lib
             -Dsonar.tests=spec
         env:
