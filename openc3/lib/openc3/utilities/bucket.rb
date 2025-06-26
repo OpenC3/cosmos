@@ -53,7 +53,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def get_object(bucket:, key:, path: nil)
+    def get_object(bucket:, key:, path: nil, range: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
