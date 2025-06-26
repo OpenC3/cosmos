@@ -57,8 +57,8 @@ jobs:
         with:
           projectBaseDir: openc3/python
           args: >
-            -Dsonar.organization=OpenC3
-            -Dsonar.projectKey=cosmos
+            -Dsonar.organization=openc3
+            -Dsonar.projectKey=OpenC3_cosmos
             -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.sources=openc3/
             -Dsonar.tests=test/
