@@ -132,7 +132,6 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.21'
-  s.add_development_dependency 'simplecov-cobertura', '~> 2.1'
   s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
 
   s.post_install_message = "Thanks for installing OpenC3!\n"

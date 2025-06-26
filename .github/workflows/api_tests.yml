@@ -59,6 +59,18 @@ jobs:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: openc3-cosmos-cmd-tlm-api
+          args: >
+            -Dsonar.organization=openc3
+            -Dsonar.projectKey=OpenC3_cosmos
+            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.json
+            -Dsonar.sources=lib
+            -Dsonar.tests=spec
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   script-runner-api-ruby:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -90,6 +102,18 @@ jobs:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: openc3-cosmos-script-runner-api
+          args: >
+            -Dsonar.organization=openc3
+            -Dsonar.projectKey=OpenC3_cosmos
+            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.json
+            -Dsonar.sources=lib
+            -Dsonar.tests=spec
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   script-runner-api-python:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -124,3 +148,15 @@ jobs:
           working-directory: openc3/python
           flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: openc3/python
+          args: >
+            -Dsonar.organization=openc3
+            -Dsonar.projectKey=OpenC3_cosmos
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=openc3/
+            -Dsonar.tests=test/
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
