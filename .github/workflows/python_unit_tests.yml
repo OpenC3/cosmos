@@ -56,12 +56,5 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: openc3/python
-          args: >
-            -Dsonar.organization=openc3
-            -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=openc3/
-            -Dsonar.tests=test/
-            -Dsonar.verbose=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
