@@ -451,7 +451,7 @@ module OpenC3
 
     # NOTE: When adding new keywords to this method, make sure to update script/commands.rb
     def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true,
-                            scope: $openc3_scope, token: $openc3_token, disconnect: false, **kwargs)
+                            scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
         raise "Invalid log_message parameter: #{log_message}. Must be true or false."
@@ -508,7 +508,6 @@ module OpenC3
         error.cmd_name = cmd_name
         raise error
       end
-
       if log_message.nil? # This means the default was used, no argument was passed
         log_message = true # Default is true
         # If the packet has the DISABLE_MESSAGES keyword then no messages by default
@@ -538,12 +537,8 @@ module OpenC3
       }
       obfuscated_items = packet['obfuscated_items'] || []
       options = { "obfuscated_items" => obfuscated_items }
-      if disconnect
-        [command, options]
-      else
-        target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout: timeout, scope: scope, obfuscated_items: obfuscated_items)
-        [target_name, cmd_name, cmd_params, options]
-      end
+      target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout: timeout, scope: scope, obfuscated_items: obfuscated_items)
+      [target_name, cmd_name, cmd_params, options]
     end
 
     def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)

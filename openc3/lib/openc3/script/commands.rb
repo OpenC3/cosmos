@@ -79,7 +79,7 @@ module OpenC3
       puts _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscate: obfuscate)
     end
 
-    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope, obfuscate: nil)
+    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
       case args.length
       when 1
         target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -98,13 +98,14 @@ module OpenC3
 
       # Get the command and validate the parameters
       command = $api_server.get_cmd(target_name, cmd_name, scope: scope)
+      obfuscate_items = command['obfuscated_items'] || []
       cmd_params.each do |param_name, _param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
           raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
         end
       end
-      _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate)
+      _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscate: obfuscate_items)
    end
 
     # Send the command and log the results
@@ -118,8 +119,7 @@ module OpenC3
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
       if $disconnect
-        command, options = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token, disconnect: $disconnect)
-        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope, obfuscate: options&.[]("obfuscated_items") || [])
+        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
           begin

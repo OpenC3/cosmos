@@ -112,6 +112,7 @@ module OpenC3
           @prefix = '' # Empty if we're connected
           if connect == 'disconnected'
             disconnect_script()
+            expect($api_server).to_not receive(:cmd)
             expect(CommandTopic).to_not receive(:send_command)
             @prefix = "DISCONNECT: "
           end
