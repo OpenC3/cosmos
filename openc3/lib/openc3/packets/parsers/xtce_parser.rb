@@ -547,35 +547,26 @@ module OpenC3
         if element.name == 'ArrayParameterRefEntry'
           array_type = parameter_type
           parameter_type = @parameter_types[array_type.arrayTypeRef]
-          raise "arrayTypeRef #{parameter.arrayTypeRef} not found" unless parameter_type
+          raise "arrayTypeRef #{array_type.arrayTypeRef} not found" unless parameter_type
         end
         refName = 'parameterRef'
         object = parameter
         type = parameter_type
       else
         # Look up the argument and argument type
+        argument = @arguments[element['argumentRef']]
+        raise "argumentRef #{element['argumentRef']} not found" unless argument
+
+        argument_type = @argument_types[argument.argumentTypeRef]
+        raise "argumentTypeRef #{argument.argumentTypeRef} not found" unless argument_type
+
         if element.name == 'ArrayArgumentRefEntry'
-          # Requiring parameterRef for argument arrays appears to be a defect in the schema
-          argument = @arguments[element['parameterRef']]
-          raise "parameterRef #{element['parameterRef']} not found" unless argument
-
-          argument_type = @argument_types[argument.argumentTypeRef]
-          raise "argumentTypeRef #{argument.argumentTypeRef} not found" unless argument_type
-
           array_type = argument_type
           argument_type = @argument_types[array_type.arrayTypeRef]
           raise "arrayTypeRef #{array_type.arrayTypeRef} not found" unless argument_type
-
-          refName = 'parameterRef'
-        else
-          argument = @arguments[element['argumentRef']]
-          raise "argumentRef #{element['argumentRef']} not found" unless argument
-
-          argument_type = @argument_types[argument.argumentTypeRef]
-          raise "argumentTypeRef #{argument.argumentTypeRef} not found" unless argument_type
-
-          refName = 'argumentRef'
         end
+        
+        refName = 'argumentRef'
         object = argument
         type = argument_type
       end
