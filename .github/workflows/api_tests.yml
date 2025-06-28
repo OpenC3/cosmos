@@ -147,7 +147,7 @@ jobs:
           path: openc3/python/coverage.xml
 
   report-coverage:
-    depends-on: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
+    needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
     runs-on: ubuntu-latest
     steps:
       - name: Download coverage reports
