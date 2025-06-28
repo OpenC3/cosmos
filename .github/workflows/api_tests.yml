@@ -36,6 +36,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all history for all branches and tags
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         env:
@@ -59,18 +61,11 @@ jobs:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
         with:
-          projectBaseDir: openc3-cosmos-cmd-tlm-api
-          args: >
-            -Dsonar.organization=openc3
-            -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.json
-            -Dsonar.sources=lib
-            -Dsonar.tests=spec
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          name: cmd-tlm-api
+          path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
 
   script-runner-api-ruby:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -81,6 +76,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         env:
@@ -102,18 +99,11 @@ jobs:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
         with:
-          projectBaseDir: openc3-cosmos-script-runner-api
-          args: >
-            -Dsonar.organization=openc3
-            -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.json
-            -Dsonar.sources=lib
-            -Dsonar.tests=spec
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          name: script-runner-api-ruby
+          path: openc3-cosmos-script-runner-api/coverage/coverage.json
 
   script-runner-api-python:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -124,6 +114,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -148,15 +140,26 @@ jobs:
           working-directory: openc3/python
           flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: script-runner-api-python
+          path: openc3/python/coverage.xml
+
+  report-coverage:
+    depends-on: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
+    steps:
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         with:
-          projectBaseDir: openc3/python
           args: >
             -Dsonar.organization=openc3
             -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=openc3/
-            -Dsonar.tests=test/
+            -Dsonar.python.coverage.reportPaths=openc3/python/coverage.xml
+            -Dsonar.ruby.coverage.reportPaths=openc3-cosmos-script-runner-api/coverage/coverage.json,openc3-cosmos-cmd-tlm-api/coverage/coverage.json
+            -Dsonar.sources=openc3-cosmos-cmd-tlm-api,openc3-cosmos-script-runner-api
+            -Dsonar.tests=openc3-cosmos-cmd-tlm-api/spec,openc3-cosmos-script-runner-api/spec,openc3-cosmos-script-runner-api/test
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
