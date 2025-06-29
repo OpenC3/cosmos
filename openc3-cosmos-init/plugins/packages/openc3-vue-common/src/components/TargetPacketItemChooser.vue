@@ -406,14 +406,22 @@ export default {
     updatePackets: function () {
       if (this.selectedTargetName === 'UNKNOWN') {
         this.packetNames = [this.UNKNOWN]
-        this.selectedPacketName = this.packetNames[0].value
+        if (this.packetNames.length === 0) {
+          this.selectedPacketName = null
+        } else {
+          this.selectedPacketName = this.packetNames[0].value
+        }
         this.updatePacketDetails(this.UNKNOWN.value)
         this.description = 'UNKNOWN'
         return
       }
       if (this.selectedTargetName === 'ALL') {
         this.packetNames = [this.ALL]
-        this.selectedPacketName = this.packetNames[0].value
+        if (this.packetNames.length === 0) {
+          this.selectedPacketName = null
+        } else {
+          this.selectedPacketName = this.packetNames[0].value
+        }
         this.updatePacketDetails(this.ALL.value)
         this.description = 'ALL'
         return
@@ -432,7 +440,11 @@ export default {
           this.packetNames.unshift(this.ALL)
         }
         if (!this.selectedPacketName) {
-          this.selectedPacketName = this.packetNames[0].value
+          if (this.packetNames.length === 0) {
+            this.selectedPacketName = null
+          } else {
+            this.selectedPacketName = this.packetNames[0].value
+          }
         }
         this.updatePacketDetails(this.selectedPacketName)
         const item = this.packetNames.find((packet) => {

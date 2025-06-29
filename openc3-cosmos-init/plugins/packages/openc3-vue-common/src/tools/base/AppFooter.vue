@@ -59,7 +59,7 @@ export default {
       sourceUrl: '',
       version: '',
       showUpgradeToEnterpriseDialog: false,
-      chromeless: this.$route.query.chromeless,
+      chromeless: null,
     }
   },
   computed: {
@@ -72,6 +72,9 @@ export default {
     },
   },
   created: function () {
+    const urlParams = new URLSearchParams(window.location.search)
+    this.chromeless = urlParams.get('chromeless')
+
     this.getSourceUrl()
     Api.get('/openc3-api/info').then((response) => {
       if (response.data.enterprise) {
