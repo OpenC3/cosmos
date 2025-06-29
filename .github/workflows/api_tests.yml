@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cmd-tlm-api
-          path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
+          path: openc3-cosmos-cmd-tlm-api/coverage/coverage-${{ matrix.ruby-version }}.json
 
   script-runner-api-ruby:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: script-runner-api-ruby
-          path: openc3-cosmos-script-runner-api/coverage/coverage.json
+          path: openc3-cosmos-script-runner-api/coverage/coverage-${{ matrix.ruby-version }}.json
 
   script-runner-api-python:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -144,7 +144,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: script-runner-api-python
-          path: openc3/python/coverage.xml
+          path: openc3/python/coverage-${{ matrix.python-version }}.xml
 
   report-coverage:
     needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
@@ -158,8 +158,8 @@ jobs:
           args: >
             -Dsonar.organization=openc3
             -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.python.coverage.reportPaths=openc3/python/coverage.xml
-            -Dsonar.ruby.coverage.reportPaths=openc3-cosmos-script-runner-api/coverage/coverage.json,openc3-cosmos-cmd-tlm-api/coverage/coverage.json
+            -Dsonar.python.coverage.reportPaths=openc3/python/*.xml
+            -Dsonar.ruby.coverage.reportPaths=openc3-cosmos-script-runner-api/coverage/*.json,openc3-cosmos-cmd-tlm-api/coverage/*.json
             -Dsonar.sources=openc3-cosmos-cmd-tlm-api,openc3-cosmos-script-runner-api
             -Dsonar.tests=openc3-cosmos-cmd-tlm-api/spec,openc3-cosmos-script-runner-api/spec,openc3-cosmos-script-runner-api/test
         env:
