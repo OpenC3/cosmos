@@ -57,7 +57,9 @@ export default {
     }
   },
   created() {
-    if (this.$route.query.chromeless) {
+    const urlParams = new URLSearchParams(window.location.search)
+    const chromeless = urlParams.get('chromeless')
+    if (chromeless) {
       this.mainStyle = { 'padding-top': '0px !important' }
     }
   },
