@@ -676,7 +676,10 @@ def _cmd_implementation(
         "manual": str(manual),
         "log_message": str(log_message),
     }
-    return CommandTopic.send_command(command, timeout, scope)
+    obfuscated_items = packet.get("obfuscated_items", [])
+    options = { "obfuscated_items": obfuscated_items }
+    target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout, scope)
+    return target_name, cmd_name, cmd_params, options
 
 
 def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
@@ -700,19 +703,22 @@ def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
             else:
                 item_type = None
 
-            if isinstance(value, str):
-                if item_type == "BLOCK" or item_type == "STRING":
-                    if not value.isascii():
-                        value = "0x" + simple_formatted(value)
-                    else:
-                        value = f"'{str(value)}'"
-                else:
-                    value = convert_to_value(value)
-                if len(value) > 256:
-                    value = value[:256] + "...'"
-                value = value.replace('"', "'")
-            elif isinstance(value, list):
-                value = f"[{', '.join(str(i) for i in value)}]"
-            params.append(f"{key} {value}")
+            if item and item["obfuscate"]:
+              params.append(f"{key} *****")
+            else:
+              if isinstance(value, str):
+                  if item_type == "BLOCK" or item_type == "STRING":
+                      if not value.isascii():
+                          value = "0x" + simple_formatted(value)
+                      else:
+                          value = f"'{str(value)}'"
+                  else:
+                      value = convert_to_value(value)
+                  if len(value) > 256:
+                      value = value[:256] + "...'"
+                  value = value.replace('"', "'")
+              elif isinstance(value, list):
+                  value = f"[{', '.join(str(i) for i in value)}]"
+              params.append(f"{key} {value}")
         output_string += " with " + ", ".join(params) + '")'
     return output_string

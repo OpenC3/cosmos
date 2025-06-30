@@ -132,7 +132,7 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
 
 
 # Format the command like it appears in a script
-def _cmd_string(target_name, cmd_name, cmd_params, raw):
+def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items=[]):
     output_string = ""
     if openc3.script.DISCONNECT:
         output_string += "openc3.script.DISCONNECT: "
@@ -148,28 +148,31 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
         for key, value in cmd_params.items():
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
-            if isinstance(value, str):
-                if not value.isascii():
-                    value = "BINARY"
-                elif len(value) > 256:
-                    value = value[:255] + "...'"
-                value = value.replace('"', "'")
-            elif isinstance(value, list):
-                value = str(value)
-            params.append(f"{key} {value}")
+            if obfuscated_items and key in obfuscated_items:
+              params.append(f"{key} *****")
+            else:
+                if isinstance(value, str):
+                    if not value.isascii():
+                        value = "BINARY"
+                    elif len(value) > 256:
+                        value = value[:255] + "...'"
+                    value = value.replace('"', "'")
+                elif isinstance(value, list):
+                    value = str(value)
+                params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'
     return output_string
 
 
-def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous):
+def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items=[]):
     """Log any warnings about disabling checks and log the command itself
     NOTE: This is a helper method and should not be called directly"""
     if no_range:
         print(f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks")
     if no_hazardous:
         print(f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings")
-    print(_cmd_string(target_name, cmd_name, cmd_params, raw))
+    print(_cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items= obfuscated_items))
 
 
 def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
@@ -189,6 +192,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
 
     # Get the command and validate the parameters
     command = openc3.script.API_SERVER.get_cmd(target_name, cmd_name, scope=scope)
+    obfuscated_items = command.get("obfuscated_items", [])
     if cmd_params:
         for param_name in cmd_params.keys():
             found = False
@@ -199,7 +203,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                         break
             if not found:
                 raise RuntimeError(f"Packet item '{target_name} {cmd_name} {param_name}' does not exist")
-    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items=obfuscated_items)
 
 
 def _cmd(
@@ -224,11 +228,11 @@ def _cmd(
     else:
         try:
             try:
-                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
+                target_name, cmd_name, cmd_params, options = getattr(openc3.script.API_SERVER, cmd)(
                     *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
                 )
                 if log_message is None or log_message:
-                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items=options.get("obfuscated_items", []) if options else [])
             except HazardousError as error:
                 # Need to reimport here to pick up changes from running_script
                 from openc3.script import prompt_for_hazardous
@@ -240,11 +244,11 @@ def _cmd(
                     error.cmd_name,
                     error.hazardous_description,
                 )
-                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
+                target_name, cmd_name, cmd_params, options = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
                     *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
                 )
                 if log_message is None or log_message:
-                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items=options.get("obfuscated_items", []) if options else [])
         except CriticalCmdError as error:
             # Need to reimport here to pick up changes from running_script
             from openc3.script import prompt_for_critical_cmd
@@ -259,4 +263,4 @@ def _cmd(
                 error.cmd_string,
             )
             if log_message is None or log_message:
-                _log_cmd(error.target_name, error.cmd_name, error.cmd_params, raw, no_range, no_hazardous)
+                _log_cmd(error.target_name, error.cmd_name, error.cmd_params, raw, no_range, no_hazardous, obfuscated_items=error.options.get("obfuscated_items", []) if error.options else [])

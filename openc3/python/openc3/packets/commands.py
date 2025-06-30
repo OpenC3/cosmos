@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from openc3.packets.packet import Packet
 from openc3.utilities.string import simple_formatted
 from openc3.utilities.extract import convert_to_value
+from openc3.api.cmd_api import _cmd_log_string
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -197,53 +198,15 @@ class Commands:
             items = packet.read_all("FORMATTED")
             raw = False
         items = [item for item in items if item[0] not in ignored_parameters]
-        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
+        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items, raw, packet)
 
-    def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False):
-        if raw:
-            output_string = 'cmd_raw("'
-        else:
-            output_string = 'cmd("'
-        if not target_name:
-            target_name = "UNKNOWN"
-        if not cmd_name:
-            cmd_name = "UNKNOWN"
-        output_string += target_name + " " + cmd_name
-        if cmd_params is None or len(cmd_params) == 0:
-            output_string += '")'
-        else:
-            try:
-                command_items = self.packet(target_name, cmd_name).items
-            except RuntimeError:
-                command_items = {}
-
-            params = []
-            for key, value in cmd_params:
-                if key in Packet.RESERVED_ITEM_NAMES:
-                    continue
-
-                try:
-                    item_type = command_items[key].data_type
-                except KeyError:
-                    item_type = None
-
-                if isinstance(value, str):
-                    if item_type == "BLOCK" or item_type == "STRING":
-                        if not value.isascii():
-                            value = "0x" + simple_formatted(value)
-                        else:
-                            value = f"'{str(value)}'"
-                    else:
-                        value = str(convert_to_value(value))
-                    if len(value) > 256:
-                        value = value[:256] + "...'"
-                    value = value.replace('"', "'")
-                elif isinstance(value, list):
-                    value = f"[{', '.join(str(i) for i in value)}]"
-                params.append(f"{key} {value}")
-            params = (", ").join(params)
-            output_string += " with " + params + '")'
-        return output_string
+    def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False, packet=None):
+        method_name = "cmd_raw" if raw else "cmd"
+        target_name = "UNKNOWN" if not target_name else target_name
+        cmd_name = "UNKNOWN" if not cmd_name else cmd_name
+        packet_hash = packet.as_json() if packet else {}
+        _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
+        
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states

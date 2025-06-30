@@ -102,6 +102,7 @@ class Packet(Structure):
         self.virtual = False
         self.restricted = False
         self.validator = None
+        self.obfuscated_items = []
 
     @property
     def target_name(self):
@@ -469,6 +470,7 @@ class Packet(Structure):
         item = super().define(item)
         self.update_id_items(item)
         self.update_limits_items_cache(item)
+        self.update_obfuscated_items_cache(item)
         return item
 
     # Define an item at the end of the packet. This creates a new instance of the
@@ -862,6 +864,7 @@ class Packet(Structure):
         self.short_buffer_allowed = False
         self.id_items = None
         self.limits_items = None
+        self.obfuscated_items = []
         new_items = {}
         new_sorted_items = []
         for name, item in self.items.items():
@@ -901,6 +904,16 @@ class Packet(Structure):
             if not self.limits_items_hash.get(item.name):
                 self.limits_items.append(item)
                 self.limits_items_hash[item.name] = True
+
+    # Add an item to the obfuscate items cache if necessary.
+    # You MUST call this after adding obfuscation to an item
+    # This is an optimization so we don't have to iterate through all the items when
+    # checking for obfuscation.
+    def update_obfuscated_items_cache(self, item):
+        if item.obfuscate:
+            if not self.obfuscated_items.hash.get(item.name):
+                self.obfuscated_items.append(item)
+                self.obfuscated_items_hash[item.name] = True
 
     # Return an array of arrays indicating all items in the packet that are out of limits
     #   [[target name, packet name, item name, item limits state], ...]
@@ -1113,6 +1126,8 @@ class Packet(Structure):
             config["related_items"] = self.related_items
         if self.ignore_overlap:
             config["ignore_overlap"] = self.ignore_overlap
+        if self.obfuscated_items:
+            config["obfuscated_items"] = [item.name for item in self.obfuscated_items]
 
         return config
 
@@ -1309,3 +1324,46 @@ class Packet(Structure):
             item.id_value = id_value
             self.update_id_items(item)
         return item
+    
+    def obfuscate():
+        if not self.buffer:
+            return
+        if not self.obfuscated_items or len(self.obfuscated_items) == 0:
+            return
+
+        for item in self.obfuscated_items:
+            if item.data_type == "DERIVED":
+                continue
+            
+            try:
+                current_value = self.read(item.name, 'RAW')
+
+                if isinstance(current_value, list):
+                    # For arrays, create a new array of zeros with the same size
+                    if item.data_type in ['INT', 'UINT']:
+                        obfuscated_value = [0] * len(current_value)
+                    elif item.data_type == 'FLOAT':
+                        obfuscated_value = [0.0] * len(current_value)
+                    elif item.data_type in ['STRING', 'BLOCK']:
+                        obfuscated_value = [
+                            '\x00' * len(val) if val else None for val in current_value
+                        ]
+                    else:
+                        obfuscated_value = [0] * len(current_value)
+
+                elif isinstance(current_value, str):
+                    # For strings/blocks, create null bytes of the same length
+                    obfuscated_value = '\x00' * len(current_value)
+
+                else:
+                    if item.data_type in ['INT', 'UINT']:
+                        obfuscated_value = 0
+                    elif item.data_type == 'FLOAT':
+                        obfuscated_value = 0.0
+                    else:
+                        obfuscated_value = 0
+
+                self.write(item.name, obfuscated_value, 'RAW')
+
+            except Exception:
+                continue
