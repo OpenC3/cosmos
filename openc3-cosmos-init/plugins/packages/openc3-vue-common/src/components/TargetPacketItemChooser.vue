@@ -406,22 +406,14 @@ export default {
     updatePackets: function () {
       if (this.selectedTargetName === 'UNKNOWN') {
         this.packetNames = [this.UNKNOWN]
-        if (this.packetNames.length === 0) {
-          this.selectedPacketName = null
-        } else {
-          this.selectedPacketName = this.packetNames[0].value
-        }
+        this.selectedPacketName = this.packetNames[0].value
         this.updatePacketDetails(this.UNKNOWN.value)
         this.description = 'UNKNOWN'
         return
       }
       if (this.selectedTargetName === 'ALL') {
         this.packetNames = [this.ALL]
-        if (this.packetNames.length === 0) {
-          this.selectedPacketName = null
-        } else {
-          this.selectedPacketName = this.packetNames[0].value
-        }
+        this.selectedPacketName = this.packetNames[0].value
         this.updatePacketDetails(this.ALL.value)
         this.description = 'ALL'
         return
