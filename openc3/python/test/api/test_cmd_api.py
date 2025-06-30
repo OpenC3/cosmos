@@ -110,9 +110,9 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params = func("inst Collect with type 0, Duration 5")
+                target_name, cmd_name, params, options = func("inst Collect with type 0, Duration 5")
             else:
-                target_name, cmd_name, params = func("inst Collect with type NORMAL, Duration 5")
+                target_name, cmd_name, params, options = func("inst Collect with type NORMAL, Duration 5")
             self.assertEqual(target_name, "INST")
             self.assertEqual(cmd_name, "COLLECT")
             if "raw" in name:
@@ -163,9 +163,9 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params = func("inst", "Collect", {"TYPE": 0, "Duration": 5})
+                target_name, cmd_name, params, options = func("inst", "Collect", {"TYPE": 0, "Duration": 5})
             else:
-                target_name, cmd_name, params = func("inst", "Collect", {"TYPE": "NORMAL", "Duration": 5})
+                target_name, cmd_name, params, options = func("inst", "Collect", {"TYPE": "NORMAL", "Duration": 5})
             self.assertEqual(target_name, "INST")
             self.assertEqual(cmd_name, "COLLECT")
             if "raw" in name:
@@ -185,7 +185,7 @@ class TestCmdApi(unittest.TestCase):
             "cmd_raw_no_checks",
         ]:
             func = globals()[name]
-            target_name, cmd_name, params = func("INST", "ABORT")
+            target_name, cmd_name, params, options = func("INST", "ABORT")
             self.assertEqual(target_name, "INST")
             self.assertEqual(cmd_name, "ABORT")
             self.assertEqual(params, {})

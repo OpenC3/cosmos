@@ -103,6 +103,7 @@ class Packet(Structure):
         self.restricted = False
         self.validator = None
         self.obfuscated_items = []
+        self.obfuscated_items_hash = {}
 
     @property
     def target_name(self):
@@ -911,7 +912,7 @@ class Packet(Structure):
     # checking for obfuscation.
     def update_obfuscated_items_cache(self, item):
         if item.obfuscate:
-            if not self.obfuscated_items.hash.get(item.name):
+            if not self.obfuscated_items_hash.get(item.name):
                 self.obfuscated_items.append(item)
                 self.obfuscated_items_hash[item.name] = True
 
@@ -1325,7 +1326,7 @@ class Packet(Structure):
             self.update_id_items(item)
         return item
     
-    def obfuscate():
+    def obfuscate(self):
         if not self.buffer:
             return
         if not self.obfuscated_items or len(self.obfuscated_items) == 0:

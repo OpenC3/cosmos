@@ -39,7 +39,7 @@ class Proxy:
         gKwargs = kwargs
         for arg in args:
             if "ABORT" in arg:
-                return "INST", "ABORT", {}
+                return "INST", "ABORT", {}, {}
             elif "CLEAR" in arg:
                 error = HazardousError()
                 error.target_name = "INST"
@@ -53,21 +53,21 @@ class Proxy:
         gKwargs = kwargs
         for arg in args:
             if "ABORT" in arg:
-                return "INST", "ABORT", {}
+                return "INST", "ABORT", {}, {}
 
     def cmd_no_hazardous_check(*args, **kwargs):
         global gArgs
         global gKwargs
         gArgs = args
         gKwargs = kwargs
-        return "INST", "CLEAR", {}
+        return "INST", "CLEAR", {}, {}
 
     def cmd_no_checks(*args, **kwargs):
         global gArgs
         global gKwargs
         gArgs = args
         gKwargs = kwargs
-        return "INST", "CLEAR", {}
+        return "INST", "CLEAR", {}, {}
 
     # Duplicate the return in cmd_api.py
     def get_cmd(target_name, cmd_name, scope):

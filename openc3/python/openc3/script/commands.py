@@ -228,6 +228,7 @@ def _cmd(
     else:
         try:
             try:
+                options = {}
                 target_name, cmd_name, cmd_params, options = getattr(openc3.script.API_SERVER, cmd)(
                     *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
                 )

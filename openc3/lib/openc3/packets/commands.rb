@@ -24,7 +24,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/packets/packet_config'
-require 'openc3/api/cmd_api'
+require 'openc3/utilities/cmd_log'
 
 module OpenC3
   # Commands uses PacketConfig to parse the command and telemetry
@@ -38,7 +38,7 @@ module OpenC3
   # Packet or PacketItem objects. While there are some overlapping methods between
   # the two, these are separate interfaces into the system.
   class Commands
-    include OpenC3::Api
+    include OpenC3::CmdLog
     attr_accessor :config
 
     LATEST_PACKET_NAME = 'LATEST'.freeze

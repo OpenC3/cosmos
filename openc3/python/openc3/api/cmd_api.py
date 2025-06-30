@@ -28,6 +28,7 @@ from openc3.utilities.authorization import authorize
 from openc3.utilities.string import simple_formatted
 from openc3.models.target_model import TargetModel
 from openc3.utilities.extract import *
+from openc3.utilities.cmd_log import _build_cmd_output_string
 from openc3.topics.topic import Topic
 from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic
@@ -653,7 +654,7 @@ def _cmd_implementation(
         if kwargs["log_message"] not in [True, False]:
             raise RuntimeError(f"Invalid log_message parameter: {kwargs['log_message']}. Must be True or False.")
         log_message = kwargs["log_message"]
-    cmd_string = _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet)
+    cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
 
     # Check for the validate kwarg
     validate = True
@@ -680,45 +681,3 @@ def _cmd_implementation(
     options = { "obfuscated_items": obfuscated_items }
     target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout, scope)
     return target_name, cmd_name, cmd_params, options
-
-
-def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
-    output_string = f'{method_name}("'
-    output_string += target_name + " " + cmd_name
-    if not cmd_params:
-        output_string += '")'
-    else:
-        params = []
-        for key, value in cmd_params.items():
-            if key in Packet.RESERVED_ITEM_NAMES:
-                continue
-
-            found = False
-            for item in packet["items"]:
-                if item["name"] == key:
-                    found = item
-                    break
-            if found and "data_type" in found:
-                item_type = found["data_type"]
-            else:
-                item_type = None
-
-            if item and item["obfuscate"]:
-              params.append(f"{key} *****")
-            else:
-              if isinstance(value, str):
-                  if item_type == "BLOCK" or item_type == "STRING":
-                      if not value.isascii():
-                          value = "0x" + simple_formatted(value)
-                      else:
-                          value = f"'{str(value)}'"
-                  else:
-                      value = convert_to_value(value)
-                  if len(value) > 256:
-                      value = value[:256] + "...'"
-                  value = value.replace('"', "'")
-              elif isinstance(value, list):
-                  value = f"[{', '.join(str(i) for i in value)}]"
-              params.append(f"{key} {value}")
-        output_string += " with " + ", ".join(params) + '")'
-    return output_string

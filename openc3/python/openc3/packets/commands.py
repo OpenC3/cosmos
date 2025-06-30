@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from openc3.packets.packet import Packet
 from openc3.utilities.string import simple_formatted
 from openc3.utilities.extract import convert_to_value
-from openc3.api.cmd_api import _cmd_log_string
+from openc3.utilities.cmd_log import _build_cmd_output_string
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -198,14 +198,15 @@ class Commands:
             items = packet.read_all("FORMATTED")
             raw = False
         items = [item for item in items if item[0] not in ignored_parameters]
-        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items, raw, packet)
+        items_dict = {item[0]: item[1] for item in items}   
+        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items_dict, raw, packet)
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False, packet=None):
         method_name = "cmd_raw" if raw else "cmd"
         target_name = "UNKNOWN" if not target_name else target_name
         cmd_name = "UNKNOWN" if not cmd_name else cmd_name
         packet_hash = packet.as_json() if packet else {}
-        _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
+        return _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
         
 
     # Returns whether the given command is hazardous. Commands are hazardous

@@ -30,9 +30,11 @@ require 'openc3/topics/command_decom_topic'
 require 'openc3/topics/decom_interface_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/script/extract'
+require 'openc3/utilities/cmd_log'
 
 module OpenC3
   module Api
+    include OpenC3::CmdLog
     WHITELIST ||= []
     WHITELIST.concat([
                        'cmd',
@@ -541,51 +543,5 @@ module OpenC3
       [target_name, cmd_name, cmd_params, options]
     end
 
-    def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
-      output_string = "#{method_name}(\""
-      output_string << (target_name + ' ' + cmd_name)
-      if cmd_params.nil? or cmd_params.empty?
-        output_string << '")'
-      else
-        params = []
-        cmd_params.each do |key, value|
-          next if Packet::RESERVED_ITEM_NAMES.include?(key)
-
-          item = packet['items'].find { |find_item| find_item['name'] == key.to_s }
-          begin
-            item_type = item['data_type'].intern
-          rescue
-            item_type = nil
-          end
-
-          if (item and item['obfuscate'])
-            params << "#{key} *****"
-          else
-            if value.is_a?(String)
-              value = value.dup
-              if item_type == :BLOCK or item_type == :STRING
-                if !value.is_printable?
-                  value = "0x" + value.simple_formatted
-                else
-                  value = value.inspect
-                end
-              else
-                value = value.convert_to_value.to_s
-              end
-              if value.length > 256
-                value = value[0..255] + "...'"
-              end
-              value.tr!('"', "'")
-            elsif value.is_a?(Array)
-              value = "[#{value.join(", ")}]"
-            end
-            params << "#{key} #{value}"
-          end
-        end
-        params = params.join(", ")
-        output_string << (' with ' + params + '")')
-      end
-      return output_string
-    end
   end
 end
