@@ -56,7 +56,7 @@ class ToolsController < ModelController
           result["imports"][item_key] = item
         end
       end
-      if tool['inline_url'] and tool['window'] == 'INLINE'
+      if tool['inline_url']
         result["imports"]["@openc3/tool-#{tool['folder_name']}"] = "/tools/#{tool['folder_name']}/#{tool['inline_url']}"
       end
     end

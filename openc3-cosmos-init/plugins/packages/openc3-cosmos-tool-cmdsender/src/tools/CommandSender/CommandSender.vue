@@ -28,7 +28,7 @@
         <target-packet-item-chooser
           :initial-target-name="$route.params.target"
           :initial-packet-name="$route.params.packet"
-          :disabled="sendDisabled"
+          :disabled="sendDisabled || commandName == null"
           button-text="Send"
           mode="cmd"
           @on-set="commandChanged($event)"
@@ -522,16 +522,26 @@ export default {
         if (this.sendDisabled === false) {
           this.updateCmdParams()
         }
-        this.$router
-          .replace({
-            name: 'CommandSender',
-            params: {
-              target: this.targetName,
-              packet: this.commandName,
-            },
-          })
-          // catch the error in case we route to where we already are
-          .catch((err) => {})
+        if (this.targetName && this.commandName) {
+          this.$router
+            .replace({
+              name: 'CommandSender',
+              params: {
+                target: this.targetName,
+                packet: this.commandName,
+              },
+            })
+            // catch the error in case we route to where we already are
+            .catch((err) => {})
+        } else {
+          // Handle targets with any commands
+          this.$router
+            .replace({
+              name: 'CommandSender',
+            })
+            // catch the error in case we route to where we already are
+            .catch((err) => {})
+        }
       }
     },
 
@@ -539,108 +549,113 @@ export default {
       this.sendDisabled = true
       this.ignoredParams = []
       this.rows = []
-      this.api
-        .get_target(this.targetName)
-        .then(
-          (target) => {
-            this.ignoredParams = target.ignored_parameters
-            return this.api.get_cmd(this.targetName, this.commandName)
-          },
-          (error) => {
-            this.displayError('getting ignored parameters', error)
-            this.sendDisabled = false
-          },
-        )
-        .then(
-          (command) => {
-            command.items.forEach((parameter) => {
-              if (this.reservedItemNames.includes(parameter.name)) return
-              if (
-                !this.ignoredParams.includes(parameter.name) ||
-                this.showIgnoredParams
-              ) {
-                let val = parameter.default
-                // If the parameter is a string and the default is a string
-                // (rather than object for binary) then we quote the string
-                // However we don't do this is the parameter has states
-                // because that messes up the state selection logic
+      if (this.targetName && this.commandName) {
+        this.api
+          .get_target(this.targetName)
+          .then(
+            (target) => {
+              this.ignoredParams = target.ignored_parameters
+              return this.api.get_cmd(this.targetName, this.commandName)
+            },
+            (error) => {
+              this.displayError('getting ignored parameters', error)
+              this.sendDisabled = false
+            },
+          )
+          .then(
+            (command) => {
+              command.items.forEach((parameter) => {
+                if (this.reservedItemNames.includes(parameter.name)) return
                 if (
-                  !parameter.states &&
-                  parameter.data_type === 'STRING' &&
-                  typeof parameter.default === 'string'
+                  !this.ignoredParams.includes(parameter.name) ||
+                  this.showIgnoredParams
                 ) {
-                  val = `'${val}'`
-                }
-                if (parameter.required) {
-                  val = ''
-                }
-                if (parameter.format_string) {
-                  val = sprintf(parameter.format_string, parameter.default)
-                }
-                let range = 'N/A'
-                // check using != because compare with null
-                if (parameter.minimum != null && parameter.maximum != null) {
-                  if (parameter.data_type === 'FLOAT') {
-                    // This is basically to handle the FLOAT MIN and MAX so they
-                    // don't print out the huge exponential
-                    if (parameter.minimum < -1e6) {
-                      if (Number.isSafeInteger(parameter.minimum)) {
-                        parameter.minimum = parameter.minimum.toExponential(3)
-                      }
-                    }
-                    if (parameter.maximum > 1e6) {
-                      if (Number.isSafeInteger(parameter.maximum)) {
-                        parameter.maximum = parameter.maximum.toExponential(3)
-                      }
-                    }
+                  let val = parameter.default
+                  // If the parameter is a string and the default is a string
+                  // (rather than object for binary) then we quote the string
+                  // However we don't do this is the parameter has states
+                  // because that messes up the state selection logic
+                  if (
+                    !parameter.states &&
+                    parameter.data_type === 'STRING' &&
+                    typeof parameter.default === 'string'
+                  ) {
+                    val = `'${val}'`
                   }
-                  range = `${parameter.minimum}..${parameter.maximum}`
+                  if (parameter.required) {
+                    val = ''
+                  }
+                  if (parameter.format_string) {
+                    val = sprintf(parameter.format_string, parameter.default)
+                  }
+                  let range = 'N/A'
+                  // check using != because compare with null
+                  if (parameter.minimum != null && parameter.maximum != null) {
+                    if (parameter.data_type === 'FLOAT') {
+                      // This is basically to handle the FLOAT MIN and MAX so they
+                      // don't print out the huge exponential
+                      if (parameter.minimum < -1e6) {
+                        if (Number.isSafeInteger(parameter.minimum)) {
+                          parameter.minimum = parameter.minimum.toExponential(3)
+                        }
+                      }
+                      if (parameter.maximum > 1e6) {
+                        if (Number.isSafeInteger(parameter.maximum)) {
+                          parameter.maximum = parameter.maximum.toExponential(3)
+                        }
+                      }
+                    }
+                    range = `${parameter.minimum}..${parameter.maximum}`
+                  }
+                  this.rows.push({
+                    parameter_name: parameter.name,
+                    val: val,
+                    states: parameter.states,
+                    description: parameter.description,
+                    range: range,
+                    units: parameter.units,
+                    type: parameter.data_type,
+                  })
                 }
-                this.rows.push({
-                  parameter_name: parameter.name,
-                  val: val,
-                  states: parameter.states,
-                  description: parameter.description,
-                  range: range,
-                  units: parameter.units,
-                  type: parameter.data_type,
-                })
-              }
-            })
-            if (command.screen) {
-              this.loadScreen(command.screen[0], command.screen[1]).then(
-                (response) => {
-                  this.screenTarget = command.screen[0]
-                  this.screenName = command.screen[1]
-                  this.screenDefinition = response.data
-                  this.screenCount += 1
-                },
-              )
-            } else {
-              if (command.related_items) {
-                this.screenTarget = 'LOCAL'
-                this.screenName = 'CMDSENDER'
-                let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                for (const item of command.related_items) {
-                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
-                }
-                this.screenDefinition = screenDefinition
+              })
+              if (command.screen) {
+                this.loadScreen(command.screen[0], command.screen[1]).then(
+                  (response) => {
+                    this.screenTarget = command.screen[0]
+                    this.screenName = command.screen[1]
+                    this.screenDefinition = response.data
+                    this.screenCount += 1
+                  },
+                )
               } else {
-                this.screenTarget = null
-                this.screenName = null
-                this.screenDefinition = null
+                if (command.related_items) {
+                  this.screenTarget = 'LOCAL'
+                  this.screenName = 'CMDSENDER'
+                  let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
+                  for (const item of command.related_items) {
+                    screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
+                  }
+                  this.screenDefinition = screenDefinition
+                } else {
+                  this.screenTarget = null
+                  this.screenName = null
+                  this.screenDefinition = null
+                }
+                this.screenCount += 1
               }
-              this.screenCount += 1
-            }
-            this.commandDescription = command.description
-            this.sendDisabled = false
-            this.status = ''
-          },
-          (error) => {
-            this.displayError('getting command parameters', error)
-            this.sendDisabled = false
-          },
-        )
+              this.commandDescription = command.description
+              this.sendDisabled = false
+              this.status = ''
+            },
+            (error) => {
+              this.displayError('getting command parameters', error)
+              this.sendDisabled = false
+            },
+          )
+      } else {
+        this.sendDisabled = false
+        this.status = ''
+      }
     },
 
     createParamList() {

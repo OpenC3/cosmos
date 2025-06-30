@@ -432,7 +432,11 @@ export default {
           this.packetNames.unshift(this.ALL)
         }
         if (!this.selectedPacketName) {
-          this.selectedPacketName = this.packetNames[0].value
+          if (this.packetNames.length === 0) {
+            this.selectedPacketName = null
+          } else {
+            this.selectedPacketName = this.packetNames[0].value
+          }
         }
         this.updatePacketDetails(this.selectedPacketName)
         const item = this.packetNames.find((packet) => {

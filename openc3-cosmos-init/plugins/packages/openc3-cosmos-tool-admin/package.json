@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-admin",
-  "version": "6.5.1-beta0",
+  "version": "6.5.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,8 +12,8 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "7.25.1",
     "@openc3/ace-diff": "3.1.0",
-    "@openc3/js-common": "6.5.1-beta0",
-    "@openc3/vue-common": "6.5.1-beta0",
+    "@openc3/js-common": "6.5.2-beta0",
+    "@openc3/vue-common": "6.5.2-beta0",
     "ace-builds": "1.40.1",
     "single-spa-vue": "3.0.1"
   },
