@@ -251,8 +251,10 @@ export default {
       ) {
         // Our dates have / rather than - which results in an invalid date on old browsers
         // when they call new Date(value)
-        value = value.replaceAll('/', '-')
-        return this.formatUtcToLocal(new Date(value), this.appliedTimeZone)
+        value = this.formatUtcToLocal(
+          new Date(value.replaceAll('/', '-')),
+          this.appliedTimeZone,
+        )
       }
       return this.formatValueBase(value, this.formatString)
     },

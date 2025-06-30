@@ -59,6 +59,7 @@
               <v-btn
                 :icon="floated ? 'mdi-balloon' : 'mdi-view-grid-outline'"
                 variant="text"
+                density="compact"
                 data-test="float-screen-icon"
                 :aria-label="floated ? 'Unfloat Screen' : 'Float Screen'"
                 @click="floatScreen"
@@ -73,6 +74,7 @@
               <v-btn
                 icon="mdi-arrow-up"
                 variant="text"
+                density="compact"
                 data-test="up-screen-icon"
                 aria-label="Move Screen Up"
                 @click="upScreen"
@@ -91,6 +93,7 @@
               <v-btn
                 icon="mdi-arrow-down"
                 variant="text"
+                density="compact"
                 data-test="down-screen-icon"
                 aria-label="Move Screen Down"
                 @click="downScreen"
@@ -115,6 +118,7 @@
           v-else
           icon="mdi-window-maximize"
           variant="text"
+          density="compact"
           data-test="maximize-screen-icon"
           aria-label="Maximize Screen"
           @click="minMaxTransition"
