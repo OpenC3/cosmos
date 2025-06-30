@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "^7.24.0",
-    "@openc3/js-common": "6.5.1-beta0",
+    "@openc3/js-common": "6.5.1",
     "@smui/button": "^7.0.0",
     "@smui/common": "^7.0.0",
     "@smui/card": "^7.0.0",
