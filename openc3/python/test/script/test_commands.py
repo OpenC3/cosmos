@@ -45,6 +45,13 @@ class Proxy:
                 error.target_name = "INST"
                 error.cmd_name = "CLEAR"
                 raise error
+            elif "SET_PASSWORD" in arg:
+                return "INST", "SET_PASSWORD", {"USERNAME": "user", "PASSWORD": "pass"}, {"obfuscated_items": ["PASSWORD"]}
+            elif "HAZARDOUS_SET_PASSWORD" in arg:
+                error = HazardousError()
+                error.target_name = "INST"
+                error.cmd_name = "SET_PASSWORD"
+                raise error
 
     def cmd_raw(*args, **kwargs):
         global gArgs
@@ -184,3 +191,23 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(cmd_time[0], "INST")
         self.assertEqual(cmd_time[1], "CLEAR")
         self.assertEqual("%.3f" % cmd_time[2].timestamp(), "%.3f" % gTime)
+
+    def test_handles_obfuscation(self):
+        global gArgs
+        global gKwargs
+        for stdout in capture_io():
+            cmd("INST SET_PASSWORD with USERNAME user PASSWORD pass")
+            self.assertIn(
+                'cmd("INST SET_PASSWORD with USERNAME user, PASSWORD *****")',
+                stdout.getvalue(),
+            )
+    
+    def test_sends_a_hazardous_obfuscated_cmd(self):
+        global gArgs
+        global gKwargs
+        for stdout in capture_io():
+            cmd("INST HAZARDOUS_SET_PASSWORD with USERNAME user PASSWORD pass")
+            self.assertIn(
+                'cmd("INST SET_PASSWORD with USERNAME user, PASSWORD *****")',
+                stdout.getvalue(),
+            )
