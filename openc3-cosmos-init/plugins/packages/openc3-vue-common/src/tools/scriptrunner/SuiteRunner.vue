@@ -324,6 +324,7 @@ export default {
       required: true,
     },
   },
+  emits: ['button', 'loaded'],
   data() {
     return {
       suites: [],
