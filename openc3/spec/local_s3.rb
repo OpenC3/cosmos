@@ -79,7 +79,7 @@ module LocalS3
       bucket
     end
 
-    def get_object(bucket:, key:, response_target: nil)
+    def get_object(bucket:, key:, response_target: nil, range: nil)
       s3_obj = S3Object.new(bucket_name: bucket, key: key)
       data = File.open(File.expand_path(File.join(@fs_root, bucket, key))) do |file|
         file.read
