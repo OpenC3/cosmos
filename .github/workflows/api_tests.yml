@@ -164,7 +164,7 @@ jobs:
             -Dsonar.projectKey=OpenC3_cosmos
             -Dsonar.python.coverage.reportPaths=script-runner-api-python-*/coverage.xml
             -Dsonar.ruby.coverage.reportPaths=cmd-tlm-api-*/coverage.json,script-runner-api-ruby-*/coverage.json
-            -Dsonar.sources=openc3-cosmos-cmd-tlm-api,openc3-cosmos-script-runner-api
+            -Dsonar.sources=openc3-cosmos-cmd-tlm-api/app,openc3-cosmos-script-runner-api/app,openc3-cosmos-script-runner-api/scripts
             -Dsonar.tests=openc3-cosmos-cmd-tlm-api/spec,openc3-cosmos-script-runner-api/spec,openc3-cosmos-script-runner-api/test
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
