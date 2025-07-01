@@ -158,8 +158,8 @@ jobs:
         uses: actions/download-artifact@v4
       - run: |
           cat script-runner-api-python-3.12/coverage.xml
-          sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' script-runner-api-python-3.12/coverage.xml
-          cat script-runner-api-python-3.12/coverage.xml
+      #     sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' script-runner-api-python-3.12/coverage.xml
+      #     cat script-runner-api-python-3.12/coverage.xml
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         with:
