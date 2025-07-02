@@ -203,6 +203,7 @@ Rails.application.routes.draw do
     get "/internal/status" => "internal_status#status"
 
     get "/news" => "news#index"
+    get "/pluginstore" => "plugin_store#index"
     get "/time" => "time#get_current"
     get "map.json" => "tools#importmap"
     get "auth.js" => "tools#auth"
