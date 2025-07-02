@@ -148,7 +148,7 @@ class TestDecomMicroservice(unittest.TestCase):
             for stdout in capture_io():
                 Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST_INT", {"connect": "true"}, "*", 100)
                 time.sleep(0.01)
-                self.assertIn("Decom error Exception('Bad command')", stdout.getvalue())
+                self.assertIn("Exception: Bad command", stdout.getvalue())
             # This is an implementation detail but we want to ensure the error was logged
             self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)
 

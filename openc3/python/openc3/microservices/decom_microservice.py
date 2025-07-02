@@ -19,6 +19,7 @@ import sys
 import time
 import json
 import threading
+import traceback
 import queue
 from openc3.microservices.microservice import Microservice
 from openc3.system.system import System
@@ -149,7 +150,7 @@ class DecomMicroservice(Microservice):
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
                 self.error = error
-                self.logger.error(f"Decom error {repr(error)}")
+                self.logger.error(f"Decom error:\n{traceback.format_exc()}")
 
         self.limits_response_thread.stop()
         self.limits_response_thread = None
