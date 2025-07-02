@@ -50,17 +50,18 @@ module OpenC3
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json(:allow_nan => true))
       OpenC3.inject_context(command)
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
+      command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
-              return [command['target_name'], command['cmd_name'], cmd_params]
+              return command
             # Check for HazardousError which is a special case
             elsif msg_hash["result"].include?("HazardousError")
-              raise_hazardous_error(msg_hash, command['target_name'], command['cmd_name'], cmd_params)
+              raise_hazardous_error(msg_hash, command)
             elsif msg_hash["result"].include?("CriticalCmdError")
-              raise_critical_cmd_error(msg_hash, command['username'], command['target_name'], command['cmd_name'], cmd_params, command['cmd_string'])
+              raise_critical_cmd_error(msg_hash, command)
             else
               raise msg_hash["result"]
             end
@@ -74,14 +75,14 @@ module OpenC3
     # PRIVATE implementation details
     ###########################################################################
 
-    def self.raise_hazardous_error(msg_hash, target_name, cmd_name, cmd_params)
+    def self.raise_hazardous_error(msg_hash, command)
       _, description, formatted = msg_hash["result"].split("\n")
       # Create and populate a new HazardousError and raise it up
       # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
       error = HazardousError.new
-      error.target_name = target_name
-      error.cmd_name = cmd_name
-      error.cmd_params = cmd_params
+      error.target_name = command["target_name"]
+      error.cmd_name = command["cmd_name"]
+      error.cmd_params = command["cmd_params"]
       error.hazardous_description = description
       error.formatted = formatted
 
@@ -89,17 +90,13 @@ module OpenC3
       raise error
     end
 
-    def self.raise_critical_cmd_error(msg_hash, username, target_name, cmd_name, cmd_params, cmd_string)
+    def self.raise_critical_cmd_error(msg_hash, command)
       _, uuid = msg_hash["result"].split("\n")
       # Create and populate a new CriticalCmdError and raise it up
       # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
       error = CriticalCmdError.new
       error.uuid = uuid
-      error.username = username
-      error.target_name = target_name
-      error.cmd_name = cmd_name
-      error.cmd_params = cmd_params
-      error.cmd_string = cmd_string
+      error.command = command
       raise error
     end
   end

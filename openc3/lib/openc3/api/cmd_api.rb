@@ -535,6 +535,7 @@ module OpenC3
         'validate' => validate.to_s,
         'manual' => manual.to_s,
         'log_message' => log_message.to_s,
+        'obfuscated_items' => packet['obfuscated_items'].to_s
       }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
