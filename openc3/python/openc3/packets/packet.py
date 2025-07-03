@@ -1366,5 +1366,5 @@ class Packet(Structure):
                 self.write(item.name, obfuscated_value, 'RAW')
 
             except Exception as e:
-                print(e)
+                Logger.error(f"{item.name} obfuscation failed with error: {repr(e)}")
                 continue

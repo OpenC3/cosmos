@@ -23,6 +23,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
+from openc3.utilities.logger import Logger
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.accessors.binary_accessor import BinaryAccessor
@@ -1965,3 +1966,31 @@ class PacketObfuscation(unittest.TestCase):
         p.buffer = b"\x01\x02\x03\x04\x05"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x01\x00\x00\x04\x00")
+      
+    def test_handles_obfuscation_errors(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("normal1", 8, "UINT")
+        p.append_item("secret1", 16, "UINT")
+        p.append_item("normal2", 8, "UINT")
+        p.append_item("secret2", 8, "UINT")
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = True
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = True
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = b"\x01\x02\x03\x04\x05"
+        
+        def mock_read_side_effect(name, conversion):
+            if name == "SECRET1":
+                raise Exception("Obfuscation failed")
+            elif name == "SECRET2":
+                return 0x05
+            return 0
+            
+        with patch.object(p, 'read', side_effect=mock_read_side_effect):
+            with patch.object(Logger.instance(), 'error') as mock_logger:
+                p.obfuscate()
+                mock_logger.assert_called_once()
+                self.assertIn("SECRET1 obfuscation failed with error: Exception('Obfuscation failed')", mock_logger.call_args[0][0])
+                self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")

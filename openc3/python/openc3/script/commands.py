@@ -149,7 +149,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items=[]):
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
             if obfuscated_items and key in obfuscated_items:
-              params.append(f"{key} *****")
+                params.append(f"{key} *****")
             else:
                 if isinstance(value, str):
                     if not value.isascii():
