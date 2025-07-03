@@ -52,6 +52,7 @@ class CriticalCmdError(Exception):
         self.cmd_name = ""
         self.cmd_params = {}
         self.cmd_string = ""
+        self.options = {}
         super().__init__()
 
 

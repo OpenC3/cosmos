@@ -41,7 +41,7 @@ class CommandTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def send_command(cls, command, timeout, scope):
+    def send_command(cls, command, timeout, scope, obfuscated_items=[]):
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
@@ -66,18 +66,16 @@ class CommandTopic(Topic):
                     elif "HazardousError" in result:
                         cls.raise_hazardous_error(
                             msg_hash,
-                            command["target_name"],
-                            command["cmd_name"],
+                            command,
                             cmd_params,
                         )
                     elif "CriticalCmdError" in result:
+                        options = { "obfuscated_items": obfuscated_items }
                         cls.raise_critical_cmd_error(
                             msg_hash,
-                            command["username"],
-                            command["target_name"],
-                            command["cmd_name"],
+                            command,
                             cmd_params,
-                            command["cmd_string"],
+                            options
                         )
                     else:
                         raise RuntimeError(result)
@@ -88,13 +86,13 @@ class CommandTopic(Topic):
     ###########################################################################
 
     @classmethod
-    def raise_hazardous_error(cls, msg_hash, target_name, cmd_name, cmd_params):
+    def raise_hazardous_error(cls, msg_hash, command, cmd_params):
         _, description, formatted = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
         error = HazardousError()
-        error.target_name = target_name
-        error.cmd_name = cmd_name
+        error.target_name = command["target_name"]
+        error.cmd_name = command["cmd_name"]
         error.cmd_params = cmd_params
         error.hazardous_description = description
         error.formatted = formatted
@@ -103,17 +101,18 @@ class CommandTopic(Topic):
         raise error
 
     @classmethod
-    def raise_critical_cmd_error(cls, msg_hash, username, target_name, cmd_name, cmd_params, cmd_string):
+    def raise_critical_cmd_error(cls, msg_hash, command, cmd_params, options):
         _, uuid = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new CriticalCmdError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
         error = CriticalCmdError()
         error.uuid = uuid
-        error.username = username
-        error.target_name = target_name
-        error.cmd_name = cmd_name
+        error.username = command["username"]
+        error.target_name = command["target_name"]
+        error.cmd_name = command["cmd_name"]
         error.cmd_params = cmd_params
-        error.cmd_string = cmd_string
+        error.cmd_string = command["cmd_string"]
+        error.options = options
 
         # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
         raise error

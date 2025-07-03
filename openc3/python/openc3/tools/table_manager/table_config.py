@@ -190,7 +190,7 @@ class TableConfig(PacketConfig):
                             'GENERIC_WRITE_CONVERSION_START', 'REQUIRED', 'LIMITS',
                             'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',
                             'HIDDEN', 'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE',
-                            'OVERFLOW', 'UNEDITABLE'):
+                            'OVERFLOW', 'UNEDITABLE', 'OBFUSCATE'):
                     if not self.current_item:
                         raise parser.error(f"No current item for {keyword}")
                     self.process_current_item(parser, keyword, params)

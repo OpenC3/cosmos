@@ -127,6 +127,7 @@ class TestPacketConfig(unittest.TestCase):
         "OVERLAP",
         "KEY",
         "VARIABLE_BIT_SIZE",
+        "OBFUSCATE",
     ]
 
     def test_complains_if_a_current_packet_is_not_defined(self):
@@ -173,7 +174,7 @@ class TestPacketConfig(unittest.TestCase):
             # The following have 0 parameters
             ignore.append("OVERLAP")
             # The following are command only
-            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE"])
+            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE", "OBFUSCATE"])
             if keyword in ignore:
                 continue
 

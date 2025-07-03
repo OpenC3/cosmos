@@ -71,6 +71,11 @@ class TestCommands(unittest.TestCase):
         tf.write('  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"\n')
         tf.write('  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN\n')
         tf.write('  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"\n')
+        tf.write('COMMAND tgt2 pkt7 BIG_ENDIAN "TGT2 PKT7 Description"\n')
+        tf.write('  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"\n')
+        tf.write('  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN\n')
+        tf.write('  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"\n')
+        tf.write('    OBFUSCATE\n')
         tf.seek(0)
 
         pc = PacketConfig()
@@ -98,11 +103,12 @@ class TestCommands(unittest.TestCase):
 
     def test_packets_returns_all_packets_target_tgt2(self):
         pkts = self.cmd.packets("TGT2")
-        self.assertEqual(len(pkts), 4)
+        self.assertEqual(len(pkts), 5)
         self.assertIn("PKT3", pkts.keys())
         self.assertIn("PKT4", pkts.keys())
         self.assertIn("PKT5", pkts.keys())
         self.assertIn("PKT6", pkts.keys())
+        self.assertIn("PKT7", pkts.keys())
 
     def test_params_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
@@ -463,3 +469,10 @@ class TestCommands(unittest.TestCase):
 
     def test_returns_all_packets(self):
         self.assertEqual(list(self.cmd.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])
+
+    def test_handles_obfuscated_items(self):
+        pkt = self.cmd.packet("TGT2", "PKT7")
+        self.assertEqual(
+            self.cmd.format(pkt, []),
+            'cmd("TGT2 PKT7 with ITEM1 0, ITEM2 0, ITEM3 *****")',
+        )

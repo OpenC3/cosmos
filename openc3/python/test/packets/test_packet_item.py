@@ -517,6 +517,7 @@ class TestPacketItem(unittest.TestCase):
         pil.persistence_setting = 1
         pil.persistence_count = 2
         self.pi.limits = pil
+        self.pi.obfuscate = True
 
         item = self.pi.as_json()
         self.assertEqual(item["name"], "TEST")
@@ -552,6 +553,7 @@ class TestPacketItem(unittest.TestCase):
         self.assertEqual(item["limits"]["DEFAULT"]["red_high"], 3)
         self.assertEqual(item["limits"]["DEFAULT"]["green_low"], 4)
         self.assertEqual(item["limits"]["DEFAULT"]["green_high"], 5)
+        self.assertTrue(item["obfuscate"])
         self.assertIsNone(item.get("meta"))
 
     def test_creates_empty_packetitem_from_hash(self):
@@ -585,6 +587,7 @@ class TestPacketItem(unittest.TestCase):
         )
         self.assertEqual(item.limits.values, self.pi.limits.values)
         self.assertEqual(item.meta, self.pi.meta)
+        self.assertEqual(item.obfuscate, self.pi.obfuscate)
 
     def test_converts_a_populated_item_to_and_from_json(self):
         self.pi.format_string = "%5.1f"
@@ -607,6 +610,7 @@ class TestPacketItem(unittest.TestCase):
             "DEFAULT": [10, 20, 80, 90, 40, 50],
             "TVAC": [100, 200, 800, 900],
         }
+        self.pi.obfuscate = True
         item = PacketItem.from_json(self.pi.as_json())
         self.assertEqual(item.name, self.pi.name)
         self.assertEqual(item.bit_offset, self.pi.bit_offset)
@@ -636,3 +640,4 @@ class TestPacketItem(unittest.TestCase):
         )
         self.assertEqual(item.limits.values, self.pi.limits.values)
         self.assertEqual(item.meta, self.pi.meta)
+        self.assertEqual(item.obfuscate, self.pi.obfuscate)
