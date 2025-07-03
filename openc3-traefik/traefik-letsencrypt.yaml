@@ -103,7 +103,7 @@ http:
     # Where we need to add index.html to the path
     # Matches any tool name that starts with static and ends with slash
     statictools-index-router:
-      rule: PathRegexp(`/tools/static.*/`)
+      rule: PathRegexp(`/tools/static.*/$`)
       middlewares:
         # add index.html to the end
         - "addIndexHtml"
