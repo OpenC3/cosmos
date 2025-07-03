@@ -1883,6 +1883,31 @@ module OpenC3
         p.obfuscate
         expect(p.buffer).to eql "\x01\x00\x00\x04\x00"
       end
+
+      it "handles failed obfuscation items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("normal1", 8, :UINT)
+        p.append_item("secret1", 16, :UINT)
+        p.append_item("normal2", 8, :UINT)
+        p.append_item("secret2", 8, :UINT)
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = true
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = true
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = "\x01\x02\x03\x04\x05"
+        
+        allow(p).to receive(:read).with("SECRET1", :RAW).and_raise(StandardError.new("Obfuscation failed"))
+        allow(p).to receive(:read).with("SECRET2", :RAW).and_return(0x05)
+        allow(p).to receive(:write).with("SECRET2", 0, :RAW).and_call_original
+        
+        expect(Logger.instance).to receive(:error).with(/SECRET1 obfuscation failed/)
+        
+        p.obfuscate
+        
+        expect(p.buffer).to eql "\x01\x02\x03\x04\x00"
+      end
     end
   end
 end

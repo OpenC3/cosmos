@@ -1346,7 +1346,7 @@ module OpenC3
           end
           write(item.name, obfuscated_value, :RAW)
         rescue => e
-          # Skip items that can't be processed
+          Logger.instance.error "#{item.name} obfuscation failed with error: #{e.message}"
           next
         end
       end
