@@ -40,8 +40,8 @@
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'
   if ENV['GITHUB_WORKFLOW']
-    require 'simplecov-cobertura'
-    SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter
+    require 'simplecov_json_formatter'
+    SimpleCov.formatter = SimpleCov::Formatter::JSONFormatter
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
@@ -189,4 +189,3 @@ RSpec.configure do |config|
   # as the one that triggered the failure.
   Kernel.srand config.seed
 end
-
