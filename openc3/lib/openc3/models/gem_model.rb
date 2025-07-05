@@ -91,10 +91,10 @@ module OpenC3
       Gem.done_installing_hooks.clear
       begin
         # Look for local gems only first, this avoids lengthy timeouts when checking rubygems in airgap env
-        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
+        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document, --without development,test'], prerelease: true, domain: :local)
       rescue Gem::Exception => e
         # If there is a failure look for both local and remote gems
-        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :both)
+        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document, --without development,test'], prerelease: true, domain: :both)
       end
     rescue => e
       message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{e.formatted}"

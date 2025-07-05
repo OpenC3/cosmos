@@ -889,3 +889,18 @@ Disable ERB processing for the entire widget or a set of regular expressions ove
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
+## SCRIPT_ENGINE
+**Define a script engine to add language support to Script Runner**
+
+Defines a script engine to add language support to Script Runner
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Extension | Extension that will use this script engine | True |
+| Script Engine Filename | Filename that implements the script engine. Should be in top level lib folder in plugin. | True |
+
+Example Usage:
+```ruby
+SCRIPT_ENGINE .print print_script_engine.py
+```
+

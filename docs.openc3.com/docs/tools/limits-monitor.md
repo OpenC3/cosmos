@@ -2,7 +2,7 @@
 title: Limits Monitor
 description: View out of limit items and log messages
 sidebar_custom_props:
-  myEmoji: 🛠️
+  myEmoji: 🚥
 ---
 
 ## Introduction

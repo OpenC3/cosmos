@@ -48,7 +48,6 @@ module OpenC3
             stored: 'true'
           )
         )
-        
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
       end
 
@@ -57,7 +56,6 @@ module OpenC3
           expect(msg_hash[:time]).to be_a(Integer)
           expect(msg_hash[:received_time]).to be_a(Integer)
         end
-        
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
       end
 
@@ -65,7 +63,6 @@ module OpenC3
         expect(EphemeralStoreQueued).to receive(:write_topic) do |topic, msg_hash|
           expect(msg_hash[:buffer]).to eq(packet.buffer(false))
         end
-        
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
       end
     end
@@ -81,31 +78,28 @@ module OpenC3
         }
       end
 
-      it "returns target name, command name, and parameters on success" do
-        allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id', 
+      it "returns command struct on success" do
+        allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id',
           { 'id' => 'test_cmd_id', 'result' => 'SUCCESS' }, 'redis')
-        
+
         result = CommandTopic.send_command(command, scope: 'DEFAULT')
-        expect(result).to eq(['TARGET', 'COMMAND', { 'PARAM1' => 1, 'PARAM2' => 'test' }])
+        expect(result).to eq({"cmd_name"=>"COMMAND", "cmd_params"=>{"PARAM1"=>1, "PARAM2"=>"test"}, "cmd_string"=>"TARGET COMMAND with PARAM1 1, PARAM2 \"test\"", "target_name"=>"TARGET", "username"=>"testuser"})
       end
 
       it "writes command to correct topic" do
         allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id',
           { 'id' => 'test_cmd_id', 'result' => 'SUCCESS' }, 'redis')
-        
         expect(Topic).to receive(:write_topic).with(
           '{DEFAULT__CMD}TARGET__TARGET',
           hash_including('target_name' => 'TARGET', 'cmd_name' => 'COMMAND'),
           '*',
           100
         )
-        
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end
 
       it "raises timeout error when no acknowledgment received" do
         allow(Topic).to receive(:read_topics).and_return([])
-        
         expect {
           CommandTopic.send_command(command, timeout: 0.1, scope: 'DEFAULT')
         }.to raise_error(/Timeout of 0.1s waiting for cmd ack/)
@@ -116,7 +110,6 @@ module OpenC3
           'id' => 'test_cmd_id',
           'result' => "HazardousError\nHazardous command description\nFormatted command"
         }, 'redis')
-        
         expect {
           CommandTopic.send_command(command, scope: 'DEFAULT')
         }.to raise_error(HazardousError) do |error|
@@ -132,28 +125,28 @@ module OpenC3
           'id' => 'test_cmd_id',
           'result' => "CriticalCmdError\ntest-uuid-123"
         }, 'redis')
-        
         expect {
           CommandTopic.send_command(command, scope: 'DEFAULT')
         }.to raise_error(CriticalCmdError) do |error|
           expect(error.uuid).to eq('test-uuid-123')
-          expect(error.target_name).to eq('TARGET')
-          expect(error.cmd_name).to eq('COMMAND')
-          expect(error.username).to eq('testuser')
+          expect(error.command['target_name']).to eq('TARGET')
+          expect(error.command['cmd_name']).to eq('COMMAND')
+          expect(error.command['username']).to eq('testuser')
         end
       end
 
       it "passes obfuscated_items to CriticalCmdError options" do
-        obfuscated_items = ['PARAM1', 'PARAM2']
         allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id', {
           'id' => 'test_cmd_id',
           'result' => "CriticalCmdError\ntest-uuid-123"
         }, 'redis')
-        
+
+        obfuscated_items = ['PARAM1', 'PARAM2']
+        command['obfuscated_items'] = obfuscated_items
         expect {
-          CommandTopic.send_command(command, scope: 'DEFAULT', obfuscated_items: obfuscated_items)
+          CommandTopic.send_command(command, scope: 'DEFAULT')
         }.to raise_error(CriticalCmdError) do |error|
-          expect(error.options['obfuscated_items']).to eq(obfuscated_items)
+          expect(error.command['obfuscated_items']).to eq(obfuscated_items)
         end
       end
 
@@ -162,7 +155,6 @@ module OpenC3
           'id' => 'test_cmd_id',
           'result' => 'Some other error message'
         }, 'redis')
-        
         expect {
           CommandTopic.send_command(command, scope: 'DEFAULT')
         }.to raise_error('Some other error message')
@@ -171,9 +163,9 @@ module OpenC3
       it "updates topic offsets for acknowledgment topic" do
         allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id',
           { 'id' => 'test_cmd_id', 'result' => 'SUCCESS' }, 'redis')
-        
+
         expect(Topic).to receive(:update_topic_offsets).with(['{DEFAULT__ACKCMD}TARGET__TARGET'])
-        
+
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end
     end
@@ -184,21 +176,21 @@ module OpenC3
           'target_name' => 'TARGET',
           'cmd_name' => 'COMMAND',
           'cmd_string' => 'TARGET COMMAND',
-          'username' => 'testuser'
+          'username' => 'testuser',
+          'cmd_params' => { 'PARAM1' => 1 }
         }
       end
-      let(:cmd_params) { { 'PARAM1' => 1 } }
 
       describe "self.raise_hazardous_error" do
         it "creates HazardousError with correct attributes" do
           msg_hash = { 'result' => "HazardousError\nDescription\nFormatted" }
-          
+
           expect {
-            CommandTopic.send(:raise_hazardous_error, msg_hash, command, cmd_params)
+            CommandTopic.send(:raise_hazardous_error, msg_hash, command)
           }.to raise_error(HazardousError) do |error|
             expect(error.target_name).to eq('TARGET')
             expect(error.cmd_name).to eq('COMMAND')
-            expect(error.cmd_params).to eq(cmd_params)
+            expect(error.cmd_params).to eq({ 'PARAM1' => 1 })
             expect(error.hazardous_description).to eq('Description')
             expect(error.formatted).to eq('Formatted')
           end
@@ -208,22 +200,18 @@ module OpenC3
       describe "self.raise_critical_cmd_error" do
         it "creates CriticalCmdError with correct attributes" do
           msg_hash = { 'result' => "CriticalCmdError\ntest-uuid" }
-          options = { 'obfuscated_items' => ['PARAM1'] }
-          
           expect {
-            CommandTopic.send(:raise_critical_cmd_error, msg_hash, command, cmd_params, options)
+            CommandTopic.send(:raise_critical_cmd_error, msg_hash, command)
           }.to raise_error(CriticalCmdError) do |error|
             expect(error.uuid).to eq('test-uuid')
-            expect(error.username).to eq('testuser')
-            expect(error.target_name).to eq('TARGET')
-            expect(error.cmd_name).to eq('COMMAND')
-            expect(error.cmd_params).to eq(cmd_params)
-            expect(error.cmd_string).to eq('TARGET COMMAND')
-            expect(error.options).to eq(options)
+            expect(error.command['username']).to eq('testuser')
+            expect(error.command['target_name']).to eq('TARGET')
+            expect(error.command['cmd_name']).to eq('COMMAND')
+            expect(error.command['cmd_params']).to eq({ 'PARAM1' => 1 })
+            expect(error.command['cmd_string']).to eq('TARGET COMMAND')
           end
         end
       end
     end
   end
 end
-

@@ -46,6 +46,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     await expect(page.locator('id=openc3-tool')).not.toContainText(
       'openc3-cosmos-tool-grafana',
     )
+    await expect(page.locator('id=openc3-tool')).not.toContainText(
+      'openc3-cosmos-tool-systemhealth',
+    )
   } else {
     await expect(page.locator('id=openc3-tool')).not.toContainText(
       'openc3-cosmos-tool-admin',
@@ -116,6 +119,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     )
     await expect(page.locator('id=openc3-tool')).toContainText(
       'openc3-cosmos-tool-grafana',
+    )
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'openc3-cosmos-tool-systemhealth',
     )
   } else {
     await expect(page.locator('id=openc3-tool')).toContainText(
@@ -240,7 +246,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch {}
+    } catch { }
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       installRegexp,
@@ -427,7 +433,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch {}
+    } catch { }
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       upgradeRegexp,
@@ -492,7 +498,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch {}
+    } catch { }
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       editRegexp,
@@ -587,7 +593,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch {}
+    } catch { }
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       regexp,

@@ -30,7 +30,7 @@ module OpenC3
     private
 
     # Format the command like it appears in a script
-    def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items: [])
+    def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items)
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw
         output_string += 'cmd_raw("'
@@ -69,14 +69,14 @@ module OpenC3
 
     # Log any warnings about disabling checks and log the command itself
     # NOTE: This is a helper method and should not be called directly
-    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items: [])
+    def _log_cmd(cmd, raw, no_range, no_hazardous)
       if no_range
-        puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring range checks"
+        puts "WARN: Command #{cmd['target_name']} #{cmd['cmd_name']} being sent ignoring range checks"
       end
       if no_hazardous
-        puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
+        puts "WARN: Command #{cmd['target_name']} #{cmd['cmd_name']} being sent ignoring hazardous warnings"
       end
-      puts _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items: obfuscated_items)
+      puts _cmd_string(cmd['target_name'], cmd['cmd_name'], cmd['cmd_params'], raw, cmd['obfuscated_items'])
     end
 
     def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
@@ -98,14 +98,16 @@ module OpenC3
 
       # Get the command and validate the parameters
       command = $api_server.get_cmd(target_name, cmd_name, scope: scope)
-      obfuscated_items = command['obfuscated_items'] || []
+      # This returns a packet hash instead of the command hash so add missing fields
+      command['cmd_name'] = cmd_name
+      command['cmd_params'] = cmd_params
       cmd_params.each do |param_name, _param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
           raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
         end
       end
-      _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items: obfuscated_items)
+      _log_cmd(command, raw, no_range, no_hazardous)
    end
 
     # Send the command and log the results
@@ -123,24 +125,24 @@ module OpenC3
       else
         begin
           begin
-            target_name, cmd_name, cmd_params, options = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items: options&.[]("obfuscated_items") || [])
+              _log_cmd(command, raw, no_range, no_hazardous)
             end
           rescue HazardousError => e
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            target_name, cmd_name, cmd_params, options = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
             if log_message.nil? or log_message
-              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, obfuscated_items: options&.[]("obfuscated_items") || [])
+              _log_cmd(command, raw, no_range, no_hazardous)
             end
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
-          prompt_for_critical_cmd(e.uuid, e.username, e.target_name, e.cmd_name, e.cmd_params, e.cmd_string)
+          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'])
           if log_message.nil? or log_message
-            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous, obfuscated_items: e.options&.[]("obfuscated_items") || [])
+            _log_cmd(e.command, raw, no_range, no_hazardous)
           end
         end
       end

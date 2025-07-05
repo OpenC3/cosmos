@@ -108,10 +108,10 @@ module OpenC3
 
         it "processes a string" do
           type = method.include?('raw') ? 0 : 'NORMAL'
-          target_name, cmd_name, params = @api.send(method, "inst Collect with type #{type}, Duration 5")
-          expect(target_name).to eql 'INST'
-          expect(cmd_name).to eql 'COLLECT'
-          expect(params).to include('TYPE' => type, 'DURATION' => 5)
+          command = @api.send(method, "inst Collect with type #{type}, Duration 5")
+          expect(command['target_name']).to eql 'INST'
+          expect(command['cmd_name']).to eql 'COLLECT'
+          expect(command['cmd_params']).to include('TYPE' => type, 'DURATION' => 5)
         end
 
         it "complains if parameters are not separated by commas" do
@@ -124,17 +124,17 @@ module OpenC3
 
         it "processes parameters" do
           type = method.include?('raw') ? 0 : 'NORMAL'
-          target_name, cmd_name, params = @api.send(method, "inst", "Collect", "TYPE" => type, "Duration" => 5)
-          expect(target_name).to eql 'INST'
-          expect(cmd_name).to eql 'COLLECT'
-          expect(params).to include('TYPE' => type, 'DURATION' => 5)
+          command = @api.send(method, "inst", "Collect", "TYPE" => type, "Duration" => 5)
+          expect(command['target_name']).to eql 'INST'
+          expect(command['cmd_name']).to eql 'COLLECT'
+          expect(command['cmd_params']).to include('TYPE' => type, 'DURATION' => 5)
         end
 
         it "processes commands without parameters" do
-          target_name, cmd_name, params = @api.send(method, "INST", "ABORT")
-          expect(target_name).to eql 'INST'
-          expect(cmd_name).to eql 'ABORT'
-          expect(params).to be {}
+          command = @api.send(method, "INST", "ABORT")
+          expect(command['target_name']).to eql 'INST'
+          expect(command['cmd_name']).to eql 'ABORT'
+          expect(command['cmd_params']).to be {}
         end
 
         it "complains about too many parameters" do

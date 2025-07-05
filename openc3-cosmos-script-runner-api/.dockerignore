@@ -1,4 +1,6 @@
 Dockerfile
+# Ignore the Gemfile.lock so it is generated during the container build
+Gemfile.lock
 .git
 .gitignore
 .vscode/
@@ -6,6 +8,6 @@ Dockerfile
 coverage/
 spec/
 test/
+# Keep the directories but no contents
 log/*
 tmp/*
-Gemfile.lock
