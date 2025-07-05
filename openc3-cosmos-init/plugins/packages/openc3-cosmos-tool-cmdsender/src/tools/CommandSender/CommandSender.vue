@@ -617,35 +617,16 @@ export default {
                     type: parameter.data_type,
                   })
                 }
-                this.rows.push({
-                  parameter_name: parameter.name,
-                  val: val,
-                  states: parameter.states,
-                  description: parameter.description,
-                  range: range,
-                  units: parameter.units,
-                  type: parameter.data_type
-                })
               })
-            })
-            if (command.screen) {
-              this.loadScreen(command.screen[0], command.screen[1]).then(
-                (response) => {
-                  this.screenTarget = command.screen[0]
-                  this.screenName = command.screen[1]
-                  this.screenDefinition = response.data
-                  this.screenCount += 1
-                },
-              )
-            } else {
-              if (command.related_items) {
-                this.screenTarget = 'LOCAL'
-                this.screenName = 'CMDSENDER'
-                let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                for (const item of command.related_items) {
-                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
-                }
-                this.screenDefinition = screenDefinition
+              if (command.screen) {
+                this.loadScreen(command.screen[0], command.screen[1]).then(
+                  (response) => {
+                    this.screenTarget = command.screen[0]
+                    this.screenName = command.screen[1]
+                    this.screenDefinition = response.data
+                    this.screenCount += 1
+                  },
+                )
               } else {
                 if (command.related_items) {
                   this.screenTarget = 'LOCAL'
@@ -766,7 +747,7 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  response
+                  response,
                 )
               },
               (error) => {
@@ -775,7 +756,7 @@ export default {
                   targetName,
                   commandName,
                   cmd,
-                  error
+                  error,
                 )
               },
             )
@@ -848,7 +829,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            response
+            response,
           )
         },
         (error) => {
@@ -857,7 +838,7 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             cmd,
-            error
+            error,
           )
         },
       )
