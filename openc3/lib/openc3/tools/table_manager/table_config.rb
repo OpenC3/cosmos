@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -169,7 +169,7 @@ module OpenC3
                'GENERIC_WRITE_CONVERSION_START', 'REQUIRED', 'LIMITS',
                'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',
                'HIDDEN', 'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE',
-               'OVERFLOW', 'UNEDITABLE'
+               'OVERFLOW', 'UNEDITABLE', 'OBFUSCATE'
             unless @current_item
               raise parser.error("No current item for #{keyword}")
             end

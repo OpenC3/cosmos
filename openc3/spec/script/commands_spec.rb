@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -113,6 +113,7 @@ module OpenC3
           if connect == 'disconnected'
             disconnect_script()
             expect($api_server).to_not receive(:cmd)
+            expect(CommandTopic).to_not receive(:send_command)
             @prefix = "DISCONNECT: "
           end
         end
@@ -168,18 +169,44 @@ module OpenC3
             capture_io do |stdout|
               allow(self).to receive(:gets) { 'y' } if connect == 'connected' # Send hazardous command
               cmd("INST COLLECT with TYPE SPECIAL")
-              expect(stdout.string).to match(/#{@prefix}cmd\(\"INST COLLECT/) # "
+              expect(stdout.string).to match(/#{@prefix}cmd\(\"INST COLLECT/)
               if connect == 'connected'
                 expect(stdout.string).to match("Warning: Command INST COLLECT is Hazardous")
                 expect(stdout.string).to_not match("Command INST COLLECT being sent ignoring range checks")
                 expect(stdout.string).to_not match("Command INST COLLECT being sent ignoring hazardous warnings")
                 stdout.rewind
                 cmd("INST COLLECT with TYPE SPECIAL")
-                expect(stdout.string).to match(/#{@prefix}cmd\(\"INST COLLECT/) # "
+                expect(stdout.string).to match(/#{@prefix}cmd\(\"INST COLLECT/)
                 expect(stdout.string).to match("Warning: Command INST COLLECT is Hazardous")
               else
                 expect(stdout.string).to_not match("Warning")
               end
+            end
+          end
+
+          it "#{'has no' if connect == 'disconnected'} prompts for a hazardous command and handles obfuscation" do
+          capture_io do |stdout|
+            allow(self).to receive(:gets) { 'y' } if connect == 'connected' # Send hazardous command
+            cmd("INST HAZARDOUS_SET_PASSWORD with PASSWORD password")
+            expect(stdout.string).to match(/#{@prefix}cmd\(\"INST HAZARDOUS_SET_PASSWORD/)
+            if connect == 'connected'
+              expect(stdout.string).to match("Warning: Command INST HAZARDOUS_SET_PASSWORD is Hazardous")
+              expect(stdout.string).to_not match("Command INST HAZARDOUS_SET_PASSWORD being sent ignoring range checks")
+              expect(stdout.string).to_not match("Command INST HAZARDOUS_SET_PASSWORD being sent ignoring hazardous warnings")
+              stdout.rewind
+              cmd("INST HAZARDOUS_SET_PASSWORD with PASSWORD password")
+              expect(stdout.string).to match(/#{@prefix}cmd\(\"INST HAZARDOUS_SET_PASSWORD with PASSWORD \*{5}/)
+              expect(stdout.string).to match("Warning: Command INST HAZARDOUS_SET_PASSWORD is Hazardous")
+            else
+              expect(stdout.string).to_not match("Warning")
+            end
+          end
+        end
+
+          it "handles obfuscation" do
+            capture_io do |stdout|
+              expect { cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password") }.not_to raise_error
+              expect(stdout.string).to match(/cmd\("INST SET_PASSWORD with USERNAME \w+, PASSWORD \*{5}"\)/)
             end
           end
         end

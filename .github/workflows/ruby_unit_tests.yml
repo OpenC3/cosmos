@@ -55,15 +55,3 @@ jobs:
           directory: openc3/coverage
           flags: ruby-backend # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        with:
-          projectBaseDir: openc3
-          args: >
-            -Dsonar.organization=openc3
-            -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.ruby.coverage.reportPaths=coverage/coverage.json
-            -Dsonar.sources=lib
-            -Dsonar.tests=spec
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

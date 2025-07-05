@@ -297,6 +297,8 @@ module OpenC3
 
                 @interface.write(command)
 
+                command.obfuscate
+                
                 if command.validator and validate
                   begin
                     result, reason = command.validator.post_check(command)
