@@ -500,7 +500,7 @@ module OpenC3
         #   end
         # end
       end
-      
+
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new
@@ -536,10 +536,8 @@ module OpenC3
         'log_message' => log_message.to_s,
         'obfuscated_items' => packet['obfuscated_items'].to_s
       }
-      obfuscated_items = packet['obfuscated_items'] || []
-      options = { "obfuscated_items" => obfuscated_items }
-      target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout: timeout, scope: scope, obfuscated_items: obfuscated_items)
-      [target_name, cmd_name, cmd_params, options]
+      CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      return command
     end
 
     def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)

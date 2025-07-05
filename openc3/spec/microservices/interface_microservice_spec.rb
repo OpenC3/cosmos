@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -260,9 +260,9 @@ module OpenC3
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
 
-        @api.cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password") 
+        @api.cmd("INST SET_PASSWORD with USERNAME username, PASSWORD password")
         sleep 0.01
-        im.shutdown 
+        im.shutdown
       end
     end
 

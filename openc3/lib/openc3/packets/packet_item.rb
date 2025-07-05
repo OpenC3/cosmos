@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -94,7 +94,7 @@ module OpenC3
     attr_reader :limits
 
     # @return [Boolean] Whether the parameter must be obfuscated from logs or not
-    attr_accessor :obfuscate 
+    attr_accessor :obfuscate
 
     # (see StructureItem#initialize)
     # It also initializes the attributes of the PacketItem.
@@ -410,7 +410,7 @@ module OpenC3
       config << "    FORMAT_STRING #{self.format_string.to_s.quote_if_necessary}\n" if self.format_string
       config << "    UNITS #{self.units_full.to_s.quote_if_necessary} #{self.units.to_s.quote_if_necessary}\n" if self.units
       config << "    OVERFLOW #{self.overflow}\n" if self.overflow != :ERROR
-      config << "    OBFUSCATE\n" if self.obfuscate 
+      config << "    OBFUSCATE\n" if self.obfuscate
 
       if @states
         @states.each do |state_name, state_value|

@@ -14,12 +14,13 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'json'
 require 'openc3/packets/packet'
 require 'openc3/script/extract'
 
@@ -31,6 +32,13 @@ module OpenC3
 
     # Format the command like it appears in a script
     def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items)
+      # Normally obfuscated_items is returned as an Array formatted as a JSON string
+      # because we're hitting the API server, but in the case of a disconnect command, it is an Array
+      if obfuscated_items and obfuscated_items.is_a?(String)
+        obfuscated_items = JSON.parse(obfuscated_items)
+      elsif !obfuscated_items
+        obfuscated_items = []
+      end
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw
         output_string += 'cmd_raw("'
@@ -44,8 +52,7 @@ module OpenC3
         params = []
         cmd_params.each do |key, value|
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
-
-          if obfuscated_items != nil and obfuscated_items.is_a?(Array) and obfuscated_items.include?(key)
+          if obfuscated_items and obfuscated_items.is_a?(Array) and obfuscated_items.include?(key)
             params << "#{key} *****"
           else
             if value.is_a?(String)
