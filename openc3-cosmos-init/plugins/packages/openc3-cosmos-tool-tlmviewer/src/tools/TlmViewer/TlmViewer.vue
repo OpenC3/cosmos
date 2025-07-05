@@ -29,7 +29,7 @@
         <v-expansion-panel-text>
           <v-container>
             <v-row class="pa-3">
-              <v-select
+              <v-autocomplete
                 class="mr-4"
                 density="compact"
                 hide-details
@@ -42,7 +42,7 @@
                 style="max-width: 300px"
                 data-test="select-target"
               />
-              <v-select
+              <v-autocomplete
                 class="mr-4"
                 density="compact"
                 hide-details
@@ -280,8 +280,10 @@ export default {
       this.selectedScreen = this.screens[target][0]
     },
     screenSelect(screen) {
-      this.selectedScreen = screen
-      this.showScreen(this.selectedTarget, this.selectedScreen)
+      if (screen) {
+        this.selectedScreen = screen
+        this.showScreen(this.selectedTarget, this.selectedScreen)
+      }
     },
     newScreen() {
       this.newScreenDialog = true
