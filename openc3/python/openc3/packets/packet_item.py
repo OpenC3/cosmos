@@ -414,7 +414,7 @@ class PacketItem(StructureItem):
         if self.overflow != "ERROR":
             config += f"    OVERFLOW {self.overflow}\n"
         if self.obfuscate:
-            config += f"    OBFUSCATE\n"
+            config += "    OBFUSCATE\n"
 
         if self.states:
             for state_name, state_value in self.states.items():

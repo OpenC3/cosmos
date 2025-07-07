@@ -856,7 +856,6 @@ export default {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
       let msg = ''
-      const options = response[3]
       if (success) {
         msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
         let keys = Object.keys(response['cmd_params'])

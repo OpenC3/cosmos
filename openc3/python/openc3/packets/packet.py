@@ -911,10 +911,9 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items when
     # checking for obfuscation.
     def update_obfuscated_items_cache(self, item):
-        if item.obfuscate:
-            if not self.obfuscated_items_hash.get(item.name):
-                self.obfuscated_items.append(item)
-                self.obfuscated_items_hash[item.name] = True
+        if item.obfuscate and not self.obfuscated_items_hash.get(item.name):
+            self.obfuscated_items.append(item)
+            self.obfuscated_items_hash[item.name] = True
 
     # Return an array of arrays indicating all items in the packet that are out of limits
     #   [[target name, packet name, item name, item limits state], ...]

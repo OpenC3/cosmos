@@ -1983,7 +1983,7 @@ class PacketObfuscation(unittest.TestCase):
         
         def mock_read_side_effect(name, conversion):
             if name == "SECRET1":
-                raise Exception("Obfuscation failed")
+                raise TypeError("Obfuscation failed")
             elif name == "SECRET2":
                 return 0x05
             return 0
@@ -1992,5 +1992,5 @@ class PacketObfuscation(unittest.TestCase):
             with patch.object(Logger.instance(), 'error') as mock_logger:
                 p.obfuscate()
                 mock_logger.assert_called_once()
-                self.assertIn("SECRET1 obfuscation failed with error: Exception('Obfuscation failed')", mock_logger.call_args[0][0])
+                self.assertIn("SECRET1 obfuscation failed with error: TypeError('Obfuscation failed')", mock_logger.call_args[0][0])
                 self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")
