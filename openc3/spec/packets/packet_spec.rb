@@ -1852,6 +1852,28 @@ module OpenC3
         expect(p.buffer).to eql "\x00\x00\x00\x04"
       end
 
+      it "obfuscates array STRING items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 32, :STRING, 96)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "TESTTESTTEST"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+      end
+
+      it "obfuscates array BLOCK items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT, 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x01\x02\x03\x01\x02\x03\x01\x02\x03"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x01\x02\x03\x01\x02\x03"
+      end
+
       it "skips DERIVED items" do
         p = Packet.new("tgt", "pkt")
         p.append_item("test1", 8, :UINT)
