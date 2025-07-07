@@ -43,7 +43,7 @@ class RunningScriptController < ApplicationController
   def stop
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
       OpenC3::Logger.info("Script stopped: #{running_script}", scope: params[:scope], user: username())
@@ -56,7 +56,7 @@ class RunningScriptController < ApplicationController
   def delete
     running_script = OpenC3::ScriptStatusModel.get_model(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script.name.split('/')[0]
+      target_name = running_script.filename.split('/')[0]
       pid = running_script.pid.to_i
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
@@ -100,7 +100,7 @@ class RunningScriptController < ApplicationController
         running_script.update
       end
 
-      OpenC3::Logger.info("Script deleted: #{running_script.name}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script deleted: #{running_script.filename}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -110,7 +110,7 @@ class RunningScriptController < ApplicationController
   def pause
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "pause")
       OpenC3::Logger.info("Script paused: #{running_script}", scope: params[:scope], user: username())
@@ -123,7 +123,7 @@ class RunningScriptController < ApplicationController
   def retry
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "retry")
       OpenC3::Logger.info("Script retried: #{running_script}", scope: params[:scope], user: username())
@@ -136,7 +136,7 @@ class RunningScriptController < ApplicationController
   def go
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "go")
       OpenC3::Logger.info("Script resumed: #{running_script}", scope: params[:scope], user: username())
@@ -149,7 +149,7 @@ class RunningScriptController < ApplicationController
   def step
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "step")
       OpenC3::Logger.info("Script stepped: #{running_script}", scope: params[:scope], user: username())
@@ -162,7 +162,7 @@ class RunningScriptController < ApplicationController
   def prompt
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       if params[:password]
         # TODO: ActionCable is logging this ... probably shouldn't
@@ -182,7 +182,7 @@ class RunningScriptController < ApplicationController
   def method
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
       OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
