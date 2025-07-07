@@ -1129,6 +1129,8 @@ class Packet(Structure):
             config["ignore_overlap"] = self.ignore_overlap
         if self.obfuscated_items:
             config["obfuscated_items"] = [item.name for item in self.obfuscated_items]
+        else:
+            config["obfuscated_items"] = []
 
         return config
 
@@ -1325,7 +1327,7 @@ class Packet(Structure):
             item.id_value = id_value
             self.update_id_items(item)
         return item
-    
+
     def obfuscate(self):
         if not self.buffer:
             return
@@ -1335,35 +1337,35 @@ class Packet(Structure):
         for item in self.obfuscated_items:
             if item.data_type == "DERIVED":
                 continue
-            
+
             try:
-                current_value = self.read(item.name, 'RAW')
+                current_value = self.read(item.name, "RAW")
                 if isinstance(current_value, list):
                     # For arrays, create a new array of zeros with the same size
-                    if item.data_type in ['INT', 'UINT']:
+                    if item.data_type in ["INT", "UINT"]:
                         obfuscated_value = [0] * len(current_value)
-                    elif item.data_type == 'FLOAT':
+                    elif item.data_type == "FLOAT":
                         obfuscated_value = [0.0] * len(current_value)
-                    elif item.data_type in ['STRING', 'BLOCK']:
-                        obfuscated_value = ['\x00' * len(val) if val else None for val in current_value]
+                    elif item.data_type in ["STRING", "BLOCK"]:
+                        obfuscated_value = ["\x00" * len(val) if val else None for val in current_value]
                     else:
                         obfuscated_value = [0] * len(current_value)
 
                 elif isinstance(current_value, str):
                     # For strings/blocks, create null bytes of the same length
-                    obfuscated_value = '\x00' * len(current_value)
+                    obfuscated_value = "\x00" * len(current_value)
 
                 else:
-                    if item.data_type in ['INT', 'UINT']:
+                    if item.data_type in ["INT", "UINT"]:
                         obfuscated_value = 0
-                    elif item.data_type == 'FLOAT':
+                    elif item.data_type == "FLOAT":
                         obfuscated_value = 0.0
-                    elif item.data_type == 'BLOCK':
-                        obfuscated_value = '\x00' * len(current_value)
+                    elif item.data_type == "BLOCK":
+                        obfuscated_value = "\x00" * len(current_value)
                     else:
                         obfuscated_value = 0
 
-                self.write(item.name, obfuscated_value, 'RAW')
+                self.write(item.name, obfuscated_value, "RAW")
 
             except Exception as e:
                 Logger.error(f"{item.name} obfuscation failed with error: {repr(e)}")

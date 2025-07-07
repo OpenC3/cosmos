@@ -55,28 +55,19 @@ class CommandTopic(Topic):
             "*",
             100,
         )
+        command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == cmd_id:
                     result = msg_hash[b"result"].decode()
                     if result == "SUCCESS":
-                        return command["target_name"], command["cmd_name"], cmd_params
+                        return command
                     # Check for HazardousError which is a special case
                     elif "HazardousError" in result:
-                        cls.raise_hazardous_error(
-                            msg_hash,
-                            command,
-                            cmd_params,
-                        )
+                        cls.raise_hazardous_error(msg_hash, command)
                     elif "CriticalCmdError" in result:
-                        options = { "obfuscated_items": obfuscated_items }
-                        cls.raise_critical_cmd_error(
-                            msg_hash,
-                            command,
-                            cmd_params,
-                            options
-                        )
+                        cls.raise_critical_cmd_error(msg_hash, command)
                     else:
                         raise RuntimeError(result)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
@@ -86,14 +77,14 @@ class CommandTopic(Topic):
     ###########################################################################
 
     @classmethod
-    def raise_hazardous_error(cls, msg_hash, command, cmd_params):
+    def raise_hazardous_error(cls, msg_hash, command):
         _, description, formatted = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
         error = HazardousError()
         error.target_name = command["target_name"]
         error.cmd_name = command["cmd_name"]
-        error.cmd_params = cmd_params
+        error.cmd_params = command["cmd_params"]
         error.hazardous_description = description
         error.formatted = formatted
 
@@ -101,18 +92,12 @@ class CommandTopic(Topic):
         raise error
 
     @classmethod
-    def raise_critical_cmd_error(cls, msg_hash, command, cmd_params, options):
+    def raise_critical_cmd_error(cls, msg_hash, command):
         _, uuid = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new CriticalCmdError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
         error = CriticalCmdError()
         error.uuid = uuid
-        error.username = command["username"]
-        error.target_name = command["target_name"]
-        error.cmd_name = command["cmd_name"]
-        error.cmd_params = cmd_params
-        error.cmd_string = command["cmd_string"]
-        error.options = options
-
+        error.command = command
         # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
         raise error

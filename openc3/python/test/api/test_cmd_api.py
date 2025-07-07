@@ -110,15 +110,15 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params, options = func("inst Collect with type 0, Duration 5")
+                command = func("inst Collect with type 0, Duration 5")
             else:
-                target_name, cmd_name, params, options = func("inst Collect with type NORMAL, Duration 5")
-            self.assertEqual(target_name, "INST")
-            self.assertEqual(cmd_name, "COLLECT")
+                command = func("inst Collect with type NORMAL, Duration 5")
+            self.assertEqual(command['target_name'], "INST")
+            self.assertEqual(command['cmd_name'], "COLLECT")
             if "raw" in name:
-                self.assertEqual(params, {"TYPE": 0, "DURATION": 5})
+                self.assertEqual(command["cmd_params"], {"TYPE": 0, "DURATION": 5})
             else:
-                self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
+                self.assertEqual(command["cmd_params"], {"TYPE": "NORMAL", "DURATION": 5})
 
     def test_cmd_complains_if_parameters_not_separated_by_commas(self):
         for name in [
@@ -163,15 +163,15 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params, options = func("inst", "Collect", {"TYPE": 0, "Duration": 5})
+                command = func("inst", "Collect", {"TYPE": 0, "Duration": 5})
             else:
-                target_name, cmd_name, params, options = func("inst", "Collect", {"TYPE": "NORMAL", "Duration": 5})
-            self.assertEqual(target_name, "INST")
-            self.assertEqual(cmd_name, "COLLECT")
+                command = func("inst", "Collect", {"TYPE": "NORMAL", "Duration": 5})
+            self.assertEqual(command["target_name"], "INST")
+            self.assertEqual(command["cmd_name"], "COLLECT")
             if "raw" in name:
-                self.assertEqual(params, {"TYPE": 0, "DURATION": 5})
+                self.assertEqual(command["cmd_params"], {"TYPE": 0, "DURATION": 5})
             else:
-                self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
+                self.assertEqual(command["cmd_params"], {"TYPE": "NORMAL", "DURATION": 5})
 
     def test_cmd_processes_commands_without_parameters(self):
         for name in [
@@ -185,10 +185,10 @@ class TestCmdApi(unittest.TestCase):
             "cmd_raw_no_checks",
         ]:
             func = globals()[name]
-            target_name, cmd_name, params, options = func("INST", "ABORT")
-            self.assertEqual(target_name, "INST")
-            self.assertEqual(cmd_name, "ABORT")
-            self.assertEqual(params, {})
+            command = func("INST", "ABORT")
+            self.assertEqual(command["target_name"], "INST")
+            self.assertEqual(command["cmd_name"], "ABORT")
+            self.assertEqual(command["cmd_params"], {})
 
     def test_cmd_complains_about_too_many_parameters(self):
         for name in [

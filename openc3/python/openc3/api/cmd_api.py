@@ -19,13 +19,13 @@
 
 
 import os
+import json
 from contextlib import contextmanager
 from openc3.api import WHITELIST
 from openc3.api.interface_api import get_interface
 from openc3.top_level import DisabledError
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
-from openc3.utilities.string import simple_formatted
 from openc3.models.target_model import TargetModel
 from openc3.utilities.extract import *
 from openc3.utilities.cmd_log import _build_cmd_output_string
@@ -676,8 +676,7 @@ def _cmd_implementation(
         "validate": str(validate),
         "manual": str(manual),
         "log_message": str(log_message),
+        "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
-    obfuscated_items = packet.get("obfuscated_items", [])
-    options = { "obfuscated_items": obfuscated_items }
-    target_name, cmd_name, cmd_params = CommandTopic.send_command(command, timeout, scope)
-    return target_name, cmd_name, cmd_params, options
+    CommandTopic.send_command(command, timeout, scope)
+    return command
