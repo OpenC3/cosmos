@@ -18,9 +18,6 @@
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
-from openc3.packets.packet import Packet
-from openc3.utilities.string import simple_formatted
-from openc3.utilities.extract import convert_to_value
 from openc3.utilities.cmd_log import _build_cmd_output_string
 
 class Commands:
