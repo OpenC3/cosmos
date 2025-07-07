@@ -4,7 +4,7 @@
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the schema for OpenC3 COSMOS. Normal options are `http` or `https`. The default is `http`
 
@@ -18,7 +18,7 @@ OPENC3_API_SCHEMA=http
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the hostname for all cosmos scripts.
 
@@ -30,7 +30,7 @@ OPENC3_API_HOSTNAME=127.0.0.1
 
 ## OPENC3_API_PORT
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the port for all cosmos scripts. Note the default port for Cosmos v5 is 2900
 
@@ -42,7 +42,7 @@ OPENC3_API_PORT=2900
 
 ## OPENC3_API_TIMEOUT
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the timeout for all cosmos api calls in seconds.
 
@@ -56,7 +56,7 @@ OPENC3_API_TIMEOUT=1.0
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the schema for OpenC3 COSMOS script api calls. Normal options are `http` or `https`. The default is `http`
 
@@ -70,7 +70,7 @@ OPENC3_SCRIPT_API_SCHEMA=http
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the hostname for all cosmos script api calls.
 
@@ -82,7 +82,7 @@ OPENC3_SCRIPT_API_HOSTNAME=127.0.0.1
 
 ## OPENC3_SCRIPT_API_PORT
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the port for all cosmos scripts. Note the default port for Cosmos v5 is 2900
 
@@ -94,7 +94,7 @@ OPENC3_SCRIPT_API_PORT=2900
 
 ## OPENC3_SCRIPT_API_TIMEOUT
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the timeout for all cosmos script api calls in seconds.
 
@@ -108,7 +108,7 @@ OPENC3_SCRIPT_API_TIMEOUT=5.0
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the default scope for all cosmos script api calls.
 
@@ -122,7 +122,7 @@ OPENC3_SCOPE=DEFAULT
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Set the password for all cosmos scripts.
 
@@ -136,7 +136,7 @@ OPENC3_API_PASSWORD=password
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 The library can log much more of what is happening in the library. If you wish to enable this you can set the environment variable `OPENC3_LOG_LEVEL` to equal "DEBUG". If this is not set you will not get log messages if this is an incorrect log level you will get a ValueError.
 
@@ -150,7 +150,7 @@ OPENC3_LOG_LEVEL=DEBUG
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Define this environment variable if outside of the COSMOS cluster without access to Redis. Prevents trying to initialize Redis connections.
 
@@ -164,7 +164,7 @@ OPENC3_NO_STORE=1
 
 ---
 
-> BASE, ENTERPRISE
+> CORE, ENTERPRISE
 
 Setting this will overwrite the default User-Agent header of the request. You can use this to track requests from an external application to cosmos.
 
