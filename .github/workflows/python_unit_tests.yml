@@ -52,15 +52,3 @@ jobs:
           working-directory: openc3/python
           flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        with:
-          projectBaseDir: openc3/python
-          args: >
-            -Dsonar.organization=openc3
-            -Dsonar.projectKey=OpenC3_cosmos
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=openc3/
-            -Dsonar.tests=test/
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

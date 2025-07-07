@@ -156,6 +156,7 @@ module OpenC3
         @virtual = false
         @restricted = false
         @validator = nil
+        @obfuscated_items = []
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -556,6 +557,7 @@ module OpenC3
       item = super(item)
       update_id_items(item)
       update_limits_items_cache(item)
+      update_obfuscated_items_cache(item)
       item
     end
 
@@ -905,6 +907,7 @@ module OpenC3
       @short_buffer_allowed = false
       @id_items = nil
       @limits_items = nil
+      @obfuscated_items = []
       new_items = {}
       new_sorted_items = []
       @items.each do |name, item|
@@ -953,6 +956,21 @@ module OpenC3
         unless @limits_items_hash[item]
           @limits_items << item
           @limits_items_hash[item] = true
+        end
+      end
+    end
+
+    # Add an item to the obfuscate items cache if necessary.
+    # You MUST call this after adding obfuscation to an item
+    # This is an optimization so we don't have to iterate through all the items when
+    # checking for obfuscation.
+    def update_obfuscated_items_cache(item)
+      if item.obfuscate
+        @obfuscated_items ||= []
+        @obfuscated_items_hash ||= {}
+        unless @obfuscated_items_hash[item]
+          @obfuscated_items << item
+          @obfuscated_items_hash[item] = true
         end
       end
     end
@@ -1158,6 +1176,7 @@ module OpenC3
       config['validator'] = @validator.class.to_s if @validator
       config['template'] = Base64.encode64(@template) if @template
       config['config_name'] = self.config_name
+      config['obfuscated_items'] = @obfuscated_items&.map(&:name) || []
 
       if @processors
         processors = []
@@ -1284,6 +1303,52 @@ module OpenC3
 
       @processors.each do |_processor_name, processor|
         processor.call(self, buffer)
+      end
+    end
+
+    def obfuscate()
+      return unless @buffer
+      return unless @obfuscated_items
+
+      @obfuscated_items.each do |item|
+        next if item.data_type == :DERIVED
+
+        begin
+          current_value = read(item.name, :RAW)
+          
+          case current_value
+          when Array
+            # For arrays, create a new array of zeros with the same size
+            case item.data_type
+              when :INT, :UINT
+                obfuscated_value = Array.new(current_value.size, 0)
+              when :FLOAT
+                obfuscated_value = Array.new(current_value.size, 0.0)
+              when :STRING, :BLOCK
+                obfuscated_value = Array.new(current_value.size) { |i| 
+                  "\x00" * current_value[i].length if current_value[i]
+                }
+            else
+              obfuscated_value = Array.new(current_value.size, 0)
+            end
+          when String
+            # For strings/blocks, create null bytes of the same length
+            obfuscated_value = "\x00" * current_value.length
+          else
+            case item.data_type
+            when :INT, :UINT
+              obfuscated_value = 0
+            when :FLOAT
+              obfuscated_value = 0.0
+            else
+              obfuscated_value = 0
+            end
+          end
+          write(item.name, obfuscated_value, :RAW)
+        rescue => e
+          Logger.instance.error "#{item.name} obfuscation failed with error: #{e.message}"
+          next
+        end
       end
     end
 

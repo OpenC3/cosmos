@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -454,6 +454,7 @@ module OpenC3
         pil.persistence_setting = 1
         pil.persistence_count = 2
         @pi.limits = pil
+        @pi.obfuscate = true
 
         hash = @pi.as_json(:allow_nan => true)
         expect(hash["name"]).to eql "TEST"
@@ -492,6 +493,7 @@ module OpenC3
         expect(hash["limits"][:DEFAULT]["green_low"]).to eql 4
         expect(hash["limits"][:DEFAULT]["green_high"]).to eql 5
         expect(hash["meta"]).to be_nil
+        expect(hash["obfuscate"]).to be true
       end
     end
 
@@ -524,6 +526,7 @@ module OpenC3
         expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
         expect(item.limits.values).to eql @pi.limits.values
         expect(item.meta).to eql @pi.meta
+        expect(item.obfuscate).to eql @pi.obfuscate
       end
 
       it "converts a populated item to and from JSON" do
@@ -543,6 +546,7 @@ module OpenC3
         @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
         @pi.limits = PacketItemLimits.new
         @pi.limits.values = { DEFAULT: [10, 20, 80, 90, 40, 50], TVAC: [100, 200, 800, 900] }
+        @pi.obfuscate = true
         item = PacketItem.from_json(@pi.as_json(:allow_nan => true))
         expect(item.name).to eql @pi.name
         expect(item.bit_offset).to eql @pi.bit_offset
@@ -569,6 +573,7 @@ module OpenC3
         expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
         expect(item.limits.values).to eql @pi.limits.values
         expect(item.meta).to eql @pi.meta
+        expect(item.obfuscate).to eql @pi.obfuscate
       end
     end
   end
