@@ -76,3 +76,6 @@ VARIABLE_BIT_SIZE:
       required: false
       description: Offset in Bits to Apply to Length Field Value. Defaults to 0
       values: \d+
+OBFUSCATE:
+  summary: Hides the item value in the UI, text logs, and raw binary file
+  since: 6.6.0
