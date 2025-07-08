@@ -57,6 +57,7 @@ class PacketItem(StructureItem):
         self.persistence_setting = 1
         self.persistence_count = 0
         self.meta = None
+        self.obfuscate = False
 
     @property
     def format_string(self):
@@ -355,6 +356,7 @@ class PacketItem(StructureItem):
         item["state_colors"] = self.state_colors
         item["limits"] = self.limits.as_json()
         item["meta"] = None
+        item["obfuscate"] = self.obfuscate
         if self.meta:
             item["meta"] = self.meta
         return item
@@ -411,6 +413,8 @@ class PacketItem(StructureItem):
             config += f"    UNITS {quote_if_necessary(self.units_full)} {quote_if_necessary(self.units)}\n"
         if self.overflow != "ERROR":
             config += f"    OVERFLOW {self.overflow}\n"
+        if self.obfuscate:
+            config += "    OBFUSCATE\n"
 
         if self.states:
             for state_name, state_value in self.states.items():
@@ -513,6 +517,9 @@ class PacketItem(StructureItem):
 
         if self.meta:
             config["meta"] = self.meta
+
+        if self.obfuscate:
+            config["obfuscate"] = self.obfuscate
         return config
 
     @classmethod
@@ -583,6 +590,7 @@ class PacketItem(StructureItem):
             if len(values) > 0:
                 item.limits.values = values
         item.meta = item_hash.get("meta")
+        item.obfuscate = item_hash.get("obfuscate", False)
         return item
 
     def parameter_config(self):

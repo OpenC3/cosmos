@@ -24,6 +24,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/packets/packet_config'
+require 'openc3/utilities/cmd_log'
 
 module OpenC3
   # Commands uses PacketConfig to parse the command and telemetry
@@ -37,6 +38,7 @@ module OpenC3
   # Packet or PacketItem objects. While there are some overlapping methods between
   # the two, these are separate interfaces into the system.
   class Commands
+    include OpenC3::CmdLog
     attr_accessor :config
 
     LATEST_PACKET_NAME = 'LATEST'.freeze
@@ -203,60 +205,16 @@ module OpenC3
         raw = false
       end
       items.delete_if { |item_name, _item_value| ignored_parameters.include?(item_name) }
-      return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
+      return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw, packet)
     end
 
-    def build_cmd_output_string(target_name, cmd_name, cmd_params, raw = false)
-      if raw
-        output_string = 'cmd_raw("'
-      else
-        output_string = 'cmd("'
-      end
+    def build_cmd_output_string(target_name, cmd_name, cmd_params, raw = false, packet)
+      method_name = raw ? "cmd_raw" : "cmd"
       target_name = 'UNKNOWN' unless target_name
       cmd_name = 'UNKNOWN' unless cmd_name
-      output_string << (target_name + ' ' + cmd_name)
-      if cmd_params.nil? or cmd_params.empty?
-        output_string << '")'
-      else
-        begin
-          command_items = packet(target_name, cmd_name).items
-        rescue
-        end
+      packet_hash = packet ? packet.as_json : {}
 
-        params = []
-        cmd_params.each do |key, value|
-          next if Packet::RESERVED_ITEM_NAMES.include?(key)
-
-          begin
-            item_type = command_items[key].data_type
-          rescue
-            item_type = nil
-          end
-
-          if value.is_a?(String)
-            value = value.dup
-            if item_type == :BLOCK or item_type == :STRING
-              if !value.is_printable?
-                value = "0x" + value.simple_formatted
-              else
-                value = value.inspect
-              end
-            else
-              value = value.convert_to_value.to_s
-            end
-            if value.length > 256
-              value = value[0..255] + "...'"
-            end
-            value.tr!('"', "'")
-          elsif value.is_a?(Array)
-            value = "[#{value.join(", ")}]"
-          end
-          params << "#{key} #{value}"
-        end
-        params = params.join(", ")
-        output_string << (' with ' + params + '")')
-      end
-      return output_string
+      _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
     end
 
     # Returns whether the given command is hazardous. Commands are hazardous

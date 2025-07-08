@@ -857,16 +857,21 @@ export default {
       }
       let msg = ''
       if (success) {
-        msg = `${cmd_sent}("${response[0]} ${response[1]}`
-        let keys = Object.keys(response[2])
+        msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
+        let keys = Object.keys(response['cmd_params'])
         if (keys.length > 0) {
           msg += ' with '
           for (let i = 0; i < keys.length; i++) {
             let key = keys[i]
-            let value = this.convertToString(response[2][key])
+            let value = ''
+            if (response['obfuscated_items'].includes(key)) {
+              value = '*****'
+            } else {
+              value = this.convertToString(response['cmd_params'][key])
+            }
             // If the response has unquoted string data we add quotes
             if (
-              typeof response[2][key] === 'string' &&
+              typeof response['cmd_params'][key] === 'string' &&
               value.charAt(0) !== "'" &&
               value.charAt(0) !== '"'
             ) {
@@ -928,9 +933,9 @@ export default {
         if (error.message.includes('CriticalCmdError')) {
           this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
           this.criticalCmdString =
-            error.object.data.instance_variables['@cmd_string']
+            error.object.data.instance_variables['@command']['cmd_string']
           this.criticalCmdUser =
-            error.object.data.instance_variables['@username']
+            error.object.data.instance_variables['@command']['username']
           this.displayCriticalCmd = true
         } else {
           this.displayErrorDialog = true

@@ -50,7 +50,7 @@ def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
         case "CCSDSSHF":
             return "FALSE"
         case "BLOCKTEST":
-            return b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+            return b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
         case "ARY":
             return [2, 3, 4]
         case "RECEIVED_COUNT":
@@ -100,7 +100,7 @@ class TestApiShared(unittest.TestCase):
 
     def test_check_raises_when_checking_against_binary(self):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid comparison to non-ascii value"):
-            check("INST HEALTH_STATUS TEMP1 == \xFF")
+            check("INST HEALTH_STATUS TEMP1 == \xff")
 
     def test_check_prints_the_value_with_no_comparision(self):
         for stdout in capture_io():
@@ -530,10 +530,10 @@ class TestApiShared(unittest.TestCase):
             wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
 
     def test_fails_against_binary_data(self):
-        data = "\xFF" * 10
+        data = "\xff" * 10
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid comparison to non-ascii value"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
-        data = b"\xFF" * 10
+        data = b"\xff" * 10
         for stdout in capture_io():
             result = wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
             self.assertTrue(isinstance(result, float))
@@ -542,10 +542,10 @@ class TestApiShared(unittest.TestCase):
                 "CHECK: INST HEALTH_STATUS BLOCKTEST == b'\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff' success with value ==",
                 output,
             )
-        data = "\xFF" * 10
+        data = "\xff" * 10
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid comparison to non-ascii value"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
-        data = b"\xFF" * 10
+        data = b"\xff" * 10
         with self.assertRaises(SyntaxError):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
 

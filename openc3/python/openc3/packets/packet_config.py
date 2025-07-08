@@ -252,6 +252,7 @@ class PacketConfig:
                         | "OVERLAP"
                         | "KEY"
                         | "VARIABLE_BIT_SIZE"
+                        | "OBFUSCATE"
                     ):
                         if not self.current_item:
                             raise parser.error(f"No current item for {keyword}")
@@ -724,6 +725,14 @@ class PacketConfig:
                 parser.verify_num_parameters(2, 2, usage)
                 self.current_item.units_full = params[0]
                 self.current_item.units = params[1]
+            
+            # Obfuscate the parameter in logs
+            case "OBFUSCATE":
+                usage = "OBFUSCATE"
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_item.obfuscate = True
+                self.current_packet.update_obfuscated_items_cache(self.current_item)
+
 
             # Update the description for the current telemetry item
             case "DESCRIPTION":

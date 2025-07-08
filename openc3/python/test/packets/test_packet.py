@@ -23,6 +23,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
+from openc3.utilities.logger import Logger
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.accessors.binary_accessor import BinaryAccessor
@@ -1801,3 +1802,195 @@ class PacketDecom(unittest.TestCase):
         self.assertEqual(vals.get("TEST4__U"), None)
 
         self.assertEqual(vals.get("TEST3__L"), "RED")
+
+class PacketObfuscation(unittest.TestCase):
+    def test_does_nothing_if_no_buffer_exists(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        p.get_item("TEST1").obfuscate = True
+        # Should not raise an error
+        p.obfuscate()
+
+    def test_does_nothing_if_no_obfuscated_items_exist(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x01\x02\x03\x04")
+
+    def test_obfuscates_a_single_uint_item(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x02\x03\x04")
+
+    def test_obfuscates_multiple_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        p.append_item("test2", 16, "UINT")
+        p.append_item("test3", 8, "UINT")
+        i1 = p.get_item("TEST1")
+        i1.obfuscate = True
+        i2 = p.get_item("TEST3")
+        i2.obfuscate = True
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x02\x03\x00")
+
+    def test_obfuscates_int_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 16, "INT")
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\xFF\xFE\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x03\x04")
+
+    def test_obfuscates_float_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 32, "FLOAT")
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x40\x49\x0F\xDB"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x00")
+
+    def test_obfuscates_string_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 32, "STRING")
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"TEST"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x00")
+
+    def test_obfuscates_block_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 24, "BLOCK")
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x04")
+
+    def test_obfuscates_array_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT", 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x04")
+
+    
+    def test_obfuscates_array_int_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "INT", 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x04")
+
+    
+    def test_obfuscates_array_float_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 32, "FLOAT", 64)
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x04\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00")
+
+    
+    def test_obfuscates_array_string_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 32, "STRING", 96)
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"TESTTESTEST"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+
+    
+    def test_obfuscates_array_block_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "BLOCK", 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = True
+        p.update_obfuscated_items_cache(i)
+        p.buffer = b"\x01\x02\x03\x01\x02\x03\x01\x02\x03"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x00\x00\x01\x02\x03\x01\x02\x03")
+
+    def test_skips_derived_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        p.define_item("test2", 0, 0, "DERIVED")
+        i1 = p.get_item("TEST1")
+        i1.obfuscate = True
+        i2 = p.get_item("TEST2")
+        i2.obfuscate = True
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = b"\x01\x02\x03\x04"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x02\x03\x04")
+
+    def test_handles_mixed_obfuscated_and_non_obfuscated_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("normal1", 8, "UINT")
+        p.append_item("secret1", 16, "UINT")
+        p.append_item("normal2", 8, "UINT")
+        p.append_item("secret2", 8, "UINT")
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = True
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = True
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = b"\x01\x02\x03\x04\x05"
+        p.obfuscate()
+        self.assertEqual(p.buffer, b"\x01\x00\x00\x04\x00")
+      
+    def test_handles_obfuscation_errors(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("normal1", 8, "UINT")
+        p.append_item("secret1", 16, "UINT")
+        p.append_item("normal2", 8, "UINT")
+        p.append_item("secret2", 8, "UINT")
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = True
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = True
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = b"\x01\x02\x03\x04\x05"
+        
+        def mock_read_side_effect(name, conversion):
+            if name == "SECRET1":
+                raise TypeError("Obfuscation failed")
+            elif name == "SECRET2":
+                return 0x05
+            return 0
+            
+        with patch.object(p, 'read', side_effect=mock_read_side_effect):
+            with patch.object(Logger.instance(), 'error') as mock_logger:
+                p.obfuscate()
+                mock_logger.assert_called_once()
+                self.assertIn("SECRET1 obfuscation failed with error: TypeError('Obfuscation failed')", mock_logger.call_args[0][0])
+                self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")
