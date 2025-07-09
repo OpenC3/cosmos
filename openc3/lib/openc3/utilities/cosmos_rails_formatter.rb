@@ -29,7 +29,7 @@ module OpenC3
             user = {}
           end
           username = user['username']
-          # Core username (EE has the actual username)
+          # Core username (Enterprise has the actual username)
           username ||= 'anonymous'
         end
       end

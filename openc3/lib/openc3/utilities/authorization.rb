@@ -50,7 +50,7 @@ rescue LoadError
       end
 
       def user_info(_token)
-        {} # EE does stuff here
+        {} # Enterprise does stuff here
       end
     end
   end

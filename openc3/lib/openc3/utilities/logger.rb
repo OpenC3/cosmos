@@ -179,7 +179,7 @@ module OpenC3
       data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: log_level }
       data[:microservice_name] = @microservice_name if @microservice_name
       data[:detail] = @detail_string if @detail_string
-      data[:user] = user if user # EE: If a user is passed, put its name. Don't include user data if no user was passed.
+      data[:user] = user if user # Enterprise: If a user is passed, put its name. Don't include user data if no user was passed.
       if block_given?
         message = yield
       end
