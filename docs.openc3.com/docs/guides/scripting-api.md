@@ -4848,7 +4848,7 @@ metadata_get(start='500')
 
 ### metadata_set
 
-Returns metadata that was previously set
+Sets metadata which appears on the Calendar and can be retried by metadata_get.
 
 Ruby / Python Syntax:
 

@@ -68,6 +68,34 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker
   OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
 ```
 
+| Option              | Description                                                                                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OPTIMIZE_THROUGHPUT | Number of seconds to wait before writing packets to Redis. By default packets are immediately written to Redis (both the Current Value Table (CVT) and the stream). If you have high rate data this can improve performance by buffering packets before writing. |
+
+Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messages
+  # Note that all commands are logged in the binary logs
+  OPTION CONNECT_CMD DONT_LOG "INST ABORT"
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
+  OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
+```
+
+| Option                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SYNC_PACKET_COUNT_DELAY_SECONDS | Amount of time to wait before syncing packet counts across interfaces. This only applies to targets mapped to multiple interfaces like the UNKNOWN packet which is mapped to all interfaces. By default this is set to 1 second. Note that it can be set to 0 to force immediate synchronization in Redis but this results in additional Redis calls and slows the interface. Note that when using Redis Cluster this value is ignored and the default is always 0. |
+
+Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Immediately sync the packet counts mapped to INTERFACE_NAME (slower)
+  OPTION SYNC_PACKET_COUNT_DELAY_SECONDS 0
+```
+
 ### TCPIP Client Interface
 
 The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.

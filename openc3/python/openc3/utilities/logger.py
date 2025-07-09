@@ -214,7 +214,7 @@ class Logger(metaclass=LoggerMeta):
             data["microservice_name"] = self.microservice_name
         if self.detail_string is not None:
             data["detail"] = self.detail_string
-        # EE: If a user is passed, put its name. Don't include user data if no user was passed.
+        # Enterprise: If a user is passed, put its name. Don't include user data if no user was passed.
         if user is not None:
             data["user"] = user
         data["container_name"] = self.container_name

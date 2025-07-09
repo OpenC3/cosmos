@@ -41,4 +41,4 @@ def authorize(
 
 
 def user_info(_token):
-    return {}  # EE does stuff here
+    return {}  # Enterprise does stuff here

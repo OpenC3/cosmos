@@ -48,7 +48,7 @@ subscription = cable.subscriptions.create(
 );
 ```
 
-Subscribing to the StreamingApi requires passing a channel name set to “StreamingChannel”, a scope which is typically “DEFAULT”, and an access token (a password in OpenSource COSMOS). In Javascript you also pass a set of callback functions that run at various lifecycle points in the subscription. The most important of these are `connected` and `received`.
+Subscribing to the StreamingApi requires passing a channel name set to “StreamingChannel”, a scope which is typically “DEFAULT”, and an access token (a password in COSMOS Core). In Javascript you also pass a set of callback functions that run at various lifecycle points in the subscription. The most important of these are `connected` and `received`.
 
 `connected` runs when the subscription is accepted by the StreamApi. This callback is the first opportunity to request specific data that you would like streamed. Data can also be added or removed at any time while the subscription is open.
 
