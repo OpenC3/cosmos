@@ -24,12 +24,8 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install dependencies
-        run: yarn
-        working-directory: docs.openc3.com
-
       - name: Build docs
-        run: yarn build
+        run: build.sh
         working-directory: docs.openc3.com
 
       - uses: stefanzweifel/git-auto-commit-action@v6

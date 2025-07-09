@@ -108,4 +108,31 @@ TELEMETRY GSE DATA BIG_ENDIAN "Data packet"
 
 # Built-in Conversions
 
+## GENERIC_CONVERSION
+
+**Applies a simple conversion to a single telemetry item.**
+
+The generic conversion is meant to be a quick and easy way to apply a conversion to a single telemetry item. It must be parsed and evaluated and thus is not as performant as a dedicated conversion class.
+
+| Parameter | Description                                                                                                                        | Required                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, TIME</span> | False (warning will be generated) |
+| Size      | Data size in bits after the conversion is applied                                                                                  | False (warning will be generated) |
+
+Ruby Example:
+
+```ruby
+GENERIC_READ_CONVERSION_START FLOAT 32
+  packet.read('TEMP1') / 1_000_000
+GENERIC_READ_CONVERSION_END
+```
+
+Python Example:
+
+```python
+GENERIC_READ_CONVERSION_START FLOAT 32
+    packet.read('TEMP1') / 1_000_000
+GENERIC_READ_CONVERSION_END
+```
+
 COSMOS_META
