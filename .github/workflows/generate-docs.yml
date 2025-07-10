@@ -25,7 +25,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Build docs
-        run: build.sh
+        run: ./build.sh
         working-directory: docs.openc3.com
 
       - uses: stefanzweifel/git-auto-commit-action@v6
