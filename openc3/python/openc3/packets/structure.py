@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -206,7 +206,9 @@ class Structure:
         # Add to the overall hash of defined items
         self.items[item.name] = item
         # Update fixed size knowledge
-        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (item.array_size and item.array_size <= 0):
+        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (
+            item.array_size is not None and item.array_size <= 0
+        ):
             self.fixed_size = False
 
         # Recalculate the overall defined length of the structure
@@ -570,13 +572,15 @@ class Structure:
             # Anything with a negative bit offset should be left alone
             if item.original_bit_offset >= 0:
                 item.bit_offset = item.original_bit_offset + adjustment
-                if item.data_type != "DERIVED" and (
-                    item.variable_bit_size
-                    or item.original_bit_size <= 0
-                    or (item.original_array_size and item.original_array_size <= 0)
-                ):
+                # May need to update adjustment with variable length items
+                # Note legacy variable length does not push anything
+                if item.data_type != "DERIVED" and item.variable_bit_size:
+                    # Calculate the actual current size of this variable length item
                     new_bit_size = self.calculate_total_bit_size(item)
                     if item.original_bit_size != new_bit_size:
+                        # Bit size has changed from original - so we need to adjust everything after this item
+                        # This includes items that may have the same bit_offset as the variable length item
+                        # because it started out at zero bit_size
                         adjustment += new_bit_size - item.original_bit_size
 
     def internal_buffer_equals(self, buffer):
