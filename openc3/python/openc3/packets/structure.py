@@ -67,9 +67,9 @@ class Structure:
     # self.return Value based on the item definition. This could be a string, integer,
     #   float, or array of values.
     def read_item(self, item, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_item(item, buffer)
 
@@ -169,7 +169,7 @@ class Structure:
         endianness=None,
         overflow="ERROR",
     ):
-        if not endianness:
+        if endianness is None:
             endianness = self.default_endianness
         # Create the item
         item = self.item_class(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
@@ -267,7 +267,7 @@ class Structure:
         endianness=None,
         overflow="ERROR",
     ):
-        if not endianness:
+        if endianness is None:
             endianness = self.default_endianness
         if data_type == "DERIVED":
             return self.define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
