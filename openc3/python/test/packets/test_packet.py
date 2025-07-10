@@ -72,6 +72,19 @@ class Buffer(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_does_not_complains_if_array_with_size_0(self):
+        for stdout in capture_io():
+            p = Packet("tgt", "pkt")
+            p.append_item("test1", 8, "UINT")
+            p.append_item("test2", 16, "UINT", 0)
+            p.define_item("test3", -8, 8, "UINT")
+
+            p.buffer = b"\xaa\x00\x00\x01\x01\x55"
+            self.assertNotIn(
+                "received with actual packet length",
+                stdout.getvalue(),
+            )
+
     def test_sets_the_target_name_to_an_uppermatch_string(self):
         p = Packet("tgt", "pkt")
         self.assertEqual(p.target_name, "TGT")
@@ -757,7 +770,7 @@ class PacketReadItems(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0a"
         vals = p.read_items([i1, i2, i3, i4], "RAW")
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST2"], 0x0304)
@@ -782,7 +795,7 @@ class PacketWriteItems(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0a"
         p.write_items([i1, i2, i3, i4], [[3, 4], 2, 1, None], "RAW")
         vals = p.read_items([i1, i2, i3, i4], "RAW")
         self.assertEqual(vals["TEST1"], [3, 4])
@@ -809,7 +822,7 @@ class PacketReadAll(unittest.TestCase):
         i = p.get_item("TEST3")
         i.read_conversion = GenericConversion("value / 2")
 
-        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0a"
         vals = p.read_all()
         self.assertEqual(vals[0][0], "TEST1")
         self.assertEqual(vals[1][0], "TEST2")
@@ -1030,6 +1043,7 @@ class PacketCheckBitOffsets(unittest.TestCase):
         else:
             self.fail("No overlap detected")
 
+
 class PacketIdItems(unittest.TestCase):
     def test_returns_an_array_of_the_identifying_items(self):
         p = Packet("tgt", "pkt")
@@ -1161,7 +1175,7 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.write("test3", 0x01020304)
         self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x02\x04\x06\x08")
         p.restore_defaults()
-        self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x04\x06\x08\x0A")
+        self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x04\x06\x08\x0a")
 
     def test_writes_all_except_skipped_items_back_to_their_default_values(self):
         p = Packet("tgt", "pkt")
@@ -1187,7 +1201,7 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.restore_defaults(p.buffer_no_copy(), ["test3"])
         self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x02\x04\x06\x08")
         p.restore_defaults(p.buffer_no_copy())
-        self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x04\x06\x08\x0A")
+        self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x04\x06\x08\x0a")
 
     def test_resets_the_packet_to_just_derived_items(self):
         p = Packet("tgt", "pkt")
@@ -1200,6 +1214,7 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.clear_all_non_derived_items()
         # expect(p.items.keys).to eql %w(TEST3)
         print(p.items.keys())
+
 
 class PacketLimits(unittest.TestCase):
     def test_enables_limits_on_each_packet_item(self):
@@ -1754,7 +1769,7 @@ class PacketDecom(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0a"
         vals = p.decom()
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST2"], 0x0304)
@@ -1803,6 +1818,7 @@ class PacketDecom(unittest.TestCase):
 
         self.assertEqual(vals.get("TEST3__L"), "RED")
 
+
 class PacketObfuscation(unittest.TestCase):
     def test_does_nothing_if_no_buffer_exists(self):
         p = Packet("tgt", "pkt")
@@ -1849,7 +1865,7 @@ class PacketObfuscation(unittest.TestCase):
         i = p.get_item("TEST1")
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
-        p.buffer = b"\xFF\xFE\x03\x04"
+        p.buffer = b"\xff\xfe\x03\x04"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x03\x04")
 
@@ -1859,7 +1875,7 @@ class PacketObfuscation(unittest.TestCase):
         i = p.get_item("TEST1")
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
-        p.buffer = b"\x40\x49\x0F\xDB"
+        p.buffer = b"\x40\x49\x0f\xdb"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x00")
 
@@ -1893,7 +1909,6 @@ class PacketObfuscation(unittest.TestCase):
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x04")
 
-    
     def test_obfuscates_array_int_items(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 8, "INT", 24)
@@ -1904,7 +1919,6 @@ class PacketObfuscation(unittest.TestCase):
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x04")
 
-    
     def test_obfuscates_array_float_items(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 32, "FLOAT", 64)
@@ -1915,7 +1929,6 @@ class PacketObfuscation(unittest.TestCase):
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00")
 
-    
     def test_obfuscates_array_string_items(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 32, "STRING", 96)
@@ -1926,7 +1939,6 @@ class PacketObfuscation(unittest.TestCase):
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
-    
     def test_obfuscates_array_block_items(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 8, "BLOCK", 24)
@@ -1966,7 +1978,7 @@ class PacketObfuscation(unittest.TestCase):
         p.buffer = b"\x01\x02\x03\x04\x05"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x01\x00\x00\x04\x00")
-      
+
     def test_handles_obfuscation_errors(self):
         p = Packet("tgt", "pkt")
         p.append_item("normal1", 8, "UINT")
@@ -1980,17 +1992,20 @@ class PacketObfuscation(unittest.TestCase):
         p.update_obfuscated_items_cache(i1)
         p.update_obfuscated_items_cache(i2)
         p.buffer = b"\x01\x02\x03\x04\x05"
-        
+
         def mock_read_side_effect(name, conversion):
             if name == "SECRET1":
                 raise TypeError("Obfuscation failed")
             elif name == "SECRET2":
                 return 0x05
             return 0
-            
-        with patch.object(p, 'read', side_effect=mock_read_side_effect):
-            with patch.object(Logger.instance(), 'error') as mock_logger:
+
+        with patch.object(p, "read", side_effect=mock_read_side_effect):
+            with patch.object(Logger.instance(), "error") as mock_logger:
                 p.obfuscate()
                 mock_logger.assert_called_once()
-                self.assertIn("SECRET1 obfuscation failed with error: TypeError('Obfuscation failed')", mock_logger.call_args[0][0])
+                self.assertIn(
+                    "SECRET1 obfuscation failed with error: TypeError('Obfuscation failed')",
+                    mock_logger.call_args[0][0],
+                )
                 self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")

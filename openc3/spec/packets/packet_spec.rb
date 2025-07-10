@@ -80,6 +80,17 @@ module OpenC3
         end
       end
 
+      it "does not complain if array with size 0" do
+        capture_io do |stdout|
+          p = Packet.new("tgt", "pkt")
+          p.append_item("test1", 8, :UINT)
+          p.append_item("test2", 16, :UINT, 0)
+          p.define_item("test3", -8, 8, :UINT)
+          p.buffer = "\xAA\x00\x00\x01\x01\x55"
+          expect(stdout.string).to_not match(/TGT PKT received with actual packet length/)
+        end
+      end
+
       it "runs processors if present" do
         p = Packet.new("tgt", "pkt")
         p.processors['processor'] = double("call", :call => true)
@@ -1919,15 +1930,15 @@ module OpenC3
         p.update_obfuscated_items_cache(i1)
         p.update_obfuscated_items_cache(i2)
         p.buffer = "\x01\x02\x03\x04\x05"
-        
+
         allow(p).to receive(:read).with("SECRET1", :RAW).and_raise(StandardError.new("Obfuscation failed"))
         allow(p).to receive(:read).with("SECRET2", :RAW).and_return(0x05)
         allow(p).to receive(:write).with("SECRET2", 0, :RAW).and_call_original
-        
+
         expect(Logger.instance).to receive(:error).with(/SECRET1 obfuscation failed/)
-        
+
         p.obfuscate
-        
+
         expect(p.buffer).to eql "\x01\x02\x03\x04\x00"
       end
     end
