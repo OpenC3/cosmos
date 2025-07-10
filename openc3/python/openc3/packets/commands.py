@@ -95,7 +95,7 @@ class Commands:
     def identify(self, packet_data, target_names=None):
         identified_packet = None
 
-        if target_names is None:
+        if not target_names:
             target_names = self.target_names()
 
         for target_name in target_names:
@@ -195,7 +195,7 @@ class Commands:
             items = packet.read_all("FORMATTED")
             raw = False
         items = [item for item in items if item[0] not in ignored_parameters]
-        items_dict = {item[0]: item[1] for item in items}
+        items_dict = {item[0]: item[1] for item in items}   
         return self.build_cmd_output_string(packet.target_name, packet.packet_name, items_dict, raw, packet)
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False, packet=None):
@@ -204,7 +204,7 @@ class Commands:
         cmd_name = "UNKNOWN" if not cmd_name else cmd_name
         packet_hash = packet.as_json() if packet else {}
         return _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
-
+        
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states
