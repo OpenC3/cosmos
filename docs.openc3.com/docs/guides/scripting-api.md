@@ -479,6 +479,7 @@ cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Para
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| validate       | Optional named parameter to enable/disable validation (default is True)                              |
 
 Ruby Example:
 
@@ -487,7 +488,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 # In Ruby the brackets around parameters are optional
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
-cmd("INST ABORT", timeout: 10, log_message: false)
+cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
 ```
 
 Python Example:
@@ -495,7 +496,7 @@ Python Example:
 ```python
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
-cmd("INST ABORT", timeout=10, log_message=False)
+cmd("INST ABORT", timeout=10, log_message=False, validate=False)
 ```
 
 ### cmd_no_range_check
