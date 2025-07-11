@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,9 +24,9 @@
   <div ref="container" :style="computedStyle" class="overflow-y-auto">
     <component
       v-bind="listeners"
+      :is="widget.type"
       v-for="(widget, index) in widgets"
       :key="index"
-      :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
@@ -45,10 +45,10 @@ import Layout from './Layout'
 import VerticalWidget from './VerticalWidget.vue'
 
 export default {
-  mixins: [Layout],
   components: {
     VerticalWidget,
   },
+  mixins: [Layout],
   created: function () {
     this.setHeight(this.parameters[0], 'px', 200)
     if (this.parameters[1]) {
@@ -58,7 +58,7 @@ export default {
         const found = widget.settings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
-            (setting[0] === 'RAW' &&
+            (setting[0].includes('RAW') &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
