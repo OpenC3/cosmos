@@ -194,6 +194,10 @@ KEY $.book.title
 | Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
+#### OBFUSCATE
+<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+
+
 #### STATE
 **Defines a key/value pair for the current item**
 
