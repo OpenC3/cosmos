@@ -78,7 +78,15 @@ class StateParser:
         if data_type == "STRING" or data_type == "BLOCK":
             return self.parser.parameters[1]
         else:
-            return convert_to_value(self.parser.parameters[1])
+            value = convert_to_value(self.parser.parameters[1])
+            # Check if the value is a string, which indicates an error in parsing
+            # except for 'ANY' which is a valid state value
+            if isinstance(value, str) and value != "ANY":
+                raise self.parser.error(
+                    f"Invalid state value {value} for data type {data_type}.",
+                    self.usage,
+                )
+            return value
 
     def _check_for_duplicate_states(self, item, warnings):
         if item.states.get(self._get_state_name()) is not None:

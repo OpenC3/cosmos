@@ -223,6 +223,33 @@ module OpenC3
           expect(@pc.telemetry["TGT1"]["PKT1"].limits_items).to eql [@pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]]
           tf.unlink
         end
+
+        it "handles hex state values" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ITEM item1 8 UINT "state item"'
+          tf.puts '    STATE HEX_LOW 0x0A'
+          tf.puts '    STATE HEX_HIGH 0xFF'
+          tf.puts '    STATE HEX_MIXED 0xDEAD'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          # Verify hex values are correctly converted to integers
+          states = @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states
+          expect(states["HEX_LOW"]).to eql 10     # 0x0A = 10
+          expect(states["HEX_HIGH"]).to eql 255   # 0xFF = 255
+          expect(states["HEX_MIXED"]).to eql 57005 # 0xDEAD = 57005
+          tf.unlink
+        end
+
+        it "warns about bad hex values" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ITEM item1 8 UINT "state item"'
+          tf.puts '    STATE HEX_LOW 0x0S'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid state value 0x0S for data type UINT/)
+          tf.unlink
+        end
       end
 
       context "with command" do

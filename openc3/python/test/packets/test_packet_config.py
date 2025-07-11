@@ -1288,3 +1288,16 @@ class TestPacketConfig(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         self.assertEqual(len(self.pc.warnings), 0)
         tf.close()
+
+    def test_hex_states(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("    STATE ZERO 0x00\n")
+        tf.write("    STATE ONE 0x01\n")
+        tf.write("    STATE TWO 0x02\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        item = self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1")
+        self.assertEqual(item.states, {"ZERO": 0x00, "ONE": 0x01, "TWO": 0x02})
+        tf.close()

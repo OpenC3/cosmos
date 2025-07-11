@@ -302,10 +302,10 @@ module OpenC3
           tf.puts '  ID_PARAMETER ITEM2 32 32 STRING "ABCD"'
           tf.puts '  PARAMETER ITEM3 64 32 UINT 0 0 0'
           tf.puts '  ARRAY_PARAMETER ITEM4 96 32 FLOAT 64'
-          tf.puts '  APPEND_ID_PARAMETER ITEM5 32 UINT 0 0 0'
-          tf.puts '  APPEND_ID_PARAMETER ITEM6 32 STRING "ABCD"'
-          tf.puts '  APPEND_PARAMETER ITEM7 32 BLOCK "1234"'
-          tf.puts '  APPEND_ARRAY_PARAMETER ITEM8 32 BLOCK 64'
+          tf.puts '  APPEND_ID_PARAMETER ITEM5 0x20 UINT 0 0 0'
+          tf.puts '  APPEND_ID_PARAMETER ITEM6 0x20 STRING "ABCD"'
+          tf.puts '  APPEND_PARAMETER ITEM7 0x20 BLOCK "1234"'
+          tf.puts '  APPEND_ARRAY_PARAMETER ITEM8 0x20 BLOCK 0x40'
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.commands["TGT1"]["PKT1"].items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6', 'ITEM7', 'ITEM8')

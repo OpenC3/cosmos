@@ -257,3 +257,42 @@ class TestStateParser(unittest.TestCase):
         )
         self.assertEqual(len(self.pc.commands["TGT1"]["PKT1"].limits_items), 0)
         tf.close()
+
+    def test_handles_hex_state_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
+        tf.write("    STATE HEX_LOW 0x0A\n")
+        tf.write("    STATE HEX_HIGH 0xFF\n")
+        tf.write("    STATE HEX_MIXED 0xDEAD\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+
+        # Verify hex values are correctly converted to integers
+        states = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states
+        self.assertEqual(states["HEX_LOW"], 10)     # 0x0A = 10
+        self.assertEqual(states["HEX_HIGH"], 255)   # 0xFF = 255
+        self.assertEqual(states["HEX_MIXED"], 57005) # 0xDEAD = 57005
+
+        # Test reading values back
+        tlm = Telemetry(self.pc, System)
+        pkt = tlm.packet("TGT1", "PKT1")
+        pkt.write("ITEM1", 10)
+        self.assertEqual(pkt.read("ITEM1"), "HEX_LOW")
+        pkt.write("ITEM1", 255)
+        self.assertEqual(pkt.read("ITEM1"), "HEX_HIGH")
+        tf.close()
+
+    def test_warns_about_bad_hex_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
+        tf.write("    STATE HEX_LOW 0x0S\n")
+        tf.seek(0)
+
+        with self.assertRaisesRegex(
+            ConfigParser.Error,
+            "Invalid state value 0x0S for data type UINT.",
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()

@@ -80,7 +80,13 @@ module OpenC3
       if data_type == :STRING || data_type == :BLOCK
         @parser.parameters[1]
       else
-        @parser.parameters[1].convert_to_value
+        value = @parser.parameters[1].convert_to_value
+        # Check if the value is a string, which indicates an error in parsing
+        # except for 'ANY' which is a valid state value
+        if value.is_a?(String) and value != "ANY"
+          raise @parser.error("Invalid state value #{value} for data type #{data_type}.", @usage)
+        end
+        return value
       end
     end
 
