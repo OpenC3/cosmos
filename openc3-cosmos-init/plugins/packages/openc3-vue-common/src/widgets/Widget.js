@@ -225,9 +225,11 @@ export default {
           }
           this.appliedStyle['height'] = setting[1] + ' !important'
           break
-        case 'RAW':
-          this.appliedStyle[setting[1].toLowerCase()] =
-            setting[2] + ' !important'
+        default:
+          if (setting[0] === 'RAW' || setting[0].startsWith('RAW__')) {
+            this.appliedStyle[setting[1].toLowerCase()] =
+              setting[2] + ' !important'
+          }
           break
       }
     },

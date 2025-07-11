@@ -499,16 +499,28 @@ export default {
                 )
                 this.staleTime = parseInt(parameters[0])
                 break
-              case 'SETTING':
               case 'SUBSETTING':
+                if (parameters[1] === 'RAW') {
+                  parameters[1] = 'RAW__' + parameters[2].toLowerCase()
+                }
+              case 'SETTING':
+                if (parameters[0] === 'RAW') {
+                  parameters[0] = 'RAW__' + parameters[1].toLowerCase()
+                }
                 const widget =
                   this.currentLayout.widgets[
                     this.currentLayout.widgets.length - 1
                   ] ?? this.currentLayout
                 widget.settings.push(parameters)
                 break
-              case 'GLOBAL_SETTING':
               case 'GLOBAL_SUBSETTING':
+                if (parameters[2] === 'RAW') {
+                  parameters[2] = 'RAW__' + parameters[3].toLowerCase()
+                }
+              case 'GLOBAL_SETTING':
+                if (parameters[1] === 'RAW') {
+                  parameters[1] = 'RAW__' + parameters[2].toLowerCase()
+                }
                 this.globalSettings.push(parameters)
                 break
               default:
