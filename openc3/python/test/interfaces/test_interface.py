@@ -163,7 +163,7 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 4)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_read.bin.gz", filename)
         self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04")
@@ -252,7 +252,7 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 4)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         # Raw logging is still the original read_data return
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_read.bin.gz", filename)
@@ -277,7 +277,7 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(interface.read_count, 0)
         self.assertEqual(interface.bytes_read, 4)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_read.bin.gz", filename)
         self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04")
@@ -301,7 +301,7 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 8)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_read.bin.gz", filename)
         self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x01\x02\x03\x04")
@@ -455,7 +455,7 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 6)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_write.bin.gz", filename)
         self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x05\x06")
@@ -506,7 +506,7 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 6)
         interface.stop_raw_logging()
-        time.sleep(0.001) # Allow file to be transferred
+        time.sleep(0.01) # Allow file to be transferred
         filename = self.mock_s3.files()[0]
         self.assertIn("myinterface_stream_write.bin.gz", filename)
         self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x08\x07")

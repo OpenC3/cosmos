@@ -78,7 +78,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)  # Allow the thread to start
+        time.sleep(0.01)  # Allow the thread to start
 
     def tearDown(self):
         self.dm.shutdown()
