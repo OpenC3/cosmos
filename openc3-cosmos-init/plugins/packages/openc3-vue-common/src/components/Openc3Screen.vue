@@ -227,6 +227,7 @@
 
 <script>
 import { uniqueId } from 'lodash'
+import { format, add } from 'date-fns'
 import { Api, ConfigParserService, OpenC3Api } from '@openc3/js-common/services'
 import WidgetComponents from '@/widgets/WidgetComponents'
 import EditScreenDialog from './EditScreenDialog.vue'
@@ -307,6 +308,9 @@ export default {
   ],
   data() {
     return {
+      playbackMode: 'realtime',
+      playbackDateTime: null,
+      playbackSpeed: 1,
       api: null,
       backup: '',
       currentDefinition: this.definition,
@@ -340,6 +344,7 @@ export default {
       screenItems: [],
       screenValues: {},
       updateCounter: 0,
+      updater: null,
       screenId: uniqueId('openc3-screen_'),
     }
   },
@@ -380,6 +385,18 @@ export default {
         this.rerender()
       },
     },
+    playbackMode: {
+      handler(newValue, oldValue) {
+        this.playbackDateTime = null
+        this.playbackSpeed = 1
+        if (newValue === 'realtime') {
+          this.updateRefreshInterval()
+        } else {
+          clearInterval(this.updater)
+          this.updater = null
+        }
+      },
+    },
   },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
@@ -415,6 +432,7 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
+    console.log('timezone', this.timeZone)
     this.updateRefreshInterval()
     if (this.floated) {
       this.$refs.bar.onmousedown = this.dragMouseDown
@@ -451,6 +469,28 @@ export default {
       this.updater = setInterval(() => {
         this.update()
       }, refreshInterval)
+    },
+    setPlaybackMode: function (mode) {
+      this.playbackMode = mode
+    },
+    playbackPlay: function (playbackDate, playbackTime, playbackSpeed) {
+      // Should already be in playback mode but make sure
+      if (this.playbackMode !== 'playback') {
+        this.setPlaybackMode('playback')
+      }
+      if (this.timeZone === 'UTC') {
+        this.playbackDateTime = new Date(`${playbackDate}T${playbackTime}Z`)
+      } else {
+        this.playbackDateTime = new Date(`${playbackDate}T${playbackTime}`)
+      }
+      this.playbackSpeed = playbackSpeed
+      this.updateRefreshInterval()
+    },
+    playbackPause: function () {
+      if (this.updater) {
+        clearInterval(this.updater)
+        this.updater = null
+      }
     },
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
@@ -790,7 +830,12 @@ export default {
     update: function () {
       if (this.screenItems.length !== 0 && this.configError === false) {
         this.api
-          .get_tlm_values(this.screenItems, this.staleTime, this.cacheTimeout)
+          .get_tlm_values(
+            this.screenItems,
+            this.staleTime,
+            this.cacheTimeout,
+            this.playbackDateTime,
+          )
           .then((data) => {
             this.clearErrors()
             this.updateValues(data)
@@ -820,6 +865,13 @@ export default {
     },
     updateValues: function (values) {
       this.updateCounter += 1
+      if (this.playbackMode === 'playback' && this.playbackDateTime) {
+        // Increment playbackTime by playbackSpeed (assume playbackTime is in seconds)
+        this.playbackDateTime = add(this.playbackDateTime, {
+          seconds: this.playbackSpeed,
+        })
+      }
+
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
         this.screenValues[this.screenItems[i]] = values[i]

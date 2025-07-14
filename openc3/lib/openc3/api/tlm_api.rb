@@ -264,7 +264,7 @@ module OpenC3
     # @return [Array<Object, Symbol>]
     #   Array consisting of the item value and limits state
     #   given as symbols such as :RED, :YELLOW, :STALE
-    def get_tlm_values(items, stale_time: 30, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
+    def get_tlm_values(items, stale_time: 30, cache_timeout: nil, manual: false, date_time: nil, scope: $openc3_scope, token: $openc3_token)
       if !items.is_a?(Array) || !items[0].is_a?(String)
         raise ArgumentError, "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
       end
@@ -283,7 +283,7 @@ module OpenC3
       packets.each do |target_name, packet_name|
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       end
-      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
+      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, date_time: date_time, scope: scope)
     end
 
     # Returns an array of all the telemetry packet hashes

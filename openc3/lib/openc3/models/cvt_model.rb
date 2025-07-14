@@ -14,12 +14,13 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'pg'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/models/target_model'
@@ -28,6 +29,7 @@ module OpenC3
   class CvtModel
     @@packet_cache = {}
     @@override_cache = {}
+    @@conn = nil
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
     def self.build_json_from_packet(packet)
@@ -57,15 +59,27 @@ module OpenC3
 
     # Get the hash for packet in the CVT
     # Note: Does not apply overrides
-    def self.get(target_name:, packet_name:, cache_timeout: nil, scope: $openc3_scope)
-      key = "#{scope}__tlm__#{target_name}"
-      tgt_pkt_key = key + "__#{packet_name}"
-      now = Time.now
-      if cache_timeout
-        cache_time, hash = @@packet_cache[tgt_pkt_key]
-        return hash if hash and (now - cache_time) < cache_timeout
+    def self.get(target_name:, packet_name:, cache_timeout: nil, date_time: nil, scope: $openc3_scope)
+      if date_time
+        @@conn ||= PG::Connection.new(host: ENV['OPENC3_PG_ADDR'],
+                                      port: ENV['OPENC3_PG_PORT'],
+                                      dbname: ENV['OPENC3_PG_DBNAME'],
+                                      user: ENV['OPENC3_PG_USERNAME'],
+                                      password: ENV['OPENC3_PG_PASSWQRD'])
+
+        query = "SELECT json_data FROM #{scope}__#{target_name}__#{packet_name} WHERE timestamp = $2"
+        result = @@conn.exec_params(query, [packet_name, date_time])
+
+      else
+        key = "#{scope}__tlm__#{target_name}"
+        tgt_pkt_key = key + "__#{packet_name}"
+        now = Time.now
+        if cache_timeout
+          cache_time, hash = @@packet_cache[tgt_pkt_key]
+          return hash if hash and (now - cache_time) < cache_timeout
+        end
+        packet = Store.hget(key, packet_name)
       end
-      packet = Store.hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
       hash = JSON.parse(packet, :allow_nan => true, :create_additions => true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
@@ -122,7 +136,7 @@ module OpenC3
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
-    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, scope: $openc3_scope)
+    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, date_time: nil, scope: $openc3_scope)
       now = Time.now
       results = []
       lookups = []
@@ -134,7 +148,7 @@ module OpenC3
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, date_time: date_time, scope: scope)
         end
         hash = packet_lookup[target_packet_key]
         item_result = []

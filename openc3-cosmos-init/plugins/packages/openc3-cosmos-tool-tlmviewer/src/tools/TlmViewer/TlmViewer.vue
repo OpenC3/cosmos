@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,6 +23,17 @@
 <template>
   <div>
     <top-bar :title="title" :menus="menus" />
+    <v-banner
+      v-if="playbackMode === 'playback'"
+      color="warning"
+      icon="mdi-history"
+      lines="one"
+      sticky
+    >
+      <template #text>
+        <span class="text-h6">Playback Mode</span>
+      </template>
+    </v-banner>
     <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
       <v-expansion-panel>
         <v-expansion-panel-title></v-expansion-panel-title>
@@ -30,6 +41,7 @@
           <v-container>
             <v-row class="pa-3">
               <v-autocomplete
+                v-model="selectedTarget"
                 class="mr-4"
                 density="compact"
                 hide-details
@@ -38,38 +50,98 @@
                 :items="Object.keys(screens).sort()"
                 item-title="label"
                 item-value="value"
-                v-model="selectedTarget"
                 style="max-width: 300px"
                 data-test="select-target"
               />
               <v-autocomplete
+                v-model="selectedScreen"
                 class="mr-4"
                 density="compact"
                 hide-details
                 variant="outlined"
                 label="Select Screen"
                 :items="screens[selectedTarget]"
-                v-model="selectedScreen"
-                @update:model-value="screenSelect"
                 style="max-width: 300px"
                 data-test="select-screen"
+                @update:model-value="screenSelect"
               />
               <v-btn
                 class="bg-primary mr-2"
                 :disabled="!selectedScreen"
-                @click="() => showScreen(selectedTarget, selectedScreen)"
                 data-test="show-screen"
+                @click="() => showScreen(selectedTarget, selectedScreen)"
               >
                 Show
               </v-btn>
               <v-btn
-                class="bg-primary"
-                @click="() => newScreen(selectedTarget)"
+                class="bg-primary mr-2"
                 data-test="new-screen"
+                @click="() => newScreen(selectedTarget)"
               >
                 New Screen
                 <v-icon> mdi-file-plus</v-icon>
               </v-btn>
+              <!-- <v-spacer />
+              <v-switch
+                v-model="playbackMode"
+                label="Playback Mode"
+                false-value="realtime"
+                true-value="playback"
+                color="primary"
+                hide-details
+              /> -->
+            </v-row>
+            <v-row v-if="playbackMode === 'playback'" class="pa-3">
+              <v-text-field
+                v-model="playbackDate"
+                class="mr-4"
+                density="compact"
+                hide-details
+                variant="outlined"
+                label="Date"
+                type="date"
+                style="max-width: 200px"
+                data-test="playback-date"
+              />
+              <v-text-field
+                v-model="playbackTime"
+                class="mr-4"
+                density="compact"
+                hide-details
+                variant="outlined"
+                label="Time"
+                type="time"
+                step="1"
+                style="max-width: 200px"
+                data-test="playback-time"
+              />
+              <v-btn
+                class="bg-success mr-2"
+                data-test="playback-play"
+                @click="playbackPlay"
+              >
+                <v-icon>mdi-play</v-icon>
+                Play
+              </v-btn>
+              <v-btn
+                class="bg-warning mr-2"
+                data-test="playback-pause"
+                @click="playbackPause"
+              >
+                <v-icon>mdi-pause</v-icon>
+                Pause
+              </v-btn>
+              <v-select
+                v-model="playbackSpeed"
+                class="mr-4"
+                density="compact"
+                hide-details
+                variant="outlined"
+                label="Speed"
+                :items="playbackSpeedOptions"
+                style="max-width: 200px"
+                data-test="playback-speed"
+              />
             </v-row>
           </v-container>
         </v-expansion-panel-text>
@@ -77,14 +149,16 @@
     </v-expansion-panels>
     <div class="grid">
       <div
-        class="item"
         v-for="def in definitions"
-        :key="def.id"
         :id="screenId(def.id)"
+        :key="def.id"
         ref="gridItem"
+        class="item"
       >
         <div class="item-content">
           <openc3-screen
+            :ref="`screen-${def.id}`"
+            class="openc3-screen"
             :target="def.target"
             :screen="def.screen"
             :definition="def.definition"
@@ -110,13 +184,13 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="openConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="saveConfiguration"
     />
     <new-screen-dialog
@@ -140,6 +214,7 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import NewScreenDialog from './NewScreenDialog'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   components: {
@@ -149,7 +224,7 @@ export default {
     OpenConfigDialog,
     SaveConfigDialog,
   },
-  mixins: [Config],
+  mixins: [Config, TimeFilters],
   data() {
     return {
       title: 'Telemetry Viewer',
@@ -164,10 +239,40 @@ export default {
       api: null,
       timeZone: null, // deliberately null so we know when it is set
       keywords: [],
-      menus: [
+      configKey: 'telemetry_viewer',
+      openConfig: false,
+      saveConfig: false,
+      playbackSpeed: '1x',
+      playbackSpeedOptions: [
+        { title: '0.5x', value: 0.5 },
+        { title: '1x', value: 1 },
+        { title: '2x', value: 2 },
+        { title: '5x', value: 5 },
+        { title: '10x', value: 10 },
+      ],
+      playbackDate: '',
+      playbackTime: '',
+      playbackMode: false,
+    }
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
           items: [
+            {
+              label: 'Playback Mode',
+              checkbox: true,
+              checked: this.playbackMode === 'playback',
+              command: () => {
+                this.playbackMode =
+                  this.playbackMode === 'playback' ? 'realtime' : 'playback'
+              },
+            },
+            {
+              divider: true,
+            },
             {
               label: 'Open Configuration',
               icon: 'mdi-folder-open',
@@ -193,21 +298,8 @@ export default {
             },
           ],
         },
-      ],
-      configKey: 'telemetry_viewer',
-      openConfig: false,
-      saveConfig: false,
-    }
-  },
-  watch: {
-    definitions: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
+      ]
     },
-  },
-  computed: {
     currentConfig: function () {
       return this.definitions.map((def) => {
         return {
@@ -221,6 +313,28 @@ export default {
       })
     },
   },
+  watch: {
+    definitions: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    playbackMode: function (mode) {
+      // Initialize playback date and time with current values
+      // Create a new date 1 hr in the past as a default
+      let date = new Date() - 3600000
+      this.playbackDate = this.formatDate(date, this.timeZone)
+      this.playbackTime = this.formatTime(date, this.timeZone)
+
+      this.$nextTick(() => {
+        this.definitions.forEach((def) => {
+          const screenRef = this.$refs[`screen-${def.id}`][0]
+          screenRef.setPlaybackMode(mode)
+        })
+      })
+    },
+  },
   created() {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
@@ -228,8 +342,10 @@ export default {
     this.api
       .get_setting('time_zone')
       .then((response) => {
+        console.log('Timezone response:', response)
         if (response) {
           this.timeZone = response
+          console.log('Timezone set to:', this.timeZone)
         }
       })
       .catch((error) => {
@@ -481,6 +597,26 @@ export default {
     },
     saveConfiguration: function (name) {
       this.saveConfigBase(name, this.currentConfig)
+    },
+    playbackPlay() {
+      this.$nextTick(() => {
+        this.definitions.forEach((def) => {
+          const screenRef = this.$refs[`screen-${def.id}`][0]
+          screenRef.playbackPlay(
+            this.playbackDate,
+            this.playbackTime,
+            this.playbackSpeed,
+          )
+        })
+      })
+    },
+    playbackPause() {
+      this.$nextTick(() => {
+        this.definitions.forEach((def) => {
+          const screenRef = this.$refs[`screen-${def.id}`][0]
+          screenRef.playbackPause()
+        })
+      })
     },
   },
 }
