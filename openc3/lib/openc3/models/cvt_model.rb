@@ -59,27 +59,15 @@ module OpenC3
 
     # Get the hash for packet in the CVT
     # Note: Does not apply overrides
-    def self.get(target_name:, packet_name:, cache_timeout: nil, date_time: nil, scope: $openc3_scope)
-      if date_time
-        @@conn ||= PG::Connection.new(host: ENV['OPENC3_PG_ADDR'],
-                                      port: ENV['OPENC3_PG_PORT'],
-                                      dbname: ENV['OPENC3_PG_DBNAME'],
-                                      user: ENV['OPENC3_PG_USERNAME'],
-                                      password: ENV['OPENC3_PG_PASSWQRD'])
-
-        query = "SELECT json_data FROM #{scope}__#{target_name}__#{packet_name} WHERE timestamp = $2"
-        result = @@conn.exec_params(query, [packet_name, date_time])
-
-      else
-        key = "#{scope}__tlm__#{target_name}"
-        tgt_pkt_key = key + "__#{packet_name}"
-        now = Time.now
-        if cache_timeout
-          cache_time, hash = @@packet_cache[tgt_pkt_key]
-          return hash if hash and (now - cache_time) < cache_timeout
-        end
-        packet = Store.hget(key, packet_name)
+    def self.get(target_name:, packet_name:, cache_timeout: nil, scope: $openc3_scope)
+      key = "#{scope}__tlm__#{target_name}"
+      tgt_pkt_key = key + "__#{packet_name}"
+      now = Time.now
+      if cache_timeout
+        cache_time, hash = @@packet_cache[tgt_pkt_key]
+        return hash if hash and (now - cache_time) < cache_timeout
       end
+      packet = Store.hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
       hash = JSON.parse(packet, :allow_nan => true, :create_additions => true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
@@ -131,6 +119,39 @@ module OpenC3
       end
     end
 
+    def self.db_lookup(target_name:, packet_name:, date_time:, scope: $openc3_scope)
+      puts "PG::Connection host: #{ENV['OPENC3_PG_ADDR']}, port: #{ENV['OPENC3_PG_PORT']}, user: #{ENV['OPENC3_PG_USERNAME']}, password: #{ENV['OPENC3_PG_PASSWQRD']}"
+      @@conn ||= PG::Connection.new(host: 'openc3-cosmos-questdb-questdb-1',
+                                    port: 8812,
+                                    user: 'openc3quest',
+                                    password: 'openc3questpassword',
+                                    dbname: 'qdb')
+      # tables = []
+      # items = []
+      # lookups.each do |target_packet_key, target_name, packet_name, value_keys|
+      #   unless value_keys.is_a?(Hash) # Set in _parse_item to indicate override
+      #     tables << "#{target_name}__#{packet_name}"
+      #     items << value_keys
+      #   end
+      # end
+      # tables.uniq! # Remove duplicates
+      # query = "SELECT * FROM #{tables[0]} as T1 ASOF JOIN #{tables[1..-1].join(" ASOF JOIN ")} WHERE T1.timestamp < '#{date_time}' LIMIT -1"
+      begin
+        query = "SELECT * FROM #{target_name}__#{packet_name} WHERE timestamp < '#{date_time}' LIMIT -1"
+        puts "QuestDB Query: #{query}"
+        result = @@conn.exec(query)
+        if result.ntuples == 0
+          return {}
+        else
+          data = result.tuple(0)
+          pp data
+          return data.to_h
+        end
+      rescue PG::Error => e
+        raise "Error querying QuestDB: #{e.message}"
+      end
+    end
+
     # Return all item values and limit state from the CVT
     #
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
@@ -148,7 +169,11 @@ module OpenC3
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, date_time: date_time, scope: scope)
+          if date_time
+            packet_lookup[target_packet_key] = db_lookup(target_name: target_name, packet_name: packet_name, date_time: date_time, scope: scope)
+          else
+            packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          end
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
@@ -161,14 +186,14 @@ module OpenC3
           end
           # If we were able to find a value, try to get the limits state
           if item_result[0]
-            if now - hash['RECEIVED_TIMESECONDS'] > stale_time
-              item_result[1] = :STALE
-            else
+            # if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+            #   item_result[1] = :STALE
+            # else
               # The last key is simply the name (RAW) so we can append __L
               # If there is no limits then it returns nil which is acceptable
               item_result[1] = hash["#{value_keys[-1]}__L"]
               item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
-            end
+            # end
           else
             # We didn't find a value but the packet hash contains the key so the item exists
             # Thus set the result to nil so it comes back like a normal item

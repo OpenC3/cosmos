@@ -392,11 +392,23 @@ export default {
         if (newValue === 'realtime') {
           this.updateRefreshInterval()
         } else {
+          // Initially playback just clears all updates
+          // The play button restarts the updater
           clearInterval(this.updater)
           this.updater = null
         }
       },
     },
+    // playbackDateTime: {
+    //   handler(newValue, oldValue) {
+    //     console.log('playbackDateTime changed:', newValue)
+    //     if (this.playbackMode === 'playback') {
+    //       this.playbackDate = format(newValue, 'yyyy-MM-dd')
+    //       this.playbackTime = format(newValue, 'HH:mm:ss')
+    //       console.log('playbackTime', this.playbackTime)
+    //     }
+    //   },
+    // },
   },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
@@ -419,8 +431,7 @@ export default {
           time: new Date().getTime(),
         })
       }
-      // eslint-disable-next-line no-console
-      console.log(this.errors)
+
       this.configError = true
     }
     return false
@@ -432,7 +443,6 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
-    console.log('timezone', this.timeZone)
     this.updateRefreshInterval()
     if (this.floated) {
       this.$refs.bar.onmousedown = this.dragMouseDown
@@ -470,14 +480,11 @@ export default {
         this.update()
       }, refreshInterval)
     },
+    // Called by TlmViewer to change the mode
     setPlaybackMode: function (mode) {
       this.playbackMode = mode
     },
     playbackPlay: function (playbackDate, playbackTime, playbackSpeed) {
-      // Should already be in playback mode but make sure
-      if (this.playbackMode !== 'playback') {
-        this.setPlaybackMode('playback')
-      }
       if (this.timeZone === 'UTC') {
         this.playbackDateTime = new Date(`${playbackDate}T${playbackTime}Z`)
       } else {

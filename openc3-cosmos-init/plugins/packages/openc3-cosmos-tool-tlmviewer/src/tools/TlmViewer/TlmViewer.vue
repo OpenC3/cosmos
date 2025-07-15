@@ -81,15 +81,6 @@
                 New Screen
                 <v-icon> mdi-file-plus</v-icon>
               </v-btn>
-              <!-- <v-spacer />
-              <v-switch
-                v-model="playbackMode"
-                label="Playback Mode"
-                false-value="realtime"
-                true-value="playback"
-                color="primary"
-                hide-details
-              /> -->
             </v-row>
             <v-row v-if="playbackMode === 'playback'" class="pa-3">
               <v-text-field
@@ -242,7 +233,7 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
-      playbackSpeed: '1x',
+      playbackSpeed: 1,
       playbackSpeedOptions: [
         { title: '0.5x', value: 0.5 },
         { title: '1x', value: 1 },
@@ -342,10 +333,8 @@ export default {
     this.api
       .get_setting('time_zone')
       .then((response) => {
-        console.log('Timezone response:', response)
         if (response) {
           this.timeZone = response
-          console.log('Timezone set to:', this.timeZone)
         }
       })
       .catch((error) => {
