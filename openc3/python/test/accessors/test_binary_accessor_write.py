@@ -263,6 +263,46 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item2_length.bit_offset, 152)
         self.assertEqual(item2.bit_offset, 168)
 
+    def test_can_handle_reading_and_writing_multiple_variable_sized_array_items(self):
+        packet = Packet()
+        item1_length = packet.append_item("item1_length", 32, "UINT")
+        item1 = packet.append_item("item1", 8, "UINT", 0)
+        item1.variable_bit_size = {'length_item_name': 'item1_length', 'length_value_bit_offset': 0, 'length_bits_per_count': 8}
+        item2_length = packet.append_item("item2_length", 32, "UINT")
+        item2 = packet.append_item("item2", 8, "UINT", 0)
+        item2.variable_bit_size = {'length_item_name': 'item2_length', 'length_value_bit_offset': 0, 'length_bits_per_count': 8}
+
+        self.assertEqual(item1_length.bit_offset, 0)
+        self.assertEqual(item1.bit_offset, 32)
+        self.assertEqual(item1.array_size, 0)
+        self.assertEqual(item2_length.bit_offset, 32)
+        self.assertEqual(item2.bit_offset, 64)
+        self.assertEqual(item2.array_size, 0)
+        packet.buffer = b"\x00\x00\x00\x06\x01\x02\x03\x04\x05\x06\x00\x00\x00\x02\x07\x08"
+        self.assertEqual(item1_length.bit_offset, 0)
+        self.assertEqual(item1.bit_offset, 32)
+        self.assertEqual(item2_length.bit_offset, 80)
+        self.assertEqual(item2.bit_offset, 112)
+        self.assertEqual(packet.read("item1_length"), 6)
+        self.assertEqual(packet.read("item1"), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(item1.array_size, 48)
+        self.assertEqual(packet.read("item2_length"), 2)
+        self.assertEqual(packet.read("item2"), [7, 8])
+        self.assertEqual(item2.array_size, 16)
+
+        packet.write("item1", [11, 12, 13])
+        packet.write("item2", [17])
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x03\x0B\x0C\x0D\x00\x00\x00\x01\x11")
+        packet.write("item2", [11, 12, 13])
+        packet.write("item1", [17])
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x01\x11\x00\x00\x00\x03\x0B\x0C\x0D")
+        self.assertEqual(packet.read("item2_length"), 3)
+        self.assertEqual(packet.read("item2"), [11, 12, 13])
+        self.assertEqual(item2.array_size, 24)
+        self.assertEqual(packet.read("item1_length"), 1)
+        self.assertEqual(packet.read("item1"), [17])
+        self.assertEqual(item1.array_size, 8)
+
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             TypeError,
