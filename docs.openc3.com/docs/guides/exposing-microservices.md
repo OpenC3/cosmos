@@ -45,7 +45,7 @@ Here is a snippet of code showing [PORT](../configuration/plugins#port-1) and [R
 ```bash
 VARIABLE cfdp_microservice_name CFDP
 VARIABLE cfdp_route_prefix /cfdp
-VARIABLE cfdp_port 2905
+VARIABLE cfdp_port 2906
 
 MICROSERVICE CFDP <%= cfdp_microservice_name %>
   WORK_DIR .
@@ -55,8 +55,8 @@ MICROSERVICE CFDP <%= cfdp_microservice_name %>
 
 Leaving the variables at their default values the following will occur:
 
-- The microservice will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2905`
-- The microservice will be exposed internally to Kubernetes (Enterprise) at: `http://default-user-cfdp-service:2905`
+- The microservice will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2906`
+- The microservice will be exposed internally to Kubernetes (Enterprise) at: `http://default-user-cfdp-service:2906`
 - The microservice will be exposed externally to the network at: `http://localhost:2900/cfdp`
 
 The same can be done for [INTERFACE](../configuration/plugins#interface-1) but note that the Kubernetes service name will use the microservice name of the interface which takes the form of `SCOPE__INTERFACE__INTERFACENAME`.
@@ -66,15 +66,15 @@ Here is an example using [PORT](../configuration/plugins#port) and [ROUTE_PREFIX
 ```bash
 VARIABLE my_interface_name MY_INT
 VARIABLE my_route_prefix /myint
-VARIABLE my_port 2910
+VARIABLE my_port 2888
 
 INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
   ROUTE_PREFIX <%= my_route_prefix %>
   PORT <%= my_port %>
 ```
 
-- The interface will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2910`
-- The interface will be exposed internally to Kubernetes (Enterprise) at: `http://default-interface-my-int-service:2905`
+- The interface will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2888`
+- The interface will be exposed internally to Kubernetes (Enterprise) at: `http://default-interface-my-int-service:2888`
 - The interface will be exposed externally to the network at: `http://localhost:2900/myint`
 
 :::warning Sharded Operator on Kubernetes (Enterprise)
