@@ -266,6 +266,23 @@ test('creates new screen based on packet', async ({ page, utils }) => {
   await deleteScreen(page, utils, 'INST', 'HEALTH_STATUS')
 })
 
+test('opens SCREEN documentation from context menu', async ({ page, utils }) => {
+  await showScreen(page, utils, 'INST', 'ADCS', async function () {
+    await page.locator('[data-test=edit-screen-icon]').click()
+    await expect(page.locator(`.v-toolbar:has-text("Edit Screen")`)).toBeVisible()
+    await page.locator('pre div')
+      .filter({ hasText: 'SCREEN' })
+      .nth(0)
+      .click({ button: 'right', position: { x: 10, y: 10 } })
+    const page1Promise = page.waitForEvent('popup')
+    await page.getByText('SCREEN documentation').click();
+    const page1 = await page1Promise
+    await expect(page1.locator('h1').nth(0)).toContainText('Screens')
+    await page1.close()
+    await page.locator('button:has-text("Cancel")').click()
+  })
+})
+
 async function deleteScreen(page, utils, target, screen) {
   await expect(
     page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
