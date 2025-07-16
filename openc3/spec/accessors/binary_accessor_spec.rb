@@ -242,6 +242,46 @@ module OpenC3
         expect(@packet.read("item1")).to eql "HELLO"
         expect(@packet.read("item2")).to eql "\x00\x00\x00\x06\x48\x45\x4C\x4C\x4F\x00"
       end
+
+      it "can handle reading and writing multiple variable sized array items" do
+        item1_length = @packet.append_item("item1_length", 32, :UINT)
+        item1 = @packet.append_item("item1", 8, :UINT, 0)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        item2_length = @packet.append_item("item2_length", 32, :UINT)
+        item2 = @packet.append_item("item2", 8, :UINT, 0)
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+
+        expect(item1_length.bit_offset).to eq(0)
+        expect(item1.bit_offset).to eq(32)
+        expect(item1.array_size).to eq(0)
+        expect(item2_length.bit_offset).to eq(32)
+        expect(item2.bit_offset).to eq(64)
+        expect(item2.array_size).to eq(0)
+        @packet.buffer = "\x00\x00\x00\x06\x01\x02\x03\x04\x05\x06\x00\x00\x00\x02\x07\x08"
+        expect(item1_length.bit_offset).to eq(0)
+        expect(item1.bit_offset).to eq(32)
+        expect(item2_length.bit_offset).to eq(80)
+        expect(item2.bit_offset).to eq(112)
+        expect(@packet.read("item1_length")).to eql 6
+        expect(@packet.read("item1")).to eql [1, 2, 3, 4, 5, 6]
+        expect(item1.array_size).to eq(48)
+        expect(@packet.read("item2_length")).to eql 2
+        expect(@packet.read("item2")).to eql [7, 8]
+        expect(item2.array_size).to eq(16)
+
+        @packet.write("item1", [11, 12, 13])
+        @packet.write("item2", [17])
+        expect(@packet.buffer).to eql "\x00\x00\x00\x03\x0B\x0C\x0D\x00\x00\x00\x01\x11"
+        @packet.write("item2", [11, 12, 13])
+        @packet.write("item1", [17])
+        expect(@packet.buffer).to eql "\x00\x00\x00\x01\x11\x00\x00\x00\x03\x0B\x0C\x0D"
+        expect(@packet.read("item2_length")).to eql 3
+        expect(@packet.read("item2")).to eql [11, 12, 13]
+        expect(item2.array_size).to eq(24)
+        expect(@packet.read("item1_length")).to eql 1
+        expect(@packet.read("item1")).to eql [17]
+        expect(item1.array_size).to eq(8)
+      end
     end
 
     describe "read only" do
