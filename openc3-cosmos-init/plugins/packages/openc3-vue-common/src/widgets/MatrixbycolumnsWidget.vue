@@ -62,7 +62,7 @@ export default {
         const found = widget.settings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
-            (setting[0].includes('RAW') &&
+            (setting[0].startsWith('RAW') &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {

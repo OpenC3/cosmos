@@ -500,10 +500,20 @@ export default {
                 this.staleTime = parseInt(parameters[0])
                 break
               case 'SUBSETTING':
+                this.configParser.verify_num_parameters(
+                  3,
+                  null,
+                  `${keyword} <Index> <Widget Type> <Widget Settings...>`,
+                )
                 if (parameters[1] === 'RAW') {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }
               case 'SETTING':
+                this.configParser.verify_num_parameters(
+                  2,
+                  null,
+                  `${keyword} <Widget Type> <Widget Settings...>`,
+                )
                 if (parameters[0] === 'RAW') {
                   parameters[0] = 'RAW__' + parameters[1].toLowerCase()
                 }
@@ -514,10 +524,20 @@ export default {
                 widget.settings.push(parameters)
                 break
               case 'GLOBAL_SUBSETTING':
+                this.configParser.verify_num_parameters(
+                  3,
+                  null,
+                  `${keyword} <Index> <Widget Type> <Widget Settings...>`,
+                )
                 if (parameters[2] === 'RAW') {
                   parameters[2] = 'RAW__' + parameters[3].toLowerCase()
                 }
               case 'GLOBAL_SETTING':
+                this.configParser.verify_num_parameters(
+                  2,
+                  null,
+                  `${keyword} <Widget Type> <Widget Settings...>`,
+                )
                 if (parameters[1] === 'RAW') {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }

@@ -62,7 +62,7 @@ export default {
     const fontWeightSetting = this.labelSettings.find(
       (setting) =>
         setting[0] === '0' &&
-        setting[1].include('RAW') &&
+        setting[1].startsWith('RAW') &&
         setting[2] === 'font-weight',
     )
     if (!fontWeightSetting) {
