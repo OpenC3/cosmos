@@ -333,7 +333,7 @@ TELEMETRY MQTT TEST BIG_ENDIAN "Test"
   APPEND_ITEM DATA 0 BLOCK "MQTT Data"
 ```
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-mqtt-test) in the COSMOS source.
 
 ### MQTT Streaming Interface
 
@@ -384,7 +384,7 @@ INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py test.mosquitto.org
 
 The MQTT Streaming Interface utilizes the topic names passed to the interface so no additional information is necessary in the definition.
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-mqtt-test) in the COSMOS source.
 
 ### Serial Interface
 
