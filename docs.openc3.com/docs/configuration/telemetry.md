@@ -102,7 +102,7 @@ The following keywords must follow a TELEMETRY keyword.
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
@@ -352,7 +352,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. | True |
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
@@ -387,7 +387,7 @@ APPEND_ID_ITEM PKTID 16 UINT 1 "Packet ID which must be 1"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
 | Item Bit Size | Bit size of each array item | True |
 | Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
