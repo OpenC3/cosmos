@@ -14,7 +14,7 @@ ITEM:
     - name: Bit Offset
       required: true
       description: Bit offset into the telemetry packet of the Most Significant Bit of this item.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
         Always use a bit offset of 0 for derived item.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_items.yaml').to_meta_config_yaml(4) %>
@@ -44,7 +44,7 @@ ID_ITEM:
     - name: Bit Offset
       required: true
       description: Bit offset into the telemetry packet of the Most Significant Bit of this item.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_id_items.yaml').to_meta_config_yaml(4) %>
 APPEND_ID_ITEM:
@@ -71,7 +71,7 @@ ARRAY_ITEM:
     - name: Bit Offset
       required: true
       description: Bit offset into the telemetry packet of the Most Significant Bit of this item.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
         Always use a bit offset of 0 for derived item.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
