@@ -205,7 +205,7 @@ Python Example:
 ```python
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
-  PROTOCOL READ IgnorePacketProtocol INST IMAGE # Drop all INST IMAGE packets
+  PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
 ```
 
 ### OPTION

@@ -38,6 +38,25 @@ Note the first parameter after the PROTOCOL keyword is how to apply the protocol
 
 The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encoding data bytes that results in efficient, reliable, unambiguous packet framing regardless of packet content, thus making it easy for receiving applications to recover from malformed packets. It employs the zero byte value to serve as a packet delimiter (a special value that indicates the boundary between packets). The algorithm replaces each zero data byte with a non-zero value so that no zero data bytes will appear in the packet and thus be misinterpreted as packet boundaries (See https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing for more).
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ interfaces/protocols/cobs_protocol.py
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ CobsProtocol
+```
+
+</TabItem>
+</Tabs>
+
 ### SLIP Protocol
 
 The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame IP packets on a serial line. It defines two special characters: END and ESC. END is 0xC0 and ESC is 0xDB. To send a packet, a SLIP host simply starts sending the data in the packet. If a data byte is the same code as END character, a two byte sequence of ESC and 0xDC is sent instead. If a data bytes is the same as an ESC character, an two byte sequence of ESC and 0xDD is sent instead. When the last byte in the packet has been sent, an END character is then transmitted (See https://datatracker.ietf.org/doc/html/rfc1055 for more).
@@ -53,6 +72,27 @@ The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame I
 | Escape End Char       | Character to escape End character              | No       | 0xDC               |
 | Escape Esc Char       | Character to escape Esc character              | No       | 0xDD               |
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Since we're using the defaults, none of the parameters are actually required
+  PROTOCOL READ interfaces/protocols/slip_protocol.py None True True True 0xC0 0xDB 0xDC 0xDD
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Since we're using the defaults, none of the parameters are actually required
+  PROTOCOL READ SlipProtocol nil true true true 0xC0 0xDB 0xDC 0xDD
+```
+
+</TabItem>
+</Tabs>
+
 ### Burst Protocol
 
 The Burst Protocol simply reads as much data as it can from the interface before returning the data as a COSMOS Packet (It returns a packet for each burst of data read). This Protocol relies on regular bursts of data delimited by time and thus is not very robust. However, it can utilize a sync pattern which does allow it to re-sync if necessary. It can also discard bytes from the incoming data to remove the sync pattern. Finally, it can add sync patterns to data being written out of the Interface.
@@ -62,6 +102,27 @@ The Burst Protocol simply reads as much data as it can from the interface before
 | Discard Leading Bytes | The number of bytes to discard from the binary data after reading. Note that this applies to bytes starting with the sync pattern if the sync pattern is being used.                        | No       | 0 (do not discard bytes) |
 | Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned | No       | nil (no sync pattern)    |
 | Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                     | No       | false                    |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Use a sync pattern but discard it
+  PROTOCOL READ interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Use a sync pattern but discard it
+  PROTOCOL READ BurstProtocol 4 0x1ACFFC1D
+```
+
+</TabItem>
+</Tabs>
 
 ### Fixed Protocol
 
@@ -75,6 +136,25 @@ The Fixed Protocol reads a preset minimum amount of data which is necessary to p
 | Telemetry             | Whether the data is telemetry                                                                                                                                                                | No       | true (false means command) |
 | Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                      |
 | Unknown Raise         | Whether to raise an exception for an unknown packet                                                                                                                                          | No       | false                      |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ FixedProtocol 6 4 0x1ACFFC1D true
+```
+
+</TabItem>
+</Tabs>
 
 ### Length Protocol
 
@@ -100,6 +180,27 @@ The most confusing aspect of the Length Protocol is calculating the Length Value
 
 In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**. With 4 bytes of data, the length field is 3 because in CCSDS the length field is calculated as (data length - 1). So how would we calculate the Length Value Offset? COSMOS reads all the bytes in the packet (including the Sync Pattern) so the total length is 14 bytes. The length field is 3 so the Length Value Offset (offset to apply to the length field value) should be 11 (**3 + 11 = 14**).
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Example length protocol parameters for a CCSDS packet
+  PROTOCOL READ interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Example length protocol parameters for a CCSDS packet
+  PROTOCOL READ LengthProtocol 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D nil true
+```
+
+</TabItem>
+</Tabs>
+
 ### Terminated Protocol
 
 The Terminated Protocol delineates packets using termination characters found at the end of every packet. It continuously reads data until the termination characters are found at which point it returns the packet data. For example, all the packets using the interface are followed by 0xABCD. This data can either be a part of each packet that is kept or something which is known only by the Terminated Protocol and simply thrown away.
@@ -113,13 +214,35 @@ The Terminated Protocol delineates packets using termination characters found at
 | Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
 | Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
+  PROTOCOL READ interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
+  PROTOCOL READ TerminatedProtocol 0x0A 0x0A True 4 0x44415441
+```
+
+</TabItem>
+</Tabs>
+
 ### GEMS Protocol (Enterprise)
 
-The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the TerminatedProtocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
+The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the Terminated Protocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
 
-The GEMS protocol doesn't take any parameters but should be added to an interface after the TerminatedProtocol and CmdResponseProtocol.
+The GEMS protocol doesn't take any parameters but should be added to an interface after the Terminated Protocol and Command Response Protocol.
 
-plugin.txt Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil nil
@@ -139,6 +262,9 @@ INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil 
   PROTOCOL READ_WRITE GemsProtocol
 ```
 
+</TabItem>
+</Tabs>
+
 For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
 
 ### CCSDS CLTU Protocol (Enterprise)
@@ -150,6 +276,17 @@ The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for C
 | Header    | Header before BCH encoded data | No       | 0xEB90             |
 | Footer    | Footer after BCH encoded data  | No       | 0xC5C5C5C5C5C5C579 |
 | Fill Byte | BCH encoding fill byte         | No       | 0x55               |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsCltuProtocol
+```
+
+</TabItem>
+</Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
 
@@ -164,6 +301,17 @@ The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Strea
 | Bypass        | Bypass bit where 0 is Type-A and 1 is Type-B (bypass frame acceptance checks) | No       | 1       |
 | SCID          | Spacecraft Identifier (10 bits)                                               | No       | 0       |
 | VCID          | Virtual Channel Identifier (6 bits)                                           | No       | 0       |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
+```
+
+</TabItem>
+</Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
 
@@ -180,11 +328,22 @@ The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Strea
 | Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | 0x1ACFFC1D               |
 | Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | true                     |
 
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
+```
+
+</TabItem>
+</Tabs>
+
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
 
 ### Template Protocol (Deprecated)
 
-This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the CmdResponseProtocol instead.
+This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the Command Response Protocol instead.
 
 The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
 
@@ -212,15 +371,34 @@ The Preidentified Protocol delineates packets using the COSMOS header. This Prot
 | Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |
 | Max Length   | The maximum allowed value in the length field                                                                                                                                                                                  | No       | nil (no maximum length) |
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ interfaces/protocols/preidentified_protocol.py
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ PreidentifiedProtocol
+```
+
+</TabItem>
+</Tabs>
+
 For an example of using Preidentified Protocol see [FileInterface](/docs/configuration/interfaces#file-interface).
 
 ## Helper Protocols
 
-COSMOS provides the following helper protocols: CmdResponse, Crc and Ignore. These protocols provide helper functionality to Interfaces.
+COSMOS provides the following helper protocols: Command Response, Crc and Ignore. These protocols provide helper functionality to Interfaces.
 
-### CmdResponse Protocol
+### Command Response Protocol
 
-The CmdResponse Protocol waits for a response for any commands with a defined response packet.
+The Command Response Protocol waits for a response for any commands with a defined response packet.
 
 | Parameter               | Description                                                                                                  | Required | Default |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
@@ -228,11 +406,30 @@ The CmdResponse Protocol waits for a response for any commands with a defined re
 | Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
 | Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  PROTOCOL READ CmdResponseProtocol 5.0 0.1 true
+```
+
+</TabItem>
+</Tabs>
+
 #### Packet Definitions
 
-The CmdResponseProtocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent.
+The Command Response Protocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent. This will block the command until the response is received.
 
-```
+```ruby
 COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
   ACCESSOR TemplateAccessor
   TEMPLATE ":MEAS:VOLT? (@1:2)"
@@ -241,7 +438,7 @@ COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
 
 The Response packet (STATUS) should be defined to contain the response data.
 
-```
+```ruby
 TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
   ACCESSOR TemplateAccessor
   TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
@@ -272,6 +469,27 @@ The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming t
 | Xor             | Whether to XOR the CRC result with 0xFFFF                                                                   | No       | nil (use default value - 16-bit=false, 32-bit=true, 64-bit=true)                           |
 | Reflect         | Whether to bit reverse each byte of data before calculating the CRC                                         | No       | nil (use default value - 16-bit=false, 32-bit=true, 64-bit=true)                           |
 
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Handle a trailing 32 bit CRC on telemetry by stripping it off
+  PROTOCOL READ interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN None None None None
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Handle a trailing 32 bit CRC on telemetry by stripping it off
+  PROTOCOL READ CrcProtocol nil true ERROR -32 32 BIG_ENDIAN nil nil nil nil
+```
+
+</TabItem>
+</Tabs>
+
 ### Ignore Packet Protocol
 
 The Ignore Packet protocol drops specified command packets sent by COSMOS or drops incoming telemetry packets.
@@ -280,6 +498,27 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 | ----------- | ----------------------------------- | -------- | ------- |
 | Target Name | Target name of the packet to ignore | Yes      | nil     |
 | Packet Name | Packet name of the packet to ignore | Yes      | nil     |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <parameters>
+  # Ignore the INST MECH packet
+  PROTOCOL READ interfaces/protocols/ignore_packet_protocol.py INST MECH
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+INTERFACE INTERFACE_NAME <parameters>
+  # Ignore the INST MECH packet
+  PROTOCOL READ IgnorePacketProtocol INST MECH
+```
+
+</TabItem>
+</Tabs>
 
 ## Custom Protocols
 
@@ -311,7 +550,7 @@ On _every_ call to read, an empty string "" is first passed down to each of the 
 
 The Interface write() method works very similarly to read. (It should be mentioned that by default write protocols run in the reverse order of read protocols. This makes sense because when reading you're typically stripping layers of data and when writing you're typically adding on layers in reverse order.)
 
-First, the packet write counter is incremented. Then each write Protocol is given a chance to modify the packet by its write_packet() method being called. This method can either return a potentially modified packet, STOP, or DISCONNECT. If a write Protocol returns STOP no data will be written out the Interface and it is assumed that more packets are necessary before a final packet can be output. DISCONNECT will disconnect the Interface. If the packet makes it through all the write Protocol's write_packet() methods, then it is converted to binary data using the Interface's convert_packet_to_data() method. Next the write_data() method is called for each write Protocol giving it a chance to modify the lower level data. The same return options are available except a Ruby string of data is returned instead of a COSMOS packet. If the data makes it through all write_data() methods, then it is written out on the Interface using the write_interface() method. Afterwards, each Protocol's post_write_interface() method is called with both the final modified Packet, and the actual data written out to the Interface. This method allows follow-up such as waiting for a response after writing out a message.
+First, the packet write counter is incremented. Then each write Protocol is given a chance to modify the packet by its write_packet() method being called. This method can either return a potentially modified packet, STOP, or DISCONNECT. If a write Protocol returns STOP no data will be written out the Interface and it is assumed that more packets are necessary before a final packet can be output. DISCONNECT will disconnect the Interface. If the packet makes it through all the write Protocol's write_packet() methods, then it is converted to binary data using the Interface's convert_packet_to_data() method. Next the write_data() method is called for each write Protocol giving it a chance to modify the lower level data. The same return options are available except a Ruby string or Python bytes object is returned instead of a COSMOS packet. If the data makes it through all write_data() methods, then it is written out on the Interface using the write_interface() method. Afterwards, each Protocol's post_write_interface() method is called with both the final modified Packet, and the actual data written out to the Interface. This method allows follow-up such as waiting for a response after writing out a message.
 
 ## Method discussions
 

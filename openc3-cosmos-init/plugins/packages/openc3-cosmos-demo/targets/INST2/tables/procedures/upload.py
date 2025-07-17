@@ -7,7 +7,7 @@ print(f"file:{os.getenv('TBL_FILENAME')}")
 file = get_target_file(os.getenv("TBL_FILENAME"))
 buffer = file.read()
 # Implement custom commanding logic to upload the table
-# Note that buffer is a Ruby string of bytes
+# Note that buffer is bytes
 # You probably want to do something like:
 # buf_size = 512 # Size of a buffer in the upload command
 # i = 0
