@@ -237,9 +237,9 @@ INTERFACE INTERFACE_NAME <parameters>
 
 ### GEMS Protocol (Enterprise)
 
-The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the TerminatedProtocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
+The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the Terminated Protocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
 
-The GEMS protocol doesn't take any parameters but should be added to an interface after the TerminatedProtocol and CmdResponseProtocol.
+The GEMS protocol doesn't take any parameters but should be added to an interface after the Terminated Protocol and Command Response Protocol.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
@@ -343,7 +343,7 @@ For a full example, please see the [openc3-cosmos-ccsds-protocols](https://githu
 
 ### Template Protocol (Deprecated)
 
-This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the CmdResponseProtocol instead.
+This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the Command Response Protocol instead.
 
 The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
 
@@ -427,7 +427,7 @@ INTERFACE INTERFACE_NAME <parameters>
 
 #### Packet Definitions
 
-The CmdResponseProtocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent. This will block the command until the response is received.
+The Command Response Protocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent. This will block the command until the response is received.
 
 ```ruby
 COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
