@@ -50,23 +50,23 @@ import VerticalWidget from './VerticalWidget.vue'
 import Layout from './Layout'
 
 export default {
-  mixins: [Layout],
   components: {
     LabelWidget,
     HorizontalLineWidget,
     VerticalWidget,
   },
+  mixins: [Layout],
   created() {
     this.labelSettings = [...this.appliedSettings]
     // Set the font-weight to bold if not already set
     const fontWeightSetting = this.labelSettings.find(
       (setting) =>
         setting[0] === '0' &&
-        setting[1] === 'RAW' &&
+        setting[1].startsWith('RAW') &&
         setting[2] === 'font-weight',
     )
     if (!fontWeightSetting) {
-      this.labelSettings.push(['0', 'RAW', 'font-weight', 'bold'])
+      this.labelSettings.push(['0', 'RAW__font-weight', 'font-weight', 'bold'])
     }
   },
 }
