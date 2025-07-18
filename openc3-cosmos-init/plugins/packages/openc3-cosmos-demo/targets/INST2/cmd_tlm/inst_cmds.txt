@@ -3,8 +3,8 @@ COMMAND <%= target_name %> COLLECT BIG_ENDIAN "Starts a collect on the <%= targe
   <%= render "_ccsds_cmd.txt", locals: {id: 1} %>
   PARAMETER    TYPE           64  16  UINT MIN MAX 0 "Collect type which can be normal or special. Note the special collects are hazarous and require user confirmation."
     REQUIRED
-    STATE NORMAL  0
-    STATE SPECIAL 1 HAZARDOUS
+    STATE NORMAL  0x0
+    STATE SPECIAL 0x1 HAZARDOUS
   PARAMETER    DURATION       80  32  FLOAT 0.0 10.0 1.0 "Collect duration"
   PARAMETER    OPCODE        112   8  UINT 0x0 0xFF 0xAB "Collect opcode"
     FORMAT_STRING "0x%0X"

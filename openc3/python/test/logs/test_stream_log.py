@@ -45,7 +45,7 @@ class TestStreamLog(unittest.TestCase):
         self.stream_log = StreamLog("SLINT", "WRITE")
         self.stream_log.write(b"\x00\x01\x02\x03")
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         key = self.mock_s3.files()[0]
         self.assertIn("slint_stream_write.bin.gz", key)
         self.assertEqual(self.mock_s3.data(key), b"\x00\x01\x02\x03")
@@ -54,7 +54,7 @@ class TestStreamLog(unittest.TestCase):
         self.stream_log = StreamLog("SLINT", "READ")
         self.stream_log.write(b"\x01\x02\x03\x04")
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         key = self.mock_s3.files()[0]
         self.assertIn("slint_stream_read.bin.gz", key)
         self.assertEqual(self.mock_s3.data(key), b"\x01\x02\x03\x04")
@@ -62,7 +62,7 @@ class TestStreamLog(unittest.TestCase):
     def test_does_not_write_data_if_logging_is_disabled(self):
         self.stream_log = StreamLog("SLINT", "WRITE")
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.stream_log.write(b"\x00\x01\x02\x03")
         self.assertEqual(self.stream_log.file_size, 0)
         self.assertEqual(len(self.mock_s3.files()), 0)
@@ -72,12 +72,12 @@ class TestStreamLog(unittest.TestCase):
         self.stream_log.write(b"\x00\x01\x02\x03" * 250)  # size 1000
         self.stream_log.write(b"\x00\x01\x02\x03" * 250)  # size 2000
         self.assertEqual(len(self.mock_s3.files()), 0)  # hasn't cycled yet
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.stream_log.write(b"\x00")  # size 200001
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.assertEqual(len(self.mock_s3.files()), 1)
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.assertEqual(len(self.mock_s3.files()), 2)
 
     def test_handles_errors_creating_the_log_file(self):
@@ -99,7 +99,7 @@ class TestStreamLog(unittest.TestCase):
                 self.stream_log = StreamLog("SLINT", "WRITE")
                 self.stream_log.write(b"\x00\x01\x02\x03")
                 self.stream_log.stop()
-                time.sleep(0.001)
+                time.sleep(0.01)
                 self.assertIn(
                     "Error saving log file to bucket",
                     stdout.getvalue(),
@@ -110,12 +110,12 @@ class TestStreamLog(unittest.TestCase):
         self.assertTrue(self.stream_log.logging_enabled)
         self.stream_log.write(b"\x00\x01\x02\x03")
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.assertFalse(self.stream_log.logging_enabled)
         self.assertEqual(len(self.mock_s3.files()), 1)
         self.stream_log.start()
         self.assertTrue(self.stream_log.logging_enabled)
         self.stream_log.write(b"\x00\x01\x02\x03")
         self.stream_log.stop()
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.assertEqual(len(self.mock_s3.files()), 2)

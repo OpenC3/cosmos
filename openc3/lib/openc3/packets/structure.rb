@@ -603,7 +603,7 @@ module OpenC3
       if item.variable_bit_size
         # Bit size is determined by length field
         length_value = self.read(item.variable_bit_size['length_item_name'], :CONVERTED)
-        if item.data_type == :INT or item.data_type == :UINT and not item.original_array_size
+        if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
           case length_value
           when 0
             return 6
@@ -641,7 +641,14 @@ module OpenC3
             # Calculate the actual current size of this variable length item
             new_bit_size = calculate_total_bit_size(item)
 
-            if item.original_bit_size != new_bit_size
+            if item.original_array_size
+              # Array size has changed from original - so we need to adjust everything after this item
+              # This includes items that may have the same bit_offset as the variable length item because it
+              # started out at zero bit_size
+              if item.original_array_size != new_bit_size
+                adjustment += (new_bit_size - item.original_array_size)
+              end
+            elsif item.original_bit_size != new_bit_size
               # Bit size has changed from original - so we need to adjust everything after this item
               # This includes items that may have the same bit_offset as the variable length item because it
               # started out at zero bit_size
