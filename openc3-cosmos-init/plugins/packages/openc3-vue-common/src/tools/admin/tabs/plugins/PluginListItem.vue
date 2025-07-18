@@ -49,7 +49,11 @@
     <td>
       <v-menu>
         <template #activator="{ props }">
-          <v-icon v-bind="props" icon="mdi-dots-horizontal" />
+          <v-icon
+            v-bind="props"
+            icon="mdi-dots-horizontal"
+            data-test="plugin-actions"
+          />
         </template>
         <v-list>
           <v-list-item
