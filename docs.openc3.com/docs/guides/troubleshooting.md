@@ -13,7 +13,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. COSMOS becomes slow or unresponsive especially as additional plugins are added
 
-   You may be maxing out your system. If you're on Enterprise you can check the [System Health Tool](https://docs.openc3.com/docs/tools/systemhealth). Exec into the operator container (runs all the microservices) and see what the utilization is. NOTE: The container name may be different but you find it with `docker ps`.
+   You may be maxing out your system. If you're on Enterprise you can check the [System Health Tool](/docs/tools/systemhealth). Exec into the operator container (runs all the microservices) and see what the utilization is. NOTE: The container name may be different but you find it with `docker ps`.
 
    ```bash
    docker ps
@@ -39,7 +39,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You've enabled certificates and you're getting networking errors
 
-   Make sure you've followed the instructions in the [COSMOS Enterprise Project](https://github.com/OpenC3/cosmos-enterprise-project?tab=readme-ov-file#opening-to-the-network).
+   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [COSMOS Enterprise Project](https://github.com/OpenC3/cosmos-enterprise-project?tab=readme-ov-file#opening-to-the-network) instructions.
 
 1. You're getting 404 errors, missing icons, missing tools or functionality
 
