@@ -119,36 +119,80 @@ module OpenC3
       end
     end
 
-    def self.db_lookup(target_name:, packet_name:, date_time:, scope: $openc3_scope)
+    def self.db_lookup(items, date_time:, scope: $openc3_scope)
       puts "PG::Connection host: #{ENV['OPENC3_PG_ADDR']}, port: #{ENV['OPENC3_PG_PORT']}, user: #{ENV['OPENC3_PG_USERNAME']}, password: #{ENV['OPENC3_PG_PASSWQRD']}"
       @@conn ||= PG::Connection.new(host: 'openc3-cosmos-questdb-questdb-1',
                                     port: 8812,
                                     user: 'openc3quest',
                                     password: 'openc3questpassword',
                                     dbname: 'qdb')
-      # tables = []
-      # items = []
-      # lookups.each do |target_packet_key, target_name, packet_name, value_keys|
-      #   unless value_keys.is_a?(Hash) # Set in _parse_item to indicate override
-      #     tables << "#{target_name}__#{packet_name}"
-      #     items << value_keys
-      #   end
-      # end
-      # tables.uniq! # Remove duplicates
-      # query = "SELECT * FROM #{tables[0]} as T1 ASOF JOIN #{tables[1..-1].join(" ASOF JOIN ")} WHERE T1.timestamp < '#{date_time}' LIMIT -1"
+
+      tables = {}
+      names = []
+      items.each do |item|
+        target_name, packet_name, item_name, value_type, limits = item
+        table_name = "#{target_name}__#{packet_name}"
+        tables[table_name] = 1
+        index = tables.find_index {|k,v| k == table_name }
+        case value_type
+        when 'WITH_UNITS'
+          names << "T#{index}.#{item_name}__U"
+        when 'FORMATTED'
+          names << "T#{index}.#{item_name}__F"
+        when 'CONVERTED'
+          names << "T#{index}.#{item_name}__C"
+        else
+          names << "T#{index}.#{item_name}"
+        end
+        if limits
+          names << "T#{index}.#{item_name}__L"
+        end
+      end
+      retry_count = 0
       begin
-        query = "SELECT * FROM #{target_name}__#{packet_name} WHERE timestamp < '#{date_time}' LIMIT -1"
+        query = "SELECT #{names.join(", ")} FROM "
+        tables.each_with_index do |(table_name, _), index|
+          if index == 0
+            query += "#{table_name} as T#{index} "
+          else
+            query += "ASOF JOIN #{table_name} as T#{index} "
+          end
+        end
+        query += "WHERE T0.timestamp < '#{date_time}' LIMIT -1"
         puts "QuestDB Query: #{query}"
         result = @@conn.exec(query)
         if result.ntuples == 0
           return {}
         else
-          data = result.tuple(0)
-          pp data
-          return data.to_h
+          index = 0
+          data = []
+          # Build up a results set that is an array of arrays
+          # Each nested array is a set of 2 items: [value, limits state]
+          # If the item does not have limits the limits state is nil
+          result.tuple(0).each do |key, value|
+            if key.include?("__L")
+              data[index - 1][1] = value
+            else
+              data[index] = [value, nil]
+              index += 1
+            end
+          end
+          return data
         end
       rescue PG::Error => e
-        raise "Error querying QuestDB: #{e.message}"
+        retry_count += 1
+        if retry_count > 5
+          raise "Error querying QuestDB: #{e.message}"
+        end
+        Logger.warn("Retrying due to error querying QuestDB: #{e.message}")
+        @@conn.close()
+        sleep 0.1
+        @@conn = PG::Connection.new(host: 'openc3-cosmos-questdb-questdb-1',
+                                    port: 8812,
+                                    user: 'openc3quest',
+                                    password: 'openc3questpassword',
+                                    dbname: 'qdb')
+        retry
       end
     end
 
@@ -163,17 +207,20 @@ module OpenC3
       lookups = []
       packet_lookup = {}
       overrides = {}
+
+      # If a date_time is passed we're doing a QuestDB lookup and directly return the results
+      # TODO: This currently does NOT support the override values
+      if date_time
+        return db_lookup(items, date_time: date_time, scope: scope)
+      end
+
       # First generate a lookup hash of all the items represented so we can query the CVT
       items.each { |item| _parse_item(now, lookups, overrides, item, cache_timeout: cache_timeout, scope: scope) }
 
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          if date_time
-            packet_lookup[target_packet_key] = db_lookup(target_name: target_name, packet_name: packet_name, date_time: date_time, scope: scope)
-          else
-            packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
-          end
+          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
@@ -186,14 +233,14 @@ module OpenC3
           end
           # If we were able to find a value, try to get the limits state
           if item_result[0]
-            # if now - hash['RECEIVED_TIMESECONDS'] > stale_time
-            #   item_result[1] = :STALE
-            # else
+            if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+              item_result[1] = :STALE
+            else
               # The last key is simply the name (RAW) so we can append __L
               # If there is no limits then it returns nil which is acceptable
               item_result[1] = hash["#{value_keys[-1]}__L"]
               item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
-            # end
+            end
           else
             # We didn't find a value but the packet hash contains the key so the item exists
             # Thus set the result to nil so it comes back like a normal item

@@ -49,6 +49,7 @@ module OpenC3
                        'normalize_tlm',
                        'get_tlm_buffer',
                        'get_tlm_packet',
+                       'get_tlm_available',
                        'get_tlm_values',
                        'get_all_tlm',
                        'get_all_telemetry', # DEPRECATED
@@ -254,6 +255,68 @@ module OpenC3
       items.zip(current_values).map { | item , values | [item, values[0], values[1]]}
     end
 
+    # Returns the available items from a list of requested screen items
+    # This does the packet introspection to determine what is actually available
+    # Like if you ask for WITH_UNITS but only RAW is available
+    def get_tlm_available(items, manual: false, scope: $openc3_scope, token: $openc3_token)
+      results = []
+      items.each do |item|
+        item_upcase = item.to_s.upcase
+        target_name, orig_packet_name, item_name, value_type = item_upcase.split('__')
+        packet_name = orig_packet_name
+        raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
+        if orig_packet_name == 'LATEST'
+          # TODO: Do we need to lookup ALL the possible packets for this item?
+          # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
+          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: 1, scope: scope)
+        end
+        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+        begin
+          item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+          if Packet::RESERVED_ITEM_NAMES.include?(item_name)
+            value_type = 'RAW' # Must request the raw value when dealing with the reserved items
+          end
+
+          case value_type
+          when 'WITH_UNITS'
+            if item['units']
+              results << [target_name, orig_packet_name, item_name, 'WITH_UNITS'].join('__')
+            elsif item['format_string']
+              results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
+            elsif item['read_conversion'] or item['states']
+              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
+            else
+              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
+            end
+          when 'FORMATTED'
+            if item['format_string']
+              results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
+            elsif item['read_conversion'] or item['states']
+              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
+            else
+              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
+            end
+          when 'CONVERTED'
+            if item['read_conversion'] or item['states']
+              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
+            else
+              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
+            end
+          else # RAW or unknown
+            results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
+          end
+
+          # Tack on __LIMITS to notify that we have an available limits value
+          if item['limits']['DEFAULT']
+            results[-1] += '__LIMITS'
+          end
+        rescue RuntimeError => e
+          results << nil
+        end
+      end
+      results
+    end
+
     # Returns all the item values (along with their limits state). The items
     # can be from any target and packet and thus must be fully qualified with
     # their target and packet names.
@@ -272,11 +335,12 @@ module OpenC3
       cvt_items = []
       items.each_with_index do |item, index|
         item_upcase = item.to_s.upcase
-        target_name, packet_name, item_name, value_type = item_upcase.split('__')
+        target_name, packet_name, item_name, value_type, limits = item_upcase.split('__')
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
-        # Change packet_name in case of LATEST and ensure upcase
-        cvt_items[index] = [target_name, packet_name, item_name, value_type]
+        if packet_name == 'LATEST' # Lookup packet_name in case of LATEST
+          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+        end
+        cvt_items[index] = [target_name, packet_name, item_name, value_type, limits]
         packets << [target_name, packet_name]
       end
       packets.uniq!
@@ -374,16 +438,16 @@ module OpenC3
         raise ArgumentError, "packets must be nested array: [['TGT','PKT'],...]"
       end
 
-      result = {}
+      results = {}
       packets.each do |target_name, packet_name|
         target_name = target_name.upcase
         packet_name = packet_name.upcase
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
         id, _ = Topic.get_newest_message(topic)
-        result[topic] = id ? id : '0-0'
+        results[topic] = id ? id : '0-0'
       end
-      result.to_a.join(SUBSCRIPTION_DELIMITER)
+      results.to_a.join(SUBSCRIPTION_DELIMITER)
     end
     # Alias the singular as well since that matches COSMOS 4
     alias subscribe_packet subscribe_packets

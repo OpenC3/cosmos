@@ -23,17 +23,7 @@
 <template>
   <div>
     <top-bar :title="title" :menus="menus" />
-    <v-banner
-      v-if="playbackMode === 'playback'"
-      color="warning"
-      icon="mdi-history"
-      lines="one"
-      sticky
-    >
-      <template #text>
-        <span class="text-h6">Playback Mode</span>
-      </template>
-    </v-banner>
+    <div v-if="playbackMode === 'playback'" class="playback">Playback Mode</div>
     <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
       <v-expansion-panel>
         <v-expansion-panel-title></v-expansion-panel-title>
@@ -612,6 +602,12 @@ export default {
 </script>
 
 <style>
+.playback {
+  text-align: center;
+  color: black;
+  font-weight: bold;
+  background-color: darkorange;
+}
 /* Flash the chevron icon 3 times to let the user know they can minimize the controls */
 i.v-icon.mdi-chevron-down {
   animation: pulse 2s 3;

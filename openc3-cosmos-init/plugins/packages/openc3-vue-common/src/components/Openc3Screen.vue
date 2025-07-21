@@ -342,10 +342,12 @@ export default {
       zIndex: this.initialZ,
       changeCounter: 0,
       screenItems: [],
+      actualScreenItems: [],
       screenValues: {},
       updateCounter: 0,
       updater: null,
       screenId: uniqueId('openc3-screen_'),
+      tlmAvailableTimeout: null,
     }
   },
   computed: {
@@ -399,16 +401,6 @@ export default {
         }
       },
     },
-    // playbackDateTime: {
-    //   handler(newValue, oldValue) {
-    //     console.log('playbackDateTime changed:', newValue)
-    //     if (this.playbackMode === 'playback') {
-    //       this.playbackDate = format(newValue, 'yyyy-MM-dd')
-    //       this.playbackTime = format(newValue, 'HH:mm:ss')
-    //       console.log('playbackTime', this.playbackTime)
-    //     }
-    //   },
-    // },
   },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
@@ -454,6 +446,10 @@ export default {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
+    }
+    if (this.tlmAvailableTimeout != null) {
+      clearTimeout(this.tlmAvailableTimeout)
+      this.tlmAvailableTimeout = null
     }
   },
   methods: {
@@ -867,10 +863,10 @@ export default {
       })
     },
     update: function () {
-      if (this.screenItems.length !== 0 && this.configError === false) {
+      if (this.actualScreenItems.length !== 0 && this.configError === false) {
         this.api
           .get_tlm_values(
-            this.screenItems,
+            this.actualScreenItems,
             this.staleTime,
             this.cacheTimeout,
             this.playbackDateTime,
@@ -916,13 +912,33 @@ export default {
         this.screenValues[this.screenItems[i]] = values[i]
       }
     },
+    debouncedUpdateTlmAvailable: function () {
+      if (this.tlmAvailableTimeout != null) {
+        clearTimeout(this.tlmAvailableTimeout)
+      }
+      this.tlmAvailableTimeout = setTimeout(() => {
+        this.api
+          .get_tlm_available(this.screenItems)
+          .then((data) => {
+            this.actualScreenItems = data
+          })
+          .catch((error) => {
+            console.log('Error getting tlm available')
+            console.log(error)
+            this.actualScreenItems = this.screenItems
+          })
+        this.tlmAvailableTimeout = null
+      }, 100)
+    },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
       this.screenValues[valueId] = [null, null, 0]
+      this.debouncedUpdateTlmAvailable()
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)
       this.screenItems.splice(index, 1)
+      this.debouncedUpdateTlmAvailable()
     },
   },
 }
