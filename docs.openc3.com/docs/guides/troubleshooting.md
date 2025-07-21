@@ -63,4 +63,8 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
    In the above example we're making sure the tools/base files are there. You can `cd` into any of the tools and ensure the files are present.
 
+1. On Windows, when using bind mounts in Docker compose, the system "locks up" and screens show "TooManyRequests" error
+
+   We've seen this on old versions of Docker Desktop when using bind mounts instead of named volumes. Our docker compose files use named volumes by default so be careful with bind mounts. We also recommend upgrading Docker Desktop and WLS2 if possible as this maybe OBE in newer versions of Docker Desktop / WSL2.
+
 Encountering an issue not on this list? If you're a customer, please get in touch at [support@openc3.com](mailto:support@openc3.com).
