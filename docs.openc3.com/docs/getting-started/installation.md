@@ -21,11 +21,13 @@ If you're on Linux (recommended for production), we recommend installing Docker 
 - Docker on Windows with WSL2:
 
   - WSL2 consumes 50% of total memory on Windows or 8GB, whichever is less. However, on Windows builds before 20175 (use `winver` to check) it consumes 80% of your total memory. This can have a negative effect on Windows performance!
-  - On Windows builds < 20175 or for more fine grained control, create C:\\Users\\\<username\>\\[.wslconfig](https://docs.microsoft.com/en-us/windows/wsl/wsl-config). Suggested contents on a 32GB machine:
+  - On Windows builds < 20175 or for more fine grained control, create C:\\Users\\\<username\>\\[.wslconfig](https://docs.microsoft.com/en-us/windows/wsl/wsl-config). Suggested contents on a 32GB machine (increase memory as needed):
 
-        [wsl2]
-        memory=16GB
-        swap=0
+    ```
+    [wsl2]
+    memory=16GB
+    swap=0
+    ```
 
 :::warning Important: Modify Docker Connection Timeouts
 Docker by default will break idle (no data) connections after a period of 5 minutes. This "feature" will eventually cause you problems if you don't adjust the Docker settings. This may manifest as idle connections dropping or simply failing to resume after data should have started flowing again. Find the file at C:\\Users\\username\\AppData\\Roaming\\Docker\\settings.json on Windows or ~/Library/Group Containers/group.com.docker/settings.json on MacOS. Modify the value `vpnKitMaxPortIdleTime` to change the timeout (recommend setting to 0). **Note:** 0 means no timeout (idle connections not dropped)
