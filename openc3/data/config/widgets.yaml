@@ -746,11 +746,11 @@ Telemetry Widgets:
           values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
         - name: Width
           required: false
-          description: Width of the LED circle (default = 15)
+          description: Width of the LED circle (default = 20)
           values: .*
         - name: Height
           required: false
-          description: Height of the LED circle (default = 15)
+          description: Height of the LED circle (default = 20)
           values: .*
       example: |
         LED INST PARAMS VALUE5 RAW 25 20 # Ellipse
