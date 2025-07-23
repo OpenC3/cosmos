@@ -83,6 +83,7 @@
                 type="date"
                 style="max-width: 200px"
                 data-test="playback-date"
+                :disabled="playbackPlaying"
               />
               <v-text-field
                 v-model="playbackTime"
@@ -95,33 +96,68 @@
                 step="1"
                 style="max-width: 200px"
                 data-test="playback-time"
+                :disabled="playbackPlaying"
               />
               <v-btn
-                class="bg-success mr-2"
-                data-test="playback-play"
-                @click="playbackPlay"
-              >
-                <v-icon>mdi-play</v-icon>
-                Play
-              </v-btn>
+                icon="mdi-skip-backward"
+                variant="text"
+                aria-label="Skip Backward"
+                data-test="playback-skip-backward"
+                @click="playbackSkipBackward"
+              ></v-btn>
               <v-btn
-                class="bg-warning mr-2"
-                data-test="playback-pause"
-                @click="playbackPause"
-              >
-                <v-icon>mdi-pause</v-icon>
-                Pause
-              </v-btn>
-              <v-select
-                v-model="playbackSpeed"
+                icon="mdi-step-backward"
+                variant="text"
+                aria-label="Step Backward"
+                data-test="playback-step-backward"
+                @click="playbackStepBackward"
+              ></v-btn>
+              <v-btn
+                :icon="playbackPlaying ? 'mdi-pause' : 'mdi-play'"
+                variant="text"
+                class="bg-primary"
+                aria-label="Play / Pause"
+                @click="playbackToggle"
+              ></v-btn>
+              <v-btn
+                icon="mdi-step-forward"
+                variant="text"
+                aria-label="Step Forward"
+                data-test="playback-step-forward"
+                @click="playbackStepForward"
+              ></v-btn>
+              <v-btn
+                icon="mdi-skip-forward"
+                variant="text"
+                aria-label="Skip Forward"
+                data-test="playback-skip-forward"
+                @click="playbackSkipForward"
+              ></v-btn>
+              <v-text-field
+                v-model="playbackStep"
+                class="mr-4 ml-4"
+                density="compact"
+                hide-details
+                variant="outlined"
+                label="Step (Speed)"
+                suffix="secs"
+                type="number"
+                step="1"
+                data-test="playback-speed"
+                style="max-width: 120px"
+              />
+              <v-text-field
+                v-model="playbackSkip"
                 class="mr-4"
                 density="compact"
                 hide-details
                 variant="outlined"
-                label="Speed"
-                :items="playbackSpeedOptions"
-                style="max-width: 200px"
-                data-test="playback-speed"
+                label="Skip"
+                suffix="secs"
+                type="number"
+                step="1"
+                data-test="skip"
+                style="max-width: 120px"
               />
             </v-row>
           </v-container>
@@ -149,6 +185,8 @@
             :initial-left="def.left"
             :initial-z="def.zIndex"
             :time-zone="timeZone"
+            :playback-mode="playbackMode"
+            :playback-date-time="playbackDateTime"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
@@ -223,17 +261,15 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
-      playbackSpeed: 1,
-      playbackSpeedOptions: [
-        { title: '0.5x', value: 0.5 },
-        { title: '1x', value: 1 },
-        { title: '2x', value: 2 },
-        { title: '5x', value: 5 },
-        { title: '10x', value: 10 },
-      ],
+      playbackAvailable: false,
+      playbackStep: 1,
+      playbackSkip: 10,
       playbackDate: '',
       playbackTime: '',
-      playbackMode: false,
+      playbackDateTime: null,
+      playbackMode: 'realtime',
+      playbackTimer: null,
+      playbackPlaying: false,
     }
   },
   computed: {
@@ -246,6 +282,7 @@ export default {
               label: 'Playback Mode',
               checkbox: true,
               checked: this.playbackMode === 'playback',
+              disabled: this.playbackAvailable === false,
               command: () => {
                 this.playbackMode =
                   this.playbackMode === 'playback' ? 'realtime' : 'playback'
@@ -302,18 +339,39 @@ export default {
       deep: true,
     },
     playbackMode: function (mode) {
-      // Initialize playback date and time with current values
-      // Create a new date 1 hr in the past as a default
-      let date = new Date() - 3600000
-      this.playbackDate = this.formatDate(date, this.timeZone)
-      this.playbackTime = this.formatTime(date, this.timeZone)
-
-      this.$nextTick(() => {
-        this.definitions.forEach((def) => {
-          const screenRef = this.$refs[`screen-${def.id}`][0]
-          screenRef.setPlaybackMode(mode)
-        })
-      })
+      if (mode === 'playback') {
+        // Initialize playback date and time with current values
+        // Create a new date 1 hr in the past as a default
+        let date = new Date() - 3600000
+        this.playbackDate = this.formatDate(date, this.timeZone)
+        this.playbackTime = this.formatTime(date, this.timeZone)
+      } else {
+        this.playbackPause()
+      }
+    },
+    playbackDateTime: function () {
+      if (this.playbackDateTime) {
+        this.playbackDate = this.formatDate(
+          this.playbackDateTime,
+          this.timeZone,
+        )
+        this.playbackTime = this.formatTime(
+          this.playbackDateTime,
+          this.timeZone,
+        )
+      }
+    },
+    playbackStep: function () {
+      localStorage[`${this.configKey}__step`] = this.playbackStep
+    },
+    playbackSkip: function () {
+      localStorage[`${this.configKey}__skip`] = this.playbackSkip
+    },
+    playbackDate: function () {
+      localStorage[`${this.configKey}__date`] = this.playbackDate
+    },
+    playbackTime: function () {
+      localStorage[`${this.configKey}__time`] = this.playbackTime
     },
   },
   created() {
@@ -329,6 +387,18 @@ export default {
       })
       .catch((error) => {
         // Do nothing
+      })
+    Api.get('/openc3-api/questdb', {
+      headers: {
+        // Since we're just checking for existence, 404 is possible so ignore it
+        'Ignore-Errors': '404',
+      },
+    })
+      .then((_response) => {
+        this.playbackAvailable = true
+      })
+      .catch((_error) => {
+        this.playbackAvailable = false
       })
     Api.get('/openc3-api/screens').then((response) => {
       response.data.forEach((filename) => {
@@ -360,6 +430,19 @@ export default {
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.keywords = response.data
     })
+
+    if (localStorage[`${this.configKey}__step`]) {
+      this.playbackStep = localStorage[`${this.configKey}__step`]
+    }
+    if (localStorage[`${this.configKey}__skip`]) {
+      this.playbackSkip = localStorage[`${this.configKey}__skip`]
+    }
+    if (localStorage[`${this.configKey}__date`]) {
+      this.playbackDate = localStorage[`${this.configKey}__date`]
+    }
+    if (localStorage[`${this.configKey}__time`]) {
+      this.playbackTime = localStorage[`${this.configKey}__time`]
+    }
   },
   mounted() {
     this.grid = new Muuri('.grid', {
@@ -368,6 +451,11 @@ export default {
       dragHandle: '.v-toolbar',
     })
     this.grid.on('dragEnd', this.refreshLayout)
+  },
+  beforeUnmount() {
+    if (this.playbackTimer) {
+      clearInterval(this.playbackTimer)
+    }
   },
   methods: {
     targetSelect(target) {
@@ -577,25 +665,71 @@ export default {
     saveConfiguration: function (name) {
       this.saveConfigBase(name, this.currentConfig)
     },
+    playbackToggle() {
+      if (this.playbackPlaying) {
+        this.playbackPause()
+      } else {
+        this.playbackPlay()
+      }
+    },
+    playbackStepBackward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() - 1000 * this.playbackStep,
+        )
+      }
+    },
+    playbackStepForward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() + 1000 * this.playbackStep,
+        )
+      }
+    },
+    playbackSkipBackward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() - 1000 * this.playbackSkip,
+        )
+      }
+    },
+    playbackSkipForward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() + 1000 * this.playbackSkip,
+        )
+      }
+    },
     playbackPlay() {
-      this.$nextTick(() => {
-        this.definitions.forEach((def) => {
-          const screenRef = this.$refs[`screen-${def.id}`][0]
-          screenRef.playbackPlay(
-            this.playbackDate,
-            this.playbackTime,
-            this.playbackSpeed,
+      if (this.timeZone === 'UTC') {
+        this.playbackDateTime = new Date(
+          `${this.playbackDate}T${this.playbackTime}Z`,
+        )
+      } else {
+        this.playbackDateTime = new Date(
+          `${this.playbackDate}T${this.playbackTime}`,
+        )
+      }
+
+      if (this.playbackTimer) {
+        clearInterval(this.playbackTimer)
+      }
+
+      this.playbackTimer = setInterval(() => {
+        if (this.playbackDateTime) {
+          this.playbackDateTime = new Date(
+            this.playbackDateTime.getTime() + 1000 * this.playbackStep,
           )
-        })
-      })
+        }
+      }, 1000)
+      this.playbackPlaying = true
     },
     playbackPause() {
-      this.$nextTick(() => {
-        this.definitions.forEach((def) => {
-          const screenRef = this.$refs[`screen-${def.id}`][0]
-          screenRef.playbackPause()
-        })
-      })
+      if (this.playbackTimer) {
+        clearInterval(this.playbackTimer)
+        this.playbackTimer = null
+      }
+      this.playbackPlaying = false
     },
   },
 }

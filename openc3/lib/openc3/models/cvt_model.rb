@@ -120,36 +120,36 @@ module OpenC3
     end
 
     def self.db_lookup(items, date_time:, scope: $openc3_scope)
-      puts "PG::Connection host: #{ENV['OPENC3_PG_ADDR']}, port: #{ENV['OPENC3_PG_PORT']}, user: #{ENV['OPENC3_PG_USERNAME']}, password: #{ENV['OPENC3_PG_PASSWQRD']}"
-      @@conn ||= PG::Connection.new(host: 'openc3-cosmos-questdb-questdb-1',
-                                    port: 8812,
-                                    user: 'openc3quest',
-                                    password: 'openc3questpassword',
-                                    dbname: 'qdb')
-
       tables = {}
       names = []
       items.each do |item|
         target_name, packet_name, item_name, value_type, limits = item
-        table_name = "#{target_name}__#{packet_name}"
+        table_name = "#{target_name}__#{packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
+        item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~]/, '_')
         case value_type
         when 'WITH_UNITS'
-          names << "T#{index}.#{item_name}__U"
+          names << "\"T#{index}.#{item_name}__U\""
         when 'FORMATTED'
-          names << "T#{index}.#{item_name}__F"
+          names << "\"T#{index}.#{item_name}__F\""
         when 'CONVERTED'
-          names << "T#{index}.#{item_name}__C"
+          names << "\"T#{index}.#{item_name}__C\""
         else
-          names << "T#{index}.#{item_name}"
+          names << "\"T#{index}.#{item_name}\""
         end
         if limits
-          names << "T#{index}.#{item_name}__L"
+          names << "\"T#{index}.#{item_name}__L\""
         end
       end
       retry_count = 0
       begin
+        @@conn ||= PG::Connection.new(host: ENV['OPENC3_QUEST_HOSTNAME'],
+                                      port: ENV['OPENC3_QUEST_PORT'],
+                                      user: ENV['OPENC3_QUEST_USERNAME'],
+                                      password: ENV['OPENC3_QUEST_PASSWQRD'],
+                                      dbname: 'qdb')
+
         query = "SELECT #{names.join(", ")} FROM "
         tables.each_with_index do |(table_name, _), index|
           if index == 0
@@ -159,9 +159,8 @@ module OpenC3
           end
         end
         query += "WHERE T0.timestamp < '#{date_time}' LIMIT -1"
-        puts "QuestDB Query: #{query}"
         result = @@conn.exec(query)
-        if result.ntuples == 0
+        if result.nil? or result.ntuples == 0
           return {}
         else
           index = 0
@@ -179,19 +178,18 @@ module OpenC3
           end
           return data
         end
-      rescue PG::Error => e
+      rescue IOError, PG::Error => e
         retry_count += 1
         if retry_count > 5
           raise "Error querying QuestDB: #{e.message}"
         end
-        Logger.warn("Retrying due to error querying QuestDB: #{e.message}")
-        @@conn.close()
+        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
+        Logger.warn("QuestDB: Last query: #{query}")
+        if @@conn and !@@conn.finished?
+          @@conn.finish()
+        end
         sleep 0.1
-        @@conn = PG::Connection.new(host: 'openc3-cosmos-questdb-questdb-1',
-                                    port: 8812,
-                                    user: 'openc3quest',
-                                    password: 'openc3questpassword',
-                                    dbname: 'qdb')
+        @@conn = nil # Force the new connection
         retry
       end
     end
@@ -220,7 +218,13 @@ module OpenC3
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          begin
+            packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          rescue => e
+            Logger.error("Could not get #{target_name}, #{packet_name} from CVT: #{e.message}")
+            packet_lookup[target_packet_key] = {}
+            next
+          end
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
@@ -247,7 +251,9 @@ module OpenC3
             if hash.key?(value_keys[-1])
               item_result[1] = nil
             else
-              raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist"
+              Logger.warn("Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist")
+              item_result[0] = nil
+              item_result[1] = nil
             end
           end
         end

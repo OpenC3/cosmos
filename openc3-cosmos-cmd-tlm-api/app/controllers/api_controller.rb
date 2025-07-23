@@ -14,17 +14,31 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/open_telemetry'
+require 'pg'
 
 class ApiController < ApplicationController
   def ping
     render plain: 'OK'
+  end
+
+  def questdb
+    begin
+      PG::Connection.new(host: ENV['OPENC3_QUEST_HOSTNAME'],
+                         port: ENV['OPENC3_QUEST_PORT'],
+                         user: ENV['OPENC3_QUEST_USERNAME'],
+                         password: ENV['OPENC3_QUEST_PASSWQRD'],
+                         dbname: 'qdb').close() # Default dbname
+      render plain: 'OK', status: 200
+    rescue => e
+      render plain: e.message, status: 404
+    end
   end
 
   def api

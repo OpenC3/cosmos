@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -243,20 +243,28 @@ export default {
       return type
     },
     formatValue(value) {
-      if (
-        value &&
-        this.valueId &&
-        (this.valueId.toUpperCase().includes('PACKET_TIMEFORMATTED') ||
-          this.valueId.toUpperCase().includes('RECEIVED_TIMEFORMATTED'))
-      ) {
-        // Our dates have / rather than - which results in an invalid date on old browsers
-        // when they call new Date(value)
-        value = this.formatUtcToLocal(
-          new Date(value.replaceAll('/', '-')),
-          this.appliedTimeZone,
+      try {
+        if (
+          value &&
+          this.valueId &&
+          (this.valueId.toUpperCase().includes('PACKET_TIMEFORMATTED') ||
+            this.valueId.toUpperCase().includes('RECEIVED_TIMEFORMATTED'))
+        ) {
+          // Our dates have / rather than - which results in an invalid date on old browsers
+          // when they call new Date(value)
+          value = this.formatUtcToLocal(
+            new Date(value.replaceAll('/', '-')),
+            this.appliedTimeZone,
+          )
+        }
+        return this.formatValueBase(value, this.formatString)
+      } catch (e) {
+        // eslint-disable-next-line
+        console.log(
+          `${this.valueId} formatValue on ${value} with ${this.formatString} failed due to ${e}`,
         )
+        return value
       }
-      return this.formatValueBase(value, this.formatString)
     },
     showContextMenu(e) {
       e.preventDefault()

@@ -296,6 +296,14 @@ export default {
       type: Boolean,
       default: false,
     },
+    playbackMode: {
+      type: String,
+      default: 'realtime',
+    },
+    playbackDateTime: {
+      type: Date,
+      default: null,
+    },
   },
   emits: [
     'close-screen',
@@ -308,9 +316,6 @@ export default {
   ],
   data() {
     return {
-      playbackMode: 'realtime',
-      playbackDateTime: null,
-      playbackSpeed: 1,
       api: null,
       backup: '',
       currentDefinition: this.definition,
@@ -387,10 +392,15 @@ export default {
         this.rerender()
       },
     },
+    playbackDateTime: {
+      handler(newValue, oldValue) {
+        if (this.playbackMode === 'playback' && newValue) {
+          this.update()
+        }
+      },
+    },
     playbackMode: {
       handler(newValue, oldValue) {
-        this.playbackDateTime = null
-        this.playbackSpeed = 1
         if (newValue === 'realtime') {
           this.updateRefreshInterval()
         } else {
@@ -435,7 +445,9 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
-    this.updateRefreshInterval()
+    if (this.playbackMode === 'realtime') {
+      this.updateRefreshInterval()
+    }
     if (this.floated) {
       this.$refs.bar.onmousedown = this.dragMouseDown
       this.$refs.bar.parentElement.parentElement.style =
@@ -475,25 +487,6 @@ export default {
       this.updater = setInterval(() => {
         this.update()
       }, refreshInterval)
-    },
-    // Called by TlmViewer to change the mode
-    setPlaybackMode: function (mode) {
-      this.playbackMode = mode
-    },
-    playbackPlay: function (playbackDate, playbackTime, playbackSpeed) {
-      if (this.timeZone === 'UTC') {
-        this.playbackDateTime = new Date(`${playbackDate}T${playbackTime}Z`)
-      } else {
-        this.playbackDateTime = new Date(`${playbackDate}T${playbackTime}`)
-      }
-      this.playbackSpeed = playbackSpeed
-      this.updateRefreshInterval()
-    },
-    playbackPause: function () {
-      if (this.updater) {
-        clearInterval(this.updater)
-        this.updater = null
-      }
     },
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
@@ -863,19 +856,23 @@ export default {
       })
     },
     update: function () {
+      // Only pass the dateTime if we're in playback mode, null means realtime
+      let dateTime =
+        this.playbackMode === 'playback' ? this.playbackDateTime : null
       if (this.actualScreenItems.length !== 0 && this.configError === false) {
         this.api
           .get_tlm_values(
             this.actualScreenItems,
             this.staleTime,
             this.cacheTimeout,
-            this.playbackDateTime,
+            dateTime,
           )
           .then((data) => {
             this.clearErrors()
             this.updateValues(data)
           })
           .catch((error) => {
+            this.clearErrors()
             let message = JSON.stringify(error, null, 2)
             // Anything other than 'no response received' which means the API server is down
             // is an error the user needs to fix so don't request values until they do
@@ -900,13 +897,6 @@ export default {
     },
     updateValues: function (values) {
       this.updateCounter += 1
-      if (this.playbackMode === 'playback' && this.playbackDateTime) {
-        // Increment playbackTime by playbackSpeed (assume playbackTime is in seconds)
-        this.playbackDateTime = add(this.playbackDateTime, {
-          seconds: this.playbackSpeed,
-        })
-      }
-
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
         this.screenValues[this.screenItems[i]] = values[i]
@@ -923,8 +913,8 @@ export default {
             this.actualScreenItems = data
           })
           .catch((error) => {
-            console.log('Error getting tlm available')
-            console.log(error)
+            // eslint-disable-next-line
+            console.log('Error getting tlm available', error)
             this.actualScreenItems = this.screenItems
           })
         this.tlmAvailableTimeout = null

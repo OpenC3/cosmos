@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -738,6 +738,9 @@ module OpenC3
         items << 'INST__ADCS__PACKET_TIMESECONDS__FORMATTED'
         items << 'INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED'
         items << 'INST__ADCS__RECEIVED_TIMESECONDS__RAW'
+        # Ask for array items
+        items << 'INST__HEALTH_STATUS__ARY__WITH_UNITS'
+        items << 'INST__HEALTH_STATUS__ARY2__WITH_UNITS'
         vals = @api.get_tlm_available(items)
         expect(vals).to eql([
           'INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS',
@@ -757,7 +760,9 @@ module OpenC3
           'INST__ADCS__PACKET_TIMEFORMATTED__RAW',
           'INST__ADCS__PACKET_TIMESECONDS__RAW',
           'INST__ADCS__RECEIVED_TIMEFORMATTED__RAW',
-          'INST__ADCS__RECEIVED_TIMESECONDS__RAW'
+          'INST__ADCS__RECEIVED_TIMESECONDS__RAW',
+          'INST__HEALTH_STATUS__ARY__RAW',
+          'INST__HEALTH_STATUS__ARY2__RAW',
         ])
       end
     end

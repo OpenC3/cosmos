@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -275,6 +275,15 @@ module OpenC3
           item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
           if Packet::RESERVED_ITEM_NAMES.include?(item_name)
             value_type = 'RAW' # Must request the raw value when dealing with the reserved items
+          end
+
+          # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+          if item['array_size']
+            if item['data_type'] == 'STRING' or item['data_type'] == 'BLOCK'
+              results << nil
+              next
+            end
+            value_type = 'RAW'
           end
 
           case value_type
