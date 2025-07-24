@@ -267,7 +267,7 @@ the page.
 Connect with a browser to
 [http://localhost:2900/tools/admin](http://localhost:2900/tools/admin).
 
-Click on the "Install New Plugin" button and navigate to where your plugin is stored and select
+Click on the "Install From File" button and navigate to where your plugin is stored and select
 the `openc3-cosmos-cfs-1.0.0.gem` file. Right of the selection line click on `Install`.
 
 Determine the IP address the cFS container and COSMOS operator container are running at:
