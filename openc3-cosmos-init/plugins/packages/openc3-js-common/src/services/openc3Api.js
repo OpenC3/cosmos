@@ -37,7 +37,7 @@ export function customNumberParser(value) {
 export default class OpenC3Api {
   id = 1
 
-  constructor() { }
+  constructor() {}
 
   async exec(
     method,
@@ -326,12 +326,24 @@ export default class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  async get_tlm_values(items, stale_time = 30, cache_timeout = null) {
+  get_tlm_available(items) {
+    return this.exec('get_tlm_available', [items])
+  }
+
+  async get_tlm_values(
+    items,
+    stale_time = 30,
+    cache_timeout = null,
+    date_time = null,
+  ) {
     let kw_args = {
       stale_time: stale_time,
     }
     if (cache_timeout !== null) {
       kw_args['cache_timeout'] = cache_timeout
+    }
+    if (date_time !== null) {
+      kw_args['date_time'] = date_time.toISOString()
     }
     const data = await this.exec(
       'get_tlm_values',
@@ -340,12 +352,14 @@ export default class OpenC3Api {
       {},
       10000, // 10s timeout ... should never be this long
     )
-    let len = data[0].length
-    let converted = null
-    for (let i = 0; i < len; i++) {
-      converted = this.decode_openc3_type(data[0][i])
-      if (converted !== null) {
-        data[0][i] = converted
+    if (data && data.length > 0) {
+      let len = data[0].length
+      let converted = null
+      for (let i = 0; i < len; i++) {
+        converted = this.decode_openc3_type(data[0][i])
+        if (converted !== null) {
+          data[0][i] = converted
+        }
       }
     }
     return data

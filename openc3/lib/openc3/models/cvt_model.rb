@@ -14,12 +14,13 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'pg'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/models/target_model'
@@ -28,6 +29,7 @@ module OpenC3
   class CvtModel
     @@packet_cache = {}
     @@override_cache = {}
+    @@conn = nil
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
     def self.build_json_from_packet(packet)
@@ -117,24 +119,112 @@ module OpenC3
       end
     end
 
+    def self.db_lookup(items, date_time:, scope: $openc3_scope)
+      tables = {}
+      names = []
+      items.each do |item|
+        target_name, packet_name, item_name, value_type, limits = item
+        table_name = "#{target_name}__#{packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
+        tables[table_name] = 1
+        index = tables.find_index {|k,v| k == table_name }
+        item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~]/, '_')
+        case value_type
+        when 'WITH_UNITS'
+          names << "\"T#{index}.#{item_name}__U\""
+        when 'FORMATTED'
+          names << "\"T#{index}.#{item_name}__F\""
+        when 'CONVERTED'
+          names << "\"T#{index}.#{item_name}__C\""
+        else
+          names << "\"T#{index}.#{item_name}\""
+        end
+        if limits
+          names << "\"T#{index}.#{item_name}__L\""
+        end
+      end
+      retry_count = 0
+      begin
+        @@conn ||= PG::Connection.new(host: ENV['OPENC3_QUEST_HOSTNAME'],
+                                      port: ENV['OPENC3_QUEST_PORT'],
+                                      user: ENV['OPENC3_QUEST_USERNAME'],
+                                      password: ENV['OPENC3_QUEST_PASSWQRD'],
+                                      dbname: 'qdb')
+
+        query = "SELECT #{names.join(", ")} FROM "
+        tables.each_with_index do |(table_name, _), index|
+          if index == 0
+            query += "#{table_name} as T#{index} "
+          else
+            query += "ASOF JOIN #{table_name} as T#{index} "
+          end
+        end
+        query += "WHERE T0.timestamp < '#{date_time}' LIMIT -1"
+        result = @@conn.exec(query)
+        if result.nil? or result.ntuples == 0
+          return {}
+        else
+          index = 0
+          data = []
+          # Build up a results set that is an array of arrays
+          # Each nested array is a set of 2 items: [value, limits state]
+          # If the item does not have limits the limits state is nil
+          result.tuple(0).each do |key, value|
+            if key.include?("__L")
+              data[index - 1][1] = value
+            else
+              data[index] = [value, nil]
+              index += 1
+            end
+          end
+          return data
+        end
+      rescue IOError, PG::Error => e
+        retry_count += 1
+        if retry_count > 5
+          raise "Error querying QuestDB: #{e.message}"
+        end
+        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
+        Logger.warn("QuestDB: Last query: #{query}")
+        if @@conn and !@@conn.finished?
+          @@conn.finish()
+        end
+        sleep 0.1
+        @@conn = nil # Force the new connection
+        retry
+      end
+    end
+
     # Return all item values and limit state from the CVT
     #
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
-    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, scope: $openc3_scope)
+    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, date_time: nil, scope: $openc3_scope)
       now = Time.now
       results = []
       lookups = []
       packet_lookup = {}
       overrides = {}
+
+      # If a date_time is passed we're doing a QuestDB lookup and directly return the results
+      # TODO: This currently does NOT support the override values
+      if date_time
+        return db_lookup(items, date_time: date_time, scope: scope)
+      end
+
       # First generate a lookup hash of all the items represented so we can query the CVT
       items.each { |item| _parse_item(now, lookups, overrides, item, cache_timeout: cache_timeout, scope: scope) }
 
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          begin
+            packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+          rescue => e
+            Logger.error("Could not get #{target_name}, #{packet_name} from CVT: #{e.message}")
+            packet_lookup[target_packet_key] = {}
+            next
+          end
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
@@ -161,7 +251,9 @@ module OpenC3
             if hash.key?(value_keys[-1])
               item_result[1] = nil
             else
-              raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist"
+              Logger.warn("Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist")
+              item_result[0] = nil
+              item_result[1] = nil
             end
           end
         end

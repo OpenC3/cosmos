@@ -227,6 +227,7 @@
 
 <script>
 import { uniqueId } from 'lodash'
+import { format, add } from 'date-fns'
 import { Api, ConfigParserService, OpenC3Api } from '@openc3/js-common/services'
 import WidgetComponents from '@/widgets/WidgetComponents'
 import EditScreenDialog from './EditScreenDialog.vue'
@@ -295,6 +296,14 @@ export default {
       type: Boolean,
       default: false,
     },
+    playbackMode: {
+      type: String,
+      default: 'realtime',
+    },
+    playbackDateTime: {
+      type: Date,
+      default: null,
+    },
   },
   emits: [
     'close-screen',
@@ -338,9 +347,12 @@ export default {
       zIndex: this.initialZ,
       changeCounter: 0,
       screenItems: [],
+      actualScreenItems: [],
       screenValues: {},
       updateCounter: 0,
+      updater: null,
       screenId: uniqueId('openc3-screen_'),
+      tlmAvailableTimeout: null,
     }
   },
   computed: {
@@ -380,6 +392,25 @@ export default {
         this.rerender()
       },
     },
+    playbackDateTime: {
+      handler(newValue, oldValue) {
+        if (this.playbackMode === 'playback' && newValue) {
+          this.update()
+        }
+      },
+    },
+    playbackMode: {
+      handler(newValue, oldValue) {
+        if (newValue === 'realtime') {
+          this.updateRefreshInterval()
+        } else {
+          // Initially playback just clears all updates
+          // The play button restarts the updater
+          clearInterval(this.updater)
+          this.updater = null
+        }
+      },
+    },
   },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
@@ -402,8 +433,7 @@ export default {
           time: new Date().getTime(),
         })
       }
-      // eslint-disable-next-line no-console
-      console.log(this.errors)
+
       this.configError = true
     }
     return false
@@ -415,7 +445,9 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
-    this.updateRefreshInterval()
+    if (this.playbackMode === 'realtime') {
+      this.updateRefreshInterval()
+    }
     if (this.floated) {
       this.$refs.bar.onmousedown = this.dragMouseDown
       this.$refs.bar.parentElement.parentElement.style =
@@ -426,6 +458,10 @@ export default {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
+    }
+    if (this.tlmAvailableTimeout != null) {
+      clearTimeout(this.tlmAvailableTimeout)
+      this.tlmAvailableTimeout = null
     }
   },
   methods: {
@@ -820,14 +856,23 @@ export default {
       })
     },
     update: function () {
-      if (this.screenItems.length !== 0 && this.configError === false) {
+      // Only pass the dateTime if we're in playback mode, null means realtime
+      let dateTime =
+        this.playbackMode === 'playback' ? this.playbackDateTime : null
+      if (this.actualScreenItems.length !== 0 && this.configError === false) {
         this.api
-          .get_tlm_values(this.screenItems, this.staleTime, this.cacheTimeout)
+          .get_tlm_values(
+            this.actualScreenItems,
+            this.staleTime,
+            this.cacheTimeout,
+            dateTime,
+          )
           .then((data) => {
             this.clearErrors()
             this.updateValues(data)
           })
           .catch((error) => {
+            this.clearErrors()
             let message = JSON.stringify(error, null, 2)
             // Anything other than 'no response received' which means the API server is down
             // is an error the user needs to fix so don't request values until they do
@@ -857,13 +902,33 @@ export default {
         this.screenValues[this.screenItems[i]] = values[i]
       }
     },
+    debouncedUpdateTlmAvailable: function () {
+      if (this.tlmAvailableTimeout != null) {
+        clearTimeout(this.tlmAvailableTimeout)
+      }
+      this.tlmAvailableTimeout = setTimeout(() => {
+        this.api
+          .get_tlm_available(this.screenItems)
+          .then((data) => {
+            this.actualScreenItems = data
+          })
+          .catch((error) => {
+            // eslint-disable-next-line
+            console.log('Error getting tlm available', error)
+            this.actualScreenItems = this.screenItems
+          })
+        this.tlmAvailableTimeout = null
+      }, 100)
+    },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
       this.screenValues[valueId] = [null, null, 0]
+      this.debouncedUpdateTlmAvailable()
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)
       this.screenItems.splice(index, 1)
+      this.debouncedUpdateTlmAvailable()
     },
   },
 }

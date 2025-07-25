@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -708,6 +708,62 @@ module OpenC3
         expect(vals[14][0]).to eql "TEMP4"
         expect(vals[14][1]).to eql(-100.0)
         expect(vals[14][2]).to eql :RED_LOW
+      end
+    end
+
+    describe "get_tlm_available" do
+      it "returns a valid list of items based on inputs" do
+        items = []
+        # Ask for WITH_UNITS for an item which has various formats
+        items << 'INST__HEALTH_STATUS__TEMP1__WITH_UNITS'
+        items << 'INST__ADCS__Q1__WITH_UNITS'
+        items << 'INST__LATEST__CCSDSTYPE__WITH_UNITS'
+        items << 'INST__LATEST__CCSDSVER__WITH_UNITS'
+        # Ask for FORMATTED for an item which has various formats
+        items << 'INST__ADCS__Q2__FORMATTED'
+        items << 'INST__ADCS__CCSDSTYPE__FORMATTED'
+        items << 'INST__ADCS__CCSDSVER__FORMATTED'
+        # Ask for CONVERTED for an item which has various formats
+        items << 'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED' # states but no conversion
+        items << 'INST__ADCS__STAR1ID__CONVERTED' # conversion but no states
+        items << 'INST__ADCS__CCSDSVER__CONVERTED'
+        # Ask for RAW item
+        items << 'INST__HEALTH_STATUS__TEMP2__RAW'
+        # Ask for items that do not exist
+        items << 'BLAH__HEALTH_STATUS__TEMP1__WITH_UNITS'
+        items << 'INST__NOPE__TEMP1__WITH_UNITS'
+        items << 'INST__HEALTH_STATUS__NOPE__WITH_UNITS'
+        # Ask for the special items
+        items << 'INST__ADCS__PACKET_TIMEFORMATTED__WITH_UNITS'
+        items << 'INST__ADCS__PACKET_TIMESECONDS__FORMATTED'
+        items << 'INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED'
+        items << 'INST__ADCS__RECEIVED_TIMESECONDS__RAW'
+        # Ask for array items
+        items << 'INST__HEALTH_STATUS__ARY__WITH_UNITS'
+        items << 'INST__HEALTH_STATUS__ARY2__WITH_UNITS'
+        vals = @api.get_tlm_available(items)
+        expect(vals).to eql([
+          'INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS',
+          'INST__ADCS__Q1__FORMATTED',
+          'INST__LATEST__CCSDSTYPE__CONVERTED',
+          'INST__LATEST__CCSDSVER__RAW',
+          'INST__ADCS__Q2__FORMATTED',
+          'INST__ADCS__CCSDSTYPE__CONVERTED',
+          'INST__ADCS__CCSDSVER__RAW',
+          'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED',
+          'INST__ADCS__STAR1ID__CONVERTED',
+          'INST__ADCS__CCSDSVER__RAW',
+          'INST__HEALTH_STATUS__TEMP2__RAW__LIMITS',
+          nil,
+          nil,
+          nil,
+          'INST__ADCS__PACKET_TIMEFORMATTED__RAW',
+          'INST__ADCS__PACKET_TIMESECONDS__RAW',
+          'INST__ADCS__RECEIVED_TIMEFORMATTED__RAW',
+          'INST__ADCS__RECEIVED_TIMESECONDS__RAW',
+          'INST__HEALTH_STATUS__ARY__RAW',
+          'INST__HEALTH_STATUS__ARY2__RAW',
+        ])
       end
     end
 
