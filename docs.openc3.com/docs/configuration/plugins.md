@@ -86,17 +86,20 @@ The following keywords must follow a INTERFACE keyword.
 |-----------|-------------|----------|
 | Target Name | Target name to map to this interface | True |
 
-Ruby Example:
-```ruby
-INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_TARGET DATA
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET DATA
+```
+</TabItem>
+</Tabs>
 
 ### MAP_CMD_TARGET
 <div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for commands only**
@@ -105,17 +108,20 @@ INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.inter
 |-----------|-------------|----------|
 | Target Name | Command target name to map to this interface | True |
 
-Ruby Example:
-```ruby
-INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
+```
+</TabItem>
+</Tabs>
 
 ### MAP_TLM_TARGET
 <div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for telemetry only**
@@ -124,17 +130,20 @@ INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.intern
 |-----------|-------------|----------|
 | Target Name | Telemetry target name to map to this interface | True |
 
-Ruby Example:
-```ruby
-INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 INTERFACE TLM_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
+```
+</TabItem>
+</Tabs>
 
 ### DONT_CONNECT
 **Server will not automatically try to connect to the interface at startup**
@@ -193,20 +202,23 @@ Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the da
 | Protocol Filename or Classname | Ruby or Python filename or class name which implements the protocol | True |
 | Protocol specific parameters | Additional parameters used by the protocol | False |
 
-Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET DATA
+  PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
   MAP_TARGET DATA
   # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
   PROTOCOL READ LengthProtocol 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 ```
-
-Python Example:
-```python
-INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_TARGET DATA
-  PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
-```
+</TabItem>
+</Tabs>
 
 ### OPTION
 **Set a parameter on an interface**
@@ -298,15 +310,18 @@ Command line to execute to run the microservice.
 |-----------|-------------|----------|
 | Args | One or more arguments to exec to run the microservice. | True |
 
-Ruby Example:
-```ruby
-CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
+```
+</TabItem>
+</Tabs>
 
 ### CONTAINER
 <div class="right">(Since 5.7.0)</div>**Docker Container**
@@ -668,17 +683,20 @@ Command line to execute to run the microservice.
 |-----------|-------------|----------|
 | Args | One or more arguments to exec to run the microservice. | True |
 
-Ruby Example:
-```ruby
-MICROSERVICE EXAMPLE openc3-example
-  CMD ruby example_target.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 MICROSERVICE EXAMPLE openc3-example
   CMD python example_target.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+MICROSERVICE EXAMPLE openc3-example
+  CMD ruby example_target.rb
+```
+</TabItem>
+</Tabs>
 
 ### OPTION
 **Pass an option to the microservice**

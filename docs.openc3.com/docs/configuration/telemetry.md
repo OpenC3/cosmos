@@ -57,19 +57,20 @@ The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss
 
 COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
-Ruby Example:
-
-```ruby
-ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
-    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
-```
-
-Python Example:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+```
+</TabItem>
+</Tabs>
 
 Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
 
@@ -231,15 +232,18 @@ Conversions are implemented in a custom Ruby or Python file which should be loca
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION ip_read_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/ip_read_conversion.rb
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION ip_read_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 #### POLY_READ_CONVERSION
 **Adds a polynomial conversion factor to the current telemetry item**
@@ -267,21 +271,24 @@ Generic conversions are not a good long term solution. Consider creating a conve
 | Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
 | Converted Bit Size | Bit size of converted value | False |
 
-Ruby Example:
-```ruby
-APPEND_ITEM ITEM1 32 UINT
-  GENERIC_READ_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
-  GENERIC_READ_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+APPEND_ITEM ITEM1 32 UINT
+  GENERIC_READ_CONVERSION_START
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_READ_CONVERSION_END
+```
+</TabItem>
+</Tabs>
 
 #### GENERIC_READ_CONVERSION_END
 **Complete a generic read conversion**
@@ -320,15 +327,18 @@ See the [Limits Response](/docs/configuration/limits-response) documentation for
 | Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
 | Response Specific Options | Variable length number of options that will be passed to the class constructor | False |
 
-Ruby Example:
-```ruby
-LIMITS_RESPONSE example_limits_response.rb 10
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 LIMITS_RESPONSE example_limits_response.py 10
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+LIMITS_RESPONSE example_limits_response.rb 10
+```
+</TabItem>
+</Tabs>
 
 ### APPEND_ITEM
 **Defines a telemetry item in the current telemetry packet**
@@ -474,15 +484,18 @@ See the [Processor](/docs/configuration/processors) documentation for more infor
 | Processor Class Filename | Name of the Ruby or Python file which implements the processor. This file should be in the target's lib directory. | True |
 | Processor Specific Options | Variable length number of options that will be passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+```
+</TabItem>
+</Tabs>
 
 ### ALLOW_SHORT
 **Process telemetry packets which are less than their defined length**
