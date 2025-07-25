@@ -143,6 +143,16 @@
         <v-col align-self="center" class="mt-2">
           <v-row class="flex-nowrap">
             <v-spacer />
+            <div
+              v-if="contextTag.text"
+              class="context-tag mr-2 mt-4"
+              :style="{ 
+                color: contextTag.fontColor,
+                backgroundColor: contextTag.backgroundColor
+              }"
+            >
+              {{ contextTag.text }}
+            </div>
             <scope-selector class="mr-6 mt-4" />
             <notifications class="mr-6" data-test="notifications" />
             <user-menu class="mr-6" /> </v-row
@@ -193,6 +203,11 @@ export default {
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
+      contextTag: {
+        text: null,
+        fontColor: null,
+        backgroundColor: null,
+      },
     }
   },
   computed: {
@@ -252,6 +267,21 @@ export default {
       .then((response) => {
         if (response) {
           this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    this.api
+      .get_setting('context_tag')
+      .then((response) => {
+        if (response) {
+          const parsed = JSON.parse(response)
+          this.contextTag = {
+            text: parsed.text,
+            fontColor: parsed.fontColor,
+            backgroundColor: parsed.backgroundColor,
+          }
         }
       })
       .catch((error) => {
@@ -399,6 +429,16 @@ a.fixcenter {
 #openc3-app-toolbar .top-bar-divider-full-height {
   margin: -4px 4px;
   min-height: calc(100% + 8px);
+}
+/* Custom CSS as the button color override is not possible. Styling to be close to Astro App States */
+.context-tag {
+  border-radius: 4px;
+  height: 38px;
+  font-family: var(--font-body-2-font-family);
+  padding: .1875rem .5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
 

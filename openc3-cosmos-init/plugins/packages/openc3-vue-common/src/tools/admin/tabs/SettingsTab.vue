@@ -39,6 +39,8 @@
     <ruby-gems-settings />
     <v-divider />
     <pypi-settings />
+    <v-divider />
+    <context-tag-settings />
   </div>
 </template>
 
@@ -54,6 +56,7 @@ import SubtitleSettings from './settings/SubtitleSettings.vue'
 import SourceCodeSettings from './settings/SourceCodeSettings.vue'
 import RubyGemsSettings from './settings/RubyGemsSettings.vue'
 import PypiSettings from './settings/PypiSettings.vue'
+import ContextTagSettings from './settings/ContextTagSettings.vue'
 
 export default {
   components: {
@@ -68,6 +71,7 @@ export default {
     SourceCodeSettings,
     RubyGemsSettings,
     PypiSettings,
+    ContextTagSettings,
   },
 }
 </script>
