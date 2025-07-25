@@ -25,9 +25,11 @@
     <top-bar :menus="menus" :title="title" />
     <v-snackbar
       v-model="showAlert"
-      location="top"
+      absolute
       :color="alertType"
       :timeout="3000"
+      class="apply-top"
+      :style="classificationStyles"
     >
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
@@ -42,7 +44,9 @@
     </v-snackbar>
     <v-snackbar
       v-model="showEditingToast"
-      location="top"
+      absolute
+      class="apply-top"
+      :style="classificationStyles"
       :timeout="-1"
       color="orange"
     >
@@ -251,9 +255,10 @@
         <v-snackbar
           v-model="showSave"
           absolute
-          location="top right"
+          location="right"
           :timeout="-1"
-          class="saving"
+          class="saving apply-top"
+          :style="classificationStyles"
         >
           Saving...
         </v-snackbar>
@@ -510,6 +515,7 @@ import {
   SimpleTextDialog,
   TopBar,
 } from '@/components'
+import { ClassificationBanners } from '@/tools/base'
 import { fileIcon } from '@/util'
 import { EventListDialog } from '@/tools/calendar'
 
@@ -560,7 +566,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
   },
-  mixins: [AceEditorModes],
+  mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
     if (to.params.id) {
       this.tryLoadRunningScript(to.params.id).then(next)
@@ -2780,5 +2786,9 @@ class TestSuite(Suite):
   position: relative;
   cursor: pointer;
   border-radius: 6px;
+}
+
+.apply-top .v-snackbar__wrapper {
+  top: var(--classification-height-top);
 }
 </style>

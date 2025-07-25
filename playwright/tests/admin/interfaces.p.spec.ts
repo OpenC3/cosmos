@@ -28,7 +28,7 @@ test('displays interface names', async ({ page, utils }) => {
   await expect(page.getByText('EXAMPLE_INT')).toBeVisible()
   await expect(page.getByText('TEMPLATED_INT')).toBeVisible()
   // SYSTEM has no interface
-  await expect(page.getByText('SYSTEM')).not.toBeVisible()
+  await expect(page.getByText('SYSTEM', { exact: true })).not.toBeVisible()
 })
 
 test('displays interface details', async ({ page, utils }) => {
