@@ -119,7 +119,17 @@ The generic conversion is meant to be a quick and easy way to apply a conversion
 | Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, TIME</span> | False (warning will be generated) |
 | Size      | Data size in bits after the conversion is applied                                                                                  | False (warning will be generated) |
 
-Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+GENERIC_READ_CONVERSION_START FLOAT 32
+    packet.read('TEMP1') / 1_000_000
+GENERIC_READ_CONVERSION_END
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 GENERIC_READ_CONVERSION_START FLOAT 32
@@ -127,12 +137,7 @@ GENERIC_READ_CONVERSION_START FLOAT 32
 GENERIC_READ_CONVERSION_END
 ```
 
-Python Example:
-
-```python
-GENERIC_READ_CONVERSION_START FLOAT 32
-    packet.read('TEMP1') / 1_000_000
-GENERIC_READ_CONVERSION_END
-```
+</TabItem>
+</Tabs>
 
 COSMOS_META

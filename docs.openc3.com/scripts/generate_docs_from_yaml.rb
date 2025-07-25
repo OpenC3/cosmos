@@ -114,17 +114,23 @@ class CosmosMetaTag
           page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n\n"
         end
       end
-      if data['ruby_example']
-        page << "\nRuby Example:\n"
-        page << "```ruby\n"
-        page << "#{data['ruby_example'].strip}\n"
-        page << "```\n"
-      end
-      if data['python_example']
-        page << "\nPython Example:\n"
-        page << "```python\n"
-        page << "#{data['python_example'].strip}\n"
-        page << "```\n"
+      if data['ruby_example'] or data['python_example']
+        page << "\n<Tabs groupId=\"script-language\">\n"
+        if data['python_example']
+          page << "<TabItem value=\"python\" label=\"Python\">\n"
+          page << "```python\n"
+          page << "#{data['python_example'].strip}\n"
+          page << "```\n"
+          page << "</TabItem>\n"
+        end
+        if data['ruby_example']
+          page << "<TabItem value=\"ruby\" label=\"Ruby\">\n"
+          page << "```ruby\n"
+          page << "#{data['ruby_example'].strip}\n"
+          page << "```\n"
+          page << "</TabItem>\n"
+        end
+        page << "</Tabs>\n"
       end
       saved_level = @level
       if data['modifiers']
