@@ -46,6 +46,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cobs_protocol.py
 ```
 
+Source code for [cobs_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/cobs_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -53,6 +55,8 @@ INTERFACE INTERFACE_NAME <parameters>
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CobsProtocol
 ```
+
+Source code for [cobs_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/cobs_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -120,6 +124,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
 ```
 
+Source code for [burst_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/burst_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -128,6 +134,8 @@ INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
   PROTOCOL READ BurstProtocol 4 0x1ACFFC1D
 ```
+
+Source code for [burst_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/burst_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -153,6 +161,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
 ```
 
+Source code for [fixed_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/fixed_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -160,6 +170,8 @@ INTERFACE INTERFACE_NAME <parameters>
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ FixedProtocol 6 4 0x1ACFFC1D true
 ```
+
+Source code for [fixed_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/fixed_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -197,6 +209,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
 ```
 
+Source code for [length_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/length_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -205,6 +219,8 @@ INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
   PROTOCOL READ LengthProtocol 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D nil true
 ```
+
+Source code for [length_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/length_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -231,6 +247,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
 ```
 
+Source code for [terminated_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/terminated_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -239,6 +257,8 @@ INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
   PROTOCOL READ TerminatedProtocol 0x0A 0x0A True 4 0x44415441
 ```
+
+Source code for [terminated_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/terminated_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -270,6 +290,8 @@ INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil 
   PROTOCOL READ_WRITE GemsProtocol
 ```
 
+Source code for [gems_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-gems-interface/lib/gems_protocol.rb)
+
 </TabItem>
 </Tabs>
 
@@ -292,6 +314,8 @@ The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for C
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsCltuProtocol
 ```
+
+Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -318,6 +342,8 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
 ```
 
+Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
+
 </TabItem>
 </Tabs>
 
@@ -343,6 +369,8 @@ The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Strea
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
 ```
+
+Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -387,6 +415,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/preidentified_protocol.py
 ```
 
+Source code for [preidentified_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/preidentified_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -394,6 +424,8 @@ INTERFACE INTERFACE_NAME <parameters>
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ PreidentifiedProtocol
 ```
+
+Source code for [preidentified_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/preidentified_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -422,6 +454,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
 ```
 
+Source code for [cmd_response_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/cmd_response_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -429,6 +463,8 @@ INTERFACE INTERFACE_NAME <parameters>
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CmdResponseProtocol 5.0 0.1 true
 ```
+
+Source code for [cmd_response_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/cmd_response_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -486,6 +522,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN None None None None
 ```
 
+Source code for [crc_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/crc_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -494,6 +532,8 @@ INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
   PROTOCOL READ CrcProtocol nil true ERROR -32 32 BIG_ENDIAN nil nil nil nil
 ```
+
+Source code for [crc_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/crc_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -516,6 +556,8 @@ INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST MECH
 ```
 
+Source code for [ignore_packet_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/ignore_packet_protocol.py)
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
@@ -524,6 +566,8 @@ INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
   PROTOCOL READ IgnorePacketProtocol INST MECH
 ```
+
+Source code for [ignore_packet_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/ignore_packet_protocol.rb)
 
 </TabItem>
 </Tabs>
