@@ -109,19 +109,22 @@ Values are retrieved using a [ProcessorConversion](/docs/configuration/conversio
 | Item Name | The item name to calculate high and low values for | True |
 | Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
-Ruby Example:
-```ruby
-PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
-ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
-  READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+  READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+```
+</TabItem>
+</Tabs>
 
 ## STATISTICS_PROCESSOR
 **Calculates statistics for a given item**
@@ -136,17 +139,20 @@ over a specified number of samples. Values are retrieved using a [ProcessorConve
 | Samples to Average | The number of samples to average for statistics | True |
 | Value Type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
-Ruby Example:
-```ruby
-PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
-ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
-  READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 PROCESSOR TEMP1STAT openc3/conversions/statistics_processor.py TEMP1 100
 ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT STDDEV FLOAT 64
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
+ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
+  READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64
+```
+</TabItem>
+</Tabs>
 

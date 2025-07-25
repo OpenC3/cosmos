@@ -43,7 +43,7 @@ The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encodi
 
 ```python
 INTERFACE INTERFACE_NAME <parameters>
-  PROTOCOL READ interfaces/protocols/cobs_protocol.py
+  PROTOCOL READ openc3/interfaces/protocols/cobs_protocol.py
 ```
 
 </TabItem>
@@ -75,20 +75,28 @@ The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame I
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
+Usage in plugin.txt:
+
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
-  PROTOCOL READ interfaces/protocols/slip_protocol.py None True True True 0xC0 0xDB 0xDC 0xDD
+  PROTOCOL READ openc3/interfaces/protocols/slip_protocol.py None True True True 0xC0 0xDB 0xDC 0xDD
 ```
+
+Source code for [slip_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/slip_protocol.py)
 
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
+Usage in plugin.txt:
 
 ```ruby
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
   PROTOCOL READ SlipProtocol nil true true true 0xC0 0xDB 0xDC 0xDD
 ```
+
+Source code for [slip_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/slip_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -109,7 +117,7 @@ The Burst Protocol simply reads as much data as it can from the interface before
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
-  PROTOCOL READ interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
+  PROTOCOL READ openc3/interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
 ```
 
 </TabItem>
@@ -142,7 +150,7 @@ The Fixed Protocol reads a preset minimum amount of data which is necessary to p
 
 ```python
 INTERFACE INTERFACE_NAME <parameters>
-  PROTOCOL READ interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
+  PROTOCOL READ openc3/interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
 ```
 
 </TabItem>
@@ -186,7 +194,7 @@ In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**.
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
-  PROTOCOL READ interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
+  PROTOCOL READ openc3/interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
 ```
 
 </TabItem>
@@ -220,7 +228,7 @@ The Terminated Protocol delineates packets using termination characters found at
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
-  PROTOCOL READ interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
+  PROTOCOL READ openc3/interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
 ```
 
 </TabItem>
@@ -376,7 +384,7 @@ The Preidentified Protocol delineates packets using the COSMOS header. This Prot
 
 ```python
 INTERFACE INTERFACE_NAME <parameters>
-  PROTOCOL READ interfaces/protocols/preidentified_protocol.py
+  PROTOCOL READ openc3/interfaces/protocols/preidentified_protocol.py
 ```
 
 </TabItem>
@@ -411,7 +419,7 @@ The Command Response Protocol waits for a response for any commands with a defin
 
 ```python
 INTERFACE INTERFACE_NAME <parameters>
-  PROTOCOL READ interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
+  PROTOCOL READ openc3/interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
 ```
 
 </TabItem>
@@ -475,7 +483,7 @@ The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming t
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
-  PROTOCOL READ interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN None None None None
+  PROTOCOL READ openc3/interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN None None None None
 ```
 
 </TabItem>
@@ -505,7 +513,7 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
-  PROTOCOL READ interfaces/protocols/ignore_packet_protocol.py INST MECH
+  PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST MECH
 ```
 
 </TabItem>
@@ -558,7 +566,20 @@ First, the packet write counter is incremented. Then each write Protocol is give
 
 This is the constructor for your custom Protocol. It should always call super(allow_empty_data) to initialize the base Protocol class.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def __init__(self, allow_empty_data=None):
+    self.interface = None
+    self.allow_empty_data = ConfigParser.handle_true_false_none(allow_empty_data)
+    self.reset()
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 # @param allow_empty_data [true/false] Whether STOP should be returned on empty data
@@ -569,14 +590,8 @@ def initialize(allow_empty_data = false)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def __init__(self, allow_empty_data=None):
-    self.interface = None
-    self.allow_empty_data = ConfigParser.handle_true_false_none(allow_empty_data)
-    self.reset()
-```
+</TabItem>
+</Tabs>
 
 As you can see, every Protocol maintains state on at least two items. The interface variable holds the Interface class instance that the protocol is associated with. This is sometimes necessary to introspect details that only the Interface knows. allow_empty_data is a flag used by the `read_data(data)` method that is discussed later in this document.
 
@@ -584,19 +599,26 @@ As you can see, every Protocol maintains state on at least two items. The interf
 
 The reset method is used to reset internal protocol state when the Interface is connected and/or disconnected. This method should be used for common resetting logic. Connect and Disconnect specific logic are handled in the next two methods.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def reset(self):
+    pass
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def reset
 end
 ```
 
-Base class Python implementation:
-
-```python
-def reset(self):
-    pass
-```
+</TabItem>
+</Tabs>
 
 As you can see, the base class reset implementation doesn't do anything.
 
@@ -604,7 +626,18 @@ As you can see, the base class reset implementation doesn't do anything.
 
 The connect_reset method is used to reset internal Protocol state each time the Interface is connected.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def connect_reset(self):
+    self.reset()
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def connect_reset
@@ -612,12 +645,8 @@ def connect_reset
 end
 ```
 
-Base class Python implementation:
-
-```python
-def connect_reset(self):
-    self.reset()
-```
+</TabItem>
+</Tabs>
 
 The base class connect_reset implementation just calls the reset method to ensure common reset logic is run.
 
@@ -625,7 +654,18 @@ The base class connect_reset implementation just calls the reset method to ensur
 
 The disconnect_reset method is used to reset internal Protocol state each time the Interface is disconnected.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def disconnect_reset(self):
+    self.reset()
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def disconnect_reset
@@ -633,12 +673,8 @@ def disconnect_reset
 end
 ```
 
-Base class Python implementation:
-
-```python
-def disconnect_reset(self):
-    self.reset()
-```
+</TabItem>
+</Tabs>
 
 The base class disconnect_reset implementation just calls the reset method to ensure common reset logic is run.
 
@@ -646,7 +682,26 @@ The base class disconnect_reset implementation just calls the reset method to en
 
 The read_data method is used to analyze and potentially modify any raw data read by an Interface. It takes one parameter as the current state of the data to be analyzed. It can return either a string of data, STOP, or DISCONNECT. If it returns a string, then it believes that data may be ready to be a full packet, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes it needs more data to complete a full packet. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def read_data(self, data, extra=None):
+    if len(data) <= 0:
+        if self.allow_empty_data is None:
+            if self.interface and self.interface.read_protocols[-1] == self:
+                # Last read interface in chain with auto self.allow_empty_data
+                return ("STOP", extra)
+        elif self.allow_empty_data:
+            # Don't self.allow_empty_data means STOP
+            return ("STOP", extra)
+    return (data, extra)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def read_data(data)
@@ -663,20 +718,8 @@ def read_data(data)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def read_data(self, data, extra=None):
-    if len(data) <= 0:
-        if self.allow_empty_data is None:
-            if self.interface and self.interface.read_protocols[-1] == self:
-                # Last read interface in chain with auto self.allow_empty_data
-                return ("STOP", extra)
-        elif self.allow_empty_data:
-            # Don't self.allow_empty_data means STOP
-            return ("STOP", extra)
-    return (data, extra)
-```
+</TabItem>
+</Tabs>
 
 The base class implementation does nothing except return the data it was given. The only exception to this is when handling an empty string. If the allow_empty_data flag is false / False or if it is nil / None and the Protocol is the last in the chain, then the base implementation will return STOP to indicate that it is time to call the Interface `read_interface()` method to get more data. Blank strings are used to signal Protocols that they have an opportunity to return a cached packet.
 
@@ -684,7 +727,18 @@ The base class implementation does nothing except return the data it was given. 
 
 The read_packet method is used to analyze and potentially modify a COSMOS packet before it is returned by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be returned, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). This method is where a Protocol would set the stored flag on a packet if it determines that the packet is stored telemetry instead of real-time telemetry.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def read_packet(self, packet):
+    return packet
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def read_packet(packet)
@@ -692,12 +746,8 @@ def read_packet(packet)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def read_packet(self, packet):
-    return packet
-```
+</TabItem>
+</Tabs>
 
 The base class always just returns the packet given.
 
@@ -705,7 +755,18 @@ The base class always just returns the packet given.
 
 The write_packet method is used to analyze and potentially modify a COSMOS packet before it is output by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def write_packet(self, packet):
+    return packet
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def write_packet(packet)
@@ -713,12 +774,8 @@ def write_packet(packet)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def write_packet(self, packet):
-    return packet
-```
+</TabItem>
+</Tabs>
 
 The base class always just returns the packet given.
 
@@ -726,7 +783,18 @@ The base class always just returns the packet given.
 
 The write_data method is used to analyze and potentially modify data before it is written out by the Interface. It takes one parameter as the current state of the data to be analyzed and sent. It can return either a string of data, STOP, or DISCONNECT. If it returns a string of data, then it believes that the data is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the data should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def write_data(self, data, extra=None):
+    return (data, extra)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def write_data(data)
@@ -734,12 +802,8 @@ def write_data(data)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def write_data(self, data, extra=None):
-    return (data, extra)
-```
+</TabItem>
+</Tabs>
 
 The base class always just returns the data given.
 
@@ -747,7 +811,18 @@ The base class always just returns the data given.
 
 The post_write_interface method is called after data has been written out the Interface. The typical use of this method is to provide a hook to implement command/response type interfaces where a response is always immediately expected in response to a command. It takes two parameters, the packet after all modifications by `write_packet()` and the data that was actually written out the Interface. It can return either the same pair of packet/data, STOP, or DISCONNECT. If it returns a packet/data pair then they are passed on to any other Protocols. If STOP is returned then the Interface write() call completes and no further Protocols `post_write_interface()` methods are called. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). Note that only the first parameter "packet", is checked to be STOP, or DISCONNECT on the return.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def post_write_interface(self, packet, data, extra=None):
+    return (packet, data, extra)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def post_write_interface(packet, data)
@@ -755,12 +830,8 @@ def post_write_interface(packet, data)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def post_write_interface(self, packet, data, extra=None):
-    return (packet, data, extra)
-```
+</TabItem>
+</Tabs>
 
 The base class always just returns the packet/data given.
 
@@ -768,7 +839,19 @@ The base class always just returns the packet/data given.
 
 The protocol_cmd method is used to send commands to the protocol itself. This is useful to change protocol behavior during runtime. See [interface_protocol_cmd](../guides/scripting-api#interface_protocol_cmd) for more information.
 
-Base class Ruby implementation:
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def protocol_cmd(self, cmd_name, *cmd_args):
+    # Default do nothing - Implemented by subclasses
+    return False
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 def protocol_cmd(cmd_name, *cmd_args)
@@ -777,13 +860,8 @@ def protocol_cmd(cmd_name, *cmd_args)
 end
 ```
 
-Base class Python implementation:
-
-```python
-def protocol_cmd(self, cmd_name, *cmd_args):
-    # Default do nothing - Implemented by subclasses
-    return False
-```
+</TabItem>
+</Tabs>
 
 The base class does nothing as this is special functionality implemented by subclasses.
 

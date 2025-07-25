@@ -119,15 +119,8 @@ The generic conversion is meant to be a quick and easy way to apply a conversion
 | Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, TIME</span> | False (warning will be generated) |
 | Size      | Data size in bits after the conversion is applied                                                                                  | False (warning will be generated) |
 
-Ruby Example:
-
-```ruby
-GENERIC_READ_CONVERSION_START FLOAT 32
-  packet.read('TEMP1') / 1_000_000
-GENERIC_READ_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 
 ```python
 GENERIC_READ_CONVERSION_START FLOAT 32
@@ -135,22 +128,37 @@ GENERIC_READ_CONVERSION_START FLOAT 32
 GENERIC_READ_CONVERSION_END
 ```
 
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+GENERIC_READ_CONVERSION_START FLOAT 32
+  packet.read('TEMP1') / 1_000_000
+GENERIC_READ_CONVERSION_END
+```
+
+</TabItem>
+</Tabs>
+
 
 ## BIT_REVERSE_CONVERSION
 **Reverses the bits of the current telemetry item. Can be used as both a read and write conversion.**
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION bit_reverse_conversion.rb
-WRITE_CONVERSION bit_reverse_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/bit_reverse_conversion.py
 WRITE_CONVERSION openc3/conversions/bit_reverse_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION bit_reverse_conversion.rb
+WRITE_CONVERSION bit_reverse_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## IP_READ_CONVERSION
 **Reads a packed 32 bit integer into an IP address string**
@@ -160,15 +168,18 @@ For example, 0xFFFF8000 would be converted to '255.255.128.0'.
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION ip_read_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/ip_read_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION ip_read_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## IP_WRITE_CONVERSION
 **Write an ip address string into a packed 32 bit integer**
@@ -179,15 +190,18 @@ For example, '255.255.128.0' would be converted to 0xFFFF8000.
 
 
 
-Ruby Example:
-```ruby
-WRITE_CONVERSION ip_write_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+WRITE_CONVERSION ip_write_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## OBJECT_READ_CONVERSION
 **Reads values from the given packet object**
@@ -202,15 +216,18 @@ returned as a Ruby hash or Python dict. The packet object must be defined in the
 | Target Name | Name of the target | True |
 | Packet Name | Name of the packet | True |
 
-Ruby Example:
-```ruby
-READ_CONVERSION object_read_conversion.rb CMD INST COLLECT
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/object_read_conversion.py CMD INST COLLECT
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION object_read_conversion.rb CMD INST COLLECT
+```
+</TabItem>
+</Tabs>
 
 ## OBJECT_WRITE_CONVERSION
 **Writes values into the given packet object**
@@ -226,15 +243,18 @@ are the values to write. The packet object must be defined in the target's confi
 | Target Name | Name of the target | True |
 | Packet Name | Name of the packet | True |
 
-Ruby Example:
-```ruby
-WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 WRITE_CONVERSION openc3/conversions/object_write_conversion.py CMD INST COLLECT
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
+```
+</TabItem>
+</Tabs>
 
 ## PACKET_TIME_FORMATTED_CONVERSION
 **Converts the packet time to a formatted string like "YYYY/MM/DD HH:MM:SS.US"**
@@ -245,15 +265,18 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION packet_time_formatted_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/packet_time_formatted_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION packet_time_formatted_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## PACKET_TIME_SECONDS_CONVERSION
 **Converts the packet time to a floating point number of seconds since the epoch**
@@ -264,15 +287,18 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION packet_time_seconds_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/packet_time_seconds_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION packet_time_seconds_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## POLYNOMIAL_CONVERSION
 **Adds a polynomial conversion factor to the current item. Can be used as both a read and write conversion.**
@@ -284,18 +310,8 @@ For commands, the conversion factor is applied to raw value set by the user (via
 | C0 | Coefficient | True |
 | Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION polynomial_conversion.rb 10 0.5 0.25
-# Since this is a common conversion it has an alias:
-POLY_READ_CONVERSION 10 0.5 0.25
-
-WRITE_CONVERSION polynomial_conversion.rb 10 0.5 0.25
-# Since this is a common conversion it has an alias:
-POLY_WRITE_CONVERSION 10 0.5 0.25
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
 # Since this is a common conversion it has an alias:
@@ -305,6 +321,19 @@ WRITE_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
 # Since this is a common conversion it has an alias:
 POLY_WRITE_CONVERSION 10 0.5 0.25
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+# Since this is a common conversion it has an alias:
+POLY_READ_CONVERSION 10 0.5 0.25
+
+WRITE_CONVERSION polynomial_conversion.rb 10 0.5 0.25
+# Since this is a common conversion it has an alias:
+POLY_WRITE_CONVERSION 10 0.5 0.25
+```
+</TabItem>
+</Tabs>
 
 ## PROCESSOR_CONVERSION
 **Read a value from a processor**
@@ -319,19 +348,22 @@ See the [Processor](/docs/configuration/processors) documentation for more infor
 | Processor Name | Name of the processor | True |
 | Processor Value | Published processor value | True |
 
-Ruby Example:
-```ruby
-PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
-ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
-  READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+  READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+```
+</TabItem>
+</Tabs>
 
 ## RECEIVED_COUNT_CONVERSION
 **Converts the packet received count to a UINT 32 value**
@@ -341,15 +373,18 @@ This in an internal conversion which is automatically applied to the
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION received_count_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/received_count_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION received_count_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## RECEIVED_TIME_FORMATTED_CONVERSION
 **Converts the packet received time to a formatted string like "YYYY/MM/DD HH:MM:SS.US"**
@@ -360,15 +395,18 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION received_time_formatted_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION received_time_formatted_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## RECEIVED_TIME_SECONDS_CONVERSION
 **Converts the packet received to a floating point number of seconds since the epoch**
@@ -379,15 +417,18 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 
 
-Ruby Example:
-```ruby
-READ_CONVERSION received_time_formatted_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION received_time_formatted_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 ## SEGMENTED_POLYNOMIAL_CONVERSION
 **Adds a segmented polynomial conversion factor to the current item. Can be used as both a read and write conversion.**
@@ -400,22 +441,8 @@ For commands, this conversion factor is applied to the raw value set by the user
 | C0 | Coefficient | True |
 | Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
-# Since this is a common conversion it has an alias:
-SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
-SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
-
-WRITE_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
-# Since this is a common conversion it has an alias:
-SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
-SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
 # Since this is a common conversion it has an alias:
@@ -429,6 +456,23 @@ SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to al
 SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
 SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+# Since this is a common conversion it has an alias:
+SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+
+WRITE_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
+# Since this is a common conversion it has an alias:
+SEG_POLY_WRITE_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
+SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
+SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+```
+</TabItem>
+</Tabs>
 
 ## UNIX_TIME_CONVERSION
 **Converts values to a native Ruby or Python time object**
@@ -440,15 +484,18 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 | Seconds Type | How to read the seconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Microseconds Type | How to read the microseconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+```
+</TabItem>
+</Tabs>
 
 ## UNIX_TIME_FORMATTED_CONVERSION
 **Converts values to a formatted time string like "YYYY/MM/DD HH:MM:SS.US"**
@@ -460,15 +507,18 @@ READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 | Seconds Type | How to read the seconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Microseconds Type | How to read the microseconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/unix_time_formatted_conversion.py TIMESEC TIMEUS
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+```
+</TabItem>
+</Tabs>
 
 ## UNIX_TIME_SECONDS_CONVERSION
 **Converts values to a floating point number of seconds since the epoch**
@@ -480,13 +530,16 @@ READ_CONVERSION openc3/conversions/unix_time_formatted_conversion.py TIMESEC TIM
 | Seconds Type | How to read the seconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 | Microseconds Type | How to read the microseconds item. Defaults to 'RAW'.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/unix_time_seconds_conversion.py TIMESEC TIMEUS
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
+```
+</TabItem>
+</Tabs>
 

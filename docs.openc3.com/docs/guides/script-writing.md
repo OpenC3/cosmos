@@ -506,8 +506,20 @@ Note that all these user input methods provide the user the option to “Cancel�
 
 When possible, a useful design pattern is to write your scripts such that they can run without prompting for any user input. This allows the scripts to be more easily tested and provides a documented default value for any user input choices or values. To implement this pattern, all manual steps such as ask(), prompt(), and infinite wait() statements need to be wrapped with an if statement that checks the value of $manual in Ruby or RunningScript.manual in Python. If the variable is set, then the manual steps should be executed. If not, then a default value should be used.
 
-Ruby Example:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+if RunningScript.manual:
+    temp = ask("Please enter the temperature")
+else:
+    temp = 20.0
+if not RunningScript.manual:
+    print("Skipping infinite wait in auto mode")
+else:
+    wait()
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 if $manual
   temp = ask("Please enter the temperature")
@@ -520,19 +532,8 @@ else
   wait
 end
 ```
-
-Python Example:
-
-```python
-if RunningScript.manual:
-    temp = ask("Please enter the temperature")
-else:
-    temp = 20.0
-if not RunningScript.manual:
-    print("Skipping infinite wait in auto mode")
-else:
-    wait()
-```
+</TabItem>
+</Tabs>
 
 When running suites, there is a checkbox at the top of the tool called “Manual” that affects this $manual variable directly.
 

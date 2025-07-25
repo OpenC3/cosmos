@@ -250,15 +250,18 @@ values to the command. That can be used to check parameter values passed in.
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. Note the built-in Python conversions must specify the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-WRITE_CONVERSION ip_write_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+WRITE_CONVERSION ip_write_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 #### POLY_WRITE_CONVERSION
 **Adds a polynomial conversion factor to the current command parameter**
@@ -300,21 +303,24 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Ruby Example:
-```ruby
-APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
-  GENERIC_WRITE_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
-  GENERIC_WRITE_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
     return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+</TabItem>
+</Tabs>
 
 #### GENERIC_WRITE_CONVERSION_END
 **Complete a generic write conversion**
