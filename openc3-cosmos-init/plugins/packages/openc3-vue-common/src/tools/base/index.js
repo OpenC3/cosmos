@@ -25,6 +25,7 @@ import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import TimeCheck from './TimeCheck.vue'
 import UserMenu from './UserMenu.vue'
+import ContextTag from './ContextTag.vue'
 
 export {
   AppFooter,
@@ -36,4 +37,5 @@ export {
   ScopeSelector,
   TimeCheck,
   UserMenu,
+  ContextTag,
 }

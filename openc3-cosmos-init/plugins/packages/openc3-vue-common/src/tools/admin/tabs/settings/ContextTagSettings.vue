@@ -20,7 +20,7 @@
   <v-card>
     <v-card-title>Context Tag Settings</v-card-title>
     <v-card-subtitle>
-      When enabled, this displays a Context Tag pill on the top right of the screen, with custom colors and text. 
+      When enabled this displays a Context Tag on the top right of the screen with custom colors and text. 
       This can help differentiate environments.
     </v-card-subtitle>
     <v-alert v-model="errorLoading" type="error" closable density="compact">
@@ -224,7 +224,7 @@ export default {
   watch: {
     displayContextTag: function (val) {
       if (val) {
-        this.text = 'REPLACEME'
+        if (!this.text) this.text = 'REPLACEME'
       } else {
         this.text = null
       }
@@ -250,8 +250,8 @@ export default {
     parseSetting: function (response) {
       if (response) {
         const parsed = JSON.parse(response)
-        this.displayContextTag = !!parsed.text
         this.text = parsed.text
+        this.displayContextTag = !!parsed.text
         if (parsed.backgroundColor) {
           const colorExists = this.colors.some(color => color.value === parsed.backgroundColor)
           if (colorExists) {
