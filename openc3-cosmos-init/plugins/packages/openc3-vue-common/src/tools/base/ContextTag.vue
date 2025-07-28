@@ -47,7 +47,7 @@ export default {
   },
   created() {
     this.getContextTagSettings().then(() => {
-      if (!!this.contextTag.text) {
+      if (this.contextTag.text) {
         this.startContextTagAutoRefresh()
       }
     })
