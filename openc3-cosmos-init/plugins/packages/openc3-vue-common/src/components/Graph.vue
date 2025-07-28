@@ -380,7 +380,29 @@ export default {
       type: String,
       default: 'local',
     },
+    domainItem: {
+      type: String,
+      default: '__time',
+    },
+    domainConverter: {
+      type: Function,
+      default: (val) => val,
+    },
+    domainFormatter: {
+      type: Function,
+      default: (val) => val,
+    },
   },
+  emits: [
+    'click',
+    'close-graph',
+    'edit',
+    'min-max-graph',
+    'pause',
+    'resize',
+    'start',
+    'started',
+  ],
   data() {
     return {
       lines: [],
@@ -460,6 +482,23 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+    actualDomainConverter: function () {
+      if (this.domainItem === '__time') {
+        return (val) => val / 1_000_000_000.0 // nsec to sec
+      }
+      return this.domainConverter
+    },
+    actualDomainFormatter: function () {
+      return (val) => {
+        if (val == null) {
+          return '--'
+        } else if (this.domainItem === '__time') {
+          // Convert the unix timestamp into a formatted date / time
+          return this.formatSeconds(val, this.timeZone)
+        }
+        return this.domainFormatter(val)
+      }
     },
   },
   watch: {
@@ -666,10 +705,8 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: 'Time',
-            value: (u, v) =>
-              // Convert the unix timestamp into a formatted date / time
-              v == null ? '--' : this.formatSeconds(v, this.timeZone),
+            label: this.domainItem === '__time' ? 'Time' : this.domainItem,
+            value: (u, v) => this.actualDomainFormatter(v),
           },
           ...chartSeries,
         ],
@@ -1018,6 +1055,7 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            this.addDomainItemToSubscription()
             this.addItemsToSubscription(this.items)
           },
           disconnected: (data) => {
@@ -1111,9 +1149,15 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [1566453600, 1566497660]
+              if (dataMin == null) {
+                if (this.domainItem === '__time') {
+                  return [1566453600, 1566497660]
+                }
+                return [0, 1]
+              }
               return [dataMin, dataMax]
             },
+            time: this.domainItem === '__time',
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1383,11 +1427,28 @@ export default {
         }
       }
     },
+    addDomainItemToSubscription: function () {
+      // Don't add '__time' because it comes across the subscription automatically
+      if (this.domainItem !== '__time') {
+        this.addItemsToSubscription([this.domainItem])
+      }
+    },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
+      const items = itemArray.map((item) => {
+        if (typeof item === 'object') {
+          return this.subscriptionKey(item)
+        } else if (typeof item === 'string') {
+          return item
+        } else {
+          throw new Error(
+            `Invalid subscription item type for ${item}: ${typeof item}`,
+          )
+        }
+      })
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
           (refreshed) => {
@@ -1397,7 +1458,7 @@ export default {
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              items: itemArray.map(this.subscriptionKey),
+              items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
@@ -1482,22 +1543,22 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].__time / 1000000000.0 // Time in seconds
+        let domainVal = this.actualDomainConverter(data[i][this.domainItem])
         let length = this.data[0].length
-        if (length === 0 || time > this.data[0][length - 1]) {
+        if (length === 0 || domainVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, time, data[i])
+          this.set_data_at_index(this.data[0].length - 1, domainVal, data[i])
         } else {
-          let index = bs(this.data[0], time, this.bs_comparator)
+          let index = bs(this.data[0], domainVal, this.bs_comparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
             while (index >= 0) {
-              time -= 1e-5 // Subtract 10 microseconds
-              index = bs(this.data[0], time, this.bs_comparator)
+              domainVal -= 1e-5 // Subtract a small amount (10 microseconds if domain is time in seconds)
+              index = bs(this.data[0], domainVal, this.bs_comparator)
             }
             // Now that we have a unique time, insert at the ideal index
             let ideal_index = -index - 1
@@ -1505,14 +1566,14 @@ export default {
               this.data[j].splice(ideal_index, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, domainVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
             for (let j = 0; j < this.data.length; j++) {
               this.data[j].splice(ideal_index, 0, null)
             }
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, domainVal, data[i])
           }
         }
       }
@@ -1520,8 +1581,11 @@ export default {
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1000000000
         this.$emit('started', newStartTime)
+      } else {
+        // tbh idk why this needs to be in an else. I found this fix by accident while trying to debug an issue where
+        // the graph wouldn't work (but the overview would) when domainItem was anything other than __time.
+        this.dataChanged = true
       }
-      this.dataChanged = true
     },
     bs_comparator: function (element, needle) {
       return element - needle
@@ -1529,7 +1593,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time') {
+        if (key === 'time' || key === this.domainItem) {
           continue
         }
         let key_index = this.indexes[key]

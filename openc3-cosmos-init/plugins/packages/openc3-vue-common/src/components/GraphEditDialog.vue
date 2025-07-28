@@ -253,6 +253,7 @@ export default {
       required: true,
     },
   },
+  emits: ['cancel', 'ok', 'remove', 'update:modelValue'],
   data: function () {
     return {
       tab: 0,
