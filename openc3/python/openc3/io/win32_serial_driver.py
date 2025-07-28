@@ -130,20 +130,16 @@ class Win32SerialDriver:
         total_bytes_written = 0
         
         while total_bytes_written < bytes_to_write:
-            try:
-                bytes_written = self.handle.write(data[total_bytes_written:])
-                if bytes_written <= 0:
-                    raise RuntimeError("Error writing to comm port")
-                
-                total_bytes_written += bytes_written
-                
-                # Check for write timeout
-                if (self.write_timeout and 
-                    (time.time() - start_time > self.write_timeout) and 
-                    total_bytes_written < bytes_to_write):
-                    raise TimeoutError("Write Timeout")
-                    
-            except serial.SerialTimeoutException:
+            bytes_written = self.handle.write(data[total_bytes_written:])
+            if bytes_written <= 0:
+                raise RuntimeError("Error writing to comm port")
+            
+            total_bytes_written += bytes_written
+            
+            # Check for write timeout
+            if (self.write_timeout and 
+                (time.time() - start_time > self.write_timeout) and 
+                total_bytes_written < bytes_to_write):
                 raise TimeoutError("Write Timeout")
     
     def read(self) -> bytes:
