@@ -22,6 +22,21 @@ When defining command parameters you can choose from the following data types: I
 
 <div style={{"clear": 'both'}}></div>
 
+## Command Authority (Enterprise)
+
+Command Authority can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Once Command Authority is enabled, individual users can take and release Command Authority which enables exclusive command and script access to that target for that user. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+
+![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
+![Command Authority in CmdTlm Server](/img/cmd_tlm_server/cmd_authority_targets.png)
+
+## Critical Commanding (Enterprise)
+
+Critical Commanding can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Critical commanding requires a different user to approve each command. When Critical Commanding mode is set to NORMAL, HAZARDOUS and RESTRICTED commands need approval. When Critical Commanding mode is set to ALL, all manual commands will require approval. OFF is the default, and disables Critical Commanding.
+
+Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
+
+![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
+
 # Command Keywords
 
 
