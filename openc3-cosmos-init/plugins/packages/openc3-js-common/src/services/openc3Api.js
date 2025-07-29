@@ -334,7 +334,8 @@ export default class OpenC3Api {
     items,
     stale_time = 30,
     cache_timeout = null,
-    date_time = null,
+    start_time = null,
+    end_time = null,
   ) {
     let kw_args = {
       stale_time: stale_time,
@@ -342,8 +343,11 @@ export default class OpenC3Api {
     if (cache_timeout !== null) {
       kw_args['cache_timeout'] = cache_timeout
     }
-    if (date_time !== null) {
-      kw_args['date_time'] = date_time.toISOString()
+    if (start_time !== null) {
+      kw_args['start_time'] = start_time.toISOString()
+    }
+    if (end_time !== null) {
+      kw_args['end_time'] = end_time.toISOString()
     }
     const data = await this.exec(
       'get_tlm_values',

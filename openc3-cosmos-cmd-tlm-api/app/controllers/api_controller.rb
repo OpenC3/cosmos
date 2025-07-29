@@ -23,18 +23,26 @@
 require 'openc3/utilities/open_telemetry'
 require 'pg'
 
+$tsdb_connection = nil
+
 class ApiController < ApplicationController
   def ping
     render plain: 'OK'
   end
 
-  def questdb
+  # Time Seriese Database (TSDB) presence check
+  def tsdb
+    if $tsdb_connection
+      render plain: 'OK', status: 200
+      return
+    end
     begin
-      PG::Connection.new(host: ENV['OPENC3_QUEST_HOSTNAME'],
-                         port: ENV['OPENC3_QUEST_PORT'],
-                         user: ENV['OPENC3_QUEST_USERNAME'],
-                         password: ENV['OPENC3_QUEST_PASSWQRD'],
+      PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                         port: ENV['OPENC3_TSDB_PORT'],
+                         user: ENV['OPENC3_TSDB_USERNAME'],
+                         password: ENV['OPENC3_TSDB_PASSWORD'],
                          dbname: 'qdb').close() # Default dbname
+      $tsdb_connection = 'OK'
       render plain: 'OK', status: 200
     rescue => e
       render plain: e.message, status: 404

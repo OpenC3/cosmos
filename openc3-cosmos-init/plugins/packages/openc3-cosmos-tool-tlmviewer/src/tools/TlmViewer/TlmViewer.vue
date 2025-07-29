@@ -103,6 +103,7 @@
                 variant="text"
                 aria-label="Skip Backward"
                 data-test="playback-skip-backward"
+                style="margin-top: -5px"
                 @click="playbackSkipBackward"
               ></v-btn>
               <v-btn
@@ -110,6 +111,7 @@
                 variant="text"
                 aria-label="Step Backward"
                 data-test="playback-step-backward"
+                style="margin-top: -5px"
                 @click="playbackStepBackward"
               ></v-btn>
               <v-btn
@@ -117,6 +119,7 @@
                 variant="text"
                 class="bg-primary"
                 aria-label="Play / Pause"
+                style="margin-top: -5px"
                 @click="playbackToggle"
               ></v-btn>
               <v-btn
@@ -124,6 +127,7 @@
                 variant="text"
                 aria-label="Step Forward"
                 data-test="playback-step-forward"
+                style="margin-top: -5px"
                 @click="playbackStepForward"
               ></v-btn>
               <v-btn
@@ -131,6 +135,7 @@
                 variant="text"
                 aria-label="Skip Forward"
                 data-test="playback-skip-forward"
+                style="margin-top: -5px"
                 @click="playbackSkipForward"
               ></v-btn>
               <v-text-field
@@ -339,6 +344,11 @@ export default {
       deep: true,
     },
     playbackMode: function (mode) {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
       if (mode === 'playback') {
         // Initialize playback date and time with current values
         // Create a new date 1 hr in the past as a default
@@ -350,6 +360,11 @@ export default {
       }
     },
     playbackDateTime: function () {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
       if (this.playbackDateTime) {
         this.playbackDate = this.formatDate(
           this.playbackDateTime,
@@ -362,6 +377,11 @@ export default {
       }
     },
     playbackStep: function () {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
       localStorage[`${this.configKey}__step`] = this.playbackStep
     },
     playbackSkip: function () {
@@ -388,7 +408,7 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    Api.get('/openc3-api/questdb', {
+    Api.get('/openc3-api/tsdb', {
       headers: {
         // Since we're just checking for existence, 404 is possible so ignore it
         'Ignore-Errors': '404',
@@ -681,9 +701,12 @@ export default {
     },
     playbackStepForward() {
       if (this.playbackDateTime) {
-        this.playbackDateTime = new Date(
+        const newTime = new Date(
           this.playbackDateTime.getTime() + 1000 * this.playbackStep,
         )
+        if (newTime <= new Date()) {
+          this.playbackDateTime = newTime
+        }
       }
     },
     playbackSkipBackward() {
@@ -695,9 +718,12 @@ export default {
     },
     playbackSkipForward() {
       if (this.playbackDateTime) {
-        this.playbackDateTime = new Date(
+        const newTime = new Date(
           this.playbackDateTime.getTime() + 1000 * this.playbackSkip,
         )
+        if (newTime <= new Date()) {
+          this.playbackDateTime = newTime
+        }
       }
     },
     playbackPlay() {

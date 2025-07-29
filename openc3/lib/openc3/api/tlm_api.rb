@@ -22,7 +22,7 @@
 #
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1963
-
+#
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1957
 
@@ -279,6 +279,7 @@ module OpenC3
 
           # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
           if item['array_size']
+            # TODO: This needs work ... we're JSON encoding non numberic array values
             if item['data_type'] == 'STRING' or item['data_type'] == 'BLOCK'
               results << nil
               next
@@ -336,18 +337,23 @@ module OpenC3
     # @return [Array<Object, Symbol>]
     #   Array consisting of the item value and limits state
     #   given as symbols such as :RED, :YELLOW, :STALE
-    def get_tlm_values(items, stale_time: 30, cache_timeout: nil, manual: false, date_time: nil, scope: $openc3_scope, token: $openc3_token)
-      if !items.is_a?(Array) || !items[0].is_a?(String)
+    def get_tlm_values(items, stale_time: 30, cache_timeout: nil, manual: false, start_time: nil, end_time: nil, scope: $openc3_scope, token: $openc3_token)
+      if !items.is_a?(Array)
         raise ArgumentError, "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
       end
       packets = []
       cvt_items = []
       items.each_with_index do |item, index|
-        item_upcase = item.to_s.upcase
-        target_name, packet_name, item_name, value_type, limits = item_upcase.split('__')
-        raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
-        if packet_name == 'LATEST' # Lookup packet_name in case of LATEST
-          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+        if item.nil?
+          # null items mean that it doesn't exist
+          cvt_items[index] = nil
+        else
+          item_upcase = item.to_s.upcase
+          target_name, packet_name, item_name, value_type, limits = item_upcase.split('__')
+          raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
+          if packet_name == 'LATEST' # Lookup packet_name in case of LATEST
+            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+          end
         end
         cvt_items[index] = [target_name, packet_name, item_name, value_type, limits]
         packets << [target_name, packet_name]
@@ -356,7 +362,7 @@ module OpenC3
       packets.each do |target_name, packet_name|
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       end
-      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, date_time: date_time, scope: scope)
+      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, start_time: start_time, end_time: end_time, scope: scope)
     end
 
     # Returns an array of all the telemetry packet hashes

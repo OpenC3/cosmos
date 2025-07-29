@@ -131,7 +131,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                          |
 | subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                          |
 | subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                   |
-| subscribe_server_messages             | Command and Telemetry Server | Unimplemented                                                       |
+| subscribe_server_messages             | Command and Telemetry Server | Deprecated                                                          |
 | tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                 |
 | unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                          |
 | unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                          |
@@ -163,6 +163,7 @@ ask("<question>", <Blank or Default>, <Password>)
 ```python
 ask("<question>", <Blank or Default>, <Password>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -192,6 +193,7 @@ value = ask("Enter a value or nothing", True)
 value = ask("Enter a value", 10)
 password = ask("Enter your password", False, True)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -213,6 +215,7 @@ ask_string("<question>", <Blank or Default>, <Password>)
 ```python
 ask_string("<question>", <Blank or Default>, <Password>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -242,6 +245,7 @@ string = ask_string("Enter a value or nothing", True)
 string = ask_string("Enter a value", "test")
 password = ask_string("Enter your password", False, True)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -271,6 +275,7 @@ message_box("<Message>", "<button text 1>", ...)
 vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -308,6 +313,7 @@ match value:
     case 'Two':
         print('Sensor Two')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -329,6 +335,7 @@ get_target_file("<File Path>", original: false)
 ```python
 get_target_file("<File Path>", original=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -363,6 +370,7 @@ file = get_target_file("INST/procedures/checks.rb", original=True)
 print(file.read())
 file.close() # delete file
 ```
+
 </TabItem>
 </Tabs>
 
@@ -384,6 +392,7 @@ put_target_file("<File Path>", "IO or String")
 ```python
 put_target_file("<File Path>", "IO or String")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -416,6 +425,7 @@ file.seek(0)
 put_target_file("INST/test2.txt", file)
 put_target_file("INST/test3.bin", b"\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
 ```
+
 </TabItem>
 </Tabs>
 
@@ -437,6 +447,7 @@ delete_target_file("<File Path>")
 ```python
 delete_target_file("<File Path>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -460,6 +471,7 @@ delete_target_file("INST/delete_me.txt")
 put_target_file("INST/delete_me.txt", "to be deleted")
 delete_target_file("INST/delete_me.txt")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -487,6 +499,7 @@ open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 open_file_dialog("<Title>", "<Message>", filter="<filter>")
 open_files_dialog("<Title>", "<Message>", filter="<filter>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -531,6 +544,7 @@ for file in files:
     print(file.read())
     file.close()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -556,6 +570,7 @@ prompt("<Message>")
 ```python
 prompt("<Message>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -577,6 +592,7 @@ prompt("Press OK to continue")
 ```python
 prompt("Press OK to continue")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -604,6 +620,7 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -637,6 +654,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -660,6 +678,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_range_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -688,6 +707,7 @@ cmd_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => "NORMAL")
 cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
 cmd_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": "NORMAL"})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -711,6 +731,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_hazardous_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -739,6 +760,7 @@ cmd_no_hazardous_check("INST", "CLEAR")
 cmd_no_hazardous_check("INST CLEAR")
 cmd_no_hazardous_check("INST", "CLEAR")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -762,6 +784,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_checks("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -790,6 +813,7 @@ cmd_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => "SPECIAL")
 cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
 cmd_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": "SPECIAL"})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -813,6 +837,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -841,6 +866,7 @@ cmd_raw("INST", "COLLECT", "DURATION" => 10, "TYPE" => 0)
 cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
 cmd_raw("INST", "COLLECT", {"DURATION": 10, "TYPE": 0})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -864,6 +890,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_range_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -892,6 +919,7 @@ cmd_raw_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => 0)
 cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
 cmd_raw_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": 0})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -915,6 +943,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -943,6 +972,7 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 cmd_raw_no_hazardous_check("INST CLEAR")
 cmd_raw_no_hazardous_check("INST", "CLEAR")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -966,6 +996,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_checks("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -994,6 +1025,7 @@ cmd_raw_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => 1)
 cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1017,6 +1049,7 @@ build_cmd(<ARGS>, range_check: true, raw: false)
 ```python
 build_cmd(<ARGS>, range_check=True, raw=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1042,6 +1075,7 @@ puts x  #=> {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"169643737087
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1067,6 +1101,7 @@ buffer = enable_cmd("<Target Name>", "<Command Name>")
 buffer = enable_cmd("<Target Name> <Command Name>")
 buffer = enable_cmd("<Target Name>", "<Command Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1089,6 +1124,7 @@ enable_cmd("INST ABORT")
 ```python
 enable_cmd("INST ABORT")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1114,6 +1150,7 @@ buffer = disable_cmd("<Target Name>", "<Command Name>")
 buffer = disable_cmd("<Target Name> <Command Name>")
 buffer = disable_cmd("<Target Name>", "<Command Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1136,6 +1173,7 @@ disable_cmd("INST ABORT")
 ```python
 disable_cmd("INST ABORT")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1157,6 +1195,7 @@ send_raw(<Interface Name>, <Data>)
 ```python
 send_raw(<Interface Name>, <Data>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1179,6 +1218,7 @@ send_raw("INST_INT", data)
 ```python
 send_raw("INST_INT", data)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1202,6 +1242,7 @@ get_all_cmds("<Target Name>")
 ```python
 get_all_cmds("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1239,6 +1280,7 @@ print(cmd_list)  #=>
 # ...
 # }]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1262,6 +1304,7 @@ get_all_cmd_names("<Target Name>")
 ```python
 get_all_cmd_names("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1285,6 +1328,7 @@ puts cmd_list  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 cmd_list = get_all_cmd_names("INST")
 print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1310,6 +1354,7 @@ get_cmd("<Target Name>", "<Packet Name>")
 get_cmd("<Target Name> <Packet Name>")
 get_cmd("<Target Name>", "<Packet Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1348,6 +1393,7 @@ print(abort_cmd)  #=>
 # ...
 # }]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1373,6 +1419,7 @@ get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 get_param("<Target Name> <Command Name> <Parameter Name>")
 get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1406,6 +1453,7 @@ print(param)  #=>
 #  'minimum': 0, 'maximum': 65535, 'endianness': 'BIG_ENDIAN', 'required': True, 'overflow': 'ERROR',
 #  'states': {'NORMAL': {'value': 0}, 'SPECIAL': {'value': 1, 'hazardous': ''}}, 'limits': {}}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1429,6 +1477,7 @@ buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1459,6 +1508,7 @@ print(packet)  #=>
 #  'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '21', 'stored': 'false',
 #  'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00@\xe0\x00\x00\xab\x00\x00\x00\x00')}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1480,6 +1530,7 @@ get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>
 ```python
 get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1505,6 +1556,7 @@ puts hazardous  #=> true
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE': 'SPECIAL'})
 print(hazardous) #=> True
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1526,6 +1578,7 @@ get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type
 ```python
 get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type - optional>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1552,6 +1605,7 @@ puts value  #=> 0.0
 value = get_cmd_value("INST", "COLLECT", "TEMP", "RAW")
 print(value)  #=> 0.0
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1573,6 +1627,7 @@ get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 ```python
 get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1599,6 +1654,7 @@ target_name, command_name, time = get_cmd_time() # Name of the most recent comma
 target_name, command_name, time = get_cmd_time("INST") # Name of the most recent command sent to the INST target and time
 target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the most recent INST COLLECT command and time
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1622,6 +1678,7 @@ get_cmd_cnt("<Target Name>", "<Command Name>")
 get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1644,6 +1701,7 @@ cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command
 ```python
 cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1665,6 +1723,7 @@ get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command N
 ```python
 get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1687,6 +1746,7 @@ cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of tim
 ```python
 cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1710,6 +1770,7 @@ critical_cmd_status(uuid)
 ```python
 critical_cmd_status(uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1731,6 +1792,7 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
 ```python
 status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1754,6 +1816,7 @@ critical_cmd_approve(uuid)
 ```python
 critical_cmd_approve(uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1775,6 +1838,7 @@ critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 ```python
 critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1798,6 +1862,7 @@ critical_cmd_reject(uuid)
 ```python
 critical_cmd_reject(uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1819,6 +1884,7 @@ critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 ```python
 critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1842,6 +1908,7 @@ critical_cmd_can_approve(uuid)
 ```python
 critical_cmd_can_approve(uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1863,6 +1930,7 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> tr
 ```python
 status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1888,6 +1956,7 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 ```python
 check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1922,6 +1991,7 @@ check_with_units("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
 check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1943,6 +2013,7 @@ check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <To
 ```python
 check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -1971,6 +2042,7 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type: :RAW)
 check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
 check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2002,6 +2074,7 @@ check_expression(exp_to_eval, context = nil)
 ```python
 check_expression(exp_to_eval, globals=None, locals=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2029,6 +2102,7 @@ def check(value):
     check_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals())
 check(5)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2050,6 +2124,7 @@ check_exception("<Method Name>", "<Method Params - optional>")
 ```python
 check_exception("<Method Name>", "<Method Params - optional>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2072,6 +2147,7 @@ check_exception("cmd", "INST", "COLLECT", "TYPE" => "NORMAL")
 ```python
 check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2095,6 +2171,7 @@ tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 tlm("<Target Name> <Packet Name> <Item Name>")
 tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2131,6 +2208,7 @@ value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
 # Equivalent to tlm_raw
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2154,6 +2232,7 @@ buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2178,6 +2257,7 @@ packet['buffer']
 packet = get_tlm_buffer("INST HEALTH_STATUS")
 packet['buffer']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2201,6 +2281,7 @@ get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 get_tlm_packet("<Target Name> <Packet Name>", <type>)
 get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2224,6 +2305,7 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FOR
 ```python
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2245,6 +2327,7 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```python
 values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2268,6 +2351,7 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
 print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2291,6 +2375,7 @@ get_all_tlm("<Target Name>")
 ```python
 get_all_tlm("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2334,6 +2419,7 @@ print(packets)
 #     "bit_size"=>3,
 #     ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2357,6 +2443,7 @@ get_all_tlm_names("<Target Name>")
 ```python
 get_all_tlm_names("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2378,6 +2465,7 @@ get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```python
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2399,6 +2487,7 @@ get_all_tlm_item_names("<Target Name>")
 ```python
 get_all_tlm_item_names("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2420,6 +2509,7 @@ get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", .
 ```python
 get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2445,6 +2535,7 @@ get_tlm("<Target Name>", "<Packet Name>")
 get_tlm("<Target Name> <Packet Name>")
 get_tlm("<Target Name>", "<Packet Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2503,6 +2594,7 @@ print(packet)
 #    "bit_size"=>3,
 #    ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2526,6 +2618,7 @@ get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 get_item("<Target Name> <Packet Name> <Item Name>")
 get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2567,6 +2660,7 @@ print(item)
 # "required"=>false,
 # "overflow"=>"ERROR"}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2590,6 +2684,7 @@ get_tlm_cnt("<Target Name>", "<Packet Name>")
 get_tlm_cnt("<Target Name> <Packet Name>")
 get_tlm_cnt("<Target Name>", "<Packet Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2612,6 +2707,7 @@ tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_ST
 ```python
 tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2633,6 +2729,7 @@ set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```python
 set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2664,6 +2761,7 @@ check("INST HEALTH_STATUS COLLECTS == 5")
 set_tlm("INST HEALTH_STATUS COLLECTS = 10", type='RAW')
 check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2698,6 +2796,7 @@ inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0})
 ```python
 inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2719,6 +2818,7 @@ override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```python
 override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2746,6 +2846,7 @@ override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # Only RAW tlm set to 0
 override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
 override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # Only RAW tlm set to 0
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2767,6 +2868,7 @@ normalize_tlm("<Target> <Packet> <Item>", <type>)
 ```python
 normalize_tlm("<Target> <Packet> <Item>", <type>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2793,6 +2895,7 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # clear only the RAW overr
 normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
 normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW override
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2814,6 +2917,7 @@ get_overrides()
 ```python
 get_overrides()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2841,6 +2945,7 @@ print(get_overrides()) #=>
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'WITH_UNITS', 'value': '5'} ]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2866,6 +2971,7 @@ subscribe_packets(packets)
 ```python
 subscribe_packets(packets)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2887,6 +2993,7 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```python
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2908,6 +3015,7 @@ get_packets(id, block: nil, count: 1000)
 ```python
 get_packets(id, block=None, count=1000)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2950,6 +3058,7 @@ id, packets = get_packets(id, block=1000, count=1)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2973,6 +3082,7 @@ get_tlm_cnt("<Target>", "<Packet>")
 get_tlm_cnt("<Target> <Packet>")
 get_tlm_cnt("<Target>", "<Packet>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -2995,6 +3105,7 @@ get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 ```python
 get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3016,6 +3127,7 @@ get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 ```python
 get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3038,6 +3150,7 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
 ```python
 get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3061,6 +3174,7 @@ get_packet_derived_items("<Target>", "<Packet>")
 get_packet_derived_items("<Target> <Packet>")
 get_packet_derived_items("<Target>", "<Packet>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3083,6 +3197,7 @@ get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACK
 ```python
 get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3110,6 +3225,7 @@ elapsed = wait(<Time>) #=> Returns the actual time waited
 elapsed = wait() #=> Returns the actual time waited
 elapsed = wait(<Time>) #=> Returns the actual time waited
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3133,6 +3249,7 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 # Returns true or false based on the whether the expression is true or false
 success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3167,6 +3284,7 @@ elapsed = wait(5)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3190,6 +3308,7 @@ success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Va
 # Returns true or false based on the whether the expression is true or false
 success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3252,6 +3371,7 @@ wait_expression(
     quiet=False,
 ) -> bool
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3282,6 +3402,7 @@ def check(value):
     return wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals(), quiet=True)
 success = check(5)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3305,6 +3426,7 @@ success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling
 # Returns true or false based on the whether the packet was received
 success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3331,6 +3453,7 @@ success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_S
 ```python
 success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3354,6 +3477,7 @@ elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Ti
 # Returns the amount of time elapsed waiting for the expression
 elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3383,6 +3507,7 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3406,6 +3531,7 @@ elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expec
 # Returns the amount of time elapsed waiting for the expression
 elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3436,6 +3562,7 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3470,6 +3597,7 @@ wait_check_expression(
     locals=None
 ) -> int
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3497,6 +3625,7 @@ elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm(
 # Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3520,6 +3649,7 @@ elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <P
 # Returns the amount of time elapsed waiting for the packets
 elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3546,6 +3676,7 @@ elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HE
 ```python
 elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3571,6 +3702,7 @@ limits_enabled?("<Target Name> <Packet Name> <Item Name>")
 ```python
 limits_enabled("<Target Name> <Packet Name> <Item Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3594,6 +3726,7 @@ enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true or false
 ```python
 enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True or False
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3615,6 +3748,7 @@ enable_limits("<Target Name> <Packet Name> <Item Name>")
 ```python
 enable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3638,6 +3772,7 @@ enable_limits("INST HEALTH_STATUS TEMP1")
 ```python
 enable_limits("INST HEALTH_STATUS TEMP1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3659,6 +3794,7 @@ disable_limits("<Target Name> <Packet Name> <Item Name>")
 ```python
 disable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3682,6 +3818,7 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 ```python
 disable_limits("INST HEALTH_STATUS TEMP1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3703,6 +3840,7 @@ enable_limits_group("<Limits Group Name>")
 ```python
 enable_limits_group("<Limits Group Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3724,6 +3862,7 @@ enable_limits_group("SAFE_MODE")
 ```python
 enable_limits_group("SAFE_MODE")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3745,6 +3884,7 @@ disable_limits_group("<Limits Group Name>")
 ```python
 disable_limits_group("<Limits Group Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3766,6 +3906,7 @@ disable_limits_group("SAFE_MODE")
 ```python
 disable_limits_group("SAFE_MODE")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3787,6 +3928,7 @@ limits_groups = get_limits_groups()
 ```python
 limits_groups = get_limits_groups()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3808,6 +3950,7 @@ set_limits_set("<Limits Set Name>")
 ```python
 set_limits_set("<Limits Set Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3829,6 +3972,7 @@ set_limits_set("DEFAULT")
 ```python
 set_limits_set("DEFAULT")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3850,6 +3994,7 @@ limits_set = get_limits_set()
 ```python
 limits_set = get_limits_set()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3871,6 +4016,7 @@ limits_sets = get_limits_sets()
 ```python
 limits_sets = get_limits_sets()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3892,6 +4038,7 @@ get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```python
 get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3921,6 +4068,7 @@ print(result) #=> {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[
 print(result.keys()) #=> dict_keys(['DEFAULT', 'TVAC'])
 print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3942,6 +4090,7 @@ set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <
 ```python
 set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <Yellow High>, <Red High>, <Green Low (optional)>, <Green High (optional)>, <Limits Set (optional)>, <Persistence (optional)>, <Enabled (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3974,6 +4123,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 ```python
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -3995,6 +4145,7 @@ out_of_limits_items = get_out_of_limits()
 ```python
 out_of_limits_items = get_out_of_limits()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4016,6 +4167,7 @@ get_overall_limits_state(<Ignored Items> (optional))
 ```python
 get_overall_limits_state(<Ignored Items> (optional))
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4039,6 +4191,7 @@ overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP
 overall_limits_state = get_overall_limits_state()
 overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP1']])
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4060,6 +4213,7 @@ get_limits_event(<Offset>, count)
 ```python
 get_limits_event(<Offset>, count)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4132,6 +4286,7 @@ print(events)
 #  {"type"=>"LIMITS_CHANGE",
 #   ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4157,6 +4312,7 @@ plugin_list(default: false)
 ```python
 plugin_list(default = False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4214,6 +4370,7 @@ plugins = plugin_list(default: true) #=>
 #  'openc3-cosmos-tool-tlmviewer-6.0.3.pre.beta0.20250115200008.gem__20250116211519',
 #  'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem__20250116211459']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4235,6 +4392,7 @@ plugin_get(<Plugin Name>)
 ```python
 plugin_get(<Plugin Name>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4266,6 +4424,7 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 #   "needs_dependencies"=>true,
 #   "updated_at"=>1737063941094624764 }
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4289,6 +4448,7 @@ package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.
 package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
                #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4314,6 +4474,7 @@ targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```python
 targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4335,6 +4496,7 @@ get_target("<Target Name>")
 ```python
 get_target("<Target Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4422,6 +4584,7 @@ print(target)
 #  "updated_at"=>1613077058266815900,
 #  "plugin"=>nil}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4449,6 +4612,7 @@ target_ints.each do |target_name, interfaces|
   puts "Target: #{target_name}, Interfaces: #{interfaces}"
 end
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4474,6 +4638,7 @@ get_interface("<Interface Name>")
 ```python
 get_interface("<Interface Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4539,6 +4704,7 @@ print(interface)
 #  "txcnt"=>0,
 #  "rxcnt"=>0}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4560,6 +4726,7 @@ interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_I
 ```python
 interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4581,6 +4748,7 @@ connect_interface("<Interface Name>", <Interface Parameters (optional)>)
 ```python
 connect_interface("<Interface Name>", <Interface Parameters (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4605,6 +4773,7 @@ connect_interface("INT1", hostname, port)
 connect_interface("INT1")
 connect_interface("INT1", hostname, port)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4626,6 +4795,7 @@ disconnect_interface("<Interface Name>")
 ```python
 disconnect_interface("<Interface Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4647,6 +4817,7 @@ disconnect_interface("INT1")
 ```python
 disconnect_interface("INT1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4668,6 +4839,7 @@ start_raw_logging_interface("<Interface Name (optional)>")
 ```python
 start_raw_logging_interface("<Interface Name (optional)>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4689,6 +4861,7 @@ start_raw_logging_interface("int1")
 ```python
 start_raw_logging_interface("int1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4710,6 +4883,7 @@ stop_raw_logging_interface("<Interface Name (optional)>")
 ```python
 stop_raw_logging_interface("<Interface Name (optional)>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4731,6 +4905,7 @@ stop_raw_logging_interface("int1")
 ```python
 stop_raw_logging_interface("int1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4762,6 +4937,7 @@ for interface in interface_info():
     print(f"Transmit queue size: {interface[3]}, Receive queue size: {interface[4]}, Bytes transmitted: {interface[5]}, Bytes received: {interface[6]}")
     print(f"Cmd count: {interface[7]}, Tlm count: {interface[8]}")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4783,6 +4959,7 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only,
 ```python
 map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4808,6 +4985,7 @@ map_target_to_interface("INST", "INST_INT", unmap_old: false)
 ```python
 map_target_to_interface("INST", "INST_INT", unmap_old=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4829,6 +5007,7 @@ interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```python
 interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4852,6 +5031,7 @@ interface_cmd("INST", "DISABLE_CRC")
 ```python
 interface_cmd("INST", "DISABLE_CRC")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4873,6 +5053,7 @@ interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameter
 ```python
 interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4898,6 +5079,7 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1
 ```python
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4923,6 +5105,7 @@ connect_router("<Router Name>", <Router Parameters (optional)>)
 ```python
 connect_router("<Router Name>", <Router Parameters (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4947,6 +5130,7 @@ connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 connect_router("INST_ROUTER")
 connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4968,6 +5152,7 @@ disconnect_router("<Router Name>")
 ```python
 disconnect_router("<Router Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -4989,6 +5174,7 @@ disconnect_router("INT1_ROUTER")
 ```python
 disconnect_router("INT1_ROUTER")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5010,6 +5196,7 @@ router_names = get_router_names() #=> ['ROUTER_INT']
 ```python
 router_names = get_router_names() #=> ['ROUTER_INT']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5031,6 +5218,7 @@ get_router("<Router Name>")
 ```python
 get_router("<Router Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5096,6 +5284,7 @@ print(router)
 # "txcnt"=>0,
 # "rxcnt"=>0}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5127,6 +5316,7 @@ for router in router_info:
     print(f"Transmit queue size: {router[3]}, Receive queue size: {router[4]}, Bytes transmitted: {router[5]}, Bytes received: {router[6]}")
     print(f"Packets received: {router[7]}, Packets sent: {router[8]}")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5148,6 +5338,7 @@ start_raw_logging_router("<Router Name (optional)>")
 ```python
 start_raw_logging_router("<Router Name (optional)>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5169,6 +5360,7 @@ start_raw_logging_router("router1")
 ```python
 start_raw_logging_router("router1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5190,6 +5382,7 @@ stop_raw_logging_router("<Router Name (optional)>")
 ```python
 stop_raw_logging_router("<Router Name (optional)>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5211,6 +5404,7 @@ stop_raw_logging_router("router1")
 ```python
 stop_raw_logging_router("router1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5232,6 +5426,7 @@ router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 ```python
 router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5255,6 +5450,7 @@ router_cmd("INST", "DISABLE_CRC")
 ```python
 router_cmd("INST", "DISABLE_CRC")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5276,6 +5472,7 @@ router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", r
 ```python
 router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", read_write, index)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5301,6 +5498,7 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5328,6 +5526,7 @@ table_create_binary(<Table Definition File>)
 ```python
 table_create_binary(<Table Definition File>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5381,6 +5580,7 @@ table.write("MEMORY_SCRUBBING", "DISABLE")
 # Finally write the table.buffer (the binary) back to storage
 put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5404,6 +5604,7 @@ table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Nam
 ```python
 table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5435,6 +5636,7 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") #=>
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5460,6 +5662,7 @@ stash_set("<Stash Key>", <Stash Value>)
 ```python
 stash_set("<Stash Key>", <Stash Value>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5484,6 +5687,7 @@ stash_set('setpoint', 23.4)
 stash_set('run_count', 5)
 stash_set('setpoint', 23.4)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5505,6 +5709,7 @@ stash_get("<Stash Key>")
 ```python
 stash_get("<Stash Key>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5526,6 +5731,7 @@ stash_get('run_count')  #=> 5
 ```python
 stash_get('run_count')  #=> 5
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5547,6 +5753,7 @@ stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
 ```python
 stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5568,6 +5775,7 @@ stash_keys()  #=> ['run_count', 'setpoint']
 ```python
 stash_keys()  #=> ['run_count', 'setpoint']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5589,6 +5797,7 @@ stash_delete("<Stash Key>")
 ```python
 stash_delete("<Stash Key>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5610,6 +5819,7 @@ stash_delete("run_count")
 ```python
 stash_delete("run_count")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5635,6 +5845,7 @@ display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Pos
 ```python
 display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Position (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5659,6 +5870,7 @@ display_screen("INST", "ADCS", 100, 200)
 ```python
 display_screen("INST", "ADCS", 100, 200)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5680,6 +5892,7 @@ clear_screen("<Target Name>", "<Screen Name>")
 ```python
 clear_screen("<Target Name>", "<Screen Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5702,6 +5915,7 @@ clear_screen("INST", "ADCS")
 ```python
 clear_screen("INST", "ADCS")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5723,6 +5937,7 @@ clear_all_screens()
 ```python
 clear_all_screens()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5744,6 +5959,7 @@ delete_screen("<Target Name>", "<Screen Name>")
 ```python
 delete_screen("<Target Name>", "<Screen Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5766,6 +5982,7 @@ delete_screen("INST", "ADCS")
 ```python
 delete_screen("INST", "ADCS")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5787,6 +6004,7 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 ```python
 get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5819,6 +6037,7 @@ screen_definition = get_screen_definition("INST", "HS")
 ```python
 screen_definition = get_screen_definition("INST", "HS")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5840,6 +6059,7 @@ create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 ```python
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5883,6 +6103,7 @@ screen_def = '
 # Here we pass in the screen definition as a string
 create_screen("INST", "LOCAL", screen_def)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5904,6 +6125,7 @@ local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Positi
 ```python
 local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5956,6 +6178,7 @@ wait(5)
 # The local screen 'target' is 'LOCAL'
 clear_screen("LOCAL", "TESTING")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -5981,6 +6204,7 @@ start("<Procedure Filename>")
 ```python
 start("<Procedure Filename>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6002,6 +6226,7 @@ start("test1.rb")
 ```python
 start("test1.rb")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6027,6 +6252,7 @@ goto(filename, line_number)
 goto(line_number)
 goto(filename, line_number)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6053,6 +6279,7 @@ goto(23)
 goto("TARGET/procedures/other_script.rb", 5)
 goto("TARGET/procedures/other_script.py", 12)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6074,6 +6301,7 @@ load_utility("TARGET/lib/<Utility Filename>")
 ```python
 load_utility("TARGET/lib/<Utility Filename>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6097,6 +6325,7 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 load_utility("TARGET/lib/mode_changes.rb") # Ruby
 load_utility("TARGET/lib/mode_changes.py") # Python
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6124,6 +6353,7 @@ print(len(scripts))
 print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) #=>
 # [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6145,6 +6375,7 @@ script_create("<Script Name>", "<Script Contents>")
 ```python
 script_create("<Script Name>", "<Script Contents>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6169,6 +6400,7 @@ script_create("INST/procedures/new_script.rb", contents)
 contents = 'print("Hello from Python")'
 script_create("INST2/procedures/new_script.py", contents)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6190,6 +6422,7 @@ script_body("<Script Name>")
 ```python
 script_body("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6213,6 +6446,7 @@ puts script #=> # Display all environment variables\nputs ENV.inspect ...
 script = script_body("INST2/procedures/checks.py")
 print(script) #=> # import os\n\n# Display the environment variables ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6234,6 +6468,7 @@ script_delete("<Script Name>")
 ```python
 script_delete("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6255,6 +6490,7 @@ script_delete("INST/procedures/checks.rb")
 ```python
 script_delete("INST/procedures/checks.rb")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6278,6 +6514,7 @@ script_run("<Script Name>")
 ```python
 script_run("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6301,6 +6538,7 @@ puts id
 id = script_run("INST2/procedures/checks.py")
 print(id)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6322,6 +6560,7 @@ script_lock("<Script Name>")
 ```python
 script_lock("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6343,6 +6582,7 @@ script_lock("INST/procedures/checks.rb")
 ```python
 script_lock("INST/procedures/checks.rb")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6364,6 +6604,7 @@ script_unlock("<Script Name>")
 ```python
 script_unlock("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6385,6 +6626,7 @@ script_unlock("INST/procedures/checks.rb")
 ```python
 script_unlock("INST/procedures/checks.rb")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6406,6 +6648,7 @@ script_syntax_check("<Script Name>")
 ```python
 script_syntax_check("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6429,6 +6672,7 @@ puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax O
 result = script_syntax_check("INST2/procedures/checks.py")
 print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6450,6 +6694,7 @@ script_instrumented("<Script Name>")
 ```python
 script_instrumented("<Script Name>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6473,6 +6718,7 @@ puts script #=> private; __return_val = nil; begin; RunningScript.instance.scrip
 script = script_instrumented("INST2/procedures/checks.py")
 print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6494,6 +6740,7 @@ script_delete_all_breakpoints()
 ```python
 script_delete_all_breakpoints()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6515,6 +6762,7 @@ step_mode()
 ```python
 step_mode()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6536,6 +6784,7 @@ run_mode()
 ```python
 run_mode()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6557,6 +6806,7 @@ disconnect_script()
 ```python
 disconnect_script()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6578,6 +6828,7 @@ running_script_list(limit: <limit>, offset: <offset>)
 ```python
 running_script_list(limit = <limit>, offset = <offset>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6600,6 +6851,7 @@ running_script_list(limit: 20, offset: 10) #=> [{"name"=>"293", "state"=>"waitin
 ```python
 running_script_list(limit = 20, offset = 10) #=>  [{'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6636,6 +6888,7 @@ script_get("<Script Id>")
 ```python
 script_get("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6657,6 +6910,7 @@ script_get(15) #=> {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"
 ```python
 script_get(15) #=> {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6678,6 +6932,7 @@ running_script_stop("<Script Id>")
 ```python
 running_script_stop("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6699,6 +6954,7 @@ running_script_stop(15)
 ```python
 running_script_stop(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6720,6 +6976,7 @@ running_script_pause("<Script Id>")
 ```python
 running_script_pause("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6741,6 +6998,7 @@ running_script_pause(15)
 ```python
 running_script_pause(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6762,6 +7020,7 @@ running_script_retry("<Script Id>")
 ```python
 running_script_retry("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6783,6 +7042,7 @@ running_script_retry(15)
 ```python
 running_script_retry(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6804,6 +7064,7 @@ running_script_go("<Script Id>")
 ```python
 running_script_go("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6825,6 +7086,7 @@ running_script_go(15)
 ```python
 running_script_go(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9258,3 +9520,4 @@ autonomic_reaction_destroy("REACT1")
 ```
 </TabItem>
 </Tabs>
+````

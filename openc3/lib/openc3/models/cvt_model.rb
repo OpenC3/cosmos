@@ -119,14 +119,25 @@ module OpenC3
       end
     end
 
-    def self.db_lookup(items, date_time:, scope: $openc3_scope)
+    def self.db_lookup(items, start_time:, end_time: nil, scope: $openc3_scope)
       tables = {}
       names = []
+      nil_count = 0
       items.each do |item|
         target_name, packet_name, item_name, value_type, limits = item
+        # They will all be nil when item is a nil value
+        # A nil value indicates a value that does not exist as returned by get_tlm_available
+        if item_name.nil?
+          # We know timestamp always exists so we can use it to fill in the nil value
+          names << "timestamp as __nil#{nil_count}"
+          nil_count += 1
+          next
+        end
+        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         table_name = "#{target_name}__#{packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
+        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~]/, '_')
         case value_type
         when 'WITH_UNITS'
@@ -144,11 +155,15 @@ module OpenC3
       end
       retry_count = 0
       begin
-        @@conn ||= PG::Connection.new(host: ENV['OPENC3_QUEST_HOSTNAME'],
-                                      port: ENV['OPENC3_QUEST_PORT'],
-                                      user: ENV['OPENC3_QUEST_USERNAME'],
-                                      password: ENV['OPENC3_QUEST_PASSWQRD'],
+        @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                                      port: ENV['OPENC3_TSDB_PORT'],
+                                      user: ENV['OPENC3_TSDB_USERNAME'],
+                                      password: ENV['OPENC3_TSDB_PASSWORD'],
                                       dbname: 'qdb')
+        # Default connection is all strings but we want to map to the correct types
+        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
+        end
 
         query = "SELECT #{names.join(", ")} FROM "
         tables.each_with_index do |(table_name, _), index|
@@ -158,33 +173,50 @@ module OpenC3
             query += "ASOF JOIN #{table_name} as T#{index} "
           end
         end
-        query += "WHERE T0.timestamp < '#{date_time}' LIMIT -1"
+        if start_time && !end_time
+          query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
+        elsif start_time && end_time
+          query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+        end
+
         result = @@conn.exec(query)
         if result.nil? or result.ntuples == 0
           return {}
         else
-          index = 0
           data = []
           # Build up a results set that is an array of arrays
           # Each nested array is a set of 2 items: [value, limits state]
           # If the item does not have limits the limits state is nil
-          result.tuple(0).each do |key, value|
-            if key.include?("__L")
-              data[index - 1][1] = value
-            else
-              data[index] = [value, nil]
-              index += 1
+          result.each_with_index do |tuples, index|
+            data[index] ||= []
+            row_index = 0
+            tuples.each do |tuple|
+              if tuple[0].include?("__L")
+                data[index][row_index - 1][1] = tuple[1]
+              elsif tuple[0] =~ /^__nil/
+                data[index][row_index] = [nil, nil]
+                row_index += 1
+              else
+                data[index][row_index] = [tuple[1], nil]
+                row_index += 1
+              end
             end
+          end
+          # If we only have one row then we return a single array
+          if result.ntuples == 1
+            data = data[0]
           end
           return data
         end
       rescue IOError, PG::Error => e
+        # Retry the query because various errors can occur that are recoverable
         retry_count += 1
-        if retry_count > 5
+        if retry_count > 4
+          # After the 5th retry just raise the error
           raise "Error querying QuestDB: #{e.message}"
         end
         Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-        Logger.warn("QuestDB: Last query: #{query}")
+        Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
         if @@conn and !@@conn.finished?
           @@conn.finish()
         end
@@ -199,17 +231,17 @@ module OpenC3
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
-    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, date_time: nil, scope: $openc3_scope)
+    def self.get_tlm_values(items, stale_time: 30, cache_timeout: nil, start_time: nil, end_time: nil, scope: $openc3_scope)
       now = Time.now
       results = []
       lookups = []
       packet_lookup = {}
       overrides = {}
 
-      # If a date_time is passed we're doing a QuestDB lookup and directly return the results
+      # If a start_time is passed we're doing a QuestDB lookup and directly return the results
       # TODO: This currently does NOT support the override values
-      if date_time
-        return db_lookup(items, date_time: date_time, scope: scope)
+      if start_time
+        return db_lookup(items, start_time: start_time, end_time: end_time, scope: scope)
       end
 
       # First generate a lookup hash of all the items represented so we can query the CVT
@@ -217,6 +249,10 @@ module OpenC3
 
       now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
+        if target_packet_key.nil?
+          results << [nil, nil]
+          next
+        end
         unless packet_lookup[target_packet_key]
           begin
             packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
@@ -251,7 +287,6 @@ module OpenC3
             if hash.key?(value_keys[-1])
               item_result[1] = nil
             else
-              Logger.warn("Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist")
               item_result[0] = nil
               item_result[1] = nil
             end
@@ -427,6 +462,11 @@ module OpenC3
     # return an ordered array of hash with keys
     def self._parse_item(now, lookups, overrides, item, cache_timeout:, scope:)
       target_name, packet_name, item_name, value_type = item
+      # They will all be nil when item is a nil value
+      if item_name.nil?
+        lookups << nil
+        return
+      end
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
       # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value

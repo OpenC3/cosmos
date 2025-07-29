@@ -193,7 +193,7 @@ Rails.application.routes.draw do
     # to do the remote procedure call
     post "/api" => "api#api"
     get "/ping" => "api#ping"
-    get "/questdb" => "api#questdb"
+    get "/tsdb" => "api#tsdb"
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
