@@ -27,7 +27,7 @@ When defining command parameters you can choose from the following data types: I
 Command Authority can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Once Command Authority is enabled, individual users can take and release Command Authority which enables exclusive command and script access to that target for that user. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
 
 ![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
-![Command Authority in CmdTlm Server](/img/cmd_tlm_server/cmd_authority_targets.png)
+![Command Authority in CmdTlm Server](/img/cmd_tlm_server/targets.png)
 
 ## Critical Commanding (Enterprise)
 
