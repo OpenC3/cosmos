@@ -121,7 +121,7 @@ module OpenC3
       end
     end
 
-    def self.db_lookup(items, start_time:, end_time: nil, scope: $openc3_scope)
+    def self.tsdb_lookup(items, start_time:, end_time: nil)
       tables = {}
       names = []
       nil_count = 0
@@ -182,6 +182,8 @@ module OpenC3
                                         dbname: 'qdb')
           # Default connection is all strings but we want to map to the correct types
           if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+            # TODO: This doesn't seem to be round tripping UINT64 correctly
+            # Try playback with P_2.2,2 and P(:6;): from the DEMO
             @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
           end
 
@@ -250,7 +252,7 @@ module OpenC3
       # If a start_time is passed we're doing a QuestDB lookup and directly return the results
       # TODO: This currently does NOT support the override values
       if start_time
-        return db_lookup(items, start_time: start_time, end_time: end_time, scope: scope)
+        return tsdb_lookup(items, start_time: start_time, end_time: end_time)
       end
 
       # First generate a lookup hash of all the items represented so we can query the CVT

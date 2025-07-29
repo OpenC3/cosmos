@@ -18,6 +18,7 @@ dependencies = [
     "requests (>=2.32.3,<3.0.0)",
     "websockets (>=14.2,<16.0)",
     "watchdog (>=6.0.0,<7.0.0)",
+    "psycopg[binary] (>=3.2.9,<4.0.0)",
 ]
 
 [tool.poetry.requires-plugins]

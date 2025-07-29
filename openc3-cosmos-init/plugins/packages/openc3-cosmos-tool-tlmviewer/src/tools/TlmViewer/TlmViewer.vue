@@ -366,14 +366,19 @@ export default {
         playbackStep: this.playbackStep,
       })
       if (this.playbackDateTime) {
-        this.playbackDate = this.formatDate(
-          this.playbackDateTime,
-          this.timeZone,
-        )
-        this.playbackTime = this.formatTime(
-          this.playbackDateTime,
-          this.timeZone,
-        )
+        // If we've exceeded the current time, pause playback
+        if (this.playDateTime > new Date()) {
+          this.playbackPause()
+        } else {
+          this.playbackDate = this.formatDate(
+            this.playbackDateTime,
+            this.timeZone,
+          )
+          this.playbackTime = this.formatTime(
+            this.playbackDateTime,
+            this.timeZone,
+          )
+        }
       }
     },
     playbackStep: function () {

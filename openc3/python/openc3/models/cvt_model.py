@@ -15,8 +15,16 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import os
 import time
-from typing import Any
+import threading
+from typing import Any, Optional
+
+try:
+    import psycopg
+    PSYCOPG_AVAILABLE = True
+except ImportError:
+    PSYCOPG_AVAILABLE = False
 
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import StoreQueued
@@ -24,11 +32,14 @@ from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonEncoder, JsonDecoder
+from openc3.utilities.logger import Logger
 
 
 class CvtModel(Model):
     packet_cache = {}
     override_cache = {}
+    _conn = None
+    _conn_mutex = threading.Lock()
 
     VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
 
@@ -139,18 +150,142 @@ class CvtModel(Model):
         else:
             return None
 
+    @classmethod
+    def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None):
+        """Query historical telemetry data from QuestDB"""
+        if not PSYCOPG_AVAILABLE:
+            raise RuntimeError("psycopg is required for database operations but is not available")
+
+        tables = {}
+        names = []
+        nil_count = 0
+
+        for item in items:
+            target_name, packet_name, item_name, value_type, limits = item
+            # They will all be None when item is a None value
+            # A None value indicates a value that does not exist as returned by get_tlm_available
+            if item_name is None:
+                # We know timestamp always exists so we can use it to fill in the None value
+                names.append(f"timestamp as __nil{nil_count}")
+                nil_count += 1
+                continue
+
+            # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
+            table_name = target_name + "__" + packet_name
+            for char in "?,'\"/:()+*%~":
+                table_name = table_name.replace(char, '_')
+            tables[table_name] = 1
+
+            # Find the index of this table
+            index = list(tables.keys()).index(table_name)
+
+            # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
+            # NOTE: Semicolon added as it appears invalid
+            safe_item_name = item_name
+            for char in "?.,'\\/:()+*%~;-":
+                safe_item_name = safe_item_name.replace(char, '_')
+
+            if value_type == 'WITH_UNITS':
+                names.append(f'"T{index}.{safe_item_name}__U"')
+            elif value_type == 'FORMATTED':
+                names.append(f'"T{index}.{safe_item_name}__F"')
+            elif value_type == 'CONVERTED':
+                names.append(f'"T{index}.{safe_item_name}__C"')
+            else:
+                names.append(f'"T{index}.{safe_item_name}"')
+
+            if limits:
+                names.append(f'"T{index}.{safe_item_name}__L"')
+
+        # Build the SQL query
+        query = f"SELECT {', '.join(names)} FROM "
+        for index, (table_name, _) in enumerate(tables.items()):
+            if index == 0:
+                query += f"{table_name} as T{index} "
+            else:
+                query += f"ASOF JOIN {table_name} as T{index} "
+
+        if start_time and not end_time:
+            query += f"WHERE T0.timestamp < '{start_time}' LIMIT -1"
+        elif start_time and end_time:
+            query += f"WHERE T0.timestamp >= '{start_time}' AND T0.timestamp < '{end_time}'"
+
+        retry_count = 0
+        while retry_count <= 4:
+            try:
+                with cls._conn_mutex:
+                    if cls._conn is None:
+                        cls._conn = psycopg.connect(
+                            host=os.environ['OPENC3_TSDB_HOSTNAME'],
+                            port=os.environ['OPENC3_TSDB_PORT'],
+                            user=os.environ['OPENC3_TSDB_USERNAME'],
+                            password=os.environ['OPENC3_TSDB_PASSWORD'],
+                            dbname='qdb'
+                        )
+
+                    with cls._conn.cursor(binary=True) as cursor:
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+
+                        if not result:
+                            return {}
+                        else:
+                            data = []
+                            # Build up a results set that is an array of arrays
+                            # Each nested array is a set of 2 items: [value, limits state]
+                            # If the item does not have limits the limits state is None
+                            for row_index, row in enumerate(result):
+                                data.append([])
+                                col_index = 0
+                                for col_name, col_value in row.items():
+                                    if "__L" in col_name:
+                                        # This is a limits column, add to previous item
+                                        if col_index > 0:
+                                            data[row_index][col_index - 1] = [data[row_index][col_index - 1][0], col_value]
+                                    elif col_name.startswith("__nil"):
+                                        data[row_index].append([None, None])
+                                        col_index += 1
+                                    else:
+                                        data[row_index].append([col_value, None])
+                                        col_index += 1
+
+                            # If we only have one row then we return a single array
+                            if len(result) == 1:
+                                data = data[0]
+                            return data
+
+            except (psycopg.Error, OSError) as e:
+                # Retry the query because various errors can occur that are recoverable
+                retry_count += 1
+                if retry_count > 4:
+                    # After the 5th retry just raise the error
+                    raise RuntimeError(f"Error querying QuestDB: {str(e)}")
+                Logger.warn(f"QuestDB: Retrying due to error: {str(e)}")
+                Logger.warn(f"QuestDB: Last query: {query}")  # Log the last query for debugging
+                with cls._conn_mutex:
+                    if cls._conn:
+                        cls._conn.close()
+                    cls._conn = None  # Force the new connection
+                time.sleep(0.1)
+
     # Return all item values and limit state from the CVT
     #
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
     @classmethod
-    def get_tlm_values(cls, items: list, stale_time: int = 30, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE):
+    def get_tlm_values(cls, items: list, stale_time: int = 30, cache_timeout: float = 0.1, start_time: str = None, end_time: str = None, scope: str = OPENC3_SCOPE):
         now = time.time()
         results = []
         lookups = []
         packet_lookup = {}
         overrides = {}
+
+        # If a start_time is passed we're doing a QuestDB lookup and directly return the results
+        # TODO: This currently does NOT support the override values
+        if start_time:
+            return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+
         # First generate a lookup dict of all the items represented so we can query the CVT
         for item in items:
             cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
