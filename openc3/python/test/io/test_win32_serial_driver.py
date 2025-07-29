@@ -183,7 +183,7 @@ class TestWin32SerialDriver:
 
     def test_port_name_formatting_for_high_com_ports(self):
         """Test that COM ports with numbers >= 10 are properly formatted"""
-        driver = Win32SerialDriver('COM10', 9600)
+        Win32SerialDriver('COM10', 9600)
         
         # Verify the serial.Serial was called with the properly formatted port name
         self.mock_serial_class.assert_called()

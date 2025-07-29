@@ -57,7 +57,7 @@ class Win32SerialDriver:
                  data_bits: int = 8):
         
         # Verify parameters
-        if re.match(r'^COM[0-9]{2,3}$', port_name):
+        if re.match(r'^COM\d{2,3}$', port_name):
             port_name = f'\\\\.\\{port_name}'
         
         if baud_rate not in self.BAUD_RATES:

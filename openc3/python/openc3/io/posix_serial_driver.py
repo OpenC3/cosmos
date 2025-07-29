@@ -136,7 +136,7 @@ class PosixSerialDriver:
             try:
                 bytes_sent = os.write(self.handle, data[total_bytes_sent:])
                 total_bytes_sent += bytes_sent
-            except (BlockingIOError, OSError):
+            except OSError:
                 # Wait for write readiness
                 ready = select.select([], [self.handle], [], self.write_timeout)
                 if not ready[1]:
@@ -147,7 +147,7 @@ class PosixSerialDriver:
         try:
             data = os.read(self.handle, 65535)
             return data
-        except (BlockingIOError, OSError):
+        except OSError:
             try:
                 read_ready, _, _ = select.select(self.readers, [], [], self.read_timeout)
             except OSError:
@@ -169,5 +169,5 @@ class PosixSerialDriver:
         try:
             data = os.read(self.handle, 65535)
             return data
-        except (BlockingIOError, OSError):
+        except OSError:
             return b""
