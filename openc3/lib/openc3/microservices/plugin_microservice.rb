@@ -43,8 +43,8 @@ module OpenC3
       # Fortify: Process Control
       # This is dangerous! However, plugins need to be able to run whatever they want.
       # Only admins can install plugins and they need to be vetted for content.
-      # NOTE: In OpenC3 EE each microservice gets its own container so the potential
-      # footprint is much smaller. In OpenSource OpenC3 you're in the same container
+      # NOTE: In Enterprise each microservice gets its own container so the potential
+      # footprint is much smaller. In Core you're in the same container
       # as all the other plugins.
       exec(*@config["cmd"])
     end

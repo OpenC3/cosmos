@@ -105,9 +105,7 @@ class BinaryAccessor(Accessor):
     def handle_read_variable_bit_size(self, item, _buffer):
         length_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
         if item.array_size is not None:
-            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
-                "length_value_bit_offset"
-            ]
+            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size["length_value_bit_offset"]
         else:
             if item.data_type == "INT" or item.data_type == "UINT":
                 # QUIC encoding is currently assumed for individual variable sized integers

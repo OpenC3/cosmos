@@ -319,19 +319,23 @@ module OpenC3
           begin
             @file.close unless @file.closed?
             Logger.debug "Log File Closed : #{@filename}"
-            date = first_timestamp[0..7] # YYYYMMDD
-            bucket_key = File.join(@remote_log_directory, date, bucket_filename())
-            # Cleanup timestamps here so they are unset for the next file
-            @first_time = nil
-            @last_time = nil
-            threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
-            # Now that the file is in storage, trim the Redis stream after a delay
-            @cleanup_offsets << {}
-            @last_offsets.each do |redis_topic, last_offset|
-              @cleanup_offsets[-1][redis_topic] = last_offset
+            # Only try to moce the file if we've written data to it
+            # This is indicated by the first and last timestamps being set
+            if @first_time and @last_time
+              date = first_timestamp[0..7] # YYYYMMDD
+              bucket_key = File.join(@remote_log_directory, date, bucket_filename())
+              # Cleanup timestamps here so they are unset for the next file
+              @first_time = nil
+              @last_time = nil
+              threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+              # Now that the file is in storage, trim the Redis stream after a delay
+              @cleanup_offsets << {}
+              @last_offsets.each do |redis_topic, last_offset|
+                @cleanup_offsets[-1][redis_topic] = last_offset
+              end
+              @cleanup_times << (Time.now + CLEANUP_DELAY)
+              @last_offsets.clear
             end
-            @cleanup_times << (Time.now + CLEANUP_DELAY)
-            @last_offsets.clear
           rescue Exception => e
             Logger.error "Error closing #{@filename} : #{e.formatted}"
           end

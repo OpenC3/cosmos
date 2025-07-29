@@ -63,8 +63,9 @@ def print_usage
   puts "  cli rake                          # Runs rake in the local directory"
   puts "  cli irb                           # Runs irb in the local directory"
   puts "  cli script                        # Interact with scripts. Run with --help for more info."
-  puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
-  puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
+  puts "  cli validate /PATH/FILENAME.gem SCOPE variables.json  # Validate a COSMOS plugin gem file"
+  puts "  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file"
+  puts "    OPTIONS: --variables lets you pass a path to a JSON file containing your plugin's variables"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
   puts "    OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set"
@@ -333,7 +334,7 @@ end
 # Pass true as the last argument to force install even if a plugin with
 # the same version number exists
 #
-def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
+def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false, variables_file: nil)
   scope ||= 'DEFAULT'
   check_environment()
   if $openc3_in_cluster
@@ -352,9 +353,10 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
     end
 
     begin
+      existing_variables = JSON.parse(File.read(variables_file)) if variables_file
       if plugin_hash_file
         # Admin Create / Edit / or Upgrade Plugin
-        OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
+        OpenC3::PluginModel.install_phase1(plugin_file_path, existing_variables: existing_variables, scope: scope)
         plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
       else
         # Init or Command Line openc3cli load with no plugin_hash_file
@@ -378,7 +380,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
         end
         return if found
 
-        plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
+        plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, existing_variables: existing_variables, scope: scope)
       end
 
       # Determine if plugin named in plugin_hash exists
@@ -848,7 +850,18 @@ if not ARGV[0].nil? # argument(s) given
   when 'load'
     # force is a boolean so if they pass 'force' it is true
     # See plugins_controller.rb install for usage
-    load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3], force: ARGV[4] == 'force')
+    variables_option = ARGV.find_index('--variables')
+    if variables_option.nil?
+      scope = ARGV[2]
+      plugin_hash_file = ARGV[3]
+      force = ARGV[4] == 'force'
+    else
+      scope = ARGV[2] unless variables_option <= 2
+      plugin_hash_file = ARGV[3] unless variables_option <= 3
+      force = ARGV[4] == 'force' unless variables_option <= 4
+      variables_file = ARGV[variables_option + 1]
+    end
+    load_plugin(ARGV[1], scope: scope, plugin_hash_file: plugin_hash_file, force: force, variables_file: variables_file)
 
   when 'list'
     list_plugins(scope: ARGV[1])

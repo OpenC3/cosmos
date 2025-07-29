@@ -201,7 +201,7 @@ RSpec.describe RunningScriptController, type: :controller do
       before(:each) do
         # Create a script model with a pid for the delete action to work with
         script_model = double("ScriptModel")
-        allow(script_model).to receive(:name).and_return("INST/procedures/test.rb")
+        allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
         allow(script_model).to receive(:pid).and_return("12345")
         allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(script_model)
       end
@@ -241,7 +241,7 @@ RSpec.describe RunningScriptController, type: :controller do
         allow(Process).to receive(:getpgid).and_return(12345)
 
         script_model = double("ScriptModel")
-        allow(script_model).to receive(:name).and_return("INST/procedures/test.rb")
+        allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
         allow(script_model).to receive(:pid).and_return("12345")
         allow(script_model).to receive(:end_time=) do |value|
           @end_time = value

@@ -225,9 +225,13 @@ export default {
           }
           this.appliedStyle['height'] = setting[1] + ' !important'
           break
-        case 'RAW':
-          this.appliedStyle[setting[1].toLowerCase()] =
-            setting[2] + ' !important'
+        default:
+          // Handle blank RAW settings as well as our composed RAW__XXX settings
+          // See the SETTINGS section in parseDefinition of Openc3Screen.vue
+          if (setting[0].startsWith('RAW')) {
+            this.appliedStyle[setting[1].toLowerCase()] =
+              setting[2] + ' !important'
+          }
           break
       }
     },

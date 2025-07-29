@@ -49,7 +49,7 @@ The following keywords must follow a COMMAND keyword.
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
 | Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
@@ -160,6 +160,10 @@ KEY $.book.title
 | Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
+#### OBFUSCATE
+<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+
+
 #### REQUIRED
 **Parameter is required to be populated in scripts**
 
@@ -246,15 +250,18 @@ values to the command. That can be used to check parameter values passed in.
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. Note the built-in Python conversions must specify the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-WRITE_CONVERSION ip_write_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+WRITE_CONVERSION ip_write_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 #### POLY_WRITE_CONVERSION
 **Adds a polynomial conversion factor to the current command parameter**
@@ -296,21 +303,24 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Ruby Example:
-```ruby
-APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
-  GENERIC_WRITE_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
-  GENERIC_WRITE_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
     return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+</TabItem>
+</Tabs>
 
 #### GENERIC_WRITE_CONVERSION_END
 **Complete a generic write conversion**
@@ -372,7 +382,7 @@ ID parameters are used to identify the binary block of data as a particular comm
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate an offset from the end of the packet. | True |
 | Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
@@ -439,7 +449,7 @@ APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
 | Item Bit Size | Bit size of each array item | True |
 | Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
@@ -623,7 +633,32 @@ Validator class is used to validate the command success or failure with both a p
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'command_validator.rb' should contain 'class CommandValidator'. | True |
 | Argument | Additional argument passed to the validator class constructor | False |
 
-Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.py:
+
+class CustomValidator(CommandValidator):
+    # Both the pre_check and post_check are passed the command packet that was sent
+    # You can inspect the command in your checks as follows:
+    #   packet.target_name => target name
+    #   packet.packet_name => packet name (command name)
+    #   packet.read("ITEM") => converted value
+    #   packet.read("ITEM", :RAW) => raw value
+    def pre_check(self, command):
+        if tlm("TGT PKT ITEM") == 0:
+            return [False, "TGT PKT ITEM is 0"]
+        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        return [True, None]
+
+    def post_check(self, command):
+        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        return [True, None]
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 VALIDATOR custom_validator.rb
 
@@ -650,30 +685,8 @@ class CustomValidator < OpenC3::CommandValidator
   end
 end
 ```
-
-Python Example:
-```python
-VALIDATOR custom_validator.rb
-
-Defined in custom_validator.py:
-
-class CustomValidator(CommandValidator):
-    # Both the pre_check and post_check are passed the command packet that was sent
-    # You can inspect the command in your checks as follows:
-    #   packet.target_name => target name
-    #   packet.packet_name => packet name (command name)
-    #   packet.read("ITEM") => converted value
-    #   packet.read("ITEM", :RAW) => raw value
-    def pre_check(self, command):
-        if tlm("TGT PKT ITEM") == 0:
-            return [False, "TGT PKT ITEM is 0"]
-        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
-        return [True, None]
-
-    def post_check(self, command):
-        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
-        return [True, None]
-```
+</TabItem>
+</Tabs>
 
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -67,9 +67,9 @@ class Structure:
     # self.return Value based on the item definition. This could be a string, integer,
     #   float, or array of values.
     def read_item(self, item, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_item(item, buffer)
 
@@ -169,7 +169,7 @@ class Structure:
         endianness=None,
         overflow="ERROR",
     ):
-        if not endianness:
+        if endianness is None:
             endianness = self.default_endianness
         # Create the item
         item = self.item_class(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
@@ -206,7 +206,9 @@ class Structure:
         # Add to the overall hash of defined items
         self.items[item.name] = item
         # Update fixed size knowledge
-        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (item.array_size and item.array_size <= 0):
+        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (
+            item.array_size is not None and item.array_size <= 0
+        ):
             self.fixed_size = False
 
         # Recalculate the overall defined length of the structure
@@ -265,7 +267,7 @@ class Structure:
         endianness=None,
         overflow="ERROR",
     ):
-        if not endianness:
+        if endianness is None:
             endianness = self.default_endianness
         if data_type == "DERIVED":
             return self.define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
@@ -541,7 +543,7 @@ class Structure:
         if item.variable_bit_size:
             # Bit size is determined by length field
             length_value = self.read(item.variable_bit_size["length_item_name"], "CONVERTED")
-            if item.data_type == "INT" or item.data_type == "UINT" and not item.original_array_size:
+            if (item.data_type == "INT" or item.data_type == "UINT") and item.original_array_size is None:
                 match length_value:
                     case 0:
                         return 6
@@ -570,13 +572,21 @@ class Structure:
             # Anything with a negative bit offset should be left alone
             if item.original_bit_offset >= 0:
                 item.bit_offset = item.original_bit_offset + adjustment
-                if item.data_type != "DERIVED" and (
-                    item.variable_bit_size
-                    or item.original_bit_size <= 0
-                    or (item.original_array_size and item.original_array_size <= 0)
-                ):
+                # May need to update adjustment with variable length items
+                # Note legacy variable length does not push anything
+                if item.data_type != "DERIVED" and item.variable_bit_size:
+                    # Calculate the actual current size of this variable length item
                     new_bit_size = self.calculate_total_bit_size(item)
-                    if item.original_bit_size != new_bit_size:
+                    if item.original_array_size is not None:
+                        # Array size has changed from original - so we need to adjust everything after this item
+                        # This includes items that may have the same bit_offset as the variable length item because it
+                        # started out at zero bit_size
+                        if item.original_array_size != new_bit_size:
+                            adjustment += new_bit_size - item.original_array_size
+                    elif item.original_bit_size != new_bit_size:
+                        # Bit size has changed from original - so we need to adjust everything after this item
+                        # This includes items that may have the same bit_offset as the variable length item
+                        # because it started out at zero bit_size
                         adjustment += new_bit_size - item.original_bit_size
 
     def internal_buffer_equals(self, buffer):

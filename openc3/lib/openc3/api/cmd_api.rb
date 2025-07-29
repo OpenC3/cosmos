@@ -30,9 +30,11 @@ require 'openc3/topics/command_decom_topic'
 require 'openc3/topics/decom_interface_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/script/extract'
+require 'openc3/utilities/cmd_log'
 
 module OpenC3
   module Api
+    include OpenC3::CmdLog
     WHITELIST ||= []
     WHITELIST.concat([
                        'cmd',
@@ -500,6 +502,7 @@ module OpenC3
         #   end
         # end
       end
+
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new
@@ -507,7 +510,6 @@ module OpenC3
         error.cmd_name = cmd_name
         raise error
       end
-
       if log_message.nil? # This means the default was used, no argument was passed
         log_message = true # Default is true
         # If the packet has the DISABLE_MESSAGES keyword then no messages by default
@@ -520,7 +522,6 @@ module OpenC3
           end
         end
       end
-
       cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       username = user && user['username'] ? user['username'] : 'anonymous'
       command = {
@@ -535,52 +536,11 @@ module OpenC3
         'validate' => validate.to_s,
         'manual' => manual.to_s,
         'log_message' => log_message.to_s,
+        'obfuscated_items' => packet['obfuscated_items'].to_s
       }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      return command
     end
 
-    def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
-      output_string = "#{method_name}(\""
-      output_string << (target_name + ' ' + cmd_name)
-      if cmd_params.nil? or cmd_params.empty?
-        output_string << '")'
-      else
-        params = []
-        cmd_params.each do |key, value|
-          next if Packet::RESERVED_ITEM_NAMES.include?(key)
-
-          item = packet['items'].find { |find_item| find_item['name'] == key.to_s }
-
-          begin
-            item_type = item['data_type'].intern
-          rescue
-            item_type = nil
-          end
-
-          if value.is_a?(String)
-            value = value.dup
-            if item_type == :BLOCK or item_type == :STRING
-              if !value.is_printable?
-                value = "0x" + value.simple_formatted
-              else
-                value = value.inspect
-              end
-            else
-              value = value.convert_to_value.to_s
-            end
-            if value.length > 256
-              value = value[0..255] + "...'"
-            end
-            value.tr!('"', "'")
-          elsif value.is_a?(Array)
-            value = "[#{value.join(", ")}]"
-          end
-          params << "#{key} #{value}"
-        end
-        params = params.join(", ")
-        output_string << (' with ' + params + '")')
-      end
-      return output_string
-    end
   end
 end

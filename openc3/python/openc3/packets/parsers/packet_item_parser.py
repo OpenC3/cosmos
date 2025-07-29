@@ -105,14 +105,14 @@ class PacketItemParser:
         if self._append():
             return 0
         try:
-            return int(self.parser.parameters[1])
+            return int(self.parser.parameters[1], 0)
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 
     def _get_bit_size(self):
         index = 1 if self._append() else 2
         try:
-            return int(self.parser.parameters[index])
+            return int(self.parser.parameters[index], 0)
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 
@@ -122,7 +122,7 @@ class PacketItemParser:
 
         try:
             index = 3 if self._append() else 4
-            array_bit_size = int(self.parser.parameters[index])
+            array_bit_size = int(self.parser.parameters[index], 0)
             items = int(array_bit_size / self._get_bit_size())
             if items >= PacketItemParser.BIG_ARRAY_SIZE:
                 warning = (

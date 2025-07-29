@@ -41,7 +41,7 @@ class CommandTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def send_command(cls, command, timeout, scope):
+    def send_command(cls, command, timeout, scope, obfuscated_items=[]):
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
@@ -55,30 +55,19 @@ class CommandTopic(Topic):
             "*",
             100,
         )
+        command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == cmd_id:
                     result = msg_hash[b"result"].decode()
                     if result == "SUCCESS":
-                        return command["target_name"], command["cmd_name"], cmd_params
+                        return command
                     # Check for HazardousError which is a special case
                     elif "HazardousError" in result:
-                        cls.raise_hazardous_error(
-                            msg_hash,
-                            command["target_name"],
-                            command["cmd_name"],
-                            cmd_params,
-                        )
+                        cls.raise_hazardous_error(msg_hash, command)
                     elif "CriticalCmdError" in result:
-                        cls.raise_critical_cmd_error(
-                            msg_hash,
-                            command["username"],
-                            command["target_name"],
-                            command["cmd_name"],
-                            cmd_params,
-                            command["cmd_string"],
-                        )
+                        cls.raise_critical_cmd_error(msg_hash, command)
                     else:
                         raise RuntimeError(result)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
@@ -88,14 +77,14 @@ class CommandTopic(Topic):
     ###########################################################################
 
     @classmethod
-    def raise_hazardous_error(cls, msg_hash, target_name, cmd_name, cmd_params):
+    def raise_hazardous_error(cls, msg_hash, command):
         _, description, formatted = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
         error = HazardousError()
-        error.target_name = target_name
-        error.cmd_name = cmd_name
-        error.cmd_params = cmd_params
+        error.target_name = command["target_name"]
+        error.cmd_name = command["cmd_name"]
+        error.cmd_params = command["cmd_params"]
         error.hazardous_description = description
         error.formatted = formatted
 
@@ -103,17 +92,12 @@ class CommandTopic(Topic):
         raise error
 
     @classmethod
-    def raise_critical_cmd_error(cls, msg_hash, username, target_name, cmd_name, cmd_params, cmd_string):
+    def raise_critical_cmd_error(cls, msg_hash, command):
         _, uuid = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new CriticalCmdError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
         error = CriticalCmdError()
         error.uuid = uuid
-        error.username = username
-        error.target_name = target_name
-        error.cmd_name = cmd_name
-        error.cmd_params = cmd_params
-        error.cmd_string = cmd_string
-
+        error.command = command
         # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
         raise error

@@ -43,12 +43,20 @@ NFS does not work for holding container storage due to issues with user ids and 
    exit
    ```
 
-1. Configure Podman to use Netavark for DNS
+1. Configure Podman to increase the PID limit
 
    ```bash
    sudo cp /usr/share/containers/containers.conf /etc/containers/.
    sudo vi /etc/containers/containers.conf
+   ```
+
+   Then edit the `pids_limit` value to -1 (unlimited)
+
+1. Configure Podman to use Netavark for DNS
+
+   ```bash
    sudo sh -c 'echo ip_tables > /etc/modules-load.d/ip_tables.conf'
+   sudo vi /etc/containers/containers.conf
    ```
 
    Then edit the network_backend line to be "netavark" instead of "cni"

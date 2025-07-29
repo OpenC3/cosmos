@@ -57,19 +57,20 @@ The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss
 
 COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
-Ruby Example:
-
-```ruby
-ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
-    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
-```
-
-Python Example:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+```
+</TabItem>
+</Tabs>
 
 Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
 
@@ -102,7 +103,7 @@ The following keywords must follow a TELEMETRY keyword.
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
@@ -194,6 +195,10 @@ KEY $.book.title
 | Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
+#### OBFUSCATE
+<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+
+
 #### STATE
 **Defines a key/value pair for the current item**
 
@@ -227,15 +232,18 @@ Conversions are implemented in a custom Ruby or Python file which should be loca
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-READ_CONVERSION ip_read_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 READ_CONVERSION openc3/conversions/ip_read_conversion.rb
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+READ_CONVERSION ip_read_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 #### POLY_READ_CONVERSION
 **Adds a polynomial conversion factor to the current telemetry item**
@@ -263,21 +271,24 @@ Generic conversions are not a good long term solution. Consider creating a conve
 | Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
 | Converted Bit Size | Bit size of converted value | False |
 
-Ruby Example:
-```ruby
-APPEND_ITEM ITEM1 32 UINT
-  GENERIC_READ_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
-  GENERIC_READ_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+APPEND_ITEM ITEM1 32 UINT
+  GENERIC_READ_CONVERSION_START
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_READ_CONVERSION_END
+```
+</TabItem>
+</Tabs>
 
 #### GENERIC_READ_CONVERSION_END
 **Complete a generic read conversion**
@@ -316,15 +327,18 @@ See the [Limits Response](/docs/configuration/limits-response) documentation for
 | Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
 | Response Specific Options | Variable length number of options that will be passed to the class constructor | False |
 
-Ruby Example:
-```ruby
-LIMITS_RESPONSE example_limits_response.rb 10
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 LIMITS_RESPONSE example_limits_response.py 10
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+LIMITS_RESPONSE example_limits_response.rb 10
+```
+</TabItem>
+</Tabs>
 
 ### APPEND_ITEM
 **Defines a telemetry item in the current telemetry packet**
@@ -348,7 +362,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. | True |
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
@@ -383,7 +397,7 @@ APPEND_ID_ITEM PKTID 16 UINT 1 "Packet ID which must be 1"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
 | Item Bit Size | Bit size of each array item | True |
 | Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
@@ -470,15 +484,18 @@ See the [Processor](/docs/configuration/processors) documentation for more infor
 | Processor Class Filename | Name of the Ruby or Python file which implements the processor. This file should be in the target's lib directory. | True |
 | Processor Specific Options | Variable length number of options that will be passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+```
+</TabItem>
+</Tabs>
 
 ### ALLOW_SHORT
 **Process telemetry packets which are less than their defined length**

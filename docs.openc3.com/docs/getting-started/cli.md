@@ -17,8 +17,9 @@ Usage:
   cli rake                          # Runs rake in the local directory
   cli irb                           # Runs irb in the local directory
   cli script                        # Interact with scripts. Run with --help for more info.
-  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file
-  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file
+  cli validate /PATH/FILENAME.gem SCOPE variables.json  # Validate a COSMOS plugin gem file
+  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
+    OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
   cli generate TYPE OPTIONS         # Generate various COSMOS entities
     OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set
@@ -178,6 +179,8 @@ Installing openc3-cosmos-cfdp-1.0.0.gem
 Successfully validated openc3-cosmos-cfdp-1.0.0.gem
 ```
 
+You can optionally pass it the scope to install the plugin in (for Enterprise) and the path to a JSON file containing your plugin variables. If using COSMOS Core, use `DEFAULT` for the scope. If you pass a variables file, any variables not defined in the file will take the default value (as defined in your `plugin.txt` file).
+
 ## Load
 
 Load can load a plugin into COSMOS without using the GUI. This is useful for scripts or CI/CD pipelines.
@@ -188,6 +191,10 @@ Loading new plugin: openc3-cosmos-cfdp-1.0.0.gem
 {"name"=>"openc3-cosmos-cfdp-1.0.0.gem", "variables"=>{"cfdp_microservice_name"=>"CFDP", "cfdp_route_prefix"=>"/cfdp", "cfdp_port"=>"2905", "cfdp_cmd_target_name"=>"CFDP2", "cfdp_cmd_packet_name"=>"CFDP_PDU", "cfdp_cmd_item_name"=>"PDU", "cfdp_tlm_target_name"=>"CFDP2", "cfdp_tlm_packet_name"=>"CFDP_PDU", "cfdp_tlm_item_name"=>"PDU", "source_entity_id"=>"1", "destination_entity_id"=>"2", "root_path"=>"/DEFAULT/targets_modified/CFDP/tmp", "bucket"=>"config", "plugin_test_mode"=>"false"}, "plugin_txt_lines"=>["VARIABLE cfdp_microservice_name CFDP", "VARIABLE cfdp_route_prefix /cfdp", "VARIABLE cfdp_port 2905", "", "VARIABLE cfdp_cmd_target_name CFDP2", "VARIABLE cfdp_cmd_packet_name CFDP_PDU", "VARIABLE cfdp_cmd_item_name PDU", "", "VARIABLE cfdp_tlm_target_name CFDP2", "VARIABLE cfdp_tlm_packet_name CFDP_PDU", "VARIABLE cfdp_tlm_item_name PDU", "", "VARIABLE source_entity_id 1", "VARIABLE destination_entity_id 2", "VARIABLE root_path /DEFAULT/targets_modified/CFDP/tmp", "VARIABLE bucket config", "", "# Set to true to enable a test configuration", "VARIABLE plugin_test_mode \"false\"", "", "MICROSERVICE CFDP <%= cfdp_microservice_name %>", "  WORK_DIR .", "  ROUTE_PREFIX <%= cfdp_route_prefix %>", "  ENV OPENC3_ROUTE_PREFIX <%= cfdp_route_prefix %>", "  ENV SECRET_KEY_BASE 324973597349867207430793759437697498769349867349674", "  PORT <%= cfdp_port %>", "  CMD rails s -b 0.0.0.0 -p <%= cfdp_port %> -e production", "  # MIB Options Follow -", "  # You will need to modify these for your mission", "  OPTION source_entity_id <%= source_entity_id %>", "  OPTION tlm_info <%= cfdp_tlm_target_name %> <%= cfdp_tlm_packet_name %> <%= cfdp_tlm_item_name %>", "  OPTION destination_entity_id <%= destination_entity_id %>", "  OPTION cmd_info <%= cfdp_cmd_target_name %> <%= cfdp_cmd_packet_name %> <%= cfdp_cmd_item_name %>", "  OPTION root_path <%= root_path %>", "  <% if bucket.to_s.strip != '' %>", "    OPTION bucket <%= bucket %>", "  <% end %>", "", "<% include_test = (plugin_test_mode.to_s.strip.downcase == \"true\") %>", "<% if include_test %>", "  TARGET CFDPTEST CFDP", "  TARGET CFDPTEST CFDP2", "", "  MICROSERVICE CFDP CFDP2", "    WORK_DIR .", "    ROUTE_PREFIX /cfdp2", "    ENV OPENC3_ROUTE_PREFIX /cfdp2", "    ENV SECRET_KEY_BASE 324973597349867207430793759437697498769349867349674", "    PORT 2906", "    CMD rails s -b 0.0.0.0 -p 2906 -e production", "    OPTION source_entity_id <%= destination_entity_id %>", "    OPTION tlm_info CFDP CFDP_PDU PDU", "    OPTION destination_entity_id <%= source_entity_id %>", "    OPTION cmd_info CFDP CFDP_PDU PDU", "    OPTION root_path <%= root_path %>", "    <% if bucket.to_s.strip != '' %>", "      OPTION bucket <%= bucket %>", "    <% end %>", "", "  <% test_host = ENV['KUBERNETES_SERVICE_HOST'] ? (scope.to_s.downcase + \"-interface-cfdp2-int-service\") : \"openc3-operator\" %>", "  INTERFACE CFDP_INT tcpip_client_interface.rb <%= test_host %> 2907 2907 10.0 nil LENGTH 0 32 4 1 BIG_ENDIAN 0 nil nil true", "    MAP_TARGET CFDP", "", "  INTERFACE CFDP2_INT tcpip_server_interface.rb 2907 2907 10.0 nil LENGTH 0 32 4 1 BIG_ENDIAN 0 nil nil true", "    PORT 2907", "    MAP_TARGET CFDP2", "<% end %>"], "needs_dependencies"=>false, "updated_at"=>nil}
 Updating local plugin files: /plugins/DEFAULT/openc3-cosmos-cfdp
 ```
+
+You can optionally pass it the scope to install the plugin in (for Enterprise) and the path to a JSON file containing the entire `plugin_hash` for your plugin. This lets you manually set things like the installed name, `updated_at` timestamp, and other properties. Use this carefully.
+
+There is also a `--variables` option, which allows you to pass the path to a JSON file containing your plugin variables. This is the same as the optional variables file mentioned above for `cli validate`.
 
 ## List
 

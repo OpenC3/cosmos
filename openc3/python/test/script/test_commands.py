@@ -37,13 +37,37 @@ class Proxy:
         global gKwargs
         gArgs = args
         gKwargs = kwargs
+        cmd = {}
+        if "with" in args[0]:
+            part1, part2 = args[0].split("with")
+            args = part1.strip().split(" ")
+            cmd["cmd_params"] = {}
+            params = part2.strip().split(" ")
+            for i in range(0, len(params), 2):
+                if i + 1 < len(params):
+                    cmd["cmd_params"][params[i]] = params[i + 1]
+        elif len(args) == 1:
+            args = args[0].split(" ")
+            cmd["cmd_params"] = {}
+        cmd["target_name"] = args[0]
+        cmd["cmd_name"] = args[1]
+        cmd["cmd_string"] = " ".join(args)
+        cmd["obfuscated_items"] = json.dumps([])
         for arg in args:
             if "ABORT" in arg:
-                return "INST", "ABORT", {}
+                return cmd
             elif "CLEAR" in arg:
                 error = HazardousError()
                 error.target_name = "INST"
                 error.cmd_name = "CLEAR"
+                raise error
+            elif "SET_PASSWORD" in arg:
+                cmd["obfuscated_items"] = json.dumps(["PASSWORD"])
+                return cmd
+            elif "HAZARDOUS_SET_PASSWORD" in arg:
+                error = HazardousError()
+                error.target_name = "INST"
+                error.cmd_name = "SET_PASSWORD"
                 raise error
 
     def cmd_raw(*args, **kwargs):
@@ -51,23 +75,41 @@ class Proxy:
         global gKwargs
         gArgs = args
         gKwargs = kwargs
+        cmd = {}
+        cmd["target_name"] = "INST"
+        cmd["cmd_name"] = "ABORT"
+        cmd["cmd_params"] = {}
+        cmd["cmd_string"] = "INST ABORT"
+        cmd["obfuscated_items"] = []
         for arg in args:
             if "ABORT" in arg:
-                return "INST", "ABORT", {}
+                return cmd
 
     def cmd_no_hazardous_check(*args, **kwargs):
         global gArgs
         global gKwargs
         gArgs = args
         gKwargs = kwargs
-        return "INST", "CLEAR", {}
+        cmd = {}
+        cmd["target_name"] = "INST"
+        cmd["cmd_name"] = "CLEAR"
+        cmd["cmd_params"] = {}
+        cmd["cmd_string"] = "INST CLEAR"
+        cmd["obfuscated_items"] = []
+        return cmd
 
     def cmd_no_checks(*args, **kwargs):
         global gArgs
         global gKwargs
         gArgs = args
         gKwargs = kwargs
-        return "INST", "CLEAR", {}
+        cmd = {}
+        cmd["target_name"] = "INST"
+        cmd["cmd_name"] = "CLEAR"
+        cmd["cmd_params"] = {}
+        cmd["cmd_string"] = "INST CLEAR"
+        cmd["obfuscated_items"] = []
+        return cmd
 
     # Duplicate the return in cmd_api.py
     def get_cmd(target_name, cmd_name, scope):
@@ -161,9 +203,7 @@ class TestCommands(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid number of arguments"):
             cmd("INST", "COLLECT", "TYPE", "SPECIAL")
 
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'INST COLLECT NOPE' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'INST COLLECT NOPE' does not exist"):
             cmd("INST", "COLLECT", {"NOPE": "NOPE"})
 
     def test_sends_a_hazardous_cmd(self):
@@ -184,3 +224,23 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(cmd_time[0], "INST")
         self.assertEqual(cmd_time[1], "CLEAR")
         self.assertEqual("%.3f" % cmd_time[2].timestamp(), "%.3f" % gTime)
+
+    def test_handles_obfuscation(self):
+        global gArgs
+        global gKwargs
+        for stdout in capture_io():
+            cmd("INST SET_PASSWORD with USERNAME user PASSWORD pass")
+            self.assertIn(
+                'cmd("INST SET_PASSWORD with USERNAME user, PASSWORD *****")',
+                stdout.getvalue(),
+            )
+
+    def test_sends_a_hazardous_obfuscated_cmd(self):
+        global gArgs
+        global gKwargs
+        for stdout in capture_io():
+            cmd("INST HAZARDOUS_SET_PASSWORD with USERNAME user PASSWORD pass")
+            self.assertIn(
+                'cmd("INST HAZARDOUS_SET_PASSWORD with USERNAME user, PASSWORD *****")',
+                stdout.getvalue(),
+            )

@@ -127,6 +127,7 @@ class TestPacketConfig(unittest.TestCase):
         "OVERLAP",
         "KEY",
         "VARIABLE_BIT_SIZE",
+        "OBFUSCATE",
     ]
 
     def test_complains_if_a_current_packet_is_not_defined(self):
@@ -173,7 +174,7 @@ class TestPacketConfig(unittest.TestCase):
             # The following have 0 parameters
             ignore.append("OVERLAP")
             # The following are command only
-            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE"])
+            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE", "OBFUSCATE"])
             if keyword in ignore:
                 continue
 
@@ -1286,4 +1287,17 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         self.assertEqual(len(self.pc.warnings), 0)
+        tf.close()
+
+    def test_hex_states(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("    STATE ZERO 0x00\n")
+        tf.write("    STATE ONE 0x01\n")
+        tf.write("    STATE TWO 0x02\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        item = self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1")
+        self.assertEqual(item.states, {"ZERO": 0x00, "ONE": 0x01, "TWO": 0x02})
         tf.close()

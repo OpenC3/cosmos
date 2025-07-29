@@ -78,7 +78,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)  # Allow the thread to start
+        time.sleep(0.01)  # Allow the thread to start
 
     def tearDown(self):
         self.dm.shutdown()
@@ -148,7 +148,7 @@ class TestDecomMicroservice(unittest.TestCase):
             for stdout in capture_io():
                 Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST_INT", {"connect": "true"}, "*", 100)
                 time.sleep(0.01)
-                self.assertIn("Decom error Exception('Bad command')", stdout.getvalue())
+                self.assertIn("Exception: Bad command", stdout.getvalue())
             # This is an implementation detail but we want to ensure the error was logged
             self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)
 

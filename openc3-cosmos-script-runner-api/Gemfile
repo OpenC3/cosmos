@@ -36,6 +36,8 @@ group :development, :test do
   gem 'rspec'
   gem 'simplecov', '~> 0.20'
   gem 'simplecov-cobertura', '~> 2.1'
+  # simplecov_json_formatter formatter supports SonarQube
+  # gem 'simplecov_json_formatter', '~> 0.1'
 end
 
 group :test do
@@ -50,5 +52,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '6.5.2.pre.beta0'
+  gem 'openc3', '6.6.1.pre.beta0'
 end

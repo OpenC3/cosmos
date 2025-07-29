@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -112,7 +112,7 @@ module OpenC3
           @item_keywords = %w(STATE READ_CONVERSION WRITE_CONVERSION POLY_READ_CONVERSION)
           @item_keywords += %w(POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION)
           @item_keywords += %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START REQUIRED)
-          @item_keywords += %w(LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION)
+          @item_keywords += %w(LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION OBFUSCATE)
           @item_keywords += %w(MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE OVERFLOW OVERLAP KEY VARIABLE_BIT_SIZE)
         end
 
@@ -164,7 +164,7 @@ module OpenC3
             # The following have 0 parameters
             ignore += %w(OVERLAP)
             # The following are command only
-            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE OBFUSCATE)
             next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')
@@ -252,7 +252,7 @@ module OpenC3
             ignore = %w(POLY_READ_CONVERSION POLY_WRITE_CONVERSION READ_CONVERSION WRITE_CONVERSION)
             ignore += %w(SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION LIMITS_RESPONSE META)
             # The following are command only
-            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE OBFUSCATE)
             next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')

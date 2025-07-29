@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '6.5.2.pre.beta0'
+  s.version = '6.6.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -133,7 +133,8 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.21'
   s.add_development_dependency 'simplecov-cobertura', '~> 2.1'
-  s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
+  # simplecov_json_formatter formatter supports SonarQube
+  # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
 
   s.post_install_message = "Thanks for installing OpenC3!\n"
   s.metadata['rubygems_mfa_required'] = 'true'

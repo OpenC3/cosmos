@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -62,7 +62,7 @@ export default {
         const found = widget.settings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
-            (setting[0] === 'RAW' &&
+            (setting[0].startsWith('RAW') &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {

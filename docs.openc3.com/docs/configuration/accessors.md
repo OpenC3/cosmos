@@ -296,7 +296,7 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
 
 ### Template Accessor
 
-The Template Accessor is commonly used with string based command / response protocols such as the [CmdResponseProtocol](protocols#cmdresponse-protocol).
+The Template Accessor is commonly used with string based command / response protocols such as the [Command Response Protocol](protocols#command-response-protocol).
 
 For a full example see [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
 

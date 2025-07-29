@@ -317,6 +317,8 @@ class InterfaceCmdHandlerThread:
 
                     self.interface.write(command)
 
+                    command.obfuscate()
+
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)

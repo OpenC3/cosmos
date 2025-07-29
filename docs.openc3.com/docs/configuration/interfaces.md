@@ -30,7 +30,7 @@ For more information about how Interfaces fit with Protocols and Accessors see [
 
 COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
-COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, GEMS, InfluxDB.
+COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, InfluxDB.
 
 #### All Interface Options
 
@@ -40,33 +40,87 @@ The following options apply to all interfaces. Options are added directly beneat
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | PERIODIC_CMD | Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the interval in seconds, and the actual command to send as a string. |
 
-Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
+  OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION PERIODIC_CMD DONT_LOG 5.0 "INST ABORT"
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
-  OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
 ```
+</TabItem>
+</Tabs>
 
 | Option      | Description                                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | CONNECT_CMD | Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG and the actual command to send as a string. |
 
-Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
+  OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION CONNECT_CMD DONT_LOG "INST ABORT"
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
-  OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
 ```
+</TabItem>
+</Tabs>
+
+| Option              | Description                                                                                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OPTIMIZE_THROUGHPUT | Number of seconds to wait before writing packets to Redis. By default packets are immediately written to Redis (both the Current Value Table (CVT) and the stream). If you have high rate data this can improve performance by buffering packets before writing. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Wait 1 second before writing packets
+  OPTION OPTIMIZE_THROUGHPUT 1
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Wait 1 second before writing packets
+  OPTION OPTIMIZE_THROUGHPUT 1
+```
+</TabItem>
+</Tabs>
+
+| Option                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SYNC_PACKET_COUNT_DELAY_SECONDS | Amount of time to wait before syncing packet counts across interfaces. This only applies to targets mapped to multiple interfaces like the UNKNOWN packet which is mapped to all interfaces. By default this is set to 1 second. Note that it can be set to 0 to force immediate synchronization in Redis but this results in additional Redis calls and slows the interface. Note that when using Redis Cluster this value is ignored and the default is always 0. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Immediately sync the packet counts mapped to INTERFACE_NAME (slower)
+  OPTION SYNC_PACKET_COUNT_DELAY_SECONDS 0
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Immediately sync the packet counts mapped to INTERFACE_NAME (slower)
+  OPTION SYNC_PACKET_COUNT_DELAY_SECONDS 0
+```
+</TabItem>
+</Tabs>
 
 ### TCPIP Client Interface
 
@@ -82,8 +136,19 @@ The TCPIP client interface connects to a TCPIP socket to send commands and recei
 | Protocol Type      | See Protocols.                                                                                                 | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                                    | No       |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
@@ -93,18 +158,8 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
 ```
-
-plugin.txt Python Examples:
-
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None FIXED 6 0 None true
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
-```
+</TabItem>
+</Tabs>
 
 ### TCPIP Server Interface
 
@@ -135,8 +190,19 @@ Options are added directly beneath the interface definition as shown in the exam
 | -------------- | ----------------------------------- | ------- |
 | LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # no built-in protocol
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil BURST 4 0xDEADBEEF
@@ -147,18 +213,8 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIF
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
   OPTION LISTEN_ADDRESS 127.0.0.1
 ```
-
-plugin.txt Python Examples:
-
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None BURST 4 0xDEADBEEF
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None FIXED 6 0 None true
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # no built-in protocol
-```
+</TabItem>
+</Tabs>
 
 ### UDP Interface
 
@@ -183,17 +239,18 @@ openc3-operator:
 | Write Timeout     | Number of seconds to wait before aborting the write                                                                | No       | 10.0                                          |
 | Read Timeout      | Number of seconds to wait before aborting the read                                                                 | No       | nil (block on read)                           |
 
-plugin.txt Ruby Example:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME udp_interface.rb host.docker.internal 8080 8081 8082 nil 128 10.0 nil
 ```
-
-plugin.txt Python Example:
-
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
-```
+</TabItem>
+</Tabs>
 
 ### HTTP Client Interface
 
@@ -209,17 +266,18 @@ The HTTP client interface connects to a HTTP server to send commands and receive
 | Connect Timeout             | Number of seconds to wait before aborting the connection                                | No       | 5          |
 | Include Request In Response | Whether to include the request in the extra data                                        | No       | false      |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com 443 HTTPS
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME http_client_interface.rb myserver.com 80
 ```
-
-plugin.txt Python Examples:
-
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com 443 HTTPS
-```
+</TabItem>
+</Tabs>
 
 ### HTTP Server Interface
 
@@ -237,18 +295,20 @@ Options are added directly beneath the interface definition as shown in the exam
 | -------------- | ----------------------------------- | ------- |
 | LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
 
-plugin.txt Ruby Examples:
-
-```ruby
-INTERFACE INTERFACE_NAME http_server_interface.rb
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
   LISTEN_ADDRESS 127.0.0.1
 ```
-
-plugin.txt Python Examples:
-
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
+INTERFACE INTERFACE_NAME http_server_interface.rb 88
+  LISTEN_ADDRESS 127.0.0.1
 ```
+</TabItem>
+</Tabs>
 
 ### MQTT Interface
 
@@ -274,15 +334,11 @@ Options are added directly beneath the interface definition as shown in the exam
 | KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
 | CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
 
-plugin.txt Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface.
 
-```ruby
-INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883
-```
-
-plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
-
-```ruby
+```python
 INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8884
   OPTION USERNAME rw
   # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
@@ -290,6 +346,22 @@ INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8884
   # For more information about secrets see the Admin Tool page
   SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface.
+
+```ruby
+INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 8884
+  OPTION USERNAME rw
+  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
+  # and set an OPTION called PASSWORD with the secret value
+  # For more information about secrets see the Admin Tool page
+  SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
+```
+
+</TabItem>
+</Tabs>
 
 #### Packet Definitions
 
@@ -309,7 +381,7 @@ TELEMETRY MQTT TEST BIG_ENDIAN "Test"
   APPEND_ITEM DATA 0 BLOCK "MQTT Data"
 ```
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-mqtt-test) in the COSMOS source.
 
 ### MQTT Streaming Interface
 
@@ -339,15 +411,11 @@ Options are added directly beneath the interface definition as shown in the exam
 | KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
 | CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
 
-plugin.txt Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface.
 
-```ruby
-INTERFACE MQTT_INT mqtt_stream_interface.rb test.mosquitto.org 1883 false write read
-```
-
-plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
-
-```ruby
+```python
 INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py test.mosquitto.org 8884 False write read
   OPTION USERNAME rw
   # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
@@ -356,11 +424,27 @@ INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py test.mosquitto.org
   SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
 
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface.
+
+```ruby
+INTERFACE MQTT_INT mqtt_stream_interface.rb test.mosquitto.org 8884 false write read
+  OPTION USERNAME rw
+  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
+  # and set an OPTION called PASSWORD with the secret value
+  # For more information about secrets see the Admin Tool page
+  SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
+```
+
+</TabItem>
+</Tabs>
+
 #### Packet Definitions
 
 The MQTT Streaming Interface utilizes the topic names passed to the interface so no additional information is necessary in the definition.
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-mqtt-test) in the COSMOS source.
 
 ### Serial Interface
 
@@ -387,8 +471,8 @@ Options are added directly beneath the interface definition as shown in the exam
 | FLOW_CONTROL | Serial port flow control. Must be one of NONE or RTSCTS. | NONE    |
 | DATA_BITS    | Number of data bits.                                     | 8       |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME serial_interface.rb /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 nil BURST 4 0xDEADBEEF
@@ -400,6 +484,8 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 7
 ```
+</TabItem>
+</Tabs>
 
 ### File Interface
 
@@ -439,8 +525,22 @@ openc3-operator:
     /Users/jmthomas/archive:/archive
 ```
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True PREIDENTIFIED
+  MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
+  OPTION THROTTLE 5
+  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
+INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 False
+  OPTION LABEL data
+  OPTION EXTENSION .dat
+  OPTION POLLING True
+  OPTION RECURSIVE True
+  TLM_TARGET INST  # This will store INST commands in the archive folder
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true PREIDENTIFIED
   MAP_TLM_TARGET INST # Since we passed nil to Command Write Folder we map as TLM only
@@ -453,19 +553,8 @@ INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
   OPTION RECURSIVE true
   TLM_TARGET INST # This will store INST commands in the archive folder
 ```
-
-```ruby
-INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True PREIDENTIFIED
-  MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
-  OPTION THROTTLE 5
-  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
-INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 False
-  OPTION LABEL data
-  OPTION EXTENSION .dat
-  OPTION POLLING True
-  OPTION RECURSIVE True
-  TLM_TARGET INST  # This will store INST commands in the archive folder
-```
+</TabItem>
+</Tabs>
 
 ### SNMP Interface (Enterprise)
 
@@ -494,12 +583,14 @@ Options are added directly beneath the interface definition as shown in the exam
 | AUTH_PASSWORD  | Auth password                                      | N/A     |
 | PRIV_PASSWORD  | Priv password                                      | N/A     |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE SNMP_INT snmp_interface.rb 192.168.1.249 161
   OPTION VERSION 1
 ```
+</TabItem>
+</Tabs>
 
 For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
 
@@ -521,12 +612,14 @@ Options are added directly beneath the interface definition as shown in the exam
 | ------- | ------------------------ | ------- |
 | VERSION | SNMP Version: 1, 2, or 3 | 1       |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE SNMP_INT snmp_trap_interface.rb 162
   OPTION VERSION 1
 ```
+</TabItem>
+</Tabs>
 
 For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
 
@@ -539,11 +632,13 @@ The gRPC Interface is for interacting with [gRPC](https://grpc.io/). The gRPC In
 | Hostname  | gRPC server | Yes      |
 | Port      | gRPC port   | Yes      |
 
-plugin.txt Ruby Examples:
-
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE GRPC_INT grpc_interface.rb my.grpc.org 8080
 ```
+</TabItem>
+</Tabs>
 
 #### Commands
 

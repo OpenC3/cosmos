@@ -11,7 +11,7 @@ PARAMETER:
     - name: Bit Offset
       required: true
       description: Bit offset into the command packet of the Most Significant Bit of this parameter.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
         Always use a bit offset of 0 for derived parameters.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_params.yaml').to_meta_config_yaml(4) %>
@@ -50,7 +50,7 @@ ID_PARAMETER:
     - name: Bit Offset
       required: true
       description: Bit offset into the command packet of the Most Significant Bit of this parameter.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_id_params.yaml').to_meta_config_yaml(4) %>
   example: ID_PARAMETER OPCODE 32 32 UINT 2 2 2 "Opcode identifier"
@@ -80,7 +80,7 @@ ARRAY_PARAMETER:
     - name: Bit Offset
       required: true
       description: Bit offset into the command packet of the Most Significant Bit of this parameter.
-        May be negative to indicate on offset from the end of the packet.
+        May be negative to indicate an offset from the end of the packet.
         Always use a bit offset of 0 for derived parameters.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>

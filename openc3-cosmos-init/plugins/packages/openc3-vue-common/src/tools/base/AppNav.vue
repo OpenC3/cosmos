@@ -143,6 +143,7 @@
         <v-col align-self="center" class="mt-2">
           <v-row class="flex-nowrap">
             <v-spacer />
+            <context-tag />
             <scope-selector class="mr-6 mt-4" />
             <notifications class="mr-6" data-test="notifications" />
             <user-menu class="mr-6" /> </v-row
@@ -163,6 +164,7 @@ import { UpgradeToEnterpriseDialog } from '@/components'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'
+import ContextTag from './ContextTag.vue'
 
 export default {
   components: {
@@ -170,6 +172,7 @@ export default {
     ScopeSelector,
     UserMenu,
     UpgradeToEnterpriseDialog,
+    ContextTag,
   },
   props: {
     edition: {

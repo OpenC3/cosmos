@@ -336,5 +336,32 @@ module OpenC3
         expect(@files.keys.length).to eq 1
       end
     end
+
+    describe "shutdown" do
+      it "closes the file and writes out the buffer" do
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.write(:RAW_PACKET, :CMD, 'TGT', 'CMD', Time.now.to_nsec_from_epoch, true, "\x01\x02", nil, '0-0')
+        expect(plw.instance_variable_get(:@file_size)).to_not eq 0
+
+        plw.shutdown
+        sleep 0.1
+        expect(plw.instance_variable_get(:@file_size)).to eq 0
+        expect(@files.keys.length).to eq 1
+      end
+
+      it "closes the file cleanly even if no packet written" do
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.start_new_file
+        expect(plw.instance_variable_get(:@file_size)).to eq PacketLogWriter::OPENC3_FILE_HEADER.length
+        capture_io do |stdout|
+          plw.shutdown
+          expect(stdout.string).to include("Log File Closed :")
+          # No error even though no packets were written
+          expect(stdout.string).to_not include("Error closing")
+        end
+        expect(@files.keys.length).to eq 0
+        sleep 0.1
+      end
+    end
   end
 end

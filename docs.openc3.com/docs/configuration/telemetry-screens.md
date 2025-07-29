@@ -887,8 +887,8 @@ By default TRUE is green and FALSE is red and all other values are black. Additi
 | Packet name | The packet name | True |
 | Item name | The item name | True |
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the LED circle (default = 15) | False |
-| Height | Height of the LED circle (default = 15) | False |
+| Width | Width of the LED circle (default = 20) | False |
+| Height | Height of the LED circle (default = 20) | False |
 
 Example Usage:
 ```ruby

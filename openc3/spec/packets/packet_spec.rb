@@ -80,6 +80,17 @@ module OpenC3
         end
       end
 
+      it "does not complain if array with size 0" do
+        capture_io do |stdout|
+          p = Packet.new("tgt", "pkt")
+          p.append_item("test1", 8, :UINT)
+          p.append_item("test2", 16, :UINT, 0)
+          p.define_item("test3", -8, 8, :UINT)
+          p.buffer = "\xAA\x00\x00\x01\x01\x55"
+          expect(stdout.string).to_not match(/TGT PKT received with actual packet length/)
+        end
+      end
+
       it "runs processors if present" do
         p = Packet.new("tgt", "pkt")
         p.processors['processor'] = double("call", :call => true)
@@ -1751,6 +1762,184 @@ module OpenC3
         expect(vals['TEST4__U']).to eql nil
 
         expect(vals['TEST3__L']).to eql :RED
+      end
+    end
+
+    describe "obfuscate" do
+      it "does nothing if no buffer exists" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        p.get_item("TEST1").obfuscate = true
+        expect { p.obfuscate }.not_to raise_error
+      end
+
+      it "does nothing if no obfuscated items exist" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x01\x02\x03\x04"
+      end
+
+      it "obfuscates a single UINT item" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x02\x03\x04"
+      end
+
+      it "obfuscates multiple items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        p.append_item("test2", 16, :UINT)
+        p.append_item("test3", 8, :UINT)
+        i1 = p.get_item("TEST1")
+        i1.obfuscate = true
+        i2 = p.get_item("TEST3")
+        i2.obfuscate = true
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x02\x03\x00"
+      end
+
+      it "obfuscates INT items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 16, :INT)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\xFF\xFE\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x03\x04"
+      end
+
+      it "obfuscates FLOAT items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 32, :FLOAT)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x40\x49\x0F\xDB"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x00"
+      end
+
+      it "obfuscates STRING items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 32, :STRING)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "TEST"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x00"
+      end
+
+      it "obfuscates BLOCK items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 24, :BLOCK)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x04"
+      end
+
+      it "obfuscates array items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT, 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x04"
+      end
+
+      it "obfuscates array STRING items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 32, :STRING, 96)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "TESTTESTTEST"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+      end
+
+      it "obfuscates array BLOCK items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT, 24)
+        i = p.get_item("TEST1")
+        i.obfuscate = true
+        p.update_obfuscated_items_cache(i)
+        p.buffer = "\x01\x02\x03\x01\x02\x03\x01\x02\x03"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x00\x00\x01\x02\x03\x01\x02\x03"
+      end
+
+      it "skips DERIVED items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        p.define_item("test2", 0, 0, :DERIVED)
+        i1 = p.get_item("TEST1")
+        i1.obfuscate = true
+        i2 = p.get_item("TEST2")
+        i2.obfuscate = true
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = "\x01\x02\x03\x04"
+        p.obfuscate
+        expect(p.buffer).to eql "\x00\x02\x03\x04"
+      end
+
+      it "handles mixed obfuscated and non-obfuscated items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("normal1", 8, :UINT)
+        p.append_item("secret1", 16, :UINT)
+        p.append_item("normal2", 8, :UINT)
+        p.append_item("secret2", 8, :UINT)
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = true
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = true
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = "\x01\x02\x03\x04\x05"
+        p.obfuscate
+        expect(p.buffer).to eql "\x01\x00\x00\x04\x00"
+      end
+
+      it "handles failed obfuscation items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("normal1", 8, :UINT)
+        p.append_item("secret1", 16, :UINT)
+        p.append_item("normal2", 8, :UINT)
+        p.append_item("secret2", 8, :UINT)
+        i1 = p.get_item("SECRET1")
+        i1.obfuscate = true
+        i2 = p.get_item("SECRET2")
+        i2.obfuscate = true
+        p.update_obfuscated_items_cache(i1)
+        p.update_obfuscated_items_cache(i2)
+        p.buffer = "\x01\x02\x03\x04\x05"
+
+        allow(p).to receive(:read).with("SECRET1", :RAW).and_raise(StandardError.new("Obfuscation failed"))
+        allow(p).to receive(:read).with("SECRET2", :RAW).and_return(0x05)
+        allow(p).to receive(:write).with("SECRET2", 0, :RAW).and_call_original
+
+        expect(Logger.instance).to receive(:error).with(/SECRET1 obfuscation failed/)
+
+        p.obfuscate
+
+        expect(p.buffer).to eql "\x01\x02\x03\x04\x00"
       end
     end
   end
