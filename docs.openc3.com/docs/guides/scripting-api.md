@@ -6832,13 +6832,12 @@ running_script_go(15)
 
 Perform a goto or execute selection on a running script.
 
-Ruby / Python Syntax:
-
-````
+```
 # Execute Selection
 running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>, <end_line_no>)
 # Goto
 running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>)
+```
 
 | Parameter | Description                                     |
 | --------- | ----------------------------------------------- |
@@ -6868,7 +6867,7 @@ running_script_execute_while_paused("23", "INST/procedures/myprocedure.rb", 2, 4
 running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 ```
 </TabItem>
-</Tabs>`
+</Tabs>
 
 ### running_script_step
 
