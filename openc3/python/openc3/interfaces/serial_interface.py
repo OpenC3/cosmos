@@ -18,19 +18,12 @@ from typing import Optional, List, Any, Union
 
 from .stream_interface import StreamInterface
 from ..streams.serial_stream import SerialStream
+from ..config.config_parser import ConfigParser
 
 
 class SerialInterface(StreamInterface):
     """Provides a base class for interfaces that use serial ports"""
     
-    @staticmethod
-    def handle_nil(value):
-        """Handle nil/null values from configuration"""
-        if isinstance(value, str):
-            if value.upper() in ['', 'NIL', 'NULL', 'NONE']:
-                return None
-            return value
-        return value
     
     def __init__(self,
                  write_port_name: Optional[str],
@@ -46,23 +39,23 @@ class SerialInterface(StreamInterface):
         Creates a serial interface which uses the specified stream protocol.
         
         Args:
-            write_port_name: The name of the serial port to write
-            read_port_name: The name of the serial port to read
-            baud_rate: The serial port baud rate
-            parity: The parity which is normally 'NONE'.
+            write_port_name: [String] The name of the serial port to write
+            read_port_name: [String] The name of the serial port to read
+            baud_rate: [Integer] The serial port baud rate
+            parity: [String] The parity which is normally 'NONE'.
                 Must be one of 'NONE', 'EVEN', or 'ODD'.
-            stop_bits: The number of stop bits which is normally 1.
-            write_timeout: Seconds to wait before aborting writes
-            read_timeout: Seconds to wait before aborting reads.
+            stop_bits: [Integer] The number of stop bits which is normally 1.
+            write_timeout: [Float] Seconds to wait before aborting writes
+            read_timeout: [Float | None] Seconds to wait before aborting reads.
                 Pass None to block until the read is complete.
-            protocol_type: Combined with 'Protocol' to resolve
+            protocol_type: [String] Combined with 'Protocol' to resolve
                 to a OpenC3 protocol class
-            protocol_args: Arguments to pass to the protocol constructor
+            protocol_args: [List] Arguments to pass to the protocol constructor
         """
         super().__init__(protocol_type, list(protocol_args))
         
-        self.write_port_name = self.handle_nil(write_port_name)
-        self.read_port_name = self.handle_nil(read_port_name)
+        self.write_port_name = ConfigParser.handle_none(write_port_name)
+        self.read_port_name = ConfigParser.handle_none(read_port_name)
         self.baud_rate = baud_rate
         self.parity = parity
         self.stop_bits = stop_bits
@@ -81,12 +74,7 @@ class SerialInterface(StreamInterface):
         self.data_bits = 8
     
     def connection_string(self) -> str:
-        """
-        Returns a string describing the connection parameters
-        
-        Returns:
-            Connection description string
-        """
+        type_str = ''
         if self.write_port_name and self.read_port_name:
             port = self.write_port_name
             type_str = 'R/W'

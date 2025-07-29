@@ -43,19 +43,17 @@ class SerialDriver:
                  flow_control: str = 'NONE',
                  data_bits: int = 8):
         """
-        Initialize the serial driver
-        
-        Args:
-            port_name: Name of the serial port
-            baud_rate: Serial port baud rate
-            parity: Must be one of 'EVEN', 'ODD' or 'NONE'
-            stop_bits: Number of stop bits
-            write_timeout: Seconds to wait before aborting writes
-            read_timeout: Seconds to wait before aborting reads.
-                         Pass None to block until the read is complete.
-            flow_control: Currently supported 'NONE' and 'RTSCTS' (default 'NONE')
-            data_bits: Number of data bits (default 8)
+          port_name: [String] Name of the serial port
+          baud_rate: [Integer] Serial port baud rate
+          parity: [String] Must be one of 'EVEN', 'ODD' or 'NONE'
+          stop_bits: [Integer] Number of stop bits
+          write_timeout: [Float] Seconds to wait before aborting writes
+          read_timeout: [Float | None] Seconds to wait before aborting reads.
+                        Pass None to block until the read is complete.
+          flow_control: [String] Currently supported 'NONE' and 'RTSCTS' (default 'NONE')
+          data_bits: [Integer] Number of data bits (default 8)
         """
+
         if parity not in self.VALID_PARITY:
             raise ValueError(f"Invalid parity: {parity}")
         
@@ -92,33 +90,27 @@ class SerialDriver:
     def closed(self) -> bool:
         """
         Returns:
-            Whether the serial port has been closed
+            [Boolean] Whether the serial port has been closed
         """
         return self.driver.closed()
-    
+
     def write(self, data: Union[str, bytes]) -> None:
         """
-        Write binary data to the serial port
-        
         Args:
-            data: Binary data to write to the serial port
+            data: [String | bytes] Binary data to write to the serial port
         """
         self.driver.write(data)
-    
+
     def read(self) -> bytes:
         """
-        Read binary data from the serial port
-        
         Returns:
-            Binary data read from the serial port
+            [bytes] Binary data read from the serial port
         """
         return self.driver.read()
     
     def read_nonblock(self) -> bytes:
         """
-        Read binary data from the serial port without blocking
-        
         Returns:
-            Binary data read from the serial port
+            [bytes] Binary data read from the serial port
         """
         return self.driver.read_nonblock()

@@ -58,8 +58,6 @@ class PosixSerialDriver:
         
         # Open the serial port
         self.handle = os.open(port_name, os.O_RDWR | os.O_NONBLOCK)
-        
-        # Configure non-blocking mode
         flags = fcntl.fcntl(self.handle, fcntl.F_GETFL)
         fcntl.fcntl(self.handle, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
         
