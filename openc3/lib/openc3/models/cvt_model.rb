@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'pg'
+require 'thread'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/models/target_model'
@@ -30,6 +31,7 @@ module OpenC3
     @@packet_cache = {}
     @@override_cache = {}
     @@conn = nil
+    @@conn_mutex = Mutex.new
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
     def self.build_json_from_packet(packet)
@@ -138,7 +140,8 @@ module OpenC3
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~]/, '_')
+        # NOTE: Semicolon added as it appears invalid
+        item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~;]/, '_')
         case value_type
         when 'WITH_UNITS'
           names << "\"T#{index}.#{item_name}__U\""
@@ -153,60 +156,64 @@ module OpenC3
           names << "\"T#{index}.#{item_name}__L\""
         end
       end
+
+      # Build the SQL query
+      query = "SELECT #{names.join(", ")} FROM "
+      tables.each_with_index do |(table_name, _), index|
+        if index == 0
+          query += "#{table_name} as T#{index} "
+        else
+          query += "ASOF JOIN #{table_name} as T#{index} "
+        end
+      end
+      if start_time && !end_time
+        query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
+      elsif start_time && end_time
+        query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+      end
+
       retry_count = 0
       begin
-        @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                      port: ENV['OPENC3_TSDB_PORT'],
-                                      user: ENV['OPENC3_TSDB_USERNAME'],
-                                      password: ENV['OPENC3_TSDB_PASSWORD'],
-                                      dbname: 'qdb')
-        # Default connection is all strings but we want to map to the correct types
-        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-        end
-
-        query = "SELECT #{names.join(", ")} FROM "
-        tables.each_with_index do |(table_name, _), index|
-          if index == 0
-            query += "#{table_name} as T#{index} "
-          else
-            query += "ASOF JOIN #{table_name} as T#{index} "
+        @@conn_mutex.synchronize do
+          @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                                        port: ENV['OPENC3_TSDB_PORT'],
+                                        user: ENV['OPENC3_TSDB_USERNAME'],
+                                        password: ENV['OPENC3_TSDB_PASSWORD'],
+                                        dbname: 'qdb')
+          # Default connection is all strings but we want to map to the correct types
+          if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+            @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
           end
-        end
-        if start_time && !end_time
-          query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
-        elsif start_time && end_time
-          query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
-        end
 
-        result = @@conn.exec(query)
-        if result.nil? or result.ntuples == 0
-          return {}
-        else
-          data = []
-          # Build up a results set that is an array of arrays
-          # Each nested array is a set of 2 items: [value, limits state]
-          # If the item does not have limits the limits state is nil
-          result.each_with_index do |tuples, index|
-            data[index] ||= []
-            row_index = 0
-            tuples.each do |tuple|
-              if tuple[0].include?("__L")
-                data[index][row_index - 1][1] = tuple[1]
-              elsif tuple[0] =~ /^__nil/
-                data[index][row_index] = [nil, nil]
-                row_index += 1
-              else
-                data[index][row_index] = [tuple[1], nil]
-                row_index += 1
+          result = @@conn.exec(query)
+          if result.nil? or result.ntuples == 0
+            return {}
+          else
+            data = []
+            # Build up a results set that is an array of arrays
+            # Each nested array is a set of 2 items: [value, limits state]
+            # If the item does not have limits the limits state is nil
+            result.each_with_index do |tuples, index|
+              data[index] ||= []
+              row_index = 0
+              tuples.each do |tuple|
+                if tuple[0].include?("__L")
+                  data[index][row_index - 1][1] = tuple[1]
+                elsif tuple[0] =~ /^__nil/
+                  data[index][row_index] = [nil, nil]
+                  row_index += 1
+                else
+                  data[index][row_index] = [tuple[1], nil]
+                  row_index += 1
+                end
               end
             end
+            # If we only have one row then we return a single array
+            if result.ntuples == 1
+              data = data[0]
+            end
+            return data
           end
-          # If we only have one row then we return a single array
-          if result.ntuples == 1
-            data = data[0]
-          end
-          return data
         end
       rescue IOError, PG::Error => e
         # Retry the query because various errors can occur that are recoverable
@@ -217,11 +224,13 @@ module OpenC3
         end
         Logger.warn("QuestDB: Retrying due to error: #{e.message}")
         Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
-        if @@conn and !@@conn.finished?
-          @@conn.finish()
+        @@conn_mutex.synchronize do
+          if @@conn and !@@conn.finished?
+            @@conn.finish()
+          end
+          @@conn = nil # Force the new connection
         end
         sleep 0.1
-        @@conn = nil # Force the new connection
         retry
       end
     end
