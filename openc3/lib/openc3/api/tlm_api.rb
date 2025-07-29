@@ -279,7 +279,7 @@ module OpenC3
 
           # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
           if item['array_size']
-            # TODO: This needs work ... we're JSON encoding non numberic array values
+            # TODO: This needs work ... we're JSON encoding non numeric array values
             if item['data_type'] == 'STRING' or item['data_type'] == 'BLOCK'
               results << nil
               next

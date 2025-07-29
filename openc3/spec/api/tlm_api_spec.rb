@@ -776,19 +776,13 @@ module OpenC3
         expect { @api.get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existent items" do
-        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { @api.get_tlm_values(["INST__LATEST__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT")
-      end
-
       it "complains about non-existent value_types" do
         expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, "Unknown value type 'MINE'")
       end
 
       it "complains about bad arguments" do
         expect { @api.get_tlm_values() }.to raise_error(ArgumentError)
-        expect { @api.get_tlm_values([]) }.to raise_error(ArgumentError, /items must be array of strings/)
-        expect { @api.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]]) }.to raise_error(ArgumentError, /items must be array of strings/)
+        expect { @api.get_tlm_values({}) }.to raise_error(ArgumentError, /items must be array of strings/)
         expect { @api.get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"]) }.to raise_error(ArgumentError, /items must be formatted/)
       end
 

@@ -141,7 +141,7 @@ module OpenC3
         index = tables.find_index {|k,v| k == table_name }
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         # NOTE: Semicolon added as it appears invalid
-        item_name = item_name.gsub(/[?\.,'"\/:\)\(\+\-\*\%~;]/, '_')
+        item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
         case value_type
         when 'WITH_UNITS'
           names << "\"T#{index}.#{item_name}__U\""
@@ -263,13 +263,7 @@ module OpenC3
           next
         end
         unless packet_lookup[target_packet_key]
-          begin
-            packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
-          rescue => e
-            Logger.error("Could not get #{target_name}, #{packet_name} from CVT: #{e.message}")
-            packet_lookup[target_packet_key] = {}
-            next
-          end
+          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
         end
         hash = packet_lookup[target_packet_key]
         item_result = []

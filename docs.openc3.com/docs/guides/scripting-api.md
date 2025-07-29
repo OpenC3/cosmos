@@ -2309,6 +2309,52 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 </TabItem>
 </Tabs>
 
+### get_tlm_available
+
+Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+actual = get_tlm_available(<Items>)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+actual = get_tlm_available(<Items>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
+puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
+print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+```
+
+</TabItem>
+</Tabs>
+
 ### get_tlm_values
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
@@ -2340,7 +2386,7 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 
 ```ruby
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
 </TabItem>
@@ -2388,7 +2434,7 @@ get_all_tlm("<Target Name>")
 
 ```ruby
 packets = get_all_tlm("INST")
-print(packets)
+puts packets
 #[{"target_name"=>"INST",
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
@@ -2549,7 +2595,7 @@ get_tlm("<Target Name>", "<Packet Name>")
 
 ```ruby
 packet = get_tlm("INST HEALTH_STATUS")
-print(packet)
+puts packet
 #{"target_name"=>"INST",
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
@@ -2633,7 +2679,7 @@ get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 
 ```ruby
 item = get_item("INST HEALTH_STATUS CCSDSVER")
-print(item)
+puts item
 #{"name"=>"CCSDSVER",
 # "bit_offset"=>0,
 # "bit_size"=>3,
@@ -4227,7 +4273,7 @@ get_limits_event(<Offset>, count)
 
 ```ruby
 events = get_limits_event()
-print(events)
+puts events
 #[["1613077715557-0",
 #  {"type"=>"LIMITS_CHANGE",
 #   "target_name"=>"TGT",
@@ -4248,7 +4294,7 @@ print(events)
 #   "message"=>"message"}]]
 # The last offset is the first item ([0]) in the last event ([-1])
 events = get_limits_event(events[-1][0])
-print(events)
+puts events
 #[["1613077715657-0",
 #  {"type"=>"LIMITS_CHANGE",
 #   ...
@@ -4509,7 +4555,7 @@ get_target("<Target Name>")
 
 ```ruby
 target = get_target("INST")
-print(target)
+puts target
 # {"name"=>"INST",
 #  "folder_name"=>"INST",
 #  "requires"=>[],
@@ -4651,7 +4697,7 @@ get_interface("<Interface Name>")
 
 ```ruby
 interface = get_interface("INST_INT")
-print(interface)
+puts interface
 # {"name"=>"INST_INT",
 #  "config_params"=>["interface.rb"],
 #  "target_names"=>["INST"],
@@ -5231,7 +5277,7 @@ get_router("<Router Name>")
 
 ```ruby
 router = get_router("ROUTER_INT")
-print(router)
+puts router
 #{"name"=>"ROUTER_INT",
 # "config_params"=>["router.rb"],
 # "target_names"=>["INST"],
@@ -7376,7 +7422,7 @@ The method gets the maximum number of characters to display in Script Runner out
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-print(get_max_output()) #=> 50000
+puts get_max_output() #=> 50000
 ```
 
 </TabItem>
