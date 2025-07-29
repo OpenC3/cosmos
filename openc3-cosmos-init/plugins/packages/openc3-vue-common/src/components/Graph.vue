@@ -155,6 +155,7 @@
     <graph-edit-dialog
       v-if="editGraph"
       v-model="editGraph"
+      v-model:domain-item="domainItem"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -165,6 +166,7 @@
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
+      :domain-item-packet="allowableDomainItemPacket"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -382,18 +384,6 @@ export default {
       type: String,
       default: 'local',
     },
-    domainItem: {
-      type: String,
-      default: DEFAULT_DOMAIN_ITEM,
-    },
-    domainConverter: {
-      type: Function,
-      default: (val) => val,
-    },
-    domainFormatter: {
-      type: Function,
-      default: (val) => val,
-    },
   },
   emits: [
     'click',
@@ -438,6 +428,7 @@ export default {
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      domainItem: DEFAULT_DOMAIN_ITEM, // or something like "DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED"
       indexes: {},
       items: this.initialItems || [],
       limitsValues: [],
@@ -486,7 +477,7 @@ export default {
       return null
     },
     allowableDomainItemPacket: function () {
-      if (this.items.length === 0) {
+      if (!this.canUseCustomDomainItem) {
         return undefined
       }
       const { targetName, packetName } = this.items[0]
@@ -497,10 +488,10 @@ export default {
       // If it was mixed, e.g. `domainItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
       // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
       // received TEMP1 data points.
-      if (!this.allowableDomainItemPacket) {
-        return true
+      if (this.items.length === 0) {
+        return false
       }
-      const { targetName, packetName } = this.allowableDomainItemPacket
+      const { targetName, packetName } = this.items[0]
       return this.items.every(
         (item) =>
           item.targetName === targetName && item.packetName === packetName,
@@ -513,13 +504,13 @@ export default {
         return DEFAULT_DOMAIN_ITEM
       }
     },
-    actualDomainConverter: function () {
+    domainConverter: function () {
       if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
         return (val) => val / 1_000_000_000.0 // nsec to sec
       }
-      return this.domainConverter
+      return (val) => val
     },
-    actualDomainFormatter: function () {
+    domainFormatter: function () {
       return (val) => {
         if (val == null) {
           return '--'
@@ -527,7 +518,7 @@ export default {
           // Convert the unix timestamp into a formatted date / time
           return this.formatSeconds(val, this.timeZone)
         }
-        return this.domainFormatter(val)
+        return val
       }
     },
   },
@@ -755,7 +746,7 @@ export default {
               this.actualDomainItem === DEFAULT_DOMAIN_ITEM
                 ? 'Time'
                 : this.actualDomainItem,
-            value: (u, v) => this.actualDomainFormatter(v),
+            value: (u, v) => this.domainFormatter(v),
           },
           ...chartSeries,
         ],
@@ -1609,9 +1600,7 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let domainVal = this.actualDomainConverter(
-          data[i][this.actualDomainItem],
-        )
+        let domainVal = this.domainConverter(data[i][this.actualDomainItem])
         let length = this.data[0].length
         if (length === 0 || domainVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end

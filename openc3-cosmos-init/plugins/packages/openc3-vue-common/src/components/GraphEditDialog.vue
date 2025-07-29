@@ -173,6 +173,40 @@
               </v-list-item>
             </v-list>
           </div>
+          <div class="edit-box">
+            <v-card-text class="pa-0 text-medium-emphasis">
+              Choose a different item to use for the graph's domain (X axis). If
+              unchecked, the graph will use the packet's PACKET_TIME item if it
+              exists, otherwise it will use the system received time for the
+              packet.
+            </v-card-text>
+            <v-checkbox
+              v-model="customDomainEnabled"
+              :disabled="!domainItemPacket"
+              label="Custom domain item"
+              density="compact"
+              hide-details
+              @update:model-value="customDomainToggled"
+            />
+            <v-card-text
+              v-if="!domainItemPacket"
+              class="pa-0 text-medium-emphasis"
+            >
+              All items on the graph must be in the same packet to enable this
+              feature.
+            </v-card-text>
+            <target-packet-item-chooser
+              v-if="customDomainEnabled && domainItemPacket"
+              :initial-target-name="domainItemPacket.targetName"
+              :initial-packet-name="domainItemPacket.packetName"
+              choose-item
+              lock-target
+              lock-packet
+              button-text="Set"
+              @on-set="domainItemChanged"
+              @add-item="domainItemSelected"
+            />
+          </div>
         </v-tabs-window-item>
         <v-tabs-window-item value="2" eager>
           <v-data-table
@@ -211,8 +245,12 @@
 
 <script>
 import { TimeFilters } from '@/util'
+import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
+  components: {
+    TargetPacketItemChooser,
+  },
   mixins: [TimeFilters],
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
@@ -252,12 +290,23 @@ export default {
       type: String,
       required: true,
     },
+    domainItemPacket: {
+      type: Object,
+      default: undefined,
+    },
+    domainItem: {
+      type: String,
+      default: '__time',
+    },
   },
-  emits: ['cancel', 'ok', 'remove', 'update:modelValue'],
+  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:domainItem'],
   data: function () {
     return {
       tab: 0,
       graph: {},
+      customDomainEnabled: false,
+      selectedDomainItem: null,
+      pendingDomainSelection: null,
       legendPositions: ['top', 'bottom', 'left', 'right'],
       startDate: null,
       startTime: null,
@@ -327,6 +376,8 @@ export default {
       graphMaxY: this.graphMaxY,
       lines: [...this.lines],
     }
+    this.customDomainEnabled = this.domainItem && this.domainItem !== '__time'
+    this.selectedDomainItem = this.domainItem
     // Set the date and time if they pass a dateTime or set a default
     // Start needs a default because if the timeZone is UTC the time will still be local time
     if (this.startDateTime) {
@@ -367,6 +418,22 @@ export default {
     removeLine(dline) {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
+    },
+    customDomainToggled(enabled) {
+      if (!enabled) {
+        this.selectedDomainItem = '__time'
+        this.$emit('update:domainItem', '__time')
+      }
+    },
+    domainItemChanged(selection) {
+      this.pendingDomainSelection = selection
+    },
+    domainItemSelected(selection) {
+      if (selection.targetName && selection.packetName && selection.itemName) {
+        const domainItemKey = `DECOM__TLM__${selection.targetName}__${selection.packetName}__${selection.itemName}__CONVERTED`
+        this.selectedDomainItem = domainItemKey
+        this.$emit('update:domainItem', domainItemKey)
+      }
     },
   },
 }
