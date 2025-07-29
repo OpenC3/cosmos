@@ -314,6 +314,8 @@ import { TimeFilters } from '@/util'
 
 import 'uplot/dist/uPlot.min.css'
 
+const DEFAULT_DOMAIN_ITEM = '__time'
+
 export default {
   components: {
     GraphEditDialog,
@@ -382,7 +384,7 @@ export default {
     },
     domainItem: {
       type: String,
-      default: '__time',
+      default: DEFAULT_DOMAIN_ITEM,
     },
     domainConverter: {
       type: Function,
@@ -483,8 +485,36 @@ export default {
       }
       return null
     },
+    allowableDomainItemPacket: function () {
+      if (this.items.length === 0) {
+        return undefined
+      }
+      const { targetName, packetName } = this.items[0]
+      return { targetName, packetName }
+    },
+    canUseCustomDomainItem: function () {
+      // Make sure we're not mixing packets, because items from different packets will be received at different times.
+      // If it was mixed, e.g. `domainItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
+      // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
+      // received TEMP1 data points.
+      if (!this.allowableDomainItemPacket) {
+        return true
+      }
+      const { targetName, packetName } = this.allowableDomainItemPacket
+      return this.items.every(
+        (item) =>
+          item.targetName === targetName && item.packetName === packetName,
+      )
+    },
+    actualDomainItem: function () {
+      if (this.canUseCustomDomainItem) {
+        return this.domainItem
+      } else {
+        return DEFAULT_DOMAIN_ITEM
+      }
+    },
     actualDomainConverter: function () {
-      if (this.domainItem === '__time') {
+      if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
         return (val) => val / 1_000_000_000.0 // nsec to sec
       }
       return this.domainConverter
@@ -493,7 +523,7 @@ export default {
       return (val) => {
         if (val == null) {
           return '--'
-        } else if (this.domainItem === '__time') {
+        } else if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
           // Convert the unix timestamp into a formatted date / time
           return this.formatSeconds(val, this.timeZone)
         }
@@ -559,6 +589,22 @@ export default {
         this.graphEndDateTime = null
         this.needToUpdate = true
       }
+    },
+    canUseCustomDomainItem: function (val) {
+      if (val) {
+        this.addDomainItemToSubscription()
+      } else {
+        this.removeDomainItemFromSubscription()
+      }
+    },
+    actualDomainItem: function (newVal, oldVal) {
+      const label = newVal === DEFAULT_DOMAIN_ITEM ? 'Time' : newVal
+      this.graph.series[0].label = label
+
+      // Manhandle the chart to show the new label because I can't find a combo of setSeries(), setScales(), redraw(),
+      // etc. with or without this.$nextTick that will make it actually update on the screen. Maybe a bug in uPlot?
+      const selector = `#chart${this.id} .u-label` // first u-label is the x-axis label
+      document.querySelector(selector).textContent = label
     },
   },
   created() {
@@ -705,7 +751,10 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: this.domainItem === '__time' ? 'Time' : this.domainItem,
+            label:
+              this.actualDomainItem === DEFAULT_DOMAIN_ITEM
+                ? 'Time'
+                : this.actualDomainItem,
             value: (u, v) => this.actualDomainFormatter(v),
           },
           ...chartSeries,
@@ -1150,14 +1199,14 @@ export default {
           x: {
             range(u, dataMin, dataMax) {
               if (dataMin == null) {
-                if (this.domainItem === '__time') {
+                if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
                   return [1566453600, 1566497660]
                 }
                 return [0, 1]
               }
               return [dataMin, dataMax]
             },
-            time: this.domainItem === '__time',
+            time: this.actualDomainItem === DEFAULT_DOMAIN_ITEM,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1429,9 +1478,15 @@ export default {
     },
     addDomainItemToSubscription: function () {
       // Don't add '__time' because it comes across the subscription automatically
-      if (this.domainItem !== '__time') {
-        this.addItemsToSubscription([this.domainItem])
+      if (
+        this.canUseCustomDomainItem &&
+        this.actualDomainItem !== DEFAULT_DOMAIN_ITEM
+      ) {
+        this.addItemsToSubscription([this.actualDomainItem])
       }
+    },
+    removeDomainItemFromSubscription: function () {
+      this.removeItemsFromSubscription([this.actualDomainItem])
     },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime
@@ -1518,10 +1573,21 @@ export default {
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
+        const items = itemArray.map((item) => {
+          if (typeof item === 'object') {
+            return this.subscriptionKey(item)
+          } else if (typeof item === 'string') {
+            return item
+          } else {
+            throw new Error(
+              `Invalid subscription item type for ${item}: ${typeof item}`,
+            )
+          }
+        })
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          items: itemArray.map(this.subscriptionKey),
+          items: items,
         })
       }
     },
@@ -1543,7 +1609,9 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let domainVal = this.actualDomainConverter(data[i][this.domainItem])
+        let domainVal = this.actualDomainConverter(
+          data[i][this.actualDomainItem],
+        )
         let length = this.data[0].length
         if (length === 0 || domainVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
@@ -1583,7 +1651,7 @@ export default {
         this.$emit('started', newStartTime)
       } else {
         // tbh idk why this needs to be in an else. I found this fix by accident while trying to debug an issue where
-        // the graph wouldn't work (but the overview would) when domainItem was anything other than __time.
+        // the graph wouldn't work (but the overview would) when domainItem was anything other than '__time'
         this.dataChanged = true
       }
     },
@@ -1593,7 +1661,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time' || key === this.domainItem) {
+        if (key === 'time' || key === this.actualDomainItem) {
           continue
         }
         let key_index = this.indexes[key]
