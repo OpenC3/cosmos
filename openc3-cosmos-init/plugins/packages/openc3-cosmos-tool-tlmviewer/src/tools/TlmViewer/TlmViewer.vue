@@ -28,7 +28,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title></v-expansion-panel-title>
         <v-expansion-panel-text>
-          <v-container>
+          <div class="pa-4 overflow-x">
             <v-row class="pa-3">
               <v-autocomplete
                 v-model="selectedTarget"
@@ -165,7 +165,7 @@
                 style="max-width: 120px"
               />
             </v-row>
-          </v-container>
+          </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -367,7 +367,7 @@ export default {
       })
       if (this.playbackDateTime) {
         // If we've exceeded the current time, pause playback
-        if (this.playDateTime > new Date()) {
+        if (this.playbackDateTime > new Date()) {
           this.playbackPause()
         } else {
           this.playbackDate = this.formatDate(
@@ -802,6 +802,9 @@ i.v-icon.mdi-chevron-down {
 .v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
+}
+:deep(.v-expansion-panel-title__icon) {
+  margin: 8px 8px 8px auto;
 }
 .grid {
   position: relative;
