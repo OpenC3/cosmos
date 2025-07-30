@@ -2671,11 +2671,23 @@ check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
 
 Injects a packet into the system as if it was received from an interface.
 
-Ruby / Packet Syntax:
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
 inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
 ```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
+```
+
+</TabItem>
+</Tabs>
 
 | Parameter | Description                                                                                                                                                      |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -5794,11 +5806,23 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 
 Returns the text file contents of a telemetry screen definition.
 
-Syntax:
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
 get_screen_definition("<Target Name>", "<Screen Name>")
 ```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_screen_definition("<Target Name>", "<Screen Name>")
+```
+
+</TabItem>
+</Tabs>
 
 | Parameter   | Description                             |
 | ----------- | --------------------------------------- |
@@ -6832,20 +6856,30 @@ running_script_go(15)
 
 Perform a goto or execute selection on a running script.
 
-Ruby / Python Syntax:
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
 
-````
-# Execute Selection
-running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>, <end_line_no>)
-# Goto
-running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>)
+```ruby
+running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start Line Number>, <End Line Number>)
+```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
-| Script File Path | Path to to the script to run ie. "INST/procedures/collect.rb" |
-| Start Line Number | Line Number to Start At |
-| End Line Number | Optional - Line Number to End At. If given then execute selection, else goto. |
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start Line Number>, <End Line Number>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter         | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| Script Id         | Script ID returned by [script_run](#script_run)                               |
+| Script File Path  | Path to to the script to run ie. "INST/procedures/collect.rb"                 |
+| Start Line Number | Line Number to Start At                                                       |
+| End Line Number   | Optional - Line Number to End At. If given then execute selection, else goto. |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -6867,8 +6901,9 @@ running_script_execute_while_paused("23", "INST/procedures/myprocedure.rb", 2, 4
 # Goto
 running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 ```
+
 </TabItem>
-</Tabs>`
+</Tabs>
 
 ### running_script_step
 
@@ -6888,6 +6923,7 @@ running_script_step("<Script Id>")
 ```python
 running_script_step("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6909,6 +6945,7 @@ running_script_step(15)
 ```python
 running_script_step(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6930,6 +6967,7 @@ running_script_delete("<Script Id>")
 ```python
 running_script_delete("<Script Id>")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6951,6 +6989,7 @@ running_script_delete(15)
 ```python
 running_script_delete(15)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6972,6 +7011,7 @@ completed_script_list(limit: <limit>, offset: <offset>)
 ```python
 completed_script_list(limit = <limit>, offset = <offset>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -6994,6 +7034,7 @@ completed_script_list(limit: 10, offset: 0) #=> [{"id"=>"15", "user"=>"Anonymous
 ```python
 completed_script_list(limit = 10, offset = 0) #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7019,6 +7060,7 @@ set_line_delay(<Delay>)
 ```python
 set_line_delay(<Delay>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7040,6 +7082,7 @@ set_line_delay(0.0)
 ```python
 set_line_delay(0.0)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7061,6 +7104,7 @@ curr_line_delay = get_line_delay()
 ```python
 curr_line_delay = get_line_delay()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7082,6 +7126,7 @@ set_max_output(<Characters>)
 ```python
 set_max_output(<Characters>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7103,6 +7148,7 @@ set_max_output(100)
 ```python
 set_max_output(100)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7124,6 +7170,7 @@ print(get_max_output()) #=> 50000
 ```python
 print(get_max_output()) #=> 50000
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7156,6 +7203,7 @@ with disable_instrumentation():
     for x in range(1000):
         # Don't want this to have to highlight 1000 times
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7187,6 +7235,7 @@ add_group_setup(<Group Class>)
 add_group_teardown(<Group Class>)
 add_script(<Group Class>, <Method>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7259,6 +7308,7 @@ class MySuite(Suite):
         self.add_script(WrapperGroup, 'my_method')
         self.add_group_teardown(WrapperGroup)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7286,6 +7336,7 @@ timelines = list_timelines() #=>
 timelihes = list_timelines() #=>
 # [{'name': 'Mine', 'color': '#e67643', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737124024123643504}]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7307,6 +7358,7 @@ create_timeline(name, color: nil)
 ```python
 create_timeline(name, color=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7331,6 +7383,7 @@ tl = create_timeline("Mine") #=>
 tl = create_timeline("Other", color="#FF0000") #=>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7352,6 +7405,7 @@ get_timeline(name)
 ```python
 get_timeline(name)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7375,6 +7429,7 @@ tl = get_timeline("Mine") #=>
 tl = get_timeline("Other") #=>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7396,6 +7451,7 @@ set_timeline_color(name, color)
 ```python
 set_timeline_color(name, color)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7418,6 +7474,7 @@ set_timeline_color("Mine", "#4287f5")
 ```python
 set_timeline_color("Mine", "#4287f5")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7439,6 +7496,7 @@ delete_timeline(name, force: false)
 ```python
 delete_timeline(name, force=False)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7461,6 +7519,7 @@ delete_timeline("Mine", force: true)
 ```python
 delete_timeline("Other", force=True)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7482,6 +7541,7 @@ create_timeline_activity(name, kind:, start:, stop:, data: {})
 ```python
 create_timeline_activity(name, kind, start, stop, data={})
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7547,6 +7607,7 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '4f8d791b-b138-4383-b5ec-85c28b2bea20',
 #  'events': [{'time': 1737129509, 'event': 'created'}], 'recurring': {}}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7568,6 +7629,7 @@ get_timeline_activity(name, start, uuid)
 ```python
 get_timeline_activity(name, start, uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7599,6 +7661,7 @@ act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-265
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
 #  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7620,6 +7683,7 @@ get_timeline_activities(name, start: nil, stop: nil, limit: nil)
 ```python
 get_timeline_activities(name, start=None, stop=None, limit=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7647,6 +7711,7 @@ now = datetime.now(timezone.utc)
 acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) #=>
 # [{ "name"=>"PythonTL", ... }, { "name"=>"PythonTL", ... }]
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7668,6 +7733,7 @@ delete_timeline_activity(name, start, uuid)
 ```python
 delete_timeline_activity(name, start, uuid)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7691,6 +7757,7 @@ delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7716,6 +7783,7 @@ metadata_all()
 ```python
 metadata_all()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7737,6 +7805,7 @@ metadata_all(limit: 500)
 ```python
 metadata_all(limit='500')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7758,6 +7827,7 @@ metadata_get(start)
 ```python
 metadata_get(start)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7779,6 +7849,7 @@ metadata_get(start: 500)
 ```python
 metadata_get(start='500')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7800,6 +7871,7 @@ metadata_set(<Metadata>, start, color)
 ```python
 metadata_set(<Metadata>, start, color)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7825,6 +7897,7 @@ metadata_set({ 'key' => 'value' }, color: '#ff5252')
 metadata_set({ 'key': 'value' })
 metadata_set({ 'key': 'value' }, color='ff5252')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7846,6 +7919,7 @@ metadata_update(<Metadata>, start, color)
 ```python
 metadata_update(<Metadata>, start, color)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7869,6 +7943,7 @@ metadata_update({ 'key' => 'value' })
 ```python
 metadata_update({ 'key': 'value' })
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7890,6 +7965,7 @@ metadata_input()
 ```python
 metadata_input()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7915,6 +7991,7 @@ puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
 ```python
 print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7944,6 +8021,7 @@ settings = get_all_settings() #=>
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
 #   'source_url': {'name': 'source_url', 'data': 'https://github.com/OpenC3/cosmos', 'updated_at': 1698026776573904132} }
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7967,6 +8045,7 @@ get_settings(<Setting Name1>, <Setting Name2>, ...)
 get_setting(<Setting Name>)
 get_settings(<Setting Name1>, <Setting Name2>, ...)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -7990,6 +8069,7 @@ setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://
 setting = get_setting('version') #=> '5.11.4-beta0'
 setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://rubygems.org']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8015,6 +8095,7 @@ set_setting(<Setting Name>, <Setting Value>)
 ```python
 set_setting(<Setting Name>, <Setting Value>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8037,6 +8118,7 @@ set_setting('rubygems_url', 'https://mygemserver')
 ```python
 set_setting('pypi_url', 'https://mypypiserver')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8062,6 +8144,7 @@ names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
 ```python
 names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8083,6 +8166,7 @@ list_configs(<Tool Name>)
 ```python
 list_configs(<Tool Name>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8104,6 +8188,7 @@ configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```python
 configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8129,6 +8214,7 @@ load_config(<Tool Name>, <Configuration Name>)
 ```python
 load_config(<Tool Name>, <Configuration Name>)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8165,6 +8251,7 @@ config = load_config('telemetry_grapher', 'adcs') #=>
 #       "itemName": "CCSDSVER",
 # ...
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8186,6 +8273,7 @@ save_config(<Tool Name>, <Configuration Name>, local_mode)
 ```python
 save_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8209,6 +8297,7 @@ save_config('telemetry_grapher', 'adcs', config)
 ```python
 save_config('telemetry_grapher', 'adcs', config)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8230,6 +8319,7 @@ delete_config(<Tool Name>, <Configuration Name>, local_mode)
 ```python
 delete_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8253,6 +8343,7 @@ delete_config('telemetry_grapher', 'adcs')
 ```python
 delete_config('telemetry_grapher', 'adcs')
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8283,6 +8374,7 @@ script_run("INST/procedures/collect.rb")
 initialize_offline_access()
 script_run("INST2/procedures/collect.py")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8304,6 +8396,7 @@ result = offline_access_needed() #=> true
 ```python
 result = offline_access_needed() #=> False
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8325,6 +8418,7 @@ set_offline_access(offline_access_token)
 ```python
 set_offline_access(offline_access_token)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8346,6 +8440,7 @@ set_offline_access(offline_access_token)
 ```python
 set_offline_access(offline_access_token)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8371,6 +8466,7 @@ autonomic_group_list(scope: $openc3_scope)
 ```python
 autonomic_group_list(scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8392,6 +8488,7 @@ groups = autonomic_group_list()
 ```python
 groups = autonomic_group_list()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8413,6 +8510,7 @@ autonomic_group_create(name, scope: $openc3_scope)
 ```python
 autonomic_group_create(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8435,6 +8533,7 @@ group = autonomic_group_create("SAFETY")
 ```python
 group = autonomic_group_create("SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8456,6 +8555,7 @@ autonomic_group_show(name, scope: $openc3_scope)
 ```python
 autonomic_group_show(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8478,6 +8578,7 @@ group_info = autonomic_group_show("SAFETY")
 ```python
 group_info = autonomic_group_show("SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8499,6 +8600,7 @@ autonomic_group_destroy(name, scope: $openc3_scope)
 ```python
 autonomic_group_destroy(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8521,6 +8623,7 @@ autonomic_group_destroy("SAFETY")
 ```python
 autonomic_group_destroy("SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8542,6 +8645,7 @@ autonomic_trigger_list(group: 'DEFAULT', scope: $openc3_scope)
 ```python
 autonomic_trigger_list(group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8564,6 +8668,7 @@ triggers = autonomic_trigger_list(group: "SAFETY")
 ```python
 triggers = autonomic_trigger_list(group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8585,6 +8690,7 @@ autonomic_trigger_create(left:, operator:, right:, group: 'DEFAULT', scope: $ope
 ```python
 autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8635,6 +8741,7 @@ right = {
 }
 trigger = autonomic_trigger_create(left=left, operator=operator, right=right, group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8656,6 +8763,7 @@ autonomic_trigger_show(name, group: 'DEFAULT', scope: $openc3_scope)
 ```python
 autonomic_trigger_show(name, group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8679,6 +8787,7 @@ trigger_info = autonomic_trigger_show("TRIG1", group: "SAFETY")
 ```python
 trigger_info = autonomic_trigger_show("TRIG1", group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8700,6 +8809,7 @@ autonomic_trigger_enable(name, group: 'DEFAULT', scope: $openc3_scope)
 ```python
 autonomic_trigger_enable(name, group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8723,6 +8833,7 @@ autonomic_trigger_enable("TRIG1", group: "SAFETY")
 ```python
 autonomic_trigger_enable("TRIG1", group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8744,6 +8855,7 @@ autonomic_trigger_disable(name, group: 'DEFAULT', scope: $openc3_scope)
 ```python
 autonomic_trigger_disable(name, group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8767,6 +8879,7 @@ autonomic_trigger_disable("TRIG1", group: "SAFETY")
 ```python
 autonomic_trigger_disable("TRIG1", group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8788,6 +8901,7 @@ autonomic_trigger_update(name, group: 'DEFAULT', left: left, operator: operator,
 ```python
 autonomic_trigger_update(name, group='DEFAULT', left=left, operator=operator, right=right, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8830,6 +8944,7 @@ updated_trigger = autonomic_trigger_update(
     right=right
 )
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8851,6 +8966,7 @@ autonomic_trigger_destroy(name, group: 'DEFAULT', scope: $openc3_scope)
 ```python
 autonomic_trigger_destroy(name, group='DEFAULT', scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8874,6 +8990,7 @@ autonomic_trigger_destroy("TRIG1", group: "SAFETY")
 ```python
 autonomic_trigger_destroy("TRIG1", group="SAFETY")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8895,6 +9012,7 @@ autonomic_reaction_list(scope: $openc3_scope)
 ```python
 autonomic_reaction_list(scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8916,6 +9034,7 @@ reactions = autonomic_reaction_list()
 ```python
 reactions = autonomic_reaction_list()
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8937,6 +9056,7 @@ autonomic_reaction_create(triggers:, actions:, trigger_level: 'EDGE', snooze: 0,
 ```python
 autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -8988,6 +9108,7 @@ reaction = autonomic_reaction_create(
   snooze=300
 )
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9009,6 +9130,7 @@ autonomic_reaction_show(name, scope: $openc3_scope)
 ```python
 autonomic_reaction_show(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9031,6 +9153,7 @@ reaction_info = autonomic_reaction_show("REACT1")
 ```python
 reaction_info = autonomic_reaction_show("REACT1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9052,6 +9175,7 @@ autonomic_reaction_enable(name, scope: $openc3_scope)
 ```python
 autonomic_reaction_enable(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9074,6 +9198,7 @@ autonomic_reaction_enable("REACT1")
 ```python
 autonomic_reaction_enable("REACT1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9095,6 +9220,7 @@ autonomic_reaction_disable(name, scope: $openc3_scope)
 ```python
 autonomic_reaction_disable(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9117,6 +9243,7 @@ autonomic_reaction_disable("REACT1")
 ```python
 autonomic_reaction_disable("REACT1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9138,6 +9265,7 @@ autonomic_reaction_execute(name, scope: $openc3_scope)
 ```python
 autonomic_reaction_execute(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9160,6 +9288,7 @@ autonomic_reaction_execute("REACT1")
 ```python
 autonomic_reaction_execute("REACT1")
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9181,6 +9310,7 @@ autonomic_reaction_update(name, triggers: nil, actions: nil, trigger_level: nil,
 ```python
 autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None, snooze=None, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9213,6 +9343,7 @@ updated_reaction = autonomic_reaction_update(
   snooze=600
 )
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9234,6 +9365,7 @@ autonomic_reaction_destroy(name, scope: $openc3_scope)
 ```python
 autonomic_reaction_destroy(name, scope=None)
 ```
+
 </TabItem>
 </Tabs>
 
@@ -9256,5 +9388,6 @@ autonomic_reaction_destroy("REACT1")
 ```python
 autonomic_reaction_destroy("REACT1")
 ```
+
 </TabItem>
 </Tabs>
