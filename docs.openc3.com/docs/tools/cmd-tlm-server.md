@@ -34,7 +34,7 @@ The Targets tab displays all the targets and their mapped interfaces along with 
 
 ![Targets](/img/cmd_tlm_server/targets.png)
 
-[Command Authority (Enterprise)](../configuration/command.md#command-authority-enterprise) allows individual users to take and release Command Authority which enables exclusive command and script access to that target for that user. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+[Command Authority (Enterprise)](../configuration/command.md#command-authority-enterprise) allows individual users to take and release Command Authority which enables exclusive command and script access to that target for that user. Without taking Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
 
 Command Authority, along with [Critical Commanding (Enterprise)](../configuration/command.md#critical-commanding-enterprise), can be enabled in the Admin Console under the Scopes tab.
 
