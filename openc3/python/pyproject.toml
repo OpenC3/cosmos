@@ -28,7 +28,7 @@ black = "^25.1.0"
 coverage = "^7.6.10"
 fakeredis = "^2.26.2"
 pytest = "^8.3.4"
-ruff = "^0.9.4"
+ruff = "^0.12.7"
 pytest-profiling = "^1.8.1"
 
 [build-system]
