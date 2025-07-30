@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ["3.2", "3.3"]
+        ruby-version: ["3.3", "3.4"]
 
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
     strategy:
       matrix:
         # Note that the report-coverage job needs this value hard coded
-        ruby-version: ["3.2", "3.3"]
+        ruby-version: ["3.3", "3.4"]
 
     steps:
       - uses: actions/checkout@v4
