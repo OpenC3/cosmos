@@ -28,7 +28,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title></v-expansion-panel-title>
         <v-expansion-panel-text>
-          <div class="pa-4 overflow-x">
+          <div class="pa-4">
             <v-row class="pa-3">
               <v-autocomplete
                 v-model="selectedTarget"
@@ -98,22 +98,32 @@
                 data-test="playback-time"
                 :disabled="playbackPlaying"
               />
-              <v-btn
-                icon="mdi-skip-backward"
-                variant="text"
-                aria-label="Skip Backward"
-                data-test="playback-skip-backward"
-                style="margin-top: -5px"
-                @click="playbackSkipBackward"
-              ></v-btn>
-              <v-btn
-                icon="mdi-step-backward"
-                variant="text"
-                aria-label="Step Backward"
-                data-test="playback-step-backward"
-                style="margin-top: -5px"
-                @click="playbackStepBackward"
-              ></v-btn>
+              <v-tooltip :text="`Skip Backward ${playbackSkip} secs`" :open-delay="2000" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-skip-backward"
+                    variant="text"
+                    aria-label="Skip Backward"
+                    data-test="playback-skip-backward"
+                    style="margin-top: -5px"
+                    @click="playbackSkipBackward"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+              <v-tooltip :text="`Step Backward ${playbackStep} secs`" :open-delay="2000" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-step-backward"
+                    variant="text"
+                    aria-label="Step Backward"
+                    data-test="playback-step-backward"
+                    style="margin-top: -5px"
+                    @click="playbackStepBackward"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
               <v-btn
                 :icon="playbackPlaying ? 'mdi-pause' : 'mdi-play'"
                 variant="text"
@@ -122,22 +132,32 @@
                 style="margin-top: -5px"
                 @click="playbackToggle"
               ></v-btn>
-              <v-btn
-                icon="mdi-step-forward"
-                variant="text"
-                aria-label="Step Forward"
-                data-test="playback-step-forward"
-                style="margin-top: -5px"
-                @click="playbackStepForward"
-              ></v-btn>
-              <v-btn
-                icon="mdi-skip-forward"
-                variant="text"
-                aria-label="Skip Forward"
-                data-test="playback-skip-forward"
-                style="margin-top: -5px"
-                @click="playbackSkipForward"
-              ></v-btn>
+              <v-tooltip :text="`Step Forward ${playbackStep} secs`" :open-delay="2000" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-step-forward"
+                    variant="text"
+                    aria-label="Step Forward"
+                    data-test="playback-step-forward"
+                    style="margin-top: -5px"
+                    @click="playbackStepForward"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+              <v-tooltip :text="`Skip Forward ${playbackSkip} secs`" :open-delay="2000" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-skip-forward"
+                    variant="text"
+                    aria-label="Skip Forward"
+                    data-test="playback-skip-forward"
+                    style="margin-top: -5px"
+                    @click="playbackSkipForward"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
               <v-text-field
                 v-model="playbackStep"
                 class="mr-4 ml-4"
