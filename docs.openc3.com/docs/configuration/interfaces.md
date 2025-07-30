@@ -474,13 +474,13 @@ Options are added directly beneath the interface definition as shown in the exam
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```python
-INTERFACE INTERFACE_NAME serial_interface.py COM1 COM1 9600 NONE 1 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
-INTERFACE INTERFACE_NAME serial_interface.py /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 None BURST 4 0xDEADBEEF
-INTERFACE INTERFACE_NAME serial_interface.py COM2 COM2 19200 EVEN 1 10.0 None FIXED 6 0 None true
-INTERFACE INTERFACE_NAME serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 TEMPLATE 0xA 0xA
-INTERFACE INTERFACE_NAME serial_interface.py /dev/ttyS0 /dev/ttyS0 57600 NONE 1 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM1 COM1 9600 NONE 1 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM2 COM2 19200 EVEN 1 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py /dev/ttyS0 /dev/ttyS0 57600 NONE 1 10.0 None PREIDENTIFIED 0xCAFEBABE
+INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM4 COM4 115200 NONE 1 10.0 10.0 # no built-in protocol
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 7
 ```
