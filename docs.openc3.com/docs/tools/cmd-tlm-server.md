@@ -34,15 +34,9 @@ The Targets tab displays all the targets and their mapped interfaces along with 
 
 ![Targets](/img/cmd_tlm_server/targets.png)
 
-Command Authority is enabled in the Admin Console and is enabled scope wide. Once Command Authority is enabled, individual users can give and take Command Authority which enables exclusive command and script access to that target. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+[Command Authority (Enterprise)](../configuration/command.md#command-authority-enterprise) allows individual users to take and release Command Authority which enables exclusive command and script access to that target for that user. Without taking Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
 
-![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
-
-The other option shown in the Scope List is the Critical Command Mode. Critical commanding requires a different user to approve each command. It can either be enabled on just HAZARDOUS and RESTRICTED commands or on all manual commanding.
-
-Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
-
-![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
+Command Authority, along with [Critical Commanding (Enterprise)](../configuration/command.md#critical-commanding-enterprise), can be enabled in the Admin Console under the Scopes tab.
 
 ## Command Packets Tab
 
