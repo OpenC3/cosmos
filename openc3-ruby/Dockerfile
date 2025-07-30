@@ -84,11 +84,7 @@ RUN apk update \
   && gem update --system \
   && gem install rake \
   && gem install google-protobuf \
-  # This needs to be installed with the --platform flag to avoid errors on linux-musl
-  # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
-  # Pending merge of https://github.com/grpc/grpc/pull/39549
-  # Should be fixed June 2025, look for grpc > 1.73.0 with a x86-linux-musl platform
-  && gem install grpc --platform ruby \
+  && gem install grpc \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
