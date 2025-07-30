@@ -373,6 +373,10 @@ export default {
     initialItems: {
       type: Array,
     },
+    initialDomainItem: {
+      type: String,
+      default: DEFAULT_DOMAIN_ITEM,
+    },
     // These allow the parent to force a specific height and/or width
     height: {
       type: Number,
@@ -428,7 +432,7 @@ export default {
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
-      domainItem: DEFAULT_DOMAIN_ITEM, // or something like "DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED"
+      domainItem: this.initialDomainItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
       items: this.initialItems || [],
       limitsValues: [],
@@ -505,7 +509,7 @@ export default {
       }
     },
     domainConverter: function () {
-      if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
+      if (this.domainIsDefault) {
         return (val) => val / 1_000_000_000.0 // nsec to sec
       }
       return (val) => val
@@ -514,12 +518,20 @@ export default {
       return (val) => {
         if (val == null) {
           return '--'
-        } else if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
+        } else if (this.domainIsDefault) {
           // Convert the unix timestamp into a formatted date / time
           return this.formatSeconds(val, this.timeZone)
         }
         return val
       }
+    },
+    domainLabel: function () {
+      return this.domainIsDefault
+        ? 'Time'
+        : this.actualDomainItem.split('__').at(-2)
+    },
+    domainIsDefault: function () {
+      return this.actualDomainItem === DEFAULT_DOMAIN_ITEM
     },
   },
   watch: {
@@ -581,21 +593,31 @@ export default {
         this.needToUpdate = true
       }
     },
-    canUseCustomDomainItem: function (val) {
-      if (val) {
-        this.addDomainItemToSubscription()
-      } else {
-        this.removeDomainItemFromSubscription()
-      }
-    },
     actualDomainItem: function (newVal, oldVal) {
-      const label = newVal === DEFAULT_DOMAIN_ITEM ? 'Time' : newVal
-      this.graph.series[0].label = label
+      const itemsToRemove = [...this.items]
+      if (oldVal !== DEFAULT_DOMAIN_ITEM) {
+        itemsToRemove.push(oldVal)
+      }
+      this.removeItemsFromSubscription(itemsToRemove)
+      this.clearAllData()
+
+      this.graph.series[0].label = this.domainLabel
+      this.graph.scales.x.time = this.domainIsDefault
+      this.$nextTick(() => {
+        this.graph.redraw()
+      })
 
       // Manhandle the chart to show the new label because I can't find a combo of setSeries(), setScales(), redraw(),
       // etc. with or without this.$nextTick that will make it actually update on the screen. Maybe a bug in uPlot?
-      const selector = `#chart${this.id} .u-label` // first u-label is the x-axis label
-      document.querySelector(selector).textContent = label
+      // const selector = `#chart${this.id} .u-label` // first u-label is the x-axis label
+      // document.querySelector(selector).textContent = label
+
+      // Reset the graph so that we can associate all the points with their new domain value
+      const itemsToAdd = [...this.items]
+      if (newVal !== DEFAULT_DOMAIN_ITEM) {
+        itemsToAdd.push(newVal)
+      }
+      this.addItemsToSubscription(itemsToAdd)
     },
   },
   created() {
@@ -742,10 +764,7 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label:
-              this.actualDomainItem === DEFAULT_DOMAIN_ITEM
-                ? 'Time'
-                : this.actualDomainItem,
+            label: this.domainLabel,
             value: (u, v) => this.domainFormatter(v),
           },
           ...chartSeries,
@@ -1095,8 +1114,11 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
-            this.addDomainItemToSubscription()
-            this.addItemsToSubscription(this.items)
+            const itemsToAdd = [...this.items]
+            if (this.actualDomainItem !== DEFAULT_DOMAIN_ITEM) {
+              itemsToAdd.push(this.actualDomainItem)
+            }
+            this.addItemsToSubscription(itemsToAdd)
           },
           disconnected: (data) => {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
@@ -1190,14 +1212,14 @@ export default {
           x: {
             range(u, dataMin, dataMax) {
               if (dataMin == null) {
-                if (this.actualDomainItem === DEFAULT_DOMAIN_ITEM) {
+                if (this.domainIsDefault) {
                   return [1566453600, 1566497660]
                 }
                 return [0, 1]
               }
               return [dataMin, dataMax]
             },
-            time: this.actualDomainItem === DEFAULT_DOMAIN_ITEM,
+            time: this.domainIsDefault,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1467,18 +1489,6 @@ export default {
         }
       }
     },
-    addDomainItemToSubscription: function () {
-      // Don't add '__time' because it comes across the subscription automatically
-      if (
-        this.canUseCustomDomainItem &&
-        this.actualDomainItem !== DEFAULT_DOMAIN_ITEM
-      ) {
-        this.addItemsToSubscription([this.actualDomainItem])
-      }
-    },
-    removeDomainItemFromSubscription: function () {
-      this.removeItemsFromSubscription([this.actualDomainItem])
-    },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime
       if (this.graphStartDateTime) {
@@ -1600,6 +1610,11 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
+        if (!data[i].hasOwnProperty(this.actualDomainItem)) {
+          // This happens if the streaming thread was already sending something when we switched domainItems.
+          // Nothing we can do but throw away the point. It'll come back when the graph is reset anyway.
+          continue
+        }
         let domainVal = this.domainConverter(data[i][this.actualDomainItem])
         let length = this.data[0].length
         if (length === 0 || domainVal > this.data[0][length - 1]) {
@@ -1613,6 +1628,11 @@ export default {
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
+            if (!Number.isFinite(domainVal)) {
+              // Make sure this exists so that we don't create an infinite loop
+              // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
+              throw new RangeError(`Invalid domain value: ${domainVal}`)
+            }
             while (index >= 0) {
               domainVal -= 1e-5 // Subtract a small amount (10 microseconds if domain is time in seconds)
               index = bs(this.data[0], domainVal, this.bs_comparator)
@@ -1638,11 +1658,8 @@ export default {
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1000000000
         this.$emit('started', newStartTime)
-      } else {
-        // tbh idk why this needs to be in an else. I found this fix by accident while trying to debug an issue where
-        // the graph wouldn't work (but the overview would) when domainItem was anything other than '__time'
-        this.dataChanged = true
       }
+      this.dataChanged = true
     },
     bs_comparator: function (element, needle) {
       return element - needle
