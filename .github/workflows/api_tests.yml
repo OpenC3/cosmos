@@ -16,6 +16,7 @@ on:
     branches: [main]
 
 env:
+  RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
   BUNDLE_WITHOUT: development
   OPENC3_REDIS_USERNAME: openc3

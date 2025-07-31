@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # OpenC3 specific additions to the Ruby Kernel module
@@ -40,6 +40,6 @@ module Kernel
   # @param start [Integer] The number of stack entries to skip
   # @return [Symbol] The name of the calling method
   def calling_method(start = 1)
-    caller[start][/`([^']*)'/, 1].intern
+    caller[start][/[`']([^']*)'/, 1].intern
   end
 end
