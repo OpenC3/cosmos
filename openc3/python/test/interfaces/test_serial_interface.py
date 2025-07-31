@@ -22,9 +22,6 @@ from unittest.mock import Mock, patch
 
 # Mock dependencies before imports
 sys.modules['serial'] = Mock()
-sys.modules['serial.win32'] = Mock()
-sys.modules['termios'] = Mock()
-sys.modules['fcntl'] = Mock()
 
 from openc3.interfaces.serial_interface import SerialInterface
 
@@ -36,15 +33,15 @@ class TestSerialInterface:
         assert i.name == "SerialInterface"
 
     def test_initialize_is_not_writeable_if_no_write_port_given(self):
-        """Test that interface is not writeable when write port is nil"""
-        i = SerialInterface('nil', 'COM1', 9600, 'NONE', 1, 0, 0, 'burst')
+        """Test that interface is not writeable when write port is None"""
+        i = SerialInterface('NONE', 'COM1', 9600, 'NONE', 1, 0, 0, 'burst')
         assert i.write_allowed == False
         assert i.write_raw_allowed == False
         assert i.read_allowed == True
 
     def test_initialize_is_not_readable_if_no_read_port_given(self):
-        """Test that interface is not readable when read port is nil"""
-        i = SerialInterface('COM1', 'nil', 9600, 'NONE', 1, 0, 0, 'burst')
+        """Test that interface is not readable when read port is None"""
+        i = SerialInterface('COM1', 'NONE', 9600, 'NONE', 1, 0, 0, 'burst')
         assert i.write_allowed == True
         assert i.write_raw_allowed == True
         assert i.read_allowed == False
@@ -54,8 +51,8 @@ class TestSerialInterface:
         i = SerialInterface('COM1', 'COM1', 9600, 'NONE', 1, 0, 0)
         assert i.connection_string() == "COM1 (R/W) 9600 NONE 1"
 
-        i = SerialInterface('nil', 'COM1', 9600, 'NONE', 1, 0, 0)
+        i = SerialInterface('NONE', 'COM1', 9600, 'NONE', 1, 0, 0)
         assert i.connection_string() == "COM1 (read only) 9600 NONE 1"
 
-        i = SerialInterface('COM1', 'nil', 9600, 'NONE', 1, 0, 0)
+        i = SerialInterface('COM1', 'NONE', 9600, 'NONE', 1, 0, 0)
         assert i.connection_string() == "COM1 (write only) 9600 NONE 1"

@@ -20,19 +20,11 @@ from typing import Optional, Union
 
 from .stream import Stream
 from ..io.serial_driver import SerialDriver
+from ..config.config_parser import ConfigParser
 
 
 class SerialStream(Stream):
     """Stream that reads and writes to serial ports by using SerialDriver."""
-    
-    @staticmethod
-    def handle_nil(value):
-        """Handle nil/null values from configuration"""
-        if isinstance(value, str):
-            if value.upper() in ['', 'NIL', 'NULL', 'NONE']:
-                return None
-            return value
-        return value
     
     def __init__(self,
                  write_port_name: Optional[str],
@@ -71,20 +63,20 @@ class SerialStream(Stream):
         super().__init__()
         
         # The SerialDriver class will validate the parameters
-        self.write_port_name = self.handle_nil(write_port_name)
-        self.read_port_name = self.handle_nil(read_port_name)
+        self.write_port_name = ConfigParser.handle_none(write_port_name)
+        self.read_port_name = ConfigParser.handle_none(read_port_name)
         self.baud_rate = int(baud_rate)
         self.parity = parity
         self.stop_bits = int(stop_bits)
         
-        self.write_timeout = self.handle_nil(write_timeout)
+        self.write_timeout = ConfigParser.handle_none(write_timeout)
         if self.write_timeout is not None:
             self.write_timeout = float(self.write_timeout)
         else:
             logging.warning("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
             
-        self.read_timeout = self.handle_nil(read_timeout)
+        self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
             self.read_timeout = float(self.read_timeout)
             
