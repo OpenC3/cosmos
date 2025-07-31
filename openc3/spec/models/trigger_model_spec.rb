@@ -271,7 +271,7 @@ module OpenC3
             operator: 'AND',
             right: {'type' => 'trigger', 'trigger' => 'bar'}
           ).create()
-        }.to raise_error("invalid operand, type value 'trigger' must be a key: {\"type\"=>\"trigger\", \"value\"=>10}")
+        }.to raise_error(TriggerInputError, /invalid operand, type value 'trigger' must be a key:/)
       end
 
       it "raises when references an invalid type" do

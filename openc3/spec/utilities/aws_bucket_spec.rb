@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -119,7 +119,7 @@ module OpenC3
         client.put_object(bucket: @bucket, key: 'test4', body: 'contents')
         expect{
           client.presigned_request(bucket: @bucket, key: 'test4', method: 'pre_sign', internal: true)
-        }.to raise_error(NoMethodError, /undefined method `build_request'/ )
+        }.to raise_error(NoMethodError, /undefined method [`']build_request'/ )
         client.delete_object(bucket: @bucket, key: 'test4')
       end
 
@@ -127,7 +127,7 @@ module OpenC3
         client.put_object(bucket: @bucket, key: 'test5', body: 'contents')
         expect{
           client.presigned_request(bucket: @bucket, key: 'test5', method: 'pre_sign', internal: false)
-        }.to raise_error(NoMethodError, /undefined method `build_request'/ )
+        }.to raise_error(NoMethodError, /undefined method [`']build_request'/ )
         client.delete_object(bucket: @bucket, key: 'test5')
       end
     end
