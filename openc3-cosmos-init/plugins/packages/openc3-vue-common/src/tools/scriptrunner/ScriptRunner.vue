@@ -1618,6 +1618,7 @@ export default {
         environment: env,
       }
       if (suiteRunner) {
+        // TODO 7.0: Should suiteRunner be snake case?
         data['suiteRunner'] = event
       }
       if (line_no !== null) {

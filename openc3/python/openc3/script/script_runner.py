@@ -62,7 +62,7 @@ def script_body(filename, scope=OPENC3_SCOPE):
         return result.get("contents")
 
 
-def script_run(filename, disconnect=False, environment=None, scope=OPENC3_SCOPE):
+def script_run(filename, disconnect=False, environment=None, suite_runner=None, scope=OPENC3_SCOPE):
     if disconnect:
         endpoint = f"/script-api/scripts/{filename}/run/disconnect"
     else:
@@ -75,9 +75,14 @@ def script_run(filename, disconnect=False, environment=None, scope=OPENC3_SCOPE)
             env_data.append({"key": key, "value": value})
     else:
         env_data = []
+    data = {"environment": env_data}
+    if suite_runner:
+        # TODO 7.0: Should suiteRunner be snake case?
+        data['suiteRunner'] = suite_runner
+
     # NOTE: json: true causes json_api_object to JSON generate and set the Content-Type to json
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data={"environment": env_data}, scope=scope
+        "post", endpoint, json=True, data=data, scope=scope
     )
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to run {filename}", scope=scope)
