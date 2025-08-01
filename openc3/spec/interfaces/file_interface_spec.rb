@@ -124,6 +124,7 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
+        expect(extra).to be_nil
         # Push a dummy value so when we call read_interface again it doesn't block
         @interface.instance_variable_get(:@queue).push(nil)
         data, extra = @interface.read_interface
@@ -141,6 +142,7 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
+        expect(extra).to be_nil
       end
 
       it "deletes the file if archive folder is DELETE" do
@@ -152,6 +154,7 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
+        expect(extra).to be_nil
         # Push a dummy value so when we call read_interface again it doesn't block
         @interface.instance_variable_get(:@queue).push(nil)
         data, extra = @interface.read_interface
@@ -195,8 +198,10 @@ module OpenC3
         start = Time.now.to_f
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
+        expect(extra).to be_nil
         data, extra = @interface.read_interface
         expect(data).to eql "\x05\x06\x07\x08"
+        expect(extra).to be_nil
         expect(Time.now.to_f - start).to be > 0.2
         expect(Time.now.to_f - start).to be < 1.0
       end
@@ -217,6 +222,7 @@ module OpenC3
 
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
+        expect(extra).to be_nil
       end
     end
 
