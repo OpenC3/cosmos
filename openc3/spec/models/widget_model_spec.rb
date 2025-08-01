@@ -139,9 +139,6 @@ module OpenC3
       it "the Widget's microservice and undeploy it" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
-        options = OpenStruct.new
-        options.key = "blah"
-        objs = double("Object", :contents => [options], is_truncated: false)
         expect(s3).to receive(:put_bucket_policy)
         expect(s3).to receive(:put_object).twice
 

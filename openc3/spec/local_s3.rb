@@ -49,7 +49,7 @@ module LocalS3
     def create_bucket(args)
       Dir.mkdir(File.expand_path(File.join(@fs_root, args[:bucket])))
       opts = {bucket_name: args[:bucket], key: ''}
-      bucket = S3Bucket.new(args[:bucket], '', opts)
+      S3Bucket.new(args[:bucket], '', opts)
     end
 
     def delete_bucket(args)
@@ -103,7 +103,7 @@ module LocalS3
 
       # h_obj = Aws::S3::Types::HeadObjectOutput.new()
       true
-    rescue Exception => e
+    rescue Exception
        raise Aws::S3::Errors::NotFound.new(nil, "not found")
     end
 

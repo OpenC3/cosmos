@@ -132,7 +132,7 @@ module OpenC3
         capture_io do |stdout|
           i = MqttInterface.new('localhost', '1883')
           i.connect()
-          packet = i.read()
+          i.read()
           expect(stdout.string).to match(/read returned nil/)
           expect(stdout.string).to match(/read_interface requested disconnect/)
         end

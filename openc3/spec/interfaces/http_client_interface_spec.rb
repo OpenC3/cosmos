@@ -150,7 +150,7 @@ module OpenC3
 
       it "handles GET requests" do
         expect(@mock_http).to receive(:get).and_return(double('response', headers: {}, status: 200, body: 'response'))
-        data, extra = @interface.write_interface('', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => '/test' })
+        @interface.write_interface('', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => '/test' })
         expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['response', { 'HTTP_REQUEST' => ['', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => '/test' }], 'HTTP_STATUS' => 200 }])
       end
 

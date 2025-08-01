@@ -215,6 +215,25 @@ module OpenC3
       end
     end
 
+    describe "create" do
+      it "validates the url" do
+        model = ToolModel.new(name: "TEST1", scope: "DEFAULT", url: "http://example.com")
+        model.create
+        expect(model.url).to eql "http://example.com"
+
+        model = ToolModel.new(name: "TEST2", scope: "DEFAULT", url: "vscode://vscode-remote/")
+        model.create
+        expect(model.url).to eql "vscode://vscode-remote/"
+
+        model = ToolModel.new(name: "TEST3", scope: "DEFAULT", url: "/relative/path")
+        model.create
+        expect(model.url).to eql "/relative/path"
+
+        model = ToolModel.new(name: "TEST4", scope: "DEFAULT", url: "something")
+        expect { model.create }.to raise_error(RuntimeError, "URL must be a full URL (http://domain.com/path) or a relative path (/path)")
+      end
+    end
+
     describe "deploy" do
       it "does nothing if folder_name is undefined" do
         model = ToolModel.new(name: "TEST", scope: "DEFAULT")

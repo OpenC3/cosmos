@@ -25,7 +25,7 @@ module OpenC3
 
     def list_timelines(scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/timeline", scope: scope)
-      return _handle_response(response, 'Failed to list timelines')
+      return _cal_handle_response(response, 'Failed to list timelines')
     end
 
     def create_timeline(name, color: nil, scope: $openc3_scope)
@@ -33,19 +33,19 @@ module OpenC3
       data['name'] = name
       data['color'] = color if color
       response = $api_server.request('post', "/openc3-api/timeline", data: data, json: true, scope: scope)
-      return _handle_response(response, 'Failed to create timeline')
+      return _cal_handle_response(response, 'Failed to create timeline')
     end
 
     def get_timeline(name, scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/timeline/#{name}", scope: scope)
-      return _handle_response(response, 'Failed to get timeline')
+      return _cal_handle_response(response, 'Failed to get timeline')
     end
 
     def set_timeline_color(name, color, scope: $openc3_scope)
       post_data = {}
       post_data['color'] = color
       response = $api_server.request('post', "/openc3-api/timeline/#{name}/color", data: post_data, json: true, scope: scope)
-      return _handle_response(response, 'Failed to set timeline color')
+      return _cal_handle_response(response, 'Failed to set timeline color')
     end
 
     def delete_timeline(name, force: false, scope: $openc3_scope)
@@ -54,7 +54,7 @@ module OpenC3
         url += "?force=true"
       end
       response = $api_server.request('delete', url, scope: scope)
-      return _handle_response(response, 'Failed to delete timeline')
+      return _cal_handle_response(response, 'Failed to delete timeline')
     end
 
     def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope)
@@ -69,12 +69,12 @@ module OpenC3
       post_data['kind'] = kind
       post_data['data'] = data
       response = $api_server.request('post', "/openc3-api/timeline/#{name}/activities", data: post_data, json: true, scope: scope)
-      return _handle_response(response, 'Failed to create timeline activity')
+      return _cal_handle_response(response, 'Failed to create timeline activity')
     end
 
     def get_timeline_activity(name, start, uuid, scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
-      return _handle_response(response, 'Failed to get timeline activity')
+      return _cal_handle_response(response, 'Failed to get timeline activity')
     end
 
     def get_timeline_activities(name, start: nil, stop: nil, limit: nil, scope: $openc3_scope)
@@ -86,16 +86,16 @@ module OpenC3
         url += "?limit=#{limit}"
       end
       response = $api_server.request('get', url, scope: scope)
-      return _handle_response(response, 'Failed to get timeline activities')
+      return _cal_handle_response(response, 'Failed to get timeline activities')
     end
 
     def delete_timeline_activity(name, start, uuid, scope: $openc3_scope)
       response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
-      return _handle_response(response, 'Failed to delete timeline activity')
+      return _cal_handle_response(response, 'Failed to delete timeline activity')
     end
 
     # Helper method to handle the response
-    def _handle_response(response, error_message)
+    def _cal_handle_response(response, error_message)
       return nil if response.nil?
       if response.status >= 400
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)

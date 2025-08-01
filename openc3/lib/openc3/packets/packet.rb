@@ -334,7 +334,7 @@ module OpenC3
       synchronize() do
         begin
           internal_buffer_equals(buffer)
-        rescue RuntimeError => e
+        rescue RuntimeError
           Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
         end
         @read_conversion_cache.clear if @read_conversion_cache
@@ -1315,7 +1315,7 @@ module OpenC3
 
         begin
           current_value = read(item.name, :RAW)
-          
+
           case current_value
           when Array
             # For arrays, create a new array of zeros with the same size
@@ -1325,7 +1325,7 @@ module OpenC3
               when :FLOAT
                 obfuscated_value = Array.new(current_value.size, 0.0)
               when :STRING, :BLOCK
-                obfuscated_value = Array.new(current_value.size) { |i| 
+                obfuscated_value = Array.new(current_value.size) { |i|
                   "\x00" * current_value[i].length if current_value[i]
                 }
             else
