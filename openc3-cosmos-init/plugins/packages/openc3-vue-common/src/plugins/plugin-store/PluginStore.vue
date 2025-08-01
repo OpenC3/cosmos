@@ -32,7 +32,7 @@
         <template #activator="{ props }">
           <div v-bind="props">
             <v-btn
-              href="https://plugins.openc3.com"
+              href="https://store.openc3.com"
               target="_blank"
               icon="mdi-open-in-new"
               variant="text"
@@ -40,7 +40,7 @@
             />
           </div>
         </template>
-        <span> Open plugins.openc3.com </span>
+        <span> Open store.openc3.com </span>
       </v-tooltip>
 
       <v-btn icon="mdi-close" variant="text" @click="close" />
@@ -117,7 +117,7 @@ export default {
   },
   mounted: function () {
     // Don't call updatePluginStore() here. It should be called in the background before the user opens this store
-    // view (e.g. in PluginsTab) to keep this feeling fast
+    // view (see PluginsTab.vue `created()`) to keep this feeling fast
     this.fetchPluginStoreData()
     // TODO: do something with plugins that are already installed (show uninstall button instead?)
   },

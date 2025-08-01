@@ -36,7 +36,7 @@
               />
             </div>
           </template>
-          <span> View at plugins.openc3.com </span>
+          <span> View at store.openc3.com </span>
         </v-tooltip>
       </v-toolbar>
       <v-card-subtitle

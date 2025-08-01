@@ -37,8 +37,10 @@
           @change="fileChange"
         />
         <br />
-        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed
-        Plugins list to upgrade existing plugins
+        <p class="mt-2">
+          Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed
+          Plugins list to upgrade existing plugins
+        </p>
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress" />
