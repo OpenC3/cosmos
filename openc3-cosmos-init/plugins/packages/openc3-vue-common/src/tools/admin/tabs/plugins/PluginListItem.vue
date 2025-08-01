@@ -26,8 +26,8 @@
       <v-img v-if="image_url" :src="image_url" max-height="56" min-width="56" />
     </td>
     <td>
-      <div class="text-h6" v-text="title || name" />
-      <div class="text-subtitle-2">
+      <div class="text-h6" v-text="displayTitle" />
+      <div class="text-subtitle-2 font-weight-thin">
         <!-- subtitle -->
         <template v-if="isModified"> * </template>
         {{ name }}
@@ -119,6 +119,16 @@ export default {
     return {
       showCard: false,
     }
+  },
+  computed: {
+    displayTitle: function () {
+      if (this.title) {
+        return this.title
+      }
+      return this.name
+        .replace(/^openc3-cosmos-/, '')
+        .replace(/-?\d+\.\d+\.\d+(?:\.pre\.beta\d+\.\d+)?\.gem(?:__\d+)?$/, '') // '-6.6.1.pre.beta0.20250801182255.gem__20250801182444' or '6.6.1.gem'
+    },
   },
   methods: {
     openDetails: function () {
