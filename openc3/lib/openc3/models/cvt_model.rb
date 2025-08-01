@@ -176,7 +176,7 @@ module OpenC3
       begin
         @@conn_mutex.synchronize do
           @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                        port: ENV['OPENC3_TSDB_PORT'],
+                                        port: ENV['OPENC3_TSDB_QUERY_PORT'],
                                         user: ENV['OPENC3_TSDB_USERNAME'],
                                         password: ENV['OPENC3_TSDB_PASSWORD'],
                                         dbname: 'qdb')

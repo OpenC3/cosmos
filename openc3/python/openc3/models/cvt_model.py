@@ -217,7 +217,7 @@ class CvtModel(Model):
                     if cls._conn is None:
                         cls._conn = psycopg.connect(
                             host=os.environ['OPENC3_TSDB_HOSTNAME'],
-                            port=os.environ['OPENC3_TSDB_PORT'],
+                            port=os.environ['OPENC3_TSDB_QUERY_PORT'],
                             user=os.environ['OPENC3_TSDB_USERNAME'],
                             password=os.environ['OPENC3_TSDB_PASSWORD'],
                             dbname='qdb'

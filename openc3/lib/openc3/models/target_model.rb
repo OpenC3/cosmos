@@ -1088,6 +1088,25 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_tsdb_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__TSDB#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["python", "quest_microservice.py", microservice_name],
+        work_dir: "/openc3/python/openc3/microservices",
+        topics: topics,
+        plugin: @plugin,
+        parent: nil,
+        needs_dependencies: @needs_dependencies,
+        shard: @shard,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_reducer_microservice(gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__REDUCER#{instance}__#{@name}"
       microservice = MicroserviceModel.new(
@@ -1248,6 +1267,13 @@ module OpenC3
         # Decommutation Microservice
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
+        end
+
+        # TSDB Microservice
+        if ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
+          deploy_target_microservices('TSDB', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
+            deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
+          end
         end
 
         # Reducer Microservice

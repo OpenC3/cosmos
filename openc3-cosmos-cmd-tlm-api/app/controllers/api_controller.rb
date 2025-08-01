@@ -38,7 +38,7 @@ class ApiController < ApplicationController
     end
     begin
       PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                         port: ENV['OPENC3_TSDB_PORT'],
+                         port: ENV['OPENC3_TSDB_QUERY_PORT'],
                          user: ENV['OPENC3_TSDB_USERNAME'],
                          password: ENV['OPENC3_TSDB_PASSWORD'],
                          dbname: 'qdb').close() # Default dbname

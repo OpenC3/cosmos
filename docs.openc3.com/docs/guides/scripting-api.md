@@ -1928,7 +1928,7 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> tr
 <TabItem value="python" label="Python Example">
 
 ```python
-status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> True / False
 ```
 
 </TabItem>
@@ -3292,7 +3292,7 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 <TabItem value="python" label="Python Syntax">
 
 ```python
-# Returns true or false based on the whether the expression is true or false
+# Returns True or False based on the whether the expression is True or False
 success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
@@ -3469,7 +3469,7 @@ success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling
 <TabItem value="python" label="Python Syntax">
 
 ```python
-# Returns true or false based on the whether the packet was received
+# Returns True or False based on the whether the packet was received
 success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
@@ -4167,7 +4167,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 <TabItem value="python" label="Python Example">
 
 ```python
-set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, True)
 ```
 
 </TabItem>
@@ -4397,7 +4397,7 @@ plugins = plugin_list(default: true) #=>
 
 ```python
 plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default: true) #=>
+plugins = plugin_list(default=True) #=>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
