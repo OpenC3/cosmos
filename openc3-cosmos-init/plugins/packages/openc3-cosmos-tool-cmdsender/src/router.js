@@ -26,7 +26,7 @@ import { NotFound } from '@openc3/vue-common/components'
 
 const routes = [
   {
-    path: '/:target?/:packet?',
+    path: '/:target?/:packet?/',
     name: 'CommandSender',
     component: () => import('./tools/CommandSender/CommandSender.vue'),
   },

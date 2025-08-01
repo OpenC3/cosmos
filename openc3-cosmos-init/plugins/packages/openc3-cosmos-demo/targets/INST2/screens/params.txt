@@ -7,70 +7,70 @@ VERTICAL
     MATRIXBYCOLUMNS 3
       LABEL VALUE5
         SETTING WIDTH 100 # Only need width on the first row
-      VALUE <%= target_name %> PARAMS VALUE5
-      LABELLED <%= target_name %> PARAMS VALUE5
+      VALUE <%= target_name %> PARAMS.PKT VALUE5
+      LABELLED <%= target_name %> PARAMS.PKT VALUE5
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
 
       LABEL VALUE4
         SETTING TEXTALIGN CENTER
-      VALUE <%= target_name %> PARAMS VALUE4
+      VALUE <%= target_name %> PARAMS.PKT VALUE4
         SETTING TEXTALIGN CENTER
-      LABELLED <%= target_name %> PARAMS VALUE4
+      LABELLED <%= target_name %> PARAMS.PKT VALUE4
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
 
       LABEL VALUE3
         SETTING TEXTALIGN RIGHT
-      VALUE <%= target_name %> PARAMS VALUE3
+      VALUE <%= target_name %> PARAMS.PKT VALUE3
         SETTING TEXTALIGN RIGHT
-      LABELLED <%= target_name %> PARAMS VALUE3
+      LABELLED <%= target_name %> PARAMS.PKT VALUE3
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
 
       LABEL VALUE2
         SETTING TEXTALIGN CENTER
-      VALUE <%= target_name %> PARAMS VALUE2
+      VALUE <%= target_name %> PARAMS.PKT VALUE2
         SETTING TEXTALIGN CENTER
-      LABELLED <%= target_name %> PARAMS VALUE2
+      LABELLED <%= target_name %> PARAMS.PKT VALUE2
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
 
       LABEL VALUE1
-      VALUE <%= target_name %> PARAMS VALUE1
-      LABELLED <%= target_name %> PARAMS VALUE1
+      VALUE <%= target_name %> PARAMS.PKT VALUE1
+      LABELLED <%= target_name %> PARAMS.PKT VALUE1
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
     END
     VERTICAL
-      LED <%= target_name %> PARAMS VALUE5 RAW 25 20 # Ellipse
+      LED <%= target_name %> PARAMS.PKT VALUE5 RAW 25 20 # Ellipse
         SETTING LED_COLOR 0 GREEN
         SETTING LED_COLOR 1 RED
-      LED <%= target_name %> PARAMS VALUE4 RAW 20 25 # Ellipse
+      LED <%= target_name %> PARAMS.PKT VALUE4 RAW 20 25 # Ellipse
         SETTING LED_COLOR 0 YELLOW
         SETTING LED_COLOR 1 BLUE
-      LED <%= target_name %> PARAMS VALUE3 RAW 20 20
+      LED <%= target_name %> PARAMS.PKT VALUE3 RAW 20 20
         SETTING LED_COLOR 0 GREEN
         SETTING LED_COLOR 1 RED
         SETTING LED_COLOR ANY ORANGE # All other values are ORANGE
-      LED <%= target_name %> PARAMS VALUE2 # Default is WITH_UNITS 15 15
+      LED <%= target_name %> PARAMS.PKT VALUE2 # Default is WITH_UNITS 15 15
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
-      LED <%= target_name %> PARAMS VALUE1 CONVERTED 10 10
+      LED <%= target_name %> PARAMS.PKT VALUE1 CONVERTED 10 10
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
     END
     VERTICAL
-      LABELVALUE <%= target_name %> PARAMS P_2.2,2
-      LABELVALUE <%= target_name %> PARAMS P-3+3=3
-      LABELVALUE <%= target_name %> PARAMS P4!@#$%^&*?
-      LABELVALUE <%= target_name %> PARAMS P</5|\>
-      LABELVALUE <%= target_name %> PARAMS P(:6;)
+      LABELVALUE <%= target_name %> PARAMS.PKT P_2.2,2
+      LABELVALUE <%= target_name %> PARAMS.PKT P-3+3=3
+      LABELVALUE <%= target_name %> PARAMS.PKT P4!@#$%^&*?
+      LABELVALUE <%= target_name %> PARAMS.PKT P</5|\>
+      LABELVALUE <%= target_name %> PARAMS.PKT P(:6;)
     END
   END
 
   HORIZONTAL
     LABEL "Packet Time"
-    VALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED WITH_UNITS 25
+    VALUE <%= target_name %> PARAMS.PKT PACKET_TIMEFORMATTED WITH_UNITS 25
   END
 END

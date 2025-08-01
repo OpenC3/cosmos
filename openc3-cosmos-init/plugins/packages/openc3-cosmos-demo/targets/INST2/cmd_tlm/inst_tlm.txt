@@ -119,7 +119,9 @@ TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 
-TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
+# NOTE: We don't really recommend using periods in packet names
+# but we're doing it here to test the routing code
+TELEMETRY <%= target_name %> PARAMS.PKT BIG_ENDIAN "Params set by SETPARAMS command"
   <%= render "_ccsds_tlm.txt", locals: {apid: 3} %>
   # ERB syntax:
   <% (1..5).each do |i| %>
