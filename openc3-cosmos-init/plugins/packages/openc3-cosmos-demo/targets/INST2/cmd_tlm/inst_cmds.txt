@@ -31,10 +31,10 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   <% (1..5).each do |i| %>
     # The packet is BIG_ENDIAN (CCSDS) but these fields are LITTLE_ENDIAN
     APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting" LITTLE_ENDIAN
-    RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
+    RELATED_ITEM <%= target_name %> PARAMS.PKT VALUE<%= i %>
   <% end %>
   APPEND_PARAMETER BIGINT 64 UINT MIN MAX 0 "UINT 64 parameter"
-  SCREEN <%= target_name %> PARAMS
+  SCREEN <%= target_name %> PARAMS.PKT
 
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2

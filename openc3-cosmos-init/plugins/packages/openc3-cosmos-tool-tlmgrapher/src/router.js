@@ -26,7 +26,7 @@ import { NotFound } from '@openc3/vue-common/components'
 
 const routes = [
   {
-    path: '/:target?/:packet?/:item?',
+    path: '/:target?/:packet?/:item?/',
     name: 'TlmGrapher',
     component: () => import('./tools/TlmGrapher/TlmGrapher.vue'),
   },
