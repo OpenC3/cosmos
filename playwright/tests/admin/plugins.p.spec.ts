@@ -24,6 +24,8 @@ test.use({
 })
 
 test('shows and hides built-in tools', async ({ page, utils }) => {
+  await page.locator('[data-test="plugin-list"]').getByRole('combobox').click()
+  await page.getByText('All', { exact: true }).click()
   await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-demo',
   )
@@ -227,7 +229,7 @@ test.describe(() => {
       // It is important to call waitForEvent before click to set up waiting.
       page.waitForEvent('filechooser'),
       // Opens the file chooser.
-      await page.getByRole('button', { name: 'Install New Plugin' }).click(),
+      await page.getByRole('button', { name: 'Install From File' }).click(),
     ])
     await installFileChooser.setFiles(`./${plugin}/${pluginGem}`)
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
@@ -263,7 +265,7 @@ test.describe(() => {
     )
 
     await expect(
-      page.locator(`[data-test=plugin-list] div:has-text("${plugin}")`).first(),
+      page.locator(`[data-test=plugin-list] tr:has-text("${plugin}")`).first(),
     ).toContainText('PW_TEST')
     // Show the process output
     await page
@@ -406,8 +408,11 @@ test.describe(() => {
       page.waitForEvent('filechooser'),
       // Opens the file chooser.
       await page
-        .locator('.v-list-item')
+        .locator('[data-test=plugin-list-item]')
         .filter({ hasText: plugin })
+        .locator('[data-test=plugin-actions]')
+        .click(),
+      await page
         .locator('[data-test=upgrade-plugin]')
         .click(),
     ])
@@ -462,8 +467,11 @@ test.describe(() => {
 
     // Edit then cancel
     await page
-      .locator('.v-list-item')
+      .locator('[data-test=plugin-list-item]')
       .filter({ hasText: plugin })
+      .locator('[data-test=plugin-actions]')
+      .click()
+    await page
       .locator('[data-test=edit-plugin]')
       .click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
@@ -473,8 +481,11 @@ test.describe(() => {
     ).not.toBeVisible()
     // Edit and change a target name (forces re-install)
     await page
-      .locator('.v-list-item')
+      .locator('[data-test=plugin-list-item]')
       .filter({ hasText: plugin })
+      .locator('[data-test=plugin-actions]')
+      .click()
+    await page
       .locator('[data-test=edit-plugin]')
       .click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
@@ -516,14 +527,12 @@ test.describe(() => {
     // Ensure the target list is updated to show the new name
     await expect(
       page
-        .locator('[data-test=plugin-list]')
-        .locator('.v-list-item')
+        .locator('[data-test=plugin-list-item]')
         .filter({ hasText: plugin }),
     ).not.toContainText('PW_TEST')
     await expect(
       page
-        .locator('[data-test=plugin-list]')
-        .locator('.v-list-item')
+        .locator('[data-test=plugin-list-item]')
         .filter({ hasText: plugin }),
     ).toContainText('NEW_TGT')
     // Show the process output
@@ -567,9 +576,11 @@ test.describe(() => {
     // Section: DELETE THE PLUGIN
     // ==========================================
     await page
-      .locator('[data-test=plugin-list]')
-      .locator('.v-list-item')
+      .locator('[data-test=plugin-list-item]')
       .filter({ hasText: plugin })
+      .locator('[data-test=plugin-actions]')
+      .click()
+    await page
       .locator('[data-test=delete-plugin]')
       .click()
     await expect(page.locator('.v-dialog')).toContainText('Confirm')
