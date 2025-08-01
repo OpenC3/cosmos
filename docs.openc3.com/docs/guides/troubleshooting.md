@@ -67,4 +67,13 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
    We've seen this on old versions of Docker Desktop when using bind mounts instead of named volumes. Our docker compose files use named volumes by default so be careful with bind mounts. We also recommend upgrading Docker Desktop and WLS2 if possible as this maybe OBE in newer versions of Docker Desktop / WSL2.
 
+1. When exposing COSMOS to the network through http, Chrome [DevTools](https://developer.chrome.com/docs/devtools/open) shows "Web crypto API is not avilable".
+
+   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
+
+   - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
+   - Add your http://&lt;Your IP Address&gt;:2900
+   - Enable the Setting
+   - Completely restart Chrome. On MacOS make sure the dot below the icon in chrome is gone by long pressing the icon and choosing Quit.
+
 Encountering an issue not on this list? If you're a customer, please get in touch at [support@openc3.com](mailto:support@openc3.com).

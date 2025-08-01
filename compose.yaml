@@ -49,8 +49,10 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
+  # Uncomment to use QuestDB as the time series database
+  # Also uncomment the openc3-tsdb-v volume in the volumes section
   # openc3-tsdb:
-  #   image: questdb/questdb:9.0.1
+  #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
   #   ports:
   #     # You should disable the QuestDB Console in production
   #     # as it gives unlimited access to the database
