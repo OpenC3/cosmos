@@ -14,17 +14,39 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/open_telemetry'
+require 'pg'
+
+$tsdb_connection = nil
 
 class ApiController < ApplicationController
   def ping
     render plain: 'OK'
+  end
+
+  # Time Seriese Database (TSDB) presence check
+  def tsdb
+    if $tsdb_connection
+      render plain: 'OK', status: 200
+      return
+    end
+    begin
+      PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                         port: ENV['OPENC3_TSDB_QUERY_PORT'],
+                         user: ENV['OPENC3_TSDB_USERNAME'],
+                         password: ENV['OPENC3_TSDB_PASSWORD'],
+                         dbname: 'qdb').close() # Default dbname
+      $tsdb_connection = 'OK'
+      render plain: 'OK', status: 200
+    rescue => e
+      render plain: e.message, status: 404
+    end
   end
 
   def api

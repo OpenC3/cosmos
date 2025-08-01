@@ -131,7 +131,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                          |
 | subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                          |
 | subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                   |
-| subscribe_server_messages             | Command and Telemetry Server | Unimplemented                                                       |
+| subscribe_server_messages             | Command and Telemetry Server | Deprecated                                                          |
 | tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                 |
 | unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                          |
 | unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                          |
@@ -1928,7 +1928,7 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> tr
 <TabItem value="python" label="Python Example">
 
 ```python
-status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> True / False
 ```
 
 </TabItem>
@@ -2309,6 +2309,52 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 </TabItem>
 </Tabs>
 
+### get_tlm_available
+
+Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+actual = get_tlm_available(<Items>)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+actual = get_tlm_available(<Items>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
+puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
+print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+```
+
+</TabItem>
+</Tabs>
+
 ### get_tlm_values
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
@@ -2340,7 +2386,7 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 
 ```ruby
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
 </TabItem>
@@ -2388,7 +2434,7 @@ get_all_tlm("<Target Name>")
 
 ```ruby
 packets = get_all_tlm("INST")
-print(packets)
+puts packets
 #[{"target_name"=>"INST",
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
@@ -2549,7 +2595,7 @@ get_tlm("<Target Name>", "<Packet Name>")
 
 ```ruby
 packet = get_tlm("INST HEALTH_STATUS")
-print(packet)
+puts packet
 #{"target_name"=>"INST",
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
@@ -2633,7 +2679,7 @@ get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 
 ```ruby
 item = get_item("INST HEALTH_STATUS CCSDSVER")
-print(item)
+puts item
 #{"name"=>"CCSDSVER",
 # "bit_offset"=>0,
 # "bit_size"=>3,
@@ -3258,7 +3304,7 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 <TabItem value="python" label="Python Syntax">
 
 ```python
-# Returns true or false based on the whether the expression is true or false
+# Returns True or False based on the whether the expression is True or False
 success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
@@ -3435,7 +3481,7 @@ success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling
 <TabItem value="python" label="Python Syntax">
 
 ```python
-# Returns true or false based on the whether the packet was received
+# Returns True or False based on the whether the packet was received
 success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
@@ -4133,7 +4179,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 <TabItem value="python" label="Python Example">
 
 ```python
-set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, True)
 ```
 
 </TabItem>
@@ -4239,7 +4285,7 @@ get_limits_event(<Offset>, count)
 
 ```ruby
 events = get_limits_event()
-print(events)
+puts events
 #[["1613077715557-0",
 #  {"type"=>"LIMITS_CHANGE",
 #   "target_name"=>"TGT",
@@ -4260,7 +4306,7 @@ print(events)
 #   "message"=>"message"}]]
 # The last offset is the first item ([0]) in the last event ([-1])
 events = get_limits_event(events[-1][0])
-print(events)
+puts events
 #[["1613077715657-0",
 #  {"type"=>"LIMITS_CHANGE",
 #   ...
@@ -4363,7 +4409,7 @@ plugins = plugin_list(default: true) #=>
 
 ```python
 plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default: true) #=>
+plugins = plugin_list(default=True) #=>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
@@ -4521,7 +4567,7 @@ get_target("<Target Name>")
 
 ```ruby
 target = get_target("INST")
-print(target)
+puts target
 # {"name"=>"INST",
 #  "folder_name"=>"INST",
 #  "requires"=>[],
@@ -4663,7 +4709,7 @@ get_interface("<Interface Name>")
 
 ```ruby
 interface = get_interface("INST_INT")
-print(interface)
+puts interface
 # {"name"=>"INST_INT",
 #  "config_params"=>["interface.rb"],
 #  "target_names"=>["INST"],
@@ -5243,7 +5289,7 @@ get_router("<Router Name>")
 
 ```ruby
 router = get_router("ROUTER_INT")
-print(router)
+puts router
 #{"name"=>"ROUTER_INT",
 # "config_params"=>["router.rb"],
 # "target_names"=>["INST"],
@@ -7429,7 +7475,7 @@ The method gets the maximum number of characters to display in Script Runner out
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-print(get_max_output()) #=> 50000
+puts get_max_output() #=> 50000
 ```
 
 </TabItem>
@@ -9660,3 +9706,4 @@ autonomic_reaction_destroy("REACT1")
 
 </TabItem>
 </Tabs>
+````

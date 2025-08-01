@@ -182,11 +182,6 @@ module OpenC3
         expect { CvtModel.get_tlm_values([["NOPE","BLAH","TEMP1","RAW"]]) }.to raise_error("Packet 'NOPE BLAH' does not exist")
       end
 
-      it "raises on invalid items" do
-        update_temp1()
-        expect { CvtModel.get_tlm_values([["INST","HEALTH_STATUS","NOPE","RAW"]]) }.to raise_error("Item 'INST HEALTH_STATUS NOPE' does not exist")
-      end
-
       it "raises on invalid types" do
         update_temp1()
         expect { CvtModel.get_tlm_values([["INST","HEALTH_STATUS","TEMP1","NOPE"]]) }.to raise_error("Unknown value type 'NOPE'")

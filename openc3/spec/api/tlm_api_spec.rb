@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -711,6 +711,62 @@ module OpenC3
       end
     end
 
+    describe "get_tlm_available" do
+      it "returns a valid list of items based on inputs" do
+        items = []
+        # Ask for WITH_UNITS for an item which has various formats
+        items << 'INST__HEALTH_STATUS__TEMP1__WITH_UNITS'
+        items << 'INST__ADCS__Q1__WITH_UNITS'
+        items << 'INST__LATEST__CCSDSTYPE__WITH_UNITS'
+        items << 'INST__LATEST__CCSDSVER__WITH_UNITS'
+        # Ask for FORMATTED for an item which has various formats
+        items << 'INST__ADCS__Q2__FORMATTED'
+        items << 'INST__ADCS__CCSDSTYPE__FORMATTED'
+        items << 'INST__ADCS__CCSDSVER__FORMATTED'
+        # Ask for CONVERTED for an item which has various formats
+        items << 'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED' # states but no conversion
+        items << 'INST__ADCS__STAR1ID__CONVERTED' # conversion but no states
+        items << 'INST__ADCS__CCSDSVER__CONVERTED'
+        # Ask for RAW item
+        items << 'INST__HEALTH_STATUS__TEMP2__RAW'
+        # Ask for items that do not exist
+        items << 'BLAH__HEALTH_STATUS__TEMP1__WITH_UNITS'
+        items << 'INST__NOPE__TEMP1__WITH_UNITS'
+        items << 'INST__HEALTH_STATUS__NOPE__WITH_UNITS'
+        # Ask for the special items
+        items << 'INST__ADCS__PACKET_TIMEFORMATTED__WITH_UNITS'
+        items << 'INST__ADCS__PACKET_TIMESECONDS__FORMATTED'
+        items << 'INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED'
+        items << 'INST__ADCS__RECEIVED_TIMESECONDS__RAW'
+        # Ask for array items
+        items << 'INST__HEALTH_STATUS__ARY__WITH_UNITS'
+        items << 'INST__HEALTH_STATUS__ARY2__WITH_UNITS'
+        vals = @api.get_tlm_available(items)
+        expect(vals).to eql([
+          'INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS',
+          'INST__ADCS__Q1__FORMATTED',
+          'INST__LATEST__CCSDSTYPE__CONVERTED',
+          'INST__LATEST__CCSDSVER__RAW',
+          'INST__ADCS__Q2__FORMATTED',
+          'INST__ADCS__CCSDSTYPE__CONVERTED',
+          'INST__ADCS__CCSDSVER__RAW',
+          'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED',
+          'INST__ADCS__STAR1ID__CONVERTED',
+          'INST__ADCS__CCSDSVER__RAW',
+          'INST__HEALTH_STATUS__TEMP2__RAW__LIMITS',
+          nil,
+          nil,
+          nil,
+          'INST__ADCS__PACKET_TIMEFORMATTED__RAW',
+          'INST__ADCS__PACKET_TIMESECONDS__RAW',
+          'INST__ADCS__RECEIVED_TIMEFORMATTED__RAW',
+          'INST__ADCS__RECEIVED_TIMESECONDS__RAW',
+          'INST__HEALTH_STATUS__ARY__RAW',
+          'INST__HEALTH_STATUS__ARY2__RAW',
+        ])
+      end
+    end
+
     describe "get_tlm_values" do
       it "complains about non-existent targets" do
         expect { @api.get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
@@ -720,19 +776,13 @@ module OpenC3
         expect { @api.get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existent items" do
-        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { @api.get_tlm_values(["INST__LATEST__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT")
-      end
-
       it "complains about non-existent value_types" do
         expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, "Unknown value type 'MINE'")
       end
 
       it "complains about bad arguments" do
         expect { @api.get_tlm_values() }.to raise_error(ArgumentError)
-        expect { @api.get_tlm_values([]) }.to raise_error(ArgumentError, /items must be array of strings/)
-        expect { @api.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]]) }.to raise_error(ArgumentError, /items must be array of strings/)
+        expect { @api.get_tlm_values({}) }.to raise_error(ArgumentError, /items must be array of strings/)
         expect { @api.get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"]) }.to raise_error(ArgumentError, /items must be formatted/)
       end
 

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -193,6 +193,7 @@ Rails.application.routes.draw do
     # to do the remote procedure call
     post "/api" => "api#api"
     get "/ping" => "api#ping"
+    get "/tsdb" => "api#tsdb"
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"

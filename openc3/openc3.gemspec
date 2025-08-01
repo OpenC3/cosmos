@@ -77,6 +77,7 @@ spec = Gem::Specification.new do |s|
 
   # Runtime Dependencies
   s.add_runtime_dependency 'bundler',   '~> 2.3'
+  s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
   s.add_runtime_dependency 'fiddle',    '~> 1.1'

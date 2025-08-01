@@ -131,21 +131,11 @@ export default {
         // the item we're passing to the screen to the non-bracket item
         itemName = item.itemName.replace(match[0], '')
       }
-      this.$emit(
-        'addItem',
-        `${item.targetName}__${item.packetName}__${itemName}__${item.valueType}`,
-        true,
-      )
+      // We don't emit 'addItem' because graphWidgets use streams in realtime
+      // and manage their own playback requests
+
       // Return the mapped values since we may have removed bracket escaping
       return item
     })
-  },
-  destroyed() {
-    this.items.map((item) =>
-      this.$emit(
-        'deleteItem',
-        `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
-      ),
-    )
   },
 }

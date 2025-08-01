@@ -64,6 +64,7 @@ RUN apk update \
   libtool \
   libxml2-dev \
   libxslt-dev \
+  libpq-dev \
   openblas-dev \
   openssl \
   openssl-dev \

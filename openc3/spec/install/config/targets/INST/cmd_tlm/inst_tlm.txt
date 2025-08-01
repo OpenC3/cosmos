@@ -127,6 +127,7 @@ TELEMETRY INST ADCS BIG_ENDIAN "Position and attitude data"
   ITEM BIASZ            512 32 FLOAT "Body Z rate bias"
     FORMAT_STRING "%0.6f"
   ITEM STAR1ID          544 16 UINT  "Star 1 id"
+    POLY_READ_CONVERSION -1.0
   ITEM STAR2ID          560 16 UINT  "Star 2 id"
   ITEM STAR3ID          576 16 UINT  "Star 3 id"
   ITEM STAR4ID          592 16 UINT  "Star 4 id"

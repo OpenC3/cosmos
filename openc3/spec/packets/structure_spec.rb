@@ -534,6 +534,21 @@ module OpenC3
         s.write("test1", [3, 4], :RAW, buffer)
         expect(s.read("test1", :RAW, buffer)).to eql [3, 4]
       end
+
+      it "writes full size 64 bit integers" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.define_item("test1", 0, 64, :UINT)
+        s.define_item("test2", 64, 64, :INT)
+        buffer = "\x00" * 16
+        expect(s.read("test1", :RAW, buffer)).to eql 0
+        expect(s.read("test2", :RAW, buffer)).to eql 0
+        s.write("test1", BinaryAccessor::MAX_UINT64, :RAW, buffer)
+        expect(s.read("test1", :RAW, buffer)).to eql BinaryAccessor::MAX_UINT64
+        s.write("test2", BinaryAccessor::MIN_INT64, :RAW, buffer)
+        expect(s.read("test2", :RAW, buffer)).to eql BinaryAccessor::MIN_INT64
+        s.write("test2", BinaryAccessor::MAX_INT64, :RAW, buffer)
+        expect(s.read("test2", :RAW, buffer)).to eql BinaryAccessor::MAX_INT64
+      end
     end
 
     describe "read_all" do

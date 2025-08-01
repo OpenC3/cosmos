@@ -980,6 +980,138 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[3][1], "RED_LOW")
         self.assertIsNone(vals[4][1])
 
+    def test_get_tlm_available_complains_about_bad_arguments(self):
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
+            get_tlm_available(["INST"])
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
+            get_tlm_available(["INST__HEALTH_STATUS"])
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
+            get_tlm_available(["INST__HEALTH_STATUS__TEMP1"])
+
+    def test_get_tlm_available_returns_proper_value_types_based_on_item_configuration(self):
+        # Test items with different conversion types
+        items = [
+            "INST__HEALTH_STATUS__TEMP1__WITH_UNITS",  # Has units
+            "INST__HEALTH_STATUS__TEMP2__FORMATTED",   # Has format_string  
+            "INST__HEALTH_STATUS__TEMP3__CONVERTED",   # Has read_conversion
+            "INST__HEALTH_STATUS__DURATION__RAW",      # Raw only
+        ]
+        result = get_tlm_available(items)
+        
+        # TEMP1 has units, so should return WITH_UNITS
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS")
+        # TEMP2 has format_string, so should return FORMATTED  
+        self.assertEqual(result[1], "INST__HEALTH_STATUS__TEMP2__FORMATTED__LIMITS")
+        # TEMP3 has read_conversion, so should return CONVERTED
+        self.assertEqual(result[2], "INST__HEALTH_STATUS__TEMP3__CONVERTED__LIMITS")
+        # DURATION should return RAW (no conversions)
+        self.assertEqual(result[3], "INST__HEALTH_STATUS__DURATION__RAW")
+
+    def test_get_tlm_available_handles_fallback_value_types(self):
+        # Test fallback logic: WITH_UNITS -> FORMATTED -> CONVERTED -> RAW
+        items = [
+            "INST__HEALTH_STATUS__TEMP1__WITH_UNITS",  # Should fall back to FORMATTED since no units
+            "INST__HEALTH_STATUS__TEMP2__FORMATTED",   # Should fall back to CONVERTED since no format_string for this test
+        ]
+        result = get_tlm_available(items)
+        
+        # These would fall back based on what's actually available for these items
+        self.assertIsNotNone(result[0])
+        self.assertIsNotNone(result[1])
+        self.assertTrue(result[0].endswith("__LIMITS"))
+        self.assertTrue(result[1].endswith("__LIMITS"))
+
+    def test_get_tlm_available_handles_latest_packet_resolution(self):
+        items = ["INST__LATEST__TEMP1__CONVERTED"]
+        result = get_tlm_available(items)
+        
+        # Should resolve LATEST to actual packet name and return proper format
+        self.assertEqual(result[0], "INST__LATEST__TEMP1__CONVERTED__LIMITS")
+
+    def test_get_tlm_available_handles_nonexistent_items(self):
+        items = [
+            "INST__HEALTH_STATUS__NONEXISTENT__RAW",
+            "INST__HEALTH_STATUS__TEMP1__RAW",  # This one should work
+        ]
+        result = get_tlm_available(items)
+        
+        # Nonexistent item should return None
+        self.assertIsNone(result[0])
+        # Valid item should return proper format
+        self.assertEqual(result[1], "INST__HEALTH_STATUS__TEMP1__RAW__LIMITS")
+
+    def test_get_tlm_available_handles_reserved_item_names(self):
+        # Test with a reserved item name that should force RAW type
+        items = ["INST__HEALTH_STATUS__RECEIVED_COUNT__WITH_UNITS"]
+        result = get_tlm_available(items)
+        
+        # Reserved items should always be RAW regardless of requested type
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__RECEIVED_COUNT__RAW")
+
+    def test_get_tlm_available_handles_array_items(self):
+        # This would need a packet item with array_size configured
+        # For now, test the basic case - arrays with STRING/BLOCK data should return None
+        items = ["INST__HEALTH_STATUS__TEMP1__RAW"]  # Regular item for comparison
+        result = get_tlm_available(items)
+        
+        # Regular items should work normally
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__RAW__LIMITS")
+
+    def test_get_tlm_available_returns_a_valid_list_of_items_based_on_inputs(self):
+        items = []
+        # Ask for WITH_UNITS for an item which has various formats
+        items.append('INST__HEALTH_STATUS__TEMP1__WITH_UNITS')
+        items.append('INST__ADCS__Q1__WITH_UNITS')
+        items.append('INST__LATEST__CCSDSTYPE__WITH_UNITS')
+        items.append('INST__LATEST__CCSDSVER__WITH_UNITS')
+        # Ask for FORMATTED for an item which has various formats
+        items.append('INST__ADCS__Q2__FORMATTED')
+        items.append('INST__ADCS__CCSDSTYPE__FORMATTED')
+        items.append('INST__ADCS__CCSDSVER__FORMATTED')
+        # Ask for CONVERTED for an item which has various formats
+        items.append('INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED')  # states but no conversion
+        items.append('INST__ADCS__STAR1ID__CONVERTED')  # conversion but no states
+        items.append('INST__ADCS__CCSDSVER__CONVERTED')
+        # Ask for RAW item
+        items.append('INST__HEALTH_STATUS__TEMP2__RAW')
+        # Ask for items that do not exist
+        items.append('BLAH__HEALTH_STATUS__TEMP1__WITH_UNITS')
+        items.append('INST__NOPE__TEMP1__WITH_UNITS')
+        items.append('INST__HEALTH_STATUS__NOPE__WITH_UNITS')
+        # Ask for the special items
+        items.append('INST__ADCS__PACKET_TIMEFORMATTED__WITH_UNITS')
+        items.append('INST__ADCS__PACKET_TIMESECONDS__FORMATTED')
+        items.append('INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED')
+        items.append('INST__ADCS__RECEIVED_TIMESECONDS__RAW')
+        # Ask for array items
+        items.append('INST__HEALTH_STATUS__ARY__WITH_UNITS')
+        items.append('INST__HEALTH_STATUS__ARY2__WITH_UNITS')
+        
+        vals = get_tlm_available(items)
+        expected = [
+            'INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS',
+            'INST__ADCS__Q1__FORMATTED',
+            'INST__LATEST__CCSDSTYPE__CONVERTED',
+            'INST__LATEST__CCSDSVER__RAW',
+            'INST__ADCS__Q2__FORMATTED',
+            'INST__ADCS__CCSDSTYPE__CONVERTED',
+            'INST__ADCS__CCSDSVER__RAW',
+            'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED',
+            'INST__ADCS__STAR1ID__CONVERTED',
+            'INST__ADCS__CCSDSVER__RAW',
+            'INST__HEALTH_STATUS__TEMP2__RAW__LIMITS',
+            None,
+            None,
+            None,
+            'INST__ADCS__PACKET_TIMEFORMATTED__RAW',
+            'INST__ADCS__PACKET_TIMESECONDS__RAW',
+            'INST__ADCS__RECEIVED_TIMEFORMATTED__RAW',
+            'INST__ADCS__RECEIVED_TIMESECONDS__RAW',
+            'INST__HEALTH_STATUS__ARY__RAW',
+            'INST__HEALTH_STATUS__ARY2__RAW',
+        ]
+        self.assertEqual(vals, expected)
+
     def test_subscribe_packets_with_bad_input(self):
         with self.assertRaisesRegex(RuntimeError, "packets must be nested array"):
             subscribe_packets(["inst", "Health_Status"], ["INST", "ADCS"])

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,30 +25,37 @@ import { createStore } from 'vuex'
 const NOTIFY_HISTORY_MAX_LENGTH = 100
 
 export default createStore({
-  state: {
-    notifyHistory: [],
-    namedWidgets: {},
+  state() {
+    return {
+      notifyHistory: [],
+      namedWidgets: {},
+      playback: { playbackMode: null, playbackDateTime: null, playbackStep: 1 },
+    }
   },
   getters: {
+    // Method style access: https://vuex.vuejs.org/guide/getters.html#method-style-access
     namedWidget: (state) => (widgetName) => {
       return state.namedWidgets[widgetName]
     },
   },
   mutations: {
-    notifyAddHistory: (state, notification) => {
+    notifyAddHistory(state, notification) {
       if (state.notifyHistory.length >= NOTIFY_HISTORY_MAX_LENGTH) {
         state.notifyHistory.length = NOTIFY_HISTORY_MAX_LENGTH - 1
       }
       state.notifyHistory.unshift(notification)
     },
-    notifyClearHistory: (state) => {
+    notifyClearHistory(state) {
       state.notifyHistory = []
     },
-    setNamedWidget: (state, namedWidget) => {
+    setNamedWidget(state, namedWidget) {
       Object.assign(state.namedWidgets, namedWidget)
     },
-    clearNamedWidget: (state, widgetName) => {
+    clearNamedWidget(state, widgetName) {
       delete state.namedWidgets[widgetName]
+    },
+    playback(state, playback) {
+      Object.assign(state.playback, playback)
     },
   },
   modules: {},
