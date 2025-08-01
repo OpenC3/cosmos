@@ -771,7 +771,11 @@ class RunningScript
   def run
     if @script_status.suite_runner
       @script_status.suite_runner = JSON.parse(@script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
-      parse_options(@script_status.suite_runner['options'])
+      if @script_status.suite_runner['options']
+        parse_options(@script_status.suite_runner['options'])
+      else
+        parse_options({}) # Set default options
+      end
       if @script_status.suite_runner['script']
         run_text("OpenC3::SuiteRunner.start(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']}, '#{@script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
       elsif script_status.suite_runner['group']

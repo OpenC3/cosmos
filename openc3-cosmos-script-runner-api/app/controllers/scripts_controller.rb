@@ -117,6 +117,7 @@ class ScriptsController < ApplicationController
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
+    # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]

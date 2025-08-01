@@ -6574,7 +6574,7 @@ Note: In Enterprise, initialize_offline_access must have been called at least on
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-script_run("<Script Name>")
+script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: nil)
 ```
 
 </TabItem>
@@ -6582,21 +6582,26 @@ script_run("<Script Name>")
 <TabItem value="python" label="Python Syntax">
 
 ```python
-script_run("<Script Name>")
+script_run("<Script Name>", disconnect=False, environment=None, suite_runner=None)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| Parameter    | Description                                                             |
+| ------------ | ----------------------------------------------------------------------- |
+| Script Name  | Full path name of the script starting with the target                   |
+| disconnect   | Whether to run the script in Disconnect mode                            |
+| environment  | Hash / dict of key / value items to set as script environment variables |
+| suite_runner | Hash / dict of suite runner options                                     |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-id = script_run("INST/procedures/checks.rb")
+id = script_run("INST/procedures/checks.rb", environment: { USER: 'JASON'})
+puts id
+id = script_run("INST/procedures/my_script_suite.rb", suite_runner: { suite: 'MySuite', group: 'ExampleGroup', script: 'script_2' })
 puts id
 ```
 
@@ -6605,7 +6610,9 @@ puts id
 <TabItem value="python" label="Python Example">
 
 ```python
-id = script_run("INST2/procedures/checks.py")
+id = script_run("INST2/procedures/checks.py", environment={ 'USER': 'JASON'})
+print(id)
+id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2' })
 print(id)
 ```
 

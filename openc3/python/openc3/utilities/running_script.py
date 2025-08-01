@@ -468,7 +468,10 @@ class RunningScript:
     def run(self):
         if self.script_status.suite_runner is not None:
             self.script_status.suite_runner = json.loads(self.script_status.suite_runner)  # Convert to hash
-            self.parse_options(self.script_status.suite_runner["options"])
+            if "options" in self.script_status.suite_runner:
+                self.parse_options(self.script_status.suite_runner["options"])
+            else:
+                self.parse_options({}) # Set default options
             if "script" in self.script_status.suite_runner:
                 self.run_text(
                     f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']}, '{self.script_status.suite_runner['script']}')",
