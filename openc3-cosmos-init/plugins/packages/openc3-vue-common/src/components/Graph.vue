@@ -155,6 +155,7 @@
     <graph-edit-dialog
       v-if="editGraph"
       v-model="editGraph"
+      v-model:domain-item="domainItem"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -165,6 +166,7 @@
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
+      :domain-item-packet="allowableDomainItemPacket"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -314,6 +316,8 @@ import { TimeFilters } from '@/util'
 
 import 'uplot/dist/uPlot.min.css'
 
+const DEFAULT_DOMAIN_ITEM = '__time'
+
 export default {
   components: {
     GraphEditDialog,
@@ -369,6 +373,10 @@ export default {
     initialItems: {
       type: Array,
     },
+    initialDomainItem: {
+      type: String,
+      default: DEFAULT_DOMAIN_ITEM,
+    },
     // These allow the parent to force a specific height and/or width
     height: {
       type: Number,
@@ -381,6 +389,16 @@ export default {
       default: 'local',
     },
   },
+  emits: [
+    'click',
+    'close-graph',
+    'edit',
+    'min-max-graph',
+    'pause',
+    'resize',
+    'start',
+    'started',
+  ],
   data() {
     return {
       lines: [],
@@ -414,6 +432,7 @@ export default {
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      domainItem: this.initialDomainItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
       items: this.initialItems || [],
       limitsValues: [],
@@ -460,6 +479,59 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+    allowableDomainItemPacket: function () {
+      if (!this.canUseCustomDomainItem) {
+        return undefined
+      }
+      const { targetName, packetName } = this.items[0]
+      return { targetName, packetName }
+    },
+    canUseCustomDomainItem: function () {
+      // Make sure we're not mixing packets, because items from different packets will be received at different times.
+      // If it was mixed, e.g. `domainItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
+      // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
+      // received TEMP1 data points.
+      if (this.items.length === 0) {
+        return false
+      }
+      const { targetName, packetName } = this.items[0]
+      return this.items.every(
+        (item) =>
+          item.targetName === targetName && item.packetName === packetName,
+      )
+    },
+    actualDomainItem: function () {
+      if (this.canUseCustomDomainItem) {
+        return this.domainItem
+      } else {
+        return DEFAULT_DOMAIN_ITEM
+      }
+    },
+    domainConverter: function () {
+      if (this.domainIsDefault) {
+        return (val) => val / 1_000_000_000.0 // nsec to sec
+      }
+      return (val) => val
+    },
+    domainFormatter: function () {
+      return (val) => {
+        if (val == null) {
+          return '--'
+        } else if (this.domainIsDefault) {
+          // Convert the unix timestamp into a formatted date / time
+          return this.formatSeconds(val, this.timeZone)
+        }
+        return val
+      }
+    },
+    domainLabel: function () {
+      return this.domainIsDefault
+        ? 'Time'
+        : this.actualDomainItem.split('__').at(-2)
+    },
+    domainIsDefault: function () {
+      return this.actualDomainItem === DEFAULT_DOMAIN_ITEM
     },
   },
   watch: {
@@ -520,6 +592,32 @@ export default {
         this.graphEndDateTime = null
         this.needToUpdate = true
       }
+    },
+    actualDomainItem: function (newVal, oldVal) {
+      const itemsToRemove = [...this.items]
+      if (oldVal !== DEFAULT_DOMAIN_ITEM) {
+        itemsToRemove.push(oldVal)
+      }
+      this.removeItemsFromSubscription(itemsToRemove)
+      this.clearAllData()
+
+      this.graph.series[0].label = this.domainLabel
+      this.graph.scales.x.time = this.domainIsDefault
+      this.$nextTick(() => {
+        this.graph.redraw()
+      })
+
+      // Manhandle the chart to show the new label because I can't find a combo of setSeries(), setScales(), redraw(),
+      // etc. with or without this.$nextTick that will make it actually update on the screen. Maybe a bug in uPlot?
+      // const selector = `#chart${this.id} .u-label` // first u-label is the x-axis label
+      // document.querySelector(selector).textContent = label
+
+      // Reset the graph so that we can associate all the points with their new domain value
+      const itemsToAdd = [...this.items]
+      if (newVal !== DEFAULT_DOMAIN_ITEM) {
+        itemsToAdd.push(newVal)
+      }
+      this.addItemsToSubscription(itemsToAdd)
     },
   },
   created() {
@@ -666,10 +764,8 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: 'Time',
-            value: (u, v) =>
-              // Convert the unix timestamp into a formatted date / time
-              v == null ? '--' : this.formatSeconds(v, this.timeZone),
+            label: this.domainLabel,
+            value: (u, v) => this.domainFormatter(v),
           },
           ...chartSeries,
         ],
@@ -1018,7 +1114,11 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
-            this.addItemsToSubscription(this.items)
+            const itemsToAdd = [...this.items]
+            if (this.actualDomainItem !== DEFAULT_DOMAIN_ITEM) {
+              itemsToAdd.push(this.actualDomainItem)
+            }
+            this.addItemsToSubscription(itemsToAdd)
           },
           disconnected: (data) => {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
@@ -1111,9 +1211,15 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [1566453600, 1566497660]
+              if (dataMin == null) {
+                if (this.domainIsDefault) {
+                  return [1566453600, 1566497660]
+                }
+                return [0, 1]
+              }
               return [dataMin, dataMax]
             },
+            time: this.domainIsDefault,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1388,6 +1494,17 @@ export default {
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
+      const items = itemArray.map((item) => {
+        if (typeof item === 'object') {
+          return this.subscriptionKey(item)
+        } else if (typeof item === 'string') {
+          return item
+        } else {
+          throw new Error(
+            `Invalid subscription item type for ${item}: ${typeof item}`,
+          )
+        }
+      })
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
           (refreshed) => {
@@ -1397,7 +1514,7 @@ export default {
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              items: itemArray.map(this.subscriptionKey),
+              items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
@@ -1457,10 +1574,21 @@ export default {
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
+        const items = itemArray.map((item) => {
+          if (typeof item === 'object') {
+            return this.subscriptionKey(item)
+          } else if (typeof item === 'string') {
+            return item
+          } else {
+            throw new Error(
+              `Invalid subscription item type for ${item}: ${typeof item}`,
+            )
+          }
+        })
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          items: itemArray.map(this.subscriptionKey),
+          items: items,
         })
       }
     },
@@ -1482,22 +1610,32 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].__time / 1000000000.0 // Time in seconds
+        if (!data[i].hasOwnProperty(this.actualDomainItem)) {
+          // This happens if the streaming thread was already sending something when we switched domainItems.
+          // Nothing we can do but throw away the point. It'll come back when the graph is reset anyway.
+          continue
+        }
+        let domainVal = this.domainConverter(data[i][this.actualDomainItem])
         let length = this.data[0].length
-        if (length === 0 || time > this.data[0][length - 1]) {
+        if (length === 0 || domainVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, time, data[i])
+          this.set_data_at_index(this.data[0].length - 1, domainVal, data[i])
         } else {
-          let index = bs(this.data[0], time, this.bs_comparator)
+          let index = bs(this.data[0], domainVal, this.bs_comparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
+            if (!Number.isFinite(domainVal)) {
+              // Make sure this exists so that we don't create an infinite loop
+              // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
+              throw new RangeError(`Invalid domain value: ${domainVal}`)
+            }
             while (index >= 0) {
-              time -= 1e-5 // Subtract 10 microseconds
-              index = bs(this.data[0], time, this.bs_comparator)
+              domainVal -= 1e-5 // Subtract a small amount (10 microseconds if domain is time in seconds)
+              index = bs(this.data[0], domainVal, this.bs_comparator)
             }
             // Now that we have a unique time, insert at the ideal index
             let ideal_index = -index - 1
@@ -1505,14 +1643,14 @@ export default {
               this.data[j].splice(ideal_index, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, domainVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
             for (let j = 0; j < this.data.length; j++) {
               this.data[j].splice(ideal_index, 0, null)
             }
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, domainVal, data[i])
           }
         }
       }
@@ -1529,7 +1667,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time') {
+        if (key === 'time' || key === this.actualDomainItem) {
           continue
         }
         let key_index = this.indexes[key]
