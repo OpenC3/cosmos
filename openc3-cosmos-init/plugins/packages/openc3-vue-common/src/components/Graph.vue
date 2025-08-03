@@ -481,7 +481,7 @@ export default {
       return null
     },
     allowableDomainItemPacket: function () {
-      if (!this.canUseCustomDomainItem) {
+      if (!this.canUseCustomDomainItem || this.items.length === 0) {
         return undefined
       }
       const { targetName, packetName } = this.items[0]
@@ -493,7 +493,7 @@ export default {
       // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
       // received TEMP1 data points.
       if (this.items.length === 0) {
-        return false
+        return true
       }
       const { targetName, packetName } = this.items[0]
       return this.items.every(
@@ -594,30 +594,26 @@ export default {
       }
     },
     actualDomainItem: function (newVal, oldVal) {
-      const itemsToRemove = [...this.items]
-      if (oldVal !== DEFAULT_DOMAIN_ITEM) {
-        itemsToRemove.push(oldVal)
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.domainLabel
+      this.chartOpts.scales.x.time = this.domainIsDefault
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.domainIsDefault
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
       }
-      this.removeItemsFromSubscription(itemsToRemove)
-      this.clearAllData()
-
-      this.graph.series[0].label = this.domainLabel
-      this.graph.scales.x.time = this.domainIsDefault
-      this.$nextTick(() => {
-        this.graph.redraw()
-      })
-
-      // Manhandle the chart to show the new label because I can't find a combo of setSeries(), setScales(), redraw(),
-      // etc. with or without this.$nextTick that will make it actually update on the screen. Maybe a bug in uPlot?
-      // const selector = `#chart${this.id} .u-label` // first u-label is the x-axis label
-      // document.querySelector(selector).textContent = label
-
-      // Reset the graph so that we can associate all the points with their new domain value
-      const itemsToAdd = [...this.items]
-      if (newVal !== DEFAULT_DOMAIN_ITEM) {
-        itemsToAdd.push(newVal)
-      }
-      this.addItemsToSubscription(itemsToAdd)
+      this.addItems(clonedItems)
     },
   },
   created() {
@@ -706,12 +702,12 @@ export default {
       { chartSeries: [], overviewSeries: [] },
     )
 
-    let chartOpts = {}
+    this.chartOpts = {}
     if (this.sparkline) {
       this.hideToolbarData = true
       this.hideOverviewData = true
       this.showOverview = false
-      chartOpts = {
+      this.chartOpts = {
         width: this.width,
         height: this.height,
         pxAlign: false,
@@ -745,7 +741,7 @@ export default {
         ],
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
@@ -755,7 +751,7 @@ export default {
       if (this.timeZone && this.timeZone !== 'local') {
         timeZoneName = this.timeZone
       }
-      chartOpts = {
+      this.chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
@@ -858,12 +854,12 @@ export default {
         },
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
 
-      const overviewOpts = {
+      this.overviewOpts = {
         ...this.getSize('overview'),
         ...this.getScales(),
         ...this.getAxes('overview'),
@@ -904,7 +900,7 @@ export default {
       }
       if (!this.hideOverview) {
         this.overview = new uPlot(
-          overviewOpts,
+          this.overviewOpts,
           this.data,
           document.getElementById(`overview${this.id}`),
         )
@@ -1447,6 +1443,9 @@ export default {
       })
 
       this.updateColorIndex(itemArray)
+      if (!this.domainIsDefault) {
+        itemArray.push(this.actualDomainItem)
+      }
       this.addItemsToSubscription(itemArray)
       this.$emit('resize')
       this.$emit('edit')
