@@ -241,7 +241,7 @@ test('edits a graph', async ({ page, utils }) => {
   await utils.sleep(5000) // Allow data to flow
 })
 
-test.only('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
+test('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ADCS', 'POSX')
   await page.locator('button:has-text("Add Item")').click()
   await expect(page.locator('#chart0')).toContainText('POSX')
