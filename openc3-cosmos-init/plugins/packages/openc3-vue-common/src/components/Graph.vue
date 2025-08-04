@@ -695,7 +695,7 @@ export default {
         )
       }
       this.addItems(clonedItems)
-      // Don't need to $emit('edit') becuase addItems() does that
+      // Don't need to $emit('edit') because addItems() does that
     },
   },
   created() {
