@@ -119,7 +119,7 @@ export default {
     // Don't call updatePluginStore() here. It should be called in the background before the user opens this store
     // view (see PluginsTab.vue `created()`) to keep this feeling fast
     this.fetchPluginStoreData()
-    // TODO: do something with plugins that are already installed (show uninstall button instead?)
+    // TODO: do something with plugins that are already installed (no uninstall button: https://github.com/OpenC3/cosmos/pull/2162#discussion_r2249339853 )
   },
   methods: {
     fetchPluginStoreData: function () {

@@ -109,20 +109,7 @@ module OpenC3
     # Update the local copy of the plugin store data
     def update_plugin_store(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'admin', manual: manual, scope: scope, token: token)
-      setting = SettingModel.get(name: 'store_url', scope: scope)
-      store_url = setting['data'] if setting
-      store_url = 'https://store.openc3.com' if not store_url or store_url.strip.empty?
-      conn = Faraday.new(
-        url: store_url,
-      )
-      response = conn.get('/cosmos_plugins/json')
-      if response.success?
-        PluginStoreModel.set(response.body)
-      else
-        PluginStoreModel.plugin_store_error("Error contacting plugin store at #{store_url} (status: #{response.status})")
-      end
-    rescue Exception => e
-      PluginStoreModel.plugin_store_error("Error contacting plugin store at #{store_url}. #{e.message})")
+      PluginStoreModel.update()
     end
   end
 end

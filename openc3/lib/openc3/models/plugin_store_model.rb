@@ -35,13 +35,36 @@ module OpenC3
       Store.set(PRIMARY_KEY, [{
         date: Time.now.utc.iso8601,
         title: 'Plugin Store Error',
-        body: message
+        body: message,
+        error: true,
       }].to_json)
     end
 
     def self.get_by_id(id)
       plugins = JSON.parse(all()) rescue []
       plugins.find { |plugin| plugin["id"] == Integer(id) }
+    end
+
+    def self.update
+      setting = SettingModel.get(name: 'store_url', scope: 'DEFAULT')
+      store_url = setting['data'] if setting
+      store_url = 'https://store.openc3.com' if store_url.nil? or store_url.strip.empty?
+      conn = Faraday.new(
+        url: store_url,
+      )
+      response = conn.get('/cosmos_plugins/json')
+      if response.success?
+        self.set(response.body)
+      else
+        self.plugin_store_error("Error contacting plugin store at #{store_url} (status: #{response.status})")
+      end
+    rescue Exception => e
+      self.plugin_store_error("Error contacting plugin store at #{store_url}. #{e.message})")
+    end
+
+    def self.ensure_exists
+      plugins = self.all()
+      self.update() if plugins.nil? or plugins.length.zero? or plugins[0]['error']
     end
   end
 end

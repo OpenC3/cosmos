@@ -697,12 +697,12 @@ export default class OpenC3Api {
     return this.exec('get_all_settings', [])
   }
 
-  get_setting(name) {
-    return this.exec('get_setting', [name])
+  get_setting(name, kwparams) {
+    return this.exec('get_setting', [name], kwparams)
   }
 
-  get_settings(array) {
-    return this.exec('get_settings', array)
+  get_settings(array, kwparams) {
+    return this.exec('get_settings', array, kwparams)
   }
 
   set_setting(name, data) {

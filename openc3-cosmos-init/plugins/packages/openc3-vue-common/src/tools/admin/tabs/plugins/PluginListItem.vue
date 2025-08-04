@@ -27,7 +27,7 @@
     </td>
     <td>
       <div class="text-h6" v-text="displayTitle" />
-      <div class="text-subtitle-2 font-weight-thin">
+      <div class="text-subtitle-2 v-list-item-subtitle pl-0">
         <!-- subtitle -->
         <template v-if="isModified"> * </template>
         {{ name }}

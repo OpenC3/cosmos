@@ -36,6 +36,7 @@ class PluginsController < ModelController
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
+      OpenC3::PluginStoreModel.ensure_exists()
       store_plugins = OpenC3::PluginStoreModel.all()
       store_plugins = JSON.parse(store_plugins)
       plugins = @model_class.all(scope: params[:scope])

@@ -19,7 +19,14 @@
 require 'openc3/models/plugin_store_model'
 
 class PluginStoreController < ApplicationController
+  before_action :ensure_exists
+
   def index
     render json: OpenC3::PluginStoreModel.all()
+  end
+
+  private
+  def ensure_exists
+    OpenC3::PluginStoreModel.ensure_exists()
   end
 end

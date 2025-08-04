@@ -61,7 +61,8 @@
 <script>
 import Settings from '@/tools/admin/tabs/settings/settings.js'
 
-const settingName = 'store_url'
+const SETTING_NAME = 'store_url'
+const SETTING_SCOPE = 'DEFAULT'
 export default {
   mixins: [Settings],
   props: {
@@ -98,11 +99,11 @@ export default {
     },
   },
   created: function () {
-    this.loadSetting(settingName)
+    this.loadSetting(SETTING_NAME, { scope: SETTING_SCOPE })
   },
   methods: {
     save() {
-      this.saveSetting(settingName, this.storeUrl)
+      this.saveSetting(SETTING_NAME, this.storeUrl, { scope: SETTING_SCOPE })
       this.$emit('update:storeUrl', this.storeUrl)
       this.showDialog = false
     },
