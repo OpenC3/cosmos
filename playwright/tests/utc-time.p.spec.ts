@@ -330,7 +330,7 @@ test.describe('Packet Viewer', () => {
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
 
-    await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
+    await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
     await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
     await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
     await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')

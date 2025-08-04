@@ -66,7 +66,7 @@ test('displays the command count', async ({ page, utils }) => {
   }
   const count = parseInt(countStr)
   // Send an ABORT command
-  await page.goto('/tools/cmdsender/INST/ABORT', {
+  await page.goto('/tools/cmdsender/INST/ABORT/', {
     waitUntil: 'domcontentloaded',
   })
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
