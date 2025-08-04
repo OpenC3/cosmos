@@ -155,6 +155,7 @@
     <graph-edit-dialog
       v-if="editGraph"
       v-model="editGraph"
+      v-model:x-axis-item="xAxisItem"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -165,6 +166,7 @@
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
+      :x-axis-item-packet="allowableXAxisItemPacket"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -313,6 +315,8 @@ import { OpenC3Api, Cable } from '@openc3/js-common/services'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
 
+const DEFAULT_X_AXIS_ITEM = '__time'
+
 export default {
   components: {
     GraphEditDialog,
@@ -370,6 +374,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    initialXAxisItem: {
+      type: String,
+      default: DEFAULT_X_AXIS_ITEM,
+    },
     // These allow the parent to force a specific height and/or width
     height: {
       type: Number,
@@ -384,6 +392,16 @@ export default {
       default: 'local',
     },
   },
+  emits: [
+    'click',
+    'close-graph',
+    'edit',
+    'min-max-graph',
+    'pause',
+    'resize',
+    'start',
+    'started',
+  ],
   data() {
     return {
       api: null,
@@ -418,6 +436,7 @@ export default {
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
       items: this.initialItems,
       graphItems: [],
@@ -466,6 +485,64 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+    allowableXAxisItemPacket: function () {
+      if (!this.canUseCustomXAxisItem || this.items.length === 0) {
+        return undefined
+      }
+      const { targetName, packetName } = this.items[0]
+      return { targetName, packetName }
+    },
+    canUseCustomXAxisItem: function () {
+      // Make sure we're not mixing packets, because items from different packets will be received at different times.
+      // If it was mixed, e.g. `xAxisItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
+      // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
+      // received TEMP1 data points.
+      if (this.items.length === 0) {
+        return true
+      }
+      const { targetName, packetName } = this.items[0]
+      return this.items.every(
+        (item) =>
+          item.targetName === targetName && item.packetName === packetName,
+      )
+    },
+    actualXAxisItem: function () {
+      if (this.canUseCustomXAxisItem && this.xAxisItem) {
+        return this.xAxisItem
+      } else {
+        return DEFAULT_X_AXIS_ITEM
+      }
+    },
+    xAxisConverter: function () {
+      if (this.xAxisIsDefault) {
+        return (val) => val / 1_000_000_000.0 // nsec to sec
+      }
+      return (val) => val
+    },
+    xAxisFormatter: function () {
+      return (val) => {
+        if (val == null) {
+          return '--'
+        } else if (this.xAxisIsTime) {
+          // Convert the unix timestamp into a formatted date / time
+          return this.formatSeconds(val, this.timeZone)
+        }
+        return val
+      }
+    },
+    xAxisLabel: function () {
+      return this.xAxisIsTime ? 'Time' : this.actualXAxisItem.split('__').at(-2)
+    },
+    xAxisIsDefault: function () {
+      return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
+    },
+    xAxisIsTime: function () {
+      const timeItems = ['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS']
+      return (
+        this.xAxisIsDefault ||
+        timeItems.includes(this.actualXAxisItem.split('__').at(4))
+      )
     },
     playbackMode: function () {
       return this.$store.state.playback.playbackMode
@@ -597,6 +674,29 @@ export default {
         this.needToUpdate = true
       }
     },
+    actualXAxisItem: function (newVal, oldVal) {
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
+      this.addItems(clonedItems)
+      // Don't need to $emit('edit') because addItems() does that
+    },
   },
   created() {
     this.api = new OpenC3Api()
@@ -685,12 +785,12 @@ export default {
       { chartSeries: [], overviewSeries: [] },
     )
 
-    let chartOpts = {}
+    this.chartOpts = {}
     if (this.sparkline) {
       this.hideToolbarData = true
       this.hideOverviewData = true
       this.showOverview = false
-      chartOpts = {
+      this.chartOpts = {
         width: this.width,
         height: this.height,
         pxAlign: false,
@@ -724,7 +824,7 @@ export default {
         ],
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
@@ -734,7 +834,7 @@ export default {
       if (this.timeZone && this.timeZone !== 'local') {
         timeZoneName = this.timeZone
       }
-      chartOpts = {
+      this.chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
@@ -743,10 +843,8 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: 'Time',
-            value: (u, v) =>
-              // Convert the unix timestamp into a formatted date / time
-              v == null ? '--' : this.formatSeconds(v, this.timeZone),
+            label: this.xAxisLabel,
+            value: (u, v) => this.xAxisFormatter(v),
           },
           ...chartSeries,
         ],
@@ -839,12 +937,12 @@ export default {
         },
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
 
-      const overviewOpts = {
+      this.overviewOpts = {
         ...this.getSize('overview'),
         ...this.getScales(),
         ...this.getAxes('overview'),
@@ -885,7 +983,7 @@ export default {
       }
       if (!this.hideOverview) {
         this.overview = new uPlot(
-          overviewOpts,
+          this.overviewOpts,
           this.data,
           document.getElementById(`overview${this.id}`),
         )
@@ -1120,7 +1218,11 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
-            this.addItemsToSubscription(this.items)
+            const itemsToAdd = [...this.items]
+            if (this.actualXAxisItem !== DEFAULT_X_AXIS_ITEM) {
+              itemsToAdd.push(this.actualXAxisItem)
+            }
+            this.addItemsToSubscription(itemsToAdd)
           },
           disconnected: (data) => {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
@@ -1213,9 +1315,15 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [1566453600, 1566497660]
+              if (dataMin == null) {
+                if (this.xAxisIsTime) {
+                  return [1566453600, 1566497660]
+                }
+                return [0, 1]
+              }
               return [dataMin, dataMax]
             },
+            time: this.xAxisIsTime,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1443,6 +1551,9 @@ export default {
       })
 
       this.updateColorIndex(itemArray)
+      if (!this.xAxisIsDefault) {
+        itemArray.push(this.actualXAxisItem)
+      }
       this.addItemsToSubscription(itemArray)
       this.$emit('resize')
       this.$emit('edit')
@@ -1490,6 +1601,17 @@ export default {
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
+      const items = itemArray.map((item) => {
+        if (typeof item === 'object') {
+          return this.subscriptionKey(item)
+        } else if (typeof item === 'string') {
+          return item
+        } else {
+          throw new Error(
+            `Invalid subscription item type for ${item}: ${typeof item}`,
+          )
+        }
+      })
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
           (refreshed) => {
@@ -1499,7 +1621,7 @@ export default {
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              items: itemArray.map(this.subscriptionKey),
+              items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
@@ -1559,10 +1681,21 @@ export default {
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
+        const items = itemArray.map((item) => {
+          if (typeof item === 'object') {
+            return this.subscriptionKey(item)
+          } else if (typeof item === 'string') {
+            return item
+          } else {
+            throw new Error(
+              `Invalid subscription item type for ${item}: ${typeof item}`,
+            )
+          }
+        })
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          items: itemArray.map(this.subscriptionKey),
+          items: items,
         })
       }
     },
@@ -1584,22 +1717,32 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].__time / 1000000000.0 // Time in seconds
+        if (!data[i].hasOwnProperty(this.actualXAxisItem)) {
+          // This happens if the streaming thread was already sending something when we switched xAxisItems.
+          // Nothing we can do but throw away the point. It'll come back when the graph is reset anyway.
+          continue
+        }
+        let xAxisVal = this.xAxisConverter(data[i][this.actualXAxisItem])
         let length = this.data[0].length
-        if (length === 0 || time > this.data[0][length - 1]) {
+        if (length === 0 || xAxisVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, time, data[i])
+          this.set_data_at_index(this.data[0].length - 1, xAxisVal, data[i])
         } else {
-          let index = bs(this.data[0], time, this.bs_comparator)
+          let index = bs(this.data[0], xAxisVal, this.bs_comparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
+            if (!Number.isFinite(xAxisVal)) {
+              // Make sure this exists so that we don't create an infinite loop
+              // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
+              throw new RangeError(`Invalid x-axis value: ${xAxisVal}`)
+            }
             while (index >= 0) {
-              time -= 1e-5 // Subtract 10 microseconds
-              index = bs(this.data[0], time, this.bs_comparator)
+              xAxisVal -= 1e-5 // Subtract a small amount (10 microseconds if x-axis is time in seconds)
+              index = bs(this.data[0], xAxisVal, this.bs_comparator)
             }
             // Now that we have a unique time, insert at the ideal index
             let ideal_index = -index - 1
@@ -1607,14 +1750,14 @@ export default {
               this.data[j].splice(ideal_index, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, xAxisVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
             for (let j = 0; j < this.data.length; j++) {
               this.data[j].splice(ideal_index, 0, null)
             }
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.set_data_at_index(ideal_index, xAxisVal, data[i])
           }
         }
       }
@@ -1631,7 +1774,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time') {
+        if (key === 'time' || key === this.actualXAxisItem) {
           continue
         }
         let key_index = this.indexes[key]

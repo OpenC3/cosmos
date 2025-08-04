@@ -33,6 +33,7 @@
           hide-details
           density="compact"
           variant="outlined"
+          :disabled="autocompleteDisabled || lockTarget"
           :items="targetNames"
           item-title="label"
           item-value="value"
@@ -46,7 +47,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          :disabled="packetsDisabled || autocompleteDisabled"
+          :disabled="packetsDisabled || autocompleteDisabled || lockPacket"
           :items="packetNames"
           item-title="label"
           item-value="value"
@@ -218,6 +219,14 @@ export default {
       default: false,
     },
     hidden: {
+      type: Boolean,
+      default: false,
+    },
+    lockTarget: {
+      type: Boolean,
+      default: false,
+    },
+    lockPacket: {
       type: Boolean,
       default: false,
     },
