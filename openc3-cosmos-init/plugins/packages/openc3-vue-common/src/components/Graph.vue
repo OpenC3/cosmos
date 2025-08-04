@@ -502,7 +502,7 @@ export default {
       )
     },
     actualDomainItem: function () {
-      if (this.canUseCustomDomainItem) {
+      if (this.canUseCustomDomainItem && this.domainItem) {
         return this.domainItem
       } else {
         return DEFAULT_DOMAIN_ITEM
@@ -621,6 +621,7 @@ export default {
         )
       }
       this.addItems(clonedItems)
+      // Don't need to $emit('edit') becuase addItems() does that
     },
   },
   created() {
