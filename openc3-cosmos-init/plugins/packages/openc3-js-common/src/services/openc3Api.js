@@ -697,12 +697,12 @@ export default class OpenC3Api {
     return this.exec('get_all_settings', [])
   }
 
-  get_setting(name) {
-    return this.exec('get_setting', [name])
+  get_setting(name, kwparams) {
+    return this.exec('get_setting', [name], kwparams)
   }
 
-  get_settings(array) {
-    return this.exec('get_settings', array)
+  get_settings(array, kwparams) {
+    return this.exec('get_settings', array, kwparams)
   }
 
   set_setting(name, data) {
@@ -711,6 +711,10 @@ export default class OpenC3Api {
 
   update_news() {
     return this.exec('update_news', [])
+  }
+
+  update_plugin_store() {
+    return this.exec('update_plugin_store', [])
   }
 
   // DEPRECATED for set_setting

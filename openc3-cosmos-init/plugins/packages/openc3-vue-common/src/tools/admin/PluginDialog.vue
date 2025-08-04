@@ -159,9 +159,16 @@ export default {
     existingPluginTxt: {
       type: String,
       required: false,
+      default: null,
+    },
+    storeId: {
+      type: Number,
+      required: false,
+      default: null,
     },
     modelValue: Boolean, // modelValue is the default prop when using v-model
   },
+  emits: ['callback', 'update:modelValue'],
   data() {
     return {
       tab: 0,
@@ -349,6 +356,7 @@ export default {
         name: this.pluginName,
         variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
+        store_id: this.storeId,
       }
       this.$emit('callback', pluginHash)
     },

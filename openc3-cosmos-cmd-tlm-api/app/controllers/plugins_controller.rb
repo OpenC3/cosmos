@@ -21,31 +21,84 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/process_manager'
+require 'openc3/models/plugin_store_model'
 require 'openc3/models/plugin_model'
+require 'down'
 require 'fileutils'
 require 'tmpdir'
+require 'digest'
 
 class PluginsController < ModelController
   def initialize
     @model_class = OpenC3::PluginModel
   end
 
+  def show
+    return unless authorization('system')
+    if params[:id].downcase == 'all'
+      OpenC3::PluginStoreModel.ensure_exists()
+      store_plugins = OpenC3::PluginStoreModel.all()
+      store_plugins = JSON.parse(store_plugins)
+      plugins = @model_class.all(scope: params[:scope])
+      plugins.each do |plugin_name, plugin|
+        if plugin['store_id']
+          store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
+          plugin.merge!(store_data) if store_data
+        end
+      end
+
+      render json: plugins
+    else
+      plugin = @model_class.get(name: params[:id], scope: params[:scope])
+      if plugin && plugin['store_id']
+        store_data = OpenC3::PluginStoreModel.get_by_id(plugin['store_id'])
+        plugin.merge!(store_data) if store_data
+      end
+
+      render json: plugin
+    end
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
+  end
+
   # Add a new plugin
   def create(update = false)
     return unless authorization('admin')
-    file = params[:plugin]
+    file = if params[:store_id]
+      store_data = OpenC3::PluginStoreModel.get_by_id(params[:store_id])
+      if store_data.nil? || store_data['gem_url'].nil?
+        render json: { status: 'error', message: 'Unable to fetch requested plugin.' }, status: 500
+        return
+      end
+      tempfile = Down.download(store_data['gem_url'])
+      original_filename = File.basename(store_data['gem_url'])
+
+      checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
+      expected = store_data['checksum'].downcase
+      unless checksum == expected
+        render json: { status: 'error', message: "Checksum verification failed. Expected #{expected} but got #{checksum}" }, status: 500
+        return
+      end
+
+      tempfile
+    else
+      params[:plugin]
+    end
     if file
+      tempfile = file.tempfile unless tempfile
+      original_filename = file.original_filename unless original_filename
       scope = sanitize_params([:scope])
       return unless scope
       scope = scope[0]
       temp_dir = Dir.mktmpdir
       begin
-        gem_file_path = temp_dir + '/' + file.original_filename
-        FileUtils.cp(file.tempfile.path, gem_file_path)
+        gem_file_path = temp_dir + '/' + original_filename
+        FileUtils.cp(tempfile.path, gem_file_path)
         if @existing_model
-          result = OpenC3::PluginModel.install_phase1(gem_file_path, existing_variables: @existing_model['variables'], existing_plugin_txt_lines: @existing_model['plugin_txt_lines'], scope: scope)
+          result = OpenC3::PluginModel.install_phase1(gem_file_path, existing_variables: @existing_model['variables'], existing_plugin_txt_lines: @existing_model['plugin_txt_lines'], store_id: params[:store_id], scope: scope)
         else
-          result = OpenC3::PluginModel.install_phase1(gem_file_path, scope: scope)
+          result = OpenC3::PluginModel.install_phase1(gem_file_path, store_id: params[:store_id], scope: scope)
         end
         render json: result
       rescue Exception => error
