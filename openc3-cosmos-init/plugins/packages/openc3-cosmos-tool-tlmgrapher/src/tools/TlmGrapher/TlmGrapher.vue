@@ -321,7 +321,7 @@ export default {
             graphMaxX: vueGraph.graphMaxX,
             legendPosition: vueGraph.legendPosition,
             lines: vueGraph.lines,
-            domainItem: vueGraph.domainItem,
+            xAxisItem: vueGraph.xAxisItem,
           }
           // Only add the start and end time if we have both
           // This prevents adding just the start time and having the graph
@@ -595,7 +595,7 @@ export default {
         vueGraph.moveLegend(graph.legendPosition)
         vueGraph.addItems([...graph.items])
         vueGraph.lines = graph.lines
-        vueGraph.domainItem = graph.domainItem
+        vueGraph.xAxisItem = graph.xAxisItem
       })
       this.state = 'start'
       this.dontSaveDefaultConfig = false

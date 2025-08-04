@@ -155,7 +155,7 @@
     <graph-edit-dialog
       v-if="editGraph"
       v-model="editGraph"
-      v-model:domain-item="domainItem"
+      v-model:x-axis-item="xAxisItem"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -166,7 +166,7 @@
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
-      :domain-item-packet="allowableDomainItemPacket"
+      :x-axis-item-packet="allowableXAxisItemPacket"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -316,7 +316,7 @@ import { TimeFilters } from '@/util'
 
 import 'uplot/dist/uPlot.min.css'
 
-const DEFAULT_DOMAIN_ITEM = '__time'
+const DEFAULT_X_AXIS_ITEM = '__time'
 
 export default {
   components: {
@@ -373,9 +373,9 @@ export default {
     initialItems: {
       type: Array,
     },
-    initialDomainItem: {
+    initialXAxisItem: {
       type: String,
-      default: DEFAULT_DOMAIN_ITEM,
+      default: DEFAULT_X_AXIS_ITEM,
     },
     // These allow the parent to force a specific height and/or width
     height: {
@@ -432,7 +432,7 @@ export default {
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
-      domainItem: this.initialDomainItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
+      xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
       items: this.initialItems || [],
       limitsValues: [],
@@ -480,16 +480,16 @@ export default {
       }
       return null
     },
-    allowableDomainItemPacket: function () {
-      if (!this.canUseCustomDomainItem || this.items.length === 0) {
+    allowableXAxisItemPacket: function () {
+      if (!this.canUseCustomXAxisItem || this.items.length === 0) {
         return undefined
       }
       const { targetName, packetName } = this.items[0]
       return { targetName, packetName }
     },
-    canUseCustomDomainItem: function () {
+    canUseCustomXAxisItem: function () {
       // Make sure we're not mixing packets, because items from different packets will be received at different times.
-      // If it was mixed, e.g. `domainItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
+      // If it was mixed, e.g. `xAxisItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
       // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
       // received TEMP1 data points.
       if (this.items.length === 0) {
@@ -501,43 +501,43 @@ export default {
           item.targetName === targetName && item.packetName === packetName,
       )
     },
-    actualDomainItem: function () {
-      if (this.canUseCustomDomainItem && this.domainItem) {
-        return this.domainItem
+    actualXAxisItem: function () {
+      if (this.canUseCustomXAxisItem && this.xAxisItem) {
+        return this.xAxisItem
       } else {
-        return DEFAULT_DOMAIN_ITEM
+        return DEFAULT_X_AXIS_ITEM
       }
     },
-    domainConverter: function () {
-      if (this.domainIsDefault) {
+    xAxisConverter: function () {
+      if (this.xAxisIsDefault) {
         return (val) => val / 1_000_000_000.0 // nsec to sec
       }
       return (val) => val
     },
-    domainFormatter: function () {
+    xAxisFormatter: function () {
       return (val) => {
         if (val == null) {
           return '--'
-        } else if (this.domainIsTime) {
+        } else if (this.xAxisIsTime) {
           // Convert the unix timestamp into a formatted date / time
           return this.formatSeconds(val, this.timeZone)
         }
         return val
       }
     },
-    domainLabel: function () {
-      return this.domainIsTime
+    xAxisLabel: function () {
+      return this.xAxisIsTime
         ? 'Time'
-        : this.actualDomainItem.split('__').at(-2)
+        : this.actualXAxisItem.split('__').at(-2)
     },
-    domainIsDefault: function () {
-      return this.actualDomainItem === DEFAULT_DOMAIN_ITEM
+    xAxisIsDefault: function () {
+      return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
     },
-    domainIsTime: function () {
+    xAxisIsTime: function () {
       const timeItems = ['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS']
       return (
-        this.domainIsDefault ||
-        timeItems.includes(this.actualDomainItem.split('__').at(4))
+        this.xAxisIsDefault ||
+        timeItems.includes(this.actualXAxisItem.split('__').at(4))
       )
     },
   },
@@ -600,12 +600,12 @@ export default {
         this.needToUpdate = true
       }
     },
-    actualDomainItem: function (newVal, oldVal) {
+    actualXAxisItem: function (newVal, oldVal) {
       let clonedItems = JSON.parse(JSON.stringify(this.items))
       this.removeItems(clonedItems)
       this.graph.destroy()
-      this.chartOpts.series[0].label = this.domainLabel
-      this.chartOpts.scales.x.time = this.domainIsTime
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
       this.graph = new uPlot(
         this.chartOpts,
         this.data,
@@ -613,7 +613,7 @@ export default {
       )
       if (!this.hideOverview) {
         this.overview.destroy()
-        this.overviewOpts.scales.x.time = this.domainIsTime
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
         this.overview = new uPlot(
           this.overviewOpts,
           this.data,
@@ -768,8 +768,8 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: this.domainLabel,
-            value: (u, v) => this.domainFormatter(v),
+            label: this.xAxisLabel,
+            value: (u, v) => this.xAxisFormatter(v),
           },
           ...chartSeries,
         ],
@@ -1119,8 +1119,8 @@ export default {
           received: (data) => this.received(data),
           connected: () => {
             const itemsToAdd = [...this.items]
-            if (this.actualDomainItem !== DEFAULT_DOMAIN_ITEM) {
-              itemsToAdd.push(this.actualDomainItem)
+            if (this.actualXAxisItem !== DEFAULT_X_AXIS_ITEM) {
+              itemsToAdd.push(this.actualXAxisItem)
             }
             this.addItemsToSubscription(itemsToAdd)
           },
@@ -1216,14 +1216,14 @@ export default {
           x: {
             range(u, dataMin, dataMax) {
               if (dataMin == null) {
-                if (this.domainIsTime) {
+                if (this.xAxisIsTime) {
                   return [1566453600, 1566497660]
                 }
                 return [0, 1]
               }
               return [dataMin, dataMax]
             },
-            time: this.domainIsTime,
+            time: this.xAxisIsTime,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1451,8 +1451,8 @@ export default {
       })
 
       this.updateColorIndex(itemArray)
-      if (!this.domainIsDefault) {
-        itemArray.push(this.actualDomainItem)
+      if (!this.xAxisIsDefault) {
+        itemArray.push(this.actualXAxisItem)
       }
       this.addItemsToSubscription(itemArray)
       this.$emit('resize')
@@ -1617,32 +1617,32 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        if (!data[i].hasOwnProperty(this.actualDomainItem)) {
-          // This happens if the streaming thread was already sending something when we switched domainItems.
+        if (!data[i].hasOwnProperty(this.actualXAxisItem)) {
+          // This happens if the streaming thread was already sending something when we switched xAxisItems.
           // Nothing we can do but throw away the point. It'll come back when the graph is reset anyway.
           continue
         }
-        let domainVal = this.domainConverter(data[i][this.actualDomainItem])
+        let xAxisVal = this.xAxisConverter(data[i][this.actualXAxisItem])
         let length = this.data[0].length
-        if (length === 0 || domainVal > this.data[0][length - 1]) {
+        if (length === 0 || xAxisVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, domainVal, data[i])
+          this.set_data_at_index(this.data[0].length - 1, xAxisVal, data[i])
         } else {
-          let index = bs(this.data[0], domainVal, this.bs_comparator)
+          let index = bs(this.data[0], xAxisVal, this.bs_comparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
-            if (!Number.isFinite(domainVal)) {
+            if (!Number.isFinite(xAxisVal)) {
               // Make sure this exists so that we don't create an infinite loop
               // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
-              throw new RangeError(`Invalid domain value: ${domainVal}`)
+              throw new RangeError(`Invalid x-axis value: ${xAxisVal}`)
             }
             while (index >= 0) {
-              domainVal -= 1e-5 // Subtract a small amount (10 microseconds if domain is time in seconds)
-              index = bs(this.data[0], domainVal, this.bs_comparator)
+              xAxisVal -= 1e-5 // Subtract a small amount (10 microseconds if x-axis is time in seconds)
+              index = bs(this.data[0], xAxisVal, this.bs_comparator)
             }
             // Now that we have a unique time, insert at the ideal index
             let ideal_index = -index - 1
@@ -1650,14 +1650,14 @@ export default {
               this.data[j].splice(ideal_index, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, domainVal, data[i])
+            this.set_data_at_index(ideal_index, xAxisVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
             for (let j = 0; j < this.data.length; j++) {
               this.data[j].splice(ideal_index, 0, null)
             }
-            this.set_data_at_index(ideal_index, domainVal, data[i])
+            this.set_data_at_index(ideal_index, xAxisVal, data[i])
           }
         }
       }
@@ -1674,7 +1674,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time' || key === this.actualDomainItem) {
+        if (key === 'time' || key === this.actualXAxisItem) {
           continue
         }
         let key_index = this.indexes[key]

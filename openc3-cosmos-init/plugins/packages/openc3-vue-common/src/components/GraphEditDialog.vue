@@ -175,37 +175,37 @@
           </div>
           <div class="edit-box">
             <v-card-text class="pa-0 text-medium-emphasis">
-              Choose a different item to use for the graph's domain (X axis). If
+              Choose a different item to use for the graph's X axis. If
               unchecked, the graph will use the packet's PACKET_TIME item if it
               exists, otherwise it will use the system received time for the
               packet.
             </v-card-text>
             <v-checkbox
-              v-model="customDomainEnabled"
-              :disabled="!domainItemPacket"
-              label="Custom domain item"
+              v-model="customXAxisEnabled"
+              :disabled="!xAxisItemPacket"
+              label="Custom X axis item"
               density="compact"
               hide-details
-              @update:model-value="customDomainToggled"
+              @update:model-value="customXAxisToggled"
             />
             <v-card-text
-              v-if="!domainItemPacket"
+              v-if="!xAxisItemPacket"
               class="pa-0 text-medium-emphasis"
             >
               All items on the graph must be in the same packet to enable this
               feature.
             </v-card-text>
             <target-packet-item-chooser
-              v-if="customDomainEnabled && domainItemPacket"
-              :initial-target-name="domainItemPacket.targetName"
-              :initial-packet-name="domainItemPacket.packetName"
-              :initial-item-name="initialDomainItem"
+              v-if="customXAxisEnabled && xAxisItemPacket"
+              :initial-target-name="xAxisItemPacket.targetName"
+              :initial-packet-name="xAxisItemPacket.packetName"
+              :initial-item-name="initialXAxisItem"
               choose-item
               lock-target
               lock-packet
               button-text="Set"
-              @on-set="domainItemChanged"
-              @add-item="domainItemSelected"
+              @on-set="xAxisItemChanged"
+              @add-item="xAxisItemSelected"
             />
           </div>
         </v-tabs-window-item>
@@ -291,23 +291,23 @@ export default {
       type: String,
       required: true,
     },
-    domainItemPacket: {
+    xAxisItemPacket: {
       type: Object,
       default: undefined,
     },
-    domainItem: {
+    xAxisItem: {
       type: String,
       default: '__time',
     },
   },
-  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:domainItem'],
+  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:xAxisItem'],
   data: function () {
     return {
       tab: 0,
       graph: {},
-      customDomainEnabled: false,
-      selectedDomainItem: null,
-      pendingDomainSelection: null,
+      customXAxisEnabled: false,
+      selectedXAxisItem: null,
+      pendingXAxisSelection: null,
       legendPositions: ['top', 'bottom', 'left', 'right'],
       startDate: null,
       startTime: null,
@@ -367,12 +367,12 @@ export default {
         return { ...item, itemId }
       })
     },
-    initialDomainItem: function () {
+    initialXAxisItem: function () {
       // Just for TargetPacketItemChooser
-      if (this.domainItem === '__time') {
+      if (this.xAxisItem === '__time') {
         return
       }
-      return this.domainItem.split('__').at(4)
+      return this.xAxisItem.split('__').at(4)
     },
   },
   created() {
@@ -384,8 +384,8 @@ export default {
       graphMaxY: this.graphMaxY,
       lines: [...this.lines],
     }
-    this.customDomainEnabled = this.domainItem && this.domainItem !== '__time'
-    this.selectedDomainItem = this.domainItem
+    this.customXAxisEnabled = this.xAxisItem && this.xAxisItem !== '__time'
+    this.selectedXAxisItem = this.xAxisItem
     // Set the date and time if they pass a dateTime or set a default
     // Start needs a default because if the timeZone is UTC the time will still be local time
     if (this.startDateTime) {
@@ -427,20 +427,20 @@ export default {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
     },
-    customDomainToggled(enabled) {
+    customXAxisToggled(enabled) {
       if (!enabled) {
-        this.selectedDomainItem = '__time'
-        this.$emit('update:domainItem', '__time')
+        this.selectedXAxisItem = '__time'
+        this.$emit('update:xAxisItem', '__time')
       }
     },
-    domainItemChanged(selection) {
-      this.pendingDomainSelection = selection
+    xAxisItemChanged(selection) {
+      this.pendingXAxisSelection = selection
     },
-    domainItemSelected(selection) {
+    xAxisItemSelected(selection) {
       if (selection.targetName && selection.packetName && selection.itemName) {
-        const domainItemKey = `DECOM__TLM__${selection.targetName}__${selection.packetName}__${selection.itemName}__CONVERTED`
-        this.selectedDomainItem = domainItemKey
-        this.$emit('update:domainItem', domainItemKey)
+        const xAxisItemKey = `DECOM__TLM__${selection.targetName}__${selection.packetName}__${selection.itemName}__CONVERTED`
+        this.selectedXAxisItem = xAxisItemKey
+        this.$emit('update:xAxisItem', xAxisItemKey)
       }
     },
   },
