@@ -66,6 +66,14 @@ services:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:${OPENC3_TAG}"
 
+  openc3-tsdb:
+    build:
+      context: "openc3-tsdb"
+      network: host
+      args:
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb:${OPENC3_TAG}"
+
   openc3-redis:
     build:
       context: "openc3-redis"
