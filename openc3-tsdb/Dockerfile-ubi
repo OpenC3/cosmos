@@ -1,0 +1,41 @@
+ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
+ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
+ARG OPENC3_UBI_TAG=9.6
+ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
+ARG OPENC3_TSDB_IMAGE=questdb/questdb
+ARG OPENC3_TSDB_VERSION=9.0.1
+
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION} AS builder
+
+# An ARG declared before a FROM is outside of a build stage, so it can’t be
+# used in any instruction after a FROM
+ARG OPENC3_UBI_REGISTRY
+ARG OPENC3_UBI_IMAGE
+ARG OPENC3_UBI_TAG
+FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
+
+LABEL maintainer="support@openc3.com"
+
+USER root
+
+WORKDIR /app
+
+COPY --from=builder /build/questdb/core/target/questdb-*-rt-* .
+COPY --chmod=0755 ./docker-entrypoint.sh /docker-entrypoint.sh
+
+# Create questdb user and group
+RUN groupadd -g 10001 questdb && \
+    useradd -u 10001 -g 10001 -d /var/lib/questdb -M -s /sbin/nologin questdb && \
+    mkdir -p /var/lib/questdb && \
+    chown -R questdb:questdb /var/lib/questdb
+
+USER questdb
+
+WORKDIR /var/lib/questdb
+
+# Make port 9000 available to the world outside this container
+EXPOSE 9000/tcp
+EXPOSE 8812/tcp
+EXPOSE 9009/tcp
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

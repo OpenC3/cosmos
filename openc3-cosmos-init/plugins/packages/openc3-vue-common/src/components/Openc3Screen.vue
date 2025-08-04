@@ -945,7 +945,7 @@ export default {
                   if (itemLine > 0) {
                     this.errors.push({
                       type: 'usage',
-                      message: `${parts.join(' ')} does not exist`,
+                      message: `Null for ${parts.join(' ')}! Does it exist?`,
                       line: lines[itemLine - 1], // 0-based line array
                       lineNumber: itemLine,
                       time: new Date().getTime(),
@@ -953,7 +953,7 @@ export default {
                   } else {
                     this.errors.push({
                       type: 'error',
-                      message: `${parts.join(' ')} does not exist`,
+                      message: `Null for ${parts.join(' ')}! Does it exist?`,
                       time: new Date().getTime(),
                     })
                   }

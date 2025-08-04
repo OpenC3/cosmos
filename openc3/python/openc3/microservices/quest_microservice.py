@@ -17,7 +17,6 @@
 import os
 import re
 import sys
-import time
 import json
 import base64
 import numbers
@@ -29,6 +28,7 @@ from openc3.utilities.thread_manager import ThreadManager
 from openc3.microservices.microservice import Microservice
 from openc3.topics.topic import Topic
 from openc3.topics.config_topic import ConfigTopic
+from openc3.api.tlm_api import get_all_tlm_names
 
 
 class QuestMicroservice(Microservice):
@@ -112,13 +112,25 @@ class QuestMicroservice(Microservice):
             raise ConnectionError(f"Failed to connect to QuestDB: {e}")
 
     def create_table(self, target_name, packet_name):
+        orig_table_name = f"{target_name}__{packet_name}"
+        # Remove invalid characters from the table name
+        # This could potentially result in overlap (TGT?0 == TGT:0 == TGT_0)
+        # so warn the user that they chose some really bad tgt / pkt names
+        # Replace the following characters with underscore: ?,'"\/:)(+*%~
+        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
+        table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", orig_table_name)
+        if table_name != orig_table_name:
+            self.logger.warning(
+                f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
+            )
+
         try:
             # Open a cursor to perform database operations
             with self.query.cursor() as cur:
                 # Execute a command: this creates a new table
                 cur.execute(
                     f"""
-                    CREATE TABLE IF NOT EXISTS {target_name}__{packet_name} (
+                    CREATE TABLE IF NOT EXISTS {table_name} (
                         timestamp TIMESTAMP,
                         tag SYMBOL,
                         PACKET_TIMESECONDS TIMESTAMP,
@@ -129,7 +141,7 @@ class QuestMicroservice(Microservice):
                 """
                 )
         except psycopg.Error as error:
-            self.logger.error(f"QuestDB: Error creating table {target_name}__{packet_name}: {error}")
+            self.logger.error(f"QuestDB: Error creating table {table_name}: {error}")
 
     def sync_topics(self):
         """Update local topics based on config events"""
@@ -146,7 +158,10 @@ class QuestMicroservice(Microservice):
 
             if kind == "created":
                 self.logger.info(f"New target {target_name} created")
-                self.create_tables(target_name)
+                packets = get_all_tlm_names(target_name)
+                for packet_name in packets:
+                    self.create_table(target_name, packet_name)
+                    self.topics.append(f"{os.environ.get("OPENC3_SCOPE")}__DECOM__{{{target_name}}}__{packet_name}")
             elif kind == "deleted":
                 self.logger.info(f"Target {target_name} deleted")
                 self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
@@ -155,7 +170,7 @@ class QuestMicroservice(Microservice):
         """Check if a string contains only printable characters"""
         try:
             return all(c.isprintable() or c.isspace() for c in str(value))
-        except:
+        except Exception:
             return False
 
     def read_topics(self):
@@ -174,17 +189,10 @@ class QuestMicroservice(Microservice):
                     self.logger.error(f"Failed to parse json_data for {target_name}.{packet_name}")
                     return
 
-                orig_table_name = f"{target_name}__{packet_name}"
-                # Remove invalid characters from the table_name
-                # This could potentially result in overlap (TGT?0 == TGT:0 == TGT_0)
-                # so warn the user that they chose some really bad tgt / pkt names
                 # Replace the following characters with underscore: ?,'"\/:)(+*%~
                 # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-                table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", orig_table_name)
-                if table_name != orig_table_name:
-                    self.logger.warning(
-                        f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
-                    )
+                # Warning is generated once in create_table if replacement occurs
+                table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", f"{target_name}__{packet_name}")
 
                 # This is the PACKET_TIMESECONDS as set in telemetry_decom_topic
                 timestamp = int(msg_hash.get(b"time").decode())
