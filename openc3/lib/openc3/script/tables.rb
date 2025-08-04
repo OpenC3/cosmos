@@ -24,7 +24,7 @@ module OpenC3
       post_data = {}
       post_data['definition'] = definition
       response = $api_server.request('post', '/openc3-api/tables/generate', json: true, data: post_data, scope: scope)
-      return _handle_response(response, 'Failed to create binary')
+      return _tables_handle_response(response, 'Failed to create binary')
     end
 
     def table_create_report(filename, definition, table_name: nil, scope: $openc3_scope)
@@ -33,11 +33,11 @@ module OpenC3
       post_data['definition'] = definition
       post_data['table_name'] = table_name if table_name
       response = $api_server.request('post', '/openc3-api/tables/report', json: true, data: post_data, scope: scope)
-      return _handle_response(response, 'Failed to create report')
+      return _tables_handle_response(response, 'Failed to create report')
     end
 
     # Helper method to handle the response
-    def _handle_response(response, error_message)
+    def _tables_handle_response(response, error_message)
       return nil if response.nil?
       if response.status >= 400
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)

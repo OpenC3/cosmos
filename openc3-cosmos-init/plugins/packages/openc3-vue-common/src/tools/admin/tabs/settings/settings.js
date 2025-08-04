@@ -29,9 +29,9 @@ export default {
     }
   },
   methods: {
-    loadSetting: function (setting) {
+    loadSetting: function (setting, kwparams) {
       this.api
-        .get_setting(setting)
+        .get_setting(setting, kwparams)
         .then((response) => {
           this.parseSetting(response)
         })
@@ -41,9 +41,9 @@ export default {
           this.errorLoading = true
         })
     },
-    saveSetting: function (setting, jsonString) {
+    saveSetting: function (setting, jsonString, kwparams) {
       this.api
-        .set_setting(setting, jsonString)
+        .set_setting(setting, jsonString, kwparams)
         .then(() => {
           this.errorSaving = false
           this.successSaving = true

@@ -17,11 +17,11 @@
     "format": "prettier -w ./"
   },
   "dependencies": {
-    "@playwright/test": "1.52.0",
+    "@playwright/test": "1.54.1",
     "date-fns": "4.1.0",
     "jszip": "^3.10.1",
     "nyc": "^17.1.0",
-    "prettier": "^3.5.3"
+    "prettier": "^3.6.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.3"

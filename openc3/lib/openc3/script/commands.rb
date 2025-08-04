@@ -115,7 +115,7 @@ module OpenC3
         end
       end
       _log_cmd(command, raw, no_range, no_hazardous)
-   end
+    end
 
     # Send the command and log the results
     # This method signature has to include the keyword params present in cmd_api.rb _cmd_implementation()

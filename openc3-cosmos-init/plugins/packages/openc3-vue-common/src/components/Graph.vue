@@ -311,9 +311,8 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { Cable } from '@openc3/js-common/services'
+import { OpenC3Api, Cable } from '@openc3/js-common/services'
 import { TimeFilters } from '@/util'
-
 import 'uplot/dist/uPlot.min.css'
 
 const DEFAULT_X_AXIS_ITEM = '__time'
@@ -331,7 +330,7 @@ export default {
     },
     selectedGraphId: {
       type: Number,
-      // Not required because we pass null
+      default: null,
     },
     state: {
       type: String,
@@ -341,6 +340,7 @@ export default {
     // this allows multiple graphs to be synchronized
     startTime: {
       type: Number,
+      default: null,
     },
     secondsGraphed: {
       type: Number,
@@ -372,6 +372,7 @@ export default {
     },
     initialItems: {
       type: Array,
+      default: () => [],
     },
     initialXAxisItem: {
       type: String,
@@ -380,9 +381,11 @@ export default {
     // These allow the parent to force a specific height and/or width
     height: {
       type: Number,
+      default: null,
     },
     width: {
       type: Number,
+      default: null,
     },
     timeZone: {
       type: String,
@@ -401,6 +404,7 @@ export default {
   ],
   data() {
     return {
+      api: null,
       lines: [],
       active: true,
       expand: true,
@@ -434,7 +438,9 @@ export default {
       graphEndDateTime: null,
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
-      items: this.initialItems || [],
+      items: this.initialItems,
+      graphItems: [],
+      lastPlaybackDateTime: null,
       limitsValues: [],
       drawInterval: null,
       zoomChart: false,
@@ -526,9 +532,7 @@ export default {
       }
     },
     xAxisLabel: function () {
-      return this.xAxisIsTime
-        ? 'Time'
-        : this.actualXAxisItem.split('__').at(-2)
+      return this.xAxisIsTime ? 'Time' : this.actualXAxisItem.split('__').at(-2)
     },
     xAxisIsDefault: function () {
       return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
@@ -539,6 +543,15 @@ export default {
         this.xAxisIsDefault ||
         timeItems.includes(this.actualXAxisItem.split('__').at(4))
       )
+    },
+    playbackMode: function () {
+      return this.$store.state.playback.playbackMode
+    },
+    playbackDateTime: function () {
+      return this.$store.state.playback.playbackDateTime
+    },
+    playbackStep: function () {
+      return this.$store.state.playback.playbackStep
     },
   },
   watch: {
@@ -555,6 +568,67 @@ export default {
         case 'stop':
           this.stopGraph()
           break
+      }
+    },
+    playbackMode: function (_newState, _oldState) {
+      if (this.playbackMode === 'playback') {
+        this.setupPlaybackMode()
+      } else {
+        // realtime
+        this.lastPlaybackDateTime = null
+        this.clearAllData()
+        this.startGraph()
+      }
+    },
+    playbackDateTime: function (_newState, _oldState) {
+      if (this.playbackMode === 'playback') {
+        if (
+          this.lastPlaybackDateTime === null ||
+          this.lastPlaybackDateTime > this.playbackDateTime
+        ) {
+          // If we are going backwards in time we need to clear the data
+          this.clearAllData()
+        } else {
+          this.api
+            .get_tlm_values(
+              this.graphItems,
+              30, // stale timeout
+              null, // no cache timeout
+              this.lastPlaybackDateTime, // start time
+              this.playbackDateTime, // end time
+            )
+            .then((data) => {
+              if (data.length > 0) {
+                if (Array.isArray(data[0]) && Array.isArray(data[0][0])) {
+                  // data is array of array of arrays
+                  for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j < data[i].length; j++) {
+                      if (j === 0) {
+                        let dateStr = data[i][j][0]
+                        let dateObj = new Date(dateStr)
+                        this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
+                      } else {
+                        this.data[j].push(data[i][j][0])
+                      }
+                    }
+                  }
+                } else if (Array.isArray(data) && data.length >= 2) {
+                  for (let i = 0; i < data.length; i++) {
+                    if (i === 0) {
+                      let dateStr = data[i][0]
+                      let dateObj = new Date(dateStr)
+                      this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
+                    } else {
+                      this.data[i].push(data[i][0])
+                    }
+                  }
+                }
+              }
+              this.dataChanged = true
+              this.updateGraphData()
+            })
+        }
+        this.lastPlaybackDateTime = this.playbackDateTime
       }
     },
     data: function (newData, oldData) {
@@ -625,6 +699,7 @@ export default {
     },
   },
   created() {
+    this.api = new OpenC3Api()
     this.title = `Graph ${this.id}`
     for (const [index, item] of this.items.entries()) {
       this.data.push([]) // initialize the empty data arrays
@@ -919,8 +994,12 @@ export default {
       window.addEventListener('resize', this.resize)
     }
 
-    if (this.state !== 'stop') {
-      this.startGraph()
+    if (this.playbackMode !== 'playback') {
+      if (this.state !== 'stop') {
+        this.startGraph()
+      }
+    } else {
+      this.setupPlaybackMode()
     }
   },
   beforeUnmount: function () {
@@ -929,6 +1008,27 @@ export default {
     window.removeEventListener('resize', this.resize)
   },
   methods: {
+    setupPlaybackMode: function () {
+      this.stopGraph()
+      this.clearAllData()
+      const screenItems = this.items.map((item) => {
+        const keyParts = this.subscriptionKey(item).split('__')
+        return keyParts.slice(2).join('__')
+      })
+      screenItems.unshift('INST__HEALTH_STATUS__PACKET_TIMESECONDS__RAW')
+      this.api.get_tlm_available(screenItems).then((data) => {
+        this.graphItems = data
+        // This must be the same or we're going to have problems
+        // because the data comes back in an ordered array
+        if (screenItems.length != data.length) {
+          console.log(
+            'Error getting tlm available',
+            screenItems,
+            this.graphItems,
+          )
+        }
+      })
+    },
     startGraph: function () {
       this.subscribe()
       this.timeout = setTimeout(() => {

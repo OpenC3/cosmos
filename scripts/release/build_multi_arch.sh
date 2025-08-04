@@ -30,14 +30,14 @@ if [ "${1:-default}" = "ubi" ]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_MINIO_RELEASE=RELEASE.2025-06-13T11-33-47Z
-  OPENC3_MC_RELEASE=RELEASE.2025-05-21T01-59-54Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-07-23T15-54-02Z
+  OPENC3_MC_RELEASE=RELEASE.2025-07-21T05-28-08Z
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_MINIO_RELEASE=RELEASE.2025-06-13T11-33-47Z
-  OPENC3_MC_RELEASE=RELEASE.2025-05-21T01-59-54Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-07-23T15-54-02Z
+  OPENC3_MC_RELEASE=RELEASE.2025-07-21T05-28-08Z
 fi
 
 # Setup cacert.pem
@@ -53,6 +53,7 @@ fi
 
 cp ./cacert.pem openc3-ruby/cacert.pem
 cp ./cacert.pem openc3-redis/cacert.pem
+cp ./cacert.pem openc3-tsdb/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
 cp ./cacert.pem openc3-minio/cacert.pem
 
@@ -173,6 +174,30 @@ docker buildx build \
   --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
+fi
+
+cd ../openc3-tsdb
+docker buildx build \
+  --file ${DOCKERFILE} \
+  --platform ${OPENC3_PLATFORMS} \
+  --progress plain \
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} .
+
+if [ $OPENC3_UPDATE_LATEST = true ]
+then
+docker buildx build \
+  --file ${DOCKERFILE} \
+  --platform ${OPENC3_PLATFORMS} \
+  --progress plain \
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-tsdb${SUFFIX}:latest .
 fi
 
 if [ "${1:-default}" = "ubi" ]; then

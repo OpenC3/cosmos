@@ -1,6 +1,6 @@
 ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
 ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
-ARG OPENC3_UBI_TAG=9.5
+ARG OPENC3_UBI_TAG=9.6
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -40,7 +40,7 @@ COPY shoreman.sh /usr/bin/shoreman
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
     python3.12 python3.12-devel python3.12-pip python3.12-numpy	ca-certificates less git \
-    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel"
+    libpq-devel libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel"
 
 RUN rm /etc/yum.repos.d/*
 COPY ./ubi.repo /etc/yum.repos.d/ubi.repo

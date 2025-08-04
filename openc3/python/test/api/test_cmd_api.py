@@ -656,8 +656,8 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(get_cmd_value("inst collect type"), "NORMAL")
         self.assertEqual(get_cmd_value("inst collect type", type="RAW"), 0)
         self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 5.0)
-        self.assertAlmostEqual(get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, 1)
-        self.assertAlmostEqual(get_cmd_value("INST COLLECT PACKET_TIMESECONDS"), now, 1)
+        self.assertAlmostEqual(get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, delta=0.1)
+        self.assertAlmostEqual(get_cmd_value("INST COLLECT PACKET_TIMESECONDS"), now, delta=0.1)
         self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
@@ -671,8 +671,8 @@ class TestCmdApi(unittest.TestCase):
         time.sleep(0.001)
         self.assertEqual(get_cmd_value("inst", "collect", "type"), "NORMAL")
         self.assertEqual(get_cmd_value("INST", "COLLECT", "DURATION"), 5.0)
-        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS"), now, 1)
-        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS"), now, 1)
+        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS"), now, delta=0.1)
+        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS"), now, delta=0.1)
         self.assertEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")

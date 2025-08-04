@@ -40,7 +40,7 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
   utils,
 }) => {
   // Verify we can hit it using the route
-  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
   await utils.dropdownSelectedValue(page, '[data-test=select-target]', 'INST')
   await utils.dropdownSelectedValue(
@@ -59,6 +59,21 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
     expect(response.status()).toBe(200)
   })
   await utils.sleep(2000)
+})
+
+test('routes to a packet with a period in the name', async ({
+  page,
+  utils,
+}) => {
+  await page.goto('/tools/packetviewer/INST2/PARAMS.PKT/')
+  await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
+  await utils.dropdownSelectedValue(page, '[data-test=select-target]', 'INST2')
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test=select-packet]',
+    'PARAMS.PKT',
+  )
+  await expect(page.locator('id=openc3-tool')).toContainText('VALUE1')
 })
 
 test('selects a target and packet to display', async ({ page, utils }) => {

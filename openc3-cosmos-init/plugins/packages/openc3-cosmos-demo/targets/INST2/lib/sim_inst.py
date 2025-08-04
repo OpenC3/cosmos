@@ -107,7 +107,7 @@ class SimInst(SimulatedTarget):
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
 
-        packet = self.tlm_packets["PARAMS"]
+        packet = self.tlm_packets["PARAMS.PKT"]
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
         packet.write("value1", 0)
@@ -154,7 +154,7 @@ class SimInst(SimulatedTarget):
     def set_rates(self):
         self.set_rate("ADCS", 10)
         self.set_rate("HEALTH_STATUS", 100)
-        self.set_rate("PARAMS", 100)
+        self.set_rate("PARAMS.PKT", 100)
         self.set_rate("IMAGE", 100)
         self.set_rate("MECH", 10)
 
@@ -168,7 +168,7 @@ class SimInst(SimulatedTarget):
         name = packet.packet_name.upper()
 
         hs_packet = self.tlm_packets["HEALTH_STATUS"]
-        params_packet = self.tlm_packets["PARAMS"]
+        params_packet = self.tlm_packets["PARAMS.PKT"]
 
         match name:
             case "COLLECT":
@@ -382,7 +382,7 @@ class SimInst(SimulatedTarget):
                             else:
                                 packet.write("ground2status", "CONNECTED")
 
-                case "PARAMS":
+                case "PARAMS.PKT":
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
                     packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)

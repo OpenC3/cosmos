@@ -29,6 +29,9 @@ gem 'rack-cors', '~> 2.0'
 # Use gem to get JSON logs
 gem "rails_semantic_logger", '~> 4.17.0'
 
+# For downloading files to the server (e.g. plugin install from the app store)
+gem 'down', '~> 5.4', '>= 5.4.2'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
