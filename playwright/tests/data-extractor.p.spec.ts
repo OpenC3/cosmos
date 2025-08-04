@@ -222,7 +222,7 @@ test('edit all items', async ({ page, utils }) => {
 
 test('processes commands', async ({ page, utils }) => {
   // Preload an ABORT command
-  await page.goto('/tools/cmdsender/INST/ABORT')
+  await page.goto('/tools/cmdsender/INST/ABORT/')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('text=cmd("INST ABORT") sent')).toBeVisible()

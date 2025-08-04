@@ -81,7 +81,7 @@ test('selects a target and packet', async ({ page, utils }) => {
 })
 
 test('displays INST COLLECT using the route', async ({ page, utils }) => {
-  await page.goto('/tools/cmdsender/INST/COLLECT')
+  await page.goto('/tools/cmdsender/INST/COLLECT/')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await utils.dropdownSelectedValue(page, '[data-test="select-target"]', 'INST')
   await utils.dropdownSelectedValue(
