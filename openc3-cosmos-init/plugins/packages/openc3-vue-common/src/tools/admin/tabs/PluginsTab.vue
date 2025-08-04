@@ -254,15 +254,28 @@ export default {
   },
   computed: {
     shownPlugins() {
-      return this.plugins.filter((plugin) => {
+      const pluginsToShow = []
+      const defaultPluginsToShow = []
+      this.plugins.forEach((plugin) => {
         const pluginNameFirst = plugin.name.split('__')[0]
         const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
         const pluginNameShort = pluginNameSplit.join('-')
-        return (
-          !this.defaultPlugins.includes(pluginNameShort) ||
-          this.showDefaultTools
-        )
+        if (this.defaultPlugins.includes(pluginNameShort)) {
+          defaultPluginsToShow.push(plugin)
+        } else {
+          pluginsToShow.push(plugin)
+        }
       })
+      pluginsToShow.sort((a, b) =>
+        a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+      )
+      if (this.showDefaultTools) {
+        defaultPluginsToShow.sort((a, b) =>
+          a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+        )
+        return pluginsToShow.concat(defaultPluginsToShow)
+      }
+      return pluginsToShow
     },
   },
   watch: {
@@ -316,6 +329,7 @@ export default {
     },
     update: function () {
       Api.get('/openc3-api/plugins/all').then((response) => {
+        console.log({ response })
         this.plugins = Object.entries(response.data).map(
           ([_, plugin]) => plugin,
         )
