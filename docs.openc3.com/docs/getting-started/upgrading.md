@@ -23,12 +23,12 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
    ```sh
-   openc3-project % ./openc3.sh stop
+   cosmos-project % ./openc3.sh stop
    ```
 </TabItem>
 <TabItem value="windows" label="Windows">
    ```batch
-   C:\openc3-project> openc3.bat stop
+   C:\cosmos-project> openc3.bat stop
    ```
 </TabItem>
 </Tabs>
@@ -39,13 +39,13 @@ Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are o
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
 ```sh
-openc3-project % chmod +x openc3_upgrade.sh
-openc3-project % ./openc3_upgrade.sh
+cosmos-project % chmod +x openc3_upgrade.sh
+cosmos-project % ./openc3_upgrade.sh
 ```
 </TabItem>
 <TabItem value="windows" label="Windows">
    ```batch
-   C:\openc3-project> openc3_upgrade.bat
+   C:\cosmos-project> openc3_upgrade.bat
    ```
 </TabItem>
 </Tabs>
@@ -56,12 +56,12 @@ openc3-project % ./openc3_upgrade.sh
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
    ```sh
-   openc3-project % ./openc3.sh upgrade vX.Y.Z
+   cosmos-project % ./openc3.sh upgrade vX.Y.Z
    ```
 </TabItem>
 <TabItem value="windows" label="Windows">
    ```batch
-   C:\openc3-project> openc3.bat upgrade vX.Y.Z
+   C:\cosmos-project> openc3.bat upgrade vX.Y.Z
    ```
 </TabItem>
 </Tabs>
@@ -71,12 +71,12 @@ openc3-project % ./openc3_upgrade.sh
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
   ```sh
-  openc3-project % ./openc3.sh run
+  cosmos-project % ./openc3.sh run
   ```
 </TabItem>
 <TabItem value="windows" label="Windows">
   ```batch
-  C:\openc3-project> openc3.bat run
+  C:\cosmos-project> openc3.bat run
   ```
 </TabItem>
 </Tabs>
@@ -88,14 +88,14 @@ openc3-project % ./openc3_upgrade.sh
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
   ```sh
-  openc3-project % git add .
-  openc3-project % git commit -m "Upgrade to vX.Y.Z"
+  cosmos-project % git add .
+  cosmos-project % git commit -m "Upgrade to vX.Y.Z"
   ```
 </TabItem>
 <TabItem value="windows" label="Windows">
   ```batch
-  C:\openc3-project> git add .
-  C:\openc3-project> git commit -m "Upgrade to vX.Y.Z"
+  C:\cosmos-project> git add .
+  C:\cosmos-project> git commit -m "Upgrade to vX.Y.Z"
   ```
 </TabItem>
 </Tabs>
