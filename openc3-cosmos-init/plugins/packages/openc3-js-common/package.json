@@ -1,7 +1,7 @@
 {
   "name": "@openc3/js-common",
   "description": "Common library for COSMOS tool development",
-  "version": "6.7.0",
+  "version": "6.6.1-beta0",
   "license": "SEE LICENSE IN LICENSE.txt",
   "homepage": "https://openc3.com",
   "repository": {
@@ -58,7 +58,7 @@
     "eslint": "9.32.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.3",
-    "eslint-plugin-vue": "10.3.0",
+    "eslint-plugin-vue": "10.4.0",
     "prettier": "3.6.2",
     "vite": "6.3.4"
   }
