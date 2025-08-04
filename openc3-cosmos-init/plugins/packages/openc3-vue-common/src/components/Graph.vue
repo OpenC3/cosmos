@@ -518,7 +518,7 @@ export default {
       return (val) => {
         if (val == null) {
           return '--'
-        } else if (this.domainIsDefault) {
+        } else if (this.domainIsTime) {
           // Convert the unix timestamp into a formatted date / time
           return this.formatSeconds(val, this.timeZone)
         }
@@ -526,12 +526,19 @@ export default {
       }
     },
     domainLabel: function () {
-      return this.domainIsDefault
+      return this.domainIsTime
         ? 'Time'
         : this.actualDomainItem.split('__').at(-2)
     },
     domainIsDefault: function () {
       return this.actualDomainItem === DEFAULT_DOMAIN_ITEM
+    },
+    domainIsTime: function () {
+      const timeItems = ['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS']
+      return (
+        this.domainIsDefault ||
+        timeItems.includes(this.actualDomainItem.split('__').at(4))
+      )
     },
   },
   watch: {
@@ -598,7 +605,7 @@ export default {
       this.removeItems(clonedItems)
       this.graph.destroy()
       this.chartOpts.series[0].label = this.domainLabel
-      this.chartOpts.scales.x.time = this.domainIsDefault
+      this.chartOpts.scales.x.time = this.domainIsTime
       this.graph = new uPlot(
         this.chartOpts,
         this.data,
@@ -606,7 +613,7 @@ export default {
       )
       if (!this.hideOverview) {
         this.overview.destroy()
-        this.overviewOpts.scales.x.time = this.domainIsDefault
+        this.overviewOpts.scales.x.time = this.domainIsTime
         this.overview = new uPlot(
           this.overviewOpts,
           this.data,
@@ -1208,14 +1215,14 @@ export default {
           x: {
             range(u, dataMin, dataMax) {
               if (dataMin == null) {
-                if (this.domainIsDefault) {
+                if (this.domainIsTime) {
                   return [1566453600, 1566497660]
                 }
                 return [0, 1]
               }
               return [dataMin, dataMax]
             },
-            time: this.domainIsDefault,
+            time: this.domainIsTime,
           },
           y: {
             range(u, dataMin, dataMax) {

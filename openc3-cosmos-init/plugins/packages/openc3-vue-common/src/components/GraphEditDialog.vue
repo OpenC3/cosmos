@@ -199,6 +199,7 @@
               v-if="customDomainEnabled && domainItemPacket"
               :initial-target-name="domainItemPacket.targetName"
               :initial-packet-name="domainItemPacket.packetName"
+              :initial-item-name="initialDomainItem"
               choose-item
               lock-target
               lock-packet
@@ -365,6 +366,13 @@ export default {
         itemId += 1
         return { ...item, itemId }
       })
+    },
+    initialDomainItem: function () {
+      // Just for TargetPacketItemChooser
+      if (this.domainItem === '__time') {
+        return
+      }
+      return this.domainItem.split('__').at(4)
     },
   },
   created() {
