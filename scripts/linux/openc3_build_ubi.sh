@@ -86,9 +86,7 @@ cd ..
 cd openc3-tsdb
 docker build \
   --network host \
-  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
-  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
-  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --build-arg OPENC3_TSDB_VERSION_EXT="-rhel" \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
   .

@@ -176,14 +176,17 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
 fi
 
+if [ "${1:-default}" = "ubi" ]; then
+  OPENC3_TSDB_VERSION_EXT="-rhel"
+else
+  OPENC3_TSDB_VERSION_EXT=""
+fi
 cd ../openc3-tsdb
 docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
-  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
-  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --build-arg OPENC3_TSDB_VERSION_EXT=$OPENC3_TSDB_VERSION_EXT \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
