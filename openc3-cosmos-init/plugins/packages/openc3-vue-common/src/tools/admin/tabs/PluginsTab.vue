@@ -329,7 +329,6 @@ export default {
     },
     update: function () {
       Api.get('/openc3-api/plugins/all').then((response) => {
-        console.log({ response })
         this.plugins = Object.entries(response.data).map(
           ([_, plugin]) => plugin,
         )
