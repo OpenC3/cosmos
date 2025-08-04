@@ -240,3 +240,21 @@ test('edits a graph', async ({ page, utils }) => {
   await expect(page.locator('#gridItem0')).toContainText('Test Graph Title')
   await utils.sleep(5000) // Allow data to flow
 })
+
+test.only('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'ADCS', 'POSX')
+  await page.locator('button:has-text("Add Item")').click()
+  await expect(page.locator('#chart0')).toContainText('POSX')
+  await expect(page.locator('#chart0')).toContainText('Time')
+
+  await page.locator('[data-test=edit-graph-icon]').click()
+  await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
+  await page.getByRole('tab', { name: 'Scale / Lines' }).click()
+  await page.getByLabel('Custom X axis item').check()
+  await page.locator('.v-dialog [data-test=select-item] i').click()
+  await page.locator('.v-dialog').getByLabel('Select Item').fill('RECEIVED_COUNT')
+  await page.getByRole('option', { name: 'RECEIVED_COUNT' }).click()
+  await page.getByRole('button', { name: 'Set' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+  await expect(page.locator('#chart0')).toContainText('RECEIVED_COUNT')
+})
