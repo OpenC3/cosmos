@@ -204,8 +204,9 @@ class QuestMicroservice(Microservice):
                         case int():
                             if value > (2**63 - 1):  # max int64 value
                                 value = 2**63 - 1
-                            elif value < -(2**63):  # min int64 value
-                                value = -(2**63)
+                            elif value < (-(2**63) + 1):
+                                # QuestDB treats int64 min value as NULL, so we set it to -2^63 + 1
+                                value = -(2**63) + 1
 
                         case float() | str():
                             pass
