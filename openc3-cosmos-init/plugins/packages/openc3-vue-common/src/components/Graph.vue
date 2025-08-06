@@ -486,6 +486,9 @@ export default {
       }
       return null
     },
+    itemSubscriptionKeys: function () {
+      return this.items.map(this.subscriptionKey)
+    },
     allowableXAxisItemPacket: function () {
       if (!this.canUseCustomXAxisItem || this.items.length === 0) {
         return undefined
@@ -543,6 +546,9 @@ export default {
         this.xAxisIsDefault ||
         timeItems.includes(this.actualXAxisItem.split('__').at(4))
       )
+    },
+    xAxisIsAlsoGraphedItem: function () {
+      return this.itemSubscriptionKeys.includes(this.actualXAxisItem)
     },
     playbackMode: function () {
       return this.$store.state.playback.playbackMode
@@ -1019,9 +1025,8 @@ export default {
     setupPlaybackMode: function () {
       this.stopGraph()
       this.clearAllData()
-      const screenItems = this.items.map((item) => {
-        const keyParts = this.subscriptionKey(item).split('__')
-        return keyParts.slice(2).join('__')
+      const screenItems = this.itemSubscriptionKeys.map((key) => {
+        return key.split('__').slice(2).join('__')
       })
       this.api.get_tlm_available(screenItems).then((data) => {
         this.graphItems = data
@@ -1062,16 +1067,24 @@ export default {
       if (this.overview) {
         this.overview.setData(this.data)
       }
-      let max = this.data[0][this.data[0].length - 1]
-      let ptsMin = this.data[0][this.data[0].length - this.pointsGraphed]
-      let min = this.data[0][0]
-      if (min < max - this.secondsGraphed) {
-        min = max - this.secondsGraphed
+
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = xAxisData.at(-1)
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        if (min === max) {
+          max += 1
+        }
+        this.graph.setScale('x', { min, max })
       }
-      if (ptsMin > min) {
-        min = ptsMin
-      }
-      this.graph.setScale('x', { min, max })
+
       this.dataChanged = false
     },
     formatLabel(item) {
@@ -1221,7 +1234,7 @@ export default {
           received: (data) => this.received(data),
           connected: () => {
             const itemsToAdd = [...this.items]
-            if (this.actualXAxisItem !== DEFAULT_X_AXIS_ITEM) {
+            if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
             }
             this.addItemsToSubscription(itemsToAdd)
