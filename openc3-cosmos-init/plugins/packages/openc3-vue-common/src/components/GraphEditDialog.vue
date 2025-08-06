@@ -176,9 +176,14 @@
           <div class="edit-box">
             <v-card-text class="pa-0 text-medium-emphasis">
               Choose a different item to use for the graph's X axis. If
-              unchecked, the graph will use the packet's PACKET_TIME item if it
-              exists, otherwise it will use the system received time for the
-              packet.
+              unchecked, the graph will use the packet's PACKET_TIMESECONDS item
+              if it exists, otherwise it will use RECEIVED_TIMESECONDS.
+              <br />
+              <span class="font-italic">
+                Note that the graph may not work correctly if you choose an item
+                that does not strictly increase in value. It is recommended to
+                use a counter or timestamp.
+              </span>
             </v-card-text>
             <v-checkbox
               v-model="customXAxisEnabled"
