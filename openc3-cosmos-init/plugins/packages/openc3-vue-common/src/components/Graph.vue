@@ -431,7 +431,7 @@ export default {
       overview: null,
       data: [[]],
       dataChanged: false,
-      timeout: null,
+      interval: null,
       graphMinY: null,
       graphMaxY: null,
       graphStartDateTime: null,
@@ -485,6 +485,9 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+    itemSubscriptionKeys: function () {
+      return this.items.map(this.subscriptionKey)
     },
     allowableXAxisItemPacket: function () {
       if (!this.canUseCustomXAxisItem || this.items.length === 0) {
@@ -543,6 +546,9 @@ export default {
         this.xAxisIsDefault ||
         timeItems.includes(this.actualXAxisItem.split('__').at(4))
       )
+    },
+    xAxisIsAlsoGraphedItem: function () {
+      return this.itemSubscriptionKeys.includes(this.actualXAxisItem)
     },
     playbackMode: function () {
       return this.$store.state.playback.playbackMode
@@ -696,6 +702,14 @@ export default {
       }
       this.addItems(clonedItems)
       // Don't need to $emit('edit') because addItems() does that
+    },
+    refreshIntervalMs: function (val) {
+      if (this.interval) {
+        clearInterval(this.interval)
+        this.interval = setInterval(() => {
+          this.updateGraphData()
+        }, val)
+      }
     },
   },
   created() {
@@ -1011,16 +1025,15 @@ export default {
     setupPlaybackMode: function () {
       this.stopGraph()
       this.clearAllData()
-      const screenItems = this.items.map((item) => {
-        const keyParts = this.subscriptionKey(item).split('__')
-        return keyParts.slice(2).join('__')
+      const screenItems = this.itemSubscriptionKeys.map((key) => {
+        return key.split('__').slice(2).join('__')
       })
-      screenItems.unshift('INST__HEALTH_STATUS__PACKET_TIMESECONDS__RAW')
       this.api.get_tlm_available(screenItems).then((data) => {
         this.graphItems = data
         // This must be the same or we're going to have problems
         // because the data comes back in an ordered array
         if (screenItems.length != data.length) {
+          // eslint-disable-next-line no-console
           console.log(
             'Error getting tlm available',
             screenItems,
@@ -1031,8 +1044,8 @@ export default {
     },
     startGraph: function () {
       this.subscribe()
-      this.timeout = setTimeout(() => {
-        this.updateTimeout()
+      this.interval = setInterval(() => {
+        this.updateGraphData()
       }, this.refreshIntervalMs)
     },
     stopGraph: function () {
@@ -1040,16 +1053,10 @@ export default {
         this.subscription.unsubscribe()
         this.subscription = null
       }
-      if (this.timeout) {
-        clearTimeout(this.timeout)
-        this.timeout = null
+      if (this.interval) {
+        clearInterval(this.interval)
+        this.interval = null
       }
-    },
-    updateTimeout: function () {
-      this.updateGraphData()
-      this.timeout = setTimeout(() => {
-        this.updateTimeout()
-      }, this.refreshIntervalMs)
     },
     updateGraphData: function () {
       // Ignore changes to the data while we're paused
@@ -1060,16 +1067,24 @@ export default {
       if (this.overview) {
         this.overview.setData(this.data)
       }
-      let max = this.data[0][this.data[0].length - 1]
-      let ptsMin = this.data[0][this.data[0].length - this.pointsGraphed]
-      let min = this.data[0][0]
-      if (min < max - this.secondsGraphed) {
-        min = max - this.secondsGraphed
+
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = xAxisData.at(-1)
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        if (min === max) {
+          max += 1
+        }
+        this.graph.setScale('x', { min, max })
       }
-      if (ptsMin > min) {
-        min = ptsMin
-      }
-      this.graph.setScale('x', { min, max })
+
       this.dataChanged = false
     },
     formatLabel(item) {
@@ -1219,7 +1234,7 @@ export default {
           received: (data) => this.received(data),
           connected: () => {
             const itemsToAdd = [...this.items]
-            if (this.actualXAxisItem !== DEFAULT_X_AXIS_ITEM) {
+            if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
             }
             this.addItemsToSubscription(itemsToAdd)
@@ -1410,7 +1425,6 @@ export default {
             const yellowLow = u.valToPos(this.limitsValues[1], 'y', true)
             const yellowHigh = u.valToPos(this.limitsValues[2], 'y', true)
             const redHigh = u.valToPos(this.limitsValues[3], 'y', true)
-            let height = 0
 
             // NOTE: These comparisons are tricky because the canvas
             // starts in the upper left with 0,0. Thus it grows downward
@@ -1729,9 +1743,9 @@ export default {
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, xAxisVal, data[i])
+          this.setDataAtIndex(this.data[0].length - 1, xAxisVal, data[i])
         } else {
-          let index = bs(this.data[0], xAxisVal, this.bs_comparator)
+          let index = bs(this.data[0], xAxisVal, this.bsComparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
@@ -1742,44 +1756,44 @@ export default {
             }
             while (index >= 0) {
               xAxisVal -= 1e-5 // Subtract a small amount (10 microseconds if x-axis is time in seconds)
-              index = bs(this.data[0], xAxisVal, this.bs_comparator)
+              index = bs(this.data[0], xAxisVal, this.bsComparator)
             }
             // Now that we have a unique time, insert at the ideal index
-            let ideal_index = -index - 1
+            const idealIndex = -index - 1
             for (let j = 0; j < this.data.length; j++) {
-              this.data[j].splice(ideal_index, 0, null)
+              this.data[j].splice(idealIndex, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, xAxisVal, data[i])
+            this.setDataAtIndex(idealIndex, xAxisVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
-            let ideal_index = -index - 1
+            const idealIndex = -index - 1
             for (let j = 0; j < this.data.length; j++) {
-              this.data[j].splice(ideal_index, 0, null)
+              this.data[j].splice(idealIndex, 0, null)
             }
-            this.set_data_at_index(ideal_index, xAxisVal, data[i])
+            this.setDataAtIndex(idealIndex, xAxisVal, data[i])
           }
         }
       }
       // If we weren't passed a startTime notify grapher of our start
       if (this.startTime == null && this.data[0][0]) {
-        let newStartTime = this.data[0][0] * 1000000000
+        let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
       this.dataChanged = true
     },
-    bs_comparator: function (element, needle) {
+    bsComparator: function (element, needle) {
       return element - needle
     },
-    set_data_at_index: function (index, time, new_data) {
-      this.data[0][index] = time
-      for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time' || key === this.actualXAxisItem) {
+    setDataAtIndex: function (index, xAxisVal, newData) {
+      this.data[0][index] = xAxisVal
+      for (const [key, value] of Object.entries(newData)) {
+        if (key === this.actualXAxisItem && !this.xAxisIsAlsoGraphedItem) {
           continue
         }
-        let key_index = this.indexes[key]
-        if (key_index) {
-          let array = this.data[key_index]
+        const keyIndex = this.indexes[key]
+        if (keyIndex) {
+          let array = this.data[keyIndex]
           // NaN and Infinite values are sent as objects with raw attribute set
           // to 'NaN', '-Infinity', or 'Infinity', just set data to null
           if (value?.raw) {
