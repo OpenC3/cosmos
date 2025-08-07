@@ -52,6 +52,9 @@ jobs:
       - name: ClamAV scan image minio
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }} pull clamav_results/openc3-minio.txt
         working-directory: scripts/release
+      - name: ClamAV scan image tsdb
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }} pull clamav_results/openc3-tsdb.txt
+        working-directory: scripts/release
       - name: ClamAV scan image operator
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }} pull clamav_results/openc3-operator.txt
         working-directory: scripts/release
