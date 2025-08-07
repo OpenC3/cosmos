@@ -97,6 +97,7 @@
   <div class="grid">
     <div
       v-for="graph in graphs"
+      v-if="timeZone"
       :id="`gridItem${graph}`"
       :key="graph"
       :ref="`gridItem${graph}`"
@@ -354,63 +355,66 @@ export default {
         if (response) {
           this.timeZone = response
         }
+        this.$nextTick(() => {
+          this.setup()
+        })
       })
       .catch((error) => {
         // Do nothing
       })
   },
-  mounted: function () {
-    this.grid = new Muuri('.grid', {
-      dragEnabled: true,
-      layoutOnResize: true,
-      // Only allow drags starting from the v-toolbar title
-      dragHandle: '.v-toolbar',
-    })
-    // Sometimes when we move graphs, other graphs become non-interactive
-    // This seems to fix that issue
-    this.grid.on('move', function (data) {
-      data.item.getGrid().synchronize()
-    })
-
-    // Called like /tools/tlmgrapher?config=temps
-    if (this.$route.query && this.$route.query.config) {
-      this.openConfiguration(this.$route.query.config, true) // routed
-    }
-    // If we're passed in the route then manually addItem
-    else if (
-      this.$route.params.target &&
-      this.$route.params.packet &&
-      this.$route.params.item
-    ) {
-      this.addItem({
-        targetName: this.$route.params.target.toUpperCase(),
-        packetName: this.$route.params.packet.toUpperCase(),
-        itemName: this.$route.params.item.toUpperCase(),
-        valueType: 'CONVERTED',
-        reduced: 'DECOM',
-      })
-    } else {
-      let config = this.loadDefaultConfig()
-      // Only apply the config if it's not an empty object (config does not exist)
-      if (JSON.stringify(config) !== '{}') {
-        this.applyConfig(config)
-      }
-    }
-    // Setup the observer to resize the graphs when the nav drawer is opened or closed
-    this.observer = new MutationObserver(() => {
-      this.resizeAll()
-    })
-    const navDrawer = document.getElementById('openc3-nav-drawer')
-    this.observer.observe(navDrawer, {
-      attributes: true,
-      attributeOldValue: true,
-      attributeFilter: ['class'],
-    })
-  },
   beforeUnmount() {
     this.observer.disconnect()
   },
   methods: {
+    setup: function () {
+      this.grid = new Muuri('.grid', {
+        dragEnabled: true,
+        layoutOnResize: true,
+        // Only allow drags starting from the v-toolbar title
+        dragHandle: '.v-toolbar',
+      })
+      // Sometimes when we move graphs, other graphs become non-interactive
+      // This seems to fix that issue
+      this.grid.on('move', function (data) {
+        data.item.getGrid().synchronize()
+      })
+
+      // Called like /tools/tlmgrapher?config=temps
+      if (this.$route.query && this.$route.query.config) {
+        this.openConfiguration(this.$route.query.config, true) // routed
+      }
+      // If we're passed in the route then manually addItem
+      else if (
+        this.$route.params.target &&
+        this.$route.params.packet &&
+        this.$route.params.item
+      ) {
+        this.addItem({
+          targetName: this.$route.params.target.toUpperCase(),
+          packetName: this.$route.params.packet.toUpperCase(),
+          itemName: this.$route.params.item.toUpperCase(),
+          valueType: 'CONVERTED',
+          reduced: 'DECOM',
+        })
+      } else {
+        let config = this.loadDefaultConfig()
+        // Only apply the config if it's not an empty object (config does not exist)
+        if (JSON.stringify(config) !== '{}') {
+          this.applyConfig(config)
+        }
+      }
+      // Setup the observer to resize the graphs when the nav drawer is opened or closed
+      this.observer = new MutationObserver(() => {
+        this.resizeAll()
+      })
+      const navDrawer = document.getElementById('openc3-nav-drawer')
+      this.observer.observe(navDrawer, {
+        attributes: true,
+        attributeOldValue: true,
+        attributeFilter: ['class'],
+      })
+    },
     resizeAll: function () {
       setTimeout(() => {
         this.grid.getItems().map((item) => {
