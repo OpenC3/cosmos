@@ -498,7 +498,7 @@ For a full example, please see the [openc3-cosmos-scpi-power-supply](https://git
 
 ### CRC Protocol
 
-The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets.
+The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets. Note: You either have to give all the parameters for Poly, Seed, Xor, Reflect or just use the defaults. You can't mix and match setting some and not others.
 
 | Parameter       | Description                                                                                                 | Required | Default                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
@@ -519,7 +519,8 @@ The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming t
 ```python
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
-  PROTOCOL READ openc3/interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN None None None None
+  # In this example I changed the Reflect default to false so I had to explicitly specify all the values
+  PROTOCOL READ openc3/interfaces/protocols/crc_protocol.py None True ERROR -32 32 BIG_ENDIAN 0x04C11DB7 0xFFFFFFFF True False
 ```
 
 Source code for [crc_protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/crc_protocol.py)
@@ -530,7 +531,8 @@ Source code for [crc_protocol.py](https://github.com/OpenC3/cosmos/blob/main/ope
 ```ruby
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
-  PROTOCOL READ CrcProtocol nil true ERROR -32 32 BIG_ENDIAN nil nil nil nil
+  # In this example I changed the Reflect default to false so I had to explicitly specify all the values
+  PROTOCOL READ CrcProtocol nil true ERROR -32 32 BIG_ENDIAN 0x04C11DB7 0xFFFFFFFF true false
 ```
 
 Source code for [crc_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/crc_protocol.rb)
