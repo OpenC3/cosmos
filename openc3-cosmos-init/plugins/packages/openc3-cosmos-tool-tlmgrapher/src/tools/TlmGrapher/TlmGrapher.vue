@@ -346,13 +346,6 @@ export default {
     panel: function () {
       this.resizeAll()
     },
-    timeZone: function (val) {
-      if (val) {
-        this.$nextTick(() => {
-          this.setup()
-        })
-      }
-    },
   },
   created() {
     this.api = new OpenC3Api()
@@ -362,6 +355,9 @@ export default {
         if (response) {
           this.timeZone = response
         }
+        this.$nextTick(() => {
+          this.setup()
+        })
       })
       .catch((error) => {
         // Do nothing
