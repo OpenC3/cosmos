@@ -26,11 +26,16 @@
       <span class="text-h3 mx-1"> 🦄 </span>
     </v-card-text>
   </v-card>
+  <div v-if="showSpinner" class="d-flex justify-center align-center">
+    <v-progress-circular indeterminate />
+  </div>
 </template>
 
 <script>
 import { getMountedApps } from 'single-spa'
 
+const POLL_INTERVAL_MS = 50
+const NOT_FOUND_TIMEOUT_MS = 2000
 const SINGLE_SPA_APP_CHANGE_EVENT = 'single-spa:app-change'
 
 // This component is actually always loaded for every route other than /login
@@ -39,27 +44,55 @@ const SINGLE_SPA_APP_CHANGE_EVENT = 'single-spa:app-change'
 export default {
   data() {
     return {
+      appsMounted: false,
       show: false,
+      hideSpinner: false,
+      pollInterval: null,
     }
+  },
+  computed: {
+    showSpinner: function () {
+      return !this.hideSpinner && !this.show
+    },
   },
   created() {
     window.addEventListener(SINGLE_SPA_APP_CHANGE_EVENT, this.handleAppChange)
   },
   mounted() {
-    // Give single-spa some time to get an app mounted to avoid flashing this
+    this.pollForMountedApps()
+    // This gives some time to allow slow connections to find the apps before flashing the 404
     setTimeout(() => {
-      this.show = getMountedApps().length === 0
-    }, 150)
+      if (!this.appsMounted) {
+        this.show = true
+        if (this.pollInterval) {
+          clearInterval(this.pollInterval)
+        }
+      }
+    }, NOT_FOUND_TIMEOUT_MS)
   },
   unmounted() {
     window.removeEventListener(
       SINGLE_SPA_APP_CHANGE_EVENT,
       this.handleAppChange,
     )
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+    }
   },
   methods: {
     handleAppChange: function (event) {
       this.show = !event.detail.appsByNewStatus.MOUNTED
+    },
+    pollForMountedApps: function () {
+      // Check to see if there are single-spa apps that matched the route.
+      // The app-change event doesn't cover this case...
+      this.pollInterval = setInterval(() => {
+        this.appsMounted = getMountedApps().length > 0
+        if (getMountedApps().length > 0) {
+          this.hideSpinner = true
+          clearInterval(this.pollInterval)
+        }
+      }, POLL_INTERVAL_MS)
     },
   },
 }
