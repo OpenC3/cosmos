@@ -115,6 +115,20 @@ jobs:
         with:
           category: "openc3-minio"
           sarif_file: "trivy-minio.sarif"
+      - name: Run Trivy on image tsdb
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.sha }}"
+          output: "trivy-tsdb.sarif"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
+      - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: "openc3-tsdb"
+          sarif_file: "trivy-tsdb.sarif"
       - name: Run Trivy on image operator
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
@@ -195,6 +209,8 @@ jobs:
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
       # - name: Run grype on the image minio
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-minio:latest
+      # - name: Run grype on the image tsdb
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-tsdb:latest
       # - name: Run grype on the image operator
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
       # - name: Run grype on the image cmd-tlm-api
