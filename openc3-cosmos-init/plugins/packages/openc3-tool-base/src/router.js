@@ -26,7 +26,7 @@ import { Login } from '@openc3/vue-common/tools/base'
 import { Api } from '@openc3/js-common/services'
 
 const ROOT_PATHS = ['/', '/tools', '/tools/'] // where to redirect from
-const NOT_FOUND_TIMEOUT = 150 // how long to wait to get the tool to redirect to (ms)
+const DEFAULT_TOOL_TIMEOUT_MS = 150 // how long to wait to get the tool to redirect to (ms)
 const DEFAULT_TOOL_URL = '/tools/cmdtlmserver' // where to redirect to if we can't figure it out in time
 
 const getFirstTool = async () => {
@@ -71,7 +71,7 @@ router.beforeEach(async (to) => {
   if (ROOT_PATHS.includes(to.fullPath)) {
     const firstTool = await Promise.race([
       getFirstTool(),
-      timeout(NOT_FOUND_TIMEOUT),
+      timeout(DEFAULT_TOOL_TIMEOUT_MS),
     ])
     return firstTool?.url || DEFAULT_TOOL_URL
   }
