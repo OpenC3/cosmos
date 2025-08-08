@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2025, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,7 +16,14 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { prependBasePath } from './routeUtils'
-import { formatBytesToString } from './formatter'
+const formatBytesToString = function(bytes) {
+  if (bytes === 0) return '0 B'
+  
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const k = 1000
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
-export { prependBasePath, formatBytesToString }
+export { formatBytesToString }
