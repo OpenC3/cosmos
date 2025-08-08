@@ -130,7 +130,7 @@
           {{ item.name }}
         </template>
         <template #item.size="{ item }">
-          {{ item.size ? item.size.toLocaleString() : '' }}
+          {{ item.size ? formatBytesToString(item.size) : '' }}
         </template>
         <template #item.action="{ item }">
           <v-btn
@@ -252,6 +252,7 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
+import { formatBytesToString } from '@openc3/js-common/utils'
 import { OutputDialog, TopBar } from '@openc3/vue-common/components'
 import axios from 'axios'
 
@@ -328,9 +329,8 @@ export default {
   },
   computed: {
     folderTotal() {
-      return this.files
-        .reduce((a, b) => a + (b.size ? b.size : 0), 0)
-        .toLocaleString()
+      return formatBytesToString(this.files
+        .reduce((a, b) => a + (b.size ? b.size : 0), 0))
     },
     breadcrumbPath() {
       const parts = this.path.split('/')
@@ -631,6 +631,7 @@ export default {
           this.updating = false
         })
     },
+    formatBytesToString,
   },
 }
 </script>
