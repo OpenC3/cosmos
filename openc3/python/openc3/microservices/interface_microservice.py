@@ -577,6 +577,18 @@ class InterfaceMicroservice(Microservice):
                     target.interface = new_interface
                 self.interface = new_interface
 
+                # Update the model
+                if self.interface_or_router == 'INTERFACE':
+                    interface_model = InterfaceModel.get(name=self.interface.name, scope=self.scope)
+                    # config_params[0] is the filename so set the rest
+                    interface_model['config_params'][1:] = list(params)
+                    InterfaceModel.set(interface_model, scope=self.scope)
+                else:
+                    router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
+                    # config_params[0] is the filename so set the rest
+                    interface_model['config_params'][1:] = list(params)
+                    RouterModel.set(router_model, scope=self.scope)
+
             self.interface.state = "ATTEMPTING"
             if self.interface_or_router == "INTERFACE":
                 InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)

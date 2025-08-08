@@ -298,7 +298,7 @@ module OpenC3
                 @interface.write(command)
 
                 command.obfuscate
-                
+
                 if command.validator and validate
                   begin
                     result, reason = command.validator.post_check(command)
@@ -559,6 +559,19 @@ module OpenC3
           target.interface = new_interface
         end
         @interface = new_interface
+
+        # Update the model
+        if @interface_or_router == 'INTERFACE'
+          interface_model = InterfaceModel.get(name: @interface.name, scope: @scope)
+          # config_params[0] is the filename so set the rest
+          interface_model['config_params'][1..-1] = *params
+          InterfaceModel.set(interface_model, scope: @scope)
+        else
+          router_model = RouterModel.get(name: @interface.name, scope: @scope)
+          # config_params[0] is the filename so set the rest
+          router_model['config_params'][1..-1] = *params
+          RouterModel.set(router_model, scope: @scope)
+        end
       end
 
       @interface.state = 'ATTEMPTING'
