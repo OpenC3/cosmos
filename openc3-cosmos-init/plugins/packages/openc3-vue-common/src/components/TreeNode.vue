@@ -21,6 +21,15 @@
 # based on code example provided in https://github.com/vuetifyjs/vuetify/issues/19919
 -->
 <template>
+  <!-- Global tooltip for all tree nodes -->
+  <v-tooltip
+    v-if="globalTooltip.show"
+    :model-value="true"
+    :text="globalTooltip.text"
+    location="top"
+    :style="`position: fixed; left: ${globalTooltip.x}px; top: ${globalTooltip.y}px; pointer-events: none;`"
+  />
+  
   <div class="tree-node">
     <div v-if="showNode" class="node-content" @click="handleClick(node)">
       <div class="content-wrapper">
@@ -55,6 +64,8 @@
           class="title"
           :tabindex="node.children ? -1 : 0"
           @keyup.enter="handleClick(node)"
+          @mouseenter="showGlobalTooltip($event, node.title)"
+          @mouseleave="hideGlobalTooltip"
         >
           {{ node.title }}
         </span>
@@ -137,6 +148,31 @@ watch(
 )
 
 const emit = defineEmits(['nodeToggled', 'request'])
+
+const globalTooltip = ref({
+  show: false,
+  text: '',
+  x: 0,
+  y: 0
+})
+
+const showGlobalTooltip = (event, text) => {
+  // Only show tooltip if text is long enough to potentially overflow
+  if (!text || text.length <= 50) return
+  
+  const rect = event.target.getBoundingClientRect()
+  const centerX = rect.left
+  const centerY = rect.top
+  
+  globalTooltip.value.text = text
+  globalTooltip.value.x = centerX
+  globalTooltip.value.y = centerY - 40
+  globalTooltip.value.show = true
+}
+
+const hideGlobalTooltip = () => {
+  globalTooltip.value.show = false
+}
 
 const handleClick = (node) => {
   if (node.children) {

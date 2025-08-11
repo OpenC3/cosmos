@@ -674,6 +674,9 @@ export default {
   padding: 4px;
 }
 .tpic-select {
-  max-width: 300px;
+  max-width: 400px;
+}
+.v-autocomplete .v-select__selections {
+  word-break: break-all;
 }
 </style>

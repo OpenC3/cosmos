@@ -142,19 +142,28 @@
                 <span v-else> Back to New Script </span>
               </v-tooltip>
             </div>
-            <v-select
-              id="filename"
-              v-model="filenameSelect"
-              :items="fileList"
-              :disabled="fileList.length <= 1"
-              label="Filename"
-              data-test="filename"
-              style="width: 300px"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="fileNameChanged"
-            />
+            <v-tooltip
+              location="bottom"
+              :text="filenameSelect"
+              :disabled="!filenameSelect || filenameSelect.length <= 45"
+            >
+              <template v-slot:activator="{ props }">
+                <div v-bind="props" style="width: 32rem">
+                  <v-select
+                    id="filename"
+                    v-model="filenameSelect"
+                    :items="fileList"
+                    :disabled="fileList.length <= 1"
+                    label="Filename"
+                    data-test="filename"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    @update:model-value="fileNameChanged"
+                  />
+                </div>
+              </template>
+            </v-tooltip>
             <v-text-field
               v-model="scriptId"
               label="Script ID"
