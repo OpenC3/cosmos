@@ -21,7 +21,6 @@
 # based on code example provided in https://github.com/vuetifyjs/vuetify/issues/19919
 -->
 <template>
-  <!-- Global tooltip for all tree nodes -->
   <v-tooltip
     v-if="globalTooltip.show"
     :model-value="true"
