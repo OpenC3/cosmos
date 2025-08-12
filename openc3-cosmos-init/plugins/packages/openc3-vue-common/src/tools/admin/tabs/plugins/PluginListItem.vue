@@ -93,15 +93,10 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import {
-  // PluginCard,
-  PluginDetailsDialog,
-  PluginProps,
-} from '@/plugins/plugin-store'
+import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {
   components: {
-    // PluginCard,
     PluginDetailsDialog,
   },
   mixins: [PluginProps],
@@ -114,7 +109,7 @@ export default {
     },
     isModified: Boolean,
   },
-  emits: ['edit', 'delete', 'upgrade', 'showDetails'],
+  emits: ['edit', 'delete', 'upgrade'],
   data() {
     return {
       showCard: false,

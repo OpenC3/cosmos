@@ -32,15 +32,9 @@
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
-        @show-details="showDetails"
       />
     </template>
   </v-data-table>
-  <plugin-card
-    v-bind="detailPlugin"
-    hide-activator
-    :show-dailog="showPluginDetails"
-  />
 </template>
 
 <script>
