@@ -22,8 +22,7 @@
 -->
 <template>
   <v-tooltip
-    v-if="globalTooltip.show"
-    :model-value="true"
+    v-model="globalTooltip.show"
     :text="globalTooltip.text"
     location="top"
     :style="`position: fixed; left: ${globalTooltip.x}px; top: ${globalTooltip.y}px; pointer-events: none;`"
