@@ -24,7 +24,7 @@
   <top-bar :menus="menus" :title="title" />
   <v-expansion-panels v-model="panel" class="expansion">
     <v-expansion-panel>
-      <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+      <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
       <v-expansion-panel-text>
         <div v-if="selectedGraphId === null">
           <v-row class="my-5">
@@ -55,7 +55,7 @@
             <v-col style="max-width: 140px">
               <v-btn
                 v-show="state === 'pause'"
-                class="pulse"
+                class="blink"
                 color="primary"
                 data-test="start-graph"
                 icon="mdi-play"
@@ -618,24 +618,6 @@ export default {
 }
 </script>
 
-<style>
-/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
-i.v-icon.mdi-chevron-down {
-  animation: pulse 2s 3;
-}
-@keyframes pulse {
-  0% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-  }
-  70% {
-    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
-  100% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-  }
-}
-</style>
-
 <style lang="scss" scoped>
 .expansion {
   background-color: var(--color-background-base-default) !important;
@@ -658,6 +640,7 @@ i.v-icon.mdi-chevron-down {
   }
 }
 .v-expansion-panel-title {
+  z-index: 1;
   min-height: 10px;
   padding: 5px;
 }
@@ -688,18 +671,5 @@ i.v-icon.mdi-chevron-down {
   cursor: pointer;
   border-radius: 6px;
   margin: 6px;
-}
-.pulse {
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
 }
 </style>

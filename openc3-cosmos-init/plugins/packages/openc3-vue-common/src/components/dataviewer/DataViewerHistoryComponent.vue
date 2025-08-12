@@ -176,7 +176,7 @@
             />
             <v-btn
               class="ml-2"
-              :class="{ pulse: paused }"
+              :class="{ blink: paused }"
               color="primary"
               :icon="paused ? 'mdi-play' : 'mdi-pause'"
               size="large"
@@ -355,23 +355,6 @@ export default {
 }
 </script>
 
-<style>
-/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
-i.v-icon.mdi-chevron-down {
-  animation: pulse 2s 3;
-}
-@keyframes pulse {
-  0% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-  }
-  70% {
-    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
-  100% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-  }
-}
-</style>
 <style lang="scss" scoped>
 .text-area-container {
   position: relative;
@@ -384,17 +367,6 @@ i.v-icon.mdi-chevron-down {
     position: absolute;
     top: 12px;
     right: 24px;
-  }
-}
-.pulse {
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
   }
 }
 </style>

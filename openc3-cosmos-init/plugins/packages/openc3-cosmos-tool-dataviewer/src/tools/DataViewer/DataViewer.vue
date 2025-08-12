@@ -21,213 +21,211 @@
 -->
 
 <template>
-  <div>
-    <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
-        <v-expansion-panel>
-          <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-container>
-              <v-row dense>
-                <v-col>
-                  <v-text-field
-                    v-model="startDate"
-                    label="Start Date"
-                    type="date"
-                    :rules="[rules.required]"
-                    data-test="start-date"
-                  />
-                </v-col>
-                <v-col>
-                  <v-text-field
-                    v-model="startTime"
-                    label="Start Time"
-                    type="time"
-                    step="1"
-                    :rules="[rules.required]"
-                    data-test="start-time"
-                  />
-                </v-col>
-                <v-col>
-                  <v-text-field
-                    v-model="endDate"
-                    label="End Date"
-                    type="date"
-                    :rules="endTime ? [rules.required] : []"
-                    data-test="end-date"
-                  />
-                </v-col>
-                <v-col>
-                  <v-text-field
-                    v-model="endTime"
-                    label="End Time"
-                    type="time"
-                    step="1"
-                    :rules="endDate ? [rules.required] : []"
-                    data-test="end-time"
-                  />
-                </v-col>
-                <v-col cols="auto" class="pt-4">
-                  <v-btn
-                    v-if="running"
-                    color="primary"
-                    width="100"
-                    data-test="stop-button"
-                    @click="stop"
-                  >
-                    Stop
-                  </v-btn>
-                  <v-btn
-                    v-else
-                    :disabled="!canStart"
-                    color="primary"
-                    width="100"
-                    class="pulse-button"
-                    data-test="start-button"
-                    @click="start"
-                  >
-                    Start
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
-      <div v-show="warning || error || connectionFailure" class="mb-3">
-        <v-alert v-model="warning" type="warning" closable>
-          {{ warningText }}
-        </v-alert>
-        <v-alert v-model="error" type="error" closable>
-          {{ errorText }}
-        </v-alert>
-        <v-alert v-model="connectionFailure" type="error">
-          OpenC3 backend connection failed.
-        </v-alert>
-      </div>
-      <v-tabs ref="tabs" :key="`v-tabs_${config.tabs.length}`" v-model="curTab">
-        <v-tab
-          v-for="(tab, index) in config.tabs"
-          :key="index"
-          data-test="tab"
-          @contextmenu="(event) => tabMenu(event, index)"
-        >
-          {{ tab.tabName }}
-          <v-btn
-            variant="text"
-            icon="mdi-close"
-            @click="() => deleteComponent(index)"
-          />
-        </v-tab>
-        <v-btn
-          icon="mdi-tab-plus"
-          class="ml-2"
-          variant="text"
-          :class="config.tabs.length === 0 ? 'pulse-button' : ''"
-          data-test="new-tab"
-          @click="addTab"
-        />
-      </v-tabs>
-      <v-tabs-window
-        :key="`v-tabs-window_${config.tabs.length}`"
-        :model-value="curTab"
+  <top-bar :menus="menus" :title="title" />
+  <v-card>
+    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+      <v-expansion-panel>
+        <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-container>
+            <v-row dense>
+              <v-col>
+                <v-text-field
+                  v-model="startDate"
+                  label="Start Date"
+                  type="date"
+                  :rules="[rules.required]"
+                  data-test="start-date"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="startTime"
+                  label="Start Time"
+                  type="time"
+                  step="1"
+                  :rules="[rules.required]"
+                  data-test="start-time"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="endDate"
+                  label="End Date"
+                  type="date"
+                  :rules="endTime ? [rules.required] : []"
+                  data-test="end-date"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="endTime"
+                  label="End Time"
+                  type="time"
+                  step="1"
+                  :rules="endDate ? [rules.required] : []"
+                  data-test="end-time"
+                />
+              </v-col>
+              <v-col cols="auto" class="pt-4">
+                <v-btn
+                  v-if="running"
+                  color="primary"
+                  width="100"
+                  data-test="stop-button"
+                  @click="stop"
+                >
+                  Stop
+                </v-btn>
+                <v-btn
+                  v-else
+                  :disabled="!canStart"
+                  color="primary"
+                  width="100"
+                  class="pulse"
+                  data-test="start-button"
+                  @click="start"
+                >
+                  Start
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+    <div v-show="warning || error || connectionFailure" class="mb-3">
+      <v-alert v-model="warning" type="warning" closable>
+        {{ warningText }}
+      </v-alert>
+      <v-alert v-model="error" type="error" closable>
+        {{ errorText }}
+      </v-alert>
+      <v-alert v-model="connectionFailure" type="error">
+        OpenC3 backend connection failed.
+      </v-alert>
+    </div>
+    <v-tabs ref="tabs" :key="`v-tabs_${config.tabs.length}`" v-model="curTab">
+      <v-tab
+        v-for="(tab, index) in config.tabs"
+        :key="index"
+        data-test="tab"
+        @contextmenu="(event) => tabMenu(event, index)"
       >
-        <v-tabs-window-item v-for="tab in config.tabs" :key="tab.ref" eager>
-          <keep-alive>
-            <v-card flat>
-              <v-divider />
-              <v-card-title class="pa-3 d-flex align-center">
-                <span v-text="tab.name" />
-              </v-card-title>
-              <component
-                v-bind="$attrs"
-                :is="tab.type"
-                :ref="tab.ref"
-                :name="tab.component"
-                :config="tab.config"
-                :packets="tab.packets"
-                @config="(config) => (tab.config = config)"
-              />
-              <v-card-text v-if="receivedPackets.length === 0">
-                No data! Make sure to hit the START button!
-              </v-card-text>
-            </v-card>
-          </keep-alive>
-        </v-tabs-window-item>
-      </v-tabs-window>
-      <v-card v-if="!config.tabs.length">
-        <v-card-title>You're not viewing any packets</v-card-title>
-        <v-card-text>Click the new tab icon to start.</v-card-text>
-      </v-card>
+        {{ tab.tabName }}
+        <v-btn
+          variant="text"
+          icon="mdi-close"
+          @click="() => deleteComponent(index)"
+        />
+      </v-tab>
+      <v-btn
+        icon="mdi-tab-plus"
+        class="ml-2"
+        variant="text"
+        :class="config.tabs.length === 0 ? 'pulse' : ''"
+        data-test="new-tab"
+        @click="addTab"
+      />
+    </v-tabs>
+    <v-tabs-window
+      :key="`v-tabs-window_${config.tabs.length}`"
+      :model-value="curTab"
+    >
+      <v-tabs-window-item v-for="tab in config.tabs" :key="tab.ref" eager>
+        <keep-alive>
+          <v-card flat>
+            <v-divider />
+            <v-card-title class="pa-3 d-flex align-center">
+              <span v-text="tab.name" />
+            </v-card-title>
+            <component
+              v-bind="$attrs"
+              :is="tab.type"
+              :ref="tab.ref"
+              :name="tab.component"
+              :config="tab.config"
+              :packets="tab.packets"
+              @config="(config) => (tab.config = config)"
+            />
+            <v-card-text v-if="receivedPackets.length === 0">
+              No data! Make sure to hit the START button!
+            </v-card-text>
+          </v-card>
+        </keep-alive>
+      </v-tabs-window-item>
+    </v-tabs-window>
+    <v-card v-if="!config.tabs.length">
+      <v-card-title>You're not viewing any packets</v-card-title>
+      <v-card-text>Click the new tab icon to start.</v-card-text>
     </v-card>
-    <!-- Dialogs for opening and saving configs -->
-    <open-config-dialog
-      v-if="openConfig"
-      v-model="openConfig"
-      :config-key="configKey"
-      @success="openConfiguration"
-    />
-    <save-config-dialog
-      v-if="saveConfig"
-      v-model="saveConfig"
-      :config-key="configKey"
-      @success="saveConfiguration"
-    />
-    <!-- Dialog for renaming a new tab -->
-    <v-dialog v-model="tabNameDialog" width="600">
-      <v-card>
-        <v-toolbar height="24">
-          <v-spacer />
-          <span> DataViewer: Rename Tab</span>
-          <v-spacer />
-        </v-toolbar>
-        <v-card-text>
-          <v-text-field
-            v-model="newTabName"
-            label="Tab name"
-            data-test="rename-tab-input"
-          />
-        </v-card-text>
-        <v-card-actions class="px-2">
-          <v-spacer />
-          <v-btn
-            variant="outlined"
-            data-test="cancel-rename"
-            @click="cancelTabRename"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            variant="flat"
-            data-test="rename"
-            :disabled="!newTabName"
-            @click="renameTab"
-          >
-            Rename
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    <!-- Menu for right clicking on a tab -->
-    <v-menu v-model="showTabMenu" :target="[tabMenuX, tabMenuY]">
-      <v-list>
-        <v-list-item data-test="context-menu-rename">
-          <v-list-item-title style="cursor: pointer" @click="openTabNameDialog">
-            Rename
-          </v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
-    <!-- Dialog for adding a new component to a tab -->
-    <add-component-dialog
-      v-if="showAddComponentDialog"
-      v-model="showAddComponentDialog"
-      :components="components"
-      @add="addComponent"
-      @cancel="cancelAddComponent"
-    />
-  </div>
+  </v-card>
+  <!-- Dialogs for opening and saving configs -->
+  <open-config-dialog
+    v-if="openConfig"
+    v-model="openConfig"
+    :config-key="configKey"
+    @success="openConfiguration"
+  />
+  <save-config-dialog
+    v-if="saveConfig"
+    v-model="saveConfig"
+    :config-key="configKey"
+    @success="saveConfiguration"
+  />
+  <!-- Dialog for renaming a new tab -->
+  <v-dialog v-model="tabNameDialog" width="600">
+    <v-card>
+      <v-toolbar height="24">
+        <v-spacer />
+        <span> DataViewer: Rename Tab</span>
+        <v-spacer />
+      </v-toolbar>
+      <v-card-text>
+        <v-text-field
+          v-model="newTabName"
+          label="Tab name"
+          data-test="rename-tab-input"
+        />
+      </v-card-text>
+      <v-card-actions class="px-2">
+        <v-spacer />
+        <v-btn
+          variant="outlined"
+          data-test="cancel-rename"
+          @click="cancelTabRename"
+        >
+          Cancel
+        </v-btn>
+        <v-btn
+          variant="flat"
+          data-test="rename"
+          :disabled="!newTabName"
+          @click="renameTab"
+        >
+          Rename
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <!-- Menu for right clicking on a tab -->
+  <v-menu v-model="showTabMenu" :target="[tabMenuX, tabMenuY]">
+    <v-list>
+      <v-list-item data-test="context-menu-rename">
+        <v-list-item-title style="cursor: pointer" @click="openTabNameDialog">
+          Rename
+        </v-list-item-title>
+      </v-list-item>
+    </v-list>
+  </v-menu>
+  <!-- Dialog for adding a new component to a tab -->
+  <add-component-dialog
+    v-if="showAddComponentDialog"
+    v-model="showAddComponentDialog"
+    :components="components"
+    @add="addComponent"
+    @cancel="cancelAddComponent"
+  />
 </template>
 
 <script>
@@ -864,27 +862,9 @@ export default {
 }
 
 .v-expansion-panel-title {
+  z-index: 1;
   min-height: 10px;
   padding: 5px;
-}
-
-/* Add some juice to the START button to indicate it needs to be pressed */
-.pulse-button {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-  }
-
-  70% {
-    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
-
-  100% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-  }
 }
 
 .text-component-missing-name {
