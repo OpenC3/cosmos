@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import PluginList from './PluginList.vue'
 import PluginListItem from './PluginListItem.vue'
 
-export { PluginListItem }
+export { PluginList, PluginListItem }
