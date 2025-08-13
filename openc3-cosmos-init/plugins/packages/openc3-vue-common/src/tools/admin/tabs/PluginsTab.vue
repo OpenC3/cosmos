@@ -123,29 +123,14 @@
         />
       </v-col>
     </v-row>
-    <v-data-table
-      :headers="[]"
-      :items="shownPlugins"
-      density="compact"
-      class="list"
-      data-test="plugin-list"
-    >
-      <template #item="{ item: plugin }">
-        <plugin-list-item
-          v-bind="plugin"
-          :targets="pluginTargets(plugin.name)"
-          :is-modified="isModified(plugin.name)"
-          @edit="() => editPlugin(plugin.name)"
-          @upgrade="() => upgradePlugin(plugin.name)"
-          @delete="() => deletePrompt(plugin.name)"
-          @show-details="showDetails"
-        />
-      </template>
-    </v-data-table>
-    <plugin-card
-      v-bind="detailPlugin"
-      hide-activator
-      :show-dailog="showPluginDetails"
+    <plugin-list
+      :plugins="plugins"
+      :targets="targets"
+      :show-default-tools="showDefaultTools"
+      :default-plugins="defaultPlugins"
+      @edit="editPlugin"
+      @upgrade="upgradePlugin"
+      @delete="deletePrompt"
     />
     <plugin-dialog
       v-if="showPluginDialog"
@@ -185,13 +170,13 @@ import { toDate, format } from 'date-fns'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
-import { PluginListItem } from '@/tools/admin/tabs/plugins'
+import { PluginList } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
   components: {
     PluginDialog,
-    PluginListItem,
+    PluginList,
     PluginStore,
     ModifiedPluginDialog,
     SimpleTextDialog,
@@ -201,8 +186,6 @@ export default {
       api: new OpenC3Api(),
       file: null,
       currentPlugin: null,
-      showPluginDetails: false,
-      detailPlugin: null,
       plugins: [],
       targets: {},
       processes: {},
@@ -252,32 +235,6 @@ export default {
       ],
     }
   },
-  computed: {
-    shownPlugins() {
-      const pluginsToShow = []
-      const defaultPluginsToShow = []
-      this.plugins.forEach((plugin) => {
-        const pluginNameFirst = plugin.name.split('__')[0]
-        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-        const pluginNameShort = pluginNameSplit.join('-')
-        if (this.defaultPlugins.includes(pluginNameShort)) {
-          defaultPluginsToShow.push(plugin)
-        } else {
-          pluginsToShow.push(plugin)
-        }
-      })
-      pluginsToShow.sort((a, b) =>
-        a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-      )
-      if (this.showDefaultTools) {
-        defaultPluginsToShow.sort((a, b) =>
-          a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-        )
-        return pluginsToShow.concat(defaultPluginsToShow)
-      }
-      return pluginsToShow
-    },
-  },
   watch: {
     // watcher to reset the file input when the dialog is closed
     showPluginDialog: function (newValue, oldValue) {
@@ -305,10 +262,6 @@ export default {
     }
   },
   methods: {
-    showDetails: function (plugin) {
-      this.detailPlugin = plugin
-      this.showPluginDetails = true
-    },
     pluginTargets: function (plugin) {
       let result = []
       for (const target in this.targets) {

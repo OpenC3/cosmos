@@ -83,6 +83,6 @@ export default {
   created: function () {
     this._api
       .get_setting(settingName)
-      .then((storeUrl) => (this._storeUrl = storeUrl))
+      .then((storeUrl) => (this._storeUrl = storeUrl || 'https://store.openc3.com'))
   },
 }

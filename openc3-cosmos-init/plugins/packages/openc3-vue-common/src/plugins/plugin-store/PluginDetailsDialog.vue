@@ -38,6 +38,12 @@
           </template>
           <span> View at store.openc3.com </span>
         </v-tooltip>
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          @click="closeDialog"
+        />
       </v-toolbar>
       <v-card-subtitle
         class="d-flex align-center justify-content-space-between"
@@ -166,6 +172,9 @@ export default {
   methods: {
     openDialog: function () {
       this.isDialogOpen = true
+    },
+    closeDialog: function () {
+      this.isDialogOpen = false
     },
     install: function () {
       this.$emit('triggerInstall', this.gemUrl)
