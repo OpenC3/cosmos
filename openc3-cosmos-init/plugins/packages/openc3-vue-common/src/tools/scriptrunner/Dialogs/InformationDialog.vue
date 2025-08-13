@@ -26,13 +26,13 @@
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
-        <span style="white-space: pre-line" v-text="title" />
+        <span style="white-space: pre" v-text="title" />
         <v-spacer />
       </v-toolbar>
       <div class="pa-2">
         <v-card-text>
           <v-row no-gutters v-for="(line, index) in text" :key="index">
-            <span style="white-space: pre-line" v-text="line" />
+            <span style="white-space: pre" v-text="line" />
           </v-row>
         </v-card-text>
       </div>

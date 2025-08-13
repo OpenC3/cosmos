@@ -48,11 +48,7 @@
           class="mb-2"
         />
         <template v-if="redisResponse">
-          <pre
-            v-if="prettyPrint"
-            class="monospace"
-            v-text="formattedResponse"
-          />
+          <pre v-if="prettyPrint" v-text="formattedResponse" />
           <span v-else class="monospace"> Response: {{ redisResponse }} </span>
         </template>
       </v-card-text>
@@ -170,9 +166,6 @@ export default {
 <style scoped>
 .monospace {
   font-family: monospace;
-  font-size: 14px;
-}
-pre {
   font-size: 14px;
 }
 </style>
