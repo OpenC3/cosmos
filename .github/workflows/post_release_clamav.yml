@@ -18,7 +18,7 @@ jobs:
   openc3-clamav-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # Latest version is fine here because we are scanning released containers not built from code
+      - uses: actions/checkout@v5 # Latest version is fine here because we are scanning released containers not built from code
       - name: Set up Ruby 3.3
         uses: ruby/setup-ruby@v1
         with:
