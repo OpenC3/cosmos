@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" @keydown.enter="success()">
+  <v-dialog v-model="show" width="800" @keydown.enter="success()">
     <v-card>
       <v-overlay :model-value="loading">
         <v-progress-circular
