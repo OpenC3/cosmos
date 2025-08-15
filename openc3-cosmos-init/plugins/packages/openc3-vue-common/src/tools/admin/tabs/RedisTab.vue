@@ -34,21 +34,30 @@
       </v-card-subtitle>
       <v-card-text class="pb-0 ml-2">
         <v-text-field
+          v-model="redisCommandText"
+          hide-details
           label="Redis command"
           class="monospace"
-          v-model="redisCommandText"
           @keydown="commandKeydown"
         />
-        <span v-if="redisResponse" class="monospace">
-          Response: {{ redisResponse }}
-        </span>
+        <v-checkbox
+          v-model="prettyPrint"
+          label="Pretty print"
+          density="compact"
+          hide-details
+          class="mb-2"
+        />
+        <template v-if="redisResponse">
+          <pre v-if="prettyPrint" v-text="formattedResponse" />
+          <span v-else class="monospace"> Response: {{ redisResponse }} </span>
+        </template>
       </v-card-text>
       <v-card-actions class="px-2">
         <v-btn
           :disabled="!redisCommandText.length"
-          @click="executeRaw"
           color="success"
           variant="text"
+          @click="executeRaw"
         >
           Execute
         </v-btn>
@@ -89,6 +98,7 @@ export default {
       redisCommandText: '',
       redisResponse: null,
       redisEndpoint: '/openc3-api/redis/exec',
+      prettyPrint: false,
       headers: [
         { text: 'Redis', value: 'redis', width: 150 },
         { text: 'Command', value: 'command' },
@@ -96,6 +106,33 @@ export default {
       ],
       commands: [],
     }
+  },
+  computed: {
+    formattedResponse: function () {
+      let result = this.redisResponse
+      if (this.redisResponse && this.prettyPrint) {
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result)
+          } catch (e) {
+            // Oh 🐋
+          }
+        }
+        if (Array.isArray(result)) {
+          for (let i = 0; i < result.length; i++) {
+            if (typeof result[i] === 'string') {
+              try {
+                result[i] = JSON.parse(result[i])
+              } catch (e) {
+                // Oh 🐋
+              }
+            }
+          }
+        }
+      }
+      result = JSON.stringify(result, null, 2)
+      return `Response: ${result}`
+    },
   },
   methods: {
     commandKeydown: function ($event) {
@@ -129,6 +166,6 @@ export default {
 <style scoped>
 .monospace {
   font-family: monospace;
-  font-size: 20px;
+  font-size: 14px;
 }
 </style>
