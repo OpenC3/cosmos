@@ -324,65 +324,94 @@
     </splitpanes>
   </template>
 
-  <div v-if="inline">
-    <v-row>
-      <v-col class="v-col-10" style="margin: 0px; padding: 0px">
-        <pre
-          ref="editor"
-          class="editor"
-          style="height: 200px"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-      </v-col>
-      <v-col
-        class="v-col-2"
-        style="
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: var(--color-background-surface-default);
-        "
-      >
-        <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            class="mx-1"
-            color="primary"
-            text="Start"
-            data-test="start-button"
-            :disabled="startOrGoDisabled || !executeUser"
-            :hidden="suiteRunner"
-            @click="startHandler"
-          />
-        </div>
-        <div v-else>
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Go"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-            @click="go"
-          />
-          <v-btn
-            color="primary"
-            class="ma-2"
-            :text="pauseOrRetryButton"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-            @click="pauseOrRetry"
-          />
+  <div
+    v-if="inline"
+    style="
+      background-color: var(--color-background-base-default);
+      margin: 0px;
+      padding: 0px;
+    "
+  >
+    <v-tabs v-model="inlineTab" density="compact">
+      <v-tab value="script" text="Script" data-test="script-tab" />
+      <v-tab value="messages" text="Messages" data-test="messages-tab" />
+    </v-tabs>
 
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Stop"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-            @click="stop"
+    <v-tabs-window v-model="inlineTab">
+      <v-tabs-window-item value="script">
+        <v-row>
+          <v-col
+            class="v-col-10"
+            style="margin: 15px 0px 0px 0px; padding: 0px"
+          >
+            <pre
+              ref="editor"
+              class="editor"
+              style="height: 200px"
+              @contextmenu.prevent="showExecuteSelectionMenu"
+            ></pre>
+          </v-col>
+          <v-col
+            class="v-col-2"
+            style="
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              background-color: var(--color-background-surface-default);
+            "
+          >
+            <div v-if="startOrGoButton === 'Start'">
+              <v-btn
+                class="mx-1"
+                color="primary"
+                text="Start"
+                data-test="start-button"
+                :disabled="startOrGoDisabled || !executeUser"
+                :hidden="suiteRunner"
+                @click="startHandler"
+              />
+            </div>
+            <div v-else>
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Go"
+                :disabled="startOrGoDisabled"
+                data-test="go-button"
+                @click="go"
+              />
+              <v-btn
+                color="primary"
+                class="ma-2"
+                :text="pauseOrRetryButton"
+                :disabled="pauseOrRetryDisabled"
+                data-test="pause-retry-button"
+                @click="pauseOrRetry"
+              />
+
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Stop"
+                data-test="stop-button"
+                :disabled="stopDisabled"
+                @click="stop"
+              />
+            </div>
+          </v-col>
+        </v-row>
+      </v-tabs-window-item>
+
+      <v-tabs-window-item value="messages">
+        <div style="height: 200px; overflow: hidden">
+          <script-log-messages
+            v-model="messages"
+            :newest-on-top="messagesNewestOnTop"
+            @message-order-changed="messageOrderChanged"
           />
         </div>
-      </v-col>
-    </v-row>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </div>
 
   <file-open-save-dialog
@@ -640,6 +669,7 @@ export default {
       receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
+      inlineTab: 'script',
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {

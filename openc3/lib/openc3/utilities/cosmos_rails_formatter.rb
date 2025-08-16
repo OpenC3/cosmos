@@ -50,9 +50,8 @@ module OpenC3
           other[:exception_backtrace] = payload[:exception_object].backtrace.as_json
         end
       end
-      # This happens for a separate exception log entry which we want to not include the backtrace a second time
       if log.exception
-        message = "Exception was raised - #{log.exception.class}:#{log.exception.message}" unless message
+        message = "Exception was raised - #{log.exception.class}:#{log.exception.message}:#{log.exception.backtrace.join(":")}" unless message
       end
       return OpenC3::Logger.build_log_data(log.level.to_s.upcase, message, user: username, type: OpenC3::Logger::LOG, url: nil, other: other).as_json(:allow_nan => true).to_json(:allow_nan => true)
     end
