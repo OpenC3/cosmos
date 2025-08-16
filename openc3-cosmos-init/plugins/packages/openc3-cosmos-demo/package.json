@@ -1,6 +1,6 @@
 {
   "name": "widgets_src",
-  "version": "6.6.1-beta0",
+  "version": "6.7.1-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,22 +8,22 @@
     "build": "vite build -c vite-HelloworldWidget.config.js && vite build -c vite-BigWidget.config.js && vite build -c vite-DataviewerquaternionWidget.config.js && vite build -c vite-DataviewertimeWidget.config.js"
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.25.1",
-    "@openc3/js-common": "6.6.1-beta0",
-    "@openc3/vue-common": "6.6.1-beta0"
+    "@astrouxds/astro-web-components": "7.26.1",
+    "@openc3/js-common": "6.7.1-beta0",
+    "@openc3/vue-common": "6.7.1-beta0"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "1.11.0",
+    "@rushstack/eslint-patch": "1.12.0",
     "@vitejs/plugin-vue": "5.2.3",
     "@vue/eslint-config-prettier": "10.2.0",
-    "eslint": "9.25.1",
-    "eslint-config-prettier": "10.1.2",
-    "eslint-plugin-prettier": "5.2.6",
-    "eslint-plugin-vue": "10.1.0",
-    "prettier": "3.5.3",
-    "sass": "1.87.0",
+    "eslint": "9.32.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.3",
+    "eslint-plugin-vue": "10.4.0",
+    "prettier": "3.6.2",
+    "sass": "1.89.2",
     "vite": "6.3.4",
     "vite-plugin-style-inject": "0.0.1",
-    "vue": "3.5.13"
+    "vue": "3.5.18"
   }
 }

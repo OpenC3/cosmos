@@ -642,12 +642,39 @@ def cli_script_list(args, options)
   return 0
 end
 
+def parse_suite_runner_options(options)
+  suite_runner = nil
+  # suite must be given to enable Suite Runner execution
+  if options[:suite]
+    suite_runner = {}
+    suite_runner['suite'] = options[:suite]
+    if options[:group]
+      suite_runner['group'] = options[:group]
+      # script requires group to be set
+      if options[:script]
+        suite_runner['script'] = options[:script]
+      end
+    end
+    if options[:method]
+      suite_runner['method'] = options[:method]
+    else
+      suite_runner['method'] = 'start'
+    end
+    if options[:options]
+      suite_runner['options'] = options[:options].split(',')
+    else
+      suite_runner['options'] = ["continueAfterError"]
+    end
+  end
+  return suite_runner
+end
+
 def cli_script_run(args, options)
   environment = get_env_from_args(args)
-
+  suite_runner = parse_suite_runner_options(options)
   ret_code = ERROR_CODE
   require 'openc3/script'
-  if (id = script_run(args[1], disconnect: options[:disconnect], environment: environment, scope: options[:scope]))
+  if (id = script_run(args[1], disconnect: options[:disconnect], environment: environment, suite_runner: suite_runner, scope: options[:scope]))
     puts id
     $script_interrupt_text = "  Script #{args[1]} still running remotely.\n" # for Ctrl-C
     if (options[:wait] < 1) then
@@ -675,10 +702,10 @@ end
 
 def cli_script_spawn(args, options)
   environment = get_env_from_args(args)
-
+  suite_runner = parse_suite_runner_options(options)
   ret_code = ERROR_CODE
   require 'openc3/script'
-  if (id = script_run(args[1], disconnect: options[:disconnect], environment: environment, scope: options[:scope]))
+  if (id = script_run(args[1], disconnect: options[:disconnect], environment: environment, suite_runner: suite_runner, scope: options[:scope]))
     puts id
     ret_code = 0
   end
@@ -770,6 +797,22 @@ def cli_script(args=[])
     end
     opts.on("--scope SCOPE", "Run with specified scope (default = DEFAULT)") do |arg|
       options[:scope] = arg
+    end
+    opts.on("--suite SUITE", "Run with specified suite") do |arg|
+      options[:suite] = arg
+    end
+    opts.on("--group GROUP", "Run with specified group") do |arg|
+      options[:group] = arg
+    end
+    opts.on("--script SCRIPT", "Run with specified script") do |arg|
+      options[:script] = arg
+    end
+    opts.on("--method start", "Method must be start, setup, or teardown. Default is start.") do |arg|
+      options[:method] = arg
+    end
+    # TODO 7.0: Should these all be snake case?
+    opts.on("--options options", "Options is a comma separated list consisting of continueAfterError,pauseOnError,abortAfterError,manual,loop,breakLoopOnError. Default is continueAfterError.") do |arg|
+      options[:options] = arg
     end
     opts.on("-d", "--disconnect", "Run a script in disconnect mode (default = false)") do |arg|
       options[:disconnect] = arg

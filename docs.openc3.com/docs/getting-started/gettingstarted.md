@@ -44,7 +44,7 @@ This guide assumes we're on Windows and COSMOS is installed in C:\COSMOS. On Mac
 
 1. Before creating your own configuration you should uninstall the COSMOS Demo so you're working with a clean COSMOS system. Click the Admin button and the PLUGINS tab. Then click the Trash can icon next to openc3-cosmos-demo to delete it. When you go back to the Command and Telemetry Server you should have a blank table with no interfaces.
 
-1. If you followed the [Installation Guide](installation) you should already be inside a cloned [openc3-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved). Inside this project it's recommended to edit the README.md ([Markdown](https://www.markdownguide.org/)) to describe your program / project.
+1. If you followed the [Installation Guide](installation) you should already be inside a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved). Inside this project it's recommended to edit the README.md ([Markdown](https://www.markdownguide.org/)) to describe your program / project.
 
 1. Now we need to create a plugin. Plugins are how we add targets and microservices to COSMOS. Our plugin will contain a single target which contains all the information defining the packets (command and telemetry) that are needed to communicate with the target. Use the COSMOS plugin generator to create the correct structure.
 
@@ -53,7 +53,7 @@ Each CLI command requires the use of `--python` or `--ruby` unless you set the O
 :::
 
 ```batch
-C:\openc3-project> openc3.bat cli generate plugin BOB --python
+C:\cosmos-project> openc3.bat cli generate plugin BOB --python
 Plugin openc3-cosmos-bob successfully generated!
 ```
 
@@ -66,7 +66,7 @@ The cli runs as the default COSMOS container user which is the recommended pract
 1. Starting with [COSMOS v5.5.0](https://openc3.com/news/2023/02/23/openc3-cosmos-5-5-0-released/), the plugin generator creates just the plugin framework (previously it would also create a target). From within the newly created plugin directory, we generate a target.
 
    ```batch
-   C:\openc3-project> cd openc3-cosmos-bob
+   C:\cosmos-project> cd openc3-cosmos-bob
    openc3-cosmos-bob> openc3.bat cli generate target BOB --python
    Target BOB successfully generated!
    ```

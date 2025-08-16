@@ -16,6 +16,7 @@ on:
     branches: [main]
 
 env:
+  RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
 
 jobs:
@@ -24,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ["3.2", "3.3"]
+        ruby-version: ["3.3", "3.4"]
 
     steps:
       - uses: actions/checkout@v4

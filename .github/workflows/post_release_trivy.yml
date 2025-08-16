@@ -120,6 +120,21 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-minio.sbom.json"
+      - name: Run Trivy on image tsdb
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-tsdb.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+      - name: Run Trivy on image tsdb in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }}"
+          format: "cyclonedx"
+          output: "sbom/openc3-tsdb.sbom.json"
       - name: Run Trivy on image operator
         uses: aquasecurity/trivy-action@master
         with:

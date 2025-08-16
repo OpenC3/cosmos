@@ -173,6 +173,46 @@
               </v-list-item>
             </v-list>
           </div>
+          <div class="edit-box">
+            <v-card-text class="pa-0 text-medium-emphasis">
+              Choose a different item to use for the graph's X axis. If
+              unchecked, the graph will use the packet's PACKET_TIMESECONDS item
+              if it exists, otherwise it will use RECEIVED_TIMESECONDS.
+              <br />
+              <span class="font-italic">
+                Note that the graph may not work correctly if you choose an item
+                that does not strictly increase in value. It is recommended to
+                use a counter or timestamp.
+              </span>
+            </v-card-text>
+            <v-checkbox
+              v-model="customXAxisEnabled"
+              :disabled="!xAxisItemPacket"
+              label="Custom X axis item"
+              density="compact"
+              hide-details
+              @update:model-value="customXAxisToggled"
+            />
+            <v-card-text
+              v-if="!xAxisItemPacket"
+              class="pa-0 text-medium-emphasis"
+            >
+              All items on the graph must be in the same packet to enable this
+              feature.
+            </v-card-text>
+            <target-packet-item-chooser
+              v-if="customXAxisEnabled && xAxisItemPacket"
+              :initial-target-name="xAxisItemPacket.targetName"
+              :initial-packet-name="xAxisItemPacket.packetName"
+              :initial-item-name="initialXAxisItem"
+              choose-item
+              lock-target
+              lock-packet
+              button-text="Set"
+              @on-set="xAxisItemChanged"
+              @add-item="xAxisItemSelected"
+            />
+          </div>
         </v-tabs-window-item>
         <v-tabs-window-item value="2" eager>
           <v-data-table
@@ -211,8 +251,12 @@
 
 <script>
 import { TimeFilters } from '@/util'
+import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
+  components: {
+    TargetPacketItemChooser,
+  },
   mixins: [TimeFilters],
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
@@ -252,11 +296,23 @@ export default {
       type: String,
       required: true,
     },
+    xAxisItemPacket: {
+      type: Object,
+      default: undefined,
+    },
+    xAxisItem: {
+      type: String,
+      default: '__time',
+    },
   },
+  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:xAxisItem'],
   data: function () {
     return {
       tab: 0,
       graph: {},
+      customXAxisEnabled: false,
+      selectedXAxisItem: null,
+      pendingXAxisSelection: null,
       legendPositions: ['top', 'bottom', 'left', 'right'],
       startDate: null,
       startTime: null,
@@ -316,6 +372,13 @@ export default {
         return { ...item, itemId }
       })
     },
+    initialXAxisItem: function () {
+      // Just for TargetPacketItemChooser
+      if (this.xAxisItem === '__time') {
+        return
+      }
+      return this.xAxisItem.split('__').at(4)
+    },
   },
   created() {
     this.graph = {
@@ -326,6 +389,8 @@ export default {
       graphMaxY: this.graphMaxY,
       lines: [...this.lines],
     }
+    this.customXAxisEnabled = this.xAxisItem && this.xAxisItem !== '__time'
+    this.selectedXAxisItem = this.xAxisItem
     // Set the date and time if they pass a dateTime or set a default
     // Start needs a default because if the timeZone is UTC the time will still be local time
     if (this.startDateTime) {
@@ -366,6 +431,22 @@ export default {
     removeLine(dline) {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
+    },
+    customXAxisToggled(enabled) {
+      if (!enabled) {
+        this.selectedXAxisItem = '__time'
+        this.$emit('update:xAxisItem', '__time')
+      }
+    },
+    xAxisItemChanged(selection) {
+      this.pendingXAxisSelection = selection
+    },
+    xAxisItemSelected(selection) {
+      if (selection.targetName && selection.packetName && selection.itemName) {
+        const xAxisItemKey = `DECOM__TLM__${selection.targetName}__${selection.packetName}__${selection.itemName}__CONVERTED`
+        this.selectedXAxisItem = xAxisItemKey
+        this.$emit('update:xAxisItem', xAxisItemKey)
+      }
     },
   },
 }

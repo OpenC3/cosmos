@@ -22,6 +22,21 @@ When defining command parameters you can choose from the following data types: I
 
 <div style={{"clear": 'both'}}></div>
 
+## Command Authority (Enterprise)
+
+Command Authority can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Once Command Authority is enabled, individual users can take and release Command Authority which enables exclusive command and script access to that target for that user. Without taking Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+
+![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
+![Command Authority in CmdTlm Server](/img/cmd_tlm_server/targets.png)
+
+## Critical Commanding (Enterprise)
+
+Critical Commanding can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Critical commanding requires a different user to approve critical commands. When Critical Commanding mode is set to NORMAL, HAZARDOUS and RESTRICTED commands need approval. When Critical Commanding mode is set to ALL, all manual commands will require approval. OFF is the default, and disables Critical Commanding.
+
+Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
+
+![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
+
 # Command Keywords
 
 
@@ -250,15 +265,18 @@ values to the command. That can be used to check parameter values passed in.
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. Note the built-in Python conversions must specify the full path to the file, e.g. 'openc3/conversions/bit_reverse_conversion.py'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Ruby Example:
-```ruby
-WRITE_CONVERSION ip_write_conversion.rb
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+WRITE_CONVERSION ip_write_conversion.rb
+```
+</TabItem>
+</Tabs>
 
 #### POLY_WRITE_CONVERSION
 **Adds a polynomial conversion factor to the current command parameter**
@@ -300,21 +318,24 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Ruby Example:
-```ruby
-APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
-  GENERIC_WRITE_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
-  GENERIC_WRITE_CONVERSION_END
-```
-
-Python Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
     return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+```ruby
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+</TabItem>
+</Tabs>
 
 #### GENERIC_WRITE_CONVERSION_END
 **Complete a generic write conversion**
@@ -627,7 +648,32 @@ Validator class is used to validate the command success or failure with both a p
 | Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'command_validator.rb' should contain 'class CommandValidator'. | True |
 | Argument | Additional argument passed to the validator class constructor | False |
 
-Ruby Example:
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```python
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.py:
+
+class CustomValidator(CommandValidator):
+    # Both the pre_check and post_check are passed the command packet that was sent
+    # You can inspect the command in your checks as follows:
+    #   packet.target_name => target name
+    #   packet.packet_name => packet name (command name)
+    #   packet.read("ITEM") => converted value
+    #   packet.read("ITEM", :RAW) => raw value
+    def pre_check(self, command):
+        if tlm("TGT PKT ITEM") == 0:
+            return [False, "TGT PKT ITEM is 0"]
+        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        return [True, None]
+
+    def post_check(self, command):
+        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        return [True, None]
+```
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 ```ruby
 VALIDATOR custom_validator.rb
 
@@ -654,30 +700,8 @@ class CustomValidator < OpenC3::CommandValidator
   end
 end
 ```
-
-Python Example:
-```python
-VALIDATOR custom_validator.rb
-
-Defined in custom_validator.py:
-
-class CustomValidator(CommandValidator):
-    # Both the pre_check and post_check are passed the command packet that was sent
-    # You can inspect the command in your checks as follows:
-    #   packet.target_name => target name
-    #   packet.packet_name => packet name (command name)
-    #   packet.read("ITEM") => converted value
-    #   packet.read("ITEM", :RAW) => raw value
-    def pre_check(self, command):
-        if tlm("TGT PKT ITEM") == 0:
-            return [False, "TGT PKT ITEM is 0"]
-        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
-        return [True, None]
-
-    def post_check(self, command):
-        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
-        return [True, None]
-```
+</TabItem>
+</Tabs>
 
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**

@@ -51,10 +51,10 @@
           key: 'packet_name',
         },
       ]"
-      @update:current-items="currentItems"
       data-test="tlm-packets-table"
+      @update:current-items="currentItems"
     >
-      <template v-slot:item.view_raw="{ item }">
+      <template #item.view_raw="{ item }">
         <v-btn
           block
           color="primary"
@@ -64,7 +64,7 @@
           View Raw
         </v-btn>
       </template>
-      <template v-slot:item.view_in_pkt_viewer="{ item }">
+      <template #item.view_in_pkt_viewer="{ item }">
         <span v-if="item.target_name === 'UNKNOWN'">N/A</span>
         <v-btn
           v-if="item.target_name != 'UNKNOWN'"
@@ -156,7 +156,7 @@ export default {
     },
     openPktViewer(target_name, packet_name) {
       window.open(
-        `/tools/packetviewer/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}`,
+        `/tools/packetviewer/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}/`,
         '_blank',
       )
     },

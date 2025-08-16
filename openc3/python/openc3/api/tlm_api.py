@@ -30,6 +30,7 @@ from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
+from openc3.packets.packet import Packet
 from openc3.utilities.extract import *
 
 WHITELIST.extend(
@@ -45,6 +46,7 @@ WHITELIST.extend(
         "normalize_tlm",
         "get_tlm_buffer",
         "get_tlm_packet",
+        "get_tlm_available",
         "get_tlm_values",
         "get_all_tlm",
         "get_all_telemetry",  # DEPRECATED
@@ -265,6 +267,81 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     return [[cvt_items[index][2], item[0], item[1]] for index, item in enumerate(current_values)]
 
 
+def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
+    """Returns available telemetry items with proper type conversion based on item configuration.
+
+    Args:
+        items: List of items formatted as TGT__PKT__ITEM__TYPE
+        manual: Whether this is a manual request (unused in Python version)
+        scope: Scope to use for the request
+
+    Returns:
+        List of available items with proper type suffixes, or None for unavailable items
+    """
+    results = []
+    for item in items:
+        item_upcase = str(item).upper()
+        try:
+            target_name, orig_packet_name, item_name, value_type = item_upcase.split('__')
+        except ValueError:
+            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
+
+        packet_name = orig_packet_name
+        if orig_packet_name == 'LATEST':
+            # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
+            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout=1, scope=scope)
+
+        authorize(permission='tlm', target_name=target_name, packet_name=packet_name, scope=scope)
+
+        try:
+            item_config = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+            if item_name in Packet.RESERVED_ITEM_NAMES:
+                value_type = 'RAW'  # Must request the raw value when dealing with the reserved items
+
+            # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+            if item_config.get('array_size'):
+                # TODO: This needs work ... we're JSON encoding non numeric array values
+                if item_config.get('data_type') in ['STRING', 'BLOCK']:
+                    results.append(None)
+                    continue
+                value_type = 'RAW'
+
+            # Determine the best available value type based on item configuration
+            if value_type == 'WITH_UNITS':
+                if item_config.get('units'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'WITH_UNITS'])
+                elif item_config.get('format_string'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'FORMATTED'])
+                elif item_config.get('read_conversion') or item_config.get('states'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
+                else:
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+            elif value_type == 'FORMATTED':
+                if item_config.get('format_string'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'FORMATTED'])
+                elif item_config.get('read_conversion') or item_config.get('states'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
+                else:
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+            elif value_type == 'CONVERTED':
+                if item_config.get('read_conversion') or item_config.get('states'):
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
+                else:
+                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+            else:  # RAW or unknown
+                result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+
+            # Tack on __LIMITS to notify that we have an available limits value
+            if item_config.get('limits', {}).get('DEFAULT'):
+                result_item += '__LIMITS'
+
+            results.append(result_item)
+        except RuntimeError:
+            results.append(None)
+
+    return results
+
+
 # Returns all the item values (along with their limits state). The items
 # can be from any target and packet and thus must be fully qualified with
 # their target and packet names.
@@ -274,7 +351,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
 # @return [Array<Object, Symbol>]
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
-def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
+def get_tlm_values(items, stale_time=30, cache_timeout=0.1, start_time=None, end_time=None, scope=OPENC3_SCOPE):
     if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
@@ -298,7 +375,7 @@ def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
             packet_name=name[1],
             scope=scope,
         )
-    return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, scope)
+    return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, start_time, end_time, scope)
 
 
 # Returns an array of all the telemetry packet hashes

@@ -17,5 +17,6 @@
 */
 
 import { prependBasePath } from './routeUtils'
+import { formatBytesToString } from './formatter'
 
-export { prependBasePath }
+export { prependBasePath, formatBytesToString }

@@ -10,44 +10,112 @@ sidebar_custom_props:
 
 OpenC3 releases new versions of COSMOS on a monthy or better cadence. This is done for several reasons: to incorporate new features, fix existing bugs, update dependencies, and close CVEs. We extensively test each release at both the unit level, API level, and system level using Playwright against a deployed COSMOS. Thus we recommend upgrading COSMOS as quickly as possible when new releases become available. While COSMOS itself is tested extensively, we obviously can not test against customer plugins and custom deployments. We recommend having another installation of COSMOS which you can upgrade with your own plugins and verify functionality before upgrading your production environment.
 
-COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, then download and run the new release.
+COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, apply the upgrade, and run the new release.
 
 :::info Release Notes
-Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes.
+Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0 and then 6.0.0 before proceeding. See [Upgrade Migration Process](https://docs.openc3.com/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
-This example assumes an existing COSMOS project at C:\cosmos-project.
+This example assumes an existing COSMOS project at `cosmos-project`. This should first be performed on a non-production machine that has the same set of plugins as your production system.
 
 1. Stop the current COSMOS application
 
+<Tabs groupId="script-language">
+<TabItem value="linux" label="Linux">
+   ```sh
+   cosmos-project % ./openc3.sh stop
+   ```
+</TabItem>
+<TabItem value="windows" label="Windows">
    ```batch
    C:\cosmos-project> openc3.bat stop
    ```
+</TabItem>
+</Tabs>
 
-1. Change the release in the .env file to the desired release
+:::info Upgrade is new since v6.7.0
+Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.7.0, manually download the [`openc3_upgrade.sh`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/linux/openc3_upgrade.sh) or [`openc3_upgrade.bat`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/windows/openc3_upgrade.bat) script and put it at the base of your COSMOS project.
 
+<Tabs groupId="script-language">
+<TabItem value="linux" label="Linux">
+```sh
+cosmos-project % chmod +x openc3_upgrade.sh
+cosmos-project % ./openc3_upgrade.sh
+```
+</TabItem>
+<TabItem value="windows" label="Windows">
    ```batch
-   OPENC3_TAG=6.4.1
+   C:\cosmos-project> openc3_upgrade.bat
    ```
+</TabItem>
+</Tabs>
+:::
 
-1. Run the new COSMOS application
+2. Apply the upgrade to version vX.Y.Z (e.g. v6.7.0). Note the 'v' because this is a git tag.
 
+<Tabs groupId="script-language">
+<TabItem value="linux" label="Linux">
+   ```sh
+   cosmos-project % ./openc3.sh upgrade vX.Y.Z
+   ```
+</TabItem>
+<TabItem value="windows" label="Windows">
    ```batch
-   C:\cosmos-project> openc3.bat run
+   C:\cosmos-project> openc3.bat upgrade vX.Y.Z
    ```
+</TabItem>
+</Tabs>
+
+3. Run the new COSMOS version
+
+<Tabs groupId="script-language">
+<TabItem value="linux" label="Linux">
+  ```sh
+  cosmos-project % ./openc3.sh run
+  ```
+</TabItem>
+<TabItem value="windows" label="Windows">
+  ```batch
+  C:\cosmos-project> openc3.bat run
+  ```
+</TabItem>
+</Tabs>
+
+4. Test the new COSMOS version. Ensure your plugins start without errors. Verify you can graph or export data from before the upgrade. Perhaps run some of your scripts in disconnect mode.
+
+5. Commit the changes to the project
+
+<Tabs groupId="script-language">
+<TabItem value="linux" label="Linux">
+  ```sh
+  cosmos-project % git add .
+  cosmos-project % git commit -m "Upgrade to vX.Y.Z"
+  ```
+</TabItem>
+<TabItem value="windows" label="Windows">
+  ```batch
+  C:\cosmos-project> git add .
+  C:\cosmos-project> git commit -m "Upgrade to vX.Y.Z"
+  ```
+</TabItem>
+</Tabs>
+
+6. Update the production system by stopping, pulling the new changes, and starting.
 
 ### Upgrade Migration Process
 
 COSMOS doesn't use strict [semantic versioning](https://semver.org/) for our releases. Our major releases (5.0.0, 6.0.0, etc) are for major architectural changes and backward incompatibilities. Minor releases (6.1.0, 6.2.0, etc) add functionality but can also modify our configuration files. Thus certain minor releases are more important than others when skipping releases.
 
-The following table identifies key release milestones which should be incrementally upgraded to by following the linked release notes. Versions not listed can be safely skipped while upgrading. For example, upgrading COSMOS 5.9.0 can go straight to 5.13.0 at which point the release notes should be carefully followed to avoid breaking changes. The Diff from the previous version to the linked version has been provided as a quick way to visualize the changes. Note that you should focus on changes to your own project configuration files: .env, compose.yaml, openc3-redis/users.acl, openc3-traefik/traefik.yaml. It is typically safe to simply copy the latest cacert.pem, openc3.sh and openc3.bat files. The reason we don't automatically overwrite these files is to avoid deleting user changes.
+The following table identifies key release milestones which changed the COSMOS project configuration files (.env, compose.yaml, traefik, etc).
 
-| Version                                                         | Summary                                                                                                                                                                                                     | Diff                                                                                    |
-| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0) | Breaking change to non-root containers and renamed minio volume. Requires running the migration script and updating compose.yaml and traefik configuration.                                                 | [v5.12.0...v5.13.0](https://github.com/OpenC3/cosmos-project/compare/v5.12.0...v5.13.0) |
-| [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0) | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments. Requires updating .env, compose.yaml, and traefik configuration. | [v5.14.2...v5.15.0](https://github.com/OpenC3/cosmos-project/compare/v5.14.2...v5.15.0) |
-| [6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)   | The switch to Traefik 3 requires traefik configuration changes. If you have custom GUI tools follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                          | [v5.20.0...v6.0.0](https://github.com/OpenC3/cosmos-project/compare/v5.20.0...v6.0.0)   |
-| [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)   | Changed from ActionCable to AnyCable which requires updates to compose.yaml, redis.acl, and traefik configuration. We also broke apart the COSMOS helm charts from a single chart to 3 charts.              | [v6.0.2...v6.1.0](https://github.com/OpenC3/cosmos-project/compare/v6.0.2...v6.1.0)     |
+Versions 5.13.0 and 6.0.0 _REQUIRE_ a stop to evaluate the upgrade. Thus if you're currently at 5.9.0 you must first upgrade to 5.13.0, then 6.0.0, then to the latest.
+
+| Version                                                             | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| :------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| \*[5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0)\* | Breaking change to non-root containers and renamed minio volume. Requires running the [Core migration shell script](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.sh) / [Core migration batch file](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.bat) or [Enterprise migration shell script](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.sh) / [Enterprise migration batch file](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.bat) to preserve previous data.<br/><br/>NOTE: Read the script! The You must set `GITHUB_PAT` in Enterprise or simply comment out the lines with `GITHUB_PAT`. |
+| [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0)     | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| \*[6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)\*   | Upgrade to Vue 3 and Vuetify 3 requires custom GUI tools to follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 :::warning Downgrades
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
@@ -58,7 +126,7 @@ In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _mi
 ## Migrating From COSMOS 5 to COSMOS 6
 
 :::info Developers Only
-If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6 other than updating your traefik configuration file. Simply follow the normal upgrade instructions above including following the release notes.
+If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6 other than updating your traefik configuration file. Simply follow the normal upgrade instructions above.
 :::
 
 COSMOS 6 introduces some breaking changes for custom tools regarding the Vue framework and our common library code. We've upgraded from Vue 2 (EOL December 31, 2023) to Vue 3. These versions of Vue are not compatible with each other, so any tools written with Vue 2 will need to be updated. Additionally, our `@openc3/tool-common` NPM package has been deprecated with its functionality reorganized into two packages: `@openc3/js-common` and `@openc3/vue-common`. This is to provide a better experience for developers who are building COSMOS tools without the Vue framework.

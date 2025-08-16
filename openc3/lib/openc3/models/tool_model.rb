@@ -184,7 +184,7 @@ module OpenC3
         end
       end
 
-      if @url and !@url.start_with?('/') and !@url.start_with?('http')
+      if @url and !@url.start_with?('/') and @url !~ URI::regexp
         raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
       end
 

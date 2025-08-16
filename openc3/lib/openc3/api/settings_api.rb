@@ -31,6 +31,7 @@ rescue LoadError
 end
 require 'openc3/models/setting_model'
 require 'openc3/models/news_model'
+require 'openc3/models/plugin_store_model'
 
 module OpenC3
   module Api
@@ -43,6 +44,7 @@ module OpenC3
                        'set_setting',
                        'save_setting', # DEPRECATED
                        'update_news',
+                       'update_plugin_store',
                      ])
 
     def list_settings(manual: false, scope: $openc3_scope, token: $openc3_token)
@@ -102,6 +104,12 @@ module OpenC3
       # NewsModel.set(json.to_json)
     rescue Exception => e
       NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message})")
+    end
+
+    # Update the local copy of the plugin store data
+    def update_plugin_store(manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'admin', manual: manual, scope: scope, token: token)
+      PluginStoreModel.update()
     end
   end
 end

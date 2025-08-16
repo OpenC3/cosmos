@@ -19,7 +19,6 @@ fi
 umask 0022
 chmod -R +r .
 
-# openc3-ruby
 cd openc3-ruby
 docker build \
   -f Dockerfile-ubi \
@@ -34,7 +33,6 @@ docker build \
   .
 cd ..
 
-# openc3-base
 cd openc3
 docker build \
   -f Dockerfile-ubi \
@@ -48,7 +46,6 @@ docker build \
   .
 cd ..
 
-# openc3-node
 cd openc3-node
 docker build \
   -f Dockerfile-ubi \
@@ -62,7 +59,6 @@ docker build \
   .
 cd ..
 
-# openc3-minio
 # NOTE: Ensure the release is on IronBank:
 # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fminio
 # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
@@ -70,13 +66,12 @@ cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-06-13T11-33-47Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-07-23T15-54-02Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
 cd ..
 
-# openc3-redis
 cd openc3-redis
 docker build \
   --network host \
@@ -88,7 +83,15 @@ docker build \
   .
 cd ..
 
-# openc3-cosmos-cmd-tlm-api
+cd openc3-tsdb
+docker build \
+  --network host \
+  --build-arg OPENC3_TSDB_VERSION_EXT="-rhel" \
+  --platform linux/amd64 \
+  -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
+  .
+cd ..
+
 cd openc3-cosmos-cmd-tlm-api
 docker build \
   -f Dockerfile-ubi \
@@ -102,7 +105,6 @@ docker build \
   .
 cd ..
 
-# openc3-cosmos-script-runner-api
 cd openc3-cosmos-script-runner-api
 docker build \
   -f Dockerfile-ubi \
@@ -116,7 +118,6 @@ docker build \
   .
 cd ..
 
-# openc3-operator
 cd openc3-operator
 docker build \
   --network host \
@@ -129,7 +130,6 @@ docker build \
   .
 cd ..
 
-# openc3-traefik
 if [[ -z $TRAEFIK_CONFIG ]]; then
   export TRAEFIK_CONFIG=traefik.yaml
 fi
@@ -140,13 +140,12 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.5 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.4.4 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .
 cd ..
 
-# openc3-cosmos-init
 # NOTE: Ensure OPENC3_MC_RELEASE is on IronBank:
 # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fmc
 # NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
@@ -156,7 +155,7 @@ docker build \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=$NPM_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MC_RELEASE=RELEASE.2025-05-21T01-59-54Z \
+  --build-arg OPENC3_MC_RELEASE=RELEASE.2025-07-21T05-28-08Z \
   --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
   --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \

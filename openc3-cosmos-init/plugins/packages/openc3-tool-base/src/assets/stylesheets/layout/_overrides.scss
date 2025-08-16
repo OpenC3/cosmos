@@ -52,6 +52,7 @@
   background-color: var(--button-color-background-primary-hover) !important;
 }
 .v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .text-red,
     .v-btn--icon,
     .v-btn--round,
     .v-btn--variant-text
@@ -65,6 +66,7 @@
   opacity: 0.4 !important;
 }
 .v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .text-red,
     .v-btn--icon,
     .v-btn--round,
     .v-btn--variant-text
@@ -319,4 +321,34 @@ input {
 
 .v-list-item-action {
   margin-right: 15px !important;
+}
+
+.blink {
+  animation: blink 2s infinite;
+}
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+.pulse-i i {
+  animation: pulse 2s 3;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
