@@ -30,6 +30,11 @@ jobs:
         run: ./openc3.sh build
         env:
           OPENC3_TAG: ${{ github.sha }}
+      - name: Manual Trivy Setup
+        uses: aquasecurity/setup-trivy@v0.2.3
+        with:
+          cache: true
+          version: v0.65.0
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
@@ -38,6 +43,7 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
           output: "trivy-ruby.sarif"
           trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
@@ -51,7 +57,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
           output: "trivy-node.sarif"
           trivy-config: trivy.yaml
-          # On a subsequent call to the action we know trivy is already installed so can skip this
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
