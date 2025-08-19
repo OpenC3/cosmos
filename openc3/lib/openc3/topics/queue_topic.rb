@@ -20,10 +20,10 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class QueueTopic < Topic
-    PRIMARY_KEY = "__openc3_queue"
+    PRIMARY_KEY = "openc3_queue"
 
     def self.write_notification(notification, scope:)
-      Topic.write_topic("#{scope}#{PRIMARY_KEY}", notification, '*', 1000)
+      Topic.write_topic("#{scope}__#{PRIMARY_KEY}", notification, '*', 1000)
     end
 
     # # Write a queue event notification

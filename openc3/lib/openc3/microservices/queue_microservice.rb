@@ -20,129 +20,19 @@ require 'openc3/microservices/microservice'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/authentication'
 require 'openc3/models/queue_model'
-
-require 'openc3/script'
+require 'openc3/api/cmd_api'
 
 module OpenC3
-  # This should remain a thread safe implementation. This is the in memory
-  # cache that should mirror the database. This will update hash
-  # variables and will track queue entries and their processing states.
-  class QueueBase
-    attr_reader :queues
-
-    def initialize(scope:)
-      @scope = scope
-      @queues_mutex = Mutex.new
-      @queues = Hash.new
-    end
-
-    # RETURNS an Array of active queue entries
-    def get_queued_entries
-      data = nil
-      @queues_mutex.synchronize do
-        data = Marshal.load( Marshal.dump(@queues) )
-      end
-      ret = Array.new
-      return ret unless data
-      data.each do |_name, q_hash|
-        data = Marshal.load( Marshal.dump(q_hash) )
-        queue = QueueModel.from_json(data, name: data['name'], scope: data['scope'])
-        ret << queue if queue.enabled && queue.pending?
-      end
-      return ret
-    end
-
-    # RETURNS an Array of queue entries by status
-    def get_entries_by_status(status:)
-      array_value = nil
-      @queues_mutex.synchronize do
-        data = Marshal.load( Marshal.dump(@queues) )
-      end
-      ret = Array.new
-      return ret unless data
-      data.each do |_name, q_hash|
-        queue_data = Marshal.load( Marshal.dump(q_hash) )
-        queue = QueueModel.from_json(queue_data, name: queue_data['name'], scope: queue_data['scope'])
-        ret << queue if queue.status == status
-      end
-      return ret
-    end
-
-    # Update the memory database with a HASH of queue entries from the external database
-    def setup(queues:)
-      @queues_mutex.synchronize do
-        @queues = Marshal.load( Marshal.dump(queues) )
-      end
-    end
-
-    # Pulls the latest queue entry from the in memory database to see
-    # if the entry should be marked as completed.
-    def complete(name:)
-      @queues_mutex.synchronize do
-        data = Marshal.load( Marshal.dump(@queues[name]) )
-        return unless data
-        queue = QueueModel.from_json(data, name: data['name'], scope: data['scope'])
-        queue.complete()
-        @queues[name] = queue.as_json(:allow_nan => true)
-      end
-    end
-
-    # Pulls the latest queue entry from the in memory database to see
-    # if the entry should be marked as failed.
-    def fail(name:, message: nil)
-      @queues_mutex.synchronize do
-        data = Marshal.load( Marshal.dump(@queues[name]) )
-        return unless data
-        queue = QueueModel.from_json(data, name: data['name'], scope: data['scope'])
-        queue.fail(message: message)
-        @queues[name] = queue.as_json(:allow_nan => true)
-      end
-    end
-
-    # Add a queue entry to the in memory database
-    def add(queue:)
-      queue_name = queue['name']
-      @queues_mutex.synchronize do
-        @queues[queue_name] = queue
-      end
-    end
-
-    # Updates a queue entry in the in memory database
-    def update(queue:)
-      @queues_mutex.synchronize do
-        model = QueueModel.from_json(queue, name: queue['name'], scope: queue['scope'])
-        model.update()
-        @queues[queue['name']] = model.as_json(:allow_nan => true)
-      end
-    end
-
-    # Removes a queue entry from the in memory database
-    def remove(queue:)
-      @queues_mutex.synchronize do
-        @queues.delete(queue['name'])
-        QueueModel.delete(name: queue['name'], scope: queue['scope'])
-      end
-    end
-  end
-
-  # Shared between the main thread and event handling to share resources.
-  class QueueShare
-    attr_reader :queue_base
-
-    def initialize(scope:)
-      @queue_base = QueueBase.new(scope: scope)
-    end
-  end
-
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
-    attr_reader :name, :scope, :share
+    attr_accessor :state
+    attr_reader :name, :scope
 
     def initialize(name:, logger:, scope:, share:)
       @name = name
       @logger = logger
       @scope = scope
-      @share = share
+      @state = 'HOLD'
       @cancel_thread = false
     end
 
@@ -164,72 +54,20 @@ module OpenC3
     end
 
     def run
-      @logger.info "QueueProcessor running"
-      loop do
-        begin
-          current_time = Time.now.to_i
-          process_queued_entries(current_time: current_time)
-        rescue StandardError => e
-          @logger.error "QueueProcessor failed to process queue entries.\n#{e.formatted}"
-        end
-        break if @cancel_thread
-        sleep(1)
+      while @state == 'RELEASE'
+        process_queued_entries()
         break if @cancel_thread
       end
-      @logger.info "QueueProcessor exiting"
     end
 
-    def process_queued_entries(current_time:)
-      @share.queue_base.get_queued_entries.each do |entry|
-        # Check if entry is ready to be processed
-        if entry.scheduled_time.nil? || current_time >= entry.scheduled_time
-          process_queue_entry(entry: entry)
-        end
+    def process_queued_entries
+      commands = QueueModel.all(scope: @scope)
+      commands.each do |command|
+        username = command.username
+        token = get_token(username)
+        raise "No token available for username: #{username}" unless token
+        cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
       end
-    end
-
-    def process_queue_entry(entry:)
-      @logger.info "QueueProcessor processing entry: #{entry.name}"
-
-      begin
-        # Mark entry as processing
-        entry.start()
-        @share.queue_base.update(queue: entry.as_json(:allow_nan => true))
-
-        # Process the command via cmd_api
-        process_command_entry(entry: entry)
-
-        # Mark entry as completed
-        @share.queue_base.complete(name: entry.name)
-        @logger.info "QueueProcessor completed entry: #{entry.name}"
-
-      rescue StandardError => e
-        # Mark entry as failed
-        @share.queue_base.fail(name: entry.name, message: e.message)
-        @logger.error "QueueProcessor failed to process entry: #{entry.name}\n#{e.formatted}"
-      end
-    end
-
-    def process_command_entry(entry:)
-      username = entry.username
-      token = get_token(username)
-      raise "No token available for username: #{username}" unless token
-
-      # Make HTTP request to cmd_api to execute the command
-      request = Net::HTTP::Post.new(
-        "/openc3-api/api/commands/#{entry.data}",
-        'Content-Type' => 'application/json',
-        'Authorization' => token
-      )
-      request.body = JSON.generate({
-        'scope' => @scope,
-        'queue' => entry.name
-      })
-      hostname = ENV['OPENC3_CMD_API_HOSTNAME'] || 'openc3-cosmos-cmd-tlm-api'
-      response = Net::HTTP.new(hostname, 2901).request(request)
-      raise "failed to call #{hostname}, for command: #{entry.data}, response code: #{response.code}" if response.code != '200'
-
-      @logger.info "QueueProcessor command entry complete: #{entry.data} => #{response.body}"
     end
 
     def shutdown
@@ -240,25 +78,18 @@ module OpenC3
   # The queue microservice starts a processor then gets the queue entries from redis.
   # It then monitors the QueueTopic for changes.
   class QueueMicroservice < Microservice
-    attr_reader :name, :scope, :share, :processor, :processor_thread
+    attr_reader :name, :processor, :processor_thread
     TOPIC_LOOKUP = {
-      'queue' => {
-        'created' => :queue_created_event,
-        'updated' => :queue_updated_event,
-        'deleted' => :queue_deleted_event,
-        'enabled' => :queue_enabled_event,
-        'disabled' => :queue_disabled_event,
-        'completed' => :no_op,
-        'failed' => :no_op,
-        'started' => :no_op,
-      }
+      'hold' => :queue_hold,
+      'release' => :queue_release,
+      'disable' => :queue_disable,
+      'undeployed' => :queue_undeployed
     }
 
     def initialize(*args)
       # The name is passed in via the queue_model as "#{scope}__OPENC3__QUEUE"
       super(*args)
-      @share = QueueShare.new(scope: @scope)
-      @processor = QueueProcessor.new(name: @name, logger: @logger, scope: @scope, share: @share)
+      @processor = QueueProcessor.new(name: @name, logger: @logger, scope: @scope)
       @processor_thread = nil
       @read_topic = true
     end
@@ -268,7 +99,6 @@ module OpenC3
       # Let the frontend know that the microservice has been deployed and is running
       notification = {
         'kind' => 'deployed',
-        'type' => 'queue',
         # name and updated_at fields are required for Event formatting
         'data' => JSON.generate({
           'name' => @name,
@@ -279,12 +109,10 @@ module OpenC3
 
       @processor_thread = Thread.new { @processor.run }
       loop do
-        queues = QueueModel.all(scope: @scope)
-        @share.queue_base.setup(queues: queues)
         break if @cancel_thread
         block_for_updates()
-        break if @cancel_thread
       end
+      @processor_thread.join() if @processor_thread
       @logger.info "QueueMicroservice exiting"
     end
 
@@ -293,50 +121,19 @@ module OpenC3
       while @read_topic && !@cancel_thread
         begin
           QueueTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
-            @logger.debug "QueueMicroservice block_for_updates: #{msg_hash.to_s}"
-            public_send(TOPIC_LOOKUP[msg_hash['type']][msg_hash['kind']], msg_hash)
+            case msg_hash['kind']
+            when 'hold'
+              @processor.state = 'HOLD'
+            when 'release'
+              @processor.state = 'RELEASE'
+            when 'disable'
+              @processor.state = 'DISABLE'
+            end
           end
         rescue StandardError => e
           @logger.error "QueueMicroservice failed to read topics #{@topics}\n#{e.formatted}"
         end
       end
-    end
-
-    def no_op(data)
-      @logger.debug "QueueMicroservice web socket event: #{data}"
-    end
-
-    def queue_updated_event(msg_hash)
-      @logger.debug "QueueMicroservice queue updated msg_hash: #{msg_hash}"
-      queue = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
-      @share.queue_base.update(queue: queue)
-      @read_topic = false
-    end
-
-    # Add the queue entry to the shared data.
-    def queue_created_event(msg_hash)
-      @logger.debug "QueueMicroservice queue created msg_hash: #{msg_hash}"
-      queue = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
-      @share.queue_base.add(queue: queue)
-    end
-
-    # Update the queue entry in the shared data.
-    def queue_enabled_event(msg_hash)
-      @logger.debug "QueueMicroservice queue enabled msg_hash: #{msg_hash}"
-      queue = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
-      @share.queue_base.update(queue: queue)
-    end
-
-    # Update the queue entry in the shared data.
-    def queue_disabled_event(msg_hash)
-      @logger.debug "QueueMicroservice queue disabled msg_hash: #{msg_hash}"
-      @share.queue_base.update(queue: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
-    end
-
-    # Remove the queue entry from the shared data
-    def queue_deleted_event(msg_hash)
-      @logger.debug "QueueMicroservice queue deleted msg_hash: #{msg_hash}"
-      @share.queue_base.remove(queue: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
     def shutdown
