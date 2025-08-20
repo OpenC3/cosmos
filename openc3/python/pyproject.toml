@@ -21,6 +21,7 @@ dependencies = [
     "schedule (>=1.2.2,<2.0.0)",
     "watchdog (>=6.0.0,<7.0.0)",
     "websockets (>=14.2,<16.0)",
+    "pyserial>=3.5",
 ]
 
 [tool.poetry.requires-plugins]
