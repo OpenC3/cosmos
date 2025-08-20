@@ -28,7 +28,7 @@
         <target-packet-item-chooser
           :initial-target-name="$route.params.target"
           :initial-packet-name="$route.params.packet"
-          :disabled="sendDisabled || commandName == null"
+          :disabled="sendDisabled"
           button-text="Send"
           mode="cmd"
           @on-set="commandChanged($event)"

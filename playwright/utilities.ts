@@ -17,12 +17,14 @@ export class Utilities {
       await this.page.inputValue('[data-test=select-target] input'),
     ).toMatch(target)
     if (packet) {
+      await this.sleep(500) // Wait for packets to populate
       await this.page.locator('[data-test=select-packet] i').click()
       await this.page.getByRole('option', { name: packet, exact: true }).click()
       expect(
         await this.page.inputValue('[data-test=select-packet] input'),
       ).toMatch(packet)
       if (item) {
+        await this.sleep(500) // Wait for items to populate
         await this.page.locator('[data-test=select-item] i').click()
         // Need to fill the item to allow filtering since the item list can be long
         await this.page.getByLabel('Select Item').fill(item)

@@ -49,6 +49,32 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
+  # Uncomment to use QuestDB as the time series database
+  # Also uncomment the openc3-tsdb-v volume in the volumes section
+  # openc3-tsdb:
+  #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+  #   ports:
+  #     # You should disable the QuestDB Console in production
+  #     # as it gives unlimited access to the database
+  #     - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
+  #     # The Postgresql port doesn't typically need to be exposed to the host
+  #     # but if you have external software that needs to connect to QuestDB
+  #     # you can uncomment the following line to expose it.
+  #     # - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
+  #   volumes:
+  #     - "openc3-tsdb-v:/var/lib/questdb"
+  #   restart: "unless-stopped"
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   environment:
+  #     QDB_PG_USER: "${OPENC3_TSDB_USERNAME}"
+  #     QDB_PG_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
+  #     QDB_HTTP_USER: "${OPENC3_TSDB_USERNAME}"
+  #     QDB_HTTP_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
+
   openc3-redis:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
@@ -117,6 +143,8 @@ services:
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
+    extra_hosts:
+      - host.docker.internal:host-gateway
 
   openc3-cosmos-script-runner-api:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -261,6 +289,7 @@ services:
       - .env
 
 volumes:
+  # openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
   openc3-bucket-v: {}

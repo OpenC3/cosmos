@@ -71,7 +71,7 @@ module OpenC3
       end
     end
 
-    def script_run(filename, disconnect: false, environment: nil, scope: $openc3_scope)
+    def script_run(filename, disconnect: false, environment: nil, suite_runner: nil, scope: $openc3_scope)
       if disconnect
         endpoint = "/script-api/scripts/#{filename}/run/disconnect"
       else
@@ -87,8 +87,13 @@ module OpenC3
       else
         env_data = []
       end
+      data = { environment: env_data }
+      if suite_runner
+        # TODO 7.0: Should suiteRunner be snake case?
+        data['suiteRunner'] = suite_runner
+      end
       # NOTE: json: true causes json_api_object to JSON generate and set the Content-Type to json
-      response = $script_runner_api_server.request('post', endpoint, json: true, data: { environment: env_data }, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: data, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Failed to run #{filename}", scope: scope)
       else

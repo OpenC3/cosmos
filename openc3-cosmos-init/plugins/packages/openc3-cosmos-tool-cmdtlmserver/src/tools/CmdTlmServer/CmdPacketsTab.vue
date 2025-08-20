@@ -51,10 +51,10 @@
           key: 'packet_name',
         },
       ]"
-      @update:current-items="currentItems"
       data-test="cmd-packets-table"
+      @update:current-items="currentItems"
     >
-      <template v-slot:item.view_raw="{ item }">
+      <template #item.view_raw="{ item }">
         <v-btn
           block
           color="primary"
@@ -64,7 +64,7 @@
           View Raw
         </v-btn>
       </template>
-      <template v-slot:item.view_in_cmd_sender="{ item }">
+      <template #item.view_in_cmd_sender="{ item }">
         <span v-if="item.target_name === 'UNKNOWN'">N/A</span>
         <v-btn
           v-else
@@ -156,7 +156,7 @@ export default {
     },
     openCmdSender(target_name, packet_name) {
       window.open(
-        `/tools/cmdsender/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}`,
+        `/tools/cmdsender/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}/`,
         '_blank',
       )
     },

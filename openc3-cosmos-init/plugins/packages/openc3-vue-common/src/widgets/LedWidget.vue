@@ -91,7 +91,8 @@ export default {
                 '/' +
                 encodeURIComponent(this.parameters[1]) +
                 '/' +
-                encodeURIComponent(this.parameters[2]),
+                encodeURIComponent(this.parameters[2]) +
+                '/',
               '_blank',
             )
           },

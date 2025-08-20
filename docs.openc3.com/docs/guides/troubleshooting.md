@@ -67,4 +67,26 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
    We've seen this on old versions of Docker Desktop when using bind mounts instead of named volumes. Our docker compose files use named volumes by default so be careful with bind mounts. We also recommend upgrading Docker Desktop and WLS2 if possible as this maybe OBE in newer versions of Docker Desktop / WSL2.
 
+1. When exposing COSMOS to the network through http, Chrome [DevTools](https://developer.chrome.com/docs/devtools/open) shows "Web crypto API is not available".
+
+   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
+
+   - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
+   - Add your http://&lt;Your IP Address&gt;:2900
+   - Enable the Setting
+   - Completely restart Chrome. On MacOS make sure the dot below the icon in chrome is gone by long pressing the icon and choosing Quit.
+
+1. When using your own certs, you see an error banner with "Token is invalid" with "Failed to open TCP connection to &lt;KEYCLOAK URL&gt; (execution expired)".
+
+   We have seen this when a local firewall is blocking the 443 port to Keycloak. Keycloak itself can still be reachable at `&lt;KEYCLOAK URL&gt;/auth` which makes it feel like this is not a firewall issue. However, if you exec into the `cmd-tlm-api` container you should be able to curl the following Keycloak URL:
+
+   ```bash
+   docker ps
+   docker exec -it <CONTAINER ID FOR CMD_TLM_API> sh
+   $ ping <KEYCLOAK URL>
+   $ curl -vvv <KEYCLOAK URL>/realms/openc3/protocol/openid-connect/certs
+   ```
+
+   If this does not return you could be blocking the 443 port to Keycloak. Update your firewall settings and try again.
+
 Encountering an issue not on this list? If you're a customer, please get in touch at [support@openc3.com](mailto:support@openc3.com).

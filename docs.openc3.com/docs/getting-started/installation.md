@@ -80,7 +80,7 @@ You will need to create new ones with the names above and set their value to the
 
 ### RUN
 
-Add the locally cloned project directory to your path so you can directly use the batch file or shell script. In Windows this would be adding "C:\openc3-project" to the PATH. In Linux you would edit your shell's rc file and export the PATH. For example, on a Mac add the following to ~/.zshrc: `export PATH=~/cosmos-project:$PATH`.
+Add the locally cloned project directory to your path so you can directly use the batch file or shell script. In Windows this would be adding "C:\cosmos-project" to the PATH. In Linux you would edit your shell's rc file and export the PATH. For example, on a Mac add the following to ~/.zshrc: `export PATH=~/cosmos-project:$PATH`.
 
 Run `openc3.bat run` (Windows), or `./openc3.sh run` (linux/Mac).
 

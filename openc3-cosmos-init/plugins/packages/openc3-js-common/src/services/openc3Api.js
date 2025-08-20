@@ -37,7 +37,7 @@ export function customNumberParser(value) {
 export default class OpenC3Api {
   id = 1
 
-  constructor() { }
+  constructor() {}
 
   async exec(
     method,
@@ -326,12 +326,28 @@ export default class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  async get_tlm_values(items, stale_time = 30, cache_timeout = null) {
+  get_tlm_available(items) {
+    return this.exec('get_tlm_available', [items])
+  }
+
+  async get_tlm_values(
+    items,
+    stale_time = 30,
+    cache_timeout = null,
+    start_time = null,
+    end_time = null,
+  ) {
     let kw_args = {
       stale_time: stale_time,
     }
     if (cache_timeout !== null) {
       kw_args['cache_timeout'] = cache_timeout
+    }
+    if (start_time !== null) {
+      kw_args['start_time'] = start_time.toISOString()
+    }
+    if (end_time !== null) {
+      kw_args['end_time'] = end_time.toISOString()
     }
     const data = await this.exec(
       'get_tlm_values',
@@ -340,12 +356,14 @@ export default class OpenC3Api {
       {},
       10000, // 10s timeout ... should never be this long
     )
-    let len = data[0].length
-    let converted = null
-    for (let i = 0; i < len; i++) {
-      converted = this.decode_openc3_type(data[0][i])
-      if (converted !== null) {
-        data[0][i] = converted
+    if (data && data.length > 0) {
+      let len = data[0].length
+      let converted = null
+      for (let i = 0; i < len; i++) {
+        converted = this.decode_openc3_type(data[0][i])
+        if (converted !== null) {
+          data[0][i] = converted
+        }
       }
     }
     return data
@@ -697,12 +715,12 @@ export default class OpenC3Api {
     return this.exec('get_all_settings', [])
   }
 
-  get_setting(name) {
-    return this.exec('get_setting', [name])
+  get_setting(name, kwparams) {
+    return this.exec('get_setting', [name], kwparams)
   }
 
-  get_settings(array) {
-    return this.exec('get_settings', array)
+  get_settings(array, kwparams) {
+    return this.exec('get_settings', array, kwparams)
   }
 
   set_setting(name, data) {
@@ -711,6 +729,10 @@ export default class OpenC3Api {
 
   update_news() {
     return this.exec('update_news', [])
+  }
+
+  update_plugin_store() {
+    return this.exec('update_plugin_store', [])
   }
 
   // DEPRECATED for set_setting

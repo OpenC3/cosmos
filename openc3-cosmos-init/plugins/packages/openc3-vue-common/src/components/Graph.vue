@@ -155,6 +155,7 @@
     <graph-edit-dialog
       v-if="editGraph"
       v-model="editGraph"
+      v-model:x-axis-item="xAxisItem"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -165,6 +166,7 @@
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
+      :x-axis-item-packet="allowableXAxisItemPacket"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -309,10 +311,11 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { Cable } from '@openc3/js-common/services'
+import { OpenC3Api, Cable } from '@openc3/js-common/services'
 import { TimeFilters } from '@/util'
-
 import 'uplot/dist/uPlot.min.css'
+
+const DEFAULT_X_AXIS_ITEM = '__time'
 
 export default {
   components: {
@@ -327,7 +330,7 @@ export default {
     },
     selectedGraphId: {
       type: Number,
-      // Not required because we pass null
+      default: null,
     },
     state: {
       type: String,
@@ -337,6 +340,7 @@ export default {
     // this allows multiple graphs to be synchronized
     startTime: {
       type: Number,
+      default: null,
     },
     secondsGraphed: {
       type: Number,
@@ -368,21 +372,39 @@ export default {
     },
     initialItems: {
       type: Array,
+      default: () => [],
+    },
+    initialXAxisItem: {
+      type: String,
+      default: DEFAULT_X_AXIS_ITEM,
     },
     // These allow the parent to force a specific height and/or width
     height: {
       type: Number,
+      default: null,
     },
     width: {
       type: Number,
+      default: null,
     },
     timeZone: {
       type: String,
       default: 'local',
     },
   },
+  emits: [
+    'click',
+    'close-graph',
+    'edit',
+    'min-max-graph',
+    'pause',
+    'resize',
+    'start',
+    'started',
+  ],
   data() {
     return {
+      api: null,
       lines: [],
       active: true,
       expand: true,
@@ -409,13 +431,16 @@ export default {
       overview: null,
       data: [[]],
       dataChanged: false,
-      timeout: null,
+      interval: null,
       graphMinY: null,
       graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       indexes: {},
-      items: this.initialItems || [],
+      items: this.initialItems,
+      graphItems: [],
+      lastPlaybackDateTime: null,
       limitsValues: [],
       drawInterval: null,
       zoomChart: false,
@@ -461,6 +486,79 @@ export default {
       }
       return null
     },
+    itemSubscriptionKeys: function () {
+      return this.items.map(this.subscriptionKey)
+    },
+    allowableXAxisItemPacket: function () {
+      if (!this.canUseCustomXAxisItem || this.items.length === 0) {
+        return undefined
+      }
+      const { targetName, packetName } = this.items[0]
+      return { targetName, packetName }
+    },
+    canUseCustomXAxisItem: function () {
+      // Make sure we're not mixing packets, because items from different packets will be received at different times.
+      // If it was mixed, e.g. `xAxisItem` is 'INST__ADCS__RECEIVED_COUNT' and you were graphing
+      // 'INST__HEALTH_STATUS__TEMP1', then the `received` handler wouldn't know which x-axis values to apply to the
+      // received TEMP1 data points.
+      if (this.items.length === 0) {
+        return true
+      }
+      const { targetName, packetName } = this.items[0]
+      return this.items.every(
+        (item) =>
+          item.targetName === targetName && item.packetName === packetName,
+      )
+    },
+    actualXAxisItem: function () {
+      if (this.canUseCustomXAxisItem && this.xAxisItem) {
+        return this.xAxisItem
+      } else {
+        return DEFAULT_X_AXIS_ITEM
+      }
+    },
+    xAxisConverter: function () {
+      if (this.xAxisIsDefault) {
+        return (val) => val / 1_000_000_000.0 // nsec to sec
+      }
+      return (val) => val
+    },
+    xAxisFormatter: function () {
+      return (val) => {
+        if (val == null) {
+          return '--'
+        } else if (this.xAxisIsTime) {
+          // Convert the unix timestamp into a formatted date / time
+          return this.formatSeconds(val, this.timeZone)
+        }
+        return val
+      }
+    },
+    xAxisLabel: function () {
+      return this.xAxisIsTime ? 'Time' : this.actualXAxisItem.split('__').at(-2)
+    },
+    xAxisIsDefault: function () {
+      return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
+    },
+    xAxisIsTime: function () {
+      const timeItems = ['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS']
+      return (
+        this.xAxisIsDefault ||
+        timeItems.includes(this.actualXAxisItem.split('__').at(4))
+      )
+    },
+    xAxisIsAlsoGraphedItem: function () {
+      return this.itemSubscriptionKeys.includes(this.actualXAxisItem)
+    },
+    playbackMode: function () {
+      return this.$store.state.playback.playbackMode
+    },
+    playbackDateTime: function () {
+      return this.$store.state.playback.playbackDateTime
+    },
+    playbackStep: function () {
+      return this.$store.state.playback.playbackStep
+    },
   },
   watch: {
     state: function (newState, oldState) {
@@ -476,6 +574,67 @@ export default {
         case 'stop':
           this.stopGraph()
           break
+      }
+    },
+    playbackMode: function (_newState, _oldState) {
+      if (this.playbackMode === 'playback') {
+        this.setupPlaybackMode()
+      } else {
+        // realtime
+        this.lastPlaybackDateTime = null
+        this.clearAllData()
+        this.startGraph()
+      }
+    },
+    playbackDateTime: function (_newState, _oldState) {
+      if (this.playbackMode === 'playback') {
+        if (
+          this.lastPlaybackDateTime === null ||
+          this.lastPlaybackDateTime > this.playbackDateTime
+        ) {
+          // If we are going backwards in time we need to clear the data
+          this.clearAllData()
+        } else {
+          this.api
+            .get_tlm_values(
+              this.graphItems,
+              30, // stale timeout
+              null, // no cache timeout
+              this.lastPlaybackDateTime, // start time
+              this.playbackDateTime, // end time
+            )
+            .then((data) => {
+              if (data.length > 0) {
+                if (Array.isArray(data[0]) && Array.isArray(data[0][0])) {
+                  // data is array of array of arrays
+                  for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j < data[i].length; j++) {
+                      if (j === 0) {
+                        let dateStr = data[i][j][0]
+                        let dateObj = new Date(dateStr)
+                        this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
+                      } else {
+                        this.data[j].push(data[i][j][0])
+                      }
+                    }
+                  }
+                } else if (Array.isArray(data) && data.length >= 2) {
+                  for (let i = 0; i < data.length; i++) {
+                    if (i === 0) {
+                      let dateStr = data[i][0]
+                      let dateObj = new Date(dateStr)
+                      this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
+                    } else {
+                      this.data[i].push(data[i][0])
+                    }
+                  }
+                }
+              }
+              this.dataChanged = true
+              this.updateGraphData()
+            })
+        }
+        this.lastPlaybackDateTime = this.playbackDateTime
       }
     },
     data: function (newData, oldData) {
@@ -521,8 +680,40 @@ export default {
         this.needToUpdate = true
       }
     },
+    actualXAxisItem: function (newVal, oldVal) {
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
+      this.addItems(clonedItems)
+      // Don't need to $emit('edit') because addItems() does that
+    },
+    refreshIntervalMs: function (val) {
+      if (this.interval) {
+        clearInterval(this.interval)
+        this.interval = setInterval(() => {
+          this.updateGraphData()
+        }, val)
+      }
+    },
   },
   created() {
+    this.api = new OpenC3Api()
     this.title = `Graph ${this.id}`
     for (const [index, item] of this.items.entries()) {
       this.data.push([]) // initialize the empty data arrays
@@ -608,12 +799,12 @@ export default {
       { chartSeries: [], overviewSeries: [] },
     )
 
-    let chartOpts = {}
+    this.chartOpts = {}
     if (this.sparkline) {
       this.hideToolbarData = true
       this.hideOverviewData = true
       this.showOverview = false
-      chartOpts = {
+      this.chartOpts = {
         width: this.width,
         height: this.height,
         pxAlign: false,
@@ -647,7 +838,7 @@ export default {
         ],
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
@@ -657,7 +848,7 @@ export default {
       if (this.timeZone && this.timeZone !== 'local') {
         timeZoneName = this.timeZone
       }
-      chartOpts = {
+      this.chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
@@ -666,10 +857,8 @@ export default {
         tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
-            label: 'Time',
-            value: (u, v) =>
-              // Convert the unix timestamp into a formatted date / time
-              v == null ? '--' : this.formatSeconds(v, this.timeZone),
+            label: this.xAxisLabel,
+            value: (u, v) => this.xAxisFormatter(v),
           },
           ...chartSeries,
         ],
@@ -762,12 +951,12 @@ export default {
         },
       }
       this.graph = new uPlot(
-        chartOpts,
+        this.chartOpts,
         this.data,
         document.getElementById(`chart${this.id}`),
       )
 
-      const overviewOpts = {
+      this.overviewOpts = {
         ...this.getSize('overview'),
         ...this.getScales(),
         ...this.getAxes('overview'),
@@ -808,7 +997,7 @@ export default {
       }
       if (!this.hideOverview) {
         this.overview = new uPlot(
-          overviewOpts,
+          this.overviewOpts,
           this.data,
           document.getElementById(`overview${this.id}`),
         )
@@ -819,8 +1008,12 @@ export default {
       window.addEventListener('resize', this.resize)
     }
 
-    if (this.state !== 'stop') {
-      this.startGraph()
+    if (this.playbackMode !== 'playback') {
+      if (this.state !== 'stop') {
+        this.startGraph()
+      }
+    } else {
+      this.setupPlaybackMode()
     }
   },
   beforeUnmount: function () {
@@ -829,10 +1022,30 @@ export default {
     window.removeEventListener('resize', this.resize)
   },
   methods: {
+    setupPlaybackMode: function () {
+      this.stopGraph()
+      this.clearAllData()
+      const screenItems = this.itemSubscriptionKeys.map((key) => {
+        return key.split('__').slice(2).join('__')
+      })
+      this.api.get_tlm_available(screenItems).then((data) => {
+        this.graphItems = data
+        // This must be the same or we're going to have problems
+        // because the data comes back in an ordered array
+        if (screenItems.length != data.length) {
+          // eslint-disable-next-line no-console
+          console.log(
+            'Error getting tlm available',
+            screenItems,
+            this.graphItems,
+          )
+        }
+      })
+    },
     startGraph: function () {
       this.subscribe()
-      this.timeout = setTimeout(() => {
-        this.updateTimeout()
+      this.interval = setInterval(() => {
+        this.updateGraphData()
       }, this.refreshIntervalMs)
     },
     stopGraph: function () {
@@ -840,16 +1053,10 @@ export default {
         this.subscription.unsubscribe()
         this.subscription = null
       }
-      if (this.timeout) {
-        clearTimeout(this.timeout)
-        this.timeout = null
+      if (this.interval) {
+        clearInterval(this.interval)
+        this.interval = null
       }
-    },
-    updateTimeout: function () {
-      this.updateGraphData()
-      this.timeout = setTimeout(() => {
-        this.updateTimeout()
-      }, this.refreshIntervalMs)
     },
     updateGraphData: function () {
       // Ignore changes to the data while we're paused
@@ -860,16 +1067,24 @@ export default {
       if (this.overview) {
         this.overview.setData(this.data)
       }
-      let max = this.data[0][this.data[0].length - 1]
-      let ptsMin = this.data[0][this.data[0].length - this.pointsGraphed]
-      let min = this.data[0][0]
-      if (min < max - this.secondsGraphed) {
-        min = max - this.secondsGraphed
+
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = xAxisData.at(-1)
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        if (min === max) {
+          max += 1
+        }
+        this.graph.setScale('x', { min, max })
       }
-      if (ptsMin > min) {
-        min = ptsMin
-      }
-      this.graph.setScale('x', { min, max })
+
       this.dataChanged = false
     },
     formatLabel(item) {
@@ -1018,7 +1233,11 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
-            this.addItemsToSubscription(this.items)
+            const itemsToAdd = [...this.items]
+            if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
+              itemsToAdd.push(this.actualXAxisItem)
+            }
+            this.addItemsToSubscription(itemsToAdd)
           },
           disconnected: (data) => {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
@@ -1111,9 +1330,15 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [1566453600, 1566497660]
+              if (dataMin == null) {
+                if (this.xAxisIsTime) {
+                  return [1566453600, 1566497660]
+                }
+                return [0, 1]
+              }
               return [dataMin, dataMax]
             },
+            time: this.xAxisIsTime,
           },
           y: {
             range(u, dataMin, dataMax) {
@@ -1200,7 +1425,6 @@ export default {
             const yellowLow = u.valToPos(this.limitsValues[1], 'y', true)
             const yellowHigh = u.valToPos(this.limitsValues[2], 'y', true)
             const redHigh = u.valToPos(this.limitsValues[3], 'y', true)
-            let height = 0
 
             // NOTE: These comparisons are tricky because the canvas
             // starts in the upper left with 0,0. Thus it grows downward
@@ -1341,6 +1565,9 @@ export default {
       })
 
       this.updateColorIndex(itemArray)
+      if (!this.xAxisIsDefault) {
+        itemArray.push(this.actualXAxisItem)
+      }
       this.addItemsToSubscription(itemArray)
       this.$emit('resize')
       this.$emit('edit')
@@ -1388,6 +1615,17 @@ export default {
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
+      const items = itemArray.map((item) => {
+        if (typeof item === 'object') {
+          return this.subscriptionKey(item)
+        } else if (typeof item === 'string') {
+          return item
+        } else {
+          throw new Error(
+            `Invalid subscription item type for ${item}: ${typeof item}`,
+          )
+        }
+      })
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
           (refreshed) => {
@@ -1397,7 +1635,7 @@ export default {
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              items: itemArray.map(this.subscriptionKey),
+              items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
@@ -1457,10 +1695,21 @@ export default {
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
+        const items = itemArray.map((item) => {
+          if (typeof item === 'object') {
+            return this.subscriptionKey(item)
+          } else if (typeof item === 'string') {
+            return item
+          } else {
+            throw new Error(
+              `Invalid subscription item type for ${item}: ${typeof item}`,
+            )
+          }
+        })
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          items: itemArray.map(this.subscriptionKey),
+          items: items,
         })
       }
     },
@@ -1482,59 +1731,69 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].__time / 1000000000.0 // Time in seconds
+        if (!data[i].hasOwnProperty(this.actualXAxisItem)) {
+          // This happens if the streaming thread was already sending something when we switched xAxisItems.
+          // Nothing we can do but throw away the point. It'll come back when the graph is reset anyway.
+          continue
+        }
+        let xAxisVal = this.xAxisConverter(data[i][this.actualXAxisItem])
         let length = this.data[0].length
-        if (length === 0 || time > this.data[0][length - 1]) {
+        if (length === 0 || xAxisVal > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
           }
-          this.set_data_at_index(this.data[0].length - 1, time, data[i])
+          this.setDataAtIndex(this.data[0].length - 1, xAxisVal, data[i])
         } else {
-          let index = bs(this.data[0], time, this.bs_comparator)
+          let index = bs(this.data[0], xAxisVal, this.bsComparator)
           if (index >= 0) {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
+            if (!Number.isFinite(xAxisVal)) {
+              // Make sure this exists so that we don't create an infinite loop
+              // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
+              throw new RangeError(`Invalid x-axis value: ${xAxisVal}`)
+            }
             while (index >= 0) {
-              time -= 1e-5 // Subtract 10 microseconds
-              index = bs(this.data[0], time, this.bs_comparator)
+              xAxisVal -= 1e-5 // Subtract a small amount (10 microseconds if x-axis is time in seconds)
+              index = bs(this.data[0], xAxisVal, this.bsComparator)
             }
             // Now that we have a unique time, insert at the ideal index
-            let ideal_index = -index - 1
+            const idealIndex = -index - 1
             for (let j = 0; j < this.data.length; j++) {
-              this.data[j].splice(ideal_index, 0, null)
+              this.data[j].splice(idealIndex, 0, null)
             }
             // Use the adjusted time but keep the original data
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.setDataAtIndex(idealIndex, xAxisVal, data[i])
           } else {
             // Insert a new null slot at the ideal index
-            let ideal_index = -index - 1
+            const idealIndex = -index - 1
             for (let j = 0; j < this.data.length; j++) {
-              this.data[j].splice(ideal_index, 0, null)
+              this.data[j].splice(idealIndex, 0, null)
             }
-            this.set_data_at_index(ideal_index, time, data[i])
+            this.setDataAtIndex(idealIndex, xAxisVal, data[i])
           }
         }
       }
       // If we weren't passed a startTime notify grapher of our start
       if (this.startTime == null && this.data[0][0]) {
-        let newStartTime = this.data[0][0] * 1000000000
+        let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
       this.dataChanged = true
     },
-    bs_comparator: function (element, needle) {
+    bsComparator: function (element, needle) {
       return element - needle
     },
-    set_data_at_index: function (index, time, new_data) {
-      this.data[0][index] = time
-      for (const [key, value] of Object.entries(new_data)) {
-        if (key === 'time') {
+    setDataAtIndex: function (index, xAxisVal, newData) {
+      this.data[0][index] = xAxisVal
+      for (const [key, value] of Object.entries(newData)) {
+        if (key === this.actualXAxisItem && !this.xAxisIsAlsoGraphedItem) {
           continue
         }
-        let key_index = this.indexes[key]
-        if (key_index) {
-          let array = this.data[key_index]
+        const keyIndex = this.indexes[key]
+        if (keyIndex) {
+          let array = this.data[keyIndex]
           // NaN and Infinite values are sent as objects with raw attribute set
           // to 'NaN', '-Infinity', or 'Infinity', just set data to null
           if (value?.raw) {

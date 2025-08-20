@@ -63,8 +63,12 @@ RSpec.describe PluginsController, type: :controller do
     end
 
     it "returns all plugins when id is 'all'" do
-      plugins_data = [{"name" => "PLUGIN1"}, {"name" => "PLUGIN2"}]
+      plugins_data = {
+        "PLUGIN1" => {"name" => "PLUGIN1"},
+        "PLUGIN2" => {"name" => "PLUGIN2"}
+      }
       allow(OpenC3::PluginModel).to receive(:all).and_return(plugins_data)
+      allow(OpenC3::PluginStoreModel).to receive(:all).and_return([].to_json)
 
       get :show, params: {id: "all", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
@@ -121,7 +125,7 @@ RSpec.describe PluginsController, type: :controller do
         "variables" => {"VAR1" => "value1"},
         "plugin_txt_lines" => ["line1", "line2"]
       }
-      controller.instance_variable_set(:@existing_model, existing_model)
+      allow(OpenC3::PluginModel).to receive(:get).and_return(existing_model)
 
       install_result = {
         "name" => "TEST_PLUGIN",
@@ -133,10 +137,11 @@ RSpec.describe PluginsController, type: :controller do
         "/tmp/test/test-plugin.gem",
         existing_variables: {"VAR1" => "value1"},
         existing_plugin_txt_lines: ["line1", "line2"],
+        store_id: nil,
         scope: "DEFAULT"
       ).and_return(install_result)
 
-      post :create, params: {plugin: @upload_file, scope: "DEFAULT"}
+      put :update, params: {id: "TEST_PLUGIN", plugin: @upload_file, scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json).to eq(install_result)
@@ -212,6 +217,7 @@ RSpec.describe PluginsController, type: :controller do
         "/tmp/test/test-plugin.gem",
         existing_variables: {"VAR1" => "existing_value"},
         existing_plugin_txt_lines: ["existing_line"],
+        store_id: nil,
         scope: "DEFAULT"
       ).and_return(install_result)
 

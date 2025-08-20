@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,112 +21,228 @@
 -->
 
 <template>
-  <div>
-    <top-bar :title="title" :menus="menus" />
-    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
-      <v-expansion-panel>
-        <v-expansion-panel-title></v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <v-container>
-            <v-row class="pa-3">
-              <v-autocomplete
-                class="mr-4"
-                density="compact"
-                hide-details
-                variant="outlined"
-                label="Select Target"
-                :items="Object.keys(screens).sort()"
-                item-title="label"
-                item-value="value"
-                v-model="selectedTarget"
-                style="max-width: 300px"
-                data-test="select-target"
-              />
-              <v-autocomplete
-                class="mr-4"
-                density="compact"
-                hide-details
-                variant="outlined"
-                label="Select Screen"
-                :items="screens[selectedTarget]"
-                v-model="selectedScreen"
-                @update:model-value="screenSelect"
-                style="max-width: 300px"
-                data-test="select-screen"
-              />
-              <v-btn
-                class="bg-primary mr-2"
-                :disabled="!selectedScreen"
-                @click="() => showScreen(selectedTarget, selectedScreen)"
-                data-test="show-screen"
-              >
-                Show
-              </v-btn>
-              <v-btn
-                class="bg-primary"
-                @click="() => newScreen(selectedTarget)"
-                data-test="new-screen"
-              >
-                New Screen
-                <v-icon> mdi-file-plus</v-icon>
-              </v-btn>
-            </v-row>
-          </v-container>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
-    <div class="grid">
-      <div
-        class="item"
-        v-for="def in definitions"
-        :key="def.id"
-        :id="screenId(def.id)"
-        ref="gridItem"
-      >
-        <div class="item-content">
-          <openc3-screen
-            :target="def.target"
-            :screen="def.screen"
-            :definition="def.definition"
-            :keywords="keywords"
-            :initial-floated="def.floated"
-            :initial-top="def.top"
-            :initial-left="def.left"
-            :initial-z="def.zIndex"
-            :time-zone="timeZone"
-            @close-screen="closeScreen(def.id)"
-            @min-max-screen="refreshLayout"
-            @add-new-screen="($event) => showScreen(...$event)"
-            @delete-screen="deleteScreen(def)"
-            @float-screen="floatScreen(def, ...$event)"
-            @unfloat-screen="unfloatScreen(def, ...$event)"
-            @drag-screen="dragScreen(def, ...$event)"
-            @edit-screen="refreshLayout"
-          />
+  <top-bar :title="title" :menus="menus" />
+  <div v-if="playbackMode === 'playback'" class="playback">Playback Mode</div>
+  <v-expansion-panels v-model="panel" class="mb-1">
+    <v-expansion-panel>
+      <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
+      <v-expansion-panel-text>
+        <div class="pa-4">
+          <v-row class="pa-3">
+            <v-autocomplete
+              v-model="selectedTarget"
+              class="mr-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Select Target"
+              :items="Object.keys(screens).sort()"
+              item-title="label"
+              item-value="value"
+              style="max-width: 300px"
+              data-test="select-target"
+            />
+            <v-autocomplete
+              v-model="selectedScreen"
+              class="mr-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Select Screen"
+              :items="screens[selectedTarget]"
+              style="max-width: 300px"
+              data-test="select-screen"
+              @update:model-value="screenSelect"
+            />
+            <v-btn
+              class="bg-primary mr-2"
+              :disabled="!selectedScreen"
+              data-test="show-screen"
+              @click="() => showScreen(selectedTarget, selectedScreen)"
+            >
+              Show
+            </v-btn>
+            <v-btn
+              class="bg-primary mr-2"
+              data-test="new-screen"
+              @click="() => newScreen(selectedTarget)"
+            >
+              New Screen
+              <v-icon> mdi-file-plus</v-icon>
+            </v-btn>
+          </v-row>
+          <v-row v-if="playbackMode === 'playback'" class="pa-3">
+            <v-text-field
+              v-model="playbackDate"
+              class="mr-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Date"
+              type="date"
+              style="max-width: 200px"
+              data-test="playback-date"
+              :disabled="playbackPlaying"
+            />
+            <v-text-field
+              v-model="playbackTime"
+              class="mr-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Time"
+              type="time"
+              step="1"
+              style="max-width: 200px"
+              data-test="playback-time"
+              :disabled="playbackPlaying"
+            />
+            <v-tooltip :text="`Skip Backward ${playbackSkip} secs`" :open-delay="2000" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-skip-backward"
+                  variant="text"
+                  aria-label="Skip Backward"
+                  data-test="playback-skip-backward"
+                  style="margin-top: -5px"
+                  @click="playbackSkipBackward"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip :text="`Step Backward ${playbackStep} secs`" :open-delay="2000" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-step-backward"
+                  variant="text"
+                  aria-label="Step Backward"
+                  data-test="playback-step-backward"
+                  style="margin-top: -5px"
+                  @click="playbackStepBackward"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-btn
+              :icon="playbackPlaying ? 'mdi-pause' : 'mdi-play'"
+              variant="text"
+              class="bg-primary"
+              aria-label="Play / Pause"
+              style="margin-top: -5px"
+              @click="playbackToggle"
+            ></v-btn>
+            <v-tooltip :text="`Step Forward ${playbackStep} secs`" :open-delay="2000" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-step-forward"
+                  variant="text"
+                  aria-label="Step Forward"
+                  data-test="playback-step-forward"
+                  style="margin-top: -5px"
+                  @click="playbackStepForward"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip :text="`Skip Forward ${playbackSkip} secs`" :open-delay="2000" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-skip-forward"
+                  variant="text"
+                  aria-label="Skip Forward"
+                  data-test="playback-skip-forward"
+                  style="margin-top: -5px"
+                  @click="playbackSkipForward"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-text-field
+              v-model="playbackStep"
+              class="mr-4 ml-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Step (Speed)"
+              suffix="secs"
+              type="number"
+              step="1"
+              data-test="playback-speed"
+              style="max-width: 120px"
+            />
+            <v-text-field
+              v-model="playbackSkip"
+              class="mr-4"
+              density="compact"
+              hide-details
+              variant="outlined"
+              label="Skip"
+              suffix="secs"
+              type="number"
+              step="1"
+              data-test="skip"
+              style="max-width: 120px"
+            />
+          </v-row>
         </div>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
+  <div class="grid">
+    <div
+      v-for="def in definitions"
+      :id="screenId(def.id)"
+      :key="def.id"
+      ref="gridItem"
+      class="item"
+    >
+      <div class="item-content">
+        <openc3-screen
+          :ref="`screen-${def.id}`"
+          class="openc3-screen"
+          :target="def.target"
+          :screen="def.screen"
+          :definition="def.definition"
+          :keywords="keywords"
+          :initial-floated="def.floated"
+          :initial-top="def.top"
+          :initial-left="def.left"
+          :initial-z="def.zIndex"
+          :time-zone="timeZone"
+          :playback-mode="playbackMode"
+          :playback-date-time="playbackDateTime"
+          @close-screen="closeScreen(def.id)"
+          @min-max-screen="refreshLayout"
+          @add-new-screen="($event) => showScreen(...$event)"
+          @delete-screen="deleteScreen(def)"
+          @float-screen="floatScreen(def, ...$event)"
+          @unfloat-screen="unfloatScreen(def, ...$event)"
+          @drag-screen="dragScreen(def, ...$event)"
+          @edit-screen="refreshLayout"
+        />
       </div>
     </div>
-    <!-- Dialogs for opening and saving configs -->
-    <open-config-dialog
-      v-if="openConfig"
-      v-model="openConfig"
-      :configKey="configKey"
-      @success="openConfiguration"
-    />
-    <save-config-dialog
-      v-if="saveConfig"
-      v-model="saveConfig"
-      :configKey="configKey"
-      @success="saveConfiguration"
-    />
-    <new-screen-dialog
-      v-if="newScreenDialog"
-      v-model="newScreenDialog"
-      :target="selectedTarget"
-      :screens="screens"
-      @success="saveNewScreen"
-    />
   </div>
+  <!-- Dialogs for opening and saving configs -->
+  <open-config-dialog
+    v-if="openConfig"
+    v-model="openConfig"
+    :config-key="configKey"
+    @success="openConfiguration"
+  />
+  <save-config-dialog
+    v-if="saveConfig"
+    v-model="saveConfig"
+    :config-key="configKey"
+    @success="saveConfiguration"
+  />
+  <new-screen-dialog
+    v-if="newScreenDialog"
+    v-model="newScreenDialog"
+    :target="selectedTarget"
+    :screens="screens"
+    @success="saveNewScreen"
+  />
 </template>
 
 <script>
@@ -140,6 +256,7 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import NewScreenDialog from './NewScreenDialog'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   components: {
@@ -149,7 +266,7 @@ export default {
     OpenConfigDialog,
     SaveConfigDialog,
   },
-  mixins: [Config],
+  mixins: [Config, TimeFilters],
   data() {
     return {
       title: 'Telemetry Viewer',
@@ -164,10 +281,39 @@ export default {
       api: null,
       timeZone: null, // deliberately null so we know when it is set
       keywords: [],
-      menus: [
+      configKey: 'telemetry_viewer',
+      openConfig: false,
+      saveConfig: false,
+      playbackAvailable: false,
+      playbackStep: 1,
+      playbackSkip: 10,
+      playbackDate: '',
+      playbackTime: '',
+      playbackDateTime: null,
+      playbackMode: 'realtime',
+      playbackTimer: null,
+      playbackPlaying: false,
+    }
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
           items: [
+            {
+              label: 'Playback Mode',
+              checkbox: true,
+              checked: this.playbackMode === 'playback',
+              disabled: this.playbackAvailable === false,
+              command: () => {
+                this.playbackMode =
+                  this.playbackMode === 'playback' ? 'realtime' : 'playback'
+              },
+            },
+            {
+              divider: true,
+            },
             {
               label: 'Open Configuration',
               icon: 'mdi-folder-open',
@@ -193,21 +339,8 @@ export default {
             },
           ],
         },
-      ],
-      configKey: 'telemetry_viewer',
-      openConfig: false,
-      saveConfig: false,
-    }
-  },
-  watch: {
-    definitions: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
+      ]
     },
-  },
-  computed: {
     currentConfig: function () {
       return this.definitions.map((def) => {
         return {
@@ -219,6 +352,69 @@ export default {
           zIndex: def.zIndex,
         }
       })
+    },
+  },
+  watch: {
+    definitions: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    playbackMode: function (mode) {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
+      if (mode === 'playback') {
+        // Initialize playback date and time with current values
+        // Create a new date 1 hr in the past as a default
+        let date = new Date() - 3600000
+        this.playbackDate = this.formatDate(date, this.timeZone)
+        this.playbackTime = this.formatTime(date, this.timeZone)
+      } else {
+        this.playbackPause()
+      }
+    },
+    playbackDateTime: function () {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
+      if (this.playbackDateTime) {
+        // If we've exceeded the current time, pause playback
+        if (this.playbackDateTime > new Date()) {
+          this.playbackPause()
+        } else {
+          this.playbackDate = this.formatDate(
+            this.playbackDateTime,
+            this.timeZone,
+          )
+          this.playbackTime = this.formatTime(
+            this.playbackDateTime,
+            this.timeZone,
+          )
+        }
+      }
+    },
+    playbackStep: function () {
+      this.$store.commit('playback', {
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
+      localStorage[`${this.configKey}__step`] = this.playbackStep
+    },
+    playbackSkip: function () {
+      localStorage[`${this.configKey}__skip`] = this.playbackSkip
+    },
+    playbackDate: function () {
+      localStorage[`${this.configKey}__date`] = this.playbackDate
+    },
+    playbackTime: function () {
+      localStorage[`${this.configKey}__time`] = this.playbackTime
     },
   },
   created() {
@@ -234,6 +430,18 @@ export default {
       })
       .catch((error) => {
         // Do nothing
+      })
+    Api.get('/openc3-api/tsdb', {
+      headers: {
+        // Since we're just checking for existence, 404 is possible so ignore it
+        'Ignore-Errors': '404',
+      },
+    })
+      .then((_response) => {
+        this.playbackAvailable = true
+      })
+      .catch((_error) => {
+        this.playbackAvailable = false
       })
     Api.get('/openc3-api/screens').then((response) => {
       response.data.forEach((filename) => {
@@ -265,6 +473,19 @@ export default {
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.keywords = response.data
     })
+
+    if (localStorage[`${this.configKey}__step`]) {
+      this.playbackStep = localStorage[`${this.configKey}__step`]
+    }
+    if (localStorage[`${this.configKey}__skip`]) {
+      this.playbackSkip = localStorage[`${this.configKey}__skip`]
+    }
+    if (localStorage[`${this.configKey}__date`]) {
+      this.playbackDate = localStorage[`${this.configKey}__date`]
+    }
+    if (localStorage[`${this.configKey}__time`]) {
+      this.playbackTime = localStorage[`${this.configKey}__time`]
+    }
   },
   mounted() {
     this.grid = new Muuri('.grid', {
@@ -273,6 +494,11 @@ export default {
       dragHandle: '.v-toolbar',
     })
     this.grid.on('dragEnd', this.refreshLayout)
+  },
+  beforeUnmount() {
+    if (this.playbackTimer) {
+      clearInterval(this.playbackTimer)
+    }
   },
   methods: {
     targetSelect(target) {
@@ -482,32 +708,93 @@ export default {
     saveConfiguration: function (name) {
       this.saveConfigBase(name, this.currentConfig)
     },
+    playbackToggle() {
+      if (this.playbackPlaying) {
+        this.playbackPause()
+      } else {
+        this.playbackPlay()
+      }
+    },
+    playbackStepBackward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() - 1000 * this.playbackStep,
+        )
+      }
+    },
+    playbackStepForward() {
+      if (this.playbackDateTime) {
+        const newTime = new Date(
+          this.playbackDateTime.getTime() + 1000 * this.playbackStep,
+        )
+        if (newTime <= new Date()) {
+          this.playbackDateTime = newTime
+        }
+      }
+    },
+    playbackSkipBackward() {
+      if (this.playbackDateTime) {
+        this.playbackDateTime = new Date(
+          this.playbackDateTime.getTime() - 1000 * this.playbackSkip,
+        )
+      }
+    },
+    playbackSkipForward() {
+      if (this.playbackDateTime) {
+        const newTime = new Date(
+          this.playbackDateTime.getTime() + 1000 * this.playbackSkip,
+        )
+        if (newTime <= new Date()) {
+          this.playbackDateTime = newTime
+        }
+      }
+    },
+    playbackPlay() {
+      if (this.timeZone === 'UTC') {
+        this.playbackDateTime = new Date(
+          `${this.playbackDate}T${this.playbackTime}Z`,
+        )
+      } else {
+        this.playbackDateTime = new Date(
+          `${this.playbackDate}T${this.playbackTime}`,
+        )
+      }
+
+      if (this.playbackTimer) {
+        clearInterval(this.playbackTimer)
+      }
+
+      this.playbackTimer = setInterval(() => {
+        if (this.playbackDateTime) {
+          this.playbackDateTime = new Date(
+            this.playbackDateTime.getTime() + 1000 * this.playbackStep,
+          )
+        }
+      }, 1000)
+      this.playbackPlaying = true
+    },
+    playbackPause() {
+      if (this.playbackTimer) {
+        clearInterval(this.playbackTimer)
+        this.playbackTimer = null
+      }
+      this.playbackPlaying = false
+    },
   },
 }
 </script>
 
-<style>
-/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
-i.v-icon.mdi-chevron-down {
-  animation: pulse 2s 3;
-}
-@keyframes pulse {
-  0% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-  }
-  70% {
-    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
-  100% {
-    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-  }
+<style scoped>
+.playback {
+  text-align: center;
+  color: black;
+  font-weight: bold;
+  background-color: darkorange;
 }
 .v-application {
   /* fix for playwright scrolling I guess? */
   margin-bottom: 120px;
 }
-</style>
-<style scoped>
 .v-expansion-panel-text {
   .container {
     margin: 0px;
