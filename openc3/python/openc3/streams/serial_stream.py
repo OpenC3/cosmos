@@ -18,9 +18,9 @@ import threading
 import logging
 from typing import Optional, Union
 
-from .stream import Stream
-from ..io.serial_driver import SerialDriver
-from ..config.config_parser import ConfigParser
+from openc3.streams.stream import Stream
+from openc3.io.serial_driver import SerialDriver
+from openc3.config.config_parser import ConfigParser
 
 
 class SerialStream(Stream):

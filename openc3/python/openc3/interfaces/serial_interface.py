@@ -14,11 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from typing import Optional, List, Any, Union
+from typing import Optional, List, Any
 
-from .stream_interface import StreamInterface
-from ..streams.serial_stream import SerialStream
-from ..config.config_parser import ConfigParser
+from openc3.interfaces.stream_interface import StreamInterface
+from openc3.streams.serial_stream import SerialStream
+from openc3.config.config_parser import ConfigParser
 
 
 class SerialInterface(StreamInterface):
