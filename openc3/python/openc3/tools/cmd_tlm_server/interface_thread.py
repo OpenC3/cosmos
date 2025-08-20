@@ -95,7 +95,7 @@ class InterfaceThread:
                     break
 
                 # Handle connection
-                if not self.interface.connected:
+                if not self.interface.connected():
                     try:
                         with self.mutex:
                             # Make sure connect is not called after stop() has been called
@@ -253,7 +253,7 @@ class InterfaceThread:
                 if str(connect_error) not in self.connection_failed_messages:
                     # In Python we'll just log rather than write exception file
                     self.connection_failed_messages.append(str(connect_error))
-                    
+
         self._disconnect()
 
     def _handle_connection_lost(self, err):

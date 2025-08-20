@@ -17,12 +17,7 @@
 import time
 import threading
 from typing import Optional, Union
-
-try:
-    import serial
-except ImportError:
-    raise ImportError("pyserial package is required for serial communication")
-
+import serial
 
 class SerialDriver:
     """A platform independent serial driver"""
@@ -87,19 +82,16 @@ class SerialDriver:
         self.read_max_length = read_max_length
         
         # Open the serial port using pyserial
-        try:
-            self.handle = serial.Serial(
-                port=port_name,
-                baudrate=baud_rate,
-                bytesize=data_bits,
-                parity=serial_parity,
-                stopbits=serial_stopbits,
-                timeout=None,  # We'll handle timeouts manually
-                write_timeout=write_timeout,
-                rtscts=rtscts
-            )
-        except serial.SerialException as e:
-            raise RuntimeError(f"Error opening serial port: {e}")
+        self.handle = serial.Serial(
+            port=port_name,
+            baudrate=baud_rate,
+            bytesize=data_bits,
+            parity=serial_parity,
+            stopbits=serial_stopbits,
+            timeout=None,  # We'll handle timeouts manually
+            write_timeout=write_timeout,
+            rtscts=rtscts
+        )
         
         self.mutex = threading.Lock()
     

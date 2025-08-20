@@ -17,6 +17,7 @@
 import atexit
 import signal
 import sys
+import time
 from openc3.bridge.bridge_config import BridgeConfig
 from openc3.bridge.bridge_interface_thread import BridgeInterfaceThread
 from openc3.bridge.bridge_router_thread import BridgeRouterThread
@@ -58,3 +59,11 @@ class Bridge:
     def _signal_handler(self, signum, frame):
         self.shutdown()
         sys.exit(0)
+
+    def wait_forever(self):
+        """Keep the main thread alive while daemon threads run"""
+        try:
+            while any(thread.alive for thread in self.threads):
+                time.sleep(1)
+        except KeyboardInterrupt:
+            self.shutdown()
