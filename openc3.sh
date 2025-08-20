@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [ "$(id -u)" -eq 0 ]; then
-  echo "Warning: COSMOS should not be built as the root user, as permissions for Local Mode will be affected. Do not use sudo when building COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
-  exit 1
-fi
-
 set +e
 
 if ! command -v docker &> /dev/null
@@ -55,6 +50,13 @@ usage() {
 if [ "$#" -eq 0 ]; then
   usage $0
 fi
+
+check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    echo "WARNING: COSMOS should not be run as the root user, as permissions for Local Mode will be affected. Do not use sudo when running COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
+    exit 1
+  fi
+}
 
 case $1 in
   cli )
@@ -127,9 +129,11 @@ case $1 in
     set +a
     ;;
   run )
+    check_root
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
+    check_root
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
