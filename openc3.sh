@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Warning: COSMOS should not be built as the root user, as permissions for Local Mode will be affected. Do not use sudo when building COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
+  exit 1
+fi
+
 set +e
 
 if ! command -v docker &> /dev/null
