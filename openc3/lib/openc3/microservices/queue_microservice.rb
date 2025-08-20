@@ -20,16 +20,17 @@ require 'openc3/microservices/microservice'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/authentication'
 require 'openc3/models/queue_model'
-require 'openc3/api/cmd_api'
+require 'openc3/script'
 
 module OpenC3
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
     attr_accessor :state
-    attr_reader :name, :scope
+    attr_reader :name, :queue_name, :scope
 
-    def initialize(name:, logger:, scope:, share:)
+    def initialize(name:, logger:, scope:)
       @name = name
+      @queue_name = name.split('__')[2]
       @logger = logger
       @scope = scope
       @state = 'HOLD'
@@ -54,16 +55,20 @@ module OpenC3
     end
 
     def run
-      while @state == 'RELEASE'
-        process_queued_entries()
+      while true
+        if @state == 'RELEASE'
+          process_queued_commands()
+        else
+          sleep 0.1
+        end
         break if @cancel_thread
       end
     end
 
-    def process_queued_entries
-      commands = QueueModel.all(scope: @scope)
-      commands.each do |command|
-        username = command.username
+    def process_queued_commands
+      model = QueueModel.get_model(name: @queue_name, scope: @scope)
+      model.commands.each do |command|
+        username = command['username']
         token = get_token(username)
         raise "No token available for username: #{username}" unless token
         cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
@@ -87,7 +92,6 @@ module OpenC3
     }
 
     def initialize(*args)
-      # The name is passed in via the queue_model as "#{scope}__OPENC3__QUEUE"
       super(*args)
       @processor = QueueProcessor.new(name: @name, logger: @logger, scope: @scope)
       @processor_thread = nil
@@ -112,6 +116,7 @@ module OpenC3
         break if @cancel_thread
         block_for_updates()
       end
+      @processor.shutdown()
       @processor_thread.join() if @processor_thread
       @logger.info "QueueMicroservice exiting"
     end
@@ -121,13 +126,9 @@ module OpenC3
       while @read_topic && !@cancel_thread
         begin
           QueueTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
-            case msg_hash['kind']
-            when 'hold'
-              @processor.state = 'HOLD'
-            when 'release'
-              @processor.state = 'RELEASE'
-            when 'disable'
-              @processor.state = 'DISABLE'
+            if msg_hash['kind'] == 'updated'
+              queue = JSON.parse(msg_hash['data'])
+              @processor.state = queue['state']
             end
           end
         rescue StandardError => e

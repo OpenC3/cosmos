@@ -41,24 +41,34 @@ module OpenC3
     end
     # END NOTE
 
-    attr_reader :name, :state, :commands
+    def self.queue_command(name, command:, username:, scope:)
+      model = get_model(name: name, scope: scope)
+      raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
-    def initialize(name:, scope: shard: 0)
-      super("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
+      if model.state == 'DISABLED'
+        Logger.error "Queue '#{name}' is disabled. Command '#{command}' not queued."
+      else
+        model.commands.push({ username: username, value: command })
+        model.update()
+      end
+    end
+
+    attr_accessor :name, :state, :commands
+
+    def initialize(name:, scope:, state: 'HOLD', commands: [], updated_at: nil)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @microservice_name = "#{scope}__QUEUE__#{name}"
-      @state = 'HOLD'
-      @commands = []
-      @shard = shard
+      @state = state
+      @commands = commands
     end
 
-    def create
-      super()
-      notify(kind: 'created')
-    end
-
-    def update
-      super()
-      notify(kind: 'updated')
+    def create(update: false, force: false, queued: false)
+      super(update: update, force: force, queued: queued)
+      if update
+        notify(kind: 'updated')
+      else
+        notify(kind: 'created')
+      end
     end
 
     # @return [Hash] generated from the QueueModel
@@ -68,7 +78,6 @@ module OpenC3
         'scope' => @scope,
         'state' => @state,
         'commands' => @commands.as_json(*a),
-        'shard' => @shard,
         'updated_at' => @updated_at
       }
     end
@@ -82,6 +91,17 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
+    def push(command)
+      @commands.push(command)
+      update()
+    end
+
+    def pop
+      command = @commands.pop
+      update()
+      return command
+    end
+
     def create_microservice(topics:)
       # queue Microservice
       microservice = MicroserviceModel.new(
@@ -93,7 +113,6 @@ module OpenC3
         topics: topics,
         target_names: [],
         plugin: nil,
-        shard: @shard,
         scope: @scope
       )
       microservice.create

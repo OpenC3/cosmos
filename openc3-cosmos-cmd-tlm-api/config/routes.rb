@@ -75,13 +75,16 @@ Rails.application.routes.draw do
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/widgets/:id', to: 'widgets#destroy', id: /[^\/]+/
 
-    resources :queue, only: [:index, :create]
-    get '/queue/:name', to: 'queue#show', name: /[^\/]+/
-    match '/queue/:name', to: 'queue#update', name: /[^\/]+/, via: [:patch, :put]
-    delete '/queue/:name', to: 'queue#destroy', name: /[^\/]+/
-    post '/queue/:name/hold', to: 'queue#hold', name: /[^\/]+/
-    post '/queue/:name/release', to: 'queue#release', name: /[^\/]+/
-    post '/queue/:name/disable', to: 'queue#disable', name: /[^\/]+/
+    # resources :queues, only: [:index, :create]
+    get '/queues', to: 'queues#index'
+    post '/queues/:name', to: 'queues#create', name: /[^\/]+/
+    get '/queues/:name', to: 'queues#show', name: /[^\/]+/
+    delete '/queues/:name', to: 'queues#destroy', name: /[^\/]+/
+    post '/queues/:name/hold', to: 'queues#hold', name: /[^\/]+/
+    post '/queues/:name/release', to: 'queues#release', name: /[^\/]+/
+    post '/queues/:name/disable', to: 'queues#disable', name: /[^\/]+/
+    post '/queues/:name/push', to: 'queues#push', name: /[^\/]+/
+    post '/queues/:name/pop', to: 'queues#pop', name: /[^\/]+/
 
     resources :permissions, only: [:index]
 

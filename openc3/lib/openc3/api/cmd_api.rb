@@ -452,7 +452,7 @@ module OpenC3
     end
 
     # NOTE: When adding new keywords to this method, make sure to update script/commands.rb
-    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true,
+    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true, queue: nil,
                             scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
@@ -538,9 +538,14 @@ module OpenC3
         'log_message' => log_message.to_s,
         'obfuscated_items' => packet['obfuscated_items'].to_s
       }
-      CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      if queue
+        # Pull the command out of the script string, e.g. cmd("INST ABORT")
+        queued = cmd_string.split('("')[1].split('")')[0]
+        QueueModel.queue_command(queue, command: queued, username: username, scope: scope)
+      else
+        CommandTopic.send_command(command, timeout: timeout, scope: scope)
+      end
       return command
     end
-
   end
 end
