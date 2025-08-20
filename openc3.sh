@@ -54,7 +54,6 @@ fi
 check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     echo "WARNING: COSMOS should not be run as the root user, as permissions for Local Mode will be affected. Do not use sudo when running COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
-    exit 1
   fi
 }
 
