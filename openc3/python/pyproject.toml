@@ -24,6 +24,9 @@ dependencies = [
     "pyserial>=3.5",
 ]
 
+[project.scripts]
+openc3pycli = "openc3.cli:main"
+
 [tool.poetry.requires-plugins]
 poetry-plugin-export = ">=1.9"
 
