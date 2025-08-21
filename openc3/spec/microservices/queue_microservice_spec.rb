@@ -156,22 +156,34 @@ module OpenC3
     end
 
     describe '#process_queued_commands' do
-      let(:queue_model) { double('QueueModel') }
       let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
 
       before do
-        allow(QueueModel).to receive(:get_model).with(name: 'QUEUE', scope: scope).and_return(queue_model)
         allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
         allow(processor).to receive(:cmd_no_hazardous_check)
+        processor.state = 'RELEASE'
       end
 
       it 'processes all queued commands and removes them from queue' do
-        allow(queue_model).to receive(:pop).and_return(command1, command2, nil)
+        call_count = 0
+        allow(Store).to receive(:blpop) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command1.to_json]
+          when 2
+            ["#{scope}:QUEUE", command2.to_json]
+          else
+            # After processing all commands, change state to exit loop
+            processor.state = 'HOLD'
+            nil
+          end
+        end
 
         processor.process_queued_commands
 
-        expect(queue_model).to have_received(:pop).exactly(3).times
+        expect(Store).to have_received(:blpop).exactly(3).times
         expect(processor).to have_received(:cmd_no_hazardous_check)
           .with(command1['value'], scope: scope, token: 'test_token')
         expect(processor).to have_received(:cmd_no_hazardous_check)
@@ -179,16 +191,22 @@ module OpenC3
       end
 
       it 'stops processing when queue is empty' do
-        allow(queue_model).to receive(:pop).and_return(nil)
+        allow(Store).to receive(:blpop) do
+          processor.state = 'HOLD'
+          nil
+        end
 
         processor.process_queued_commands
 
-        expect(queue_model).to have_received(:pop).once
+        expect(Store).to have_received(:blpop).once
         expect(processor).not_to have_received(:cmd_no_hazardous_check)
       end
 
       it 'raises error when no token is available for username' do
-        allow(queue_model).to receive(:pop).and_return(command1)
+        allow(Store).to receive(:blpop) do
+          processor.state = 'HOLD' if processor.state == 'RELEASE'
+          ["#{scope}:QUEUE", command1.to_json]
+        end
         allow(processor).to receive(:get_token).with('test_user').and_return(nil)
 
         expect { processor.process_queued_commands }.to raise_error("No token available for username: test_user")

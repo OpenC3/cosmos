@@ -79,6 +79,7 @@ Rails.application.routes.draw do
     get '/queues', to: 'queues#index'
     post '/queues/:name', to: 'queues#create', name: /[^\/]+/
     get '/queues/:name', to: 'queues#show', name: /[^\/]+/
+    get '/queues/:name/list', to: 'queues#list', name: /[^\/]+/
     delete '/queues/:name', to: 'queues#destroy', name: /[^\/]+/
     post '/queues/:name/hold', to: 'queues#hold', name: /[^\/]+/
     post '/queues/:name/release', to: 'queues#release', name: /[^\/]+/

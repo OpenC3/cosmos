@@ -19,7 +19,6 @@
 require 'openc3/microservices/microservice'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/authentication'
-require 'openc3/models/queue_model'
 require 'openc3/script'
 
 module OpenC3
@@ -59,24 +58,21 @@ module OpenC3
         if @state == 'RELEASE'
           process_queued_commands()
         else
-          sleep 0.1
+          sleep 0.2
         end
         break if @cancel_thread
       end
     end
 
     def process_queued_commands
-      while true
-        model = QueueModel.get_model(name: @queue_name, scope: @scope)
-        command = model.pop
-        puts "Processing command: #{command}"
-        if command
+      while @state == 'RELEASE'
+        queue_name, command_data = Store.blpop("#{@scope}:#{@queue_name}", timeout: 0.2)
+        if command_data
+          command = JSON.parse(command_data)
           username = command['username']
           token = get_token(username)
           raise "No token available for username: #{username}" unless token
           cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
-        else
-          break
         end
       end
     end
@@ -90,12 +86,6 @@ module OpenC3
   # It then monitors the QueueTopic for changes.
   class QueueMicroservice < Microservice
     attr_reader :name, :processor, :processor_thread
-    TOPIC_LOOKUP = {
-      'hold' => :queue_hold,
-      'release' => :queue_release,
-      'disable' => :queue_disable,
-      'undeployed' => :queue_undeployed
-    }
 
     def initialize(*args)
       super(*args)

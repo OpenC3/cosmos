@@ -24,113 +24,70 @@ module OpenC3
 
     private
 
-    # Gets all queues
-    #
-    # @return The result of the method call.
-    def queue_all(scope: $openc3_scope)
-      response = $api_server.request('get', "/openc3-api/queues", scope: scope)
-      # Non-existent just returns nil
-      return nil if response.nil? || response.status != 200
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-    end
-
-    # Gets a queue by name
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
-    def queue_get(name, scope: $openc3_scope)
-      response = $api_server.request('get', "/openc3-api/queues/#{name}", scope: scope)
-      # Non-existent just returns nil
-      return nil if response.nil? || response.status != 200
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-    end
-
-    # Create a new queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
-    def queue_create(name, scope: $openc3_scope)
-      response = $api_server.request('post', "/openc3-api/queues/#{name}", scope: scope)
+    # Helper method that makes the request and parses the response
+    def _make_request(action:, verb:, uri:, scope:)
+      response = $api_server.request(verb, uri, scope: scope)
       if response.nil?
-        raise "Failed to create queue due to #{response.status}"
-      elsif response.status != 201
-        raise "Failed to create queue due to #{response.status}"
+        raise "Failed to #{action} queue. No response from server."
+      elsif response.status != 200 and response.status != 201
+        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        raise "Failed to #{action} queue due to #{result['message']}"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
 
-    # Hold a queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
+    def queue_all(scope: $openc3_scope)
+      return _make_request(action: 'index', verb: 'get', uri: "/openc3-api/queues", scope: scope)
+    end
+
+    def queue_get(name, scope: $openc3_scope)
+      return _make_request(action: 'get', verb: 'get', uri: "/openc3-api/queues/#{name}", scope: scope)
+    end
+
+    def queue_list(name, scope: $openc3_scope)
+      return _make_request(action: 'list', verb: 'get', uri: "/openc3-api/queues/#{name}/list", scope: scope)
+    end
+
+    def queue_create(name, scope: $openc3_scope)
+      return _make_request(action: 'create', verb: 'post', uri: "/openc3-api/queues/#{name}", scope: scope)
+    end
+
     def queue_hold(name, scope: $openc3_scope)
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/hold", scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to hold queue"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return _make_request(action: 'hold', verb: 'post', uri: "/openc3-api/queues/#{name}/hold", scope: scope)
     end
 
-    # Release a queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
     def queue_release(name, scope: $openc3_scope)
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/release", scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to release queue"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return _make_request(action: 'release', verb: 'post', uri: "/openc3-api/queues/#{name}/release", scope: scope)
     end
-    alias release_queue queue_release
 
-    # Disable a queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
     def queue_disable(name, scope: $openc3_scope)
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/disable", scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to disable queue"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return _make_request(action: 'disable', verb: 'post', uri: "/openc3-api/queues/#{name}/disable", scope: scope)
     end
 
-    # Delete a queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
-    def queue_destroy(name, scope: $openc3_scope)
-      response = $api_server.request('delete', "/openc3-api/queues/#{name}", scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to destroy queue"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+    def queue_delete(name, scope: $openc3_scope)
+      return _make_request(action: 'delete', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
-    alias queue_delete queue_destroy
+    alias queue_destroy queue_delete
 
-    # Push a command to a queue
-    #
-    # @param name [String] The queue name
-    # @param command [String] The command to add to the queue
-    # @return The result of the method call.
     def queue_push(name, command, scope: $openc3_scope)
       data = { command: command }
       response = $api_server.request('post', "/openc3-api/queues/#{name}/push", data: data, json: true, scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to push command to queue"
+      if response.nil?
+        raise "Failed to push command to queue. No response from server."
+      elsif response.status != 200
+        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        raise "Failed to push command to queue due to #{result['message']}"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
 
-    # Pop a command from a queue
-    #
-    # @param name [String] The queue name
-    # @return The result of the method call.
     def queue_pop(name, scope: $openc3_scope)
       response = $api_server.request('post', "/openc3-api/queues/#{name}/pop", scope: scope)
-      if response.nil? || response.status != 200
-        raise "Failed to pop command from queue"
+      if response.nil?
+        raise "Failed to pop command from queue. No response from server."
+      elsif response.status != 200
+        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        raise "Failed to pop command from queue due to #{result['message']}"
       end
       result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       if result['command']

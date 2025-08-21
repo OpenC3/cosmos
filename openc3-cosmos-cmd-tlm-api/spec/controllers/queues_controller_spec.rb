@@ -371,6 +371,46 @@ RSpec.describe QueuesController, type: :controller do
     end
   end
 
+  describe "GET list" do
+    it "returns the queue list and status code 200" do
+      queue_model = double("QueueModel")
+      queue_list = [
+        { "username" => "user1", "value" =>"COMMAND1" },
+        { "username" => "user2", "value" => "COMMAND2" }
+      ]
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:list).and_return(queue_list)
+
+      get :list, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json).to eql(queue_list)
+    end
+
+    it "returns 404 when the queue is not found" do
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(nil)
+
+      get :list, params: {name: "NONEXISTENT", scope: "DEFAULT"}
+      expect(response).to have_http_status(404)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("not found")
+    end
+
+    it "returns 500 when an unexpected error occurs" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:list).and_raise(StandardError.new("Unexpected error"))
+
+      get :list, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(500)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Unexpected error")
+      expect(json["type"]).to eql("StandardError")
+    end
+  end
+
   describe "DELETE destroy" do
     it "destroys a queue and returns status code 200" do
       queue_model = double("QueueModel")

@@ -19,6 +19,7 @@
 require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/topics/queue_topic'
+require 'openc3/utilities/logger'
 
 module OpenC3
   class QueueError < StandardError; end
@@ -43,36 +44,24 @@ module OpenC3
     end
     # END NOTE
 
-    def self.get_model(name:, scope:)
-      if @@class_mutex.owned?
-        return super(name: name, scope: scope)
-      else
-        @@class_mutex.synchronize do
-          return super(name: name, scope: scope)
-        end
-      end
-    end
-
     def self.queue_command(name, command:, username:, scope:)
-      @@class_mutex.synchronize do
-        model = get_model(name: name, scope: scope)
-        raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
+      model = get_model(name: name, scope: scope)
+      raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
-        if model.state == 'DISABLED'
-          Logger.error "Queue '#{name}' is disabled. Command '#{command}' not queued."
-        else
-          model.push({ username: username, value: command })
-        end
+      if model.state != 'DISABLE'
+        Store.rpush("#{scope}:#{name}", { username: username, value: command }.to_json)
+        model.notify(kind: 'command')
+      else
+        raise "Queue '#{name}' is disabled. Command '#{command}' not queued."
       end
     end
 
-    attr_accessor :name, :state, :commands
+    attr_accessor :name, :state
 
-    def initialize(name:, scope:, state: 'HOLD', commands: [], updated_at: nil)
+    def initialize(name:, scope:, state: 'HOLD', updated_at: nil)
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @microservice_name = "#{scope}__QUEUE__#{name}"
       @state = state
-      @commands = commands
       @instance_mutex = Mutex.new
     end
 
@@ -91,7 +80,6 @@ module OpenC3
         'name' => @name,
         'scope' => @scope,
         'state' => @state,
-        'commands' => @commands.as_json(*a),
         'updated_at' => @updated_at
       }
     end
@@ -105,19 +93,19 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def push(command)
-      @instance_mutex.synchronize do
-        @commands.push(command)
-        update()
-      end
+    def push(command_data)
+      Store.rpush("#{@scope}:#{@name}", command_data.to_json)
+      notify(kind: 'command')
     end
 
     def pop
-      @instance_mutex.synchronize do
-        command = @commands.pop
-        update()
-        return command
-      end
+      command_data = Store.lpop("#{@scope}:#{@name}")
+      notify(kind: 'command')
+      return command_data
+    end
+
+    def list
+      return Store.lrange("#{@scope}:#{@name}", 0, -1)
     end
 
     def create_microservice(topics:)

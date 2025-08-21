@@ -19,7 +19,7 @@
 require 'openc3/models/queue_model'
 
 class QueuesController < ApplicationController
-  NOT_FOUND = 'not found'
+  NOT_FOUND = 'queue not found'
 
   def initialize
     super()
@@ -82,11 +82,27 @@ class QueuesController < ApplicationController
         model.deploy()
         render json: model.as_json(:allow_nan => true), status: 201
       else
-        render json: { status: 'error', message: "Queue #{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400
+        render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400
       end
     rescue OpenC3::QueueError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+    end
+  end
+
+  def list
+    return unless authorization('system')
+    begin
+      model = @model_class.get_model(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        return
+      end
+      list = model.list()
+      render json: list
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
@@ -146,10 +162,6 @@ class QueuesController < ApplicationController
     end
   end
 
-  # Removes an queue by name/id.
-  # name [String] the queue name, `QUEUE1`
-  # scope [String] the scope of the queue, `TEST`
-  # @return [String] object/hash converted into json format but with a 200 status code
   def destroy
     return unless authorization('system')
     model = @model_class.get_model(name: params[:name], scope: params[:scope])

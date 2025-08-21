@@ -40,7 +40,6 @@ module OpenC3
         expect(result["name"]).to eql "TEST"
         expect(result["scope"]).to eql "DEFAULT"
         expect(result["state"]).to eql "HOLD"
-        expect(result["commands"]).to be_empty
       end
 
       it "returns nil for non-existent queue" do
@@ -93,7 +92,7 @@ module OpenC3
       end
 
       it "logs error when queue is disabled" do
-        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLED")
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
         model.create
 
         expect(Logger).to receive(:error).with("Queue 'TEST' is disabled. Command 'TGT CMD with PARAM1 \"hello\", PARAM2 10' not queued.")
@@ -108,8 +107,8 @@ module OpenC3
 
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        result = QueueModel.get(name: "TEST", scope: "DEFAULT")
-        expect(result["commands"]).to contain_exactly({ "username" => "anonymous", "value" => command })
+        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command })
       end
 
       it "queues command when queue is in RELEASE state" do
@@ -119,30 +118,18 @@ module OpenC3
 
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        result = QueueModel.get(name: "TEST", scope: "DEFAULT")
-        expect(result["commands"]).to contain_exactly({ "username" => "anonymous", "value" => command })
+        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command })
       end
 
-      it "updates the updated_at timestamp" do
-        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
-        model.create
-        allow(QueueTopic).to receive(:write_notification)
 
-        original_updated_at = QueueModel.get(name: "TEST", scope: "DEFAULT")["updated_at"]
-        sleep 0.001  # Ensure timestamp difference
 
-        QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
-
-        result = QueueModel.get(name: "TEST", scope: "DEFAULT")
-        expect(result["updated_at"]).to be > original_updated_at
-      end
-
-      it "sends updated notification" do
+      it "sends command notification" do
         model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
         model.create
 
         expect(QueueTopic).to receive(:write_notification).with(
-          hash_including('kind' => 'updated'),
+          hash_including('kind' => 'command'),
           scope: "DEFAULT"
         )
 
@@ -158,8 +145,8 @@ module OpenC3
         QueueModel.queue_command("TEST", command: first_command, username: 'anonymous', scope: "DEFAULT")
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        result = QueueModel.get(name: "TEST", scope: "DEFAULT")
-        expect(result["commands"]).to contain_exactly({ "username" => "anonymous", "value" => first_command },
+        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command },
           { "username" => "anonymous", "value" => command })
       end
     end
@@ -169,7 +156,6 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         expect(model.name).to eql "TEST"
         expect(model.state).to eql "HOLD"
-        expect(model.commands).to be_empty
         expect(model.scope).to eql "DEFAULT"
       end
 
@@ -233,8 +219,126 @@ module OpenC3
         expect(json['name']).to eql "TEST"
         expect(json['scope']).to eql "DEFAULT"
         expect(json['state']).to eql "HOLD"
-        expect(json['commands']).to be_empty
         expect(json).to have_key('updated_at')
+      end
+    end
+
+    describe "push" do
+      it "pushes command data to the store" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command_data = { username: "anonymous", value: "TGT CMD" }
+
+        model.push(command_data)
+
+        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly(command_data.transform_keys(&:to_s))
+      end
+
+      it "sends command notification when pushing" do
+        expect(QueueTopic).to receive(:write_notification).with(
+          hash_including('kind' => 'command'),
+          scope: "DEFAULT"
+        )
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.push({ username: "anonymous", value: "TGT CMD" })
+      end
+    end
+
+    describe "pop" do
+      it "pops command data from the store" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command_data = { username: "anonymous", value: "TGT CMD" }
+
+        model.push(command_data)
+        result = model.pop
+
+        expect(JSON.parse(result)).to eql command_data.transform_keys(&:to_s)
+        commands = Store.lrange("DEFAULT:TEST", 0, -1)
+        expect(commands).to be_empty
+      end
+
+      it "sends command notification when popping" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.push({ username: "anonymous", value: "TGT CMD" })
+
+        expect(QueueTopic).to receive(:write_notification).with(
+          hash_including('kind' => 'command'),
+          scope: "DEFAULT"
+        )
+        model.pop
+      end
+
+      it "returns nil when queue is empty" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        result = model.pop
+        expect(result).to be_nil
+      end
+    end
+
+    describe "list" do
+      it "returns empty array when queue is empty" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        result = model.list
+        expect(result).to be_empty
+      end
+
+      it "returns all commands in the queue" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "TGT CMD1" }
+        command2 = { username: "user2", value: "TGT CMD2" }
+        command3 = { username: "user3", value: "TGT CMD3" }
+
+        model.push(command1)
+        model.push(command2)
+        model.push(command3)
+
+        result = model.list
+        expect(result.length).to eql 3
+        expect(JSON.parse(result[0])).to eql command1.transform_keys(&:to_s)
+        expect(JSON.parse(result[1])).to eql command2.transform_keys(&:to_s)
+        expect(JSON.parse(result[2])).to eql command3.transform_keys(&:to_s)
+      end
+
+      it "returns commands in FIFO order" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        first_command = { username: "user1", value: "FIRST_CMD" }
+        second_command = { username: "user2", value: "SECOND_CMD" }
+
+        model.push(first_command)
+        model.push(second_command)
+
+        result = model.list
+        expect(JSON.parse(result[0])).to eql first_command.transform_keys(&:to_s)
+        expect(JSON.parse(result[1])).to eql second_command.transform_keys(&:to_s)
+      end
+
+      it "reflects queue state after pop operations" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1" }
+        command2 = { username: "user2", value: "CMD2" }
+        command3 = { username: "user3", value: "CMD3" }
+
+        model.push(command1)
+        model.push(command2)
+        model.push(command3)
+
+        expect(model.list.length).to eql 3
+
+        command = model.pop
+        expect(JSON.parse(command)).to eql command1.transform_keys(&:to_s)
+        result = model.list
+        expect(result.length).to eql 2
+        expect(JSON.parse(result[0])).to eql command2.transform_keys(&:to_s)
+        expect(JSON.parse(result[1])).to eql command3.transform_keys(&:to_s)
       end
     end
 
