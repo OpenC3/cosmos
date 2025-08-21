@@ -46,7 +46,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
-      OpenC3::Logger.info("Script stopped: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script stopped: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -113,7 +113,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "pause")
-      OpenC3::Logger.info("Script paused: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script paused: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -126,7 +126,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "retry")
-      OpenC3::Logger.info("Script retried: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script retried: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -139,7 +139,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "go")
-      OpenC3::Logger.info("Script resumed: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script resumed: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -152,7 +152,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "step")
-      OpenC3::Logger.info("Script stepped: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script stepped: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -172,7 +172,7 @@ class RunningScriptController < ApplicationController
       else
         running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
       end
-      OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -185,7 +185,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
-      OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
