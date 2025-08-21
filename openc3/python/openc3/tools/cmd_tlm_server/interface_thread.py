@@ -15,9 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import threading
-import time
 import socket
-import errno
 from datetime import datetime, timezone
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
