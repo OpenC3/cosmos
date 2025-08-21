@@ -20,8 +20,14 @@ from typing import List, Optional
 
 def main(args: Optional[List[str]] = None) -> None:
     """Main entry point for the OpenC3 Python CLI"""
-    # Set environment variable early to ensure it's available before any imports
-    os.environ['OPENC3_NO_STORE'] = "1"
+    
+    # Check if OPENC3_NO_STORE is set - this prevents Redis connection attempts
+    # Something with the module loading order, the os.environ['OPENC3_NO_STORE'] refused to set it correctly
+    if not os.environ.get('OPENC3_NO_STORE'):
+        print("Error: OPENC3_NO_STORE environment variable must be set to use the CLI.")
+        print("Please run: export OPENC3_NO_STORE=1")
+        print("Then run the CLI command again.")
+        sys.exit(1)
     
     parser = argparse.ArgumentParser(
         prog='openc3pycli',
@@ -57,7 +63,7 @@ def run_bridge(filename, params):
         if name and value:
             variables[name] = value
         else:
-            raise Exception(f"Invalid variable passed to bridge (syntax name=value): {param}")
+            raise SyntaxError(f"Invalid variable passed to bridge (syntax name=value): {param}")
     
     bridge = Bridge(filename, variables)
     bridge.wait_forever()
