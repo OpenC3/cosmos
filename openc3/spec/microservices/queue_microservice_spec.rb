@@ -157,37 +157,41 @@ module OpenC3
 
     describe '#process_queued_commands' do
       let(:queue_model) { double('QueueModel') }
-      let(:commands) do
-        [
-          { 'username' => 'test_user', 'value' => 'INST COLLECT' },
-          { 'username' => 'test_user2', 'value' => 'INST ABORT' }
-        ]
-      end
+      let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
+      let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
 
       before do
-        allow(QueueModel).to receive(:get_model)
-          .with(name: processor.queue_name, scope: scope)
-          .and_return(queue_model)
-        allow(queue_model).to receive(:commands).and_return(commands)
+        allow(QueueModel).to receive(:get_model).with(name: 'QUEUE', scope: scope).and_return(queue_model)
+        allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
         allow(processor).to receive(:cmd_no_hazardous_check)
-        allow(processor).to receive(:puts)
       end
 
-      it 'processes all commands in the queue' do
-        allow(processor).to receive(:get_token).and_return('test_token')
+      it 'processes all queued commands and removes them from queue' do
+        allow(queue_model).to receive(:pop).and_return(command1, command2, nil)
 
         processor.process_queued_commands
 
+        expect(queue_model).to have_received(:pop).exactly(3).times
         expect(processor).to have_received(:cmd_no_hazardous_check)
-          .with('INST COLLECT', scope: scope, token: 'test_token')
+          .with(command1['value'], scope: scope, token: 'test_token')
         expect(processor).to have_received(:cmd_no_hazardous_check)
-          .with('INST ABORT', scope: scope, token: 'test_token')
+          .with(command2['value'], scope: scope, token: 'test_token')
       end
 
-      it 'raises error when no token is available' do
-        allow(processor).to receive(:get_token).and_return(nil)
+      it 'stops processing when queue is empty' do
+        allow(queue_model).to receive(:pop).and_return(nil)
 
-        expect { processor.process_queued_commands }.to raise_error('No token available for username: test_user')
+        processor.process_queued_commands
+
+        expect(queue_model).to have_received(:pop).once
+        expect(processor).not_to have_received(:cmd_no_hazardous_check)
+      end
+
+      it 'raises error when no token is available for username' do
+        allow(queue_model).to receive(:pop).and_return(command1)
+        allow(processor).to receive(:get_token).with('test_user').and_return(nil)
+
+        expect { processor.process_queued_commands }.to raise_error("No token available for username: test_user")
       end
     end
 

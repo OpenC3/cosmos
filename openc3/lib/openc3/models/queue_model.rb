@@ -26,6 +26,8 @@ module OpenC3
   class QueueModel < Model
     PRIMARY_KEY = 'openc3__queue'.freeze
 
+    @@class_mutex = Mutex.new
+
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
@@ -41,15 +43,26 @@ module OpenC3
     end
     # END NOTE
 
-    def self.queue_command(name, command:, username:, scope:)
-      model = get_model(name: name, scope: scope)
-      raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
-
-      if model.state == 'DISABLED'
-        Logger.error "Queue '#{name}' is disabled. Command '#{command}' not queued."
+    def self.get_model(name:, scope:)
+      if @@class_mutex.owned?
+        return super(name: name, scope: scope)
       else
-        model.commands.push({ username: username, value: command })
-        model.update()
+        @@class_mutex.synchronize do
+          return super(name: name, scope: scope)
+        end
+      end
+    end
+
+    def self.queue_command(name, command:, username:, scope:)
+      @@class_mutex.synchronize do
+        model = get_model(name: name, scope: scope)
+        raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
+
+        if model.state == 'DISABLED'
+          Logger.error "Queue '#{name}' is disabled. Command '#{command}' not queued."
+        else
+          model.push({ username: username, value: command })
+        end
       end
     end
 
@@ -60,6 +73,7 @@ module OpenC3
       @microservice_name = "#{scope}__QUEUE__#{name}"
       @state = state
       @commands = commands
+      @instance_mutex = Mutex.new
     end
 
     def create(update: false, force: false, queued: false)
@@ -92,14 +106,18 @@ module OpenC3
     end
 
     def push(command)
-      @commands.push(command)
-      update()
+      @instance_mutex.synchronize do
+        @commands.push(command)
+        update()
+      end
     end
 
     def pop
-      command = @commands.pop
-      update()
-      return command
+      @instance_mutex.synchronize do
+        command = @commands.pop
+        update()
+        return command
+      end
     end
 
     def create_microservice(topics:)

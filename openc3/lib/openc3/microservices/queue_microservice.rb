@@ -66,12 +66,18 @@ module OpenC3
     end
 
     def process_queued_commands
-      model = QueueModel.get_model(name: @queue_name, scope: @scope)
-      model.commands.each do |command|
-        username = command['username']
-        token = get_token(username)
-        raise "No token available for username: #{username}" unless token
-        cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
+      while true
+        model = QueueModel.get_model(name: @queue_name, scope: @scope)
+        command = model.pop
+        puts "Processing command: #{command}"
+        if command
+          username = command['username']
+          token = get_token(username)
+          raise "No token available for username: #{username}" unless token
+          cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
+        else
+          break
+        end
       end
     end
 
