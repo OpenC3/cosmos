@@ -172,7 +172,7 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
   await expect(
-    page.locator('text=INST/procedures/save_overwrite.rb'),
+    page.getByRole('dialog').locator('text=File Save As...'),
   ).toBeVisible()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   // Confirmation dialog
