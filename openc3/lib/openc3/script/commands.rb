@@ -122,7 +122,7 @@ module OpenC3
     # except for range_check, hazardous_check, and raw as they are part of the cmd name
     # manual is always false since this is called from script and that is the default
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, queue: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
@@ -132,7 +132,7 @@ module OpenC3
       else
         begin
           begin
-            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end
@@ -140,7 +140,7 @@ module OpenC3
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end

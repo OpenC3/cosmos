@@ -75,6 +75,18 @@ Rails.application.routes.draw do
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/widgets/:id', to: 'widgets#destroy', id: /[^\/]+/
 
+    # resources :queues, only: [:index, :create]
+    get '/queues', to: 'queues#index'
+    post '/queues/:name', to: 'queues#create', name: /[^\/]+/
+    get '/queues/:name', to: 'queues#show', name: /[^\/]+/
+    get '/queues/:name/list', to: 'queues#list', name: /[^\/]+/
+    delete '/queues/:name', to: 'queues#destroy', name: /[^\/]+/
+    post '/queues/:name/hold', to: 'queues#hold', name: /[^\/]+/
+    post '/queues/:name/release', to: 'queues#release', name: /[^\/]+/
+    post '/queues/:name/disable', to: 'queues#disable', name: /[^\/]+/
+    post '/queues/:name/push', to: 'queues#push', name: /[^\/]+/
+    post '/queues/:name/pop', to: 'queues#pop', name: /[^\/]+/
+
     resources :permissions, only: [:index]
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
