@@ -1325,7 +1325,7 @@ export default {
               this.showScripts = true
             }
           } else {
-            throw null // Get into the following catch block because this should be handled the same as an error like 404
+            throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
           }
         })
         .catch((error) => {
