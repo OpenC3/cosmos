@@ -1301,37 +1301,41 @@ export default {
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
-      return Api.get(`/script-api/running-script/${id}`).then((response) => {
-        if (response.data) {
-          let state = response.data.state
-          if (
-            state !== 'completed' &&
-            state !== 'completed_errors' &&
-            state !== 'stopped' &&
-            state !== 'crashed' &&
-            state !== 'killed'
-          ) {
-            this.filename = response.data.filename
-            this.tryLoadSuites(response)
-            this.initScriptStart()
-            this.scriptStart(id)
+      return Api.get(`/script-api/running-script/${id}`)
+        .then((response) => {
+          if (response.data) {
+            let state = response.data.state
+            if (
+              state !== 'completed' &&
+              state !== 'completed_errors' &&
+              state !== 'stopped' &&
+              state !== 'crashed' &&
+              state !== 'killed'
+            ) {
+              this.filename = response.data.filename
+              this.tryLoadSuites(response)
+              this.initScriptStart()
+              this.scriptStart(id)
+            } else {
+              this.$notify.caution({
+                title: `Script ${id} has already completed`,
+                body: 'Check the Completed Scripts below ...',
+              })
+              this.scriptComplete()
+              this.showScripts = true
+            }
           } else {
-            this.$notify.caution({
-              title: `Script ${id} has already completed`,
-              body: 'Check the Completed Scripts below ...',
-            })
-            this.scriptComplete()
-            this.showScripts = true
+            throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
           }
-        } else {
+        })
+        .catch((error) => {
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
           })
           this.scriptComplete()
           this.showScripts = true
-        }
-      })
+        })
     },
     tryLoadSuites: function (response) {
       if (response.data.suite_runner) {
