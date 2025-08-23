@@ -446,5 +446,122 @@ module OpenC3
         expect(model3.tlm_target_names).to eq ["TARGET1"]
       end
     end
+
+    describe "initialize" do
+      it "initializes cmd_target_enabled and tlm_target_enabled" do
+        model = InterfaceModel.new(
+          name: "TEST_INT",
+          scope: "DEFAULT",
+          cmd_target_names: ["TARGET1", "TARGET2"],
+          tlm_target_names: ["TARGET3", "TARGET4"]
+        )
+        expect(model.cmd_target_enabled["TARGET1"]).to be true
+        expect(model.cmd_target_enabled["TARGET2"]).to be true
+        expect(model.cmd_target_enabled["UNKNOWN"]).to be true
+        expect(model.tlm_target_enabled["TARGET3"]).to be true
+        expect(model.tlm_target_enabled["TARGET4"]).to be true
+        expect(model.tlm_target_enabled["UNKNOWN"]).to be true
+      end
+
+      it "accepts cmd_target_enabled and tlm_target_enabled parameters" do
+        model = InterfaceModel.new(
+          name: "TEST_INT",
+          scope: "DEFAULT",
+          cmd_target_names: ["TARGET1"],
+          tlm_target_names: ["TARGET2"],
+          cmd_target_enabled: {"TARGET1" => false, "UNKNOWN" => true},
+          tlm_target_enabled: {"TARGET2" => false, "UNKNOWN" => true}
+        )
+        expect(model.cmd_target_enabled["TARGET1"]).to be false
+        expect(model.cmd_target_enabled["UNKNOWN"]).to be true
+        expect(model.tlm_target_enabled["TARGET2"]).to be false
+        expect(model.tlm_target_enabled["UNKNOWN"]).to be true
+      end
+    end
+
+    describe "handle_config MAP_TARGET with ENABLED/DISABLED" do
+      it "handles MAP_TARGET with ENABLED state" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "MAP_TARGET TARGET1 ENABLED"
+        tf.close
+
+        parser.parse_file(tf.path, false, true, true) do |keyword, parameters|
+          model.handle_config(parser, keyword, parameters)
+        end
+
+        expect(model.target_names).to include("TARGET1")
+        expect(model.cmd_target_names).to include("TARGET1")
+        expect(model.tlm_target_names).to include("TARGET1")
+        expect(model.cmd_target_enabled["TARGET1"]).to be true
+        expect(model.tlm_target_enabled["TARGET1"]).to be true
+      end
+
+      it "handles MAP_TARGET with DISABLED state" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "MAP_TARGET TARGET1 DISABLED"
+        tf.close
+
+        parser.parse_file(tf.path, false, true, true) do |keyword, parameters|
+          model.handle_config(parser, keyword, parameters)
+        end
+
+        expect(model.target_names).to include("TARGET1")
+        expect(model.cmd_target_names).to include("TARGET1")
+        expect(model.tlm_target_names).to include("TARGET1")
+        expect(model.cmd_target_enabled["TARGET1"]).to be false
+        expect(model.tlm_target_enabled["TARGET1"]).to be false
+      end
+
+      it "handles MAP_CMD_TARGET with DISABLED state" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "MAP_CMD_TARGET TARGET1 DISABLED"
+        tf.close
+
+        parser.parse_file(tf.path, false, true, true) do |keyword, parameters|
+          model.handle_config(parser, keyword, parameters)
+        end
+
+        expect(model.target_names).to include("TARGET1")
+        expect(model.cmd_target_names).to include("TARGET1")
+        expect(model.cmd_target_enabled["TARGET1"]).to be false
+      end
+
+      it "handles MAP_TLM_TARGET with DISABLED state" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "MAP_TLM_TARGET TARGET1 DISABLED"
+        tf.close
+
+        parser.parse_file(tf.path, false, true, true) do |keyword, parameters|
+          model.handle_config(parser, keyword, parameters)
+        end
+
+        expect(model.target_names).to include("TARGET1")
+        expect(model.tlm_target_names).to include("TARGET1")
+        expect(model.tlm_target_enabled["TARGET1"]).to be false
+      end
+
+      it "handles MAP_TARGET UNKNOWN with states" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "MAP_TARGET UNKNOWN DISABLED"
+        tf.close
+
+        parser.parse_file(tf.path, false, true, true) do |keyword, parameters|
+          model.handle_config(parser, keyword, parameters)
+        end
+
+        expect(model.cmd_target_enabled["UNKNOWN"]).to be false
+        expect(model.tlm_target_enabled["UNKNOWN"]).to be false
+      end
+    end
   end
 end

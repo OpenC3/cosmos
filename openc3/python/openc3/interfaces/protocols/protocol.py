@@ -66,3 +66,9 @@ class Protocol:
     def protocol_cmd(self, cmd_name, *cmd_args):
         # Default do nothing - Implemented by subclasses
         return False
+
+    def write_details(self):
+        return {}
+
+    def read_details(self):
+        return {}

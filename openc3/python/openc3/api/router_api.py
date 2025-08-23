@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -32,6 +32,9 @@ WHITELIST.extend(
         "get_all_router_info",
         "router_cmd",
         "router_protocol_cmd",
+        "router_target_enable",
+        "router_target_disable",
+        "router_details",
     ]
 )
 
@@ -144,3 +147,34 @@ def router_protocol_cmd(
         index=index,
         scope=scope,
     )
+
+
+def router_target_enable(
+    router_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", router_name=router_name, scope=scope)
+    RouterTopic.router_target_enable(
+        router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def router_target_disable(
+    router_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", router_name=router_name, scope=scope)
+    RouterTopic.router_target_disable(
+        router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def router_details(router_name, scope=OPENC3_SCOPE):
+    authorize(permission="system", router_name=router_name, scope=scope)
+    return RouterTopic.router_details(router_name, scope=scope)

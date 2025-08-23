@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -173,6 +173,57 @@ class InterfaceTopic(Topic):
         Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"inject_tlm": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def interface_target_enable(
+        cls,
+        interface_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "enable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def interface_target_disable(
+        cls,
+        interface_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "disable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def interface_details(cls, interface_name, scope=OPENC3_SCOPE):
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"details": "true"},
             "*",
             100,
         )

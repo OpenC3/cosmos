@@ -149,5 +149,38 @@ module OpenC3
         @api.router_protocol_cmd("ROUTE_INT", "cmd1", "param1")
       end
     end
+
+    describe "router_target_enable" do
+      it "enables a target on a router" do
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST")
+
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST", cmd_only: true)
+
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "router_target_disable" do
+      it "disables a target on a router" do
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST")
+
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST", cmd_only: true)
+
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "router_details" do
+      it "gets router details" do
+        expect(RouterTopic).to receive(:router_details).with("ROUTE_INT", scope: "DEFAULT")
+        @api.router_details("ROUTE_INT")
+      end
+    end
   end
 end

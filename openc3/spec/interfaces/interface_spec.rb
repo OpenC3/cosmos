@@ -637,5 +637,85 @@ module OpenC3
         @i.protocol_cmd("A", "GREAT", "CMD", read_write: :READ, index: 2)
       end
     end
+
+    describe "initialize" do
+      it "initializes cmd_target_enabled and tlm_target_enabled" do
+        i = Interface.new
+        expect(i.cmd_target_enabled).to eql({})
+        expect(i.tlm_target_enabled).to eql({})
+      end
+    end
+
+    describe "copy_to" do
+      it "copies cmd_target_enabled and tlm_target_enabled" do
+        i = Interface.new
+        i.cmd_target_enabled = {"TARGET1" => true, "TARGET2" => false}
+        i.tlm_target_enabled = {"TARGET1" => false, "TARGET2" => true}
+        
+        i2 = Interface.new
+        i.copy_to(i2)
+        
+        expect(i2.cmd_target_enabled).to eql({"TARGET1" => true, "TARGET2" => false})
+        expect(i2.tlm_target_enabled).to eql({"TARGET1" => false, "TARGET2" => true})
+      end
+
+      it "properly handles options that support multiple instances" do
+        i = Interface.new
+        i.options["TEST_OPTION"] = [["value1", "value2"], ["value3", "value4"]]
+        
+        i2 = Interface.new
+        allow(i2).to receive(:set_option)
+        expect(i2).to receive(:set_option).with("TEST_OPTION", ["value1", "value2"])
+        expect(i2).to receive(:set_option).with("TEST_OPTION", ["value3", "value4"])
+        
+        i.copy_to(i2)
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = Interface.new
+        i.name = "TEST_INT"
+        i.cmd_target_names = ["TARGET1"]
+        i.tlm_target_names = ["TARGET2"]
+        i.cmd_target_enabled = {"TARGET1" => true}
+        i.tlm_target_enabled = {"TARGET2" => false}
+        i.connect_on_startup = false
+        i.auto_reconnect = false
+        i.reconnect_delay = 10.0
+        i.disable_disconnect = true
+        i.read_allowed = false
+        i.write_allowed = false
+        i.write_raw_allowed = false
+        i.options = {"TEST_OPTION" => ["value1"]}
+        
+        # Mock protocols
+        read_protocol = double("ReadProtocol")
+        allow(read_protocol).to receive(:read_details).and_return({"type" => "read"})
+        i.read_protocols = [read_protocol]
+        
+        write_protocol = double("WriteProtocol")
+        allow(write_protocol).to receive(:write_details).and_return({"type" => "write"})
+        i.write_protocols = [write_protocol]
+        
+        details = i.details
+        
+        expect(details["name"]).to eql("TEST_INT")
+        expect(details["cmd_target_names"]).to eql(["TARGET1"])
+        expect(details["tlm_target_names"]).to eql(["TARGET2"])
+        expect(details["cmd_target_enabled"]).to eql({"TARGET1" => true})
+        expect(details["tlm_target_enabled"]).to eql({"TARGET2" => false})
+        expect(details["connect_on_startup"]).to be false
+        expect(details["auto_reconnect"]).to be false
+        expect(details["reconnect_delay"]).to eql(10.0)
+        expect(details["disable_disconnect"]).to be true
+        expect(details["read_allowed"]).to be false
+        expect(details["write_allowed"]).to be false
+        expect(details["write_raw_allowed"]).to be false
+        expect(details["options"]).to eql({"TEST_OPTION" => ["value1"]})
+        expect(details["read_protocols"]).to eql([{"type" => "read"}])
+        expect(details["write_protocols"]).to eql([{"type" => "write"}])
+      end
+    end
   end
 end

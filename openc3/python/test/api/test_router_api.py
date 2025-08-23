@@ -181,3 +181,30 @@ class TestRouterApi(unittest.TestCase):
     #             "param2",
     #         ),
     #     )
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_target_enable")
+    def test_enables_a_target_on_a_router(self, mock_enable):
+        router_target_enable("ROUTE_INT", "INST")
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        router_target_enable("ROUTE_INT", "INST", cmd_only=True)
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        router_target_enable("ROUTE_INT", "INST", tlm_only=True)
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_target_disable")
+    def test_disables_a_target_on_a_router(self, mock_disable):
+        router_target_disable("ROUTE_INT", "INST")
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        router_target_disable("ROUTE_INT", "INST", cmd_only=True)
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        router_target_disable("ROUTE_INT", "INST", tlm_only=True)
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_details")
+    def test_gets_router_details(self, mock_details):
+        router_details("ROUTE_INT")
+        mock_details.assert_called_with("ROUTE_INT", scope="DEFAULT")

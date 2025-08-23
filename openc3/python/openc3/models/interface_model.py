@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -71,6 +71,8 @@ class InterfaceModel(Model):
         target_names: Optional[list] = None,
         cmd_target_names: Optional[list] = None,
         tlm_target_names: Optional[list] = None,
+        cmd_target_enabled: Optional[dict] = None,
+        tlm_target_enabled: Optional[dict] = None,
         connect_on_startup: bool = True,
         auto_reconnect: bool = True,
         reconnect_delay: float = 5.0,
@@ -113,6 +115,16 @@ class InterfaceModel(Model):
         self.target_names = [] if target_names is None else target_names
         self.cmd_target_names = [] if cmd_target_names is None else cmd_target_names
         self.tlm_target_names = [] if tlm_target_names is None else tlm_target_names
+        self.cmd_target_enabled = {} if cmd_target_enabled is None else cmd_target_enabled
+        if not self.cmd_target_enabled:
+            for target_name in self.cmd_target_names:
+                self.cmd_target_enabled[target_name] = True
+            self.cmd_target_enabled['UNKNOWN'] = True
+        self.tlm_target_enabled = {} if tlm_target_enabled is None else tlm_target_enabled
+        if not self.tlm_target_enabled:
+            for target_name in self.tlm_target_names:
+                self.tlm_target_enabled[target_name] = True
+            self.tlm_target_enabled['UNKNOWN'] = True
         self.connect_on_startup = connect_on_startup
         self.auto_reconnect = auto_reconnect
         self.reconnect_delay = reconnect_delay

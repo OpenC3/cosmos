@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -140,6 +140,57 @@ class RouterTopic(Topic):
         Topic.write_topic(
             f"{{{scope}__CMD}}ROUTER__{router_name}",
             {"protocol_cmd": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def router_target_enable(
+        cls,
+        router_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "enable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def router_target_disable(
+        cls,
+        router_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "disable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def router_details(cls, router_name, scope=OPENC3_SCOPE):
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"details": "true"},
             "*",
             100,
         )

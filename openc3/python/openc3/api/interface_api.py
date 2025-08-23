@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -34,6 +34,9 @@ WHITELIST.extend(
         "map_target_to_interface",
         "interface_cmd",
         "interface_protocol_cmd",
+        "interface_target_enable",
+        "interface_target_disable",
+        "interface_details",
     ]
 )
 
@@ -178,3 +181,34 @@ def interface_protocol_cmd(
         index=index,
         scope=scope,
     )
+
+
+def interface_target_enable(
+    interface_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.interface_target_enable(
+        interface_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def interface_target_disable(
+    interface_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.interface_target_disable(
+        interface_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def interface_details(interface_name, scope=OPENC3_SCOPE):
+    authorize(permission="system", interface_name=interface_name, scope=scope)
+    return InterfaceTopic.interface_details(interface_name, scope=scope)

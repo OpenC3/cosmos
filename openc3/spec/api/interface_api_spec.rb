@@ -199,5 +199,38 @@ module OpenC3
         @api.interface_protocol_cmd("INST_INT", "cmd1", "param1")
       end
     end
+
+    describe "interface_target_enable" do
+      it "enables a target on an interface" do
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST")
+
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST", cmd_only: true)
+
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "interface_target_disable" do
+      it "disables a target on an interface" do
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST")
+
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST", cmd_only: true)
+
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "interface_details" do
+      it "gets interface details" do
+        expect(InterfaceTopic).to receive(:interface_details).with("INST_INT", scope: "DEFAULT")
+        @api.interface_details("INST_INT")
+      end
+    end
   end
 end

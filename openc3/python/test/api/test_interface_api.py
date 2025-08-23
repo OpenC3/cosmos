@@ -240,3 +240,30 @@ class TestInterfaceApi(unittest.TestCase):
                 "param2",
             ),
         )
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_target_enable")
+    def test_enables_a_target_on_an_interface(self, mock_enable):
+        interface_target_enable("INST_INT", "INST")
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        interface_target_enable("INST_INT", "INST", cmd_only=True)
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        interface_target_enable("INST_INT", "INST", tlm_only=True)
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_target_disable")
+    def test_disables_a_target_on_an_interface(self, mock_disable):
+        interface_target_disable("INST_INT", "INST")
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        interface_target_disable("INST_INT", "INST", cmd_only=True)
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        interface_target_disable("INST_INT", "INST", tlm_only=True)
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_details")
+    def test_gets_interface_details(self, mock_details):
+        interface_details("INST_INT")
+        mock_details.assert_called_with("INST_INT", scope="DEFAULT")
