@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,7 +37,10 @@ module OpenC3
                        'get_all_interface_info',
                        'map_target_to_interface',
                        'interface_cmd',
-                       'interface_protocol_cmd'
+                       'interface_protocol_cmd',
+                       'interface_target_enable',
+                       'interface_target_disable',
+                       'interface_details'
                      ])
 
     # Get information about an interface
@@ -161,6 +164,21 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
       InterfaceTopic.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
+    end
+
+    def interface_target_enable(interface_name, target_name, cmd_only: false, tlm_only: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      InterfaceTopic.interface_target_enable(interface_name, target_name, cmd_only: cmd_only, tlm_only: tlm_only, scope: scope)
+    end
+
+    def interface_target_disable(interface_name, target_name, cmd_only: false, tlm_only: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      InterfaceTopic.interface_target_disable(interface_name, target_name, cmd_only: cmd_only, tlm_only: tlm_only, scope: scope)
+    end
+
+    def interface_details(interface_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      InterfaceTopic.interface_details(interface_name, scope: scope)
     end
   end
 end

@@ -88,5 +88,13 @@ module OpenC3
       # Default do nothing - Implemented by subclasses
       return false
     end
+
+    def write_details
+      return {}
+    end
+
+    def read_details
+      return {}
+    end
   end
 end

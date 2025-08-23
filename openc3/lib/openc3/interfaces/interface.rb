@@ -51,6 +51,14 @@ module OpenC3
     # @return [Array<String>] Array of tlm target names associated with this interface
     attr_accessor :tlm_target_names
 
+    # @return [Hash<String, Boolean>] Hash of enabled state for each cmd_target
+    # Disabled cmd targets will ignore all commands sent to the interface microservice for that target
+    attr_accessor :cmd_target_enabled
+
+    # @return [Hash<String, Boolean>] Array of tlm target names associated with this interface
+    # Disabled tlm targets will not output telemetry from the interface microservice for that target
+    attr_accessor :tlm_target_enabled
+
     # @return [Boolean] Flag indicating if the interface should be connected
     #   to on startup
     attr_accessor :connect_on_startup
@@ -66,22 +74,12 @@ module OpenC3
     #   this interface
     attr_accessor :disable_disconnect
 
-    # @return [Array] Array of packet logger classes for this interface
-    attr_accessor :packet_log_writer_pairs
-
-    # @return [Array] Array of stored packet log writers
-    attr_accessor :stored_packet_log_writer_pairs
-
     # @return [StreamLogPair] StreamLogPair instance or nil
     attr_accessor :stream_log_pair
 
     # @return [Array<Routers>] Array of routers that receive packets
-    #   read from the interface
+    #   read from the interface (used by Bridge)
     attr_accessor :routers
-
-    # @return [Array<Routers>] Array of cmd routers that mirror packets
-    #   sent from the interface
-    attr_accessor :cmd_routers
 
     # @return [Integer] The number of packets read from this interface
     attr_accessor :read_count
@@ -151,14 +149,14 @@ module OpenC3
       @target_names = []
       @cmd_target_names = []
       @tlm_target_names = []
+      @cmd_target_enabled = {}
+      @tlm_target_enabled = {}
       @connect_on_startup = true
       @auto_reconnect = true
       @reconnect_delay = 5.0
       @disable_disconnect = false
-      @packet_log_writer_pairs = []
-      @stored_packet_log_writer_pairs = []
+      @stream_log_pair = nil
       @routers = []
-      @cmd_routers = []
       @read_count = 0
       @write_count = 0
       @bytes_read = 0
@@ -482,13 +480,13 @@ module OpenC3
       other_interface.target_names = self.target_names.clone
       other_interface.cmd_target_names = self.cmd_target_names.clone
       other_interface.tlm_target_names = self.tlm_target_names.clone
+      other_interface.cmd_target_enabled = self.cmd_target_enabled.clone
+      other_interface.tlm_target_enabled = self.tlm_target_enabled.clone
       other_interface.connect_on_startup = self.connect_on_startup
       other_interface.auto_reconnect = self.auto_reconnect
       other_interface.reconnect_delay = self.reconnect_delay
       other_interface.disable_disconnect = self.disable_disconnect
-      other_interface.packet_log_writer_pairs = self.packet_log_writer_pairs.clone
       other_interface.routers = self.routers.clone
-      other_interface.cmd_routers = self.cmd_routers.clone
       other_interface.read_count = self.read_count
       other_interface.write_count = self.write_count
       other_interface.bytes_read = self.bytes_read
@@ -498,7 +496,14 @@ module OpenC3
       # read_queue_size is the number of packets in the queue so don't copy
       # write_queue_size is the number of packets in the queue so don't copy
       self.options.each do |option_name, option_values|
-        other_interface.set_option(option_name, option_values)
+        if option_values and Array === option_values[0]
+          # Properly Handle option that supports multiple instances
+          option_values.each do |ovs|
+            other_interface.set_option(option_name, ovs)
+          end
+        else
+          other_interface.set_option(option_name, option_values)
+        end
       end
       other_interface.protocol_info = []
       self.protocol_info.each do |protocol_class, protocol_args, read_write|
@@ -645,6 +650,51 @@ module OpenC3
         end
       end
       return handled
+    end
+
+    def details
+      result = as_json()
+      result['cmd_target_names'] = @cmd_target_names
+      result['tlm_target_names'] = @tlm_target_names
+      result['cmd_target_enabled'] = @cmd_target_enabled
+      result['tlm_target_enabled'] = @tlm_target_enabled
+      result['connect_on_startup'] = @connect_on_startup
+      result['auto_reconnect'] = @auto_reconnect
+      result['reconnect_delay'] = @reconnect_delay
+      result['disable_disconnect'] = @disable_disconnect
+      result['read_allowed'] = @read_allowed
+      result['write_allowed'] = @write_allowed
+      result['write_raw_allowed'] = @write_raw_allowed
+      result['read_raw_data'] = @read_raw_data
+      result['written_raw_data'] = @written_raw_data
+      if @read_raw_data_time
+        result['read_raw_data_time'] = @read_raw_data_time.iso8601
+      else
+        result['read_raw_data_time'] = nil
+      end
+      if @written_raw_data_time
+        result['written_raw_data_time'] = @written_raw_data_time.iso8601
+      else
+        result['written_raw_data_time'] = nil
+      end
+
+      if @stream_log_pair and (@stream_log_pair.write_log.logging_enabled or @stream_log_pair.read_log.logging_enabled)
+        result['stream_log'] = true
+      else
+        result['stream_log'] = false
+      end
+
+      result['options'] = @options
+      result['read_protocols'] = []
+      @read_protocols.each do |read_protocol|
+        result['read_protocols'] << read_protocol.read_details
+      end
+      result['write_protocols'] = []
+      @write_protocols.each do |write_protocol|
+        result['write_protocols'] << write_protocol.write_details
+      end
+
+      return result
     end
   end
 end

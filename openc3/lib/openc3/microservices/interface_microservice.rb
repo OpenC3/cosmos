@@ -196,9 +196,35 @@ module OpenC3
                 next "Critical command #{msg_hash['release_critical']} not found"
               end
             end
+            if msg_hash.key?('target_control')
+              begin
+                params = JSON.parse(msg_hash['target_control'], allow_nan: true, create_additions: true)
+                target_name = params['target_name']
+                cmd_only = params['cmd_only']
+                tlm_only = params['tlm_only']
+                action = params['action']
+                if action == 'disable'
+                  @interface.cmd_target_enable[target_name] = false unless tlm_only
+                  @interface.tlm_target_enable[target_name] = false unless cmd_only
+                  @logger.info "#{@interface.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+                else # enable
+                  @interface.cmd_target_enable[target_name] = true unless tlm_only
+                  @interface.tlm_target_enable[target_name] = true unless cmd_only
+                  @logger.info "#{@interface.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+                end
+              rescue => e
+                @logger.error "#{@interface.name}: target_control: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
           end
 
           target_name = msg_hash['target_name']
+          if target_name and not @cmd_target_enabled[target_name]
+            next nil # Return and don't ack given target_name if disabled
+          end
+
           cmd_name = msg_hash['cmd_name']
           manual = ConfigParser.handle_true_false(msg_hash['manual'])
           cmd_params = nil
@@ -230,10 +256,15 @@ module OpenC3
               else
                 raise "Invalid command received:\n #{msg_hash}"
               end
-              orig_command = System.commands.packet(command.target_name, command.packet_name)
-              orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
-              command.received_count = orig_command.received_count
-              command.received_time = Time.now
+
+              if @interface.cmd_target_enabled[command.target_name]
+                orig_command = System.commands.packet(command.target_name, command.packet_name)
+                orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
+                command.received_count = orig_command.received_count
+                command.received_time = Time.now
+              else
+                next nil # Don't ack disabled targets
+              end
             rescue => e
               @logger.error "#{@interface.name}: #{msg_hash}"
               @logger.error "#{@interface.name}: #{e.formatted}"
@@ -427,7 +458,29 @@ module OpenC3
               @router.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
               RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
             rescue => e
-              @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
+              @logger.error "#{@router.name}: protocol_cmd: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
+          end
+          if msg_hash.key?('target_control')
+            begin
+              params = JSON.parse(msg_hash['target_control'], allow_nan: true, create_additions: true)
+              target_name = params['target_name']
+              cmd_only = params['cmd_only']
+              tlm_only = params['tlm_only']
+              action = params['action']
+              if action == 'disable'
+                @router.cmd_target_enable[target_name] = false unless tlm_only
+                @router.tlm_target_enable[target_name] = false unless cmd_only
+                @logger.info "#{@router.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+              else # enable
+                @router.cmd_target_enable[target_name] = true unless tlm_only
+                @router.tlm_target_enable[target_name] = true unless cmd_only
+                @logger.info "#{@router.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+              end
+            rescue => e
+              @logger.error "#{@router.name}: target_control: #{e.formatted}"
               next e.message
             end
             next 'SUCCESS'
@@ -442,19 +495,23 @@ module OpenC3
           target_name = msg_hash["target_name"]
           packet_name = msg_hash["packet_name"]
 
-          packet = System.telemetry.packet(target_name, packet_name)
-          packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
-          packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
-          packet.received_count = msg_hash["received_count"].to_i
-          packet.buffer = msg_hash["buffer"]
+          if @router.tlm_target_enabled[target_name]
+            packet = System.telemetry.packet(target_name, packet_name)
+            packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+            packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
+            packet.received_count = msg_hash["received_count"].to_i
+            packet.buffer = msg_hash["buffer"]
 
-          begin
-            @router.write(packet)
-            RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
-            next 'SUCCESS'
-          rescue => e
-            @logger.error "#{@router.name}: #{e.formatted}"
-            next e.message
+            begin
+              @router.write(packet)
+              RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
+              next 'SUCCESS'
+            rescue => e
+              @logger.error "#{@router.name}: #{e.formatted}"
+              next e.message
+            end
+          else
+            next nil
           end
         end
       end
@@ -709,8 +766,10 @@ module OpenC3
       end
 
       # Write to stream
-      sync_tlm_packet_counts(packet)
-      TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
+      if @interface.tlm_target_enabled[packet.target_name]
+        sync_tlm_packet_counts(packet)
+        TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
+      end
     end
 
     def handle_connection_failed(connection, connect_error)

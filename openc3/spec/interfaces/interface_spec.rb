@@ -91,7 +91,6 @@ module OpenC3
         expect(i.auto_reconnect).to be true
         expect(i.reconnect_delay).to eql 5.0
         expect(i.disable_disconnect).to be false
-        expect(i.packet_log_writer_pairs).to eql []
         expect(i.stream_log_pair).to eql nil
         expect(i.routers).to eql []
         expect(i.read_count).to eql 0
@@ -524,7 +523,6 @@ module OpenC3
         i.auto_reconnect = false
         i.reconnect_delay = 1.0
         i.disable_disconnect = true
-        i.packet_log_writer_pairs = [1, 2]
         i.routers = [3, 4]
         i.read_count = 1
         i.write_count = 2
@@ -545,7 +543,6 @@ module OpenC3
         expect(i2.auto_reconnect).to be false
         expect(i2.reconnect_delay).to eql 1.0
         expect(i2.disable_disconnect).to be true
-        expect(i2.packet_log_writer_pairs).to eql [1, 2]
         expect(i2.routers).to eql [3, 4]
         expect(i2.read_count).to eql 1
         expect(i2.write_count).to eql 2

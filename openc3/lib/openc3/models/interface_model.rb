@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,6 +33,8 @@ module OpenC3
     attr_accessor :target_names # Redundant superset of cmd_target_names and tlm_target_names for backwards compat
     attr_accessor :cmd_target_names
     attr_accessor :tlm_target_names
+    attr_accessor :cmd_target_enabled
+    attr_accessor :tlm_target_enabled
     attr_accessor :connect_on_startup
     attr_accessor :auto_reconnect
     attr_accessor :reconnect_delay
@@ -104,6 +106,8 @@ module OpenC3
       target_names: [],
       cmd_target_names: [],
       tlm_target_names: [],
+      cmd_target_enabled: nil,
+      tlm_target_enabled: nil,
       connect_on_startup: true,
       auto_reconnect: true,
       reconnect_delay: 5.0,
@@ -134,6 +138,22 @@ module OpenC3
       @target_names = target_names
       @cmd_target_names = cmd_target_names
       @tlm_target_names = tlm_target_names
+      @cmd_target_enabled = cmd_target_enabled
+      if @cmd_target_enabled.nil?
+        @cmd_target_enabled = {}
+        @cmd_target_names.each do |target_name|
+          @cmd_target_enabled[target_name] = true
+        end
+        @cmd_target_enabled['UNKNOWN'] = true
+      end
+      @tlm_target_enabled = tlm_target_enabled
+      if @tlm_target_enabled.nil?
+        @tlm_target_enabled = {}
+        @tlm_target_names.each do |target_name|
+          @tlm_target_enabled[target_name] = true
+        end
+        @tlm_target_enabled['UNKNOWN'] = true
+      end
       @connect_on_startup = connect_on_startup
       @auto_reconnect = auto_reconnect
       @reconnect_delay = reconnect_delay
@@ -178,6 +198,8 @@ module OpenC3
       interface_or_router.target_names = @target_names.dup
       interface_or_router.cmd_target_names = @cmd_target_names.dup
       interface_or_router.tlm_target_names = @tlm_target_names.dup
+      interface_or_router.cmd_target_enabled = @cmd_target_enabled.dup
+      interface_or_router.tlm_target_enabled = @tlm_target_enabled.dup
       interface_or_router.connect_on_startup = @connect_on_startup
       interface_or_router.auto_reconnect = @auto_reconnect
       interface_or_router.reconnect_delay = @reconnect_delay
@@ -208,6 +230,8 @@ module OpenC3
         'target_names' => @target_names,
         'cmd_target_names' => @cmd_target_names,
         'tlm_target_names' => @tlm_target_names,
+        'cmd_target_enabled' => @cmd_target_enabled,
+        'tlm_target_enabled' => @tlm_target_enabled,
         'connect_on_startup' => @connect_on_startup,
         'auto_reconnect' => @auto_reconnect,
         'reconnect_delay' => @reconnect_delay,
@@ -236,27 +260,59 @@ module OpenC3
       target
     end
 
+    def handle_enabled(parser)
+      if parser.parameters[1].nil?
+        return true
+      else
+        enabled = parser.parameters[1].to_s.upcase
+        if enabled == 'ENABLED'
+          return true
+        elsif enabled == 'DISABLED'
+          return false
+        else
+          raise parser.error("MAP_TARGET enabled state must be ENABLED or DISABLED.", usage)
+        end
+      end
+    end
+
     # Handles Interface/Router specific configuration keywords
     def handle_config(parser, keyword, parameters)
       case keyword
       when 'MAP_TARGET'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
+        usage = "#{keyword} <Target Name> <ENABLED/DISABLED>"
+        parser.verify_num_parameters(1, 2, usage)
         target_name = parameters[0].upcase
-        @target_names << target_name unless @target_names.include?(target_name)
-        @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
-        @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
+        enabled = handle_enabled(parser)
+
+        if target_name != 'UNKNOWN'
+          @target_names << target_name unless @target_names.include?(target_name)
+          @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
+          @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
+        end
+        @cmd_target_enabled[target_name] = enabled
+        @tlm_target_enabled[target_name] = enabled
 
       when 'MAP_CMD_TARGET'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
+        parser.verify_num_parameters(1, 2, "#{keyword} <Target Name> <ENABLED/DISABLED>")
         target_name = parameters[0].upcase
-        @target_names << target_name unless @target_names.include?(target_name)
-        @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
+        enabled = handle_enabled(parser)
+
+        if target_name != 'UNKNOWN'
+          @target_names << target_name unless @target_names.include?(target_name)
+          @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
+        end
+        @cmd_target_enabled[target_name] = enabled
 
       when 'MAP_TLM_TARGET'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
+        parser.verify_num_parameters(1, 2, "#{keyword} <Target Name> <ENABLED/DISABLED>")
         target_name = parameters[0].upcase
-        @target_names << target_name unless @target_names.include?(target_name)
-        @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
+        enabled = handle_enabled(parser)
+
+        if target_name != 'UNKNOWN'
+          @target_names << target_name unless @target_names.include?(target_name)
+          @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
+        end
+        @tlm_target_enabled[target_name] = enabled
 
       when 'DONT_CONNECT'
         parser.verify_num_parameters(0, 0, "#{keyword}")
@@ -416,13 +472,17 @@ module OpenC3
       if cmd_only
         @cmd_target_names.delete(target_name)
         @target_names.delete(target_name) unless @tlm_target_names.include?(target_name)
+        @cmd_target_enabled.delete(target_name)
       elsif tlm_only
         @tlm_target_names.delete(target_name)
         @target_names.delete(target_name) unless @cmd_target_names.include?(target_name)
+        @tlm_target_enabled.delete(target_name)
       else
         @cmd_target_names.delete(target_name)
         @tlm_target_names.delete(target_name)
         @target_names.delete(target_name)
+        @cmd_target_enabled.delete(target_name)
+        @tlm_target_enabled.delete(target_name)
       end
       update()
 
@@ -434,7 +494,7 @@ module OpenC3
       microservice.update
     end
 
-    def map_target(target_name, cmd_only: false, tlm_only: false, unmap_old: true)
+    def map_target(target_name, cmd_only: false, tlm_only: false, unmap_old: true, cmd_enabled: true, tlm_enabled: true)
       if cmd_only and tlm_only
         cmd_only = false
         tlm_only = false
@@ -458,6 +518,8 @@ module OpenC3
       @target_names << target_name unless @target_names.include?(target_name)
       @cmd_target_names << target_name unless @cmd_target_names.include?(target_name) or tlm_only
       @tlm_target_names << target_name unless @tlm_target_names.include?(target_name) or cmd_only
+      @cmd_target_enabled[target_name] = cmd_enabled if @cmd_target_names.include?(target_name)
+      @tlm_target_enabled[target_name] = tlm_enabled if @tlm_target_names.include?(target_name)
       update()
 
       # Respawn the microservice

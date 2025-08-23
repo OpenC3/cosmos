@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,7 +36,10 @@ module OpenC3
                        'stop_raw_logging_router',
                        'get_all_router_info',
                        'router_cmd',
-                       'router_protocol_cmd'
+                       'router_protocol_cmd',
+                       'router_target_enable',
+                       'router_target_disable',
+                       'router_details'
                      ])
 
     # Get information about a router
@@ -133,6 +136,21 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       RouterTopic.protocol_cmd(router_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
+    end
+
+    def router_target_enable(router_name, target_name, cmd_only: false, tlm_only: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
+      RouterTopic.router_target_enable(router_name, target_name, cmd_only: cmd_only, tlm_only: tlm_only, scope: scope)
+    end
+
+    def router_target_disable(router_name, target_name, cmd_only: false, tlm_only: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
+      RouterTopic.router_target_disable(router_name, target_name, cmd_only: cmd_only, tlm_only: tlm_only, scope: scope)
+    end
+
+    def router_details(router_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system', router_name: router_name, manual: manual, scope: scope, token: token)
+      RouterTopic.router_details(router_name, scope: scope)
     end
   end
 end

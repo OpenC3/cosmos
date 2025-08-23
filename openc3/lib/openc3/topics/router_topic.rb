@@ -41,7 +41,7 @@ module OpenC3
       while true
         Topic.read_topics(RouterTopic.topics(router, scope: scope)) do |topic, msg_id, msg_hash, redis|
           result = yield topic, msg_id, msg_hash, redis
-          if /CMD}ROUTER/.match?(topic)
+          if result and /CMD}ROUTER/.match?(topic)
             ack_topic = topic.split("__")
             ack_topic[1] = 'ACK' + ack_topic[1]
             ack_topic = ack_topic.join("__")
@@ -101,6 +101,41 @@ module OpenC3
       data['read_write'] = read_write.to_s.upcase
       data['index'] = index
       Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.router_target_enable(router_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['cmd_only'] = cmd_only
+      data['tlm_only'] = tlm_only
+      data['action'] = 'enable'
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.router_target_disable(router_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['cmd_only'] = cmd_only
+      data['tlm_only'] = tlm_only
+      data['action'] = 'disable'
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.router_details(router_name, scope:)
+      timeout = COMMAND_ACK_TIMEOUT_S unless timeout
+      ack_topic = "{#{scope}__ACKCMD}ROUTER__#{router_name}"
+      Topic.update_topic_offsets([ack_topic])
+
+      cmd_id = Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'interface_details' => 'true' }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == cmd_id
+            return msg_hash["result"]
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for cmd ack"
     end
   end
 end
