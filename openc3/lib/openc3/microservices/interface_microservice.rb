@@ -204,12 +204,12 @@ module OpenC3
                 tlm_only = params['tlm_only']
                 action = params['action']
                 if action == 'disable'
-                  @interface.cmd_target_enable[target_name] = false unless tlm_only
-                  @interface.tlm_target_enable[target_name] = false unless cmd_only
+                  @interface.cmd_target_enabled[target_name] = false unless tlm_only
+                  @interface.tlm_target_enabled[target_name] = false unless cmd_only
                   @logger.info "#{@interface.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
                 else # enable
-                  @interface.cmd_target_enable[target_name] = true unless tlm_only
-                  @interface.tlm_target_enable[target_name] = true unless cmd_only
+                  @interface.cmd_target_enabled[target_name] = true unless tlm_only
+                  @interface.tlm_target_enabled[target_name] = true unless cmd_only
                   @logger.info "#{@interface.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
                 end
               rescue => e
@@ -218,13 +218,13 @@ module OpenC3
               end
               next 'SUCCESS'
             end
-            if msg_hash.key?('details')
-              next @interface.details.as_json(:allow_nan => true)
+            if msg_hash.key?('interface_details')
+              next @interface.details.as_json(:allow_nan => true).to_json(:allow_nan => true)
             end
           end
 
           target_name = msg_hash['target_name']
-          if target_name and not @cmd_target_enabled[target_name]
+          if target_name and not @interface.cmd_target_enabled[target_name]
             next nil # Return and don't ack given target_name if disabled
           end
 
@@ -474,12 +474,12 @@ module OpenC3
               tlm_only = params['tlm_only']
               action = params['action']
               if action == 'disable'
-                @router.cmd_target_enable[target_name] = false unless tlm_only
-                @router.tlm_target_enable[target_name] = false unless cmd_only
+                @router.cmd_target_enabled[target_name] = false unless tlm_only
+                @router.tlm_target_enabled[target_name] = false unless cmd_only
                 @logger.info "#{@router.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
               else # enable
-                @router.cmd_target_enable[target_name] = true unless tlm_only
-                @router.tlm_target_enable[target_name] = true unless cmd_only
+                @router.cmd_target_enabled[target_name] = true unless tlm_only
+                @router.tlm_target_enabled[target_name] = true unless cmd_only
                 @logger.info "#{@router.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
               end
             rescue => e
@@ -488,8 +488,8 @@ module OpenC3
             end
             next 'SUCCESS'
           end
-          if msg_hash.key?('details')
-            next @router.details.as_json(:allow_nan => true)
+          if msg_hash.key?('router_details')
+            next @router.details.as_json(:allow_nan => true).to_json(:allow_nan => true)
           end
           next 'SUCCESS'
         end

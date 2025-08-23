@@ -521,16 +521,16 @@ class Interface:
         result['write_raw_allowed'] = self.write_raw_allowed
         result['read_raw_data'] = self.read_raw_data
         result['written_raw_data'] = self.written_raw_data
-        if self.read_raw_data_time:
+        if self.read_raw_data_time is not None:
             result['read_raw_data_time'] = self.read_raw_data_time.isoformat()
         else:
             result['read_raw_data_time'] = None
-        if self.written_raw_data_time:
+        if self.written_raw_data_time is not None:
             result['written_raw_data_time'] = self.written_raw_data_time.isoformat()
         else:
             result['written_raw_data_time'] = None
 
-        if self.stream_log_pair and (self.stream_log_pair.write_log.logging_enabled or self.stream_log_pair.read_log.logging_enabled):
+        if self.stream_log_pair is not None and (self.stream_log_pair.write_log.logging_enabled or self.stream_log_pair.read_log.logging_enabled):
             result['stream_log'] = True
         else:
             result['stream_log'] = False

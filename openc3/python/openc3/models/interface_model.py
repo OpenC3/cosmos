@@ -25,7 +25,7 @@ from openc3.models.microservice_model import MicroserviceModel
 from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_module, filename_to_class_name
-
+import copy
 
 class InterfaceModel(Model):
     INTERFACES_PRIMARY_KEY = "openc3_interfaces"
@@ -172,6 +172,8 @@ class InterfaceModel(Model):
         interface_or_router.target_names = self.target_names[:]
         interface_or_router.cmd_target_names = self.cmd_target_names[:]
         interface_or_router.tlm_target_names = self.tlm_target_names[:]
+        interface_or_router.cmd_target_enabled = copy.deepcopy(self.cmd_target_enabled)
+        interface_or_router.tlm_target_enabled = copy.deepcopy(self.tlm_target_enabled)
         interface_or_router.connect_on_startup = self.connect_on_startup
         interface_or_router.auto_reconnect = self.auto_reconnect
         interface_or_router.reconnect_delay = self.reconnect_delay
@@ -200,6 +202,8 @@ class InterfaceModel(Model):
             "target_names": self.target_names,
             "cmd_target_names": self.cmd_target_names,
             "tlm_target_names": self.tlm_target_names,
+            "cmd_target_enabled": self.cmd_target_enabled,
+            "tlm_target_enabled": self.tlm_target_enabled,
             "connect_on_startup": self.connect_on_startup,
             "auto_reconnect": self.auto_reconnect,
             "reconnect_delay": self.reconnect_delay,
@@ -238,14 +242,18 @@ class InterfaceModel(Model):
             self.cmd_target_names.remove(target_name)
             if target_name not in self.tlm_target_names:
                 self.target_names.remove(target_name)
+            del self.cmd_target_enabled[target_name]
         elif tlm_only:
             self.tlm_target_names.remove(target_name)
             if target_name not in self.cmd_target_names:
                 self.target_names.remove(target_name)
+            del self.tlm_target_enabled[target_name]
         else:
             self.cmd_target_names.remove(target_name)
             self.tlm_target_names.remove(target_name)
             self.target_names.remove(target_name)
+            del self.cmd_target_enabled[target_name]
+            del self.tlm_target_enabled[target_name]
         self.update()
 
         # Respawn the microservice
@@ -256,7 +264,7 @@ class InterfaceModel(Model):
             microservice.target_names.remove(target_name)
         microservice.update()
 
-    def map_target(self, target_name, cmd_only=False, tlm_only=False, unmap_old=True):
+    def map_target(self, target_name, cmd_only=False, tlm_only=False, unmap_old=True, cmd_enabled=True, tlm_enabled=True):
         if cmd_only and tlm_only:
             cmd_only = False
             tlm_only = False
@@ -280,6 +288,10 @@ class InterfaceModel(Model):
             self.cmd_target_names.append(target_name)
         if target_name not in self.tlm_target_names or cmd_only:
             self.tlm_target_names.append(target_name)
+        if target_name in self.cmd_target_names:
+            self.cmd_target_enabled[target_name] = cmd_enabled
+        if target_name in self.tlm_target_names:
+            self.tlm_target_enabled[target_name] = tlm_enabled
         self.update()
 
         # Respawn the microservice

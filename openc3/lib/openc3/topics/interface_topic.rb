@@ -144,6 +144,8 @@ module OpenC3
     end
 
     def self.interface_details(interface_name, scope:)
+      interface_name = interface_name.upcase
+
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
       Topic.update_topic_offsets([ack_topic])
@@ -153,7 +155,7 @@ module OpenC3
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
-            return msg_hash["result"]
+            return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
           end
         end
       end

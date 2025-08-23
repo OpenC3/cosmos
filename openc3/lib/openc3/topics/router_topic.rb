@@ -122,16 +122,18 @@ module OpenC3
     end
 
     def self.router_details(router_name, scope:)
+      router_name = router_name.upcase
+
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}ROUTER__#{router_name}"
       Topic.update_topic_offsets([ack_topic])
 
-      cmd_id = Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'interface_details' => 'true' }, '*', 100)
+      cmd_id = Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'router_details' => 'true' }, '*', 100)
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
-            return msg_hash["result"]
+            return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
           end
         end
       end

@@ -45,7 +45,7 @@ from openc3.interfaces.interface import WriteRejectError
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
-from openc3.utilities.json import JsonDecoder
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.store import Store, openc3_redis_cluster
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.utilities.thread_manager import ThreadManager
@@ -237,8 +237,8 @@ class InterfaceCmdHandlerThread:
                     self.logger.error(f"{self.interface.name}: target_control: {repr(e)}")
                     return str(e)
                 return "SUCCESS"
-            if msg_hash.get(b"details"):
-                return self.interface.details()
+            if msg_hash.get(b"interface_details"):
+                return json.dumps(self.interface.details(), cls=JsonEncoder)
 
         target_name = msg_hash[b"target_name"].decode()
         if target_name and not self.interface.cmd_target_enabled.get(target_name, True):
@@ -504,8 +504,8 @@ class RouterTlmHandlerThread:
                         self.logger.error(f"{self.router.name}: target_control: {repr(e)}")
                         return str(e)
                     return "SUCCESS"
-                if msg_hash.get(b"details"):
-                    return self.router.details()
+                if msg_hash.get(b"router_details"):
+                    return json.dumps(self.router.details(), cls=JsonEncoder)
                 return "SUCCESS"
 
             if self.router.connected():

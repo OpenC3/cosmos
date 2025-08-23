@@ -18,7 +18,7 @@ import json
 import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
-
+from openc3.utilities.json import JsonDecoder
 
 class InterfaceTopic(Topic):
     COMMAND_ACK_TIMEOUT_S = 30
@@ -221,9 +221,22 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def interface_details(cls, interface_name, scope=OPENC3_SCOPE):
+        interface_name = interface_name.upper()
+
+        if timeout is None:
+            timeout = cls.COMMAND_ACK_TIMEOUT_S
+        ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
+        Topic.update_topic_offsets([ack_topic])
+
         Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
-            {"details": "true"},
+            {"interface_details": "true"},
             "*",
             100,
         )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == cmd_id:
+                    return json.loads(msg_hash[b"result"].decode(), cls=JsonDecoder)
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
