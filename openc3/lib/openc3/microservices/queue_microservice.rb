@@ -66,7 +66,7 @@ module OpenC3
 
     def process_queued_commands
       while @state == 'RELEASE'
-        queue_name, command_data = Store.blpop("#{@scope}:#{@queue_name}", timeout: 0.2)
+        queue_name, command_data, timestamp = Store.bzpopmin("#{@scope}:#{@queue_name}", timeout: 0.2)
         if command_data
           command = JSON.parse(command_data)
           username = command['username']

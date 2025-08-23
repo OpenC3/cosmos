@@ -49,10 +49,16 @@ module OpenC3
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
       if model.state != 'DISABLE'
-        Store.rpush("#{scope}:#{name}", { username: username, value: command }.to_json)
+        result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
+        if result.empty?
+          index = 1.0
+        else
+          index = result[0][1].to_f + 1
+        end
+        Store.zadd("#{scope}:#{name}", index, { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }.to_json)
         model.notify(kind: 'command')
       else
-        raise "Queue '#{name}' is disabled. Command '#{command}' not queued."
+        raise QueueError, "Queue '#{name}' is disabled. Command '#{command}' not queued."
       end
     end
 
@@ -93,19 +99,31 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def push(command_data)
-      Store.rpush("#{@scope}:#{@name}", command_data.to_json)
+    def insert(index, command_data)
+      unless index
+        result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
+        if result.empty?
+          index = 1.0
+        else
+          index = result[0][1].to_f + 1
+        end
+      end
+      Store.zadd("#{@scope}:#{@name}", index, command_data.to_json)
       notify(kind: 'command')
     end
 
-    def pop
-      command_data = Store.lpop("#{@scope}:#{@name}")
+    def remove(index)
+      num_removed = Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
       notify(kind: 'command')
-      return command_data
+      return (num_removed == 1)
     end
 
     def list
-      return Store.lrange("#{@scope}:#{@name}", 0, -1)
+      return Store.zrange("#{@scope}:#{@name}", 0, -1, with_scores: true).map do |item|
+        result = JSON.parse(item[0])
+        result['index'] = item[1].to_f
+        result
+      end
     end
 
     def create_microservice(topics:)
@@ -147,6 +165,12 @@ module OpenC3
         QueueTopic.write_notification(notification, scope: @scope)
         model.destroy
       end
+    end
+
+    # Delete the model from the Store
+    def destroy
+      Store.zremrangebyrank("#{@scope}:#{@name}", 0, -1)
+      super()
     end
   end
 end

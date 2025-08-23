@@ -84,8 +84,8 @@ Rails.application.routes.draw do
     post '/queues/:name/hold', to: 'queues#hold', name: /[^\/]+/
     post '/queues/:name/release', to: 'queues#release', name: /[^\/]+/
     post '/queues/:name/disable', to: 'queues#disable', name: /[^\/]+/
-    post '/queues/:name/push', to: 'queues#push', name: /[^\/]+/
-    post '/queues/:name/pop', to: 'queues#pop', name: /[^\/]+/
+    post '/queues/:name/insert', to: 'queues#insert', name: /[^\/]+/
+    post '/queues/:name/remove', to: 'queues#remove', name: /[^\/]+/
 
     resources :permissions, only: [:index]
 

@@ -95,9 +95,9 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
         model.create
 
-        expect(Logger).to receive(:error).with("Queue 'TEST' is disabled. Command 'TGT CMD with PARAM1 \"hello\", PARAM2 10' not queued.")
-
-        QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
+        expect {
+          QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'TGT CMD with PARAM1 \"hello\", PARAM2 10' not queued.")
       end
 
       it "queues command when queue is in HOLD state" do
@@ -107,8 +107,8 @@ module OpenC3
 
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command })
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "timestamp" => anything })
       end
 
       it "queues command when queue is in RELEASE state" do
@@ -118,11 +118,9 @@ module OpenC3
 
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command })
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "timestamp" => anything })
       end
-
-
 
       it "sends command notification" do
         model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
@@ -145,9 +143,13 @@ module OpenC3
         QueueModel.queue_command("TEST", command: first_command, username: 'anonymous', scope: "DEFAULT")
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
-        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command },
-          { "username" => "anonymous", "value" => command })
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything },
+          { "username" => "anonymous", "value" => command, "timestamp" => anything })
+
+        list = model.list()
+        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything, "index" => 1.0 },
+          { "username" => "anonymous", "value" => command, "timestamp" => anything, "index" => 2.0 })
       end
     end
 
@@ -212,6 +214,25 @@ module OpenC3
       end
     end
 
+    describe "destroy" do
+      it "removes the queue model, calls undeploy, and removes the redis list" do
+        existing_microservice = double("existing_microservice", destroy: nil)
+        allow(MicroserviceModel).to receive(:get_model).and_return(existing_microservice)
+        allow(QueueTopic).to receive(:write_notification)
+        expect(existing_microservice).to receive(:destroy)
+
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.create
+        model.insert(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
+        model.destroy
+
+        queue = QueueModel.get(name: "TEST", scope: "DEFAULT")
+        expect(queue).to be nil
+        commands = Store.zrange("DEFAULT:TEST", 0, -1)
+        expect(commands).to be_empty
+      end
+    end
+
     describe "as_json" do
       it "returns correct JSON representation" do
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
@@ -223,60 +244,61 @@ module OpenC3
       end
     end
 
-    describe "push" do
-      it "pushes command data to the store" do
+    describe "insert" do
+      it "inserts command data to the store" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command_data = { username: "anonymous", value: "TGT CMD" }
+        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 1 }
 
-        model.push(command_data)
+        model.insert(1, command_data)
 
-        commands = Store.lrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands).to contain_exactly(command_data.transform_keys(&:to_s))
       end
 
-      it "sends command notification when pushing" do
+      it "sends command notification when inserting" do
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
           scope: "DEFAULT"
         )
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.push({ username: "anonymous", value: "TGT CMD" })
+        model.insert(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
       end
     end
 
-    describe "pop" do
-      it "pops command data from the store" do
+    describe "remove" do
+      it "removes command data from the store" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command_data = { username: "anonymous", value: "TGT CMD" }
+        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
 
-        model.push(command_data)
-        result = model.pop
+        model.insert(1, command_data)
+        result = model.remove(1)
 
-        expect(JSON.parse(result)).to eql command_data.transform_keys(&:to_s)
-        commands = Store.lrange("DEFAULT:TEST", 0, -1)
+        expect(result).to be true
+        commands = Store.zrange("DEFAULT:TEST", 0, -1)
         expect(commands).to be_empty
       end
 
-      it "sends command notification when popping" do
+      it "sends command notification when removing" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.push({ username: "anonymous", value: "TGT CMD" })
+        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
+        model.insert(1, command_data)
 
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
           scope: "DEFAULT"
         )
-        model.pop
+        model.remove(1)
       end
 
-      it "returns nil when queue is empty" do
+      it "returns false when removing non-existent command" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
 
-        result = model.pop
-        expect(result).to be_nil
+        result = model.remove(0)
+        expect(result).to be false
       end
     end
 
@@ -285,60 +307,75 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
 
         result = model.list
-        expect(result).to be_empty
+        expect(result).to eql([])
       end
 
       it "returns all commands in the queue" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "TGT CMD1" }
-        command2 = { username: "user2", value: "TGT CMD2" }
-        command3 = { username: "user3", value: "TGT CMD3" }
+        command1 = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "TGT CMD2", timestamp: 2000 }
+        command3 = { username: "user3", value: "TGT CMD3", timestamp: 3000 }
 
-        model.push(command1)
-        model.push(command2)
-        model.push(command3)
+        model.insert(1, command1)
+        model.insert(2, command2)
+        model.insert(3, command3)
 
         result = model.list
         expect(result.length).to eql 3
-        expect(JSON.parse(result[0])).to eql command1.transform_keys(&:to_s)
-        expect(JSON.parse(result[1])).to eql command2.transform_keys(&:to_s)
-        expect(JSON.parse(result[2])).to eql command3.transform_keys(&:to_s)
+        one = command1.transform_keys(&:to_s)
+        one["index"] = 1.0
+        two = command2.transform_keys(&:to_s)
+        two["index"] = 2.0
+        three = command3.transform_keys(&:to_s)
+        three["index"] = 3.0
+        expect(result[0]).to eql one
+        expect(result[1]).to eql two
+        expect(result[2]).to eql three
       end
 
       it "returns commands in FIFO order" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        first_command = { username: "user1", value: "FIRST_CMD" }
-        second_command = { username: "user2", value: "SECOND_CMD" }
+        first_command = { username: "user1", value: "FIRST_CMD", timestamp: 1000 }
+        second_command = { username: "user2", value: "SECOND_CMD", timestamp: 2000 }
 
-        model.push(first_command)
-        model.push(second_command)
+        model.insert(1, first_command)
+        model.insert(2, second_command)
 
         result = model.list
-        expect(JSON.parse(result[0])).to eql first_command.transform_keys(&:to_s)
-        expect(JSON.parse(result[1])).to eql second_command.transform_keys(&:to_s)
+        one = first_command.transform_keys(&:to_s)
+        one["index"] = 1.0
+        two = second_command.transform_keys(&:to_s)
+        two["index"] = 2.0
+        expect(result[0]).to eql one
+        expect(result[1]).to eql two
       end
 
-      it "reflects queue state after pop operations" do
+      it "reflects queue state after remove operations" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1" }
-        command2 = { username: "user2", value: "CMD2" }
-        command3 = { username: "user3", value: "CMD3" }
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
+        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
 
-        model.push(command1)
-        model.push(command2)
-        model.push(command3)
+        model.insert(1, command1)
+        model.insert(3, command3)
+        model.insert(2, command2)
 
         expect(model.list.length).to eql 3
 
-        command = model.pop
-        expect(JSON.parse(command)).to eql command1.transform_keys(&:to_s)
+        # Remove the first command
+        result_removed = model.remove(1)
+        expect(result_removed).to be true
         result = model.list
         expect(result.length).to eql 2
-        expect(JSON.parse(result[0])).to eql command2.transform_keys(&:to_s)
-        expect(JSON.parse(result[1])).to eql command3.transform_keys(&:to_s)
+        two = command2.transform_keys(&:to_s)
+        two["index"] = 2.0
+        three = command3.transform_keys(&:to_s)
+        three["index"] = 3.0
+        expect(result[0]).to eql two
+        expect(result[1]).to eql three
       end
     end
 

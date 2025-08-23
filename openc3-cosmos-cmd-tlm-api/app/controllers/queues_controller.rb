@@ -121,7 +121,7 @@ class QueuesController < ApplicationController
     change_state(params, 'DISABLE')
   end
 
-  def push
+  def insert
     return unless authorization('system')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -134,7 +134,8 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: 'command is required' }, status: 400
         return
       end
-      model.push({ username: username(), value: command })
+      # If params[:index] is not given this will be nil which means insert at the end
+      model.insert(params[:index], { username: username(), value: command, timestamp: timestamp })
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -142,7 +143,7 @@ class QueuesController < ApplicationController
     end
   end
 
-  def pop
+  def remove
     return unless authorization('system')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -150,11 +151,15 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      command = model.pop()
-      if command.nil?
-        render json: { status: 'success', message: 'Queue is empty', command: nil }
+      if params[:index].nil?
+        render json: { status: 'error', message: 'index is required' }, status: 400
+        return
+      end
+      success = model.remove(params[:index].to_i)
+      if success
+        render json: { status: 'success', message: 'Command removed from queue' }
       else
-        render json: { status: 'success', message: 'Command removed from queue', command: command }
+        render json: { status: 'error', message: 'Command not found in queue' }, status: 404
       end
     rescue StandardError => e
       log_error(e)

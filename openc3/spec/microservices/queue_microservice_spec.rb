@@ -167,7 +167,7 @@ module OpenC3
 
       it 'processes all queued commands and removes them from queue' do
         call_count = 0
-        allow(Store).to receive(:blpop) do
+        allow(Store).to receive(:bzpopmin) do
           call_count += 1
           case call_count
           when 1
@@ -183,7 +183,7 @@ module OpenC3
 
         processor.process_queued_commands
 
-        expect(Store).to have_received(:blpop).exactly(3).times
+        expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd_no_hazardous_check)
           .with(command1['value'], scope: scope, token: 'test_token')
         expect(processor).to have_received(:cmd_no_hazardous_check)
@@ -191,19 +191,19 @@ module OpenC3
       end
 
       it 'stops processing when queue is empty' do
-        allow(Store).to receive(:blpop) do
+        allow(Store).to receive(:bzpopmin) do
           processor.state = 'HOLD'
           nil
         end
 
         processor.process_queued_commands
 
-        expect(Store).to have_received(:blpop).once
+        expect(Store).to have_received(:bzpopmin).once
         expect(processor).not_to have_received(:cmd_no_hazardous_check)
       end
 
       it 'raises error when no token is available for username' do
-        allow(Store).to receive(:blpop) do
+        allow(Store).to receive(:bzpopmin) do
           processor.state = 'HOLD' if processor.state == 'RELEASE'
           ["#{scope}:QUEUE", command1.to_json]
         end
