@@ -218,6 +218,9 @@ module OpenC3
               end
               next 'SUCCESS'
             end
+            if msg_hash.key?('details')
+              next @interface.details.as_json(:allow_nan => true)
+            end
           end
 
           target_name = msg_hash['target_name']
@@ -484,6 +487,9 @@ module OpenC3
               next e.message
             end
             next 'SUCCESS'
+          end
+          if msg_hash.key?('details')
+            next @router.details.as_json(:allow_nan => true)
           end
           next 'SUCCESS'
         end
