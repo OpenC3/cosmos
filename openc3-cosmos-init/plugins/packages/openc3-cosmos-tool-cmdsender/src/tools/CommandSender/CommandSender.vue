@@ -294,6 +294,7 @@ export default {
       statesInHex: false,
       showIgnoredParams: false,
       cmdRaw: false,
+      disableCommandValidation: false,
       ignoredParams: [],
       rows: [],
       interfaces: [],
@@ -384,6 +385,14 @@ export default {
               checked: this.cmdRaw,
               command: () => {
                 this.cmdRaw = !this.cmdRaw.checked
+              },
+            },
+            {
+              label: 'Disable Command Validation',
+              checkbox: true,
+              checked: this.disableCommandValidation,
+              command: () => {
+                this.disableCommandValidation = !this.disableCommandValidation
               },
             },
           ],
@@ -700,6 +709,7 @@ export default {
             this.displaySendHazardous = true
           } else {
             let obs
+            let kwparams = this.disableCommandValidation ? { validate: false } : {}
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
                 cmd = 'cmd_raw_no_range_check'
@@ -710,6 +720,7 @@ export default {
                   {
                     'Ignore-Errors': '428',
                   },
+                  kwparams,
                 )
               } else {
                 cmd = 'cmd_raw'
@@ -717,7 +728,7 @@ export default {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
                   'Ignore-Errors': '428 500',
-                })
+                }, kwparams)
               }
             } else {
               if (this.ignoreRangeChecks) {
@@ -729,6 +740,7 @@ export default {
                   {
                     'Ignore-Errors': '428',
                   },
+                  kwparams,
                 )
               } else {
                 cmd = 'cmd'
@@ -736,7 +748,7 @@ export default {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
                   'Ignore-Errors': '428 500',
-                })
+                }, kwparams)
               }
             }
 
@@ -772,6 +784,7 @@ export default {
       this.displaySendHazardous = false
       let obs = ''
       let cmd = ''
+      let kwparams = this.disableCommandValidation ? { validate: false } : {}
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
           cmd = 'cmd_raw_no_range_check'
@@ -782,6 +795,7 @@ export default {
             {
               'Ignore-Errors': '428',
             },
+            kwparams,
           )
         } else {
           cmd = 'cmd_raw'
@@ -794,6 +808,7 @@ export default {
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '428 500',
             },
+            kwparams,
           )
         }
       } else {
@@ -806,6 +821,7 @@ export default {
             {
               'Ignore-Errors': '428',
             },
+            kwparams,
           )
         } else {
           cmd = 'cmd'
@@ -818,6 +834,7 @@ export default {
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '428 500',
             },
+            kwparams,
           )
         }
       }
