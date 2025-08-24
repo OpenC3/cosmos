@@ -73,7 +73,17 @@ export const test = base.extend<{
       const tool = page.locator(`.v-app-bar:has-text('${toolName}')`)
       await expect(signin.or(tool)).toBeVisible()
       if (await signin.isVisible()) {
-        if (page.url().includes('admin')) {
+        // Tests tagged with @admin will use admin credentials, otherwise operator
+        let username = 'operator'
+        let password = 'operator'
+        if (
+          test.info().tags.includes('@admin') ||
+          page.url().includes('admin')
+        ) {
+          username = 'admin'
+          password = 'admin'
+        }
+        if (username === 'admin') {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
           await Promise.all([
