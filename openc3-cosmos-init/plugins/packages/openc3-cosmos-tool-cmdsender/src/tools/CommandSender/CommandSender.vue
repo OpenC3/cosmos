@@ -900,7 +900,11 @@ export default {
             }
           }
         }
-        msg += '")'
+        if (this.disableCommandValidation) {
+          msg += '", validate: false)'
+        } else {
+          msg += '")'
+        }
         if (!this.history.includes(msg)) {
           let value = msg
           if (this.history.length !== 0) {
