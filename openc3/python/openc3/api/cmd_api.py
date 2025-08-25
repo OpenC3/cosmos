@@ -678,5 +678,10 @@ def _cmd_implementation(
         "log_message": str(log_message),
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
-    CommandTopic.send_command(command, timeout, scope)
+
+    # Check for the queue kwarg
+    if kwargs.get("queue") is not None:
+        QueueModel.queue_command(queue, command=command, username=username, scope=scope)
+    else:
+        CommandTopic.send_command(command, timeout, scope)
     return command

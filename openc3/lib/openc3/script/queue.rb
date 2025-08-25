@@ -68,33 +68,5 @@ module OpenC3
       return _make_request(action: 'delete', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
     alias queue_destroy queue_delete
-
-    def queue_push(name, command, scope: $openc3_scope)
-      data = { command: command }
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/push", data: data, json: true, scope: scope)
-      if response.nil?
-        raise "Failed to push command to queue. No response from server."
-      elsif response.status != 200
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-        raise "Failed to push command to queue due to #{result['message']}"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-    end
-
-    def queue_pop(name, scope: $openc3_scope)
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/pop", scope: scope)
-      if response.nil?
-        raise "Failed to pop command from queue. No response from server."
-      elsif response.status != 200
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-        raise "Failed to pop command from queue due to #{result['message']}"
-      end
-      result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      if result['command']
-        return result['command']
-      else
-        return nil
-      end
-    end
   end
 end
