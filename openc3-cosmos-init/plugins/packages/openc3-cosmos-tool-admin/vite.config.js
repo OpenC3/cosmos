@@ -24,7 +24,7 @@ export default defineConfig((options) => {
       },
     },
     server: {
-      port: 2930,
+      port: 2930, // Matches cosmos-enterprise-tool-admin
     },
     plugins: [
       vue({
