@@ -139,7 +139,7 @@ class QueueModel(Model):
         )
         microservice.create()
 
-    def deploy(self):
+    def deploy(self, gem_path: str, variables: str):
         topics = [f"{self.scope}__{QueueTopic.PRIMARY_KEY}"]
         if not MicroserviceModel.get_model(name=self.microservice_name, scope=self.scope):
             self.create_microservice(topics=topics)

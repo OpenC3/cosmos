@@ -142,7 +142,7 @@ module OpenC3
       microservice.create
     end
 
-    def deploy
+    def deploy(gem_path, variables)
       topics = ["#{@scope}__#{QueueTopic::PRIMARY_KEY}"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
