@@ -675,3 +675,16 @@ test('disable parameter conversions', async ({ page, utils }) => {
     '00000010: 01 00',
   )
 })
+
+test('disables command validation', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
+  
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText('Disable Command Validation').click()
+  
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'") sent',
+  )
+})
