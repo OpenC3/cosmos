@@ -135,7 +135,7 @@ class QueuesController < ApplicationController
         return
       end
       # If params[:index] is not given this will be nil which means insert at the end
-      model.insert(params[:index], { username: username(), value: command, timestamp: timestamp })
+      model.insert(params[:index].to_f, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)

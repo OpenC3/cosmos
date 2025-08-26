@@ -76,13 +76,13 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.return_value = mock_model
         mock_store.zrevrange.return_value = []
         mock_store.zadd = Mock()
-        
+
         with patch('time.time_ns', return_value=1234567890):
             QueueModel.queue_command("TEST", command="CMD", username="user", scope="DEFAULT")
-        
+
         mock_get_model.assert_called_once_with(name="TEST", scope="DEFAULT")
         mock_store.zrevrange.assert_called_once_with("DEFAULT:TEST", 0, 0, with_scores=True)
-        
+
         expected_data = json.dumps({
             'username': 'user',
             'value': 'CMD',
@@ -100,9 +100,9 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.return_value = mock_model
         mock_store.zrevrange.return_value = [('data', 5.0)]
         mock_store.zadd = Mock()
-        
+
         QueueModel.queue_command("TEST", command="CMD", username="user", scope="DEFAULT")
-        
+
         mock_store.zadd.assert_called_once()
         args = mock_store.zadd.call_args[0]
         self.assertEqual(args[0], "DEFAULT:TEST")
@@ -111,10 +111,10 @@ class TestQueueModel(unittest.TestCase):
     @patch('openc3.models.queue_model.QueueModel.get_model')
     def test_queue_command_queue_not_found(self, mock_get_model):
         mock_get_model.return_value = None
-        
+
         with self.assertRaises(QueueError) as context:
             QueueModel.queue_command("NONEXISTENT", command="CMD", username="user", scope="DEFAULT")
-        
+
         self.assertIn("Queue 'NONEXISTENT' not found in scope 'DEFAULT'", str(context.exception))
 
     @patch('openc3.models.queue_model.QueueModel.get_model')
@@ -122,17 +122,17 @@ class TestQueueModel(unittest.TestCase):
         mock_model = Mock()
         mock_model.state = 'DISABLE'
         mock_get_model.return_value = mock_model
-        
+
         with self.assertRaises(QueueError) as context:
             QueueModel.queue_command("TEST", command="CMD", username="user", scope="DEFAULT")
-        
+
         self.assertIn("Queue 'TEST' is disabled", str(context.exception))
 
     @patch('openc3.topics.queue_topic.QueueTopic.write_notification')
     def test_create_with_notifications(self, mock_write_notification):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         queue.create()
-        
+
         mock_write_notification.assert_called_once()
         args = mock_write_notification.call_args
         notification = args[0][0]
@@ -144,7 +144,7 @@ class TestQueueModel(unittest.TestCase):
     def test_create_update_with_notifications(self, mock_super_create, mock_write_notification):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         queue.create(update=True)
-        
+
         mock_super_create.assert_called_once_with(update=True, force=False, queued=False)
         mock_write_notification.assert_called_once()
         args = mock_write_notification.call_args
@@ -154,12 +154,12 @@ class TestQueueModel(unittest.TestCase):
     def test_as_json(self):
         queue = QueueModel(name="TEST", scope="DEFAULT", state="RUNNING")
         queue.updated_at = 1234567890
-        
+
         result = queue.as_json()
-        
+
         expected = {
             'name': 'TEST',
-            'scope': 'DEFAULT', 
+            'scope': 'DEFAULT',
             'state': 'RUNNING',
             'updated_at': 1234567890
         }
@@ -169,7 +169,7 @@ class TestQueueModel(unittest.TestCase):
     def test_notify(self, mock_write_notification):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         queue.notify(kind='test')
-        
+
         mock_write_notification.assert_called_once()
         args = mock_write_notification.call_args
         notification = args[0][0]
@@ -182,10 +182,10 @@ class TestQueueModel(unittest.TestCase):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zrevrange.return_value = []
         mock_store.zadd = Mock()
-        
+
         with patch.object(queue, 'notify') as mock_notify:
             queue.insert(None, {'test': 'data'})
-        
+
         mock_store.zrevrange.assert_called_once_with("DEFAULT:TEST", 0, 0, with_scores=True)
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", 1.0, '{"test": "data"}')
         mock_notify.assert_called_once_with(kind='command')
@@ -194,10 +194,10 @@ class TestQueueModel(unittest.TestCase):
     def test_insert_with_index(self, mock_store):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zadd = Mock()
-        
+
         with patch.object(queue, 'notify') as mock_notify:
             queue.insert(5.0, {'test': 'data'})
-        
+
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", 5.0, '{"test": "data"}')
         mock_notify.assert_called_once_with(kind='command')
 
@@ -205,10 +205,10 @@ class TestQueueModel(unittest.TestCase):
     def test_remove_success(self, mock_store):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zremrangebyscore.return_value = 1
-        
+
         with patch.object(queue, 'notify') as mock_notify:
             result = queue.remove(5.0)
-        
+
         self.assertTrue(result)
         mock_store.zremrangebyscore.assert_called_once_with("DEFAULT:TEST", 5.0, 5.0)
         mock_notify.assert_called_once_with(kind='command')
@@ -217,10 +217,10 @@ class TestQueueModel(unittest.TestCase):
     def test_remove_failure(self, mock_store):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zremrangebyscore.return_value = 0
-        
+
         with patch.object(queue, 'notify') as mock_notify:
             result = queue.remove(5.0)
-        
+
         self.assertFalse(result)
         mock_notify.assert_called_once_with(kind='command')
 
@@ -228,9 +228,9 @@ class TestQueueModel(unittest.TestCase):
     def test_list_empty(self, mock_store):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zrange.return_value = []
-        
+
         result = queue.list()
-        
+
         self.assertEqual(result, [])
         mock_store.zrange.assert_called_once_with("DEFAULT:TEST", 0, -1, with_scores=True)
 
@@ -242,9 +242,9 @@ class TestQueueModel(unittest.TestCase):
             ('{"username": "user2", "value": "cmd2"}', 2.0)
         ]
         mock_store.zrange.return_value = mock_data
-        
+
         result = queue.list()
-        
+
         expected = [
             {'username': 'user1', 'value': 'cmd1', 'index': 1.0},
             {'username': 'user2', 'value': 'cmd2', 'index': 2.0}
@@ -256,9 +256,9 @@ class TestQueueModel(unittest.TestCase):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_microservice = Mock()
         mock_microservice_model.return_value = mock_microservice
-        
+
         queue.create_microservice(['topic1', 'topic2'])
-        
+
         mock_microservice_model.assert_called_once()
         call_args = mock_microservice_model.call_args[1]
         self.assertEqual(call_args['name'], 'DEFAULT__QUEUE__TEST')
@@ -271,10 +271,10 @@ class TestQueueModel(unittest.TestCase):
     def test_deploy_creates_microservice(self, mock_get_model):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_get_model.return_value = None  # Microservice doesn't exist
-        
+
         with patch.object(queue, 'create_microservice') as mock_create:
-            queue.deploy()
-        
+            queue.deploy(None, None)
+
         expected_topics = ['DEFAULT__openc3_queue']
         mock_create.assert_called_once_with(topics=expected_topics)
 
@@ -282,10 +282,10 @@ class TestQueueModel(unittest.TestCase):
     def test_deploy_skips_existing_microservice(self, mock_get_model):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_get_model.return_value = Mock()  # Microservice exists
-        
+
         with patch.object(queue, 'create_microservice') as mock_create:
-            queue.deploy()
-        
+            queue.deploy(None, None)
+
         mock_create.assert_not_called()
 
     @patch('openc3.models.microservice_model.MicroserviceModel.get_model')
@@ -296,9 +296,9 @@ class TestQueueModel(unittest.TestCase):
         mock_microservice = Mock()
         mock_get_model.return_value = mock_microservice
         mock_time_ns.return_value = 1234567890
-        
+
         queue.undeploy()
-        
+
         mock_write_notification.assert_called_once()
         args = mock_write_notification.call_args
         notification = args[0][0]
@@ -312,21 +312,21 @@ class TestQueueModel(unittest.TestCase):
     def test_undeploy_without_microservice(self, mock_get_model):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_get_model.return_value = None
-        
+
         with patch('openc3.topics.queue_topic.QueueTopic.write_notification') as mock_write:
             queue.undeploy()
-        
+
         mock_write.assert_not_called()
 
     @patch('openc3.models.queue_model.Store')
     def test_destroy(self, mock_store):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         mock_store.zremrangebyrank = Mock()
-        
+
         with patch.object(queue, 'undeploy') as mock_undeploy:
             with patch('openc3.models.model.Model.destroy') as mock_super_destroy:
                 queue.destroy()
-        
+
         mock_store.zremrangebyrank.assert_called_once_with("DEFAULT:TEST", 0, -1)
         mock_super_destroy.assert_called_once()
 
