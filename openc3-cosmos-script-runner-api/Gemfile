@@ -34,7 +34,7 @@ group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
   gem 'rspec-rails', '~> 7.0'
   gem 'rspec'
-  gem 'simplecov', '~> 0.20'
+  gem 'simplecov', '0.21'
   gem 'simplecov-cobertura', '~> 2.1'
   # simplecov_json_formatter formatter supports SonarQube
   # gem 'simplecov_json_formatter', '~> 0.1'
