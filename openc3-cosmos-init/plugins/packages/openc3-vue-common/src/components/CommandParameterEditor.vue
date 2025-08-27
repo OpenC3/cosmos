@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,17 +25,16 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
-      @update:model-value="handleChange"
       hide-details
       density="compact"
       variant="filled"
       data-test="cmd-param-value"
+      @update:model-value="handleChange"
     />
     <div v-else class="d-flex align-center">
       <v-select
         :items="stateOptions"
         :model-value="selectValue"
-        @update:model-value="handleChange"
         item-title="label"
         :class="stateClass"
         hide-details
@@ -44,6 +43,7 @@
         placeholder="Select..."
         min-width="120px"
         data-test="cmd-param-select"
+        @update:model-value="handleChange"
       />
       <v-text-field
         :model-value="stateValue"
@@ -59,10 +59,8 @@
 </template>
 
 <script>
-import Utilities from '@/tools/CommandSender/utilities'
-
 export default {
-  mixins: [Utilities],
+  name: 'CommandParameterEditor',
   props: {
     modelValue: {
       type: [String, Number],
@@ -77,6 +75,7 @@ export default {
       default: false,
     },
   },
+  emits: ['update:modelValue'],
   computed: {
     textFieldValue() {
       return this.convertToString(this.modelValue)
@@ -115,6 +114,16 @@ export default {
     },
   },
   methods: {
+    convertToString(value) {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        value.json_class === 'String'
+      ) {
+        return value.raw.map((byte) => String.fromCharCode(byte)).join('')
+      }
+      return String(value)
+    },
     handleChange(value) {
       this.$emit('update:modelValue', value)
     },

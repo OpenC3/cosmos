@@ -19,5 +19,6 @@
 import * as AstroStatus from './AstroStatus'
 import { fileIcon } from './fileIcon'
 import TimeFilters from './timeFilters'
+import CmdUtilities from './cmdUtilities'
 
-export { AstroStatus, fileIcon, TimeFilters }
+export { AstroStatus, fileIcon, TimeFilters, CmdUtilities }

@@ -19,6 +19,8 @@
 import { AceEditorModes, AceEditorUtils } from './ace'
 import { ScreenCompleter } from './autocomplete'
 import { Config, OpenConfigDialog, SaveConfigDialog } from './config'
+import CommandEditor from './CommandEditor.vue'
+import CommandParameterEditor from './CommandParameterEditor.vue'
 import CriticalCmdDialog from './CriticalCmdDialog.vue'
 import { DataViewerComponent, DataViewerHistoryComponent } from './dataviewer'
 import DetailsDialog from './DetailsDialog.vue'
@@ -47,6 +49,8 @@ export {
   Config,
   OpenConfigDialog,
   SaveConfigDialog,
+  CommandEditor,
+  CommandParameterEditor,
   CriticalCmdDialog,
   DataViewerComponent,
   DataViewerHistoryComponent,
