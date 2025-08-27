@@ -263,36 +263,40 @@ class QuestMicroservice(Microservice):
             self.ingest.flush()
 
         except IngressError as error:
-            self.error = error
-            self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
-
+            # First see if it's a cast error we can fix
             if "cast error from protocol type" in str(error):
                 try:
                     # Open a cursor to perform database operations
                     with self.query.cursor() as cur:
                         # Extract table, column, and type from the error message
 
-                        # Example error message:
-                        # 'error in line 1: table: INST2__HEALTH_STATUS, column: TEMP1STDDEV; cast error from protocol type: FLOAT to column type: LONG","line":1,"errorId":"a507394ab099-25"'
+                        # Example error message:aa
+                        # 'error in line 1: table: INST2__HEALTH_STATUS, column: TEMP1STDDEV;
+                        # cast error from protocol type: FLOAT to column type: LONG","line":1,"errorId":"a507394ab099-25"'
                         error_message = str(error)
-                        table_match = re.search(r'table:\s*([A-Za-z0-9_]+)', error_message)
-                        column_match = re.search(r'column:\s*([A-Za-z0-9_]+)', error_message)
-                        type_match = re.search(r'protocol type:\s*([A-Z]+)', error_message)
+                        table_match = re.search(r'table:\s+(.+?),', error_message) # .+? is non-greedy
+                        column_match = re.search(r'column:\s+(.+?);', error_message)
+                        type_match = re.search(r'protocol type:\s+([A-Z]+)\s', error_message)
 
                         if table_match and column_match and type_match:
                             table_name = table_match.group(1)
-                            column = column_match.group(1)
-                            type = type_match.group(1)
+                            column_name = column_match.group(1)
+                            column_type = type_match.group(1)
                         else:
                             self.logger.error("QuestDB: Could not parse table, column, or type from error message")
                             return
 
                         # Try to change the column type to fix the error
-                        cur.execute(f"ALTER TABLE {table_name} ALTER COLUMN {column} TYPE {type}")
-                        self.logger.info(f"QuestDB: Altered table: {table_name} column: {column} to type: {type}")
+                        # We put the table in double quotes to handle special characters
+                        alter = f"""ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE {column_type}"""
+                        cur.execute(alter)
+                        self.logger.info(f"QuestDB: {alter}")
                         self.connect_ingest() # reconnect
                 except psycopg.Error as error:
-                    self.logger.error(f"QuestDB: Error altering table: {table_name} column: {column} due to: {error}")
+                    self.logger.error(f"QuestDB: Error {alter}\n{error}")
+            else:
+                self.error = error
+                self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
 
 
     def run(self):
