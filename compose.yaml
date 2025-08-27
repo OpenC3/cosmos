@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -51,6 +51,7 @@ services:
 
   # Uncomment to use QuestDB as the time series database
   # Also uncomment the openc3-tsdb-v volume in the volumes section
+  # Also uncomment the OPENC3_TSDB_XXX env vars in the .env file
   # openc3-tsdb:
   #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
   #   ports:
