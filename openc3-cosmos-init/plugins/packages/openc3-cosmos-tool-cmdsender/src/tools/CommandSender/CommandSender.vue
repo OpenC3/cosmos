@@ -225,7 +225,6 @@ export default {
       statesInHex: false,
       showIgnoredParams: false,
       cmdRaw: false,
-      ignoredParams: [],
       interfaces: [],
       selectedInterface: '',
       rawCmdFile: null,

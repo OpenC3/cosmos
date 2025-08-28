@@ -315,11 +315,11 @@ export default {
       if (!this.computedRows || this.computedRows.length === 0) return cmd
       cmd += ' with '
       for (const row of this.computedRows) {
-        if (row.value !== null && row.value !== undefined && row.value !== '') {
-          if (typeof row.value === 'string' && row.value.includes(' ')) {
-            cmd += ` ${row.parameter_name} "${row.value}",`
+        if (row.val !== null && row.val !== undefined && row.val !== '') {
+          if (typeof row.val === 'string' && row.val.includes(' ')) {
+            cmd += ` ${row.parameter_name} "${row.val}",`
           } else {
-            cmd += ` ${row.parameter_name} ${row.value},`
+            cmd += ` ${row.parameter_name} ${row.val},`
           }
         }
       }
