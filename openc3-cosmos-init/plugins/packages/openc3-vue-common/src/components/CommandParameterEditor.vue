@@ -59,8 +59,10 @@
 </template>
 
 <script>
+import { CmdUtilities } from '../util'
 export default {
   name: 'CommandParameterEditor',
+  mixins: [CmdUtilities],
   props: {
     modelValue: {
       type: [String, Number],
@@ -114,16 +116,6 @@ export default {
     },
   },
   methods: {
-    convertToString(value) {
-      if (
-        typeof value === 'object' &&
-        value !== null &&
-        value.json_class === 'String'
-      ) {
-        return value.raw.map((byte) => String.fromCharCode(byte)).join('')
-      }
-      return String(value)
-    },
     handleChange(value) {
       this.$emit('update:modelValue', value)
     },

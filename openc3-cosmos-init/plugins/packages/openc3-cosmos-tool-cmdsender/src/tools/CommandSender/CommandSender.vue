@@ -483,12 +483,16 @@ export default {
       }
     },
 
+    createParamList() {
+      let paramList = {}
+      for (const row of this.$refs.commandEditor.getRows()) {
+        paramList[row.parameter_name] = this.convertToValue(row)
+      }
+      return paramList
+    },
+
     buildCmd() {
-      this.sendCmd(
-        this.targetName,
-        this.commandName,
-        this.$refs.commandEditor.createParamList(),
-      )
+      this.sendCmd(this.targetName, this.commandName, this.createParamList())
     },
 
     // Note targetName can also be the entire command to send, e.g. "INST ABORT" or

@@ -307,35 +307,24 @@ export default {
     triggerUpdateCmdParams() {
       this.updateCmdParams()
     },
-    createParamList() {
-      let paramList = {}
-      for (const row of this.computedRows) {
-        paramList[row.parameter_name] = row.val
-      }
-      return paramList
+    getRows() {
+      return this.computedRows
     },
-    buildCmdString(target, command, params) {
-      let cmd = `${target} ${command}`
-      if (!params || Object.keys(params).length === 0) return cmd
+    getCmdString() {
+      let cmd = `${this.targetName} ${this.commandName}`
+      if (!this.computedRows || this.computedRows.length === 0) return cmd
       cmd += ' with '
-      for (const [key, value] of Object.entries(params)) {
-        if (value !== null && value !== undefined && value !== '') {
-          if (typeof value === 'string' && value.includes(' ')) {
-            cmd += ` ${key} "${value}",`
+      for (const row of this.computedRows) {
+        if (row.value !== null && row.value !== undefined && row.value !== '') {
+          if (typeof row.value === 'string' && row.value.includes(' ')) {
+            cmd += ` ${row.parameter_name} "${row.value}",`
           } else {
-            cmd += ` ${key} ${value},`
+            cmd += ` ${row.parameter_name} ${row.value},`
           }
         }
       }
       // Remove trailing comma
       return cmd.slice(0, -1)
-    },
-    getCmdString() {
-      return this.buildCmdString(
-        this.targetName,
-        this.commandName,
-        this.createParamList(),
-      )
     },
     parseCmdString(cmdString) {
       // Parse commands in format: "TARGET COMMAND with PARAM1 value1, PARAM2 value2"
