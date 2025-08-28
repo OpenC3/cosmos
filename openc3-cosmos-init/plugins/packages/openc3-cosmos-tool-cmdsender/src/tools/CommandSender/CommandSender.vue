@@ -355,6 +355,61 @@ export default {
     this.editor.container.remove()
   },
   methods: {
+    convertToValue(param) {
+      if (param.val !== undefined && param.states && !this.cmdRaw) {
+        return Object.keys(param.states).find(
+          (state) => param.states[state].value === param.val,
+        )
+      }
+      if (typeof param.val !== 'string') {
+        return param.val
+      }
+
+      let str = param.val
+      let quotesRemoved = this.removeQuotes(str)
+      if (str === quotesRemoved) {
+        let upcaseStr = str.toUpperCase()
+        if (
+          (param.type === 'STRING' || param.type === 'BLOCK') &&
+          upcaseStr.startsWith('0X')
+        ) {
+          let hexStr = upcaseStr.slice(2)
+          if (hexStr.length % 2 !== 0) {
+            hexStr = '0' + hexStr
+          }
+          let jstr = { json_class: 'String', raw: [] }
+          for (let i = 0; i < hexStr.length; i += 2) {
+            let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
+            jstr.raw.push(parseInt(nibble, 16))
+          }
+          return jstr
+        } else {
+          if (upcaseStr === 'INFINITY') {
+            return Infinity
+          } else if (upcaseStr === '-INFINITY') {
+            return -Infinity
+          } else if (upcaseStr === 'NAN') {
+            return NaN
+          } else if (this.isFloat(str)) {
+            return parseFloat(str)
+          } else if (this.isInt(str)) {
+            // If this is a number that is too large for a JS number
+            // then we convert it to a BigInt which gets serialized in openc3Api.js
+            if (!Number.isSafeInteger(Number(str))) {
+              return BigInt(str)
+            } else {
+              return parseInt(str)
+            }
+          } else if (this.isArray(str)) {
+            return eval(str)
+          } else {
+            return str
+          }
+        }
+      } else {
+        return quotesRemoved
+      }
+    },
     commandChanged(event) {
       if (
         this.targetName !== event.targetName ||
@@ -790,6 +845,7 @@ export default {
   },
 }
 </script>
+
 <style scoped>
 .editor {
   margin-left: 30px;

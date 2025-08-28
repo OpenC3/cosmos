@@ -20,10 +20,10 @@
   <v-card>
     <div style="padding: 10px">
       <target-packet-item-chooser
-        :initial-target-name="initialTargetName"
-        :initial-packet-name="initialPacketName"
+        :initial-target-name="targetName"
+        :initial-packet-name="commandName"
         :disabled="sendDisabled"
-        button-text="Send"
+        :button-text="showCommandButton ? 'Send' : null"
         mode="cmd"
         @on-set="commandChanged($event)"
         @add-item="buildCmd($event)"
@@ -97,7 +97,7 @@
 
 <script>
 import 'sprintf-js'
-import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { OpenC3Api } from '@openc3/js-common/services'
 import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import CommandParameterEditor from './CommandParameterEditor.vue'
 import DetailsDialog from './DetailsDialog.vue'
@@ -120,6 +120,10 @@ export default {
       type: String,
       default: null,
     },
+    cmdString: {
+      type: String,
+      default: null,
+    },
     sendDisabled: {
       type: Boolean,
       default: false,
@@ -135,6 +139,10 @@ export default {
     cmdRaw: {
       type: Boolean,
       default: false,
+    },
+    showCommandButton: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ['command-changed', 'build-cmd'],
@@ -154,7 +162,13 @@ export default {
       commandDescription: '',
       ignoredParams: [],
       computedRows: [],
-      reservedItemNames: [],
+      reservedItemNames: [
+        'PACKET_TIMESECONDS',
+        'PACKET_TIMEFORMATTED',
+        'RECEIVED_TIMESECONDS',
+        'RECEIVED_TIMEFORMATTED',
+        'RECEIVED_COUNT',
+      ],
       contextMenuShown: false,
       viewDetails: false,
       parameterName: '',
@@ -173,9 +187,13 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
-    Api.get(`/openc3-api/autocomplete/reserved-item-names`).then((response) => {
-      this.reservedItemNames = response.data
-    })
+    if (this.cmdString) {
+      this.processCmdString()
+    } else {
+      this.targetName = this.initialTargetName
+      this.commandName = this.initialPacketName
+      this.updateCmdParams()
+    }
   },
   methods: {
     commandChanged(event) {
@@ -238,7 +256,7 @@ export default {
                     if (parameter.required) {
                       val = ''
                     }
-                    if (parameter.format_string) {
+                    if (parameter.format_string && parameter.default) {
                       val = sprintf(parameter.format_string, parameter.default)
                     }
                     let range = 'N/A'
@@ -274,6 +292,9 @@ export default {
                   }
                 })
                 this.commandDescription = command.description
+
+                // Populate with parsed parameters if available
+                this.populateParametersFromParsed()
               }
             },
             (error) => {
@@ -286,70 +307,137 @@ export default {
     triggerUpdateCmdParams() {
       this.updateCmdParams()
     },
-    getCurrentParameters() {
-      return this.computedRows
-    },
-    convertToValue(param) {
-      if (param.val !== undefined && param.states && !this.cmdRaw) {
-        return Object.keys(param.states).find(
-          (state) => param.states[state].value === param.val,
-        )
-      }
-      if (typeof param.val !== 'string') {
-        return param.val
-      }
-
-      let str = param.val
-      let quotesRemoved = this.removeQuotes(str)
-      if (str === quotesRemoved) {
-        let upcaseStr = str.toUpperCase()
-        if (
-          (param.type === 'STRING' || param.type === 'BLOCK') &&
-          upcaseStr.startsWith('0X')
-        ) {
-          let hexStr = upcaseStr.slice(2)
-          if (hexStr.length % 2 !== 0) {
-            hexStr = '0' + hexStr
-          }
-          let jstr = { json_class: 'String', raw: [] }
-          for (let i = 0; i < hexStr.length; i += 2) {
-            let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
-            jstr.raw.push(parseInt(nibble, 16))
-          }
-          return jstr
-        } else {
-          if (upcaseStr === 'INFINITY') {
-            return Infinity
-          } else if (upcaseStr === '-INFINITY') {
-            return -Infinity
-          } else if (upcaseStr === 'NAN') {
-            return NaN
-          } else if (this.isFloat(str)) {
-            return parseFloat(str)
-          } else if (this.isInt(str)) {
-            // If this is a number that is too large for a JS number
-            // then we convert it to a BigInt which gets serialized in openc3Api.js
-            if (!Number.isSafeInteger(Number(str))) {
-              return BigInt(str)
-            } else {
-              return parseInt(str)
-            }
-          } else if (this.isArray(str)) {
-            return eval(str)
-          } else {
-            return str
-          }
-        }
-      } else {
-        return quotesRemoved
-      }
-    },
     createParamList() {
       let paramList = {}
       for (const row of this.computedRows) {
-        paramList[row.parameter_name] = this.convertToValue(row)
+        paramList[row.parameter_name] = row.val
       }
       return paramList
+    },
+    buildCmdString(target, command, params) {
+      let cmd = `${target} ${command}`
+      if (!params || Object.keys(params).length === 0) return cmd
+      cmd += ' with '
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== null && value !== undefined && value !== '') {
+          if (typeof value === 'string' && value.includes(' ')) {
+            cmd += ` ${key} "${value}",`
+          } else {
+            cmd += ` ${key} ${value},`
+          }
+        }
+      }
+      // Remove trailing comma
+      return cmd.slice(0, -1)
+    },
+    getCmdString() {
+      return this.buildCmdString(
+        this.targetName,
+        this.commandName,
+        this.createParamList(),
+      )
+    },
+    parseCmdString(cmdString) {
+      // Parse commands in format: "TARGET COMMAND with PARAM1 value1, PARAM2 value2"
+      const parts = cmdString.split(' ')
+      if (parts.length < 2) return { target: '', command: '', params: {} }
+      if (parts.length === 2) {
+        return { target: parts[0], command: parts[1], params: {} }
+      }
+      // Check for a malformed command string that doesn't have 'with'
+      if (parts[2] !== 'with') return { target: '', command: '', params: {} }
+
+      const target = parts[0]
+      const command = parts[1]
+      let params = {}
+
+      const paramsString = cmdString.split(' with ')[1]
+      let paramPairs = []
+      let bracketLevel = 0
+      let current = ''
+      // Parse the params char by char to handle commas inside brackets
+      for (let i = 0; i < paramsString.length; i++) {
+        const char = paramsString[i]
+        if (char === '[') {
+          bracketLevel++
+          current += char
+        } else if (char === ']') {
+          bracketLevel--
+          current += char
+        } else if (char === ',' && bracketLevel === 0) {
+          paramPairs.push(current)
+          current = ''
+        } else {
+          current += char
+        }
+      }
+      if (current.trim() !== '') {
+        paramPairs.push(current)
+      }
+
+      for (let pair of paramPairs) {
+        pair = pair.trim()
+        let firstSpace = pair.indexOf(' ')
+        if (firstSpace > 0) {
+          let key = pair.substring(0, firstSpace).trim()
+          let value = pair.substring(firstSpace + 1).trim()
+          params[key] = value
+        }
+      }
+      return { target: target, command: command, params: params }
+    },
+    processCmdString() {
+      const parsed = this.parseCmdString(this.cmdString)
+      if (parsed.target && parsed.command) {
+        this.targetName = parsed.target
+        this.commandName = parsed.command
+        this.parsedParameters = parsed.params
+        this.updateCmdParams()
+      }
+    },
+    populateParametersFromParsed() {
+      // Populate parameters after command parameters are loaded
+      if (
+        !this.parsedParameters ||
+        Object.keys(this.parsedParameters).length === 0
+      ) {
+        return
+      }
+
+      this.$nextTick(() => {
+        // Give time for parameters to load
+        setTimeout(() => {
+          if (this.computedRows) {
+            this.computedRows.forEach((row) => {
+              if (this.parsedParameters.hasOwnProperty(row.parameter_name)) {
+                const value = this.parsedParameters[row.parameter_name]
+                // Set the value based on parameter type
+                if (row.states && typeof value === 'string') {
+                  // For state parameters, try to match the state name
+                  const stateKey = Object.keys(row.states).find(
+                    (key) =>
+                      key === value ||
+                      key.toLowerCase() === value.toLowerCase(),
+                  )
+                  if (stateKey) {
+                    row.val = row.states[stateKey].value
+                  } else {
+                    row.val = value
+                  }
+                } else if (row.type === 'STRING' && typeof value === 'string') {
+                  // For string parameters, add quotes if not present
+                  row.val =
+                    value.startsWith("'") || value.startsWith('"')
+                      ? value
+                      : `'${value}'`
+                } else {
+                  row.val = value
+                }
+              }
+            })
+          }
+        }, 100) // Shorter delay since we're already in the component
+      })
     },
   },
 }

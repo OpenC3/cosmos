@@ -223,7 +223,7 @@ module OpenC3
 
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.create
-        model.insert(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
+        model.insert_command(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
         model.destroy
 
         queue = QueueModel.get(name: "TEST", scope: "DEFAULT")
@@ -244,13 +244,13 @@ module OpenC3
       end
     end
 
-    describe "insert" do
+    describe "insert_command" do
       it "inserts command data to the store" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command_data = { username: "anonymous", value: "TGT CMD", timestamp: 1 }
 
-        model.insert(1, command_data)
+        model.insert_command(1, command_data)
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands).to contain_exactly(command_data.transform_keys(&:to_s))
@@ -262,18 +262,18 @@ module OpenC3
           scope: "DEFAULT"
         )
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.insert(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
+        model.insert_command(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
       end
     end
 
-    describe "remove" do
+    describe "remove_command" do
       it "removes command data from the store" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
 
-        model.insert(1, command_data)
-        result = model.remove(1)
+        model.insert_command(1, command_data)
+        result = model.remove_command(1)
 
         expect(result).to be true
         commands = Store.zrange("DEFAULT:TEST", 0, -1)
@@ -284,21 +284,75 @@ module OpenC3
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
-        model.insert(1, command_data)
+        model.insert_command(1, command_data)
 
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
           scope: "DEFAULT"
         )
-        model.remove(1)
+        model.remove_command(1)
       end
 
       it "returns false when removing non-existent command" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
 
-        result = model.remove(0)
+        result = model.remove_command(0)
         expect(result).to be false
+      end
+    end
+
+    describe "update_command" do
+      it "updates existing command at given index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        original_command = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
+        
+        model.insert_command(1.5, original_command)
+        model.update_command(index: 1.5, command: "TGT CMD2", username: "user2")
+        
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["username"]).to eq("user2")
+        expect(commands[0]["value"]).to eq("TGT CMD2")
+        expect(commands[0]["timestamp"]).to be > 1000
+      end
+
+      it "raises error when updating non-existent command" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        
+        expect {
+          model.update_command(index: 1.0, command: "TGT CMD", username: "user1")
+        }.to raise_error(QueueError, "No command found at index 1.0 in queue 'TEST'")
+      end
+
+      it "sends command notification when updating" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
+        
+        expect(QueueTopic).to receive(:write_notification).with(
+          hash_including('kind' => 'command'),
+          scope: "DEFAULT"
+        )
+        model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
+      end
+
+      it "preserves command index when updating" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
+        model.insert_command(2.0, { username: "user1", value: "TGT CMD3", timestamp: 3000 })
+        
+        model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
+        
+        result = model.list
+        expect(result.length).to eq(2)
+        expect(result[0]["index"]).to eq(1.0)
+        expect(result[0]["value"]).to eq("TGT CMD2")
+        expect(result[0]["username"]).to eq("user2")
+        expect(result[1]["index"]).to eq(2.0)
+        expect(result[1]["value"]).to eq("TGT CMD3")
       end
     end
 
@@ -317,9 +371,9 @@ module OpenC3
         command2 = { username: "user2", value: "TGT CMD2", timestamp: 2000 }
         command3 = { username: "user3", value: "TGT CMD3", timestamp: 3000 }
 
-        model.insert(1, command1)
-        model.insert(2, command2)
-        model.insert(3, command3)
+        model.insert_command(1, command1)
+        model.insert_command(2, command2)
+        model.insert_command(3, command3)
 
         result = model.list
         expect(result.length).to eql 3
@@ -340,8 +394,8 @@ module OpenC3
         first_command = { username: "user1", value: "FIRST_CMD", timestamp: 1000 }
         second_command = { username: "user2", value: "SECOND_CMD", timestamp: 2000 }
 
-        model.insert(1, first_command)
-        model.insert(2, second_command)
+        model.insert_command(1, first_command)
+        model.insert_command(2, second_command)
 
         result = model.list
         one = first_command.transform_keys(&:to_s)
@@ -359,14 +413,14 @@ module OpenC3
         command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
         command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
 
-        model.insert(1, command1)
-        model.insert(3, command3)
-        model.insert(2, command2)
+        model.insert_command(1, command1)
+        model.insert_command(3, command3)
+        model.insert_command(2, command2)
 
         expect(model.list.length).to eql 3
 
         # Remove the first command
-        result_removed = model.remove(1)
+        result_removed = model.remove_command(1)
         expect(result_removed).to be true
         result = model.list
         expect(result.length).to eql 2
@@ -492,6 +546,32 @@ module OpenC3
 
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.undeploy
+      end
+    end
+
+    describe "unique scores" do
+      it "ensures commands inserted via insert_command and queue_command have unique scores" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.create
+
+        # Add commands using both methods
+        model.insert_command(nil, { username: "user1", value: "CMD1", timestamp: 1000 })
+        QueueModel.queue_command("TEST", command: "CMD2", username: "user2", scope: "DEFAULT")
+        model.insert_command(nil, { username: "user3", value: "CMD3", timestamp: 3000 })
+        QueueModel.queue_command("TEST", command: "CMD4", username: "user4", scope: "DEFAULT")
+        model.insert_command(nil, { username: "user5", value: "CMD5", timestamp: 5000 })
+
+        # Get all commands with their scores
+        commands_with_scores = Store.zrange("DEFAULT:TEST", 0, -1, with_scores: true)
+        scores = commands_with_scores.map { |item| item[1] }
+
+        # Verify all scores are unique
+        expect(scores.uniq).to eq(scores)
+        expect(scores.length).to eq(5)
+        
+        # Verify scores are in ascending order
+        expect(scores).to eq(scores.sort)
       end
     end
   end

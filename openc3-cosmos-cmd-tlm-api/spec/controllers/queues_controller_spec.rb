@@ -271,38 +271,38 @@ RSpec.describe QueuesController, type: :controller do
     end
   end
 
-  describe "POST insert" do
+  describe "POST insert_command" do
     it "inserts a command to a queue and returns status code 200" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:insert)
+      allow(queue_model).to receive(:insert_command)
 
-      post :insert, params: {name: "QUEUE1", command: "TEST COMMAND", scope: "DEFAULT"}
+      post :insert_command, params: {name: "QUEUE1", command: "TEST COMMAND", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command added to queue")
-      expect(queue_model).to have_received(:insert).with(anything, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
+      expect(queue_model).to have_received(:insert_command).with(nil, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
     end
 
     it "inserts a command at index and returns status code 200" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:insert)
+      allow(queue_model).to receive(:insert_command)
       index = 10
 
-      post :insert, params: {name: "QUEUE1", command: "TEST COMMAND", index: index, scope: "DEFAULT"}
+      post :insert_command, params: {name: "QUEUE1", command: "TEST COMMAND", index: index, scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command added to queue")
-      expect(queue_model).to have_received(:insert).with(index.to_f, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
+      expect(queue_model).to have_received(:insert_command).with(index.to_f, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
     end
 
     it "returns 404 when the queue is not found" do
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(nil)
 
-      post :insert, params: {name: "NONEXISTENT", command: "TEST COMMAND", scope: "DEFAULT"}
+      post :insert_command, params: {name: "NONEXISTENT", command: "TEST COMMAND", scope: "DEFAULT"}
       expect(response).to have_http_status(404)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -313,7 +313,7 @@ RSpec.describe QueuesController, type: :controller do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
 
-      post :insert, params: {name: "QUEUE1", scope: "DEFAULT"}
+      post :insert_command, params: {name: "QUEUE1", scope: "DEFAULT"}
       expect(response).to have_http_status(400)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -323,9 +323,9 @@ RSpec.describe QueuesController, type: :controller do
     it "returns 500 when an unexpected error occurs" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:insert).and_raise(StandardError.new("Unexpected error"))
+      allow(queue_model).to receive(:insert_command).and_raise(StandardError.new("Unexpected error"))
 
-      post :insert, params: {name: "QUEUE1", command: "TEST COMMAND", scope: "DEFAULT"}
+      post :insert_command, params: {name: "QUEUE1", command: "TEST COMMAND", scope: "DEFAULT"}
       expect(response).to have_http_status(500)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -334,28 +334,28 @@ RSpec.describe QueuesController, type: :controller do
     end
   end
 
-  describe "POST remove" do
+  describe "POST remove_command" do
     it "removes a command from a queue and returns status code 200" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:remove).and_return(true)
+      allow(queue_model).to receive(:remove_command).and_return(true)
       index = 1
 
-      post :remove, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      post :remove_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command removed from queue")
-      expect(queue_model).to have_received(:remove).with(index)
+      expect(queue_model).to have_received(:remove_command).with(index)
     end
 
     it "returns 404 when command not found in queue" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:remove).and_return(false)
+      allow(queue_model).to receive(:remove_command).and_return(false)
       index = 1234567890
 
-      post :remove, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      post :remove_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
       expect(response).to have_http_status(404)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -366,7 +366,7 @@ RSpec.describe QueuesController, type: :controller do
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(nil)
       index = 1
 
-      post :remove, params: {name: "NONEXISTENT", index: index, scope: "DEFAULT"}
+      post :remove_command, params: {name: "NONEXISTENT", index: index, scope: "DEFAULT"}
       expect(response).to have_http_status(404)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -377,7 +377,7 @@ RSpec.describe QueuesController, type: :controller do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
 
-      post :remove, params: {name: "QUEUE1", scope: "DEFAULT"}
+      post :remove_command, params: {name: "QUEUE1", scope: "DEFAULT"}
       expect(response).to have_http_status(400)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
@@ -387,10 +387,84 @@ RSpec.describe QueuesController, type: :controller do
     it "returns 500 when an unexpected error occurs" do
       queue_model = double("QueueModel")
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:remove).and_raise(StandardError.new("Unexpected error"))
+      allow(queue_model).to receive(:remove_command).and_raise(StandardError.new("Unexpected error"))
       index = 1
 
-      post :remove, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      post :remove_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(500)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Unexpected error")
+      expect(json["type"]).to eql("StandardError")
+    end
+  end
+
+  describe "POST update_command" do
+    it "updates a command in a queue and returns status code 200" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:update_command)
+      index = "1.0"
+
+      post :update_command, params: {name: "QUEUE1", command: "UPDATED COMMAND", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("success")
+      expect(json["message"]).to eql("Command updated")
+      expect(queue_model).to have_received(:update_command).with(index: index, username: "anonymous", command: "UPDATED COMMAND")
+    end
+
+    it "returns 404 when the queue is not found" do
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(nil)
+
+      post :update_command, params: {name: "NONEXISTENT", command: "TEST COMMAND", index: "1.0", scope: "DEFAULT"}
+      expect(response).to have_http_status(404)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("queue not found")
+    end
+
+    it "returns 400 when command is missing" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+
+      post :update_command, params: {name: "QUEUE1", index: "1.0", scope: "DEFAULT"}
+      expect(response).to have_http_status(400)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("command is required")
+    end
+
+    it "returns 400 when index is missing" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+
+      post :update_command, params: {name: "QUEUE1", command: "TEST COMMAND", scope: "DEFAULT"}
+      expect(response).to have_http_status(400)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("index is required")
+    end
+
+    it "returns 400 when a QueueError occurs" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:update_command).and_raise(OpenC3::QueueError.new("Command not found"))
+
+      post :update_command, params: {name: "QUEUE1", command: "TEST COMMAND", index: "1.0", scope: "DEFAULT"}
+      expect(response).to have_http_status(400)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Command not found")
+      expect(json["type"]).to eql("OpenC3::QueueError")
+    end
+
+    it "returns 500 when an unexpected error occurs" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:update_command).and_raise(StandardError.new("Unexpected error"))
+
+      post :update_command, params: {name: "QUEUE1", command: "TEST COMMAND", index: "1.0", scope: "DEFAULT"}
       expect(response).to have_http_status(500)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")

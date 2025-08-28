@@ -99,7 +99,7 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def insert(index, command_data)
+    def insert_command(index, command_data)
       unless index
         result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
         if result.empty?
@@ -112,10 +112,24 @@ module OpenC3
       notify(kind: 'command')
     end
 
-    def remove(index)
+    def remove_command(index)
       num_removed = Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
       notify(kind: 'command')
       return (num_removed == 1)
+    end
+
+    def update_command(index:, command:, username:)
+      # Check if command exists at the given index
+      existing = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
+      if existing.empty?
+        raise QueueError, "No command found at index #{index} in queue '#{@name}'"
+      end
+
+      # Remove the existing command and add the new one at the same index
+      Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
+      command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
+      Store.zadd("#{@scope}:#{@name}", index, command_data.to_json)
+      notify(kind: 'command')
     end
 
     def list

@@ -121,7 +121,7 @@ class QueuesController < ApplicationController
     change_state(params, 'DISABLE')
   end
 
-  def insert
+  def insert_command
     return unless authorization('system')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -134,8 +134,12 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: 'command is required' }, status: 400
         return
       end
+      index = nil
+      if params[:index]
+        index = params[:index].to_f
+      end
       # If params[:index] is not given this will be nil which means insert at the end
-      model.insert(params[:index].to_f, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
+      model.insert_command(index, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -143,7 +147,7 @@ class QueuesController < ApplicationController
     end
   end
 
-  def remove
+  def remove_command
     return unless authorization('system')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -155,12 +159,41 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: 'index is required' }, status: 400
         return
       end
-      success = model.remove(params[:index].to_i)
+      success = model.remove_command(params[:index].to_i)
       if success
         render json: { status: 'success', message: 'Command removed from queue' }
       else
         render json: { status: 'error', message: 'Command not found in queue' }, status: 404
       end
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+    end
+  end
+
+  def update_command
+    return unless authorization('system')
+    begin
+      model = @model_class.get_model(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        return
+      end
+      command = params[:command]
+      if command.nil?
+        render json: { status: 'error', message: 'command is required' }, status: 400
+        return
+      end
+      index = params[:index]
+      if index.nil?
+        render json: { status: 'error', message: 'index is required' }, status: 400
+        return
+      end
+      model.update_command(index: index, username: username(), command: command)
+      render json: { status: 'success', message: 'Command updated' }
+    rescue OpenC3::QueueError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
