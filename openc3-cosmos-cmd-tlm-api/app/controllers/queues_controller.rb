@@ -17,8 +17,13 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/queue_model'
+require 'openc3/models/offline_access_model'
+require 'openc3/utilities/authentication'
+require 'openc3/api/api'
 
 class QueuesController < ApplicationController
+  include OpenC3::Api
+
   NOT_FOUND = 'queue not found'
 
   def initialize
@@ -155,13 +160,10 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      if params[:index].nil?
-        render json: { status: 'error', message: 'index is required' }, status: 400
-        return
-      end
-      success = model.remove_command(params[:index].to_i)
-      if success
-        render json: { status: 'success', message: 'Command removed from queue' }
+      index = params[:index]&.to_f
+      command_data = model.remove_command(index)
+      if command_data
+        render json: command_data
       else
         render json: { status: 'error', message: 'Command not found in queue' }, status: 404
       end
@@ -200,6 +202,39 @@ class QueuesController < ApplicationController
     end
   end
 
+  def exec_command
+    return unless authorization('system')
+    begin
+      model = @model_class.get_model(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        return
+      end
+      index = params[:index]&.to_f
+      command_data = model.remove_command(index)
+      if command_data
+        begin
+          token = get_token(command_data['username'], scope: params[:scope])
+          cmd_no_hazardous_check(command_data['value'], scope: params[:scope], token: token)
+        rescue StandardError => e
+          log_error(e)
+          render json: { status: 'error', message: "Failed to execute command: #{e.message}", type: e.class.to_s, backtrace: e.backtrace }, status: 500
+          return
+        end
+        render json: command_data
+      else
+        if index
+          render json: { status: 'error', message: "No command in queue #{params[:name]} at index #{index}" }, status: 404
+        else
+          render json: { status: 'error', message: "No commands in queue #{params[:name]}" }, status: 404
+        end
+      end
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+    end
+  end
+
   def destroy
     return unless authorization('system')
     model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -227,6 +262,23 @@ class QueuesController < ApplicationController
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+    end
+  end
+
+  def get_token(username, scope:)
+    if ENV['OPENC3_API_CLIENT'].nil?
+      ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
+      return OpenC3::OpenC3Authentication.new().token
+    else
+      # Check for offline access token
+      model = nil
+      model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
+      if model and model.offline_access_token
+        auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        return auth.get_token_from_refresh_token(model.offline_access_token)
+      else
+        return nil
+      end
     end
   end
 end

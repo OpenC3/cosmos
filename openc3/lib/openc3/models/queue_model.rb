@@ -112,12 +112,6 @@ module OpenC3
       notify(kind: 'command')
     end
 
-    def remove_command(index)
-      num_removed = Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
-      notify(kind: 'command')
-      return (num_removed == 1)
-    end
-
     def update_command(index:, command:, username:)
       # Check if command exists at the given index
       existing = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
@@ -130,6 +124,35 @@ module OpenC3
       command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
       Store.zadd("#{@scope}:#{@name}", index, command_data.to_json)
       notify(kind: 'command')
+    end
+
+    def remove_command(index = nil)
+      if index
+        # Remove specific index
+        result = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
+        if result.empty?
+          return nil
+        else
+          Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
+          command_data = JSON.parse(result[0])
+          command_data['index'] = index.to_f
+          notify(kind: 'command')
+          return command_data
+        end
+      else
+        # Remove first element (lowest score)
+        result = Store.zrange("#{@scope}:#{@name}", 0, 0, with_scores: true)
+        if result.empty?
+          return nil
+        else
+          score = result[0][1]
+          Store.zremrangebyscore("#{@scope}:#{@name}", score, score)
+          command_data = JSON.parse(result[0][0])
+          command_data['index'] = score.to_f
+          notify(kind: 'command')
+          return command_data
+        end
+      end
     end
 
     def list

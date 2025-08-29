@@ -66,14 +66,18 @@ module OpenC3
 
     def process_queued_commands
       while @state == 'RELEASE'
-        queue_name, command_data, timestamp = Store.bzpopmin("#{@scope}:#{@queue_name}", timeout: 0.2)
-        if command_data
-          command = JSON.parse(command_data)
-          username = command['username']
-          token = get_token(username)
-          raise "No token available for username: #{username}" unless token
-          cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
+        begin
+          queue_name, command_data, timestamp = Store.bzpopmin("#{@scope}:#{@queue_name}", timeout: 0.2)
+          if command_data
+            command = JSON.parse(command_data)
+            username = command['username']
+            token = get_token(username)
+            cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
+          end
+        rescue StandardError => e
+          @logger.error "QueueProcessor failed to process command from queue #{@queue_name}\n#{e.message}"
         end
+        break if @cancel_thread
       end
     end
 

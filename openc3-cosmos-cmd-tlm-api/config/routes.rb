@@ -87,6 +87,7 @@ Rails.application.routes.draw do
     post '/queues/:name/insert_command', to: 'queues#insert_command', name: /[^\/]+/
     post '/queues/:name/remove_command', to: 'queues#remove_command', name: /[^\/]+/
     post '/queues/:name/update_command', to: 'queues#update_command', name: /[^\/]+/
+    post '/queues/:name/exec_command', to: 'queues#exec_command', name: /[^\/]+/
 
     resources :permissions, only: [:index]
 

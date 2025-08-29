@@ -337,16 +337,45 @@ RSpec.describe QueuesController, type: :controller do
   describe "POST remove_command" do
     it "removes a command from a queue and returns status code 200" do
       queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user",
+        "value" => "INST COMMAND",
+        "timestamp" => 2000,
+        "index" => 3.0
+      }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-      allow(queue_model).to receive(:remove_command).and_return(true)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
       index = 1
 
       post :remove_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["status"]).to eql("success")
-      expect(json["message"]).to eql("Command removed from queue")
+      expect(json["username"]).to eql("user")
+      expect(json["value"]).to eql("INST COMMAND")
+      expect(json["timestamp"]).to eql(2000)
+      expect(json["index"]).to eql(3.0)
       expect(queue_model).to have_received(:remove_command).with(index)
+    end
+
+    it "removes the first command from a queue and returns status code 200 when index not given" do
+      queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user",
+        "value" => "INST COMMAND",
+        "timestamp" => 2000,
+        "index" => 3.0
+      }
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
+
+      post :remove_command, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["username"]).to eql("user")
+      expect(json["value"]).to eql("INST COMMAND")
+      expect(json["timestamp"]).to eql(2000)
+      expect(json["index"]).to eql(3.0)
+      expect(queue_model).to have_received(:remove_command).with(nil)
     end
 
     it "returns 404 when command not found in queue" do
@@ -371,17 +400,6 @@ RSpec.describe QueuesController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("queue not found")
-    end
-
-    it "returns 400 when index is missing" do
-      queue_model = double("QueueModel")
-      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
-
-      post :remove_command, params: {name: "QUEUE1", scope: "DEFAULT"}
-      expect(response).to have_http_status(400)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["status"]).to eql("error")
-      expect(json["message"]).to eql("index is required")
     end
 
     it "returns 500 when an unexpected error occurs" do
@@ -505,6 +523,137 @@ RSpec.describe QueuesController, type: :controller do
       allow(queue_model).to receive(:list).and_raise(StandardError.new("Unexpected error"))
 
       get :list, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(500)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Unexpected error")
+      expect(json["type"]).to eql("StandardError")
+    end
+  end
+
+  describe "DELETE exec_command" do
+    it "executes a command from a queue without index and returns status code 200" do
+      queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user1",
+        "value" => "TEST COMMAND",
+        "timestamp" => 1000,
+        "index" => 1.0
+      }
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
+      allow(controller).to receive(:cmd_no_hazardous_check).with("TEST COMMAND", {scope: "DEFAULT", token: "openc3"})
+
+      post :exec_command, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["username"]).to eql("user1")
+      expect(json["value"]).to eql("TEST COMMAND")
+      expect(json["timestamp"]).to eql(1000)
+      expect(json["index"]).to eql(1.0)
+    end
+
+    it "removes a command from a queue with specific index and returns status code 200" do
+      queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user2",
+        "value" => "INDEXED COMMAND",
+        "timestamp" => 2000,
+        "index" => 3.5
+      }
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
+      allow(controller).to receive(:cmd_no_hazardous_check).with("INDEXED COMMAND", {scope: "DEFAULT", token: "openc3"})
+      index = "3.5"
+
+      post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["username"]).to eql("user2")
+      expect(json["value"]).to eql("INDEXED COMMAND")
+      expect(json["timestamp"]).to eql(2000)
+      expect(json["index"]).to eql(3.5)
+    end
+
+    it "returns 404 when no command found to remove" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(nil)
+
+      post :exec_command, params: {name: "QUEUE1", scope: "DEFAULT"}
+      expect(response).to have_http_status(404)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("No commands in queue QUEUE1")
+    end
+
+    it "returns 404 when no command found at specific index" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(nil)
+      index = "999.0"
+
+      post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(404)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("No command in queue QUEUE1 at index #{index}")
+    end
+
+    it "returns 404 when the queue is not found" do
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(nil)
+
+      post :exec_command, params: {name: "NONEXISTENT", scope: "DEFAULT"}
+      expect(response).to have_http_status(404)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("queue not found")
+    end
+
+    it "handles integer index parameter correctly" do
+      queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user3",
+        "value" => "INTEGER INDEX COMMAND",
+        "timestamp" => 3000,
+        "index" => 5.0
+      }
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
+      allow(controller).to receive(:cmd_no_hazardous_check).with("INTEGER INDEX COMMAND", {scope: "DEFAULT", token: "openc3"})
+      index = 5
+
+      post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["value"]).to eql("INTEGER INDEX COMMAND")
+    end
+
+    it "handles fractional index parameter correctly" do
+      queue_model = double("QueueModel")
+      command_data = {
+        "username" => "user4",
+        "value" => "FRACTIONAL INDEX COMMAND",
+        "timestamp" => 4000,
+        "index" => 2.7
+      }
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_return(command_data)
+      allow(controller).to receive(:cmd_no_hazardous_check).with("FRACTIONAL INDEX COMMAND", {scope: "DEFAULT", token: "openc3"})
+      index = "2.7"
+
+      post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["value"]).to eql("FRACTIONAL INDEX COMMAND")
+    end
+
+    it "returns 500 when an unexpected error occurs" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:remove_command).and_raise(StandardError.new("Unexpected error"))
+
+      post :exec_command, params: {name: "QUEUE1", scope: "DEFAULT"}
       expect(response).to have_http_status(500)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")

@@ -266,51 +266,15 @@ module OpenC3
       end
     end
 
-    describe "remove_command" do
-      it "removes command data from the store" do
-        allow(QueueTopic).to receive(:write_notification)
-        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
-
-        model.insert_command(1, command_data)
-        result = model.remove_command(1)
-
-        expect(result).to be true
-        commands = Store.zrange("DEFAULT:TEST", 0, -1)
-        expect(commands).to be_empty
-      end
-
-      it "sends command notification when removing" do
-        allow(QueueTopic).to receive(:write_notification)
-        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 12345 }
-        model.insert_command(1, command_data)
-
-        expect(QueueTopic).to receive(:write_notification).with(
-          hash_including('kind' => 'command'),
-          scope: "DEFAULT"
-        )
-        model.remove_command(1)
-      end
-
-      it "returns false when removing non-existent command" do
-        allow(QueueTopic).to receive(:write_notification)
-        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-
-        result = model.remove_command(0)
-        expect(result).to be false
-      end
-    end
-
     describe "update_command" do
       it "updates existing command at given index" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         original_command = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
-        
+
         model.insert_command(1.5, original_command)
         model.update_command(index: 1.5, command: "TGT CMD2", username: "user2")
-        
+
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands.length).to eq(1)
         expect(commands[0]["username"]).to eq("user2")
@@ -320,7 +284,7 @@ module OpenC3
 
       it "raises error when updating non-existent command" do
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        
+
         expect {
           model.update_command(index: 1.0, command: "TGT CMD", username: "user1")
         }.to raise_error(QueueError, "No command found at index 1.0 in queue 'TEST'")
@@ -330,7 +294,7 @@ module OpenC3
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
-        
+
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
           scope: "DEFAULT"
@@ -343,9 +307,9 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
         model.insert_command(2.0, { username: "user1", value: "TGT CMD3", timestamp: 3000 })
-        
+
         model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
-        
+
         result = model.list
         expect(result.length).to eq(2)
         expect(result[0]["index"]).to eq(1.0)
@@ -421,7 +385,7 @@ module OpenC3
 
         # Remove the first command
         result_removed = model.remove_command(1)
-        expect(result_removed).to be true
+        expect(result_removed).to_not be_nil
         result = model.list
         expect(result.length).to eql 2
         two = command2.transform_keys(&:to_s)
@@ -549,6 +513,200 @@ module OpenC3
       end
     end
 
+    describe "remove_command" do
+      it "returns nil when queue is empty" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        result = model.remove_command
+        expect(result).to be_nil
+      end
+
+      it "removes the first command when no index is specified" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
+        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
+
+        model.insert_command(1.0, command1)
+        model.insert_command(2.0, command2)
+        model.insert_command(3.0, command3)
+
+        result = model.remove_command
+
+        expect(result["username"]).to eq("user1")
+        expect(result["value"]).to eq("CMD1")
+        expect(result["timestamp"]).to eq(1000)
+        expect(result["index"]).to eq(1.0)
+
+        # Verify the command was removed from the queue
+        remaining = model.list
+        expect(remaining.length).to eq(2)
+        expect(remaining[0]["value"]).to eq("CMD2")
+        expect(remaining[1]["value"]).to eq("CMD3")
+      end
+
+      it "removes command at specific index when index is provided" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
+        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
+
+        model.insert_command(1.0, command1)
+        model.insert_command(2.0, command2)
+        model.insert_command(3.0, command3)
+
+        result = model.remove_command(2.0)
+
+        expect(result["username"]).to eq("user2")
+        expect(result["value"]).to eq("CMD2")
+        expect(result["timestamp"]).to eq(2000)
+        expect(result["index"]).to eq(2.0)
+
+        # Verify the middle command was removed from the queue
+        remaining = model.list
+        expect(remaining.length).to eq(2)
+        expect(remaining[0]["value"]).to eq("CMD1")
+        expect(remaining[1]["value"]).to eq("CMD3")
+      end
+
+      it "returns nil when trying to remove non-existent index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        result = model.remove_command(5.0)
+        expect(result).to be_nil
+
+        # Verify the original command is still there
+        remaining = model.list
+        expect(remaining.length).to eq(1)
+        expect(remaining[0]["value"]).to eq("CMD1")
+      end
+
+      it "sends command notification when removing without index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        expect(QueueTopic).to receive(:write_notification).with(
+          hash_including('kind' => 'command'),
+          scope: "DEFAULT"
+        )
+
+        model.remove_command
+      end
+
+      it "sends command notification when removing with specific index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
+
+        model.insert_command(1.0, command1)
+        model.insert_command(2.0, command2)
+
+        expect(QueueTopic).to receive(:write_notification).with(
+          hash_including('kind' => 'command'),
+          scope: "DEFAULT"
+        )
+
+        model.remove_command(2.0)
+      end
+
+      it "does not send notification when removing from empty queue" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        expect(QueueTopic).not_to receive(:write_notification)
+
+        result = model.remove_command
+        expect(result).to be_nil
+      end
+
+      it "does not send notification when removing non-existent index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        expect(QueueTopic).not_to receive(:write_notification)
+
+        result = model.remove_command(5.0)
+        expect(result).to be_nil
+      end
+
+      it "handles removing from single item queue" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        result = model.remove_command
+
+        expect(result["username"]).to eq("user1")
+        expect(result["value"]).to eq("CMD1")
+        expect(result["index"]).to eq(1.0)
+
+        # Queue should now be empty
+        remaining = model.list
+        expect(remaining).to be_empty
+      end
+
+      it "removes commands in FIFO order when called multiple times without index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "FIRST", timestamp: 1000 }
+        command2 = { username: "user2", value: "SECOND", timestamp: 2000 }
+        command3 = { username: "user3", value: "THIRD", timestamp: 3000 }
+
+        model.insert_command(1.0, command1)
+        model.insert_command(2.0, command2)
+        model.insert_command(3.0, command3)
+
+        first_pop = model.remove_command
+        expect(first_pop["value"]).to eq("FIRST")
+        expect(first_pop["index"]).to eq(1.0)
+
+        second_pop = model.remove_command
+        expect(second_pop["value"]).to eq("SECOND")
+        expect(second_pop["index"]).to eq(2.0)
+
+        third_pop = model.remove_command
+        expect(third_pop["value"]).to eq("THIRD")
+        expect(third_pop["index"]).to eq(3.0)
+
+        # Queue should now be empty
+        fourth_pop = model.remove_command
+        expect(fourth_pop).to be_nil
+      end
+
+      it "handles fractional indices correctly" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
+
+        model.insert_command(1.5, command1)
+        model.insert_command(2.7, command2)
+
+        result = model.remove_command(1.5)
+
+        expect(result["value"]).to eq("CMD1")
+        expect(result["index"]).to eq(1.5)
+
+        remaining = model.list
+        expect(remaining.length).to eq(1)
+        expect(remaining[0]["index"]).to eq(2.7)
+      end
+    end
+
     describe "unique scores" do
       it "ensures commands inserted via insert_command and queue_command have unique scores" do
         allow(QueueTopic).to receive(:write_notification)
@@ -569,7 +727,7 @@ module OpenC3
         # Verify all scores are unique
         expect(scores.uniq).to eq(scores)
         expect(scores.length).to eq(5)
-        
+
         # Verify scores are in ascending order
         expect(scores).to eq(scores.sort)
       end

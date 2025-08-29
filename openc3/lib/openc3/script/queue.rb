@@ -64,6 +64,19 @@ module OpenC3
       return _make_request(action: 'disable', verb: 'post', uri: "/openc3-api/queues/#{name}/disable", scope: scope)
     end
 
+    def queue_exec(name, index: nil, scope: $openc3_scope)
+      data = {}
+      data['index'] = index if index
+      response = $api_server.request('post', "/openc3-api/queues/#{name}/exec_command", data: data, scope: scope)
+      if response.nil?
+        raise "Failed to exec command. No response from server."
+      elsif response.status != 200 and response.status != 201
+        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        raise "Failed to exec command due to #{result['message']}"
+      end
+      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+    end
+
     def queue_delete(name, scope: $openc3_scope)
       return _make_request(action: 'delete', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
