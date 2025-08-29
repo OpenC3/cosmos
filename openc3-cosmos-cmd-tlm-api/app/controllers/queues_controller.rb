@@ -36,7 +36,7 @@ class QueuesController < ApplicationController
   # scope [String] the scope of the queue, `TEST`
   # @return [String] the array of queues converted into json format
   def index
-    return unless authorization('system')
+    return unless authorization('cmd_info')
     begin
       queues = @model_class.all(scope: params[:scope])
       ret = Array.new
@@ -56,7 +56,7 @@ class QueuesController < ApplicationController
   # scope [String] the scope of the queue, `TEST`
   # @return [String] the queue converted into json format.
   def show
-    return unless authorization('system')
+    return unless authorization('cmd_info')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -78,7 +78,7 @@ class QueuesController < ApplicationController
   # name [String] the queue name, `QUEUE0`
   # scope [String] the scope of the trigger, `TEST`
   def create
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -99,7 +99,7 @@ class QueuesController < ApplicationController
   end
 
   def list
-    return unless authorization('system')
+    return unless authorization('cmd_info')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -127,7 +127,7 @@ class QueuesController < ApplicationController
   end
 
   def insert_command
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -153,7 +153,7 @@ class QueuesController < ApplicationController
   end
 
   def remove_command
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -174,7 +174,7 @@ class QueuesController < ApplicationController
   end
 
   def update_command
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -203,7 +203,7 @@ class QueuesController < ApplicationController
   end
 
   def exec_command
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -236,7 +236,7 @@ class QueuesController < ApplicationController
   end
 
   def destroy
-    return unless authorization('system')
+    return unless authorization('cmd')
     model = @model_class.get_model(name: params[:name], scope: params[:scope])
     if model.nil?
       render json: { status: 'error', message: NOT_FOUND }, status: 404
@@ -249,7 +249,7 @@ class QueuesController < ApplicationController
   private
 
   def change_state(params, state)
-    return unless authorization('system')
+    return unless authorization('cmd')
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
