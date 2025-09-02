@@ -25,60 +25,55 @@ module OpenC3
     private
 
     # Helper method that makes the request and parses the response
-    def _make_request(action:, verb:, uri:, scope:)
-      response = $api_server.request(verb, uri, scope: scope)
+    def _make_request(action:, verb:, uri:, scope:, data: nil)
+      response = $api_server.request(verb, uri, data: data, json: data.nil? ? false : true, scope: scope)
       if response.nil?
-        raise "Failed to #{action} queue. No response from server."
+        raise "Failed to #{action}. No response from server."
       elsif response.status != 200 and response.status != 201
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-        raise "Failed to #{action} queue due to #{result['message']}"
+        raise "Failed to #{action} due to #{result['message']}"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
 
     def queue_all(scope: $openc3_scope)
-      return _make_request(action: 'index', verb: 'get', uri: "/openc3-api/queues", scope: scope)
+      return _make_request(action: 'index queue', verb: 'get', uri: "/openc3-api/queues", scope: scope)
     end
 
     def queue_get(name, scope: $openc3_scope)
-      return _make_request(action: 'get', verb: 'get', uri: "/openc3-api/queues/#{name}", scope: scope)
+      return _make_request(action: 'get queue', verb: 'get', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
 
     def queue_list(name, scope: $openc3_scope)
-      return _make_request(action: 'list', verb: 'get', uri: "/openc3-api/queues/#{name}/list", scope: scope)
+      return _make_request(action: 'list queue', verb: 'get', uri: "/openc3-api/queues/#{name}/list", scope: scope)
     end
 
-    def queue_create(name, scope: $openc3_scope)
-      return _make_request(action: 'create', verb: 'post', uri: "/openc3-api/queues/#{name}", scope: scope)
+    def queue_create(name, state: 'HOLD', scope: $openc3_scope)
+      data = {}
+      data['state'] = state
+      return _make_request(action: 'create queue', verb: 'post', uri: "/openc3-api/queues/#{name}", data: data, scope: scope)
     end
 
     def queue_hold(name, scope: $openc3_scope)
-      return _make_request(action: 'hold', verb: 'post', uri: "/openc3-api/queues/#{name}/hold", scope: scope)
+      return _make_request(action: 'hold queue', verb: 'post', uri: "/openc3-api/queues/#{name}/hold", scope: scope)
     end
 
     def queue_release(name, scope: $openc3_scope)
-      return _make_request(action: 'release', verb: 'post', uri: "/openc3-api/queues/#{name}/release", scope: scope)
+      return _make_request(action: 'release queue', verb: 'post', uri: "/openc3-api/queues/#{name}/release", scope: scope)
     end
 
     def queue_disable(name, scope: $openc3_scope)
-      return _make_request(action: 'disable', verb: 'post', uri: "/openc3-api/queues/#{name}/disable", scope: scope)
+      return _make_request(action: 'disable queue', verb: 'post', uri: "/openc3-api/queues/#{name}/disable", scope: scope)
     end
 
     def queue_exec(name, index: nil, scope: $openc3_scope)
       data = {}
       data['index'] = index if index
-      response = $api_server.request('post', "/openc3-api/queues/#{name}/exec_command", data: data, scope: scope)
-      if response.nil?
-        raise "Failed to exec command. No response from server."
-      elsif response.status != 200 and response.status != 201
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-        raise "Failed to exec command due to #{result['message']}"
-      end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return _make_request(action: 'exec command', verb: 'post', uri: "/openc3-api/queues/#{name}/exec_command", data: data, scope: scope)
     end
 
     def queue_delete(name, scope: $openc3_scope)
-      return _make_request(action: 'delete', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
+      return _make_request(action: 'delete queue', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
     alias queue_destroy queue_delete
   end

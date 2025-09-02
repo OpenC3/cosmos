@@ -82,9 +82,10 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        model = @model_class.new(name: params[:name], scope: params[:scope])
+        state = 'HOLD'
+        state = params[:state] if params[:state]
+        model = @model_class.new(name: params[:name], state: state, scope: params[:scope])
         model.create()
-        model.deploy()
         render json: model.as_json(:allow_nan => true), status: 201
       else
         render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400

@@ -30,7 +30,7 @@ class QueueError(Exception):
 
 
 class QueueModel(Model):
-    PRIMARY_KEY = 'openc3__queue'
+    PRIMARY_KEY = "openc3__queue"
 
     _class_mutex = threading.Lock()
 
@@ -47,6 +47,7 @@ class QueueModel(Model):
     @classmethod
     def all(cls, scope: str):
         return super().all(f"{scope}__{cls.PRIMARY_KEY}")
+
     # END NOTE
 
     @classmethod
@@ -55,24 +56,20 @@ class QueueModel(Model):
         if not model:
             raise QueueError(f"Queue '{name}' not found in scope '{scope}'")
 
-        if model.state != 'DISABLE':
-            result = Store.zrevrange(f"{scope}:{name}", 0, 0, with_scores=True)
+        if model.state != "DISABLE":
+            result = Store.zrevrange(f"{scope}:{name}", 0, 0, withscores=True)
             if not result:
                 index = 1.0
             else:
                 index = float(result[0][1]) + 1
 
-            command_data = {
-                'username': username,
-                'value': command,
-                'timestamp': time.time_ns()
-            }
-            Store.zadd(f"{scope}:{name}", index, json.dumps(command_data))
-            model.notify(kind='command')
+            command_data = {"username": username, "value": command, "timestamp": time.time_ns()}
+            Store.zadd(f"{scope}:{name}", {json.dumps(command_data): index})
+            model.notify(kind="command")
         else:
             raise QueueError(f"Queue '{name}' is disabled. Command '{command}' not queued.")
 
-    def __init__(self, name: str, scope: str, state: str = 'HOLD', updated_at: Optional[float] = None):
+    def __init__(self, name: str, scope: str, state: str = "HOLD", updated_at: Optional[float] = None):
         super().__init__(f"{scope}__{self.PRIMARY_KEY}", name=name, updated_at=updated_at, scope=scope)
         self.microservice_name = f"{scope}__QUEUE__{name}"
         self.state = state
@@ -81,47 +78,42 @@ class QueueModel(Model):
     def create(self, update: bool = False, force: bool = False, queued: bool = False):
         super().create(update=update, force=force, queued=queued)
         if update:
-            self.notify(kind='updated')
+            self.notify(kind="updated")
         else:
-            self.notify(kind='created')
+            self.notify(kind="created")
 
     def as_json(self):
-        return {
-            'name': self.name,
-            'scope': self.scope,
-            'state': self.state,
-            'updated_at': self.updated_at
-        }
+        return {"name": self.name, "scope": self.scope, "state": self.state, "updated_at": self.updated_at}
 
     def notify(self, kind: str):
         notification = {
-            'kind': kind,
-            'data': json.dumps(self.as_json(), allow_nan=True),
+            "kind": kind,
+            "data": json.dumps(self.as_json(), allow_nan=True),
         }
         QueueTopic.write_notification(notification, scope=self.scope)
 
     def insert(self, index: Optional[float], command_data: dict):
         if index is None:
-            result = Store.zrevrange(f"{self.scope}:{self.name}", 0, 0, with_scores=True)
+            result = Store.zrevrange(f"{self.scope}:{self.name}", 0, 0, withscores=True)
             if not result:
                 index = 1.0
             else:
                 index = float(result[0][1]) + 1
 
         Store.zadd(f"{self.scope}:{self.name}", index, json.dumps(command_data))
-        self.notify(kind='command')
+        self.notify(kind="command")
 
     def remove(self, index: float):
         num_removed = Store.zremrangebyscore(f"{self.scope}:{self.name}", index, index)
-        self.notify(kind='command')
+        self.notify(kind="command")
         return num_removed == 1
 
     def list(self):
-        results = Store.zrange(f"{self.scope}:{self.name}", 0, -1, with_scores=True)
+        results = Store.zrange(f"{self.scope}:{self.name}", 0, -1, withscores=True)
         items = []
         for item in results:
             result = json.loads(item[0])
-            result['index'] = float(item[1])
+            result["index"] = float(item[1])
             items.append(result)
         return items
 
@@ -129,13 +121,13 @@ class QueueModel(Model):
         microservice = MicroserviceModel(
             name=self.microservice_name,
             folder_name=None,
-            cmd=['ruby', 'queue_microservice.rb', self.microservice_name],
-            work_dir='/openc3/lib/openc3/microservices',
+            cmd=["ruby", "queue_microservice.rb", self.microservice_name],
+            work_dir="/openc3/lib/openc3/microservices",
             options=[],
             topics=topics,
             target_names=[],
             plugin=None,
-            scope=self.scope
+            scope=self.scope,
         )
         microservice.create()
 
@@ -148,11 +140,13 @@ class QueueModel(Model):
         model = MicroserviceModel.get_model(name=self.microservice_name, scope=self.scope)
         if model:
             notification = {
-                'kind': 'undeployed',
-                'data': json.dumps({
-                    'name': self.microservice_name,
-                    'updated_at': time.time_ns(),
-                }),
+                "kind": "undeployed",
+                "data": json.dumps(
+                    {
+                        "name": self.microservice_name,
+                        "updated_at": time.time_ns(),
+                    }
+                ),
             }
             QueueTopic.write_notification(notification, scope=self.scope)
             model.destroy()

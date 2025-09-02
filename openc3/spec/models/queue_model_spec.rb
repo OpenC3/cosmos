@@ -429,7 +429,7 @@ module OpenC3
           folder_name: nil,
           cmd: ['ruby', 'queue_microservice.rb', "DEFAULT__QUEUE__TEST"],
           work_dir: '/openc3/lib/openc3/microservices',
-          options: [],
+          options: [["QUEUE_STATE", "HOLD"]],
           topics: ["DEFAULT__QUEUE__PRIMARY_KEY"],
           target_names: [],
           plugin: nil,
@@ -721,8 +721,8 @@ module OpenC3
         model.insert_command(nil, { username: "user5", value: "CMD5", timestamp: 5000 })
 
         # Get all commands with their scores
-        commands_with_scores = Store.zrange("DEFAULT:TEST", 0, -1, with_scores: true)
-        scores = commands_with_scores.map { |item| item[1] }
+        commands_withscores = Store.zrange("DEFAULT:TEST", 0, -1, withscores: true)
+        scores = commands_withscores.map { |item| item[1] }
 
         # Verify all scores are unique
         expect(scores.uniq).to eq(scores)

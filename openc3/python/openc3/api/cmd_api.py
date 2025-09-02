@@ -27,6 +27,7 @@ from openc3.top_level import DisabledError
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.models.target_model import TargetModel
+from openc3.models.queue_model import QueueModel
 from openc3.utilities.extract import *
 from openc3.utilities.cmd_log import _build_cmd_output_string
 from openc3.topics.topic import Topic
@@ -34,7 +35,7 @@ from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.command_decom_topic import CommandDecomTopic
-from openc3.packets.packet import Packet # noqa: F401
+from openc3.packets.packet import Packet  # noqa: F401
 
 WHITELIST.extend(
     [
@@ -679,9 +680,15 @@ def _cmd_implementation(
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
 
-    # Check for the queue kwarg
-    if kwargs.get("queue") is not None:
-        QueueModel.queue_command(queue, command=command, username=username, scope=scope)
+    # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
+    # At which point ALL commands will go to that queue unless they specifically opt out with queue=False
+    queue = kwargs.get("queue", None)
+    if os.environ.get("OPENC3_DEFAULT_QUEUE", False) and queue is None:
+        queue = os.environ["OPENC3_DEFAULT_QUEUE"]
+    if queue:
+        # Pull the command out of the script string, e.g. cmd("INST ABORT")
+        queued = cmd_string.split('("')[1].split('")')[0]
+        QueueModel.queue_command(queue, command=queued, username=username, scope=scope)
     else:
-        CommandTopic.send_command(command, timeout, scope)
+        CommandTopic.send_command(command, timeout=timeout, scope=scope)
     return command

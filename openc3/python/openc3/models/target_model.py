@@ -172,12 +172,14 @@ class TargetModel(Model):
         for packet in cls.packets(target_name, scope=scope):
             for item in packet["items"]:
                 cls.add_to_target_allitems_list(target_name, item["name"], scope=scope)
-        return Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+        return Store.zrange(
+            f"{scope}__openc3tlm__{target_name}__allitems", 0, -1
+        )  # return the new sorted set to let redis do the sorting
 
     @classmethod
     def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_SCOPE):
-        score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
-        Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", score, item_name)
+        # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+        Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", {item_name: 0})
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
@@ -217,7 +219,6 @@ class TargetModel(Model):
                 item_map[item_name].append(packet["packet_name"])
         return item_map
 
-
     @classmethod
     def increment_telemetry_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
         result = Store.hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
@@ -225,7 +226,6 @@ class TargetModel(Model):
             return int(result)
         else:
             return result
-
 
     @classmethod
     def get_all_telemetry_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
@@ -276,7 +276,7 @@ class TargetModel(Model):
         return counts
 
     @classmethod
-    def increment_command_count(cls, target_name: str, packet_name: str , count: int, scope: str = OPENC3_SCOPE):
+    def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
         result = Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
         if isinstance(result, (bytes, bytearray)):
             return int(result)
@@ -330,7 +330,6 @@ class TargetModel(Model):
             else:
                 counts.append(int(count))
         return counts
-
 
     # Most of these parameters are unused but they must match the Ruby implementation
     # so we can call TargetModel.get_model which calls Model.get_model which does

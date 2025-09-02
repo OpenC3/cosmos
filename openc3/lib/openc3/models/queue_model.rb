@@ -67,7 +67,11 @@ module OpenC3
     def initialize(name:, scope:, state: 'HOLD', updated_at: nil)
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @microservice_name = "#{scope}__QUEUE__#{name}"
-      @state = state
+      if %w(HOLD RELEASE DISABLE).include?(state)
+        @state = state
+      else
+        @state = 'HOLD'
+      end
       @instance_mutex = Mutex.new
     end
 
@@ -76,6 +80,7 @@ module OpenC3
       if update
         notify(kind: 'updated')
       else
+        deploy()
         notify(kind: 'created')
       end
     end
@@ -170,7 +175,9 @@ module OpenC3
         folder_name: nil,
         cmd: ['ruby', 'queue_microservice.rb', @microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
-        options: [],
+        options: [
+          ["QUEUE_STATE", @state],
+        ],
         topics: topics,
         target_names: [],
         plugin: nil,
@@ -179,7 +186,7 @@ module OpenC3
       microservice.create
     end
 
-    def deploy()
+    def deploy
       topics = ["#{@scope}__#{QueueTopic::PRIMARY_KEY}"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
@@ -206,6 +213,7 @@ module OpenC3
 
     # Delete the model from the Store
     def destroy
+      undeploy()
       Store.zremrangebyrank("#{@scope}:#{@name}", 0, -1)
       super()
     end

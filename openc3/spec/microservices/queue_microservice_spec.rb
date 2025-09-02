@@ -27,7 +27,7 @@ module OpenC3
     let(:name) { 'TEST__OPENC3__QUEUE' }
     let(:logger) { Logger.new(STDOUT) }
     let(:scope) { 'TEST' }
-    let(:processor) { QueueProcessor.new(name: name, logger: logger, scope: scope) }
+    let(:processor) { QueueProcessor.new(name: name, state: 'HOLD', logger: logger, scope: scope) }
 
     before(:each) do
       allow(ENV).to receive(:[]).and_call_original
@@ -171,9 +171,9 @@ module OpenC3
           call_count += 1
           case call_count
           when 1
-            ["#{scope}:QUEUE", command1.to_json]
+            ["#{scope}:QUEUE", command1.to_json, 0]
           when 2
-            ["#{scope}:QUEUE", command2.to_json]
+            ["#{scope}:QUEUE", command2.to_json, 0]
           else
             # After processing all commands, change state to exit loop
             processor.state = 'HOLD'
@@ -185,9 +185,9 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd_no_hazardous_check)
-          .with(command1['value'], scope: scope, token: 'test_token')
+          .with(command1['value'], queue: false, scope: scope, token: 'test_token')
         expect(processor).to have_received(:cmd_no_hazardous_check)
-          .with(command2['value'], scope: scope, token: 'test_token')
+          .with(command2['value'], queue: false, scope: scope, token: 'test_token')
       end
 
       it 'stops processing when queue is empty' do
@@ -202,14 +202,16 @@ module OpenC3
         expect(processor).not_to have_received(:cmd_no_hazardous_check)
       end
 
-      it 'raises error when no token is available for username' do
+      it 'handles errors and continues processing when cmd_no_hazardous_check fails' do
         allow(Store).to receive(:bzpopmin) do
           processor.state = 'HOLD' if processor.state == 'RELEASE'
-          ["#{scope}:QUEUE", command1.to_json]
+          ["#{scope}:QUEUE", command1.to_json, 0]
         end
-        allow(processor).to receive(:get_token).with('test_user').and_return(nil)
+        allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
+        allow(processor).to receive(:cmd_no_hazardous_check).and_raise(StandardError.new('Command failed'))
+        expect(logger).to receive(:error).with(/QueueProcessor failed to process command from queue/)
 
-        expect { processor.process_queued_commands }.to raise_error("No token available for username: test_user")
+        processor.process_queued_commands
       end
     end
 
@@ -233,6 +235,8 @@ module OpenC3
       allow(microservice).to receive(:setup_share_names)
       allow(microservice).to receive(:logger).and_return(logger)
       allow(microservice).to receive(:scope).and_return(scope)
+      # Mock the config to provide options
+      microservice.instance_variable_set(:@config, { 'options' => [] })
     end
 
     after(:each) do
@@ -249,6 +253,53 @@ module OpenC3
 
       it 'initializes processor_thread as nil' do
         expect(microservice.processor_thread).to be_nil
+      end
+
+      it 'sets initial state to HOLD by default' do
+        expect(microservice.processor.state).to eq('HOLD')
+      end
+
+      context 'with options' do
+        it 'sets processor state to RELEASE when QUEUE_STATE is RELEASE' do
+          config_with_release = { 'options' => [['QUEUE_STATE', 'RELEASE']] }
+          
+          # Mock the entire parent initialization since options are processed there
+          allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_release)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
+          
+          new_microservice = QueueMicroservice.new(name)
+          expect(new_microservice.processor.state).to eq('RELEASE')
+          
+          new_microservice.shutdown
+        end
+
+        it 'sets processor state to HOLD when QUEUE_STATE is HOLD' do  
+          config_with_hold = { 'options' => [['QUEUE_STATE', 'HOLD']] }
+          
+          # Mock the entire parent initialization since options are processed there
+          allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_hold)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
+          
+          new_microservice = QueueMicroservice.new(name)
+          expect(new_microservice.processor.state).to eq('HOLD')
+          
+          new_microservice.shutdown
+        end
+
+        it 'logs error for unknown options' do
+          config_with_unknown = { 'options' => [['UNKNOWN_OPTION', 'value']] }
+          
+          # Mock the entire parent initialization since options are processed there
+          allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_unknown)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
+          allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
+          expect_any_instance_of(Logger).to receive(:error).with(/Unknown option passed to microservice #{name}: \["UNKNOWN_OPTION", "value"\]/)
+          
+          new_microservice = QueueMicroservice.new(name)
+          new_microservice.shutdown
+        end
       end
     end
 
@@ -302,7 +353,7 @@ module OpenC3
 
     describe '#block_for_updates' do
       let(:topics) { ['TEST__OPENC3__QUEUE'] }
-      let(:msg_hash) { { 'kind' => 'updated', 'data' => '{"state": "RELEASE"}' } }
+      let(:msg_hash) { { 'kind' => 'updated', 'data' => '{"name": "' + name + '", "state": "RELEASE"}' } }
 
       before(:each) do
         allow(microservice).to receive(:puts)

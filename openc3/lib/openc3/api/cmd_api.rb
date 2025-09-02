@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,6 +24,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/api/interface_api'
+require 'openc3/models/queue_model'
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
@@ -538,6 +539,11 @@ module OpenC3
         'log_message' => log_message.to_s,
         'obfuscated_items' => packet['obfuscated_items'].to_s
       }
+      # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
+      # At which point ALL commands will go to that queue unless they specifically opt out with queue: false
+      if ENV['OPENC3_DEFAULT_QUEUE'] && queue.nil?
+        queue = ENV['OPENC3_DEFAULT_QUEUE']
+      end
       if queue
         # Pull the command out of the script string, e.g. cmd("INST ABORT")
         queued = cmd_string.split('("')[1].split('")')[0]

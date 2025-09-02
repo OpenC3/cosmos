@@ -27,12 +27,12 @@ module OpenC3
     attr_accessor :state
     attr_reader :name, :queue_name, :scope
 
-    def initialize(name:, logger:, scope:)
+    def initialize(name:, state:, logger:, scope:)
       @name = name
       @queue_name = name.split('__')[2]
       @logger = logger
       @scope = scope
-      @state = 'HOLD'
+      @state = state
       @cancel_thread = false
     end
 
@@ -72,7 +72,10 @@ module OpenC3
             command = JSON.parse(command_data)
             username = command['username']
             token = get_token(username)
-            cmd_no_hazardous_check(command['value'], scope: @scope, token: token)
+            # @logger.info "QueueProcessor processing command from queue #{@queue_name}: #{command['value']} for user #{username} with token #{token}"
+            # It's important to set queue: false here to avoid infinite recursion when
+            # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
+            cmd_no_hazardous_check(command['value'], queue: false, scope: @scope, token: token)
           end
         rescue StandardError => e
           @logger.error "QueueProcessor failed to process command from queue #{@queue_name}\n#{e.message}"
@@ -93,7 +96,18 @@ module OpenC3
 
     def initialize(*args)
       super(*args)
-      @processor = QueueProcessor.new(name: @name, logger: @logger, scope: @scope)
+
+      initial_state = 'HOLD'
+      (@config['options'] || []).each do |option|
+        case option[0].upcase
+        when 'QUEUE_STATE'
+          initial_state = option[1]
+        else
+          @logger.error("Unknown option passed to microservice #{@name}: #{option}")
+        end
+      end
+
+      @processor = QueueProcessor.new(name: @name, state: initial_state, logger: @logger, scope: @scope)
       @processor_thread = nil
       @read_topic = true
     end
@@ -126,7 +140,8 @@ module OpenC3
       while @read_topic && !@cancel_thread
         begin
           QueueTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
-            if msg_hash['kind'] == 'updated'
+            data = JSON.parse(msg_hash['data']) if msg_hash['data']
+            if data['name'] == @name and msg_hash['kind'] == 'updated'
               queue = JSON.parse(msg_hash['data'])
               @processor.state = queue['state']
             end
@@ -139,7 +154,7 @@ module OpenC3
 
     def shutdown
       @read_topic = false
-      @processor.shutdown()
+      @processor.shutdown() if @processor
       super
     end
   end
