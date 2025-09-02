@@ -24,7 +24,7 @@ export default defineConfig((options) => {
       },
     },
     server: {
-      port: 2923,
+      port: 2922,
     },
     plugins: [
       vue({
