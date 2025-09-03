@@ -247,7 +247,7 @@ module OpenC3
     describe '#initialize' do
       it 'creates a QueueProcessor' do
         expect(microservice.processor).to be_a(QueueProcessor)
-        expect(microservice.processor.name).to eq(name)
+        expect(microservice.processor.name).to eq(name.split('__').last)
         expect(microservice.processor.scope).to eq(scope)
       end
 
@@ -262,41 +262,41 @@ module OpenC3
       context 'with options' do
         it 'sets processor state to RELEASE when QUEUE_STATE is RELEASE' do
           config_with_release = { 'options' => [['QUEUE_STATE', 'RELEASE']] }
-          
+
           # Mock the entire parent initialization since options are processed there
           allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_release)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
-          
+
           new_microservice = QueueMicroservice.new(name)
           expect(new_microservice.processor.state).to eq('RELEASE')
-          
+
           new_microservice.shutdown
         end
 
-        it 'sets processor state to HOLD when QUEUE_STATE is HOLD' do  
+        it 'sets processor state to HOLD when QUEUE_STATE is HOLD' do
           config_with_hold = { 'options' => [['QUEUE_STATE', 'HOLD']] }
-          
+
           # Mock the entire parent initialization since options are processed there
           allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_hold)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
-          
+
           new_microservice = QueueMicroservice.new(name)
           expect(new_microservice.processor.state).to eq('HOLD')
-          
+
           new_microservice.shutdown
         end
 
         it 'logs error for unknown options' do
           config_with_unknown = { 'options' => [['UNKNOWN_OPTION', 'value']] }
-          
+
           # Mock the entire parent initialization since options are processed there
           allow(MicroserviceModel).to receive(:get).with(name: name, scope: scope).and_return(config_with_unknown)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_microservice_topic)
           allow_any_instance_of(QueueMicroservice).to receive(:setup_share_names)
           expect_any_instance_of(Logger).to receive(:error).with(/Unknown option passed to microservice #{name}: \["UNKNOWN_OPTION", "value"\]/)
-          
+
           new_microservice = QueueMicroservice.new(name)
           new_microservice.shutdown
         end
@@ -368,7 +368,7 @@ module OpenC3
         microservice.shutdown
         thread.join
 
-        expect(microservice.processor.state).to eq('RELEASE')
+        expect(microservice.processor.state).to eq('HOLD')
       end
 
       it 'handles exceptions and logs errors' do

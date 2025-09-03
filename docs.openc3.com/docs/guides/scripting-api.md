@@ -2264,6 +2264,55 @@ queue_disable('TEST')
 </TabItem>
 </Tabs>
 
+### queue_exec
+
+Removes a command from the queue and executes it.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_exec('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_exec('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                                                                                                     |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| Queue Name | Case sensitive name of the queue                                                                                |
+| Index      | Remove and execute at the specified index. If the index is not given the first command is removed and executed. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_exec('TEST') # Removes and executes the first command in the queue
+queue_exec('TEST', index: 5)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_exec('TEST') # Removes and executes the first command in the queue
+queue_exec('TEST', index=5)
+```
+
+</TabItem>
+</Tabs>
+
 ### queue_delete
 
 Deletes the specified queue and any commands that it holds.
