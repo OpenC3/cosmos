@@ -72,12 +72,11 @@ export default {
     },
 
     convertToString(value) {
-      let i = 0
       let returnValue = ''
       if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
         let arrayLength = value.length
         returnValue = '[ '
-        for (i = 0; i < arrayLength; i++) {
+        for (let i = 0; i < arrayLength; i++) {
           if (
             Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
           ) {
@@ -96,7 +95,7 @@ export default {
         if (value.json_class === 'String' && value.raw) {
           // This is binary data, display in hex.
           returnValue = '0x'
-          for (i = 0; i < value.raw.length; i++) {
+          for (let i = 0; i < value.raw.length; i++) {
             let nibble = value.raw[i].toString(16).toUpperCase()
             if (nibble.length < 2) {
               nibble = '0' + nibble

@@ -75,8 +75,8 @@ class QueueModel(Model):
         self.state = state
         self._instance_mutex = threading.Lock()
 
-    def create(self, update: bool = False, force: bool = False, queued: bool = False):
-        super().create(update=update, force=force, queued=queued)
+    def create(self, update: bool = False, force: bool = False, queued: bool = False, isoformat: bool = False):
+        super().create(update=update, force=force, queued=queued, isoformat=isoformat)
         if update:
             self.notify(kind="updated")
         else:

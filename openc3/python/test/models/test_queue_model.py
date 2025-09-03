@@ -18,9 +18,7 @@ import json
 import threading
 import unittest
 from unittest.mock import Mock, patch
-
-from test.test_helper import *
-
+from test.test_helper import mock_redis
 from openc3.models.queue_model import QueueModel, QueueError
 from openc3.topics.queue_topic import QueueTopic
 
@@ -141,7 +139,7 @@ class TestQueueModel(unittest.TestCase):
         queue = QueueModel(name="TEST", scope="DEFAULT")
         queue.create(update=True)
 
-        mock_super_create.assert_called_once_with(update=True, force=False, queued=False)
+        mock_super_create.assert_called_once_with(update=True, force=False, queued=False, isoformat=False)
         mock_write_notification.assert_called_once()
         args = mock_write_notification.call_args
         notification = args[0][0]
@@ -261,7 +259,7 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.return_value = None  # Microservice doesn't exist
 
         with patch.object(queue, "create_microservice") as mock_create:
-            queue.deploy(None, None)
+            queue.deploy('', '')
 
         expected_topics = ["DEFAULT__openc3_queue"]
         mock_create.assert_called_once_with(topics=expected_topics)
@@ -272,7 +270,7 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.return_value = Mock()  # Microservice exists
 
         with patch.object(queue, "create_microservice") as mock_create:
-            queue.deploy(None, None)
+            queue.deploy('', '')
 
         mock_create.assert_not_called()
 

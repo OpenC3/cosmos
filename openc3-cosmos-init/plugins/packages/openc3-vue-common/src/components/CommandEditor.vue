@@ -354,18 +354,17 @@ export default {
           bracketLevel--
           current += char
         } else if (char === ',' && bracketLevel === 0) {
-          paramPairs.push(current)
+          paramPairs.push(current.trim())
           current = ''
         } else {
           current += char
         }
       }
       if (current.trim() !== '') {
-        paramPairs.push(current)
+        paramPairs.push(current.trim())
       }
 
       for (let pair of paramPairs) {
-        pair = pair.trim()
         let firstSpace = pair.indexOf(' ')
         if (firstSpace > 0) {
           let key = pair.substring(0, firstSpace).trim()

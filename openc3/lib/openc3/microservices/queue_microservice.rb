@@ -25,11 +25,10 @@ module OpenC3
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
     attr_accessor :state
-    attr_reader :name, :queue_name, :scope
+    attr_reader :name, :scope
 
     def initialize(name:, state:, logger:, scope:)
       @name = name
-      @queue_name = name.split('__')[2]
       @logger = logger
       @scope = scope
       @state = state
@@ -67,18 +66,17 @@ module OpenC3
     def process_queued_commands
       while @state == 'RELEASE'
         begin
-          queue_name, command_data, timestamp = Store.bzpopmin("#{@scope}:#{@queue_name}", timeout: 0.2)
+          _queue_name, command_data, _timestamp = Store.bzpopmin("#{@scope}:#{@name}", timeout: 0.2)
           if command_data
             command = JSON.parse(command_data)
             username = command['username']
             token = get_token(username)
-            # @logger.info "QueueProcessor processing command from queue #{@queue_name}: #{command['value']} for user #{username} with token #{token}"
             # It's important to set queue: false here to avoid infinite recursion when
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             cmd_no_hazardous_check(command['value'], queue: false, scope: @scope, token: token)
           end
         rescue StandardError => e
-          @logger.error "QueueProcessor failed to process command from queue #{@queue_name}\n#{e.message}"
+          @logger.error "QueueProcessor failed to process command from queue #{@name}\n#{e.message}"
         end
         break if @cancel_thread
       end
@@ -96,6 +94,7 @@ module OpenC3
 
     def initialize(*args)
       super(*args)
+      @queue_name = @name.split('__')[2]
 
       initial_state = 'HOLD'
       (@config['options'] || []).each do |option|
@@ -107,13 +106,15 @@ module OpenC3
         end
       end
 
-      @processor = QueueProcessor.new(name: @name, state: initial_state, logger: @logger, scope: @scope)
+      @processor = QueueProcessor.new(name: @queue_name, state: initial_state, logger: @logger, scope: @scope)
       @processor_thread = nil
       @read_topic = true
     end
 
     def run
       @logger.info "QueueMicroservice running"
+      @processor_thread = Thread.new { @processor.run }
+
       # Let the frontend know that the microservice has been deployed and is running
       notification = {
         'kind' => 'deployed',
@@ -125,7 +126,6 @@ module OpenC3
       }
       QueueTopic.write_notification(notification, scope: @scope)
 
-      @processor_thread = Thread.new { @processor.run }
       loop do
         break if @cancel_thread
         block_for_updates()
@@ -141,9 +141,8 @@ module OpenC3
         begin
           QueueTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
             data = JSON.parse(msg_hash['data']) if msg_hash['data']
-            if data['name'] == @name and msg_hash['kind'] == 'updated'
-              queue = JSON.parse(msg_hash['data'])
-              @processor.state = queue['state']
+            if data['name'] == @queue_name and msg_hash['kind'] == 'updated'
+              @processor.state = data['state']
             end
           end
         rescue StandardError => e
