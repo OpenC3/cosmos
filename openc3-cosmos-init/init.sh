@@ -110,10 +110,12 @@ ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-iframe-*.gem || exit 1
 
+if [ ! -z $OPENC3_DEFAULT_QUEUE ]; then
+    ruby /openc3/bin/openc3cli createqueue $OPENC3_DEFAULT_QUEUE DEFAULT || exit 1
+fi
 if [ -z $OPENC3_NO_TOOLADMIN ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
 fi
-
 if [ ! -z $OPENC3_LOCAL_MODE ]; then
     # Continue if local init fails - User will have to fix manually
     ruby /openc3/bin/openc3cli localinit || true

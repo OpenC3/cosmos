@@ -187,9 +187,7 @@ class TestTlmApi(unittest.TestCase):
         set_tlm("INST HEALTH_STATUS TEMP1 = '10.000'", type="FORMATTED")
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1", type="FORMATTED"), "10.000")
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type="FORMATTED")  # Float
-        self.assertEqual(
-            tlm("INST HEALTH_STATUS TEMP1", type="FORMATTED"), "0.0"
-        )  # String
+        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1", type="FORMATTED"), "0.0")  # String
         set_tlm("INST HEALTH_STATUS ARY = '[1,2,3]'", type="FORMATTED")
         self.assertEqual(tlm("INST HEALTH_STATUS ARY", type="FORMATTED"), "[1,2,3]")
 
@@ -197,9 +195,7 @@ class TestTlmApi(unittest.TestCase):
         set_tlm("INST HEALTH_STATUS TEMP1 = '10.0 C'", type="WITH_UNITS")
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1", type="WITH_UNITS"), "10.0 C")
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type="WITH_UNITS")  # Float
-        self.assertEqual(
-            tlm("INST HEALTH_STATUS TEMP1", type="WITH_UNITS"), "0.0"
-        )  # String
+        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1", type="WITH_UNITS"), "0.0")  # String
         set_tlm("INST HEALTH_STATUS ARY = '[1,2,3]'", type="WITH_UNITS")
         self.assertEqual(tlm("INST HEALTH_STATUS ARY", type="WITH_UNITS"), "[1,2,3]")
 
@@ -222,9 +218,7 @@ class TestTlmApi(unittest.TestCase):
         time.sleep(0.001)
 
     def test_inject_tlm_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
             inject_tlm("BLAH", "HEALTH_STATUS")
 
     def test_inject_tlm_complains_about_non_existant_packets(self):
@@ -232,9 +226,7 @@ class TestTlmApi(unittest.TestCase):
             inject_tlm("INST", "BLAH")
 
     def test_inject_tlm_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(
-            RuntimeError, r"Item\(s\) 'INST HEALTH_STATUS BLAH' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, r"Item\(s\) 'INST HEALTH_STATUS BLAH' does not exist"):
             inject_tlm("INST", "HEALTH_STATUS", {"BLAH": 0})
 
     def test_inject_tlm_complains_about_bad_types(self):
@@ -256,14 +248,10 @@ class TestTlmApi(unittest.TestCase):
         obj.inject_tlm.assert_called_once()
 
     @patch("openc3.microservices.microservice.System")
-    def test_inject_tlm_injects_a_packet_into_target_without_an_interface(
-        self, mock_system
-    ):
+    def test_inject_tlm_injects_a_packet_into_target_without_an_interface(self, mock_system):
         self.decom_stuff()
         # Case doesn't matter
-        inject_tlm(
-            "inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED"
-        )
+        inject_tlm("inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED")
         time.sleep(0.5)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
@@ -312,46 +300,26 @@ class TestTlmApi(unittest.TestCase):
 
     def test_overrides_all_values(self):
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (0))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0)
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C"))
         # Case doesn't matter
         override_tlm("inst Health_Status Temp1 = 10")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (10))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), (10))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("10")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("10")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("10"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("10"))
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", 5.0)  # other syntax
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (5.0))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), (5.0))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("5.0")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("5.0")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("5.0"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("5.0"))
         # NOTE: As a user you can override with weird values and this is allowed
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "what?")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), ("what?"))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), ("what?")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("what?")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("what?")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), ("what?"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("what?"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("what?"))
         normalize_tlm("INST HEALTH_STATUS TEMP1")
 
     def test_overrides_all_array_values(self):
@@ -374,12 +342,8 @@ class TestTlmApi(unittest.TestCase):
         override_tlm("INST HEALTH_STATUS ARY = [1,2,3]")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "ARY", type="RAW"), ([1, 2, 3]))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "ARY"), ([1, 2, 3]))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "ARY", type="FORMATTED"), ("[1, 2, 3]")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "ARY", type="WITH_UNITS"), ("[1, 2, 3]")
-        )  # NOTE: 'V' not applied
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "ARY", type="FORMATTED"), ("[1, 2, 3]"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "ARY", type="WITH_UNITS"), ("[1, 2, 3]"))  # NOTE: 'V' not applied
         normalize_tlm("INST HEALTH_STATUS ARY")
 
     def test_overrides_raw_values(self):
@@ -401,31 +365,19 @@ class TestTlmApi(unittest.TestCase):
         normalize_tlm("INST HEALTH_STATUS TEMP1")
 
     def test_overrides_formatted_values(self):
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "-100.000"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "-100.000")
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "5.000", type="FORMATTED")
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "5.000"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "5.000")
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", "10.000", type="FORMATTED")
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "5.000"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "5.000")
         normalize_tlm("INST HEALTH_STATUS TEMP1")
 
     def test_overrides_with_units_values(self):
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "-100.000 C"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "-100.000 C")
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "5.00 C", type="WITH_UNITS")
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "5.00 C"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "5.00 C")
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0, type="WITH_UNITS")
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "5.00 C"
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), "5.00 C")
         normalize_tlm("INST HEALTH_STATUS TEMP1")
 
     # get_overrides
@@ -523,26 +475,14 @@ class TestTlmApi(unittest.TestCase):
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "50.00", type="FORMATTED")
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "50.00 F", type="WITH_UNITS")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (5.0))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), (50.0)
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("50.00")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("50.00 F")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), (50.0))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("50.00"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("50.00 F"))
         normalize_tlm("INST", "HEALTH_STATUS", "temp1")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (0))
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000")
-        )
-        self.assertEqual(
-            tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C")
-        )
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0)
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C"))
 
     # get_tlm_buffer
     def test_get_tlm_buffer_returns_a_telemetry_packet_buffer(self):
@@ -612,21 +552,18 @@ class TestTlmApi(unittest.TestCase):
     ):
         self.assertEqual(get_all_tlm_item_names("BLAH"), [])
 
-    # Commenting this out for now... Looks like FakeRedis' zadd() is broken?
-    # def test_get_all_tlm_item_names_returns_an_array_of_all_item_names(self):
-    #     items = get_all_tlm_item_names("INST", scope="DEFAULT")
-    #     self.assertEqual(type(items), list)
-    #     self.assertEqual(len(items), 67)
-    #     self.assertIn("ARY", items)
-    #     self.assertIn("ATTPROGRESS", items)
-    #     self.assertIn("BLOCKTEST", items)
-    #     self.assertIn("CCSDSAPID", items)
+    def test_get_all_tlm_item_names_returns_an_array_of_all_item_names(self):
+        items = get_all_tlm_item_names("INST", scope="DEFAULT")
+        self.assertEqual(type(items), list)
+        self.assertEqual(len(items), 60)
+        self.assertIn(b"ARY", items)
+        self.assertIn(b"ATTPROGRESS", items)
+        self.assertIn(b"BLOCKTEST", items)
+        self.assertIn(b"CCSDSAPID", items)
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm("BLAH", "HEALTH_STATUS", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
             get_tlm("INST BLAH", scope="DEFAULT")
@@ -641,19 +578,13 @@ class TestTlmApi(unittest.TestCase):
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
             get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
             get_item("INST BLAH CCSDSVER", scope="DEFAULT")
-        with self.assertRaisesRegex(
-            RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
             get_item("INST", "HEALTH_STATUS", "BLAH", scope="DEFAULT")
-        with self.assertRaisesRegex(
-            RuntimeError, "ERROR: Target name, packet name and item name required."
-        ):
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Target name, packet name and item name required."):
             get_item("INST HEALTH_STATUS", scope="DEFAULT")
 
     def test_get_item_complains_about_only_target(self):
@@ -687,9 +618,7 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_packet
     def test_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm_packet("BLAH", "HEALTH_STATUS")
 
     def test_complains_about_non_existant_packets(self):
@@ -697,15 +626,11 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_packet("INST BLAH")
 
     def test_complains_using_latest(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'INST LATEST' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'INST LATEST' does not exist"):
             get_tlm_packet("INST", "LATEST")
 
     def test_complains_about_non_existant_value_types(self):
-        with self.assertRaisesRegex(
-            TypeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
-        ):
+        with self.assertRaisesRegex(TypeError, "Unknown type 'MINE' for INST HEALTH_STATUS"):
             get_tlm_packet("INST HEALTH_STATUS", type="MINE")
 
     def test_reads_all_telemetry_items_as_converted_with_their_limits_states(self):
@@ -832,9 +757,7 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_values
     def test_get_tlm_values_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_packets(self):
@@ -842,13 +765,9 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
             get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"])
-        with self.assertRaisesRegex(
-            RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT"):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_value_types(self):
@@ -992,15 +911,15 @@ class TestTlmApi(unittest.TestCase):
         # Test items with different conversion types
         items = [
             "INST__HEALTH_STATUS__TEMP1__WITH_UNITS",  # Has units
-            "INST__HEALTH_STATUS__TEMP2__FORMATTED",   # Has format_string  
-            "INST__HEALTH_STATUS__TEMP3__CONVERTED",   # Has read_conversion
-            "INST__HEALTH_STATUS__DURATION__RAW",      # Raw only
+            "INST__HEALTH_STATUS__TEMP2__FORMATTED",  # Has format_string
+            "INST__HEALTH_STATUS__TEMP3__CONVERTED",  # Has read_conversion
+            "INST__HEALTH_STATUS__DURATION__RAW",  # Raw only
         ]
         result = get_tlm_available(items)
-        
+
         # TEMP1 has units, so should return WITH_UNITS
         self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS")
-        # TEMP2 has format_string, so should return FORMATTED  
+        # TEMP2 has format_string, so should return FORMATTED
         self.assertEqual(result[1], "INST__HEALTH_STATUS__TEMP2__FORMATTED__LIMITS")
         # TEMP3 has read_conversion, so should return CONVERTED
         self.assertEqual(result[2], "INST__HEALTH_STATUS__TEMP3__CONVERTED__LIMITS")
@@ -1011,10 +930,10 @@ class TestTlmApi(unittest.TestCase):
         # Test fallback logic: WITH_UNITS -> FORMATTED -> CONVERTED -> RAW
         items = [
             "INST__HEALTH_STATUS__TEMP1__WITH_UNITS",  # Should fall back to FORMATTED since no units
-            "INST__HEALTH_STATUS__TEMP2__FORMATTED",   # Should fall back to CONVERTED since no format_string for this test
+            "INST__HEALTH_STATUS__TEMP2__FORMATTED",  # Should fall back to CONVERTED since no format_string for this test
         ]
         result = get_tlm_available(items)
-        
+
         # These would fall back based on what's actually available for these items
         self.assertIsNotNone(result[0])
         self.assertIsNotNone(result[1])
@@ -1024,7 +943,7 @@ class TestTlmApi(unittest.TestCase):
     def test_get_tlm_available_handles_latest_packet_resolution(self):
         items = ["INST__LATEST__TEMP1__CONVERTED"]
         result = get_tlm_available(items)
-        
+
         # Should resolve LATEST to actual packet name and return proper format
         self.assertEqual(result[0], "INST__LATEST__TEMP1__CONVERTED__LIMITS")
 
@@ -1034,7 +953,7 @@ class TestTlmApi(unittest.TestCase):
             "INST__HEALTH_STATUS__TEMP1__RAW",  # This one should work
         ]
         result = get_tlm_available(items)
-        
+
         # Nonexistent item should return None
         self.assertIsNone(result[0])
         # Valid item should return proper format
@@ -1044,7 +963,7 @@ class TestTlmApi(unittest.TestCase):
         # Test with a reserved item name that should force RAW type
         items = ["INST__HEALTH_STATUS__RECEIVED_COUNT__WITH_UNITS"]
         result = get_tlm_available(items)
-        
+
         # Reserved items should always be RAW regardless of requested type
         self.assertEqual(result[0], "INST__HEALTH_STATUS__RECEIVED_COUNT__RAW")
 
@@ -1053,62 +972,62 @@ class TestTlmApi(unittest.TestCase):
         # For now, test the basic case - arrays with STRING/BLOCK data should return None
         items = ["INST__HEALTH_STATUS__TEMP1__RAW"]  # Regular item for comparison
         result = get_tlm_available(items)
-        
+
         # Regular items should work normally
         self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__RAW__LIMITS")
 
     def test_get_tlm_available_returns_a_valid_list_of_items_based_on_inputs(self):
         items = []
         # Ask for WITH_UNITS for an item which has various formats
-        items.append('INST__HEALTH_STATUS__TEMP1__WITH_UNITS')
-        items.append('INST__ADCS__Q1__WITH_UNITS')
-        items.append('INST__LATEST__CCSDSTYPE__WITH_UNITS')
-        items.append('INST__LATEST__CCSDSVER__WITH_UNITS')
+        items.append("INST__HEALTH_STATUS__TEMP1__WITH_UNITS")
+        items.append("INST__ADCS__Q1__WITH_UNITS")
+        items.append("INST__LATEST__CCSDSTYPE__WITH_UNITS")
+        items.append("INST__LATEST__CCSDSVER__WITH_UNITS")
         # Ask for FORMATTED for an item which has various formats
-        items.append('INST__ADCS__Q2__FORMATTED')
-        items.append('INST__ADCS__CCSDSTYPE__FORMATTED')
-        items.append('INST__ADCS__CCSDSVER__FORMATTED')
+        items.append("INST__ADCS__Q2__FORMATTED")
+        items.append("INST__ADCS__CCSDSTYPE__FORMATTED")
+        items.append("INST__ADCS__CCSDSVER__FORMATTED")
         # Ask for CONVERTED for an item which has various formats
-        items.append('INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED')  # states but no conversion
-        items.append('INST__ADCS__STAR1ID__CONVERTED')  # conversion but no states
-        items.append('INST__ADCS__CCSDSVER__CONVERTED')
+        items.append("INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED")  # states but no conversion
+        items.append("INST__ADCS__STAR1ID__CONVERTED")  # conversion but no states
+        items.append("INST__ADCS__CCSDSVER__CONVERTED")
         # Ask for RAW item
-        items.append('INST__HEALTH_STATUS__TEMP2__RAW')
+        items.append("INST__HEALTH_STATUS__TEMP2__RAW")
         # Ask for items that do not exist
-        items.append('BLAH__HEALTH_STATUS__TEMP1__WITH_UNITS')
-        items.append('INST__NOPE__TEMP1__WITH_UNITS')
-        items.append('INST__HEALTH_STATUS__NOPE__WITH_UNITS')
+        items.append("BLAH__HEALTH_STATUS__TEMP1__WITH_UNITS")
+        items.append("INST__NOPE__TEMP1__WITH_UNITS")
+        items.append("INST__HEALTH_STATUS__NOPE__WITH_UNITS")
         # Ask for the special items
-        items.append('INST__ADCS__PACKET_TIMEFORMATTED__WITH_UNITS')
-        items.append('INST__ADCS__PACKET_TIMESECONDS__FORMATTED')
-        items.append('INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED')
-        items.append('INST__ADCS__RECEIVED_TIMESECONDS__RAW')
+        items.append("INST__ADCS__PACKET_TIMEFORMATTED__WITH_UNITS")
+        items.append("INST__ADCS__PACKET_TIMESECONDS__FORMATTED")
+        items.append("INST__ADCS__RECEIVED_TIMEFORMATTED__CONVERTED")
+        items.append("INST__ADCS__RECEIVED_TIMESECONDS__RAW")
         # Ask for array items
-        items.append('INST__HEALTH_STATUS__ARY__WITH_UNITS')
-        items.append('INST__HEALTH_STATUS__ARY2__WITH_UNITS')
-        
+        items.append("INST__HEALTH_STATUS__ARY__WITH_UNITS")
+        items.append("INST__HEALTH_STATUS__ARY2__WITH_UNITS")
+
         vals = get_tlm_available(items)
         expected = [
-            'INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS',
-            'INST__ADCS__Q1__FORMATTED',
-            'INST__LATEST__CCSDSTYPE__CONVERTED',
-            'INST__LATEST__CCSDSVER__RAW',
-            'INST__ADCS__Q2__FORMATTED',
-            'INST__ADCS__CCSDSTYPE__CONVERTED',
-            'INST__ADCS__CCSDSVER__RAW',
-            'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED',
-            'INST__ADCS__STAR1ID__CONVERTED',
-            'INST__ADCS__CCSDSVER__RAW',
-            'INST__HEALTH_STATUS__TEMP2__RAW__LIMITS',
+            "INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS",
+            "INST__ADCS__Q1__FORMATTED",
+            "INST__LATEST__CCSDSTYPE__CONVERTED",
+            "INST__LATEST__CCSDSVER__RAW",
+            "INST__ADCS__Q2__FORMATTED",
+            "INST__ADCS__CCSDSTYPE__CONVERTED",
+            "INST__ADCS__CCSDSVER__RAW",
+            "INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED",
+            "INST__ADCS__STAR1ID__CONVERTED",
+            "INST__ADCS__CCSDSVER__RAW",
+            "INST__HEALTH_STATUS__TEMP2__RAW__LIMITS",
             None,
             None,
             None,
-            'INST__ADCS__PACKET_TIMEFORMATTED__RAW',
-            'INST__ADCS__PACKET_TIMESECONDS__RAW',
-            'INST__ADCS__RECEIVED_TIMEFORMATTED__RAW',
-            'INST__ADCS__RECEIVED_TIMESECONDS__RAW',
-            'INST__HEALTH_STATUS__ARY__RAW',
-            'INST__HEALTH_STATUS__ARY2__RAW',
+            "INST__ADCS__PACKET_TIMEFORMATTED__RAW",
+            "INST__ADCS__PACKET_TIMESECONDS__RAW",
+            "INST__ADCS__RECEIVED_TIMEFORMATTED__RAW",
+            "INST__ADCS__RECEIVED_TIMESECONDS__RAW",
+            "INST__HEALTH_STATUS__ARY__RAW",
+            "INST__HEALTH_STATUS__ARY2__RAW",
         ]
         self.assertEqual(vals, expected)
 

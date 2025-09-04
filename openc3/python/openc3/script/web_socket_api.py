@@ -446,6 +446,32 @@ class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
+# Queue WebSocket
+class QueueEventsWebSocketApi(CmdTlmWebSocketApi):
+    def __init__(
+        self,
+        history_count=0,
+        url=None,
+        write_timeout=10.0,
+        read_timeout=10.0,
+        connect_timeout=5.0,
+        authentication=None,
+        scope=OPENC3_SCOPE,
+    ):
+        self.identifier = {
+            "channel": "QueueEventsChannel",
+            "history_count": history_count,
+        }
+        super().__init__(
+            url=url,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=connect_timeout,
+            authentication=authentication,
+            scope=scope,
+        )
+
+
 # Streaming API WebSocket
 class StreamingWebSocketApi(CmdTlmWebSocketApi):
     def __init__(

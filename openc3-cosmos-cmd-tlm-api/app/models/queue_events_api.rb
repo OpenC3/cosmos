@@ -1,5 +1,6 @@
-/*
-# Copyright 2024, OpenC3, Inc.
+# encoding: ascii-8bit
+
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -11,14 +12,20 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-#
+
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
 
-import * as AstroStatus from './AstroStatus'
-import { fileIcon } from './fileIcon'
-import TimeFilters from './timeFilters'
-import CmdUtilities from './cmdUtilities'
+require_relative 'topics_thread'
 
-export { AstroStatus, fileIcon, TimeFilters, CmdUtilities }
+class QueueEventsApi
+  def initialize(subscription_key, history_count = 0, scope:)
+    topics = ["#{scope}__openc3_queue"] # MUST be equal to QueueTopic::PRIMARY_KEY
+    @thread = TopicsThread.new(topics, subscription_key, history_count)
+    @thread.start
+  end
+
+  def kill
+    @thread.stop
+  end
+end

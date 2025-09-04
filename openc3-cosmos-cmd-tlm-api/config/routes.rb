@@ -75,6 +75,20 @@ Rails.application.routes.draw do
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/widgets/:id', to: 'widgets#destroy', id: /[^\/]+/
 
+    # resources :queues, only: [:index, :create]
+    get '/queues', to: 'queues#index'
+    post '/queues/:name', to: 'queues#create', name: /[^\/]+/
+    get '/queues/:name', to: 'queues#show', name: /[^\/]+/
+    get '/queues/:name/list', to: 'queues#list', name: /[^\/]+/
+    delete '/queues/:name', to: 'queues#destroy', name: /[^\/]+/
+    post '/queues/:name/hold', to: 'queues#hold', name: /[^\/]+/
+    post '/queues/:name/release', to: 'queues#release', name: /[^\/]+/
+    post '/queues/:name/disable', to: 'queues#disable', name: /[^\/]+/
+    post '/queues/:name/insert_command', to: 'queues#insert_command', name: /[^\/]+/
+    post '/queues/:name/remove_command', to: 'queues#remove_command', name: /[^\/]+/
+    post '/queues/:name/update_command', to: 'queues#update_command', name: /[^\/]+/
+    post '/queues/:name/exec_command', to: 'queues#exec_command', name: /[^\/]+/
+
     resources :permissions, only: [:index]
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/

@@ -26,7 +26,9 @@ function defaultSourceLookup(filePath) {
       filePath.includes('enterprise') ||
       filePath.includes('openc3-cosmos-tool-autonomic') ||
       filePath.includes('openc3-cosmos-tool-calendar') ||
-      filePath.includes('openc3-cosmos-tool-cmdhistory')
+      filePath.includes('openc3-cosmos-tool-cmdqueue') ||
+      filePath.includes('openc3-cosmos-tool-cmdhistory') ||
+      filePath.includes('openc3-cosmos-tool-systemhealth')
     ) {
       filePath = filePath.replace(
         '../openc3-cosmos-init',
