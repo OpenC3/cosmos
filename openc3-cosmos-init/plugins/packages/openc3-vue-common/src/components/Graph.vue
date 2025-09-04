@@ -1028,6 +1028,13 @@ export default {
       const screenItems = this.itemSubscriptionKeys.map((key) => {
         return key.split('__').slice(2).join('__')
       })
+      if (this.actualXAxisItem === DEFAULT_X_AXIS_ITEM) {
+        // We always need time if using the default x-axis item
+        screenItems.unshift('INST__HEALTH_STATUS__PACKET_TIMESECONDS__RAW')
+      } else if (!this.xAxisIsAlsoGraphedItem) {
+        // We need to add the x-axis item if it isn't already being graphed
+        screenItems.unshift(this.actualXAxisItem)
+      }
       this.api.get_tlm_available(screenItems).then((data) => {
         this.graphItems = data
         // This must be the same or we're going to have problems

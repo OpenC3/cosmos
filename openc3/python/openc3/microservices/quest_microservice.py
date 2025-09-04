@@ -270,7 +270,7 @@ class QuestMicroservice(Microservice):
                     with self.query.cursor() as cur:
                         # Extract table, column, and type from the error message
 
-                        # Example error message:aa
+                        # Example error message:
                         # 'error in line 1: table: INST2__HEALTH_STATUS, column: TEMP1STDDEV;
                         # cast error from protocol type: FLOAT to column type: LONG","line":1,"errorId":"a507394ab099-25"'
                         error_message = str(error)
