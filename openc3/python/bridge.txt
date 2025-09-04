@@ -1,0 +1,43 @@
+# Write serial port name
+VARIABLE write_port_name /dev/cu.usbmodem21201
+        
+# Read serial port name
+VARIABLE read_port_name /dev/cu.usbmodem21201
+        
+# Baud Rate
+VARIABLE baud_rate 9600
+        
+# Parity - NONE, ODD, or EVEN
+VARIABLE parity NONE
+        
+# Stop bits - 0, 1, or 2
+VARIABLE stop_bits 1
+        
+# Write Timeout
+VARIABLE write_timeout 10.0
+        
+# Read Timeout
+VARIABLE read_timeout nil
+        
+# Flow Control - NONE, or RTSCTS
+VARIABLE flow_control NONE
+        
+# Data bits per word - Typically 8
+VARIABLE data_bits 8
+        
+# Port to listen for connections from COSMOS - Plugin must match
+VARIABLE router_port 2950
+        
+# Port to listen on for connections from COSMOS. Defaults to localhost for security. Will need to be opened
+# if COSMOS is on another machine.
+VARIABLE router_listen_address 127.0.0.1
+        
+INTERFACE SERIAL_INT openc3/interfaces/serial_interface.py /dev/cu.usbmodem21201 /dev/cu.usbmodem21201 9600 NONE 1 10.0 None
+  OPTION FLOW_CONTROL NONE
+  OPTION DATA_BITS 8
+        
+ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py 2950 2950 10.0 None BURST
+  ROUTE SERIAL_INT
+  OPTION LISTEN_ADDRESS 127.0.0.1
+        
+

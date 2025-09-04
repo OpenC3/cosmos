@@ -115,7 +115,7 @@ class SerialDriver:
             data: [String | bytes] Binary data to write to the serial port
         """
         if isinstance(data, str):
-            data = data.encode('latin-1')
+            data = data.encode('utf-8')
         
         start_time = time.time()
         bytes_to_write = len(data)
