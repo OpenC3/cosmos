@@ -34,7 +34,9 @@ jobs:
         uses: aquasecurity/setup-trivy@v0.2.4
         with:
           cache: true
-          version: v0.65.0
+          version: v0.66.0
+      = name: Trivy clean
+        run: trivy clean --all
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
