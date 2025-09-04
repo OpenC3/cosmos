@@ -88,7 +88,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'prism',     '~> 1.3'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'puma',      '~> 6.2'
-  s.add_runtime_dependency 'rack',      '~> 3.0'
+  s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
