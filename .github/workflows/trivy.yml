@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: OpenC3 Trivy Scan
+name: Trivy Scan
 
 # Only run on a push to master to avoid running for all the dependabot PRs
 on:
@@ -35,8 +35,6 @@ jobs:
         with:
           cache: true
           version: v0.66.0
-      - name: Trivy clean all
-        run: trivy clean --all
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
