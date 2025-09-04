@@ -27,7 +27,7 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 
 # Use gem to get JSON logs
-gem "rails_semantic_logger", '~> 4.17.0'
+gem "rails_semantic_logger", '~> 4.17'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
@@ -36,7 +36,7 @@ group :development, :test do
   gem 'rspec'
   gem 'simplecov', '~> 0.22'
   gem 'simplecov-cobertura', '~> 3.0'
-  gem 'rexml', '3.4.1' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
+  gem 'rexml', '~> 3.4'
   # simplecov_json_formatter formatter supports SonarQube
   # gem 'simplecov_json_formatter', '~> 0.1'
 end
