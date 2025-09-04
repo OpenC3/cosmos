@@ -27,7 +27,7 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 
 # Use gem to get JSON logs
-gem "rails_semantic_logger", '~> 4.17.0'
+gem "rails_semantic_logger", '~> 4.17'
 
 # For downloading files to the server (e.g. plugin install from the app store)
 gem 'down', '~> 5.4', '>= 5.4.2'
