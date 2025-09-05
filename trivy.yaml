@@ -1,5 +1,5 @@
 # See https://trivy.dev/latest/docs/references/configuration/config-file/
-format: "table"
+format: "sarif"
 exit-code: 1
 vulnerability:
   ignore-unfixed: true
