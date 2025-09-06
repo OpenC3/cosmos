@@ -3,9 +3,9 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: OpenC3 Build UBI
+name: Build UBI
 
-# Only run on a push to master to avoid running for all the dependabot PRs
+# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches: [main]

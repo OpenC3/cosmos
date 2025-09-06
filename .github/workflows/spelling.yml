@@ -1,5 +1,6 @@
 name: Check Spelling
 
+# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches: [main]
