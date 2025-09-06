@@ -46,7 +46,7 @@ to Command Sender that allows you to select a command and fill out any parameter
 
 The commands table is sorted by the Index and lists the Time, User (or process), the Command, and Actions.
 
-The Index is the command index when the command was added to the queue. This will normally increment by 1 althought commands can be deleted or executed out of order which will not reorder the queue. If the queue is emptied the index starts over at 1.
+The Index is the command index when the command was added to the queue. This will normally increment by 1 although commands can be deleted or executed out of order which will not reorder the queue. If the queue is emptied the index starts over at 1.
 
 The Time is the time the command was last modified. This is originally the time the command was added to the queue but updates as commands are edited.
 

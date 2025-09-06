@@ -128,16 +128,17 @@ class QueuesController < ApplicationController
   end
 
   def insert_command
-    return unless authorization('cmd')
+    command = params[:command]
+    if command.nil?
+      render json: { status: 'error', message: 'command is required' }, status: 400
+      return
+    end
+    target_name, packet_name = command.strip.split(' ')
+    return unless authorization('cmd', target_name: target_name, packet_name: packet_name)
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
         render json: { status: 'error', message: NOT_FOUND }, status: 404
-        return
-      end
-      command = params[:command]
-      if command.nil?
-        render json: { status: 'error', message: 'command is required' }, status: 400
         return
       end
       index = nil
@@ -175,16 +176,17 @@ class QueuesController < ApplicationController
   end
 
   def update_command
-    return unless authorization('cmd')
+    command = params[:command]
+    if command.nil?
+      render json: { status: 'error', message: 'command is required' }, status: 400
+      return
+    end
+    target_name, packet_name = command.strip.split(' ')
+    return unless authorization('cmd', target_name: target_name, packet_name: packet_name)
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
         render json: { status: 'error', message: NOT_FOUND }, status: 404
-        return
-      end
-      command = params[:command]
-      if command.nil?
-        render json: { status: 'error', message: 'command is required' }, status: 400
         return
       end
       index = params[:index]

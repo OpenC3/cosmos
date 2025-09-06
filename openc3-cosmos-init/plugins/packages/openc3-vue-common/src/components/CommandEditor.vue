@@ -254,7 +254,7 @@ export default {
                       val = `'${val}'`
                     }
                     if (parameter.required) {
-                      val = ''
+                      val = null // Special marker for required parameters
                     }
                     if (parameter.format_string && parameter.default) {
                       val = sprintf(parameter.format_string, parameter.default)
@@ -315,7 +315,21 @@ export default {
       if (!this.computedRows || this.computedRows.length === 0) return cmd
       cmd += ' with '
       for (const row of this.computedRows) {
+        // null value indicates required parameter not set, see updateCmdParams
+        if (row.val === null) {
+          throw new Error(`Required parameter ${row.parameter_name} not set`)
+        }
         if (row.val !== null && row.val !== undefined && row.val !== '') {
+          if (row.states) {
+            // If states exist, find the state name for the value
+            const stateEntry = Object.entries(row.states).find(
+              ([, state]) => state.value === row.val,
+            )
+            if (stateEntry) {
+              cmd += ` ${row.parameter_name} ${stateEntry[0]},`
+              continue
+            }
+          }
           if (typeof row.val === 'string' && row.val.includes(' ')) {
             cmd += ` ${row.parameter_name} "${row.val}",`
           } else {
