@@ -1,4 +1,4 @@
-name: OpenC3 Playwright Firefox Nightly Tests
+name: Playwright Firefox Nightly Tests
 
 on:
   # TODO: Disabling the schedule for now because all the tests with multiline string inputs are broken
@@ -9,7 +9,7 @@ on:
   #
   # schedule:
   #   - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
   openc3-firefox-test:
