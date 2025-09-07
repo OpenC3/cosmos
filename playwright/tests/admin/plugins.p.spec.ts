@@ -24,7 +24,8 @@ test.use({
 })
 
 test('shows and hides built-in tools', async ({ page, utils }) => {
-  await page.locator('[data-test="plugin-list"]').getByRole('combobox').click()
+  // Ensure we're showing all the rows in the table
+  await page.getByRole('combobox').filter({ hasText: '10' }).click()
   await page.getByText('All', { exact: true }).click()
   await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-demo',
@@ -248,7 +249,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch { }
+    } catch {}
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       installRegexp,
@@ -412,9 +413,7 @@ test.describe(() => {
         .filter({ hasText: plugin })
         .locator('[data-test=plugin-actions]')
         .click(),
-      await page
-        .locator('[data-test=upgrade-plugin]')
-        .click(),
+      await page.locator('[data-test=upgrade-plugin]').click(),
     ])
 
     await upgradeFileChooser.setFiles(`./${plugin}/${pluginGem1}`)
@@ -438,7 +437,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch { }
+    } catch {}
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       upgradeRegexp,
@@ -471,9 +470,7 @@ test.describe(() => {
       .filter({ hasText: plugin })
       .locator('[data-test=plugin-actions]')
       .click()
-    await page
-      .locator('[data-test=edit-plugin]')
-      .click()
+    await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-cancel').click()
     await expect(
@@ -485,9 +482,7 @@ test.describe(() => {
       .filter({ hasText: plugin })
       .locator('[data-test=plugin-actions]')
       .click()
-    await page
-      .locator('[data-test=edit-plugin]')
-      .click()
+    await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page
       .locator(
@@ -509,7 +504,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch { }
+    } catch {}
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       editRegexp,
@@ -526,14 +521,10 @@ test.describe(() => {
     )
     // Ensure the target list is updated to show the new name
     await expect(
-      page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin }),
+      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
     ).not.toContainText('PW_TEST')
     await expect(
-      page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin }),
+      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
     ).toContainText('NEW_TGT')
     // Show the process output
     await page
@@ -580,9 +571,7 @@ test.describe(() => {
       .filter({ hasText: plugin })
       .locator('[data-test=plugin-actions]')
       .click()
-    await page
-      .locator('[data-test=delete-plugin]')
-      .click()
+    await page.locator('[data-test=delete-plugin]').click()
     await expect(page.locator('.v-dialog')).toContainText('Confirm')
     await page.locator('[data-test=confirm-dialog-delete]').click()
     await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
@@ -604,7 +593,7 @@ test.describe(() => {
           timeout: 30000,
         },
       )
-    } catch { }
+    } catch {}
     // Ensure no Running are left
     await expect(page.locator('[data-test=process-list]')).not.toContainText(
       regexp,
