@@ -292,6 +292,8 @@ class QuestMicroservice(Microservice):
                         cur.execute(alter)
                         self.logger.info(f"QuestDB: {alter}")
                         self.connect_ingest() # reconnect
+                        # Retry write to QuestDB
+                        self.ingest.row(table_name, columns=values, at=TimestampNanos(timestamp))
                 except psycopg.Error as error:
                     self.logger.error(f"QuestDB: Error {alter}\n{error}")
             else:
