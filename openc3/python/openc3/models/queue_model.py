@@ -20,7 +20,6 @@ import time
 from typing import Optional
 
 from openc3.models.model import Model
-from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.queue_topic import QueueTopic
 from openc3.utilities.store import Store
 

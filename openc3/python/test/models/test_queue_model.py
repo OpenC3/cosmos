@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import json
-import threading
 import unittest
 from unittest.mock import Mock, patch
 from test.test_helper import mock_redis
