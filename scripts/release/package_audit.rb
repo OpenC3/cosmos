@@ -62,14 +62,15 @@ Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
   `bundle update`
 end
 
-# Build reports
-report = build_report(containers)
-summary_report = build_summary_report(containers)
-
-# Now check for latest versions
 client = Faraday.new do |f|
   f.response :follow_redirects
 end
+
+# Build reports
+report = build_report(containers, client)
+summary_report = build_summary_report(containers)
+
+# Now check for latest versions
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_minio(client, containers)

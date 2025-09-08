@@ -255,7 +255,17 @@ def build_summary_report(containers)
   report
 end
 
-def build_container_report(container)
+def build_container_report(container, client)
+  # openc3-ruby has the anycable-go binary we need to check
+  if container[:name].include?('openc3-ruby')
+    anycable = `docker run --rm #{container[:name]} /usr/bin/anycable-go --version`.strip
+    puts "Raw anycable-go version: #{anycable}"
+    any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
+    resp = client.get('https://github.com/anycable/anycable/tags')
+    tag_texts = resp.body.scan(/<a [^>]*>(v\d+\.\d+\.\d+)<\/a>/).flatten
+    validate_versions(tag_texts, "v#{any_cable_version}", 'anycable-go')
+  end
+
   report = ""
   report << "Container: #{container[:name]}\n"
   report << "Base Image: #{container[:base_image]}\n" if container[:base_image]
@@ -269,13 +279,13 @@ def build_container_report(container)
   report
 end
 
-def build_report(containers)
+def build_report(containers, client)
   report = ""
   report << "Individual Container Reports\n"
   report << ("-" * 80)
   report << "\n\n"
   containers.each do |container|
-    report << build_container_report(container)
+    report << build_container_report(container, client)
   end
   report
 end

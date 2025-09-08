@@ -3,9 +3,8 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Post Release OpenC3 Trivy Scan
+name: Post Release Trivy Scan
 
-# Only run on a push to master to avoid running for all the dependabot PRs
 on:
   workflow_dispatch:
     inputs:

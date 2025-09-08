@@ -7,22 +7,7 @@ sidebar_custom_props:
 
 Please read the release notes on the [Releases](https://github.com/OpenC3/cosmos/releases) page to learn about current functionality.
 
-## OpenC3 COSMOS 6.x
-
-- Plugin App Store<br/>
-- System Health Tool (Enterprise)<br/>
-- COSMOS Notebooks (similar to Jupyter Notebooks)<br/>
-- Log Message Extractor Tool (Enterprise)<br/>
-- Telemetry Viewer screen playback of historical data<br/>
-- libCSP Interface (Cubesat Space Protocol)<br/>
-- Standardized Interfaces for common message buses (ZeroMQ, ActiveMQ, etc)<br/>
-- Integration with ground networks (Atlas, RBC Signals)<br/>
-- Integration with mission planning (Orbit Logic, Cognitive Space)<br/>
-- Integration with flight dynamics (Kayhan, SEE, Exotrail)<br/>
-
-## OpenC3 COSMOS 7.x
-
-- Super Bridge - This will enable SaaS COSMOS and provide a secure method to communicate from a cloud server to an intranet for hardware control
+Our roadmap is captured via Github [Milestones](https://github.com/OpenC3/cosmos/milestones). We have major milestones (6.0, 7.0, etc) and minor milestones (6.x, 7.x, etc) that incorporate new functionality, enhancements, bug fixes, and dependency updates. Note that we also release patch releases (6.5.1) that incorporate only minor enhancements, bug fixes, and dependency updates but these are not milestoned.
 
 ## Github Issues
 
