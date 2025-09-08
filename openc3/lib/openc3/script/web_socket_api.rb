@@ -306,6 +306,17 @@ module OpenC3
     end
   end
 
+  # Queue WebSocket
+  class QueueEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "QueueEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
   # Streaming API WebSocket
   class StreamingWebSocketApi < CmdTlmWebSocketApi
     def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)

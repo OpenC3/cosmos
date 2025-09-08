@@ -1,5 +1,4 @@
-/*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -11,14 +10,16 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-#
+
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
 
-import * as AstroStatus from './AstroStatus'
-import { fileIcon } from './fileIcon'
-import TimeFilters from './timeFilters'
-import CmdUtilities from './cmdUtilities'
+from openc3.topics.topic import Topic
 
-export { AstroStatus, fileIcon, TimeFilters, CmdUtilities }
+
+class QueueTopic(Topic):
+    PRIMARY_KEY = "openc3_queue"
+
+    @classmethod
+    def write_notification(cls, notification, scope):
+        cls.write_topic(f"{scope}__{cls.PRIMARY_KEY}", notification, '*', 1000)

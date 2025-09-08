@@ -36,6 +36,8 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 :::info Upgrade is new since v6.7.0
 Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.7.0, manually download the [`openc3_upgrade.sh`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/linux/openc3_upgrade.sh) or [`openc3_upgrade.bat`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/windows/openc3_upgrade.bat) script and put it at the base of your COSMOS project.
 
+For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACKE74?si=ngoo9tmrmB2O2OgC) video on our [YouTube Channel](https://www.youtube.com/@openc3).
+
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
 ```sh
@@ -354,6 +356,8 @@ All COSMOS 4 users must upgrade their configuration to 5. However, the command, 
 :::
 
 COSMOS 5 is a new architecture and treats targets as independent [plugins](../configuration/plugins.md). Thus the primary effort in porting from COSMOS 4 to COSMOS 5 is converting targets to plugins. We recommend creating plugins for each independent target (with its own interface) but targets which share an interface will need to be part of the same plugin. The reason for independent plugins is it allows the plugin to be versioned separately and more easily shared outside your specific project. If you have very project specific targets (e.g. custom hardware) those can potentially be combined for ease of deployment.
+
+We also removed and renamed a number of [API methods](../guides/scripting-api#migration-from-cosmos-v4-to-v5) in COSMOS 5.
 
 ### Configuration Migration Tool
 

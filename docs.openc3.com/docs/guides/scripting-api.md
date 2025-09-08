@@ -50,7 +50,7 @@ The following API methods have been removed from COSMOS v6. Most of the deprecat
 
 ### Migration from COSMOS v4 to v5
 
-The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
+The following API methods are deprecated (will not be ported to COSMOS 5):
 
 | Method                                | Tool                         | Status                                                              |
 | ------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
@@ -70,7 +70,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
 | get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_cmd                                             |
 | get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                         |
-| get_disconnected_targets              | Script Runner                | Unimplemented                                                       |
+| get_disconnected_targets              | Script Runner                | Deprecated                                                          |
 | get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                       |
 | get_interface_targets                 | Command and Telemetry Server | Deprecated                                                          |
 | get_output_logs_filenames             | Command and Telemetry Server | Deprecated                                                          |
@@ -113,7 +113,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | save_file_dialog                      | Script Runner                | Deprecated                                                          |
 | save_setting                          | Command and Telemetry Server | Deprecated but exists for backwards compatibility, use set_setting  |
 | set_cmd_tlm_disconnect                | Script Runner                | Deprecated, use disconnect_script                                   |
-| set_disconnected_targets              | Script Runner                | Unimplemented                                                       |
+| set_disconnected_targets              | Script Runner                | Deprecated                                                          |
 | set_replay_mode                       | Replay                       | Deprecated                                                          |
 | set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
 | set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
@@ -1929,6 +1929,437 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> tr
 
 ```python
 status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> True / False
+```
+
+</TabItem>
+</Tabs>
+
+## Command Queues
+
+Command queues can be used to store commands prior to "releasing" them for execution. Commands are sent to queues via the `queue` keyword argument to the various `cmd` API calls. Queues can be in three different states: `HOLD`, `RELEASE`, and `DISABLE`. `HOLD` builds up a FIFO of commands as they are generated. `RELEASE` sends the commands to the interface for execution. `DISABLE` rejects all commands that are sent via the `cmd` API calls. Sending a command while a queue is in the `DISABLE` state will raise an exception and stop the script.
+
+By setting the environment variable `OPENC3_DEFAULT_QUEUE` in the .env file you can create a "default" queue that all commands will go to unless explicitly excluded by passing `false/False` to the `queue` keyword argument. This queue is created during COSMOS initialization and is created in `RELEASE` mode so normal commanding will still work. Note that this will introduce delay in the command chain because all commands will flow through the queue instead of being directly executed by the interface.
+
+Here is an example of sending a command to a queue:
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd("INST ABORT", queue: "TEST")
+# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
+cmd("INST ABORT", queue: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+cmd("INST ABORT", queue="TEST")
+# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
+cmd("INST ABORT", queue=False)
+```
+
+</TabItem>
+</Tabs>
+
+### queue_create
+
+Create a command queue. Queues are initially created in HOLD state.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_create('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_create('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_create('TEST')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_create('TEST')
+```
+
+</TabItem>
+</Tabs>
+
+### queue_get
+
+Get information about a command queue including what state it is in.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_get('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_get('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue = queue_get('TEST')
+puts queue #=>
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue = queue_get('TEST')
+print(queue) #=>
+```
+
+</TabItem>
+</Tabs>
+
+### queue_all
+
+Get information about all command queues.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+all = queue_all()
+puts all #=>
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+all = queue_all()
+print(all) #=>
+```
+
+</TabItem>
+</Tabs>
+
+### queue_list
+
+List all the commands in the queue including the username, the creation time, and the command itself.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_list('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_list('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmds = queue_list('TEST')
+puts cmds #=>
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+cmds = queue_list('TEST')
+print(cmds) #=>
+```
+
+</TabItem>
+</Tabs>
+
+### queue_hold
+
+Puts the specified queue into HOLD mode which means that commands are queued up and not released to the interface.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_hold('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_hold('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_hold('TEST')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_hold('TEST')
+```
+
+</TabItem>
+</Tabs>
+
+### queue_release
+
+Puts the specified queue into RELEASE mode which means that commands in the queue are released to the interface. Any new commands added to the queue are immediately released to the interface.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_release('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_release('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_release('TEST')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_release('TEST')
+```
+
+</TabItem>
+</Tabs>
+
+### queue_disable
+
+Puts the specified queue into DISABLE mode which means that commands are rejected and not added to the queue. Commands added to a queue in DISABLE mode via script will raise an exception and stop.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_disable('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_disable('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_disable('TEST')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_disable('TEST')
+```
+
+</TabItem>
+</Tabs>
+
+### queue_exec
+
+Removes a command from the queue and executes it.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_exec('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_exec('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                                                                                                     |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| Queue Name | Case sensitive name of the queue                                                                                |
+| Index      | Remove and execute at the specified index. If the index is not given the first command is removed and executed. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_exec('TEST') # Removes and executes the first command in the queue
+queue_exec('TEST', index: 5)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_exec('TEST') # Removes and executes the first command in the queue
+queue_exec('TEST', index=5)
+```
+
+</TabItem>
+</Tabs>
+
+### queue_delete
+
+Deletes the specified queue and any commands that it holds.
+
+> Since 6.8.0
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_delete('<Queue Name>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_delete('<Queue Name>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                      |
+| ---------- | -------------------------------- |
+| Queue Name | Case sensitive name of the queue |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_delete('TEST')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_delete('TEST')
 ```
 
 </TabItem>
