@@ -43,7 +43,7 @@ export default class Cable {
           let final_url =
             this._url +
             '?scope=' +
-            encodeURIComponent(window.openc3Scope) +
+            encodeURIComponent(scope) +
             '&authorization=' +
             encodeURIComponent(localStorage.openc3Token)
           final_url = new URL(final_url, document.baseURI).href

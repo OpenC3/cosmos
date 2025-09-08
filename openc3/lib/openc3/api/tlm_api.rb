@@ -293,7 +293,8 @@ module OpenC3
               results << [target_name, orig_packet_name, item_name, 'WITH_UNITS'].join('__')
             elsif item['format_string']
               results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
-            elsif item['read_conversion'] or item['states']
+            # This logic must match the logic in Packet#decom
+            elsif item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
               results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
             else
               results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
@@ -301,13 +302,15 @@ module OpenC3
           when 'FORMATTED'
             if item['format_string']
               results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
-            elsif item['read_conversion'] or item['states']
+            # This logic must match the logic in Packet#decom
+            elsif item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
               results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
             else
               results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
             end
           when 'CONVERTED'
-            if item['read_conversion'] or item['states']
+            # This logic must match the logic in Packet#decom
+            if item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
               results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
             else
               results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')

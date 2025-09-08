@@ -51,6 +51,7 @@ module OpenC3
       'openc3-cosmos-tool-calendar',
       'openc3-cosmos-tool-grafana',
       'openc3-cosmos-tool-systemhealth',
+      'openc3-cosmos-tool-logexplorer',
       'openc3-tool-base',
     ]
 

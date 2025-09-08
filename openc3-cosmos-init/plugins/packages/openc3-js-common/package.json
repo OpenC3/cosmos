@@ -48,16 +48,16 @@
     "date-fns": "4.1.0",
     "date-fns-tz": "3.2.0",
     "lodash": "4.17.21",
-    "lossless-json": "4.1.1",
-    "sass": "1.89.2",
+    "lossless-json": "4.2.0",
+    "sass": "1.92.0",
     "sortablejs": "1.15.6",
     "sprintf-js": "1.1.3",
     "uplot": "1.6.32"
   },
   "devDependencies": {
-    "eslint": "9.32.0",
+    "eslint": "9.34.0",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-prettier": "5.5.3",
+    "eslint-plugin-prettier": "5.5.4",
     "eslint-plugin-vue": "10.4.0",
     "prettier": "3.6.2",
     "vite": "6.3.4"

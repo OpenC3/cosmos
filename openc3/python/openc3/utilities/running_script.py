@@ -160,13 +160,13 @@ def running_script_method(method, *args, **kwargs):
                         file = _get_storage_file(
                             f"tmp/{theFilename}", scope=RunningScript.instance.scope()
                         )
-
-                        def filename(self):
-                            return theFilename
-
-                        type(file).filename = filename
+                        file._filename = theFilename
                         files.append(file)
-                        pass
+
+                    def filename(self):
+                        return self._filename
+                    type(files[0]).filename = filename
+
                     if method == "open_file_dialog":  # Simply return the only file
                         files = files[0]
                     return files
