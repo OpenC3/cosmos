@@ -92,8 +92,8 @@ export default {
         if (value.json_class === 'String' && value.raw) {
           // This is binary data, display in hex.
           returnValue = '0x'
-          for (let nibble of value.raw) {
-            nibble = nibble.toString(16).toUpperCase()
+          for (let part of value.raw) {
+            let nibble = part.toString(16).toUpperCase()
             if (nibble.length < 2) {
               nibble = '0' + nibble
             }

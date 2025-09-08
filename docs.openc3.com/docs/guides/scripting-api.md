@@ -1938,7 +1938,7 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> Tr
 
 Command queues can be used to store commands prior to "releasing" them for execution. Commands are sent to queues via the `queue` keyword argument to the various `cmd` API calls. Queues can be in three different states: `HOLD`, `RELEASE`, and `DISABLE`. `HOLD` builds up a FIFO of commands as they are generated. `RELEASE` sends the commands to the interface for execution. `DISABLE` rejects all commands that are sent via the `cmd` API calls. Sending a command while a queue is in the `DISABLE` state will raise an exception and stop the script.
 
-By setting the environment variable `OPENC3_DEFAULT_QUEUE` in the .env file you can create a "default" queue that all commands will go to unless explicitly excluded by passing `false/False` to the `queue` keyword argument. This queue is created during COSMOS initialization and is created in `RELEASE` mode so normal commanding will still work. Note that this will introduce delay in the command chain because all commands will flow through the queue instead of being directly exected by the interface.
+By setting the environment variable `OPENC3_DEFAULT_QUEUE` in the .env file you can create a "default" queue that all commands will go to unless explicitly excluded by passing `false/False` to the `queue` keyword argument. This queue is created during COSMOS initialization and is created in `RELEASE` mode so normal commanding will still work. Note that this will introduce delay in the command chain because all commands will flow through the queue instead of being directly executed by the interface.
 
 Here is an example of sending a command to a queue:
 

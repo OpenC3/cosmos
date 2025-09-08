@@ -312,7 +312,7 @@ export default {
     },
     getCmdString() {
       let cmd = `${this.targetName} ${this.commandName}`
-      if (!this.computedRows || this.computedRows.length === 0) return cmd
+      if (this.computedRows.length === 0) return cmd
       cmd += ' with '
       for (const row of this.computedRows) {
         // null value indicates required parameter not set, see updateCmdParams
@@ -412,35 +412,32 @@ export default {
       this.$nextTick(() => {
         // Give time for parameters to load
         setTimeout(() => {
-          if (this.computedRows) {
-            this.computedRows.forEach((row) => {
-              if (this.parsedParameters.hasOwnProperty(row.parameter_name)) {
-                const value = this.parsedParameters[row.parameter_name]
-                // Set the value based on parameter type
-                if (row.states && typeof value === 'string') {
-                  // For state parameters, try to match the state name
-                  const stateKey = Object.keys(row.states).find(
-                    (key) =>
-                      key === value ||
-                      key.toLowerCase() === value.toLowerCase(),
-                  )
-                  if (stateKey) {
-                    row.val = row.states[stateKey].value
-                  } else {
-                    row.val = value
-                  }
-                } else if (row.type === 'STRING' && typeof value === 'string') {
-                  // For string parameters, add quotes if not present
-                  row.val =
-                    value.startsWith("'") || value.startsWith('"')
-                      ? value
-                      : `'${value}'`
+          this.computedRows.forEach((row) => {
+            if (this.parsedParameters.hasOwnProperty(row.parameter_name)) {
+              const value = this.parsedParameters[row.parameter_name]
+              // Set the value based on parameter type
+              if (row.states && typeof value === 'string') {
+                // For state parameters, try to match the state name
+                const stateKey = Object.keys(row.states).find(
+                  (key) =>
+                    key === value || key.toLowerCase() === value.toLowerCase(),
+                )
+                if (stateKey) {
+                  row.val = row.states[stateKey].value
                 } else {
                   row.val = value
                 }
+              } else if (row.type === 'STRING' && typeof value === 'string') {
+                // For string parameters, add quotes if not present
+                row.val =
+                  value.startsWith("'") || value.startsWith('"')
+                    ? value
+                    : `'${value}'`
+              } else {
+                row.val = value
               }
-            })
-          }
+            }
+          })
         }, 100) // Shorter delay since we're already in the component
       })
     },
