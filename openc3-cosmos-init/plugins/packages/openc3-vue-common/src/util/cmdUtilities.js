@@ -49,10 +49,7 @@ export default {
 
     isArray(str) {
       // Regular expression to identify a String as an Array
-      if (/^\s*\[.*\]\s*$/.test(str)) {
-        return true
-      }
-      return false
+      return /^\s*\[.*\]\s*$/.test(str)
     },
 
     removeQuotes(str) {
@@ -95,8 +92,8 @@ export default {
         if (value.json_class === 'String' && value.raw) {
           // This is binary data, display in hex.
           returnValue = '0x'
-          for (let i = 0; i < value.raw.length; i++) {
-            let nibble = value.raw[i].toString(16).toUpperCase()
+          for (let nibble of value.raw) {
+            nibble = nibble.toString(16).toUpperCase()
             if (nibble.length < 2) {
               nibble = '0' + nibble
             }

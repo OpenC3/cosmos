@@ -326,14 +326,18 @@ export default {
               ([, state]) => state.value === row.val,
             )
             if (stateEntry) {
-              cmd += ` ${row.parameter_name} ${stateEntry[0]},`
+              // Although not always necessary, always quote states
+              cmd += ` ${row.parameter_name} '${stateEntry[0]}',`
               continue
             }
           }
-          if (typeof row.val === 'string' && row.val.includes(' ')) {
-            cmd += ` ${row.parameter_name} "${row.val}",`
+          // We only put the param value in quotes if it is a string with spaces
+          // Check for array syntax because we do NOT quote arrays
+          let value = this.convertToString(row.val)
+          if (value.includes(' ') && !this.isArray(value)) {
+            cmd += ` ${row.parameter_name} '${value}',`
           } else {
-            cmd += ` ${row.parameter_name} ${row.val},`
+            cmd += ` ${row.parameter_name} ${value},`
           }
         }
       }
@@ -359,8 +363,7 @@ export default {
       let bracketLevel = 0
       let current = ''
       // Parse the params char by char to handle commas inside brackets
-      for (let i = 0; i < paramsString.length; i++) {
-        const char = paramsString[i]
+      for (let char of paramsString) {
         if (char === '[') {
           bracketLevel++
           current += char
