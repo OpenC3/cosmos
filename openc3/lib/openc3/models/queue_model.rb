@@ -72,7 +72,6 @@ module OpenC3
       else
         @state = 'HOLD'
       end
-      @instance_mutex = Mutex.new
     end
 
     def create(update: false, force: false, queued: false)
@@ -105,8 +104,12 @@ module OpenC3
     end
 
     def insert_command(index, command_data)
+      if @state == 'DISABLE'
+        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_data['value']}' not queued."
+      end
+
       unless index
-        result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
+        result = Store.zrevrange("#{@scope}:#{@name}", 0, 0, with_scores: true)
         if result.empty?
           index = 1.0
         else
@@ -118,6 +121,10 @@ module OpenC3
     end
 
     def update_command(index:, command:, username:)
+      if @state == 'DISABLE'
+        raise QueueError, "Queue '#{@name}' is disabled. Command at index #{index} not updated."
+      end
+
       # Check if command exists at the given index
       existing = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
       if existing.empty?
@@ -132,6 +139,10 @@ module OpenC3
     end
 
     def remove_command(index = nil)
+      if @state == 'DISABLE'
+        raise QueueError, "Queue '#{@name}' is disabled. Command not removed."
+      end
+
       if index
         # Remove specific index
         result = Store.zrangebyscore("#{@scope}:#{@name}", index, index)

@@ -50,6 +50,9 @@ class QueueModel(Model):
 
     # END NOTE
 
+    # The queue_command is really the only method need in the Python implementation
+    # because it is being called by the cmd_api.py _cmd_implementation.
+    # However we need a lot of methods to enable cls.get_model and model.notify
     @classmethod
     def queue_command(cls, name: str, command: str, username: str, scope: str):
         model = cls.get_model(name=name, scope=scope)
@@ -72,15 +75,10 @@ class QueueModel(Model):
     def __init__(self, name: str, scope: str, state: str = "HOLD", updated_at: Optional[float] = None):
         super().__init__(f"{scope}__{self.PRIMARY_KEY}", name=name, updated_at=updated_at, scope=scope)
         self.microservice_name = f"{scope}__QUEUE__{name}"
-        self.state = state
-        self._instance_mutex = threading.Lock()
-
-    def create(self, update: bool = False, force: bool = False, queued: bool = False, isoformat: bool = False):
-        super().create(update=update, force=force, queued=queued, isoformat=isoformat)
-        if update:
-            self.notify(kind="updated")
+        if state in ["HOLD", "RELEASE", "DISABLE"]:
+            self.state = state
         else:
-            self.notify(kind="created")
+            self.state = "HOLD"
 
     def as_json(self):
         return {"name": self.name, "scope": self.scope, "state": self.state, "updated_at": self.updated_at}
@@ -91,66 +89,3 @@ class QueueModel(Model):
             "data": json.dumps(self.as_json(), allow_nan=True),
         }
         QueueTopic.write_notification(notification, scope=self.scope)
-
-    def insert(self, index: Optional[float], command_data: dict):
-        if index is None:
-            result = Store.zrevrange(f"{self.scope}:{self.name}", 0, 0, withscores=True)
-            if not result:
-                index = 1.0
-            else:
-                index = float(result[0][1]) + 1
-
-        Store.zadd(f"{self.scope}:{self.name}", index, json.dumps(command_data))
-        self.notify(kind="command")
-
-    def remove(self, index: float):
-        num_removed = Store.zremrangebyscore(f"{self.scope}:{self.name}", index, index)
-        self.notify(kind="command")
-        return num_removed == 1
-
-    def list(self):
-        results = Store.zrange(f"{self.scope}:{self.name}", 0, -1, withscores=True)
-        items = []
-        for item in results:
-            result = json.loads(item[0])
-            result["index"] = float(item[1])
-            items.append(result)
-        return items
-
-    def create_microservice(self, topics: list):
-        microservice = MicroserviceModel(
-            name=self.microservice_name,
-            folder_name=None,
-            cmd=["ruby", "queue_microservice.rb", self.microservice_name],
-            work_dir="/openc3/lib/openc3/microservices",
-            options=[],
-            topics=topics,
-            target_names=[],
-            plugin=None,
-            scope=self.scope,
-        )
-        microservice.create()
-
-    def deploy(self, gem_path: str, variables: str):
-        topics = [f"{self.scope}__{QueueTopic.PRIMARY_KEY}"]
-        if not MicroserviceModel.get_model(name=self.microservice_name, scope=self.scope):
-            self.create_microservice(topics=topics)
-
-    def undeploy(self):
-        model = MicroserviceModel.get_model(name=self.microservice_name, scope=self.scope)
-        if model:
-            notification = {
-                "kind": "undeployed",
-                "data": json.dumps(
-                    {
-                        "name": self.microservice_name,
-                        "updated_at": time.time_ns(),
-                    }
-                ),
-            }
-            QueueTopic.write_notification(notification, scope=self.scope)
-            model.destroy()
-
-    def destroy(self):
-        Store.zremrangebyrank(f"{self.scope}:{self.name}", 0, -1)
-        super().destroy()

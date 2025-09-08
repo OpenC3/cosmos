@@ -264,6 +264,15 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.insert_command(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
       end
+
+      it "raises error when queue state is DISABLE" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
+        command_data = { "username" => "anonymous", "value" => "TGT CMD", "timestamp" => 1 }
+
+        expect {
+          model.insert_command(1, command_data)
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'TGT CMD' not queued.")
+      end
     end
 
     describe "update_command" do
@@ -317,6 +326,19 @@ module OpenC3
         expect(result[0]["username"]).to eq("user2")
         expect(result[1]["index"]).to eq(2.0)
         expect(result[1]["value"]).to eq("TGT CMD3")
+      end
+
+      it "raises error when queue state is DISABLE" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
+
+        # Change state to DISABLE after inserting the command
+        model.state = "DISABLE"
+
+        expect {
+          model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command at index 1.0 not updated.")
       end
     end
 
@@ -704,6 +726,36 @@ module OpenC3
         remaining = model.list
         expect(remaining.length).to eq(1)
         expect(remaining[0]["index"]).to eq(2.7)
+      end
+
+      it "raises error when queue state is DISABLE" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        # Change state to DISABLE after inserting the command
+        model.state = "DISABLE"
+
+        expect {
+          model.remove_command
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command not removed.")
+      end
+
+      it "raises error when queue state is DISABLE and removing by index" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
+
+        model.insert_command(1.0, command1)
+
+        # Change state to DISABLE after inserting the command
+        model.state = "DISABLE"
+
+        expect {
+          model.remove_command(1.0)
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command not removed.")
       end
     end
 
