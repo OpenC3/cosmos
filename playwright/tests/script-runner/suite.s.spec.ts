@@ -19,6 +19,7 @@
 
 // @ts-check
 import { test, expect } from './../fixture'
+import * as fs from 'fs'
 
 test.use({
   toolPath: '/tools/scriptrunner',
@@ -284,6 +285,38 @@ test('starts a suite', async ({ page, utils }) => {
     },
     true,
   )
+
+  // Verify we can download the report in the various formats
+  await page.locator('[data-test="script-runner-script"]').click()
+  await page.getByText('Execution Status').click()
+  await utils.sleep(1000)
+  await page
+    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .getByRole('button')
+    .nth(4)
+    .click()
+  await utils.download(page, 'text=Download as Text', function (contents) {
+    expect(contents).toContain('--- Script Report ---')
+    expect(contents).toContain('--- Test Summary ---')
+    expect(contents).toContain('Pass: 3')
+    expect(contents).toContain('Skip: 0')
+    expect(contents).toContain('Fail: 0')
+  })
+
+  await page
+    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .getByRole('button')
+    .nth(4)
+    .click()
+  await utils.download(page, 'text=Download as CTRF', function (contents) {
+    expect(contents).toContain('"reportFormat":"CTRF')
+    let json = JSON.parse(contents)
+    expect(json.results.summary.tests).toEqual(3)
+    expect(json.results.summary.passed).toEqual(3)
+    expect(json.results.summary.skipped).toEqual(0)
+    expect(json.results.summary.failed).toEqual(0)
+  })
+  await page.keyboard.press('Escape')
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()

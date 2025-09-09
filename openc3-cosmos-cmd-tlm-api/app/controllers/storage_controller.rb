@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,6 +22,13 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+begin
+  require 'openc3-enterprise/version'
+  STORAGE_VERSION = OPENC3_ENTERPRISE_VERSION
+rescue LoadError
+  require 'openc3/version'
+  STORAGE_VERSION = OPENC3_VERSION
+end
 
 class StorageController < ApplicationController
   def buckets
@@ -131,7 +138,15 @@ class StorageController < ApplicationController
     end
     file = File.read(filename, mode: 'rb')
     FileUtils.rm_rf(tmp_dir) if tmp_dir
-    render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+
+    # Check if CTRF conversion is requested
+    if params[:format] == 'ctrf'
+      file_content = file.force_encoding('UTF-8')
+      ctrf_data = convert_to_ctrf(file_content)
+      render json: { filename: "#{File.basename(params[:object_id], '.*')}.ctrf.json", contents: Base64.encode64(ctrf_data.to_json) }
+    else
+      render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+    end
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Download failed: #{e.message}", user: username())
@@ -197,6 +212,141 @@ class StorageController < ApplicationController
   end
 
   private
+
+  def convert_to_ctrf(report_content)
+    lines = report_content.split("\n")
+    tests = []
+    summary = {}
+    settings = {}
+    inSettings = false
+    lastResult = nil
+    inSummary = false
+
+    lines.each do |line|
+      line_clean = line.strip
+
+      if line_clean == 'Settings:'
+        inSettings = true
+        next
+      end
+      if inSettings
+        if line_clean.include?('Manual')
+          settings[:manual] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Pause on Error')
+          settings[:pauseOnError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Continue After Error')
+          settings[:contineAfterError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Abort After Error')
+          settings[:abortAfterError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Loop =')
+          settings[:loop] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Break Loop On Error')
+          settings[:breakLoopOnError] = line.split('=')[1].strip
+          inSettings = false
+          next
+        end
+      end
+
+      if line_clean == 'Results:'
+        lastResult = line_clean
+        next
+      end
+
+      if lastResult
+        # The first line should always have a timestamp and what it is executing
+        if lastResult == 'Results:' and line_clean.include?("Executing")
+          summary[:startTime] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          lastResult = line_clean
+          next
+        end
+
+        if line_clean.include?("PASS") or line_clean.include?("SKIP") or line_clean.include?("FAIL")
+          date, time, _example = lastResult.split(' ')
+          startTime = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          date, time, example = line_clean.split(' ')
+          suiteGroup, name, status = example.split(':')
+          endTime = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          formatStatus = case status
+          when 'PASS'
+            'passed'
+          when 'SKIP'
+            'skipped'
+          when 'FAIL'
+            'failed'
+          end
+          tests << {
+            name: "#{suiteGroup}:#{name}",
+            status: formatStatus,
+            duration: endTime - startTime,
+          }
+          lastResult = line_clean
+          next
+        end
+
+        if line_clean.include?("Completed")
+          summary[:stopTime] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          lastResult = nil
+          next
+        end
+      end
+
+      if line_clean == '--- Test Summary ---'
+        inSummary = true
+        next
+      end
+
+      if inSummary
+        if line_clean.include?("Total Tests")
+          summary[:total] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Pass:")
+          summary[:passed] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Skip:")
+          summary[:skipped] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Fail:")
+          summary[:failed] = line_clean.split(':')[1].to_i
+        end
+      end
+    end
+
+    # Build CTRF report
+    return {
+      reportFormat: "CTRF",
+      specVersion: "0.0.0",
+      results: {
+        tool: {
+          name: "COSMOS Script Runner",
+          version: STORAGE_VERSION,
+        },
+        summary: {
+          tests: summary[:total],
+          passed: summary[:passed],
+          failed: summary[:failed],
+          pending: 0,
+          skipped: summary[:skipped],
+          other: 0,
+          start: summary[:startTime],
+          stop: summary[:stopTime],
+        },
+        tests: tests,
+        extra: {
+          manual: settings[:manual],
+          pauseOnError: settings[:pauseOnError],
+          contineAfterError: settings[:contineAfterError],
+          abortAfterError: settings[:abortAfterError],
+          loop: settings[:loop],
+          breakLoopOnError: settings[:breakLoopOnError],
+        },
+      },
+    }
+  end
 
   def sanitize_path(path)
     return '' if path.nil?
