@@ -50,6 +50,11 @@ module OpenC3
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:, type: "auto")
+      if type == "running-only"
+        running = super("#{RUNNING_PRIMARY_KEY}__#{scope}", name: name)
+        return running
+      end
+
       if type == "auto" or type == "running"
         # Check for running first
         running = super("#{RUNNING_PRIMARY_KEY}__#{scope}", name: name)

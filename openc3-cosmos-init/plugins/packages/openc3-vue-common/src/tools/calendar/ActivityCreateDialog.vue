@@ -39,7 +39,7 @@
         </v-toolbar>
         <v-stepper
           v-model="dialogStep"
-          editable
+          :editable="!validationError"
           :items="['Activity Times', 'Activity Type']"
         >
           <template v-if="dialogStep === 2" #actions>
@@ -312,6 +312,9 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+    validationError: function () {
+      return !!this.timeError || !this.timeline
     },
   },
   mounted: function () {
