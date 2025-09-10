@@ -39,9 +39,21 @@
         </v-toolbar>
         <v-stepper
           v-model="dialogStep"
-          :editable="!validationError"
           :items="['Activity Times', 'Activity Type']"
         >
+          <template v-if="dialogStep === 1" #actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-spacer />
+              <v-btn
+                color="primary"
+                :disabled="validationError"
+                @click="dialogStep = 2"
+              >
+                Next
+              </v-btn>
+            </v-row>
+          </template>
+          
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
