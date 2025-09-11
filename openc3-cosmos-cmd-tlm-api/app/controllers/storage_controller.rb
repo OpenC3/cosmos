@@ -213,23 +213,24 @@ class StorageController < ApplicationController
 
   private
 
+  # See https://ctrf.io/docs/category/specification
   def convert_to_ctrf(report_content)
     lines = report_content.split("\n")
     tests = []
     summary = {}
     settings = {}
-    inSettings = false
-    lastResult = nil
-    inSummary = false
+    in_settings = false
+    last_result = nil
+    in_summary = false
 
     lines.each do |line|
       line_clean = line.strip
 
       if line_clean == 'Settings:'
-        inSettings = true
+        in_settings = true
         next
       end
-      if inSettings
+      if in_settings
         if line_clean.include?('Manual')
           settings[:manual] = line.split('=')[1].strip
           next
@@ -247,60 +248,64 @@ class StorageController < ApplicationController
           next
         elsif line_clean.include?('Break Loop On Error')
           settings[:breakLoopOnError] = line.split('=')[1].strip
-          inSettings = false
+          in_settings = false
           next
         end
       end
 
       if line_clean == 'Results:'
-        lastResult = line_clean
+        last_result = line_clean
         next
       end
 
-      if lastResult
+      if last_result
         # The first line should always have a timestamp and what it is executing
-        if lastResult == 'Results:' and line_clean.include?("Executing")
-          summary[:startTime] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
-          lastResult = line_clean
+        if last_result == 'Results:' and line_clean.include?("Executing")
+          summary[:start_time] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          last_result = line_clean
           next
         end
 
         if line_clean.include?("PASS") or line_clean.include?("SKIP") or line_clean.include?("FAIL")
-          date, time, _example = lastResult.split(' ')
-          startTime = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          date, time, _example = last_result.split(' ')
+          start_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
           date, time, example = line_clean.split(' ')
-          suiteGroup, name, status = example.split(':')
-          endTime = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
-          formatStatus = case status
+          suite_group, name, status = example.split(':')
+          stop_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          format_status = case status
           when 'PASS'
             'passed'
           when 'SKIP'
             'skipped'
           when 'FAIL'
             'failed'
+          else
+            # Should never get this but 'other' is valid CTRF, only other valid option is 'pending'
+            'other'
           end
+          # See https://ctrf.io/docs/specification/test
           tests << {
-            name: "#{suiteGroup}:#{name}",
-            status: formatStatus,
-            duration: endTime - startTime,
+            name: "#{suite_group}:#{name}",
+            status: format_status,
+            duration: stop_time - start_time,
           }
-          lastResult = line_clean
+          last_result = line_clean
           next
         end
 
         if line_clean.include?("Completed")
-          summary[:stopTime] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
-          lastResult = nil
+          summary[:stop_time] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          last_result = nil
           next
         end
       end
 
       if line_clean == '--- Test Summary ---'
-        inSummary = true
+        in_summary = true
         next
       end
 
-      if inSummary
+      if in_summary
         if line_clean.include?("Total Tests")
           summary[:total] = line_clean.split(':')[1].to_i
         end
@@ -318,13 +323,16 @@ class StorageController < ApplicationController
 
     # Build CTRF report
     return {
+      # See https://ctrf.io/docs/specification/root
       reportFormat: "CTRF",
       specVersion: "0.0.0",
       results: {
+        # See https://ctrf.io/docs/specification/tool
         tool: {
           name: "COSMOS Script Runner",
           version: STORAGE_VERSION,
         },
+        # See https://ctrf.io/docs/specification/summary
         summary: {
           tests: summary[:total],
           passed: summary[:passed],
@@ -332,10 +340,12 @@ class StorageController < ApplicationController
           pending: 0,
           skipped: summary[:skipped],
           other: 0,
-          start: summary[:startTime],
-          stop: summary[:stopTime],
+          start: summary[:start_time],
+          stop: summary[:stop_time],
         },
+        # See https://ctrf.io/docs/specification/tests
         tests: tests,
+        # See https://ctrf.io/docs/specification/extra
         extra: {
           manual: settings[:manual],
           pauseOnError: settings[:pauseOnError],
