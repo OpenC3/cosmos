@@ -6,7 +6,7 @@ ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
 # Update in openc3_build_ubi.sh when changing the release version
 # and build_multi_arch.sh
-ARG OPENC3_MC_RELEASE=RELEASE.2025-07-21T05-28-08Z
+ARG OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
