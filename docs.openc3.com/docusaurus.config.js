@@ -132,7 +132,12 @@ const config = {
         ],
       },
     ],
-    require.resolve("docusaurus-lunr-search"),
+    [
+      require.resolve("docusaurus-lunr-search"),
+      {
+        maxHits: "25", // Default is "5", increase to show more results
+      },
+    ],
   ],
 
   presets: [
