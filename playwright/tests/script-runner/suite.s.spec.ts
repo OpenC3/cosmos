@@ -19,7 +19,6 @@
 
 // @ts-check
 import { test, expect } from './../fixture'
-import * as fs from 'fs'
 
 test.use({
   toolPath: '/tools/scriptrunner',
