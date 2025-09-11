@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,6 +22,13 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+begin
+  require 'openc3-enterprise/version'
+  STORAGE_VERSION = OPENC3_ENTERPRISE_VERSION
+rescue LoadError
+  require 'openc3/version'
+  STORAGE_VERSION = OPENC3_VERSION
+end
 
 class StorageController < ApplicationController
   def buckets
@@ -131,7 +138,15 @@ class StorageController < ApplicationController
     end
     file = File.read(filename, mode: 'rb')
     FileUtils.rm_rf(tmp_dir) if tmp_dir
-    render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+
+    # Check if CTRF conversion is requested
+    if params[:format] == 'ctrf'
+      file_content = file.force_encoding('UTF-8')
+      ctrf_data = convert_to_ctrf(file_content)
+      render json: { filename: "#{File.basename(params[:object_id], '.*')}.ctrf.json", contents: Base64.encode64(ctrf_data.to_json) }
+    else
+      render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+    end
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Download failed: #{e.message}", user: username())
@@ -197,6 +212,151 @@ class StorageController < ApplicationController
   end
 
   private
+
+  # See https://ctrf.io/docs/category/specification
+  def convert_to_ctrf(report_content)
+    lines = report_content.split("\n")
+    tests = []
+    summary = {}
+    settings = {}
+    in_settings = false
+    last_result = nil
+    in_summary = false
+
+    lines.each do |line|
+      line_clean = line.strip
+
+      if line_clean == 'Settings:'
+        in_settings = true
+        next
+      end
+      if in_settings
+        if line_clean.include?('Manual')
+          settings[:manual] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Pause on Error')
+          settings[:pauseOnError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Continue After Error')
+          settings[:contineAfterError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Abort After Error')
+          settings[:abortAfterError] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Loop =')
+          settings[:loop] = line.split('=')[1].strip
+          next
+        elsif line_clean.include?('Break Loop On Error')
+          settings[:breakLoopOnError] = line.split('=')[1].strip
+          in_settings = false
+          next
+        end
+      end
+
+      if line_clean == 'Results:'
+        last_result = line_clean
+        next
+      end
+
+      if last_result
+        # The first line should always have a timestamp and what it is executing
+        if last_result == 'Results:' and line_clean.include?("Executing")
+          summary[:start_time] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          last_result = line_clean
+          next
+        end
+
+        if line_clean.include?("PASS") or line_clean.include?("SKIP") or line_clean.include?("FAIL")
+          date, time, _example = last_result.split(' ')
+          start_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          date, time, example = line_clean.split(' ')
+          suite_group, name, status = example.split(':')
+          stop_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          format_status = case status
+          when 'PASS'
+            'passed'
+          when 'SKIP'
+            'skipped'
+          when 'FAIL'
+            'failed'
+          else
+            # Should never get this but 'other' is valid CTRF, only other valid option is 'pending'
+            'other'
+          end
+          # See https://ctrf.io/docs/specification/test
+          tests << {
+            name: "#{suite_group}:#{name}",
+            status: format_status,
+            duration: stop_time - start_time,
+          }
+          last_result = line_clean
+          next
+        end
+
+        if line_clean.include?("Completed")
+          summary[:stop_time] = DateTime.parse(line_clean.split(':')[0]).to_time.to_f * 1000
+          last_result = nil
+          next
+        end
+      end
+
+      if line_clean == '--- Test Summary ---'
+        in_summary = true
+        next
+      end
+
+      if in_summary
+        if line_clean.include?("Total Tests")
+          summary[:total] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Pass:")
+          summary[:passed] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Skip:")
+          summary[:skipped] = line_clean.split(':')[1].to_i
+        end
+        if line_clean.include?("Fail:")
+          summary[:failed] = line_clean.split(':')[1].to_i
+        end
+      end
+    end
+
+    # Build CTRF report
+    return {
+      # See https://ctrf.io/docs/specification/root
+      reportFormat: "CTRF",
+      specVersion: "0.0.0",
+      results: {
+        # See https://ctrf.io/docs/specification/tool
+        tool: {
+          name: "COSMOS Script Runner",
+          version: STORAGE_VERSION,
+        },
+        # See https://ctrf.io/docs/specification/summary
+        summary: {
+          tests: summary[:total],
+          passed: summary[:passed],
+          failed: summary[:failed],
+          pending: 0,
+          skipped: summary[:skipped],
+          other: 0,
+          start: summary[:start_time],
+          stop: summary[:stop_time],
+        },
+        # See https://ctrf.io/docs/specification/tests
+        tests: tests,
+        # See https://ctrf.io/docs/specification/extra
+        extra: {
+          manual: settings[:manual],
+          pauseOnError: settings[:pauseOnError],
+          contineAfterError: settings[:contineAfterError],
+          abortAfterError: settings[:abortAfterError],
+          loop: settings[:loop],
+          breakLoopOnError: settings[:breakLoopOnError],
+        },
+      },
+    }
+  end
 
   def sanitize_path(path)
     return '' if path.nil?
