@@ -103,15 +103,25 @@ import Updater from './Updater'
 export default {
   mixins: [Updater],
   props: {
-    type: String,
+    type: {
+      type: String,
+      required: true,
+    },
     visible: Boolean,
-    targetName: String,
-    packetName: String,
+    targetName: {
+      type: String,
+      required: true,
+    },
+    packetName: {
+      type: String,
+      required: true,
+    },
     zIndex: {
       type: Number,
       default: 1,
     },
   },
+  emits: ['close', 'display', 'focus'],
   data() {
     return {
       header: '',
@@ -195,6 +205,9 @@ export default {
       // stop moving when mouse button is released
       document.onmouseup = null
       document.onmousemove = null
+
+      // Prevent user from dropping it above the top of the app window
+      this.top = Math.max(-47, this.top)
     },
     buildRawData: function () {
       return `${this.header}\nReceived Time: ${this.receivedTime}\nCount: ${this.receivedCount}\n${this.rawData}`
