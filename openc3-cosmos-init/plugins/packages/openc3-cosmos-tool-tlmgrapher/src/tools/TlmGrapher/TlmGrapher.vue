@@ -97,7 +97,7 @@
   <div class="grid">
     <div
       v-for="graph in graphs"
-      v-if="timeZone"
+      v-show="timeZone"
       :id="`gridItem${graph}`"
       :key="graph"
       :ref="`gridItem${graph}`"
@@ -354,6 +354,8 @@ export default {
       .then((response) => {
         if (response) {
           this.timeZone = response
+        } else {
+          this.timeZone = 'local'
         }
         this.$nextTick(() => {
           this.setup()
@@ -556,21 +558,6 @@ export default {
       }
     },
     applyConfig: async function (config) {
-      // Grab the timeZone if we haven't already
-      // This ensures we're waiting for it and pass it to the graphs
-      if (this.timeZone === null) {
-        await this.api
-          .get_setting('time_zone')
-          .then((response) => {
-            if (response) {
-              this.timeZone = response
-            }
-          })
-          .catch((error) => {
-            // Do nothing
-          })
-      }
-
       // Don't save the default config while we're applying new config
       this.dontSaveDefaultConfig = true
       this.closeAllGraphs()
