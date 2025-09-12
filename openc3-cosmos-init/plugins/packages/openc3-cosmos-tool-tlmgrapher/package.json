@@ -13,7 +13,7 @@
     "@astrouxds/astro-web-components": "7.26.1",
     "@openc3/js-common": "6.8.1-beta0",
     "@openc3/vue-common": "6.8.1-beta0",
-    "axios": "1.11.0",
+    "axios": "1.12.0",
     "binary-search": "1.3.6",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
