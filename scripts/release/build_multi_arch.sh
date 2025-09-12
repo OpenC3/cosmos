@@ -320,6 +320,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_TRAEFIK_RELEASE=${OPENC3_TRAEFIK_RELEASE} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${SUFFIX}:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik${SUFFIX}:latest .
 fi
