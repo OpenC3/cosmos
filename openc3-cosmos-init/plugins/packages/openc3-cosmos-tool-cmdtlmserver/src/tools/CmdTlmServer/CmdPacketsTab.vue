@@ -84,7 +84,7 @@
       :target-name="d.target_name"
       :packet-name="d.packet_name"
       :visible="true"
-      :z-index="d.zIndex"
+      :z-index="d.zIndex * 2"
       @close="closeRawDialog(d)"
       @focus="focus(d)"
     />
@@ -101,8 +101,14 @@ export default {
   },
   mixins: [Updater],
   props: {
-    tabId: Number,
-    curTab: Number,
+    tabId: {
+      type: Number,
+      required: true,
+    },
+    curTab: {
+      type: Number,
+      required: true,
+    },
   },
   data() {
     return {
