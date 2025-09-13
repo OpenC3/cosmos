@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023, OpenC3, Inc.
+# Copyright 2025, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -28,6 +28,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY
+  s.required_ruby_version = '>= 3.0'
 
   if ENV['VERSION']
     s.version = ENV['VERSION'].dup

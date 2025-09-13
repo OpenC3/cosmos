@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,6 +32,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY
+  s.required_ruby_version = '>= 3.0'
 
   if ENV['VERSION']
     s.version = ENV['VERSION'].dup
