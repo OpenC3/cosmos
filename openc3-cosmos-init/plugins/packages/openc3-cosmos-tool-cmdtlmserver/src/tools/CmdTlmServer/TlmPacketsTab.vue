@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -84,7 +84,7 @@
       :target-name="d.target_name"
       :packet-name="d.packet_name"
       :visible="true"
-      :z-index="d.zIndex * 2"
+      :z-index="d.zIndex"
       @close="closeRawDialog(d)"
       @focus="focus(d)"
     />
