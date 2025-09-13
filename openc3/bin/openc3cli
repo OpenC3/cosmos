@@ -1017,8 +1017,11 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'createqueue'
-    queue = OpenC3::QueueModel.new(name: ARGV[1], state: 'RELEASE', scope: ARGV[2])
-    queue.create
+    queue = OpenC3::QueueModel.get(name: ARGV[1], scope: ARGV[2])
+    unless queue
+      queue = OpenC3::QueueModel.new(name: ARGV[1], state: 'RELEASE', scope: ARGV[2])
+      queue.create
+    end
 
   when 'destroyscope'
     scope = OpenC3::ScopeModel.get_model(name: ARGV[1])

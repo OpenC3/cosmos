@@ -218,7 +218,7 @@ class QueuesController < ApplicationController
       if command_data
         begin
           token = get_token(command_data['username'], scope: params[:scope])
-          cmd_no_hazardous_check(command_data['value'], scope: params[:scope], token: token)
+          cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
         rescue StandardError => e
           log_error(e)
           render json: { status: 'error', message: "Failed to execute command: #{e.message}", type: e.class.to_s, backtrace: e.backtrace }, status: 500
