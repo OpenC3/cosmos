@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -44,6 +44,7 @@ spec = Gem::Specification.new do |s|
   else
     s.platform = Gem::Platform::CURRENT
   end
+  s.required_ruby_version = '>= 3.0'
 
   s.version = '6.8.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
@@ -72,8 +73,6 @@ spec = Gem::Specification.new do |s|
 
   # Files are defined in Manifest.txt
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
-
-  s.required_ruby_version = '>= 3.0'
 
   # Runtime Dependencies
   s.add_runtime_dependency 'bundler',   '~> 2.3'
