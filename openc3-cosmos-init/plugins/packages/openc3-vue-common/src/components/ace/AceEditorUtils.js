@@ -21,6 +21,7 @@ import 'ace-builds/src-min-noconflict/ext-searchbox'
 
 const VIM_MODE_STORAGE_KEY = 'openc3-ace-vim-mode-enabled'
 const VIM_KEYBOARD_HANDLER = 'ace/keyboard/vim'
+const DEFAULT_LANGUAGE_STORAGE_KEY = 'openc3-ace-default-scripting-language'
 
 export default {
   /**
@@ -76,6 +77,24 @@ export default {
       })
     } else {
       editor.setKeyboardHandler(null)
+    }
+  },
+
+  /**
+   * Get the default scripting language from localStorage
+   * @returns {string} 'ruby' or 'python', defaults to 'python'
+   */
+  getDefaultScriptingLanguage() {
+    return localStorage.getItem(DEFAULT_LANGUAGE_STORAGE_KEY) || 'python'
+  },
+
+  /**
+   * Set the default scripting language in localStorage
+   * @param {string} language - 'ruby' or 'python'
+   */
+  setDefaultScriptingLanguage(language) {
+    if (language === 'ruby' || language === 'python') {
+      localStorage.setItem(DEFAULT_LANGUAGE_STORAGE_KEY, language)
     }
   },
 }

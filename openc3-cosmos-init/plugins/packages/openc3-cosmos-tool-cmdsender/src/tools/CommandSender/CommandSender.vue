@@ -201,6 +201,7 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import { CmdUtilities } from '@openc3/vue-common/util'
+import { AceEditorUtils } from '@openc3/vue-common/components'
 
 export default {
   components: {
@@ -739,7 +740,12 @@ export default {
           }
         }
         if (this.disableCommandValidation) {
-          msg += '", validate: false)'
+          const language = AceEditorUtils.getDefaultScriptingLanguage()
+          if (language === 'python') {
+            msg += '", validate=False)'
+          } else {
+            msg += '", validate: false)'
+          }
         } else {
           msg += '")'
         }

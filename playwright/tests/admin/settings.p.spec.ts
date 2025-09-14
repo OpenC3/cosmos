@@ -158,3 +158,112 @@ test('changes the pypi url', async ({ page, utils }) => {
     page.locator('[data-test="pypi-url"]').locator('input'),
   ).toHaveValue('https://mypypi.com')
 })
+
+test('changes scripting settings', async ({ page, utils }) => {
+  // Verify default setting is python
+  await expect(page.locator('[data-test=default-language]')).toContainText(
+    'Python',
+  )
+
+  // Change the default to Ruby
+  await page.locator('[data-test=default-language]').click()
+  await page.locator('.v-list-item-title:has-text("Ruby")').click()
+  // Enable Vim mode
+  await page.getByRole('checkbox', { name: 'Vim mode' }).check()
+  await page.locator('[data-test=save-editor-settings]').click()
+
+  // Verify Ruby setting
+  await page.reload()
+  await expect(page.locator('[data-test=default-language]')).toContainText(
+    'Ruby',
+  )
+  await expect(page.getByRole('checkbox', { name: 'Vim mode' })).toBeChecked()
+
+  // Navigate to Script Runner to verify it uses Ruby
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+
+  // Type something in Vim mode and verify it works
+  await page.locator('.ace_editor').click()
+  await page.keyboard.press('i') // Enter insert mode
+  await page.keyboard.type('# Test vim mode')
+  await page.keyboard.press('Escape') // Exit insert mode
+
+  // Verify the text was inserted
+  let editorContent = await page.evaluate(() => {
+    const editor = window.ace.edit(document.querySelector('.ace_editor'))
+    return editor.getValue()
+  })
+  await expect(editorContent).toContain('# Test vim mode')
+
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
+  let filename = await page.locator('[data-test=filename] input').inputValue()
+  await expect(filename).toContain('.rb') // Should be Ruby
+
+  // Verify the setting affects the validate parameter in Command Sender
+  await page.goto('/tools/cmdsender/INST/ABORT/')
+  await page.locator('[data-test="command-sender-mode"]').click()
+  await page
+    .getByRole('checkbox', { name: 'Disable Command Validation' })
+    .check()
+  await page.locator('[data-test="select-send"]').click()
+  await page
+    .locator('[data-test=sender-history] div')
+    .filter({ hasText: 'cmd("INST ABORT", validate: false)' })
+
+  // Reset to Python as default
+  await page.goto('/tools/admin/settings')
+  await page.locator('[data-test=default-language]').click()
+  await page.locator('.v-list-item-title:has-text("Python")').click()
+  await page.locator('[data-test=save-editor-settings]').click()
+  // Disable Vim mode
+  await page.getByRole('checkbox', { name: 'Vim mode' }).uncheck()
+  await page.locator('[data-test=save-editor-settings]').click()
+
+  // Navigate to Script Runner to verify it uses Python
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+
+  // Type something in regular mode and verify it works
+  await page.locator('.ace_editor').click()
+  await page.keyboard.type('# Test normal mode')
+
+  // Verify the text was inserted
+  editorContent = await page.evaluate(() => {
+    const editor = window.ace.edit(document.querySelector('.ace_editor'))
+    return editor.getValue()
+  })
+  await expect(editorContent).toContain('# Test normal mode')
+
+  await page.locator('[data-test=start-button]').click()
+  // TODO: This is weird that it could be either stopped or completed
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /stopped|completed/,
+    {
+      timeout: 20000,
+    },
+  )
+  // Get the name of the running script
+  filename = await page.locator('[data-test=filename] input').inputValue()
+  await expect(filename).toContain('.py') // Should be Python
+
+  // Verify the setting affects the validate parameter in Command Sender
+  await page.goto('/tools/cmdsender/INST/ABORT/')
+  await page.locator('[data-test="command-sender-mode"]').click()
+  await page
+    .getByRole('checkbox', { name: 'Disable Command Validation' })
+    .check()
+  await page.locator('[data-test="select-send"]').click()
+  await page
+    .locator('[data-test=sender-history] div')
+    .filter({ hasText: 'cmd("INST ABORT", validate=False)' })
+})

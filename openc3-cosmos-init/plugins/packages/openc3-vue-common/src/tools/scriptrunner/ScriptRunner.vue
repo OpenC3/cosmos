@@ -147,7 +147,7 @@
               :text="filenameSelect"
               :disabled="!filenameSelect || filenameSelect.length <= 45"
             >
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <div v-bind="props" style="width: 32rem">
                   <v-select
                     id="filename"
@@ -1120,7 +1120,12 @@ export default {
     const PythonMode = this.buildPythonMode()
     this.rubyMode = new RubyMode()
     this.pythonMode = new PythonMode()
-    this.editor.session.setMode(this.rubyMode)
+    const language = AceEditorUtils.getDefaultScriptingLanguage()
+    if (language === 'python') {
+      this.editor.session.setMode(this.pythonMode)
+    } else {
+      this.editor.session.setMode(this.rubyMode)
+    }
     this.editor.session.setTabSize(2)
     this.editor.session.setUseWrapMode(true)
     this.editor.$blockScrolling = Infinity
@@ -1561,8 +1566,6 @@ export default {
         })
     },
     async scriptComplete() {
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
       this.fatal = false
       this.scriptId = null // No current scriptId
       sessionStorage.removeItem('script_runner__script_id')
@@ -1574,6 +1577,8 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
+      // Ensure stopped, if the script has an error we don't get the server stopped message
+      this.state = 'stopped'
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -2436,10 +2441,10 @@ class TestSuite(Suite):
             // start or auto with NEW_FILENAME
             if (this.tempFilename === null) {
               let language = this.detectLanguage()
-              if (
-                language === 'ruby' ||
-                (type !== 'auto' && language == 'unknown')
-              ) {
+              if (language === 'unknown') {
+                language = AceEditorUtils.getDefaultScriptingLanguage()
+              }
+              if (language === 'ruby') {
                 this.tempFilename =
                   TEMP_FOLDER +
                   '/' +
