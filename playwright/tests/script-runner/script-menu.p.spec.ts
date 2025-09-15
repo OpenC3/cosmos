@@ -28,11 +28,9 @@ test.use({
 
 test('show started scripts', async ({ page, utils }) => {
   // Have to fill on an editable area like the textarea
-  await page.locator('textarea').fill(`
-  puts "now we wait"
-  wait
-  puts "now we're done"
-  `)
+  await page
+    .locator('textarea')
+    .fill(`puts "now we wait"\nwait\nputs "now we're done"`)
   // NOTE: We can't check that there are no running scripts because
   // the tests run in parallel and there actually could be running scripts
 
@@ -157,11 +155,10 @@ test('sets environment variables', async ({ page, utils }) => {
 })
 
 test('show overrides', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  set_tlm("INST HEALTH_STATUS COLLECTS = 5")
-  override_tlm("INST HEALTH_STATUS COLLECTS = 10")
-  override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)
-  `)
+  await page.locator('textarea')
+    .fill(`set_tlm("INST HEALTH_STATUS COLLECTS = 5")
+override_tlm("INST HEALTH_STATUS COLLECTS = 10")
+override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
@@ -242,11 +239,7 @@ test('syntax check', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Syntax OK')
   await page.locator('.v-dialog >> button').click()
 
-  await page.locator('textarea').fill(`
-  puts "MORE"
-  if true
-  puts "TRUE"
-  `)
+  await page.locator('textarea').fill(`puts "MORE"\nif true\nputs "TRUE"`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Syntax Check').click()
   await expect(page.locator('.v-dialog')).toContainText('syntax error')
@@ -254,9 +247,7 @@ test('syntax check', async ({ page, utils }) => {
 })
 
 test('mnemonic check', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  cmd("INST ABORT")
-  `)
+  await page.locator('textarea').fill(`cmd("INST ABORT")`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(
@@ -264,10 +255,9 @@ test('mnemonic check', async ({ page, utils }) => {
   )
   await page.locator('button:has-text("Ok")').click()
 
-  await page.locator('textarea').fill(`
-  cmd("BLAH ABORT")
-  cmd("INST ABORT with ANGER")
-  `)
+  await page
+    .locator('textarea')
+    .fill(`cmd("BLAH ABORT")\ncmd("INST ABORT with ANGER")`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(

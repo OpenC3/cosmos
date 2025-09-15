@@ -53,10 +53,8 @@ test('does not hazardous prompt for cmd_no_hazardous_check, cmd_no_checks', asyn
   page,
   utils,
 }) => {
-  await page.locator('textarea').fill(`
-  cmd_no_hazardous_check("INST CLEAR")
-  cmd_no_checks("INST CLEAR")
-  `)
+  await page.locator('textarea').fill(`cmd_no_hazardous_check("INST CLEAR")
+cmd_no_checks("INST CLEAR")`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
@@ -88,10 +86,9 @@ test('does not out of range error for cmd_no_range_check, cmd_no_checks', async 
   page,
   utils,
 }) => {
-  await page.locator('textarea').fill(`
-  cmd_no_range_check("INST COLLECT with DURATION 11, TYPE 'NORMAL'")
-  cmd_no_checks("INST COLLECT with DURATION 11, TYPE 'NORMAL'")
-  `)
+  await page.locator('textarea')
+    .fill(`cmd_no_range_check("INST COLLECT with DURATION 11, TYPE 'NORMAL'")
+cmd_no_checks("INST COLLECT with DURATION 11, TYPE 'NORMAL'")`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
@@ -105,17 +102,15 @@ test('does not out of range error for cmd_no_range_check, cmd_no_checks', async 
 })
 
 test('ask accepts default, password, and required', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  value = ask("Enter password:")
-  puts value
-  value = ask("Optionally enter password:", true)
-  puts "blank:#{value.empty?}"
-  value = ask("Enter default password:", 67890)
-  puts value
-  value = ask("Enter SECRET password:", false, true)
-  wait
-  puts value
-  `)
+  await page.locator('textarea').fill(`value = ask("Enter password:")
+puts value
+value = ask("Optionally enter password:", true)
+puts "blank:#{value.empty?}"
+value = ask("Enter default password:", 67890)
+puts value
+value = ask("Enter SECRET password:", false, true)
+wait
+puts value`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -172,14 +167,12 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
 })
 
 test('converts value for ask but not ask_string', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  value = ask("Enter integer:")
-  puts "int:#{value} #{value.class}"
-  value = ask("Enter float:")
-  puts "float:#{value} #{value.class}"
-  value = ask_string("Enter float:")
-  puts "string:#{value} #{value.class}"
-  `)
+  await page.locator('textarea').fill(`value = ask("Enter integer:")
+puts "int:#{value} #{value.class}"
+value = ask("Enter float:")
+puts "float:#{value} #{value.class}"
+value = ask_string("Enter float:")
+puts "string:#{value} #{value.class}"`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -206,12 +199,11 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
   page,
   utils,
 }) => {
-  await page.locator('textarea').fill(`
-  value = message_box("Select", "ONE", "TWO", "THREE")
-  puts value
-  value = vertical_message_box("Select", "FOUR", "FIVE", "SIX")
-  puts value
-  `)
+  await page.locator('textarea')
+    .fill(`value = message_box("Select", "ONE", "TWO", "THREE")
+puts value
+value = vertical_message_box("Select", "FOUR", "FIVE", "SIX")
+puts value`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -236,10 +228,11 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
 })
 
 test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  value = combo_box("Select value from combo", "abc123", "def456")
-  puts value
-  `)
+  await page
+    .locator('textarea')
+    .fill(
+      `value = combo_box("Select value from combo", "abc123", "def456")\nputs value`,
+    )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -268,10 +261,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
 
 test('opens a dialog for prompt', async ({ page, utils }) => {
   // Default choices for prompt is Ok and Cancel
-  await page.locator('textarea').fill(`
-  value = prompt("Continue?")
-  puts value
-  `)
+  await page.locator('textarea').fill(`value = prompt("Continue?")\nputs value`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -294,11 +284,10 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
 })
 
 test('opens a file dialog', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  file = open_file_dialog("Open a single file", "Choose something interesting")
-  puts file.read
-  file.delete
-  `)
+  await page.locator('textarea')
+    .fill(`file = open_file_dialog("Open a single file", "Choose something interesting")
+puts file.read
+file.delete`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
