@@ -197,11 +197,11 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   CriticalCmdDialog,
   CommandEditor,
+  AceEditorUtils,
   Openc3Screen,
   TopBar,
 } from '@openc3/vue-common/components'
 import { CmdUtilities } from '@openc3/vue-common/util'
-import { AceEditorUtils } from '@openc3/vue-common/components'
 
 export default {
   components: {

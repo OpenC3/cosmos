@@ -155,8 +155,8 @@ test('sets environment variables', async ({ page, utils }) => {
 })
 
 test('show overrides', async ({ page, utils }) => {
-  await page.locator('textarea')
-    .fill(`set_tlm("INST HEALTH_STATUS COLLECTS = 5")
+  await page.locator('textarea').fill(`
+set_tlm("INST HEALTH_STATUS COLLECTS = 5")
 override_tlm("INST HEALTH_STATUS COLLECTS = 10")
 override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
   await page.locator('[data-test=start-button]').click()
@@ -254,6 +254,8 @@ test('mnemonic check', async ({ page, utils }) => {
     'Everything looks good!',
   )
   await page.locator('button:has-text("Ok")').click()
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
 
   await page
     .locator('textarea')

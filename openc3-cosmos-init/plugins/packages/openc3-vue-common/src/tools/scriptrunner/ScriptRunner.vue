@@ -2402,12 +2402,11 @@ class TestSuite(Suite):
       let pythonRegex2 = new RegExp(
         '^\\s*(if|def|while|else|elif|class).*:\\s*$',
       )
-      let pythonRegex3 = new RegExp('\\(f"') // f strings
-      let pythonRegex4 = new RegExp('\(\w+=\w+\)') // named parameters
-      // This check for Ruby named parameters isn't perfect especially
-      // because python types are defined like "def method(string: str):"
-      // However if we exclude matches with 'def' it's pretty reliable
-      let rubyRegex3 = /\(\w+:\s+\w+\)/ // named parameters
+      let pythonRegex3 = /\(f"/ // f strings
+      // Since python types are defined like "def method(string: str):"
+      // we make sure the line doesn't end in ':' which indicates Python
+      // (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
+      let rubyRegex3 = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
       let text = this.editor.getValue()
       let lines = text.split('\n')
       for (let line of lines) {
@@ -2426,10 +2425,7 @@ class TestSuite(Suite):
         if (line.match(pythonRegex3)) {
           return 'python'
         }
-        if (line.match(pythonRegex4)) {
-          return 'python'
-        }
-        if (!line.includes('def') && line.match(rubyRegex3)) {
+        if (line.match(rubyRegex3)) {
           return 'ruby'
         }
       }
