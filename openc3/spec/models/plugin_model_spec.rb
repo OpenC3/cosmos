@@ -41,7 +41,7 @@ module OpenC3
         model.create
         names = PluginModel.names(scope: "DEFAULT")
         plugin = PluginModel.get(name: names[0], scope: "DEFAULT")
-        expect(plugin["name"]).to match(/TEST1__\d{13}/)
+        expect(plugin["name"]).to eq("TEST1__0")
       end
     end
 
@@ -55,9 +55,9 @@ module OpenC3
         model.create
         names = PluginModel.names(scope: "DEFAULT")
         # contain_exactly doesn't care about ordering and neither do we
-        expect(names).to include(/TEST__\d{14}|SPEC__\d{14}/).twice
+        expect(names).to contain_exactly("TEST__0", "SPEC__0")
         names = PluginModel.names(scope: "OTHER")
-        expect(names).to include(/OTHER__\d{14}/)
+        expect(names).to contain_exactly("OTHER__0")
       end
     end
 
@@ -68,7 +68,7 @@ module OpenC3
         model = PluginModel.new(name: "SPEC", scope: "DEFAULT")
         model.create
         all = PluginModel.all(scope: "DEFAULT")
-        expect(all.keys).to include(/TEST__\d{14}|SPEC__\d{14}/).twice
+        expect(all.keys).to contain_exactly("TEST__0", "SPEC__0")
       end
     end
 
@@ -342,6 +342,63 @@ module OpenC3
         model.create
 
         expect(PluginModel.gem_names).to eql %w(SPEC TEST)
+      end
+    end
+
+    describe "counter-based naming" do
+      it "increments counter for duplicate plugin names" do
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        model3 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model3.create
+        expect(model3.name).to eq("TEST__2")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__0", "TEST__1", "TEST__2")
+      end
+
+      it "fills gaps in counter sequence" do
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        model3 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model3.create
+        expect(model3.name).to eq("TEST__2")
+        # Destroy the middle one to create a gap
+        model2.destroy
+        # Now create a new plugin with base name - should fill the gap at __1
+        model4 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model4.create
+        expect(model4.name).to eq("TEST__1")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__0", "TEST__1", "TEST__2")
+      end
+
+      it "handles backwards compatibility with timestamp-based naming" do
+        old_plugin_name = "TEST__20250904175756"
+        old_plugin_data = {
+          'name' => old_plugin_name,
+          'variables' => {},
+          'plugin_txt_lines' => [],
+          'needs_dependencies' => false,
+          'store_id' => nil,
+          'updated_at' => Time.now.to_nsec_from_epoch
+        }
+        Store.hset("DEFAULT__openc3_plugins", old_plugin_name, JSON.generate(old_plugin_data))
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__20250904175756", "TEST__0", "TEST__1")
       end
     end
 
