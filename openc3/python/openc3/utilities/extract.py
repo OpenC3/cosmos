@@ -7,13 +7,14 @@
 # attribution addendums as found in the LICENSE.txt
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 import re
+import ast
 
 
 SCANNING_REGULAR_EXPRESSION = re.compile(
@@ -102,7 +103,7 @@ def convert_to_value(string):
             return_value = int(string, 0)
         elif is_array(string):
             # Array
-            return_value = eval(string)
+            return_value = ast.literal_eval(string)
     except Exception:
         # Something went wrong so just return the string as is
         pass

@@ -103,7 +103,7 @@
                   <span class="news-title">{{ news.title }}</span
                   ><span class="news-date">{{ formatDate(news.date) }}</span>
                 </v-list-item-title>
-                <div v-html="news.body"></div>
+                <div v-html="sanitizeNews(news.body)"></div>
               </v-list-item>
             </template>
           </v-list>
@@ -121,6 +121,7 @@
 import { Api } from '@openc3/js-common/services'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import DOMPurify from 'dompurify'
 
 export default {
   components: {
@@ -195,6 +196,9 @@ export default {
       })
   },
   methods: {
+    sanitizeNews(body) {
+      return DOMPurify.sanitize(body)
+    },
     refreshNews() {
       // Force the backend to update the news feed
       this.api.update_news().then(() => {

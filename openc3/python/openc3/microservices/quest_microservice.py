@@ -120,7 +120,7 @@ class QuestMicroservice(Microservice):
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", orig_table_name)
         if table_name != orig_table_name:
-            self.logger.warning(
+            self.logger.warn(
                 f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
             )
 
@@ -238,7 +238,7 @@ class QuestMicroservice(Microservice):
                                 value = base64.b64encode(bytes(value)).decode("ascii")
 
                         case _:
-                            self.logger.warning(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
+                            self.logger.warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
                             continue
 
                     # Replace invalid characters in item names with underscore
@@ -253,7 +253,7 @@ class QuestMicroservice(Microservice):
                             values[item_name] = value
 
                 if not values:
-                    self.logger.warning(f"QuestDB: No valid items found for {target_name} {packet_name}")
+                    self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
                 # Write to QuestDB
