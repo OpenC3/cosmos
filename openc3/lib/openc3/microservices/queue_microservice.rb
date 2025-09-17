@@ -22,6 +22,14 @@ require 'openc3/utilities/authentication'
 require 'openc3/script'
 
 module OpenC3
+  module Script
+    private
+    # Override the prompt_for_hazardous method to always return true since there is no user to prompt
+    def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
+      return true
+    end
+  end
+
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
     attr_accessor :state
@@ -73,7 +81,9 @@ module OpenC3
             token = get_token(username)
             # It's important to set queue: false here to avoid infinite recursion when
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
-            cmd_no_hazardous_check(command['value'], queue: false, scope: @scope, token: token)
+            # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
+            # but we've overriden it to always return true and go straight to cmd_no_hazardous_check()
+            cmd(command['value'], queue: false, scope: @scope, token: token)
           end
         rescue StandardError => e
           @logger.error "QueueProcessor failed to process command from queue #{@name}\n#{e.message}"
