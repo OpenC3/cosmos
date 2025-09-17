@@ -80,23 +80,23 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-| Option              | Description                                                                                                                                                                                                                                                      |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OPTIMIZE_THROUGHPUT | Number of seconds to wait before writing packets to Redis. By default packets are immediately written to Redis (both the Current Value Table (CVT) and the stream). If you have high rate data this can improve performance by buffering packets before writing. |
+| Option          | Description                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UPDATE_INTERVAL | Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```python
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Wait 1 second before writing packets
-  OPTION OPTIMIZE_THROUGHPUT 1
+  # Wait 0.5 second before writing packets
+  OPTION UPDATE_INTERVAL 0.5
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Wait 1 second before writing packets
-  OPTION OPTIMIZE_THROUGHPUT 1
+  # Wait 0.5 second before writing packets
+  OPTION UPDATE_INTERVAL 0.5
 ```
 </TabItem>
 </Tabs>

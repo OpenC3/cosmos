@@ -520,7 +520,8 @@ module OpenC3
       @sync_packet_count_time = nil
       @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
       @interface.options.each do |option_name, option_values|
-        if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
+        # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
+        if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
           update_interval = option_values[0].to_f
           EphemeralStoreQueued.instance.set_update_interval(update_interval)

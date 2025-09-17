@@ -62,7 +62,7 @@ module OpenC3
     end
 
     def set_update_interval(interval)
-      if interval < @update_interval and interval > 0.0
+      if interval > 0.0
         @update_interval = interval
       end
     end

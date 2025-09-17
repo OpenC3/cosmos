@@ -534,7 +534,8 @@ class InterfaceMicroservice(Microservice):
         self.sync_packet_count_time = None
         self.sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
         for option_name, option_values in self.interface.options.items():
-            if option_name.upper() == "OPTIMIZE_THROUGHPUT":
+            # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
+            if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
                 self.queued = True
                 update_interval = float(option_values[0])
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
