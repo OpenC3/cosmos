@@ -82,7 +82,7 @@ module OpenC3
             # It's important to set queue: false here to avoid infinite recursion when
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
-            # but we've overriden it to always return true and go straight to cmd_no_hazardous_check()
+            # but we've overridden it to always return true and go straight to cmd_no_hazardous_check()
             cmd(command['value'], queue: false, scope: @scope, token: token)
           end
         rescue StandardError => e
