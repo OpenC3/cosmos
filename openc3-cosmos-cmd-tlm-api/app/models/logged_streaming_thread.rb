@@ -185,118 +185,79 @@ class LoggedStreamingThread < StreamingThread
         query += "ASOF JOIN #{table_name} as T#{index} "
       end
     end
-    if start_time && !end_time
-      query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
-    elsif start_time && end_time
-      query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+    query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+
+    results = []
+    offset = 0
+    retry_count = 0
+    while true
+      break if @cancel_thread
+      begin
+        @@conn_mutex.synchronize do
+          @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                                        port: ENV['OPENC3_TSDB_QUERY_PORT'],
+                                        user: ENV['OPENC3_TSDB_USERNAME'],
+                                        password: ENV['OPENC3_TSDB_PASSWORD'],
+                                        dbname: 'qdb')
+          # Default connection is all strings but we want to map to the correct types
+          if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+            # TODO: This doesn't seem to be round tripping UINT64 correctly
+            # Try playback with P_2.2,2 and P(:6;): from the DEMO
+            @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
+          end
+          query += " OFFSET #{offset} LIMIT #{@max_batch_size}"
+          Logger.debug("QuestDB stream: #{query}")
+          result = @@conn.exec(query)
+          if result.nil? or result.ntuples == 0
+            break
+          else
+            result.each do |tuples|
+              entry = {}
+              tuples.each do |tuple|
+                if tuple[0] == 'timestamp'
+                  entry['__time'] = tuple[1].to_i
+                else
+                  entry[tuple[0]] = tuple[1]
+                end
+              end
+              results << entry
+            end
+            @streaming_api.transmit_results(results)
+          end
+        end
+      rescue IOError, PG::Error => e
+        # Retry the query because various errors can occur that are recoverable
+        retry_count += 1
+        if retry_count > 4
+          # After the 5th retry just raise the error
+          raise "Error querying QuestDB: #{e.message}"
+        end
+        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
+        Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
+        @@conn_mutex.synchronize do
+          if @@conn and !@@conn.finished?
+            @@conn.finish()
+          end
+          @@conn = nil # Force the new connection
+        end
+        sleep 0.1
+        retry
+      end
+    end
+    return if @cancel_thread
+
+    # Transmit less than a batch if we have that
+    @streaming_api.transmit_results(results)
+    results.clear
+
+    if done # We reached the end time
+      OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
+      finish(@collection.objects)
+      return
     end
 
-    # retry_count = 0
-    # begin
-    #   @@conn_mutex.synchronize do
-    #     @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-    #                                   port: ENV['OPENC3_TSDB_QUERY_PORT'],
-    #                                   user: ENV['OPENC3_TSDB_USERNAME'],
-    #                                   password: ENV['OPENC3_TSDB_PASSWORD'],
-    #                                   dbname: 'qdb')
-    #     # Default connection is all strings but we want to map to the correct types
-    #     if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-    #       # TODO: This doesn't seem to be round tripping UINT64 correctly
-    #       # Try playback with P_2.2,2 and P(:6;): from the DEMO
-    #       @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-    #     end
-
-    #     result = @@conn.exec(query)
-    #     if result.nil? or result.ntuples == 0
-    #       return {}
-    #     else
-    #       data = []
-    #       # Build up a results set that is an array of arrays
-    #       # Each nested array is a set of 2 items: [value, limits state]
-    #       # If the item does not have limits the limits state is nil
-    #       result.each_with_index do |tuples, index|
-    #         data[index] ||= []
-    #         row_index = 0
-    #         tuples.each do |tuple|
-    #           if tuple[0].include?("__L")
-    #             data[index][row_index - 1][1] = tuple[1]
-    #           elsif tuple[0] =~ /^__nil/
-    #             data[index][row_index] = [nil, nil]
-    #             row_index += 1
-    #           else
-    #             data[index][row_index] = [tuple[1], nil]
-    #             row_index += 1
-    #           end
-    #         end
-    #       end
-    #       # If we only have one row then we return a single array
-    #       if result.ntuples == 1
-    #         data = data[0]
-    #       end
-    #       # return data
-    #       topic = "#{scope}__#{type}__{#{target_name}}__#{packet.packet_name}"
-    #       return packet, topic
-    #     end
-    #   end
-    # rescue IOError, PG::Error => e
-    #   # Retry the query because various errors can occur that are recoverable
-    #   retry_count += 1
-    #   if retry_count > 4
-    #     # After the 5th retry just raise the error
-    #     raise "Error querying QuestDB: #{e.message}"
-    #   end
-    #   Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-    #   Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
-    #   @@conn_mutex.synchronize do
-    #     if @@conn and !@@conn.finished?
-    #       @@conn.finish()
-    #     end
-    #     @@conn = nil # Force the new connection
-    #   end
-    #   sleep 0.1
-    #   retry
-    # end
-
-    # # This will read out packets until nothing is left
-    # file_reader = StreamingObjectTsdbReader.new(@collection, scope: @scope)
-    # done = file_reader.each do |packet, topic|
-    #   break if @cancel_thread
-
-    #   # Get the item objects that need this topic
-    #   objects = item_objects_by_topic[topic]
-
-    #   break if @cancel_thread
-    #   if objects and objects.length > 0
-    #     result_entry = handle_packet(packet, objects)
-    #     results << result_entry if result_entry
-    #   end
-    #   break if @cancel_thread
-
-    #   # Transmit if we have a full batch or more
-    #   if results.length >= @max_batch_size
-    #     @streaming_api.transmit_results(results)
-    #     results.clear
-    #   end
-
-    #   # Get the packet objects that need this topic
-    #   objects = packet_objects_by_topic[topic]
-
-    #   if objects
-    #     objects.each do |object|
-    #       break if @cancel_thread
-    #       result_entry = handle_packet(packet, [object])
-    #       results << result_entry if result_entry
-    #       # Transmit if we have a full batch or more
-    #       if results.length >= @max_batch_size
-    #         @streaming_api.transmit_results(results)
-    #         results.clear
-    #       end
-    #     end
-    #   end
-
-    #   break if @cancel_thread
-    # end
-    # return if @cancel_thread
+    # Switch to Redis
+    @thread_mode = :STREAM
   end
 
   # Transfers item to realtime thread when complete (if continued)
