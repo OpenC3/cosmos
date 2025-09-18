@@ -1,3 +1,3 @@
-yarn
+pnpm install
 cd scripts && ruby generate_docs_from_yaml.rb && cd ..
-yarn build
+pnpm build

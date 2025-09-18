@@ -37,6 +37,6 @@ task :build => [:require_version] do
   end
   # Build the widgets in the src directory using sh built into Rake:
   # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
-  sh('yarn', 'build-plugin')
+  sh('pnpm', 'run', 'build-plugin')
   sh('gem', 'build', PLUGIN_NAME)
 end

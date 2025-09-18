@@ -11,7 +11,7 @@ So you want to help develop COSMOS? All of our COSMOS Core code is on [Github](h
 
 ## Development Tools
 
-The OpenC3 team develops with the [Visual Studio Code](https://code.visualstudio.com/) editor and we highly recommend it. We also utilize a number of extensions including docker, kubernetes, gitlens, prettier, eslint, python, vetur, and ruby. We commit our `openc3.code-workspace` configuration for VSCode to help configure these plugins. You also need [Docker Desktop](https://www.docker.com/products/docker-desktop) which you should already have as it is a requirement to run COSMOS. You'll also need [NodeJS](https://nodejs.org/en/download/) and [yarn](https://yarnpkg.com/getting-started/install) installed.
+The OpenC3 team develops with the [Visual Studio Code](https://code.visualstudio.com/) editor and we highly recommend it. We also utilize a number of extensions including docker, kubernetes, gitlens, prettier, eslint, python, vetur, and ruby. We commit our `openc3.code-workspace` configuration for VSCode to help configure these plugins. You also need [Docker Desktop](https://www.docker.com/products/docker-desktop) which you should already have as it is a requirement to run COSMOS. You'll also need [NodeJS](https://nodejs.org/en/download/) and [pnpm](https://pnpm.io/installation) installed.
 
 # Building COSMOS
 
@@ -80,18 +80,18 @@ If you go to localhost:2900 you should see COSMOS up and running!
 
 So now that you have COSMOS up and running how do you develop an individual COSMOS application?
 
-1.  Bootstrap the frontend with yarn
+1.  Bootstrap the frontend with pnpm
 
 ```bash
-openc3-init/plugins % yarn
-openc3-init/plugins % yarn build:common
+openc3-init/plugins % pnpm install
+openc3-init/plugins % pnpm build:common
 ```
 
 1.  Serve a local COSMOS application (CmdTlmServer, ScriptRunner, etc)
 
 ```bash
 openc3-init % cd plugins/packages/openc3-tool-scriptrunner
-openc3-tool-scriptrunner % yarn serve
+openc3-tool-scriptrunner % pnpm serve
 built in 128722ms
 ```
 
@@ -106,11 +106,11 @@ localStorage.setItem("devtools", true);
 
     Refresh and you should see `{...}` in the bottom right<br/>
     Click the Default button next to the application (@openc3/tool-scriptrunner)<br/>
-    Paste in the development path which is dependent on the port returned by the local yarn serve and the tool name (scriptrunner)
+    Paste in the development path which is dependent on the port returned by the local pnpm serve and the tool name (scriptrunner)
 
         http://localhost:2914/tools/scriptrunner/main.js
 
-1.  Refresh the page and you should see your local copy of the application (Script Runner in this example). If you dynamically add code (like `console.log`) the yarn window should re-compile and the browser should refresh displaying your new code. It is highly recommended to get familiar with your browser's [development tools](https://developer.chrome.com/docs/devtools/overview/) if you plan to do frontend development.
+1.  Refresh the page and you should see your local copy of the application (Script Runner in this example). If you dynamically add code (like `console.log`) the pnpm window should re-compile and the browser should refresh displaying your new code. It is highly recommended to get familiar with your browser's [development tools](https://developer.chrome.com/docs/devtools/overview/) if you plan to do frontend development.
 
 ## Running a Backend Server
 
