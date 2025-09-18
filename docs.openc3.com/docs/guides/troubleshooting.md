@@ -72,6 +72,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
    Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
 
    - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
+   - For Edge to to: edge://flags/#unsafely-treat-insecure-origin-as-secure
    - Add your http://&lt;Your IP Address&gt;:2900
    - Enable the Setting
    - Completely restart Chrome. On MacOS make sure the dot below the icon in chrome is gone by long pressing the icon and choosing Quit.

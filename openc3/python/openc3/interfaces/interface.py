@@ -65,6 +65,7 @@ class Interface:
         self.read_protocols = []
         self.write_protocols = []
         self.protocol_info = []
+        self.save_raw_data = True
         self.read_raw_data = ""
         self.written_raw_data = ""
         self.read_raw_data_time = None
@@ -163,6 +164,7 @@ class Interface:
             first = True
             while True:
                 extra = None
+                blank_test = False
                 # Protocols may have cached data for a packet, so initially just inject a blank string
                 # Otherwise we can hold off outputting other packets where all the data has already
                 # been received
@@ -175,9 +177,14 @@ class Interface:
                 else:
                     data = b""
                     first = False
+                    blank_test = True
 
                 for protocol in self.read_protocols:
+                    if not blank_test:
+                        protocol.read_protocol_input_base(data, extra)
                     data, extra = protocol.read_data(data, extra)
+                    if not blank_test:
+                        protocol.read_protocol_output_base(data, extra)
                     if data == "DISCONNECT":
                         Logger.info(
                             f"{self.name}: Protocol {protocol.__class__.__name__} read_data requested disconnect"
@@ -185,6 +192,10 @@ class Interface:
                         return None
                     if data == "STOP":
                         break
+                    if blank_test:
+                        # This means the blank test returned something so we can log
+                        protocol.read_protocol_input_base('', None)
+                        protocol.read_protocol_output_base(data, extra)
                 if data == "STOP":
                     continue
 
@@ -240,7 +251,9 @@ class Interface:
 
             # Potentially modify packet data
             for protocol in self.write_protocols:
+                protocol.write_protocol_input_base(data, extra)
                 data, extra = protocol.write_data(data, extra)
+                protocol.write_protocol_output_base(data, extra)
                 if data == "DISCONNECT":
                     Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
@@ -408,8 +421,9 @@ class Interface:
     #
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
-        self.read_raw_data_time = datetime.now(timezone.utc)
-        self.read_raw_data = data
+        if self.save_raw_data:
+            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
             self.stream_log_pair.read_log.write(data)
@@ -421,8 +435,9 @@ class Interface:
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
     def write_interface_base(self, data, extra=None):
-        self.written_raw_data_time = datetime.now(timezone.utc)
-        self.written_raw_data = data
+        if self.save_raw_data:
+            self.written_raw_data_time = datetime.now(timezone.utc)
+            self.written_raw_data = data
         self.bytes_written += len(data)
         if self.stream_log_pair:
             self.stream_log_pair.write_log.write(data)

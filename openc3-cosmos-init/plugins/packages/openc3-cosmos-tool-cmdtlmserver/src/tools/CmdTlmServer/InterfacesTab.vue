@@ -73,6 +73,9 @@
           </template>
         </v-tooltip>
       </template>
+      <template #item.details="{ item }">
+        <v-btn block color="primary" @click="details(item)"> Details </v-btn>
+      </template>
       <template #item.connected="{ item }">
         <span :class="item.connectedClass">
           {{ item.connected }}
@@ -80,12 +83,45 @@
       </template>
     </v-data-table>
   </v-card>
+  <!-- Interface Details Dialog -->
+  <v-overlay :model-value="detailsDialog" class="align-center justify-center">
+    <v-card
+      width="80vw"
+      height="80vh"
+      class="d-flex flex-column"
+      style="
+        position: fixed;
+        top: 50%;
+        z-index: 2400;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      "
+    >
+      <v-card-title class="d-flex align-center flex-shrink-0">
+        Interface Connection Map: {{ selectedInterface?.name }}
+        <v-spacer />
+        <v-btn icon @click="detailsDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+      <v-card-text class="flex-grow-1 pa-4">
+        <InterfaceFlowChart
+          :interface-details="interfaceDetails"
+          :selected-interface="selectedInterface"
+        />
+      </v-card-text>
+    </v-card>
+  </v-overlay>
 </template>
 
 <script>
 import Updater from './Updater'
+import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
 
 export default {
+  components: {
+    InterfaceFlowChart,
+  },
   mixins: [Updater],
   props: {
     tabId: Number,
@@ -96,6 +132,9 @@ export default {
       search: '',
       data: [],
       buttonsDisabled: false,
+      detailsDialog: false,
+      selectedInterface: null,
+      interfaceDetails: null,
       headers: [
         { title: 'Name', key: 'name' },
         {
@@ -109,6 +148,7 @@ export default {
         { title: 'Rx bytes', key: 'rx_bytes' },
         { title: 'Cmd pkts', key: 'cmd_pkts' },
         { title: 'Tlm pkts', key: 'tlm_pkts' },
+        { title: 'Details', key: 'details' },
       ],
     }
   },
@@ -172,6 +212,22 @@ export default {
       } else {
         this.api.disconnect_interface(item.name)
       }
+    },
+    details(item) {
+      this.selectedInterface = item
+      this.interfaceDetails = null
+
+      this.api
+        .interface_details(item.name)
+        .then((details) => {
+          this.interfaceDetails = {}
+          this.interfaceDetails[item.name] = details
+          this.detailsDialog = true
+        })
+        .catch((error) => {
+          console.error('Failed to fetch interface details:', error)
+          this.interfaceDetails = null
+        })
     },
     update() {
       if (this.tabId != this.curTab) return

@@ -189,5 +189,19 @@ module OpenC3
       @write_socket.write(data, @write_timeout)
       return data, extra
     end
+
+    def details
+      result = super()
+      result['hostname'] = @hostname
+      result['write_dest_port'] = @write_dest_port
+      result['read_port'] = @read_port
+      result['write_src_port'] = @write_src_port
+      result['interface_address'] = @interface_address
+      result['ttl'] = @ttl
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      result['bind_address'] = @bind_address
+      return result
+    end
   end
 end

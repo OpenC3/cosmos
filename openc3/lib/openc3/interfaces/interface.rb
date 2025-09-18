@@ -117,6 +117,9 @@ module OpenC3
     # @return [Array<[Protocol Class, Protocol Args, Protocol kind (:READ, :WRITE, :READ_WRITE)>] Info to recreate protocols
     attr_accessor :protocol_info
 
+    # @return [Boolean] Whether to save raw data in the interface and protocols
+    attr_accessor :save_raw_data
+
     # @return [String] Most recently read raw data
     attr_accessor :read_raw_data
 
@@ -172,6 +175,7 @@ module OpenC3
       @read_protocols = []
       @write_protocols = []
       @protocol_info = []
+      @save_raw_data = true
       @read_raw_data = ''
       @written_raw_data = ''
       @read_raw_data_time = nil
@@ -274,6 +278,7 @@ module OpenC3
         # Otherwise we can hold off outputting other packets where all the data has already
         # been received
         extra = nil
+        blank_test = false
         if !first or @read_protocols.length <= 0
           # Read data for a packet
           data, extra = read_interface()
@@ -284,20 +289,28 @@ module OpenC3
         else
           data = ''
           first = false
+          blank_test = true
         end
 
         @read_protocols.each do |protocol|
           # Extra check is for backwards compatibility
+          protocol.read_protocol_input_base(data, extra) unless blank_test
           if extra
             data, extra = protocol.read_data(data, extra)
           else
             data, extra = protocol.read_data(data)
           end
+          protocol.read_protocol_output_base(data, extra) unless blank_test
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} read_data requested disconnect")
             return nil
           end
           break if data == :STOP
+          if blank_test
+            # This means the blank test returned something so we can log
+            protocol.read_protocol_input_base('', nil)
+            protocol.read_protocol_output_base(data, extra)
+          end
         end
         next if data == :STOP
 
@@ -355,11 +368,13 @@ module OpenC3
         # Potentially modify packet data
         @write_protocols.each do |protocol|
           # Extra check is for backwards compatibility
+          protocol.write_protocol_input_base(data, extra)
           if extra
             data, extra = protocol.write_data(data, extra)
           else
             data, extra = protocol.write_data(data)
           end
+          protocol.write_protocol_output_base(data, extra)
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
@@ -557,8 +572,10 @@ module OpenC3
     #
     # @return [String] Raw packet data
     def read_interface_base(data, _extra = nil)
-      @read_raw_data_time = Time.now
-      @read_raw_data = data.clone
+      if @save_raw_data
+        @read_raw_data_time = Time.now
+        @read_raw_data = data.clone
+      end
       @bytes_read += data.length
       @stream_log_pair.read_log.write(data) if @stream_log_pair
     end
@@ -570,8 +587,10 @@ module OpenC3
     # @param data [String] Raw packet data
     # @return [String] The exact data written
     def write_interface_base(data, _extra = nil)
-      @written_raw_data_time = Time.now
-      @written_raw_data = data.clone
+      if @save_raw_data
+        @written_raw_data_time = Time.now
+        @written_raw_data = data.clone
+      end
       @bytes_written += data.length
       @stream_log_pair.write_log.write(data) if @stream_log_pair
     end

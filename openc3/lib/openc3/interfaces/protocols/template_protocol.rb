@@ -259,5 +259,43 @@ module OpenC3
       Logger.error(msg)
       raise msg if @raise_exceptions
     end
+
+    def write_details
+      result = super()
+      result['response_template'] = @response_template
+      result['response_packet'] = @response_packet
+      result['response_target_name'] = @response_target_name
+      result['ignore_lines'] = @ignore_lines
+      result['response_lines'] = @response_lines
+      result['initial_read_delay'] = @initial_read_delay
+      result['response_timeout'] = @response_timeout
+      result['response_polling_period'] = @response_polling_period
+      if @connect_complete_time
+        result['connect_complete_time'] = @connect_complete_time.iso8601
+      else
+        result['connect_complete_time'] = nil
+      end
+      result['raise_exceptions'] = @raise_exceptions
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['response_template'] = @response_template
+      result['response_packet'] = @response_packet
+      result['response_target_name'] = @response_target_name
+      result['ignore_lines'] = @ignore_lines
+      result['response_lines'] = @response_lines
+      result['initial_read_delay'] = @initial_read_delay
+      result['response_timeout'] = @response_timeout
+      result['response_polling_period'] = @response_polling_period
+      if @connect_complete_time
+        result['connect_complete_time'] = @connect_complete_time.iso8601
+      else
+        result['connect_complete_time'] = nil
+      end
+      result['raise_exceptions'] = @raise_exceptions
+      return result
+    end
   end
 end

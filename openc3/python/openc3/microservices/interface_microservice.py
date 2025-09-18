@@ -241,7 +241,7 @@ class InterfaceCmdHandlerThread:
                 return json.dumps(self.interface.details(), cls=JsonEncoder)
 
         target_name = msg_hash[b"target_name"].decode()
-        if target_name and not self.interface.cmd_target_enabled.get(target_name, True):
+        if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
             return None  # Return and don't ack given target_name if disabled
         cmd_name = msg_hash[b"cmd_name"].decode()
         manual = ConfigParser.handle_true_false(msg_hash[b"manual"].decode())
@@ -271,7 +271,7 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, True):
+                if not self.interface.cmd_target_enabled.get(command.target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -516,7 +516,7 @@ class RouterTlmHandlerThread:
                 target_name = msg_hash[b"target_name"].decode()
                 packet_name = msg_hash[b"packet_name"].decode()
 
-                if self.router.tlm_target_enabled.get(target_name, True):
+                if self.router.tlm_target_enabled.get(target_name, False):
                     packet = System.telemetry.packet(target_name, packet_name)
                     packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
                     packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
@@ -790,7 +790,7 @@ class InterfaceMicroservice(Microservice):
             )
 
         # Write to stream
-        if self.interface.tlm_target_enabled.get(packet.target_name, True):
+        if self.interface.tlm_target_enabled.get(packet.target_name, False):
             self.sync_tlm_packet_counts(packet)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 

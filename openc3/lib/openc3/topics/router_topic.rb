@@ -24,6 +24,8 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class RouterTopic < Topic
+    COMMAND_ACK_TIMEOUT_S = 30
+
     # Generate a list of topics for this router. This includes the router itself
     # and all the targets which are assigned to this router.
     def self.topics(router, scope:)
@@ -45,7 +47,7 @@ module OpenC3
             ack_topic = topic.split("__")
             ack_topic[1] = 'ACK' + ack_topic[1]
             ack_topic = ack_topic.join("__")
-            Topic.write_topic(ack_topic, { 'result' => result }, msg_id, 100)
+            Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, msg_id, 100)
           end
         end
       end

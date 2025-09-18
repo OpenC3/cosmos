@@ -17,7 +17,7 @@
 
 from openc3.api import *
 from openc3.config.config_parser import ConfigParser
-
+from datetime import datetime
 
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
@@ -31,6 +31,14 @@ class Protocol:
         self.reset()
 
     def reset(self):
+        self.read_data_input_time = None
+        self.read_data_input = b''
+        self.read_data_output_time = None
+        self.read_data_output = b''
+        self.write_data_input_time = None
+        self.write_data_input = b''
+        self.write_data_output_time = None
+        self.write_data_output = b''
         self.extra = None
 
     def connect_reset(self):
@@ -38,6 +46,46 @@ class Protocol:
 
     def disconnect_reset(self):
         self.reset()
+
+    # Called to provide insight into the protocol read_data for the input data
+    def read_protocol_input_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.read_data_input_time = datetime.now(timezone.utc)
+                self.read_data_input = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.read_log.write(data)
+
+    # Called to provide insight into the protocol read_data for the output data
+    def read_protocol_output_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.read_data_output_time = datetime.now(timezone.utc)
+                self.read_data_output = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.read_log.write(data)
+
+    # Called to provide insight into the protocol write_data for the input data
+    def write_protocol_input_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.write_data_input_time = datetime.now(timezone.utc)
+                self.write_data_input = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.write_log.write(data)
+
+    # Called to provide insight into the protocol write_data for the output data
+    def write_protocol_output_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.write_data_output_time = datetime.now(timezone.utc)
+                self.write_data_output = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.write_log.write(data)
 
     # Ensure we have some data in match this is the only protocol:
     def read_data(self, data, extra=None):
@@ -68,7 +116,17 @@ class Protocol:
         return False
 
     def write_details(self):
-        return {}
+        result = { "name": self.__class__.__name__ }
+        result['write_data_input_time'] = self.write_data_input_time.isoformat()
+        result['write_data_input'] = self.write_data_input
+        result['write_data_output_time'] = self.write_data_output_time.isoformat()
+        result['write_data_output'] = self.write_data_output
+        return result
 
     def read_details(self):
-        return {}
+        result = { "name": self.__class__.__name__ }
+        result['read_data_input_time'] = self.read_data_input_time.isoformat()
+        result['read_data_input'] = self.read_data_input
+        result['read_data_output_time'] = self.read_data_output_time.isoformat()
+        result['read_data_output'] = self.read_data_output
+        return result

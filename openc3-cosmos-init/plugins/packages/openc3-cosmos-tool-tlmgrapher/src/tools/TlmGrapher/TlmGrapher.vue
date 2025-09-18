@@ -46,7 +46,7 @@
             @add-item="addItem"
           />
           <!-- All this row / col stuff is to setup a structure similar to the
-            target-packet-item-chooser so it will layout the same 
+            target-packet-item-chooser so it will layout the same
             TODO: make this a slot in target-packet-item-chooser -->
           <v-row class="grapher-info">
             <v-col style="max-width: 300px; pointer-events: none"></v-col>
@@ -97,7 +97,7 @@
   <div class="grid">
     <div
       v-for="graph in graphs"
-      v-if="timeZone"
+      v-show="timeZone"
       :id="`gridItem${graph}`"
       :key="graph"
       :ref="`gridItem${graph}`"

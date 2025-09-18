@@ -78,12 +78,12 @@ class LimitsResponseThread:
                         f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!"
                     )
                     self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
-                    self.logger.error(repr(error))
+                    self.logger.error(f"Limits Response error:\n{traceback.format_exc()}")
 
                 self.count += 1
                 self.metric.set(name="limits_response_total", value=self.count, type="counter")
         except Exception as error:
-            self.logger.error(f"{self.microservice_name}: Limits Response thread died: {repr(error)}")
+            self.logger.error(f"{self.microservice_name}: Limits Response thread died: {traceback.format_exc()}")
             raise error
 
 
@@ -188,7 +188,7 @@ class DecomMicroservice(Microservice):
             self.error_count += 1
             self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
             self.error = error
-            self.logger.error(repr(error))
+            self.logger.error(f"Processor error:\n{traceback.format_exc()}")
         # Process all the limits and call the limits_change_callback (as necessary)
         # check_limits also can call user code in the limits response
         # but that is rescued separately in the limits_change_callback

@@ -48,7 +48,7 @@ class RouterMicroservice(InterfaceMicroservice):
         target = System.targets.get(target_name)
 
         # Don't route disabled target names
-        if self.interface.cmd_target_enabled.get(target_name, True):
+        if self.interface.cmd_target_enabled.get(target_name, False):
             try:
                 try:
                     log_message = True  # Default is True

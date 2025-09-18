@@ -22,6 +22,8 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonDecoder
 
 class RouterTopic(Topic):
+    COMMAND_ACK_TIMEOUT_S = 30
+
     # Generate a list of topics for this router. This includes the router itself
     # and all the targets which are assigned to this router.
     @classmethod
@@ -42,7 +44,7 @@ class RouterTopic(Topic):
                     ack_topic = topic.split("__")
                     ack_topic[1] = "ACK" + ack_topic[1]
                     ack_topic = "__".join(ack_topic)
-                    Topic.write_topic(ack_topic, {"result": result}, msg_id, 100)
+                    Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, msg_id, 100)
 
     @classmethod
     def route_command(cls, packet, target_names, scope=OPENC3_SCOPE):

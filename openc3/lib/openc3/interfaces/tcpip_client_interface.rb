@@ -90,5 +90,15 @@ module OpenC3
       end
       super()
     end
+
+    def details
+      result = super()
+      result['hostname'] = @hostname
+      result['write_port'] = @write_port
+      result['read_port'] = @read_port
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      return result
+    end
   end
 end

@@ -472,17 +472,13 @@ module OpenC3
       if cmd_only
         @cmd_target_names.delete(target_name)
         @target_names.delete(target_name) unless @tlm_target_names.include?(target_name)
-        @cmd_target_enabled.delete(target_name)
       elsif tlm_only
         @tlm_target_names.delete(target_name)
         @target_names.delete(target_name) unless @cmd_target_names.include?(target_name)
-        @tlm_target_enabled.delete(target_name)
       else
         @cmd_target_names.delete(target_name)
         @tlm_target_names.delete(target_name)
         @target_names.delete(target_name)
-        @cmd_target_enabled.delete(target_name)
-        @tlm_target_enabled.delete(target_name)
       end
       update()
 
@@ -518,8 +514,8 @@ module OpenC3
       @target_names << target_name unless @target_names.include?(target_name)
       @cmd_target_names << target_name unless @cmd_target_names.include?(target_name) or tlm_only
       @tlm_target_names << target_name unless @tlm_target_names.include?(target_name) or cmd_only
-      @cmd_target_enabled[target_name] = cmd_enabled if @cmd_target_names.include?(target_name)
-      @tlm_target_enabled[target_name] = tlm_enabled if @tlm_target_names.include?(target_name)
+      @cmd_target_enabled[target_name] = cmd_enabled if not cmd_enabled.nil? and @cmd_target_names.include?(target_name)
+      @tlm_target_enabled[target_name] = tlm_enabled if not tlm_enabled.nil? and @tlm_target_names.include?(target_name)
       update()
 
       # Respawn the microservice

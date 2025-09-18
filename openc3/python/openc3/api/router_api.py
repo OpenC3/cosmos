@@ -32,6 +32,8 @@ WHITELIST.extend(
         "get_all_router_info",
         "router_cmd",
         "router_protocol_cmd",
+        "map_target_to_router",
+        "unmap_target_from_router",
         "router_target_enable",
         "router_target_disable",
         "router_details",
@@ -148,6 +150,52 @@ def router_protocol_cmd(
         scope=scope,
     )
 
+# Associates a target and all its commands and telemetry with a particular
+# router.
+#
+# @param target_name [String/Array] The name of the target(s)
+# @param router_name (see #connect_router)
+def map_target_to_router(
+    target_name,
+    router_name,
+    cmd_only=False,
+    tlm_only=False,
+    unmap_old=True,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", router_name=router_name, scope=scope)
+    router = RouterModel.get_model(name=router_name, scope=scope)
+    if isinstance(target_name, list):
+        target_names = target_name
+    else:
+        target_names = [target_name]
+    for name in target_names:
+        router.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
+        Logger.info(f"Target {name} mapped to Router {router_name}", scope=scope)
+
+
+# Removes the association of a target and all its commands and telemetry with a particular
+# router.
+#
+# @param target_name [String/Array] The name of the target(s)
+# @param router_name (see #connect_router)
+def unmap_target_from_router(
+    target_name,
+    router_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", router_name=router_name, scope=scope)
+    router = RouterModel.get_model(name=router_name, scope=scope)
+    if isinstance(target_name, list):
+        target_names = target_name
+    else:
+        target_names = [target_name]
+    for name in target_names:
+        router.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
+        Logger.info(f"Target {name} mapped to Router {router_name}", scope=scope)
+
 
 def router_target_enable(
     router_name,
@@ -157,6 +205,15 @@ def router_target_enable(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", router_name=router_name, scope=scope)
+    router = RouterModel.get(name=router_name, scope=scope)
+    if cmd_only and tlm_only:
+        cmd_only = False
+        tlm_only = False
+    if not tlm_only:
+        router.cmd_target_enabled[target_name.upper()] = True
+    if not cmd_only:
+        router.tlm_target_enabled[target_name.upper()] = True
+    router.update()
     RouterTopic.router_target_enable(
         router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
     )
@@ -170,6 +227,15 @@ def router_target_disable(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", router_name=router_name, scope=scope)
+    router = RouterModel.get(name=router_name, scope=scope)
+    if cmd_only and tlm_only:
+        cmd_only = False
+        tlm_only = False
+    if not tlm_only:
+        router.cmd_target_enabled[target_name.upper()] = False
+    if not cmd_only:
+        router.tlm_target_enabled[target_name.upper()] = False
+    router.update()
     RouterTopic.router_target_disable(
         router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
     )

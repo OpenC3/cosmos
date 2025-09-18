@@ -184,8 +184,29 @@ export default class OpenC3Api {
     return this.exec('get_all_interface_info', [])
   }
 
-  map_target_to_interface(target_name, interface_name) {
-    return this.exec('map_target_to_interface', [target_name, interface_name])
+  map_target_to_interface(
+    target_name,
+    interface_name,
+    cmd_only,
+    tlm_only,
+    unmap_old,
+  ) {
+    return this.exec('map_target_to_interface', [target_name, interface_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+      unmap_old: unmap_old,
+    })
+  }
+
+  unmap_target_from_interface(target_name, interface_name, cmd_only, tlm_only) {
+    return this.exec(
+      'unmap_target_from_interface',
+      [target_name, interface_name],
+      {
+        cmd_only: cmd_only,
+        tlm_only: tlm_only,
+      },
+    )
   }
 
   connect_interface(interface_name, ...interface_params) {
@@ -211,8 +232,61 @@ export default class OpenC3Api {
     ])
   }
 
+  interface_target_enable(
+    interface_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('interface_target_enable', [interface_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  interface_target_disable(
+    interface_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec(
+      'interface_target_disable',
+      [interface_name, target_name],
+      {
+        cmd_only: cmd_only,
+        tlm_only: tlm_only,
+      },
+    )
+  }
+
+  interface_details(interface_name) {
+    return this.exec('interface_details', [interface_name])
+  }
+
   get_all_router_info() {
     return this.exec('get_all_router_info', [])
+  }
+
+  map_target_to_router(
+    target_name,
+    router_name,
+    cmd_only,
+    tlm_only,
+    unmap_old,
+  ) {
+    return this.exec('map_target_to_router', [target_name, router_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+      unmap_old: unmap_old,
+    })
+  }
+
+  unmap_target_from_router(target_name, router_name, cmd_only, tlm_only) {
+    return this.exec('unmap_target_from_router', [target_name, router_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
   }
 
   connect_router(router_name) {
@@ -221,6 +295,34 @@ export default class OpenC3Api {
 
   disconnect_router(router_name) {
     return this.exec('disconnect_router', [router_name])
+  }
+
+  router_target_enable(
+    router_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('router_target_enable', [router_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  router_target_disable(
+    router_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('router_target_disable', [router_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  router_details(router_name) {
+    return this.exec('router_details', [router_name])
   }
 
   get_target_interfaces() {
@@ -669,6 +771,10 @@ export default class OpenC3Api {
 
   get_interface_names() {
     return this.exec('get_interface_names', [])
+  }
+
+  get_router_names() {
+    return this.exec('get_router_names', [])
   }
 
   send_raw(interface_name, data) {

@@ -242,18 +242,14 @@ class InterfaceModel(Model):
             self.cmd_target_names.remove(target_name)
             if target_name not in self.tlm_target_names:
                 self.target_names.remove(target_name)
-            del self.cmd_target_enabled[target_name]
         elif tlm_only:
             self.tlm_target_names.remove(target_name)
             if target_name not in self.cmd_target_names:
                 self.target_names.remove(target_name)
-            del self.tlm_target_enabled[target_name]
         else:
             self.cmd_target_names.remove(target_name)
             self.tlm_target_names.remove(target_name)
             self.target_names.remove(target_name)
-            del self.cmd_target_enabled[target_name]
-            del self.tlm_target_enabled[target_name]
         self.update()
 
         # Respawn the microservice
@@ -288,9 +284,9 @@ class InterfaceModel(Model):
             self.cmd_target_names.append(target_name)
         if target_name not in self.tlm_target_names or cmd_only:
             self.tlm_target_names.append(target_name)
-        if target_name in self.cmd_target_names:
+        if cmd_enabled is not None and target_name in self.cmd_target_names:
             self.cmd_target_enabled[target_name] = cmd_enabled
-        if target_name in self.tlm_target_names:
+        if tlm_enabled is not None and target_name in self.tlm_target_names:
             self.tlm_target_enabled[target_name] = tlm_enabled
         self.update()
 
