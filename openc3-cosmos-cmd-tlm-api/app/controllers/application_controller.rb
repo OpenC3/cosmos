@@ -39,11 +39,12 @@ class ApplicationController < ActionController::API
 
   # Authorize and rescue the possible exceptions
   # @return [Boolean or User] User if authorize successful
-  def authorization(permission, target_name: nil, perform_render: true)
+  def authorization(permission, target_name: nil, packet_name: nil, perform_render: true)
     begin
       return authorize(
         permission: permission,
         target_name: target_name,
+        packet_name: packet_name,
         manual: request.headers['HTTP_MANUAL'],
         scope: params[:scope],
         token: request.headers['HTTP_AUTHORIZATION'],

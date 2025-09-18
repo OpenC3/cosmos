@@ -45,17 +45,17 @@
             show-latest
             @add-item="addItem"
           />
-          <!-- All this row / col stuff is to setup a structure similar to the
-            target-packet-item-chooser so it will layout the same
-            TODO: make this a slot in target-packet-item-chooser -->
+
+          <!-- This row floats over TPIChooser and puts a button in the bottom-right corner -->
           <v-row class="grapher-info">
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 140px">
+            <v-col
+              cols="12"
+              class="d-flex justify-end"
+              style="max-width: 1364px"
+            >
               <v-btn
                 v-show="state === 'pause'"
-                class="blink"
+                class="blink mr-9"
                 color="primary"
                 data-test="start-graph"
                 icon="mdi-play"
@@ -69,6 +69,7 @@
               </v-btn>
               <v-btn
                 v-show="state === 'start'"
+                class="mr-9"
                 color="primary"
                 data-test="pause-graph"
                 icon="mdi-pause"
@@ -79,7 +80,6 @@
                   }
                 "
               />
-              <v-spacer />
             </v-col>
           </v-row>
         </v-container>
@@ -354,6 +354,8 @@ export default {
       .then((response) => {
         if (response) {
           this.timeZone = response
+        } else {
+          this.timeZone = 'local'
         }
         this.$nextTick(() => {
           this.setup()
@@ -556,21 +558,6 @@ export default {
       }
     },
     applyConfig: async function (config) {
-      // Grab the timeZone if we haven't already
-      // This ensures we're waiting for it and pass it to the graphs
-      if (this.timeZone === null) {
-        await this.api
-          .get_setting('time_zone')
-          .then((response) => {
-            if (response) {
-              this.timeZone = response
-            }
-          })
-          .catch((error) => {
-            // Do nothing
-          })
-      }
-
       // Don't save the default config while we're applying new config
       this.dontSaveDefaultConfig = true
       this.closeAllGraphs()

@@ -120,7 +120,7 @@ class QuestMicroservice(Microservice):
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", orig_table_name)
         if table_name != orig_table_name:
-            self.logger.warning(
+            self.logger.warn(
                 f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
             )
 
@@ -130,7 +130,7 @@ class QuestMicroservice(Microservice):
                 # Execute a command: this creates a new table
                 cur.execute(
                     f"""
-                    CREATE TABLE IF NOT EXISTS {table_name} (
+                    CREATE TABLE IF NOT EXISTS "{table_name}" (
                         timestamp TIMESTAMP,
                         tag SYMBOL,
                         PACKET_TIMESECONDS TIMESTAMP,
@@ -238,7 +238,7 @@ class QuestMicroservice(Microservice):
                                 value = base64.b64encode(bytes(value)).decode("ascii")
 
                         case _:
-                            self.logger.warning(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
+                            self.logger.warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
                             continue
 
                     # Replace invalid characters in item names with underscore
@@ -253,7 +253,7 @@ class QuestMicroservice(Microservice):
                             values[item_name] = value
 
                 if not values:
-                    self.logger.warning(f"QuestDB: No valid items found for {target_name} {packet_name}")
+                    self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
                 # Write to QuestDB
@@ -263,8 +263,43 @@ class QuestMicroservice(Microservice):
             self.ingest.flush()
 
         except IngressError as error:
-            self.error = error
-            self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
+            # First see if it's a cast error we can fix
+            if "cast error from protocol type" in str(error):
+                try:
+                    # Open a cursor to perform database operations
+                    with self.query.cursor() as cur:
+                        # Extract table, column, and type from the error message
+
+                        # Example error message:
+                        # 'error in line 1: table: INST2__HEALTH_STATUS, column: TEMP1STDDEV;
+                        # cast error from protocol type: FLOAT to column type: LONG","line":1,"errorId":"a507394ab099-25"'
+                        error_message = str(error)
+                        table_match = re.search(r'table:\s+(.+?),', error_message) # .+? is non-greedy
+                        column_match = re.search(r'column:\s+(.+?);', error_message)
+                        type_match = re.search(r'protocol type:\s+([A-Z]+)\s', error_message)
+
+                        if table_match and column_match and type_match:
+                            table_name = table_match.group(1)
+                            column_name = column_match.group(1)
+                            column_type = type_match.group(1)
+                        else:
+                            self.logger.error("QuestDB: Could not parse table, column, or type from error message")
+                            return
+
+                        # Try to change the column type to fix the error
+                        # We put the table in double quotes to handle special characters
+                        alter = f"""ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE {column_type}"""
+                        cur.execute(alter)
+                        self.logger.info(f"QuestDB: {alter}")
+                        self.connect_ingest() # reconnect
+                        # Retry write to QuestDB
+                        self.ingest.row(table_name, columns=values, at=TimestampNanos(timestamp))
+                except psycopg.Error as error:
+                    self.logger.error(f"QuestDB: Error {alter}\n{error}")
+            else:
+                self.error = error
+                self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
+
 
     def run(self):
         """Main run loop"""

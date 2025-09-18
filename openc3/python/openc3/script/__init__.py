@@ -148,6 +148,7 @@ from .limits import *
 from .metadata import *
 from .packages import *
 from .plugins import *
+from .queue import *
 from .screen import *
 from .script_runner import *
 from .storage import *

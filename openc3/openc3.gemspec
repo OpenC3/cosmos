@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '6.7.1.pre.beta0'
+  s.version = '6.8.2.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -88,7 +88,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'prism',     '~> 1.3'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'puma',      '~> 6.2'
-  s.add_runtime_dependency 'rack',      '~> 3.0'
+  s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
@@ -135,8 +135,9 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec-rails', '~> 7.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
-  s.add_development_dependency 'simplecov', '~> 0.21'
-  s.add_development_dependency 'simplecov-cobertura', '~> 2.1'
+  s.add_development_dependency 'simplecov', '~> 0.22'
+  s.add_development_dependency 'rexml', '3.4.1' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
+  s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
   # simplecov_json_formatter formatter supports SonarQube
   # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
 

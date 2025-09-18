@@ -23,56 +23,18 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <div style="padding: 10px">
-        <target-packet-item-chooser
-          :initial-target-name="$route.params.target"
-          :initial-packet-name="$route.params.packet"
-          :disabled="sendDisabled || commandName == null"
-          button-text="Send"
-          mode="cmd"
-          @on-set="commandChanged($event)"
-          @add-item="buildCmd($event)"
-        />
-      </div>
-
-      <v-card v-if="rows.length !== 0">
-        <v-card-title class="d-flex align-center justify-content-space-between">
-          Parameters
-          <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            density="compact"
-            single-line
-            hide-details
-            class="search"
-          />
-        </v-card-title>
-        <v-data-table
-          :headers="headers"
-          :items="rows"
-          :search="search"
-          :items-per-page="-1"
-          hide-default-footer
-          multi-sort
-          density="compact"
-          @contextmenu:row="showContextMenu"
-        >
-          <template #item.val="{ item }">
-            <command-parameter-editor
-              v-model="item.val"
-              :states="item.states"
-              :states-in-hex="statesInHex"
-            />
-          </template>
-        </v-data-table>
-      </v-card>
-      <div class="pa-3">Status: {{ status }}</div>
-    </v-card>
+    <command-editor
+      ref="commandEditor"
+      :initial-target-name="$route.params.target"
+      :initial-packet-name="$route.params.packet"
+      :send-disabled="sendDisabled"
+      :states-in-hex="statesInHex"
+      :show-ignored-params="showIgnoredParams"
+      :cmd-raw="cmdRaw"
+      @command-changed="commandChanged($event)"
+      @build-cmd="buildCmd($event)"
+    />
+    <v-card class="pa-3">Status: {{ status }}</v-card>
     <div style="height: 15px" />
     <v-row no-gutters>
       <v-col class="pr-4">
@@ -120,24 +82,6 @@
     </v-row>
     <div style="height: 15px" />
 
-    <v-menu v-model="contextMenuShown" :target="[x, y]">
-      <v-list>
-        <v-list-item
-          v-for="(item, index) in contextMenuOptions"
-          :key="index"
-          @click.stop="item.action"
-        >
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
-    <details-dialog
-      v-model="viewDetails"
-      :target-name="targetName"
-      :packet-name="commandName"
-      :item-name="parameterName"
-      :type="'cmd'"
-    />
     <critical-cmd-dialog
       v-model="displayCriticalCmd"
       :uuid="criticalCmdUuid"
@@ -246,42 +190,29 @@
 </template>
 
 <script>
-import 'sprintf-js'
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
-  DetailsDialog,
   CriticalCmdDialog,
+  CommandEditor,
   Openc3Screen,
-  TargetPacketItemChooser,
   TopBar,
 } from '@openc3/vue-common/components'
-import CommandParameterEditor from './CommandParameterEditor'
-import Utilities from './utilities'
+import { CmdUtilities } from '@openc3/vue-common/util'
 
 export default {
   components: {
-    DetailsDialog,
     CriticalCmdDialog,
-    TargetPacketItemChooser,
-    CommandParameterEditor,
+    CommandEditor,
     TopBar,
     Openc3Screen,
   },
-  mixins: [Utilities],
+  mixins: [CmdUtilities],
   data() {
     return {
       title: 'Command Sender',
-      search: '',
-      headers: [
-        { title: 'Name', value: 'parameter_name' },
-        { title: 'Value or State', value: 'val' },
-        { title: 'Units', value: 'units' },
-        { title: 'Range', value: 'range' },
-        { title: 'Description', value: 'description' },
-      ],
       editor: null,
       targetName: '',
       commandName: '',
@@ -294,8 +225,7 @@ export default {
       statesInHex: false,
       showIgnoredParams: false,
       cmdRaw: false,
-      ignoredParams: [],
-      rows: [],
+      disableCommandValidation: false,
       interfaces: [],
       selectedInterface: '',
       rawCmdFile: null,
@@ -311,21 +241,6 @@ export default {
       criticalCmdUser: null,
       sendDisabled: false,
       api: null,
-      viewDetails: false,
-      contextMenuShown: false,
-      parameterName: '',
-      reservedItemNames: [],
-      x: 0,
-      y: 0,
-      contextMenuOptions: [
-        {
-          title: 'Details',
-          action: () => {
-            this.contextMenuShown = false
-            this.viewDetails = true
-          },
-        },
-      ],
       keywords: [],
       screenTarget: null,
       screenName: null,
@@ -373,9 +288,7 @@ export default {
               checked: this.showIgnoredParams,
               command: () => {
                 this.showIgnoredParams = !this.showIgnoredParams
-                // TODO: Maybe we don't need to do this if the data-table
-                // can render the whole thing and we just display with v-if
-                this.updateCmdParams()
+                this.$refs.commandEditor.triggerUpdateCmdParams()
               },
             },
             {
@@ -386,15 +299,20 @@ export default {
                 this.cmdRaw = !this.cmdRaw.checked
               },
             },
+            {
+              label: 'Disable Command Validation',
+              checkbox: true,
+              checked: this.disableCommandValidation,
+              command: () => {
+                this.disableCommandValidation = !this.disableCommandValidation
+              },
+            },
           ],
         },
       ]
     },
   },
   created() {
-    Api.get(`/openc3-api/autocomplete/reserved-item-names`).then((response) => {
-      this.reservedItemNames = response.data
-    })
     this.api = new OpenC3Api()
     // If we're passed in the route then manually call commandChanged to update
     if (this.$route.params.target && this.$route.params.packet) {
@@ -445,16 +363,6 @@ export default {
     this.editor.container.remove()
   },
   methods: {
-    showContextMenu(e, row) {
-      e.preventDefault()
-      this.parameterName = row.item.parameter_name
-      this.contextMenuShown = false
-      this.x = e.clientX
-      this.y = e.clientY
-      this.$nextTick(() => {
-        this.contextMenuShown = true
-      })
-    },
     convertToValue(param) {
       if (param.val !== undefined && param.states && !this.cmdRaw) {
         return Object.keys(param.states).find(
@@ -510,7 +418,6 @@ export default {
         return quotesRemoved
       }
     },
-
     commandChanged(event) {
       if (
         this.targetName !== event.targetName ||
@@ -518,10 +425,7 @@ export default {
       ) {
         this.targetName = event.targetName
         this.commandName = event.packetName
-        // Only updateCmdParams if we're not already in the middle of an update
-        if (this.sendDisabled === false) {
-          this.updateCmdParams()
-        }
+        this.updateScreenInfo()
         if (this.targetName && this.commandName) {
           this.$router
             .replace({
@@ -545,122 +449,51 @@ export default {
       }
     },
 
-    updateCmdParams() {
-      this.sendDisabled = true
-      this.ignoredParams = []
-      this.rows = []
+    updateScreenInfo() {
       if (this.targetName && this.commandName) {
-        this.api
-          .get_target(this.targetName)
-          .then(
-            (target) => {
-              this.ignoredParams = target.ignored_parameters
-              return this.api.get_cmd(this.targetName, this.commandName)
-            },
-            (error) => {
-              this.displayError('getting ignored parameters', error)
-              this.sendDisabled = false
-            },
-          )
-          .then(
-            (command) => {
-              command.items.forEach((parameter) => {
-                if (this.reservedItemNames.includes(parameter.name)) return
-                if (
-                  !this.ignoredParams.includes(parameter.name) ||
-                  this.showIgnoredParams
-                ) {
-                  let val = parameter.default
-                  // If the parameter is a string and the default is a string
-                  // (rather than object for binary) then we quote the string
-                  // However we don't do this is the parameter has states
-                  // because that messes up the state selection logic
-                  if (
-                    !parameter.states &&
-                    parameter.data_type === 'STRING' &&
-                    typeof parameter.default === 'string'
-                  ) {
-                    val = `'${val}'`
-                  }
-                  if (parameter.required) {
-                    val = ''
-                  }
-                  if (parameter.format_string) {
-                    val = sprintf(parameter.format_string, parameter.default)
-                  }
-                  let range = 'N/A'
-                  // check using != because compare with null
-                  if (parameter.minimum != null && parameter.maximum != null) {
-                    if (parameter.data_type === 'FLOAT') {
-                      // This is basically to handle the FLOAT MIN and MAX so they
-                      // don't print out the huge exponential
-                      if (parameter.minimum < -1e6) {
-                        if (Number.isSafeInteger(parameter.minimum)) {
-                          parameter.minimum = parameter.minimum.toExponential(3)
-                        }
-                      }
-                      if (parameter.maximum > 1e6) {
-                        if (Number.isSafeInteger(parameter.maximum)) {
-                          parameter.maximum = parameter.maximum.toExponential(3)
-                        }
-                      }
-                    }
-                    range = `${parameter.minimum}..${parameter.maximum}`
-                  }
-                  this.rows.push({
-                    parameter_name: parameter.name,
-                    val: val,
-                    states: parameter.states,
-                    description: parameter.description,
-                    range: range,
-                    units: parameter.units,
-                    type: parameter.data_type,
-                  })
+        this.api.get_cmd(this.targetName, this.commandName).then(
+          (command) => {
+            if (command.screen) {
+              this.loadScreen(command.screen[0], command.screen[1]).then(
+                (response) => {
+                  this.screenTarget = command.screen[0]
+                  this.screenName = command.screen[1]
+                  this.screenDefinition = response.data
+                  this.screenCount += 1
+                },
+              )
+            } else {
+              if (command.related_items) {
+                this.screenTarget = 'LOCAL'
+                this.screenName = 'CMDSENDER'
+                let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
+                for (const item of command.related_items) {
+                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
                 }
-              })
-              if (command.screen) {
-                this.loadScreen(command.screen[0], command.screen[1]).then(
-                  (response) => {
-                    this.screenTarget = command.screen[0]
-                    this.screenName = command.screen[1]
-                    this.screenDefinition = response.data
-                    this.screenCount += 1
-                  },
-                )
+                this.screenDefinition = screenDefinition
               } else {
-                if (command.related_items) {
-                  this.screenTarget = 'LOCAL'
-                  this.screenName = 'CMDSENDER'
-                  let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                  for (const item of command.related_items) {
-                    screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
-                  }
-                  this.screenDefinition = screenDefinition
-                } else {
-                  this.screenTarget = null
-                  this.screenName = null
-                  this.screenDefinition = null
-                }
-                this.screenCount += 1
+                this.screenTarget = null
+                this.screenName = null
+                this.screenDefinition = null
               }
-              this.commandDescription = command.description
-              this.sendDisabled = false
-              this.status = ''
-            },
-            (error) => {
-              this.displayError('getting command parameters', error)
-              this.sendDisabled = false
-            },
-          )
+              this.screenCount += 1
+            }
+          },
+          (error) => {
+            this.displayError('getting command for screen info', error)
+          },
+        )
       } else {
-        this.sendDisabled = false
-        this.status = ''
+        this.screenTarget = null
+        this.screenName = null
+        this.screenDefinition = null
+        this.screenCount += 1
       }
     },
 
     createParamList() {
       let paramList = {}
-      for (const row of this.rows) {
+      for (const row of this.$refs.commandEditor.getRows()) {
         paramList[row.parameter_name] = this.convertToValue(row)
       }
       return paramList
@@ -700,6 +533,9 @@ export default {
             this.displaySendHazardous = true
           } else {
             let obs
+            let kwparams = this.disableCommandValidation
+              ? { validate: false }
+              : {}
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
                 cmd = 'cmd_raw_no_range_check'
@@ -710,14 +546,21 @@ export default {
                   {
                     'Ignore-Errors': '428',
                   },
+                  kwparams,
                 )
               } else {
                 cmd = 'cmd_raw'
-                obs = this.api.cmd_raw(targetName, commandName, paramList, {
-                  // This request could be denied due to out of range but since
-                  // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '428 500',
-                })
+                obs = this.api.cmd_raw(
+                  targetName,
+                  commandName,
+                  paramList,
+                  {
+                    // This request could be denied due to out of range but since
+                    // we're explicitly handling it we don't want the interceptor to fire
+                    'Ignore-Errors': '428 500',
+                  },
+                  kwparams,
+                )
               }
             } else {
               if (this.ignoreRangeChecks) {
@@ -729,14 +572,21 @@ export default {
                   {
                     'Ignore-Errors': '428',
                   },
+                  kwparams,
                 )
               } else {
                 cmd = 'cmd'
-                obs = this.api.cmd(targetName, commandName, paramList, {
-                  // This request could be denied due to out of range but since
-                  // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '428 500',
-                })
+                obs = this.api.cmd(
+                  targetName,
+                  commandName,
+                  paramList,
+                  {
+                    // This request could be denied due to out of range but since
+                    // we're explicitly handling it we don't want the interceptor to fire
+                    'Ignore-Errors': '428 500',
+                  },
+                  kwparams,
+                )
               }
             }
 
@@ -772,6 +622,7 @@ export default {
       this.displaySendHazardous = false
       let obs = ''
       let cmd = ''
+      let kwparams = this.disableCommandValidation ? { validate: false } : {}
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
           cmd = 'cmd_raw_no_range_check'
@@ -782,6 +633,7 @@ export default {
             {
               'Ignore-Errors': '428',
             },
+            kwparams,
           )
         } else {
           cmd = 'cmd_raw'
@@ -794,6 +646,7 @@ export default {
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '428 500',
             },
+            kwparams,
           )
         }
       } else {
@@ -806,6 +659,7 @@ export default {
             {
               'Ignore-Errors': '428',
             },
+            kwparams,
           )
         } else {
           cmd = 'cmd'
@@ -818,6 +672,7 @@ export default {
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '428 500',
             },
+            kwparams,
           )
         }
       }
@@ -883,7 +738,11 @@ export default {
             }
           }
         }
-        msg += '")'
+        if (this.disableCommandValidation) {
+          msg += '", validate: false)'
+        } else {
+          msg += '")'
+        }
         if (!this.history.includes(msg)) {
           let value = msg
           if (this.history.length !== 0) {
@@ -1024,6 +883,7 @@ export default {
   },
 }
 </script>
+
 <style scoped>
 .editor {
   margin-left: 30px;

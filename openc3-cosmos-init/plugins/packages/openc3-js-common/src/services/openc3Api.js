@@ -584,7 +584,7 @@ export default class OpenC3Api {
   }
 
   // Implementation of functionality shared by cmd methods with param_lists.
-  _cmd(method, target_name, command_name, param_list, headerOptions) {
+  _cmd(method, target_name, command_name, param_list, headerOptions, kwparams = {}) {
     let converted = null
     for (let key in param_list) {
       if (Object.prototype.hasOwnProperty.call(param_list, key)) {
@@ -597,7 +597,7 @@ export default class OpenC3Api {
     return this.exec(
       method,
       [target_name, command_name, param_list],
-      {},
+      kwparams,
       headerOptions,
     )
   }
@@ -616,7 +616,7 @@ export default class OpenC3Api {
     }
   }
 
-  cmd(target_name, command_name, param_list, headerOptions = {}) {
+  cmd(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
       return this.exec('cmd', target_name, {}, headerOptions)
     } else {
@@ -626,6 +626,7 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams
       )
     }
   }
@@ -635,9 +636,10 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
+    kwparams = {},
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_range_check', target_name, {}, headerOptions)
+      return this.exec('cmd_no_range_check', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_no_range_check',
@@ -645,13 +647,14 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams
       )
     }
   }
 
-  cmd_raw(target_name, command_name, param_list, headerOptions = {}) {
+  cmd_raw(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw', target_name, {}, headerOptions)
+      return this.exec('cmd_raw', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_raw',
@@ -659,6 +662,7 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
@@ -668,9 +672,10 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
+    kwparams = {},
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions)
+      return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_raw_no_range_check',
@@ -678,6 +683,7 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
@@ -687,9 +693,10 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
+    kwparams = {}
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions)
+      return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_no_hazardous_check',
@@ -697,13 +704,14 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
 
-  cmd_no_checks(target_name, command_name, param_list, headerOptions = {}) {
+  cmd_no_checks(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_checks', target_name, {}, headerOptions)
+      return this.exec('cmd_no_checks', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_no_checks',
@@ -711,6 +719,7 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
@@ -720,6 +729,7 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
+    kwparams = {}
   ) {
     if (command_name === undefined) {
       return this.exec(
@@ -727,6 +737,7 @@ export default class OpenC3Api {
         target_name,
         {},
         headerOptions,
+        kwparams,
       )
     } else {
       return this._cmd(
@@ -735,13 +746,14 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
 
-  cmd_raw_no_checks(target_name, command_name, param_list, headerOptions = {}) {
+  cmd_raw_no_checks(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_checks', target_name, {}, headerOptions)
+      return this.exec('cmd_raw_no_checks', target_name, {}, headerOptions, kwparams)
     } else {
       return this._cmd(
         'cmd_raw_no_checks',
@@ -749,23 +761,24 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
+        kwparams,
       )
     }
   }
 
-  build_cmd(target_name, command_name, param_list) {
+  build_cmd(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
       return this.exec('build_cmd', target_name)
     } else {
-      return this._cmd('build_cmd', target_name, command_name, param_list)
+      return this._cmd('build_cmd', target_name, command_name, param_list, headerOptions, kwparams)
     }
   }
   // DEPRECATED for build_cmd
-  build_command(target_name, command_name, param_list) {
+  build_command(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
     if (command_name === undefined) {
       return this.exec('build_cmd', target_name)
     } else {
-      return this._cmd('build_cmd', target_name, command_name, param_list)
+      return this._cmd('build_cmd', target_name, command_name, param_list, headerOptions, kwparams)
     }
   }
 

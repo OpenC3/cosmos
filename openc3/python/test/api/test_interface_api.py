@@ -100,29 +100,29 @@ class TestInterfaceApi(unittest.TestCase):
     def test_connects_the_interface(self):
         self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
         disconnect_interface("INST_INT")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(get_interface("INST_INT")["state"], "DISCONNECTED")
         connect_interface("INST_INT")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
 
     def test_should_start_and_stop_raw_logging_on_the_interface(self):
         self.assertIsNone(self.im.interface.stream_log_pair)
         start_raw_logging_interface("INST_INT")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertTrue(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertTrue(self.im.interface.stream_log_pair.write_log.logging_enabled)
         stop_raw_logging_interface("INST_INT")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertFalse(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertFalse(self.im.interface.stream_log_pair.write_log.logging_enabled)
 
         start_raw_logging_interface("ALL")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertTrue(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertTrue(self.im.interface.stream_log_pair.write_log.logging_enabled)
         stop_raw_logging_interface("ALL")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertFalse(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertFalse(self.im.interface.stream_log_pair.write_log.logging_enabled)
         self.im.interface.stream_log_pair.shutdown()
@@ -194,19 +194,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_an_interface_cmd(self):
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd1")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd1"], ())
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.interface_cmd_data["cmd3"],
@@ -219,19 +219,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_a_protocol_cmd(self):
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd1")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd1"], ())
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.01)
+        time.sleep(0.05)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.protocol_cmd_data["cmd3"],

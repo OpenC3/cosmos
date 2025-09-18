@@ -3,9 +3,9 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: OpenC3 Build UBI
+name: Build UBI
 
-# Only run on a push to master to avoid running for all the dependabot PRs
+# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches: [main]
@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           # cache: "yarn"

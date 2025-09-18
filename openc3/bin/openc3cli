@@ -24,17 +24,18 @@
 # This file will handle OpenC3 tasks such as instantiating a new project
 
 require 'openc3'
-require 'openc3/utilities/local_mode'
-require 'openc3/utilities/bucket'
-require 'openc3/utilities/cli_generator'
-require 'openc3/models/scope_model'
-require 'openc3/models/plugin_model'
+require 'openc3/bridge/bridge'
 require 'openc3/models/gem_model'
 require 'openc3/models/migration_model'
+require 'openc3/models/plugin_model'
 require 'openc3/models/python_package_model'
+require 'openc3/models/queue_model'
+require 'openc3/models/scope_model'
 require 'openc3/models/tool_model'
 require 'openc3/packets/packet_config'
-require 'openc3/bridge/bridge'
+require 'openc3/utilities/bucket'
+require 'openc3/utilities/cli_generator'
+require 'openc3/utilities/local_mode'
 require 'ostruct'
 require 'optparse'
 require 'openc3/utilities/zip'
@@ -1013,6 +1014,13 @@ if not ARGV[0].nil? # argument(s) given
           unload_plugin(plugin_name, scope: scope_name)
         end
       end
+    end
+
+  when 'createqueue'
+    queue = OpenC3::QueueModel.get(name: ARGV[1], scope: ARGV[2])
+    unless queue
+      queue = OpenC3::QueueModel.new(name: ARGV[1], state: 'RELEASE', scope: ARGV[2])
+      queue.create
     end
 
   when 'destroyscope'

@@ -66,7 +66,7 @@ cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-07-23T15-54-02Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -140,7 +140,7 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.4.4 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.5.0 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .
@@ -155,7 +155,7 @@ docker build \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=$NPM_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MC_RELEASE=RELEASE.2025-07-21T05-28-08Z \
+  --build-arg OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z \
   --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
   --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \

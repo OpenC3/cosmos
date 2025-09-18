@@ -3,9 +3,8 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Post Release OpenC3 Trivy Scan
+name: Post Release Trivy Scan
 
-# Only run on a push to master to avoid running for all the dependabot PRs
 on:
   workflow_dispatch:
     inputs:
@@ -200,7 +199,7 @@ jobs:
       - name: Create zip of SBOM results
         run: zip -r sbom.zip sbom
       - name: Upload release attachments
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');

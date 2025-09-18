@@ -3,9 +3,8 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Post Release OpenC3 ClamAV Scan
+name: Post Release ClamAV Scan
 
-# Only run on a push to master to avoid running for all the dependabot PRs
 on:
   workflow_dispatch:
     inputs:
@@ -18,7 +17,7 @@ jobs:
   openc3-clamav-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # Latest version is fine here because we are scanning released containers not built from code
+      - uses: actions/checkout@v5 # Latest version is fine here because we are scanning released containers not built from code
       - name: Set up Ruby 3.3
         uses: ruby/setup-ruby@v1
         with:
@@ -71,7 +70,7 @@ jobs:
         run: zip -r clamav_results.zip clamav_results
         working-directory: scripts/release
       - name: Upload release attachment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');

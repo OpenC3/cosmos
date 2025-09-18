@@ -1028,6 +1028,15 @@ export default {
       const screenItems = this.itemSubscriptionKeys.map((key) => {
         return key.split('__').slice(2).join('__')
       })
+      if (this.actualXAxisItem === DEFAULT_X_AXIS_ITEM) {
+        // When in playback we don't have the DEFAULT_X_AXIS_ITEM '__time' available from the stream
+        // So parse the first item and add the PACKET_TIMESECONDS from that target / packet
+        const tgtpkt = screenItems[0].split('__').slice(0, 2).join('__')
+        screenItems.unshift(`${tgtpkt}__PACKET_TIMESECONDS__RAW`)
+      } else if (!this.xAxisIsAlsoGraphedItem) {
+        // We need to add the x-axis item if it isn't already being graphed
+        screenItems.unshift(this.actualXAxisItem)
+      }
       this.api.get_tlm_available(screenItems).then((data) => {
         this.graphItems = data
         // This must be the same or we're going to have problems

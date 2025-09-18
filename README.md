@@ -6,8 +6,7 @@
 [![OpenC3 5 Ruby Unit Tests](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml)<br/>
 [![OpenC3 5 Python Unit Tests](https://github.com/OpenC3/cosmos/actions/workflows/python_unit_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/python_unit_tests.yml)<br/>
 [![OpenC3 5 API Tests](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml)<br/>
-[![Code Climate](https://codeclimate.com/github/OpenC3/cosmos/badges/gpa.svg)](https://codeclimate.com/github/OpenC3/cosmos)<br/>
-[![codecov](https://codecov.io/gh/OpenC3/cosmos/branch/master/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/cosmos)
+[![Codecov](https://codecov.io/gh/OpenC3/cosmos/branch/main/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/cosmos)
 
 [Documentation](https://openc3.com)
 
@@ -47,11 +46,31 @@ After configuring OpenC3 COSMOS to talk to your hardware, you immediately can us
 
    - Realtime and offline line graphing of telemetry points. Multiple telemetry points per graphs and multiple graphs per window allow you to efficiently organize your data. Great for graphing temperatures and voltages both in realtime and post-test.
 
-1. **Extractor**
+1. **Data Extractor**
 
    - Used for offline analysis of command and telemetry data. Extracts a given list of items into a CSV file for further analysis in other tools such as Excel or Matlab.
 
-OpenC3 COSMOS is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) at OpenC3, Inc.
+1. **Data Viewer**
+
+   - Used to view packet data or individual item data in both the past and in real time. Great solution for non-text based data like memory dumps.
+
+1. **Bucket Explorer**
+
+   - Used to view configuration and log data which is stored in either MINIO (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
+
+1. **Table Manager**
+
+   - Binary file editor used to create and edit files such as flight tables.
+
+1. **Handbooks**
+
+   - Formats the command and telemetry database for easy viewing.
+
+1. **Documentation**
+
+   - All the COSMOS documentation is bundled as an application for easy viewing even when offline.
+
+OpenC3 COSMOS was originally created by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) and is build and maintained by OpenC3, Inc.
 
 ## Getting Started
 
@@ -70,11 +89,9 @@ Contributing is easy.
 3. Make your changes
 4. Submit a pull request
 
-YOU MUST AGREE TO OUR CONTRIBUTOR LICENSE AGREEMENT TO SUBMIT CODE TO THIS PROJECT: See [CONTRIBUTING.txt](CONTRIBUTING.txt)
-
 Most importantly:
 
-FOR ALL CONTRIBUTIONS TO THE OPENC3 COSMOS PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS.
+FOR ALL CONTRIBUTIONS TO THE OPENC3 COSMOS PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS. YOU ARE AGREEING TO OUR CONTRIBUTOR LICENSE AGREEMENT WHEN SUBMITTING CODE TO THIS PROJECT: See [CONTRIBUTING.txt](CONTRIBUTING.txt)
 
 ## License
 

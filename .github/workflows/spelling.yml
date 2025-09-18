@@ -1,5 +1,6 @@
 name: Check Spelling
 
+# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches: [main]
@@ -11,7 +12,7 @@ jobs:
     name: Codespell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: codespell-project/actions-codespell@v2
         with:
           # Skip generated code as well as cstol_converter which has false
