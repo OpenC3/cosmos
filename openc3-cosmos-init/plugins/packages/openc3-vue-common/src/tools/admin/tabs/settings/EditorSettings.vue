@@ -23,14 +23,24 @@
       Settings for the code editors built into COSMOS (e.g. in Script Runner)
     </v-card-subtitle>
     <v-card-text class="pb-0">
-      <v-switch label="Vim mode" v-model="vimMode" color="primary" />
+      <v-select
+        v-model="defaultLanguage"
+        label="Default scripting language"
+        :items="languageOptions"
+        item-title="text"
+        item-value="value"
+        color="primary"
+        class="mt-4"
+        data-test="default-language"
+      />
+      <v-switch v-model="vimMode" label="Vim mode" color="primary" />
     </v-card-text>
     <v-card-actions>
       <v-btn
-        @click="save"
         color="success"
         variant="text"
         data-test="save-editor-settings"
+        @click="save"
       >
         Save
       </v-btn>
@@ -45,11 +55,17 @@ export default {
   data() {
     return {
       vimMode: AceEditorUtils.isVimModeEnabled(),
+      defaultLanguage: AceEditorUtils.getDefaultScriptingLanguage(),
+      languageOptions: [
+        { text: 'Ruby', value: 'ruby' },
+        { text: 'Python', value: 'python' },
+      ],
     }
   },
   methods: {
     save: function () {
       AceEditorUtils.setVimMode(this.vimMode)
+      AceEditorUtils.setDefaultScriptingLanguage(this.defaultLanguage)
     },
   },
 }

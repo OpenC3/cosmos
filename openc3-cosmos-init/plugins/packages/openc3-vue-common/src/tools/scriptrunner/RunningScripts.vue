@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -166,14 +166,32 @@
                   icon="mdi-eye"
                   @click="viewScriptLog(item, 'report')"
                 />
-                <v-btn
-                  color="primary"
-                  density="comfortable"
-                  icon="mdi-file-download-outline"
-                  :disabled="downloadScript"
-                  :loading="downloadScript && downloadScript.name === item.name"
-                  @click="downloadScriptLog(item, 'report')"
-                />
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn
+                      color="primary"
+                      density="comfortable"
+                      icon="mdi-file-download-outline"
+                      :disabled="downloadScript"
+                      :loading="
+                        downloadScript && downloadScript.name === item.name
+                      "
+                      v-bind="props"
+                    />
+                  </template>
+                  <v-list>
+                    <v-list-item
+                      @click="downloadScriptLog(item, 'report', 'text')"
+                    >
+                      <v-list-item-title>Download as Text</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item
+                      @click="downloadScriptLog(item, 'report', 'ctrf')"
+                    >
+                      <v-list-item-title>Download as CTRF</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
               </div>
             </template>
           </v-data-table-server>
@@ -513,7 +531,7 @@ export default {
         this.showDialog = true
       })
     },
-    downloadScriptLog: function (script, type) {
+    downloadScriptLog: function (script, type, format = 'text') {
       let logUrl = null
       if (type === 'report') {
         this.dialogName = 'Report'
@@ -523,27 +541,57 @@ export default {
         logUrl = script.log
       }
       this.downloadScript = script
-      Api.get(
-        `/openc3-api/storage/download/${encodeURIComponent(
-          logUrl,
-        )}?bucket=OPENC3_LOGS_BUCKET`,
-      )
-        .then((response) => {
-          const filenameParts = logUrl.split('/')
-          const basename = filenameParts[filenameParts.length - 1]
-          // Make a link and then 'click' on it to start the download
-          const link = document.createElement('a')
-          link.href = response.data.url
-          link.setAttribute('download', basename)
-          link.click()
-          this.downloadScript = null
-        })
-        .catch(() => {
-          this.$notify.caution({
-            title: `Unable to download log ${logUrl}`,
-            body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
+
+      if (format === 'ctrf' && type === 'report') {
+        // For CTRF format, pass format parameter to backend for conversion
+        Api.get(
+          `/openc3-api/storage/download_file/${encodeURIComponent(
+            logUrl,
+          )}?bucket=OPENC3_LOGS_BUCKET&format=ctrf`,
+        )
+          .then((response) => {
+            // Backend returns the converted CTRF content
+            const blob = new Blob([window.atob(response.data.contents)], {
+              type: 'application/json',
+            })
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.setAttribute('download', response.data.filename)
+            link.click()
+            this.downloadScript = null
           })
-        })
+          .catch(() => {
+            this.$notify.caution({
+              title: `Unable to download log ${logUrl}`,
+              body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
+            })
+            this.downloadScript = null
+          })
+      } else {
+        // Original download functionality for text format
+        Api.get(
+          `/openc3-api/storage/download/${encodeURIComponent(
+            logUrl,
+          )}?bucket=OPENC3_LOGS_BUCKET`,
+        )
+          .then((response) => {
+            const filenameParts = logUrl.split('/')
+            const basename = filenameParts[filenameParts.length - 1]
+            // Make a link and then 'click' on it to start the download
+            const link = document.createElement('a')
+            link.href = response.data.url
+            link.setAttribute('download', basename)
+            link.click()
+            this.downloadScript = null
+          })
+          .catch(() => {
+            this.$notify.caution({
+              title: `Unable to download log ${logUrl}`,
+              body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
+            })
+            this.downloadScript = null
+          })
+      }
     },
   },
 }

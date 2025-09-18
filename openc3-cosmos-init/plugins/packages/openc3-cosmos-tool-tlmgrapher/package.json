@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-tlmgrapher",
-  "version": "6.7.1-beta0",
+  "version": "6.8.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.26.1",
-    "@openc3/js-common": "6.7.1-beta0",
-    "@openc3/vue-common": "6.7.1-beta0",
-    "axios": "1.11.0",
+    "@openc3/js-common": "6.8.2-beta0",
+    "@openc3/vue-common": "6.8.2-beta0",
+    "axios": "1.12.0",
     "binary-search": "1.3.6",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
@@ -31,7 +31,7 @@
     "eslint-plugin-vue": "10.4.0",
     "prettier": "3.6.2",
     "sass": "1.92.0",
-    "vite": "6.3.4",
+    "vite": "6.3.6",
     "vue": "3.5.21",
     "vue-eslint-parser": "10.2.0"
   }

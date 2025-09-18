@@ -210,6 +210,137 @@ RSpec.describe StorageController, type: :controller do
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt"}
       expect(response).to have_http_status(:unauthorized)
     end
+
+    describe "CTRF conversion" do
+      let(:sample_report_content) do
+        <<~REPORT
+          --- Script Report ---
+
+          Settings:
+          Manual = true
+          Pause on Error = true
+          Continue After Error = true
+          Abort After Error = false
+          Loop = false
+          Break Loop On Error = false
+
+          Results:
+          2025/09/08 21:05:54.273: Executing MySuite
+          2025/09/08 21:05:54.384: MySuite:setup:PASS
+          2025/09/08 21:05:54.483: ExampleGroup:setup:PASS
+          2025/09/08 21:05:58.483: ExampleGroup:script_2:PASS
+            This test verifies requirement 2
+          2025/09/08 21:05:58.493: ExampleGroup:script_3:SKIP
+            OpenC3::SkipScript
+          2025/09/08 21:06:01.500: ExampleGroup:script_run_method_with_long_name:FAIL
+            This test verifies requirement 1
+            Exceptions:
+              RuntimeError : error
+              INST/procedures/my_script_suite.rb:12:in `script_run_method_with_long_name'
+              <internal:kernel>:187:in `loop'
+          2025/09/08 21:06:01.555: ExampleGroup:teardown:PASS
+          2025/09/08 21:06:01.560: Completed MySuite
+
+          --- Test Summary ---
+
+          Run Time: 7.03 seconds
+          Total Tests: 6
+          Pass: 4
+          Skip: 1
+          Fail: 1
+        REPORT
+      end
+
+      before do
+        bucket_client = instance_double(OpenC3::Bucket)
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:get_object)
+        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:read).and_return(sample_report_content)
+      end
+
+      it "converts test report to CTRF format" do
+        get :download_file, params: {
+          bucket: "OPENC3_LOGS_BUCKET",
+          object_id: "test_report.txt",
+          format: "ctrf",
+          scope: "DEFAULT"
+        }
+
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+
+        # Verify filename transformation
+        expect(result["filename"]).to eq("test_report.ctrf.json")
+
+        # Decode and parse the CTRF content
+        ctrf_content = JSON.parse(Base64.decode64(result["contents"]))
+
+        # Verify CTRF structure
+        expect(ctrf_content).to have_key("results")
+
+        results = ctrf_content["results"]
+        expect(results).to have_key("tool")
+        expect(results).to have_key("summary")
+        expect(results).to have_key("tests")
+
+        # Verify tool information
+        expect(results["tool"]["name"]).to eq("COSMOS Script Runner")
+
+        # Verify summary
+        summary = results["summary"]
+        expect(summary["tests"]).to eq(6)
+        expect(summary["passed"]).to eq(4)
+        expect(summary["failed"]).to eq(1)
+        expect(summary["skipped"]).to eq(1)
+        expect(summary["pending"]).to eq(0)
+        expect(summary["other"]).to eq(0)
+        expect(summary).to have_key("start")
+        expect(summary).to have_key("stop")
+
+        # Verify individual tests
+        tests = results["tests"]
+        expect(tests.length).to eq(6)
+
+        # Test 1: MySuite:setup
+        test = tests[0]
+        expect(test["name"]).to eq("MySuite:setup")
+        expect(test["status"]).to eq("passed")
+        expect(test["duration"]).to eq(111.0) # Time between executing and setup
+
+        # Test 2: ExampleGroup:setup
+        test = tests[1]
+        expect(test["name"]).to eq("ExampleGroup:setup")
+        expect(test["status"]).to eq("passed")
+        expect(test["duration"]).to eq(99.0) # Time between setup and next setup
+
+        # Test 3: ExampleGroup:script_2
+        test = tests[2]
+        expect(test["name"]).to eq("ExampleGroup:script_2")
+        expect(test["status"]).to eq("passed")
+        expect(test["duration"]).to eq(4000.0)
+
+        # Test 4: ExampleGroup:script_3
+        test = tests[3]
+        expect(test["name"]).to eq("ExampleGroup:script_3")
+        expect(test["status"]).to eq("skipped")
+        expect(test["duration"]).to eq(10.0)
+
+        # Test 5: ExampleGroup:script_run_method_with_long_name
+        test = tests[4]
+        expect(test["name"]).to eq("ExampleGroup:script_run_method_with_long_name")
+        expect(test["status"]).to eq("failed")
+        expect(test["duration"]).to eq(3007.0)
+
+        # Test 6: ExampleGroup:teardown
+        test = tests[5]
+        expect(test["name"]).to eq("ExampleGroup:teardown")
+        expect(test["status"]).to eq("passed")
+        expect(test["duration"]).to eq(55.0)
+      end
+    end
   end
 
   describe "GET get_download_presigned_request" do

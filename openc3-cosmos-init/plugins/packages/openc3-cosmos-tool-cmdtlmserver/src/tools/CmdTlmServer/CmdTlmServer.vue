@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,10 @@
 
 <template>
   <top-bar :menus="menus" :title="title" />
-  <v-card style="z-index: 2 !important">
+  <!-- .v-table--fixed-header>.v-table__wrapper>table>thead has z-index: 2
+       which makes the LogMessages table header go above the raw dialogs
+       so we must increase the z-index of the card above 2 -->
+  <v-card style="z-index: 4 !important">
     <v-expansion-panels v-model="panel">
       <v-expansion-panel>
         <v-expansion-panel-title>

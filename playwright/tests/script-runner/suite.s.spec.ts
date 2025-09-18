@@ -191,18 +191,16 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
 })
 
 test('disables all suite buttons when running', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup < OpenC3::Group
-    def test_test; wait; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup < OpenC3::Group
+  def test_test; wait; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup")
   end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup")
-    end
-  end
-  `)
+end`)
   await saveAs(page, 'test_suite_buttons.rb')
 
   await page.locator('[data-test=start-script]').click()
@@ -229,20 +227,18 @@ test('disables all suite buttons when running', async ({ page, utils }) => {
 })
 
 test('starts a suite', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup < OpenC3::Group
-    def test_test; puts "test"; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup < OpenC3::Group
+  def test_test; puts "test"; end
+end
+class TestSuite < OpenC3::Suite
+  def setup; OpenC3::Group.puts("setup"); end
+  def teardown; OpenC3::Group.puts("teardown"); end
+  def initialize
+    super()
+    add_group("TestGroup")
   end
-  class TestSuite < OpenC3::Suite
-    def setup; OpenC3::Group.puts("setup"); end
-    def teardown; OpenC3::Group.puts("teardown"); end
-    def initialize
-      super()
-      add_group("TestGroup")
-    end
-  end
-  `)
+end`)
   await saveAs(page, 'test_suite1.rb')
 
   // Verify the suite startup, teardown buttons are enabled
@@ -285,6 +281,38 @@ test('starts a suite', async ({ page, utils }) => {
     true,
   )
 
+  // Verify we can download the report in the various formats
+  await page.locator('[data-test="script-runner-script"]').click()
+  await page.getByText('Execution Status').click()
+  await utils.sleep(1000)
+  await page
+    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .getByRole('button')
+    .nth(4)
+    .click()
+  await utils.download(page, 'text=Download as Text', function (contents) {
+    expect(contents).toContain('--- Script Report ---')
+    expect(contents).toContain('--- Test Summary ---')
+    expect(contents).toContain('Pass: 3')
+    expect(contents).toContain('Skip: 0')
+    expect(contents).toContain('Fail: 0')
+  })
+
+  await page
+    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .getByRole('button')
+    .nth(4)
+    .click()
+  await utils.download(page, 'text=Download as CTRF', function (contents) {
+    expect(contents).toContain('"reportFormat":"CTRF')
+    let json = JSON.parse(contents)
+    expect(json.results.summary.tests).toEqual(3)
+    expect(json.results.summary.passed).toEqual(3)
+    expect(json.results.summary.skipped).toEqual(0)
+    expect(json.results.summary.failed).toEqual(0)
+  })
+  await page.keyboard.press('Escape')
+
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
   if (process.platform === 'darwin') {
@@ -295,18 +323,16 @@ test('starts a suite', async ({ page, utils }) => {
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup < OpenC3::Group
-    def test_test; puts "test"; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup < OpenC3::Group
+  def test_test; puts "test"; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup")
   end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup")
-    end
-  end
-  `)
+end`)
   await utils.sleep(1000)
   // Verify filename is marked as edited
   await expect(page.locator('#sr-controls')).toContainText('*')
@@ -326,24 +352,22 @@ test('starts a suite', async ({ page, utils }) => {
 })
 
 test('starts a group', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup1 < OpenC3::Group
-    def setup; OpenC3::Group.puts("setup"); end
-    def teardown; OpenC3::Group.puts("teardown"); end
-    def test_test1; puts "test"; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup1 < OpenC3::Group
+  def setup; OpenC3::Group.puts("setup"); end
+  def teardown; OpenC3::Group.puts("teardown"); end
+  def test_test1; puts "test"; end
+end
+class TestGroup2 < OpenC3::Group
+  def test_test2; puts "test"; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup1")
+    add_group("TestGroup2")
   end
-  class TestGroup2 < OpenC3::Group
-    def test_test2; puts "test"; end
-  end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup1")
-      add_group("TestGroup2")
-    end
-  end
-  `)
+end`)
   await saveAs(page, 'test_suite2.rb')
 
   // Verify the group startup, teardown buttons are enabled
@@ -395,22 +419,20 @@ test('starts a group', async ({ page, utils }) => {
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup1 < OpenC3::Group
-    def test_test1; puts "test"; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup1 < OpenC3::Group
+  def test_test1; puts "test"; end
+end
+class TestGroup2 < OpenC3::Group
+  def test_test2; puts "test"; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup1")
+    add_group("TestGroup2")
   end
-  class TestGroup2 < OpenC3::Group
-    def test_test2; puts "test"; end
-  end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup1")
-      add_group("TestGroup2")
-    end
-  end
-  `)
+end`)
   await utils.sleep(1000)
   // Verify filename is marked as edited
   await expect(page.locator('#sr-controls')).toContainText('*')
@@ -430,19 +452,17 @@ test('starts a group', async ({ page, utils }) => {
 })
 
 test('starts a script', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup < OpenC3::Group
-    def test_test1; puts "test1"; end
-    def test_test2; puts "test2"; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup < OpenC3::Group
+  def test_test1; puts "test1"; end
+  def test_test2; puts "test2"; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup")
   end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup")
-    end
-  end
-  `)
+end`)
   await saveAs(page, 'test_suite3.rb')
   // Run script
   await runAndCheckResults(
@@ -459,19 +479,17 @@ test('starts a script', async ({ page, utils }) => {
 })
 
 test('handles manual mode', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  require "openc3/script/suite.rb"
-  class TestGroup < OpenC3::Group
-    def test_test1; OpenC3::Group.puts "manual1" if $manual; end
-    def test_test2; OpenC3::Group.puts "manual2" unless $manual; end
+  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+class TestGroup < OpenC3::Group
+  def test_test1; OpenC3::Group.puts "manual1" if $manual; end
+  def test_test2; OpenC3::Group.puts "manual2" unless $manual; end
+end
+class TestSuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group("TestGroup")
   end
-  class TestSuite < OpenC3::Suite
-    def initialize
-      super()
-      add_group("TestGroup")
-    end
-  end
-  `)
+end`)
   await saveAs(page, 'test_suite4.rb')
 
   // Run group

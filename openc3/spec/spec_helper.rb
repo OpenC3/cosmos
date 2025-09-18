@@ -85,8 +85,6 @@ module OpenC3
 end
 
 require 'openc3/top_level'
-require 'openc3/script'
-# require 'openc3/utilities/logger'
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
 $openc3_scope = ENV['OPENC3_SCOPE']
