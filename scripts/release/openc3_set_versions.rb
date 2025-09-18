@@ -34,6 +34,7 @@ major = split_version[0]
 minor = split_version[1]
 if version =~ /[a-zA-Z]+/
   # Prerelease version
+  is_prod_release = false
   remainder = split_version[2..-1].join(".")
   remainder.gsub!('-', '.pre.') # Rubygems replaces dashes with .pre.
   remainder_split = remainder.split('.')
@@ -42,6 +43,7 @@ if version =~ /[a-zA-Z]+/
   gem_version = "#{major}.#{minor}.#{patch}.#{other}"
 else
   # Production Release Version
+  is_prod_release = true
   patch = split_version[2]
   other = split_version[3..-1].join('.')
   gem_version = version
@@ -97,24 +99,6 @@ gemspec_files.each do |rel_path|
 end
 
 package_dot_json_files = [
-  'openc3-cosmos-init/plugins/packages/openc3-tool-base/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-js-common/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-vue-common/package.json',
   'openc3/templates/widget/package.json',
   'openc3/templates/tool_vue/package.json',
   'openc3/templates/tool_react/package.json',
@@ -132,21 +116,23 @@ package_dot_json_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /\"version\":/
       mod_data << "  \"version\": \"#{version}\",\n"
-    elsif line =~ /\"@openc3\/js-common\":/
-      mod_data << "    \"@openc3/js-common\": \"#{version}\""
-      # Don't assume the line has a comma because it could be at the end
-      if line.include?(',')
-        mod_data << ",\n"
-      else
-        mod_data << "\n"
-      end
-    elsif line =~ /\"@openc3\/vue-common\":/
-      mod_data << "    \"@openc3/vue-common\": \"#{version}\""
-      # Don't assume the line has a comma because it could be at the end
-      if line.include?(',')
-        mod_data << ",\n"
-      else
-        mod_data << "\n"
+    elsif is_prod_release # These dependencies should stay at a released version
+      if line =~ /\"@openc3\/js-common\":/
+        mod_data << "    \"@openc3/js-common\": \"#{version}\""
+        # Don't assume the line has a comma because it could be at the end
+        if line.include?(',')
+          mod_data << ",\n"
+        else
+          mod_data << "\n"
+        end
+      elsif line =~ /\"@openc3\/vue-common\":/
+        mod_data << "    \"@openc3/vue-common\": \"#{version}\""
+        # Don't assume the line has a comma because it could be at the end
+        if line.include?(',')
+          mod_data << ",\n"
+        else
+          mod_data << "\n"
+        end
       end
     else
       mod_data << line
