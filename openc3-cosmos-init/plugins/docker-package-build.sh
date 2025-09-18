@@ -19,9 +19,9 @@ mkdir -p ${GEMS}
 echo "<<< packageBuild $1"
 cd ${PLUGINS}/
 cd ${PACKAGES}/${1}/
-echo "--- packageBuild $1 npm run build"
-npm run build
-echo "=== packageBuild $1 npm run build complete"
+echo "--- packageBuild $1 pnpm run build"
+pnpm run build
+echo "=== packageBuild $1 pnpm run build complete"
 echo "--- packageBuild $1 rake build"
 rake build VERSION=${OPENC3_RELEASE_VERSION}
 echo "=== packageBuild $1 rake build complete"
