@@ -29,7 +29,7 @@ jobs:
         run: ./playwright.sh install-playwright
         working-directory: playwright
       - name: Check for test.only
-        run: yarn playwright test --list --forbid-only
+        run: pnpm playwright test --list --forbid-only
         working-directory: playwright
       - name: openc3.sh run
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
@@ -55,15 +55,15 @@ jobs:
         working-directory: playwright
         # Ensure we're connected and running
       - name: Wait for build
-        run: yarn playwright test --project=firefox tests/wait-for-build.spec.ts
+        run: pnpm playwright test --project=firefox tests/wait-for-build.spec.ts
         working-directory: playwright
       - name: Run Playwright Firefox tests
         run: |
-          yarn playwright test --project=firefox ./tests/**/*.p.spec.ts --grep-invert='enterprise'
-          yarn playwright test --project=firefox ./tests/**/*.s.spec.ts --workers=1 --grep-invert='enterprise'
+          pnpm playwright test --project=firefox ./tests/**/*.p.spec.ts --grep-invert='enterprise'
+          pnpm playwright test --project=firefox ./tests/**/*.s.spec.ts --workers=1 --grep-invert='enterprise'
         working-directory: playwright
       - name: Generate coverage
-        run: yarn fixlinux; yarn cobertura
+        run: pnpm fixlinux; pnpm cobertura
         working-directory: playwright
       - uses: codecov/codecov-action@v5
         with:
