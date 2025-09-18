@@ -21,7 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'json'
-require 'json/add/core'
+require 'json/add/string'
 require 'date'
 require 'openc3/core_ext/string'
 
