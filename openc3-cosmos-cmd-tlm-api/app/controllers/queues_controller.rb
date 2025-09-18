@@ -216,9 +216,18 @@ class QueuesController < ApplicationController
       index = params[:index]&.to_f
       command_data = model.remove_command(index)
       if command_data
+        hazardous = false
         begin
           token = get_token(command_data['username'], scope: params[:scope])
-          cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+          if hazardous
+            cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+          else
+            cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+          end
+        rescue HazardousError => e
+          # Rescue hazardous error and retry with cmd_no_hazardous_check
+          hazardous = true
+          retry
         rescue StandardError => e
           log_error(e)
           render json: { status: 'error', message: "Failed to execute command: #{e.message}", type: e.class.to_s, backtrace: e.backtrace }, status: 500

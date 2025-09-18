@@ -542,7 +542,7 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd_no_hazardous_check).with("TEST COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("TEST COMMAND", {queue: false, scope: "DEFAULT", token: anything})
 
       post :exec_command, params: {name: "QUEUE1", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
@@ -563,7 +563,7 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd_no_hazardous_check).with("INDEXED COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("INDEXED COMMAND", {queue: false, scope: "DEFAULT", token: anything})
       index = "3.5"
 
       post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
@@ -620,7 +620,7 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd_no_hazardous_check).with("INTEGER INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("INTEGER INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
       index = 5
 
       post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}
@@ -639,7 +639,7 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd_no_hazardous_check).with("FRACTIONAL INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("FRACTIONAL INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
       index = "2.7"
 
       post :exec_command, params: {name: "QUEUE1", index: index, scope: "DEFAULT"}

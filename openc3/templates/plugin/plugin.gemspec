@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
   s.email = ['name@domain.com']
   s.homepage = 'https://github.com/OpenC3/cosmos'
   s.platform = Gem::Platform::RUBY
+  s.required_ruby_version = '>= 3.0'
 
   if ENV['VERSION']
     s.version = ENV['VERSION'].dup

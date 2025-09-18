@@ -31,13 +31,11 @@ test.use({
 test.describe.configure({ mode: 'serial' })
 
 test('keeps a debug command history', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  x = 12345
-  wait
-  puts "x:#{x}"
-  puts "one"
-  puts "two"
-  `)
+  await page.locator('textarea').fill(`x = 12345
+wait
+puts "x:#{x}"
+puts "one"
+puts "two"`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
@@ -152,15 +150,13 @@ test('displays the call stack', async ({ page, utils }) => {
     page.locator('[data-test=script-runner-script-call-stack]'),
   ).toHaveClass(/v-list-item--disabled/)
 
-  await page.locator('textarea').fill(`
-  def one
-    two()
-  end
-  def two
-    wait
-  end
-  one()
-  `)
+  await page.locator('textarea').fill(`def one
+  two()
+end
+def two
+  wait
+end
+one()`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
@@ -188,9 +184,11 @@ test('displays the call stack', async ({ page, utils }) => {
 
 test('displays disconnect icon', async ({ page, utils }) => {
   // Initialize the values so we know what we're comparing against
-  await page.locator('textarea').fill(`
-  cmd("INST SETPARAMS with VALUE1 0, VALUE2 1, VALUE3 2, VALUE4 1, VALUE5 0")
-  `)
+  await page
+    .locator('textarea')
+    .fill(
+      'cmd("INST SETPARAMS with VALUE1 0, VALUE2 1, VALUE3 2, VALUE4 1, VALUE5 0")',
+    )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
@@ -198,21 +196,21 @@ test('displays disconnect icon', async ({ page, utils }) => {
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
 
   // In Disconnect mode all commands go nowhere, all checks pass,
   // and all waits are immediate (no waiting)
   // Only read-only methods are allowed and tlm methods can take
   // a disconnect kwarg to set a return value
-  await page.locator('textarea').fill(`
-  cmd("INST SETPARAMS with VALUE1 0")
-  set_tlm("INST PARAMS VALUE2 = 0")
-  wait_check_expression("1 == 2", 5)
-  wait
-  wait_check("INST PARAMS VALUE1 == 'BAD'", 5)
-  wait_check("INST PARAMS VALUE2 == 'BAD'", 5)
-  val = tlm("INST HEALTH_STATUS COLLECTS", disconnect: 100)
-  puts "disconnect:#{val}"
-  `)
+  await page.locator('textarea').fill(`cmd("INST SETPARAMS with VALUE1 0")
+set_tlm("INST PARAMS VALUE2 = 0")
+wait_check_expression("1 == 2", 5)
+wait
+wait_check("INST PARAMS VALUE1 == 'BAD'", 5)
+wait_check("INST PARAMS VALUE2 == 'BAD'", 5)
+val = tlm("INST HEALTH_STATUS COLLECTS", disconnect: 100)
+puts "disconnect:#{val}"`)
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
