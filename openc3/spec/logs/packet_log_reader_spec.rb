@@ -90,7 +90,7 @@ module OpenC3
           @pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
           @pkt.write("COLLECTS", 100)
         end
-        data = raw_or_json == :RAW_PACKET ? @pkt.buffer : JSON.generate(@pkt.as_json(:allow_nan => true))
+        data = raw_or_json == :RAW_PACKET ? @pkt.buffer : JSON.generate(@pkt.as_json(, allow_nan: true))
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[0], true, data, nil, '0-0')
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[1], true, data, nil, '0-0')
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[2], true, data, nil, '0-0')
@@ -104,7 +104,7 @@ module OpenC3
         if raw_or_json == :RAW_PACKET
           @pkt_entry_length = raw.length + data.length
         else
-          json_hash = @pkt.as_json(:allow_nan => true)
+          json_hash = @pkt.as_json()
           key_length = 0
           compressed_key_length = 0
           json_hash.keys.each_with_index do |key, index|
@@ -112,7 +112,7 @@ module OpenC3
             compressed_key_length += index.to_s.length
           end
           key_length_reduction = key_length - compressed_key_length
-          @pkt_entry_length = raw.length + @pkt.as_json(:allow_nan => true).to_cbor.length - key_length_reduction
+          @pkt_entry_length = raw.length + @pkt.as_json().to_cbor.length - key_length_reduction
         end
       end
 

@@ -35,7 +35,7 @@ module OpenC3
         :received_count => packet.received_count,
         :buffer => packet.buffer(false)
       }
-      msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
+      msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true, allow_nan: true) if packet.extra
       if queued
         EphemeralStoreQueued.write_topic("#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}", msg_hash)
       else

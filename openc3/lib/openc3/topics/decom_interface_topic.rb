@@ -33,7 +33,7 @@ module OpenC3
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
       Topic.update_topic_offsets([ack_topic])
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
-          { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+          { 'build_cmd' => JSON.generate(data, allow_nan: true, allow_nan: true) }, '*', 100)
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
@@ -56,7 +56,7 @@ module OpenC3
       data['item_hash'] = item_hash
       data['type'] = type
       Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
-          { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+          { 'inject_tlm' => JSON.generate(data, allow_nan: true, allow_nan: true) }, '*', 100)
     end
   end
 end

@@ -54,9 +54,9 @@ with open(sys.argv[1]) as file:
         # Remove allow_nan, create_additions, and token keyword args
         # Fix scope keyword arg
         line = (
-            line.replace(", :allow_nan => true", "")
-            .replace(":allow_nan => true", "")
-            .replace(", :create_additions => true", "")
+            line.replace(", allow_nan: true", "")
+            .replace("allow_nan: true", "")
+            .replace(", create_additions: true", "")
             .replace(", token: $openc3_token", "")
             .replace(", token: token", "")
             .replace("scope: $openc3_scope", "scope=OPENC3_SCOPE")

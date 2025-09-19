@@ -33,7 +33,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     it "gets screen keywords" do
       get :keywords, params: { type: 'SCREEN' }
       expect(response).to have_http_status(:success)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       # Spot check
       expect(ret).to include("SCREEN")
       expect(ret).to include("END")
@@ -48,7 +48,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     it "gets screen autocomplete" do
       get :ace_autocomplete_data, params: { type: 'SCREEN', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       # Spot check
       expect(ret).to include({"caption"=>"SCREEN",
         "meta"=>"Define a telemetry viewer screen",
@@ -79,7 +79,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     it "gets cmd autocomplete" do
       get :ace_autocomplete_data, params: { type: 'CMD', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       # Sorted so first should be INST ABORT
       expect(ret[0]).to include({"caption" => "INST ABORT"})
       # Spot check
@@ -94,7 +94,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     it "gets tlm autocomplete" do
       get :ace_autocomplete_data, params: { type: 'TLM', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       # Sorted so first should be INST ADCS CCSDSVER
       expect(ret[0]).to include({"caption" => "INST ADCS CCSDSVER"})
       # Spot check

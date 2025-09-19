@@ -54,7 +54,7 @@ module OpenC3
     describe "as_json" do
       it "creates a reproducible format" do
         gc = GenericConversion.new("10.0 / 2", "FLOAT", "32", "64")
-        json = gc.as_json(:allow_nan => true)
+        json = gc.as_json()
         expect(json['class']).to eql "OpenC3::GenericConversion"
         expect(json['converted_type']).to eql :FLOAT
         expect(json['converted_bit_size']).to eql 32

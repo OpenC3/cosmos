@@ -75,7 +75,7 @@ module OpenC3
 
     def self.connect_interface(interface_name, *interface_params, scope:)
       if interface_params && !interface_params.empty?
-        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params) }, '*', 100)
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params, allow_nan: true) }, '*', 100)
       else
         Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
       end
@@ -101,7 +101,7 @@ module OpenC3
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_cmd' => JSON.generate(data, allow_nan: true, allow_nan: true) }, '*', 100)
     end
 
     def self.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
@@ -110,7 +110,7 @@ module OpenC3
       data['cmd_params'] = cmd_params
       data['read_write'] = read_write.to_s.upcase
       data['index'] = index
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true, allow_nan: true) }, '*', 100)
     end
 
     def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
@@ -119,7 +119,7 @@ module OpenC3
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true, allow_nan: true) }, '*', 100)
     end
   end
 end

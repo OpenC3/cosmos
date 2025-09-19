@@ -125,7 +125,7 @@ module OpenC3
         model = TestModel.new(name: "TEST1", scope: "DEFAULT", plugin: "ONE")
         model.create
         model.plugin = "TWO"
-        TestModel.set(model.as_json(:allow_nan => true), scope: "DEFAULT")
+        TestModel.set(model.as_json(), scope: "DEFAULT")
         saved = TestModel.get(name: "TEST1", scope: "DEFAULT")
         expect(saved["name"]).to eq "TEST1"
         expect(saved["plugin"]).to eq "TWO"
@@ -137,10 +137,10 @@ module OpenC3
         time = Time.now
         model = TestModel.new(name: "TEST1", scope: "DEFAULT", plugin: "ONE", updated_at: time)
         model.create
-        hash = model.as_json(:allow_nan => true)
-        json = JSON.generate(hash)
+        hash = model.as_json()
+        json = JSON.generate(hash, allow_nan: true)
         model2 = TestModel.from_json(json, scope: "DEFAULT")
-        expect(hash).to eql(model2.as_json(:allow_nan => true))
+        expect(hash).to eql(model2.as_json())
       end
     end
 

@@ -48,7 +48,7 @@ module OpenC3
 
     # Set the current value table for a target, packet
     def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
-      packet_json = JSON.generate(hash.as_json(:allow_nan => true))
+      packet_json = JSON.generate(hash.as_json(, allow_nan: true))
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
@@ -71,7 +71,7 @@ module OpenC3
       end
       packet = Store.hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
-      hash = JSON.parse(packet, :allow_nan => true, :create_additions => true)
+      hash = JSON.parse(packet, allow_nan: true, create_additions: true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
       hash
     end
@@ -310,7 +310,7 @@ module OpenC3
         all = Store.hgetall("#{scope}__override__#{target_name}")
         next if all.nil? or all.empty?
         all.each do |packet_name, hash|
-          items = JSON.parse(hash, :allow_nan => true, :create_additions => true)
+          items = JSON.parse(hash, allow_nan: true, create_additions: true)
           items.each do |key, value|
             item = {}
             item['target_name'] = target_name
@@ -339,7 +339,7 @@ module OpenC3
     # for the given type
     def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)
       hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
       when :ALL
@@ -361,13 +361,13 @@ module OpenC3
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
       @@override_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(, allow_nan: true)))
     end
 
     # Normalize a current value table item such that it returns the actual value
     def self.normalize(target_name, packet_name, item_name, type: :ALL, scope: $openc3_scope)
       hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
       when :ALL
@@ -393,7 +393,7 @@ module OpenC3
         Store.hdel("#{scope}__override__#{target_name}", packet_name)
       else
         @@override_cache[tgt_pkt_key] = [Time.now, hash]
-        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(, allow_nan: true)))
       end
     end
 
@@ -453,7 +453,7 @@ module OpenC3
       end
       override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
       if override_data
-        hash = JSON.parse(override_data, :allow_nan => true, :create_additions => true)
+        hash = JSON.parse(override_data, allow_nan: true, create_additions: true)
         overrides[tgt_pkt_key] = hash
       else
         hash = {}

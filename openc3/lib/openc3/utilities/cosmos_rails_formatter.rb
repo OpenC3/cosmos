@@ -54,7 +54,7 @@ module OpenC3
       if log.exception
         message = "Exception was raised - #{log.exception.class}:#{log.exception.message}" unless message
       end
-      return OpenC3::Logger.build_log_data(log.level.to_s.upcase, message, user: username, type: OpenC3::Logger::LOG, url: nil, other: other).as_json(:allow_nan => true).to_json(:allow_nan => true)
+      return OpenC3::Logger.build_log_data(log.level.to_s.upcase, message, user: username, type: OpenC3::Logger::LOG, url: nil, other: other).as_json().to_json(allow_nan: true)
     end
   end
 end

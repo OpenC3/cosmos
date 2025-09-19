@@ -41,7 +41,7 @@ RSpec.describe StreamingApi, type: :model do
     packet_data['PACKET_TIMESECONDS'] = @time.to_f
     packet_data['PACKET_TIMEFORMATTED'] = @time.formatted
     packet_data['VALUE1__R'] = 1
-    msg['json_data'] = JSON.generate(packet_data)
+    msg['json_data'] = JSON.generate(packet_data, allow_nan: true)
     msg['buffer'] = '\x01\x02\x03\x04'
     # Send count is how many times we return a message from read_topics
     # We can limit this to simulate no packets being available from read_topics

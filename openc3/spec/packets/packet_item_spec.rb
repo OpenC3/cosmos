@@ -456,7 +456,7 @@ module OpenC3
         @pi.limits = pil
         @pi.obfuscate = true
 
-        hash = @pi.as_json(:allow_nan => true)
+        hash = @pi.as_json()
         expect(hash["name"]).to eql "TEST"
         expect(hash["bit_offset"]).to eql 0
         expect(hash["bit_size"]).to eql 32
@@ -499,7 +499,7 @@ module OpenC3
 
     describe "self.from_hash" do
       it "creates empty PacketItem from hash" do
-        item = PacketItem.from_json(@pi.as_json(:allow_nan => true))
+        item = PacketItem.from_json(@pi.as_json())
         expect(item.name).to eql @pi.name
         expect(item.bit_offset).to eql @pi.bit_offset
         expect(item.bit_size).to eql @pi.bit_size
@@ -547,7 +547,7 @@ module OpenC3
         @pi.limits = PacketItemLimits.new
         @pi.limits.values = { DEFAULT: [10, 20, 80, 90, 40, 50], TVAC: [100, 200, 800, 900] }
         @pi.obfuscate = true
-        item = PacketItem.from_json(@pi.as_json(:allow_nan => true))
+        item = PacketItem.from_json(@pi.as_json())
         expect(item.name).to eql @pi.name
         expect(item.bit_offset).to eql @pi.bit_offset
         expect(item.bit_size).to eql @pi.bit_size

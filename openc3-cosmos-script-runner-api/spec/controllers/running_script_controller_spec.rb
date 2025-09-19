@@ -312,7 +312,7 @@ RSpec.describe RunningScriptController, type: :controller do
 
         expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).with(
           "cmd-running-script-channel:1",
-          {method: "combo_box", multiple: JSON.generate(multiple_options), prompt_id: "abc123"}
+          {method: "combo_box", multiple: JSON.generate(multiple_options, allow_nan: true), prompt_id: "abc123"}
         )
 
         post :prompt, params: {

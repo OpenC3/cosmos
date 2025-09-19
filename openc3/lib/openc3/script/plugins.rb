@@ -125,7 +125,7 @@ module OpenC3
         else
           request = Net::HTTP::Post.new(uri)
         end
-        form_data = [["plugin_hash", JSON.generate(plugin_hash, allow_nan: true)]]
+        form_data = [["plugin_hash", JSON.generate(plugin_hash, allow_nan: true, allow_nan: true)]]
         request.set_form(form_data)
         request['User-Agent'] = JsonDRbObject::USER_AGENT
         request['Content-Type'] = 'application/json'
