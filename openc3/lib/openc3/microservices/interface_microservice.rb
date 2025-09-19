@@ -463,6 +463,7 @@ module OpenC3
 
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
+    DEFAULT_UPDATE_INTERVAL = 0.1
 
     def initialize(name)
       @mutex = Mutex.new
@@ -515,21 +516,31 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       end
 
-      @queued = false
+      @queued = true # default is to queue all packets
+      update_interval = nil
       @sync_packet_count_data = {}
       @sync_packet_count_time = nil
       @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
       @interface.options.each do |option_name, option_values|
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
-          @queued = true
           update_interval = option_values[0].to_f
-          EphemeralStoreQueued.instance.set_update_interval(update_interval)
-          StoreQueued.instance.set_update_interval(update_interval)
+          if update_interface <= 0.0
+            @queued = false
+          else
+            EphemeralStoreQueued.instance.set_update_interval(update_interval)
+            StoreQueued.instance.set_update_interval(update_interval)
+          end
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
           @sync_packet_count_delay_seconds = option_values[0].to_f
         end
+      end
+
+      # If the update_interval wasn't set by the UPDATE_INTERVAL option then use the default
+      if update_interval.nil?
+        EphemeralStoreQueued.instance.set_update_interval(DEFAULT_UPDATE_INTERVAL)
+        StoreQueued.instance.set_update_interval(DEFAULT_UPDATE_INTERVAL)
       end
 
       @interface_thread_sleeper = Sleeper.new
