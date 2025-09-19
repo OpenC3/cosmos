@@ -619,3 +619,12 @@ class TcpipServerInterface(StreamInterface):
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:
                 del self.write_interface_infos[index_to_delete]
+
+    def details(self):
+        result = super().details()
+        result['write_port'] = self.write_port
+        result['read_port'] = self.read_port
+        result['write_timeout'] = self.write_timeout
+        result['read_timeout'] = self.read_timeout
+        result['listen_address'] = self.listen_address
+        return result

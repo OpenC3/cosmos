@@ -186,3 +186,13 @@ class HttpServerInterface(Interface):
             packet.extra = extra
 
         return packet
+
+    def details(self):
+        result = super().details()
+        result['listen_address'] = self.listen_address
+        result['port'] = self.port
+        if self.server:
+            result['request_queue_length'] = self.server.request_queue.qsize()
+        else:
+            result['request_queue_length'] = 0
+        return result

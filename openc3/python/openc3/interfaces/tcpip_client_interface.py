@@ -78,3 +78,12 @@ class TcpipClientInterface(StreamInterface):
             self.read_timeout,
         )
         super().connect()
+
+    def details(self):
+        result = super().details()
+        result['hostname'] = self.hostname
+        result['write_port'] = self.write_port
+        result['read_port'] = self.read_port
+        result['write_timeout'] = self.write_timeout
+        result['read_timeout'] = self.read_timeout
+        return result

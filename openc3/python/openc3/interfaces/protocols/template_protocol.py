@@ -17,6 +17,7 @@
 import re
 import time
 from queue import SimpleQueue, Empty
+from datetime import datetime, timezone
 from openc3.config.config_parser import ConfigParser
 from openc3.system.system import System
 from openc3.packets.packet import Packet
@@ -269,3 +270,37 @@ class TemplateProtocol(TerminatedProtocol):
         Logger.error(msg)
         if self.raise_exceptions:
             raise RuntimeError(msg)
+
+    def write_details(self):
+        result = super().write_details()
+        result['response_template'] = self.response_template
+        result['response_packet'] = self.response_packet
+        result['response_target_name'] = self.response_target_name
+        result['ignore_lines'] = self.ignore_lines
+        result['response_lines'] = self.response_lines
+        result['initial_read_delay'] = self.initial_read_delay
+        result['response_timeout'] = self.response_timeout
+        result['response_polling_period'] = self.response_polling_period
+        if self.connect_complete_time:
+            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).isoformat()
+        else:
+            result['connect_complete_time'] = None
+        result['raise_exceptions'] = self.raise_exceptions
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['response_template'] = self.response_template
+        result['response_packet'] = self.response_packet
+        result['response_target_name'] = self.response_target_name
+        result['ignore_lines'] = self.ignore_lines
+        result['response_lines'] = self.response_lines
+        result['initial_read_delay'] = self.initial_read_delay
+        result['response_timeout'] = self.response_timeout
+        result['response_polling_period'] = self.response_polling_period
+        if self.connect_complete_time:
+            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).isoformat()
+        else:
+            result['connect_complete_time'] = None
+        result['raise_exceptions'] = self.raise_exceptions
+        return result

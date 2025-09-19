@@ -196,3 +196,20 @@ class CrcProtocol(Protocol):
                     "ERROR",
                 )
         return (data, extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result['write_item_name'] = self.write_item_name
+        result['endianness'] = self.endianness
+        result['bit_offset'] = self.bit_offset
+        result['bit_size'] = self.bit_size
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['strip_crc'] = self.strip_crc
+        result['bad_strategy'] = self.bad_strategy
+        result['endianness'] = self.endianness
+        result['bit_offset'] = self.bit_offset
+        result['bit_size'] = self.bit_size
+        return result
