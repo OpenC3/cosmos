@@ -28,7 +28,7 @@ For more information about how Interfaces fit with Protocols and Accessors see [
 
 ## Provided Interfaces
 
-COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+COSMOS provides the following interfaces: TCP/IP Client, TCP/IP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
 COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, InfluxDB.
 
@@ -122,9 +122,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-### TCPIP Client Interface
+### TCP/IP Client Interface
 
-The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
+The TCP/IP client interface connects to a TCP/IP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
 
 | Parameter          | Description                                                                                                    | Required |
 | ------------------ | -------------------------------------------------------------------------------------------------------------- | -------- |
@@ -161,9 +161,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-### TCPIP Server Interface
+### TCP/IP Server Interface
 
-The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
+The TCP/IP server interface creates a TCP/IP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
 
 NOTE: To receive connections from outside the internal docker network you need to expose the TCP port in the compose.yaml file. For example, to allow connections on port 8080 find the openc3-operator section and modify like the following example:
 
