@@ -84,7 +84,11 @@
     </v-data-table>
   </v-card>
   <!-- Interface Details Dialog -->
-  <v-overlay :model-value="detailsDialog" class="align-center justify-center">
+  <v-overlay
+    :model-value="detailsDialog"
+    class="align-center justify-center"
+    @after-leave="clearDialog"
+  >
     <v-card
       width="80vw"
       height="80vh"
@@ -105,10 +109,7 @@
         </v-btn>
       </v-card-title>
       <v-card-text class="flex-grow-1 pa-4">
-        <InterfaceFlowChart
-          :interface-details="interfaceDetails"
-          :selected-interface="selectedInterface"
-        />
+        <InterfaceFlowChart :interface-details="interfaceDetails" />
       </v-card-text>
     </v-card>
   </v-overlay>
@@ -144,6 +145,7 @@ export default {
           filterable: false,
         },
         { title: 'Connected', key: 'connected' },
+        { title: 'Clients', key: 'clients' },
         { title: 'Tx bytes', key: 'tx_bytes' },
         { title: 'Rx bytes', key: 'rx_bytes' },
         { title: 'Cmd pkts', key: 'cmd_pkts' },
@@ -153,6 +155,9 @@ export default {
     }
   },
   methods: {
+    clearDialog() {
+      this.detailsDialog = false
+    },
     // Custom sort algorithm to allow the connected column to be sorted by CONNECTED first
     sortTable(items, index, isDesc) {
       items.sort((a, b) => {
