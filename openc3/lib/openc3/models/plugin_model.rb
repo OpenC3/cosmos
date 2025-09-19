@@ -313,7 +313,20 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false)
-      @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
+      if not update and not @name.index("__")
+        counter = 0
+        base_name = @name
+        existing_names = self.class.names(scope: @scope)
+        new_name = nil
+
+        loop do
+          new_name = "#{base_name}__#{counter}"
+          break unless existing_names.include?(new_name)
+          counter += 1
+        end
+
+        @name = new_name
+      end
       super(update: update, force: force, queued: queued)
     end
 
