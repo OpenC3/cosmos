@@ -23,8 +23,6 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          # cache: "yarn"
-          # cache-dependency-path: "**/yarn.lock"
       - name: login to ironbank
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

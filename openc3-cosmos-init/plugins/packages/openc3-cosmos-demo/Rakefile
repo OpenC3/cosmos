@@ -41,7 +41,7 @@ task :build => [:require_version] do
   end
   # Build the widgets in the src directory using sh built into Rake:
   # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
-  sh('yarn', 'run', 'build')
+  sh('pnpm', 'run', 'build')
   sh('gem', 'build', PLUGIN_NAME)
   sh('openc3cli validate *.gem') do |ok, status|
     if !ok && status.exitstatus == 127 # command not found

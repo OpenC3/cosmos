@@ -7,7 +7,8 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}
 USER root
 
 RUN apk update \
-  && apk add yarn npm \
+  && apk add npm \
+  && npm install --global pnpm@latest-10 \
   && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}
