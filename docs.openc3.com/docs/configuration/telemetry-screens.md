@@ -44,7 +44,7 @@ The SCREEN keyword is the first keyword in any telemetry screen definition. It d
 
 Example Usage:
 ```ruby
-SCREEN AUTO AUTO 1.0 FIXED
+SCREEN AUTO AUTO 1.0
 ```
 
 ## END
