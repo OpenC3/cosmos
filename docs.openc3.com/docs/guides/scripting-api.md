@@ -6575,7 +6575,7 @@ create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 
 ```ruby
 screen_def = '
-  SCREEN AUTO AUTO 0.1 FIXED
+  SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "New Screen"
     VERTICALBOX
@@ -6593,7 +6593,7 @@ create_screen("INST", "LOCAL", screen_def)
 
 ```python
 screen_def = '
-  SCREEN AUTO AUTO 0.1 FIXED
+  SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "New Screen"
     VERTICALBOX
@@ -6644,7 +6644,7 @@ NOTE: It is possible to specify a X, Y location off the visible display. If you 
 
 ```ruby
 screen_def = '
-  SCREEN AUTO AUTO 0.1 FIXED
+  SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "Local Screen"
     VERTICALBOX
@@ -6665,7 +6665,7 @@ clear_screen("LOCAL", "TESTING")
 
 ```python
 screen_def = """
-  SCREEN AUTO AUTO 0.1 FIXED
+  SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "Local Screen"
     VERTICALBOX
