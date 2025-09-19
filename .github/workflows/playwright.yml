@@ -30,6 +30,9 @@ jobs:
       - name: Install playwright dependencies
         run: ./playwright.sh install-playwright
         working-directory: playwright
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Check for test.only
         run: pnpm playwright test --list --forbid-only
         working-directory: playwright
