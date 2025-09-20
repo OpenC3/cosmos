@@ -132,7 +132,7 @@ module OpenC3
       validate_start(update: update)
       @updated_at = Time.now.to_nsec_from_epoch
       SortedModel.destroy(scope: @scope, start: update) if update
-      Store.zadd(@primary_key, @start, JSON.generate(as_json(, allow_nan: true)))
+      Store.zadd(@primary_key, @start, JSON.generate(as_json, allow_nan: true))
       if update
         notify(kind: 'updated')
       else
@@ -156,7 +156,7 @@ module OpenC3
     # @return [] update the redis stream / timeline topic that something has changed
     def notify(kind:, extra: nil)
       notification = {
-        'data' => JSON.generate(as_json(, allow_nan: true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
         'kind' => kind,
         'type' => 'calendar',
       }

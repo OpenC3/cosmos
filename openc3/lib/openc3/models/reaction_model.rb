@@ -206,14 +206,14 @@ module OpenC3
       end
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(, allow_nan: true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'created')
     end
 
     def update
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(, allow_nan: true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       # No notification as this is only called via reaction_controller which already notifies
     end
 
@@ -241,7 +241,7 @@ module OpenC3
       if @snooze > 0
         @snoozed_until = Time.now.to_i + @snooze
         @updated_at = Time.now.to_nsec_from_epoch
-        Store.hset(@primary_key, @name, JSON.generate(as_json(, allow_nan: true)))
+        Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
         notify(kind: 'snoozed')
       end
     end
@@ -249,7 +249,7 @@ module OpenC3
     def awaken
       @snoozed_until = nil
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(, allow_nan: true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'awakened')
     end
 
@@ -282,7 +282,7 @@ module OpenC3
       notification = {
         'kind' => kind,
         'type' => 'reaction',
-        'data' => JSON.generate(as_json(, allow_nan: true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
       }
       AutonomicTopic.write_notification(notification, scope: @scope)
     end

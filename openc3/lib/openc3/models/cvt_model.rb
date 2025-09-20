@@ -48,7 +48,7 @@ module OpenC3
 
     # Set the current value table for a target, packet
     def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
-      packet_json = JSON.generate(hash.as_json(, allow_nan: true))
+      packet_json = JSON.generate(hash.as_json, allow_nan: true)
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
@@ -361,7 +361,7 @@ module OpenC3
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
       @@override_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(, allow_nan: true)))
+      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
     end
 
     # Normalize a current value table item such that it returns the actual value
@@ -393,7 +393,7 @@ module OpenC3
         Store.hdel("#{scope}__override__#{target_name}", packet_name)
       else
         @@override_cache[tgt_pkt_key] = [Time.now, hash]
-        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(, allow_nan: true)))
+        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
       end
     end
 

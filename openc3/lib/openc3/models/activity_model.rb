@@ -315,7 +315,7 @@ module OpenC3
                 end
               end
             end
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(, allow_nan: true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
             last_stop = @stop
           end
         end
@@ -331,7 +331,7 @@ module OpenC3
         end
         @updated_at = Time.now.to_nsec_from_epoch
         add_event(status: 'created')
-        Store.zadd(@primary_key, @start, JSON.generate(self.as_json(, allow_nan: true)))
+        Store.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
         notify(kind: 'created')
       end
     end
@@ -364,7 +364,7 @@ module OpenC3
         if value['uuid'] == old_uuid
           Store.multi do |multi|
             multi.zrem(@primary_key, json[index])
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(, allow_nan: true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
           end
         end
       end
@@ -391,7 +391,7 @@ module OpenC3
         if value['uuid'] == @uuid
           Store.multi do |multi|
             multi.zrem(@primary_key, json[index])
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(, allow_nan: true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
           end
         end
       end
@@ -411,7 +411,7 @@ module OpenC3
     # update the redis stream / timeline topic that something has changed
     def notify(kind:, extra: nil)
       notification = {
-        'data' => JSON.generate(as_json(, allow_nan: true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
         'kind' => kind,
         'type' => 'activity',
         'timeline' => @name

@@ -120,7 +120,7 @@ module OpenC3
     # @return [] update the redis stream / timeline topic that something has changed
     def notify(kind:)
       notification = {
-        'data' => JSON.generate(as_json(, allow_nan: true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
         'kind' => kind,
         'type' => 'timeline',
         'timeline' => @timeline_name

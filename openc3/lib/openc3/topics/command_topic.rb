@@ -47,7 +47,7 @@ module OpenC3
       Topic.update_topic_offsets([ack_topic])
       # Save the existing cmd_params Hash and JSON generate before writing to the topic
       cmd_params = command['cmd_params']
-      command['cmd_params'] = JSON.generate(command['cmd_params'].as_json(, allow_nan: true))
+      command['cmd_params'] = JSON.generate(command['cmd_params'].as_json, allow_nan: true)
       OpenC3.inject_context(command)
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       command["cmd_params"] = cmd_params # Restore the original cmd_params Hash

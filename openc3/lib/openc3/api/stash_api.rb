@@ -31,7 +31,7 @@ module OpenC3
 
     def stash_set(key, value, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', manual: manual, scope: scope, token: token)
-      StashModel.set( {name: key, value: JSON.generate(value.as_json(, allow_nan: true)) }, scope: scope)
+      StashModel.set( {name: key, value: JSON.generate(value.as_json, allow_nan: true) }, scope: scope)
     end
 
     def stash_get(key, manual: false, scope: $openc3_scope, token: $openc3_token)
