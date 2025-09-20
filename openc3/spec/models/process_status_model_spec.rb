@@ -49,7 +49,7 @@ module OpenC3
 
       it "as_json" do
         model = ProcessStatusModel.new(name: 'ps', scope: 'DEFAULT')
-        expect(model.as_json(:allow_nan => true)['name']).to eq('ps')
+        expect(model.as_json()['name']).to eq('ps')
       end
     end
   end

@@ -168,7 +168,7 @@ class RunningScriptController < ApplicationController
         # TODO: ActionCable is logging this ... probably shouldn't
         running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
       elsif params[:multiple]
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer]), prompt_id: params[:prompt_id] })
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer], allow_nan: true), prompt_id: params[:prompt_id] })
       else
         running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
       end

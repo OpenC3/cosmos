@@ -84,7 +84,7 @@ module OpenC3
     describe "to_json" do
       it "creates a reproducible format" do
         utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
-        json = utsc.as_json(:allow_nan => true)
+        json = utsc.as_json()
         expect(json['class']).to eql "OpenC3::UnixTimeSecondsConversion"
         expect(json['converted_type']).to eql :FLOAT
         expect(json['converted_bit_size']).to eql 64

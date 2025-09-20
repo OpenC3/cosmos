@@ -170,7 +170,7 @@ module OpenC3
             if gem_name == local_gem_name
               # Gems match - Do the names match?
               data = File.read(plugin_instance)
-              json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+              json = JSON.parse(data, allow_nan: true, create_additions: true)
 
               found = false
               found_models.each do |name, _model_details|
@@ -221,7 +221,7 @@ module OpenC3
         if plugin_file_path =~ Regexp.new("^#{OPENC3_LOCAL_MODE_PATH}/#{scope}/")
           # From local init - Always just update the exact one
           File.open(File.join(File.dirname(plugin_file_path), 'plugin_instance.json'), 'wb') do |file|
-            file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
+            file.write(JSON.pretty_generate(plugin_hash, allow_nan: true))
           end
         else
           # From online install / update
@@ -247,7 +247,7 @@ module OpenC3
                   if old_plugin_name
                     # And we're updating a plugin
                     data = File.read(plugin_instance)
-                    json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+                    json = JSON.parse(data, allow_nan: true, create_additions: true)
                     if json["name"] == old_plugin_name
                       # Found plugin to update
                       found = true
@@ -301,7 +301,7 @@ module OpenC3
           file.write(data)
         end
         File.open(File.join(full_folder_path, 'plugin_instance.json'), 'wb') do |file|
-          file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
+          file.write(JSON.pretty_generate(plugin_hash, allow_nan: true))
         end
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
@@ -317,7 +317,7 @@ module OpenC3
           plugin_instance = details[:plugin_instance]
           if gems.length == 1 and plugin_instance
             data = File.read(plugin_instance)
-            json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+            json = JSON.parse(data, allow_nan: true, create_additions: true)
             instance_name = json['name']
             if plugin_name == instance_name
               puts "Removing local plugin files: #{full_folder_path}"
@@ -443,7 +443,7 @@ module OpenC3
           data = File.read(config)
           begin
             # Parse just to ensure we have valid JSON
-            JSON.parse(data, :allow_nan => true, :create_additions => true)
+            JSON.parse(data, allow_nan: true, create_additions: true)
             # Only save if the parse was successful
             ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: false)
           rescue JSON::ParserError => e
@@ -454,12 +454,12 @@ module OpenC3
     end
 
     def self.save_tool_config(scope, tool, name, data)
-      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(data, allow_nan: true, create_additions: true)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
       return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
       File.open(config_path, 'w') do |file|
-        file.write(JSON.pretty_generate(json, :allow_nan => true))
+        file.write(JSON.pretty_generate(json, allow_nan: true))
       end
     end
 

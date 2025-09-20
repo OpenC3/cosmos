@@ -51,13 +51,13 @@ SCRIPT_API = 'script-api'
 
 def running_script_publish(channel_name, data)
   stream_name = [SCRIPT_API, channel_name].compact.join(":")
-  OpenC3::Store.publish(stream_name, JSON.generate(data))
+  OpenC3::Store.publish(stream_name, JSON.generate(data, allow_nan: true))
 end
 
 def running_script_anycable_publish(channel_name, data)
   stream_name = [SCRIPT_API, channel_name].compact.join(":")
-  stream_data = {"stream" => stream_name, "data" => JSON.generate(data)}
-  OpenC3::Store.publish("__anycable__", JSON.generate(stream_data))
+  stream_data = {"stream" => stream_name, "data" => JSON.generate(data, allow_nan: true)}
+  OpenC3::Store.publish("__anycable__", JSON.generate(stream_data, allow_nan: true))
 end
 
 module OpenC3
@@ -458,8 +458,8 @@ class RunningScript
       start_time: start_time, # Time the script started ISO format
       end_time: nil, # Time the script ended ISO format
       disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: status_environment.as_json(:allow_nan => true).to_json(:allow_nan => true), # nil or Hash of key/value pairs for environment variables
-      suite_runner: suite_runner ? suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) : nil,
+      environment: status_environment.as_json().to_json(allow_nan: true), # nil or Hash of key/value pairs for environment variables
+      suite_runner: suite_runner ? suite_runner.as_json().to_json(allow_nan: true) : nil,
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       script_engine: script_engine, # script engine filename
@@ -770,7 +770,7 @@ class RunningScript
 
   def run
     if @script_status.suite_runner
-      @script_status.suite_runner = JSON.parse(@script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
+      @script_status.suite_runner = JSON.parse(@script_status.suite_runner, allow_nan: true, create_additions: true) # Convert to hash
       if @script_status.suite_runner['options']
         parse_options(@script_status.suite_runner['options'])
       else
@@ -1050,7 +1050,7 @@ class RunningScript
       line_count = 0
       string.each_line(chomp: true) do |out_line|
         begin
-          json = JSON.parse(out_line, :allow_nan => true, :create_additions => true)
+          json = JSON.parse(out_line, allow_nan: true, create_additions: true)
           time_formatted = Time.parse(json["@timestamp"]).sys.formatted if json["@timestamp"]
           if json["log"]
             out_line = json["log"]
@@ -1082,7 +1082,7 @@ class RunningScript
       else
         published_lines = lines_to_write
       end
-      running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :output, line: published_lines.as_json(:allow_nan => true), color: color })
+      running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :output, line: published_lines.as_json(), color: color })
       # Add to the message log
       message_log.write(lines_to_write)
     end

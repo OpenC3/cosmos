@@ -60,7 +60,7 @@ class TriggerGroupController < ApplicationController
         render json: { status: 'error', message: 'not found' }, status: 404
         return
       end
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -94,7 +94,7 @@ class TriggerGroupController < ApplicationController
       model = @model_class.new(name: params[:name], scope: params[:scope])
       model.create()
       model.deploy()
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400

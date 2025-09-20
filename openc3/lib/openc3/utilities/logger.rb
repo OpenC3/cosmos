@@ -204,14 +204,14 @@ module OpenC3
           case log_level
           when WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL
             if ENV['OPENC3_LOG_STDERR']
-              $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stderr.puts data.as_json().to_json(allow_nan: true)
               $stderr.flush
             else
-              $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stdout.puts data.as_json().to_json(allow_nan: true)
               $stdout.flush
             end
           else
-            $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+            $stdout.puts data.as_json().to_json(allow_nan: true)
             $stdout.flush
           end
         end

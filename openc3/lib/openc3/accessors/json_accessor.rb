@@ -43,7 +43,7 @@ module OpenC3
 
       # Convert to ruby objects
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
+        decoded = JSON.parse(buffer, allow_nan: true, create_additions: true)
       else
         decoded = buffer
       end
@@ -53,7 +53,7 @@ module OpenC3
 
       # Update buffer
       if String === buffer
-        buffer.replace(JSON.generate(decoded.as_json, :allow_nan => true))
+        buffer.replace(JSON.generate(decoded.as_json, allow_nan: true))
       end
 
       return value
@@ -62,7 +62,7 @@ module OpenC3
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
+        decoded = JSON.parse(buffer, allow_nan: true, create_additions: true)
       else
         decoded = buffer
       end
@@ -75,7 +75,7 @@ module OpenC3
 
       # Convert to ruby objects
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true)
+        decoded = JSON.parse(buffer, allow_nan: true)
       else
         decoded = buffer
       end
@@ -86,7 +86,7 @@ module OpenC3
 
       # Update buffer
       if String === buffer
-        buffer.replace(JSON.generate(decoded, :allow_nan => true))
+        buffer.replace(JSON.generate(decoded, allow_nan: true))
       end
 
       return values

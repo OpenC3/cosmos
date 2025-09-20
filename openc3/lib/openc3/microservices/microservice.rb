@@ -52,7 +52,7 @@ module OpenC3
       microservice = self.new(name)
       thread = Thread.new do
         begin
-          MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
+          MicroserviceStatusModel.set(microservice.as_json(), scope: microservice.scope)
           microservice.state = 'RUNNING'
           microservice.run
           microservice.state = 'FINISHED'
@@ -66,7 +66,7 @@ module OpenC3
           end
           microservice.shutdown # Dying in crash so should try to shutdown
         ensure
-          MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
+          MicroserviceStatusModel.set(microservice.as_json(), scope: microservice.scope)
         end
       end
       ThreadManager.instance.register(thread, shutdown_object: microservice)
@@ -192,7 +192,7 @@ module OpenC3
         @microservice_status_period_seconds = 5
         @microservice_status_thread = Thread.new do
           until @cancel_thread
-            MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope) unless @cancel_thread
+            MicroserviceStatusModel.set(as_json(), scope: @scope) unless @cancel_thread
             break if @microservice_status_sleeper.sleep(@microservice_status_period_seconds)
           end
         rescue Exception => e
@@ -214,7 +214,7 @@ module OpenC3
       @state = state
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
-      MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
+      MicroserviceStatusModel.set(as_json(), scope: @scope)
       FileUtils.remove_entry_secure(@temp_dir, true)
       @metric.shutdown
       @logger.debug("Shutting down microservice complete: #{@name}")

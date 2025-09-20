@@ -174,7 +174,7 @@ module OpenC3
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
         end
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['target_names']).to include("TARGET1", "TARGET2", "TARGET3", "TARGET4")
         expect(json['cmd_target_names']).to include("TARGET1", "TARGET2", "TARGET3")
         expect(json['tlm_target_names']).to include("TARGET1", "TARGET2", "TARGET4")
@@ -206,7 +206,7 @@ module OpenC3
     describe "as_json" do
       it "encodes all the input parameters" do
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         # Check the defaults
         expect(json['name']).to eq "TEST_INT"
         expect(json['config_params']).to eq []

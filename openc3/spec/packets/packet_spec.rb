@@ -1633,7 +1633,7 @@ module OpenC3
       it "creates a hash" do
         packet = Packet.new("tgt", "pkt")
         packet.template = "\x00\x01\x02\x03"
-        json = packet.as_json(:allow_nan => true)
+        json = packet.as_json()
         expect(json['target_name']).to eql 'TGT'
         expect(json['packet_name']).to eql 'PKT'
         expect(json['items']).to eql []
@@ -1653,7 +1653,7 @@ module OpenC3
         packet.sorted_items.each do |item|
           json_hash[item.name] = nil
         end
-        json = json_hash.as_json(:allow_nan => true)
+        json = json_hash.as_json()
         expect(json.length).to eql 204800
       end
     end
@@ -1664,7 +1664,7 @@ module OpenC3
         p.template = "\x00\x01\x02\x03"
         p.append_item("test1", 8, :UINT)
         p.accessor = OpenC3::XmlAccessor.new(p)
-        packet = Packet.from_json(p.as_json(:allow_nan => true))
+        packet = Packet.from_json(p.as_json())
         expect(packet.target_name).to eql p.target_name
         expect(packet.packet_name).to eql p.packet_name
         expect(packet.accessor.class).to eql OpenC3::XmlAccessor

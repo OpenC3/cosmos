@@ -1054,7 +1054,7 @@ module OpenC3
         end
       end
       packet.instance_variable_set("@read_conversion_cache".freeze, nil)
-      packet.extra = JSON.parse(packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true), :allow_nan => true, :create_additions => true) if packet.extra # Deep copy using JSON
+      packet.extra = JSON.parse(packet.extra.as_json().to_json(allow_nan: true), allow_nan: true, create_additions: true) if packet.extra # Deep copy using JSON
       packet
     end
     alias dup clone
