@@ -375,9 +375,10 @@ module OpenC3
     # commit will make an event and save the object to the redis database
     # @param [String] status - the event status such as "complete" or "failed"
     # @param [String] message - an optional message to include in the event
-    def commit(status:, message: nil, fulfillment: nil)
+    # @param [Time] timestamp - optional timestamp to use instead of current time
+    def commit(status:, message: nil, fulfillment: nil, timestamp: nil)
       event = {
-        'time' => Time.now.to_i,
+        'time' => timestamp ? timestamp.to_i : Time.now.to_i,
         'event' => status,
         'commit' => true
       }

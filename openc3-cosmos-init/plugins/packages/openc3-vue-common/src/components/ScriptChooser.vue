@@ -81,7 +81,7 @@ export default {
   watch: {
     selected(newVal, oldVal) {
       if (newVal !== oldVal) {
-        if (newVal.slice(-1) === '*') {
+        if (newVal && newVal.slice(-1) === '*') {
           // Remove the * before returning
           this.$emit('file', newVal.substring(0, newVal.length - 1))
         } else {
