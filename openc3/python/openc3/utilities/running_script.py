@@ -586,7 +586,7 @@ class RunningScript:
             if not use_script_engine:
                 if self.script_binding:
                     # Check for accessing an instance variable or local
-                    if debug_text in self.script_binding[1]:  # In local variables
+                    if debug_text.split(".")[0] in self.script_binding[1]:  # In local variables
                         debug_text = (
                             f"print({debug_text})"  # Automatically add print to print it
                         )
