@@ -246,3 +246,44 @@ class TestPreidentifiedProtocol(unittest.TestCase):
             self.assertEqual(packet.packet_name, "HEALTH_STATUS")
             self.assertTrue(packet.identified())
             self.assertEqual(packet.received_time, time + timedelta(seconds=i))
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(PreidentifiedProtocol, ["0xDEADBEEF", 1024], "READ_WRITE")
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "PreidentifiedProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check preidentified protocol specific fields
+        self.assertIn("max_length", details)
+        self.assertEqual(details["max_length"], 1024)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(PreidentifiedProtocol, ["0xABCD", 2048], "READ_WRITE")
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "PreidentifiedProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check preidentified protocol specific read fields
+        self.assertIn("max_length", details)
+        self.assertEqual(details["max_length"], 2048)
+        self.assertIn("reduction_state", details)

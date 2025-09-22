@@ -41,10 +41,11 @@ class InterfaceTopic(Topic):
         while InterfaceTopic.while_receive_commands:
             for topic, msg_id, msg_hash, redis in Topic.read_topics(InterfaceTopic.topics(interface, scope)):
                 result = method(topic, msg_id, msg_hash, redis)
-                ack_topic = topic.split("__")
-                ack_topic[1] = "ACK" + ack_topic[1]
-                ack_topic = "__".join(ack_topic)
-                Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
+                if result is not None:
+                    ack_topic = topic.split("__")
+                    ack_topic[1] = "ACK" + ack_topic[1]
+                    ack_topic = "__".join(ack_topic)
+                    Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
 
     @classmethod
     def write_raw(cls, interface_name, data, scope, timeout = None):

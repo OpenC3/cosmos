@@ -43,9 +43,17 @@ class TcpipClientInterface(StreamInterface):
         super().__init__(protocol_type, protocol_args)
         self.hostname = hostname
         self.write_port = ConfigParser.handle_none(write_port)
+        if self.write_port is not None:
+            self.write_port = int(self.write_port)
         self.read_port = ConfigParser.handle_none(read_port)
-        self.write_timeout = write_timeout
-        self.read_timeout = read_timeout
+        if self.read_port is not None:
+            self.read_port = int(self.read_port)
+        self.write_timeout = ConfigParser.handle_none(write_timeout)
+        if self.write_timeout is not None:
+            self.write_timeout = float(self.write_timeout)
+        self.read_timeout = ConfigParser.handle_none(read_timeout)
+        if self.read_timeout is not None:
+            self.read_timeout = float(self.read_timeout)
         if not self.read_port:
             self.read_allowed = False
         if not self.write_port:

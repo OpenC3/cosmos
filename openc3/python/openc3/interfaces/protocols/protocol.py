@@ -117,16 +117,28 @@ class Protocol:
 
     def write_details(self):
         result = { "name": self.__class__.__name__ }
-        result['write_data_input_time'] = self.write_data_input_time.isoformat()
+        if self.write_data_input_time:
+            result['write_data_input_time'] = self.write_data_input_time.isoformat()
+        else:
+            result['write_data_input_time'] = None
         result['write_data_input'] = self.write_data_input
-        result['write_data_output_time'] = self.write_data_output_time.isoformat()
+        if self.write_data_output_time:
+            result['write_data_output_time'] = self.write_data_output_time.isoformat()
+        else:
+            result['write_data_output_time'] = None
         result['write_data_output'] = self.write_data_output
         return result
 
     def read_details(self):
         result = { "name": self.__class__.__name__ }
-        result['read_data_input_time'] = self.read_data_input_time.isoformat()
+        if self.read_data_input_time:
+            result['read_data_input_time'] = self.read_data_input_time.isoformat()
+        else:
+            result['read_data_input_time'] = None
         result['read_data_input'] = self.read_data_input
-        result['read_data_output_time'] = self.read_data_output_time.isoformat()
+        if self.read_data_output_time:
+            result['read_data_output_time'] = self.read_data_output_time.isoformat()
+        else:
+            result['read_data_output_time'] = None
         result['read_data_output'] = self.read_data_output
         return result

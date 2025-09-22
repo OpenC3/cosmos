@@ -631,5 +631,61 @@ module OpenC3
         expect($buffer).to eql("\xBA\x5E\xBA\x11\x09\x01\x02\x03\x04")
       end
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(LengthProtocol, [16, 32, 16, 2, 'LITTLE_ENDIAN', 2, '0xDEADBEEF', 100, true], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('LengthProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes length protocol-specific configuration" do
+        @interface.add_protocol(LengthProtocol, [8, 16, 4, 1, 'BIG_ENDIAN', 0, nil, 200, false], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['length_bit_offset']).to eq(8)
+        expect(details['length_bit_size']).to eq(16)
+        expect(details['length_value_offset']).to eq(4)
+        expect(details['length_bytes_per_count']).to eq(1)
+        expect(details['length_endianness']).to eq(:BIG_ENDIAN)
+        expect(details['max_length']).to eq(200)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(LengthProtocol, [0, 8, 0, 1, 'BIG_ENDIAN'], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('LengthProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes length protocol-specific configuration" do
+        @interface.add_protocol(LengthProtocol, [16, 32, 8, 2, 'LITTLE_ENDIAN', 4, '0x1234', 150, true], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['length_bit_offset']).to eq(16)
+        expect(details['length_bit_size']).to eq(32)
+        expect(details['length_value_offset']).to eq(8)
+        expect(details['length_bytes_per_count']).to eq(2)
+        expect(details['length_endianness']).to eq(:LITTLE_ENDIAN)
+        expect(details['max_length']).to eq(150)
+      end
+    end
   end
 end

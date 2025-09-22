@@ -391,6 +391,77 @@ class TestFileInterface(unittest.TestCase):
             result = self.interface.convert_data_to_packet(b'\x01\x02\x03\x04')
             self.assertFalse(result.stored)
 
+    def test_details(self):
+        """Test returns correct interface details"""
+        self.interface = FileInterface("/cmd", "/tlm", "/archive", 32768, True)
+        self.interface.set_option('LABEL', ['test_label'])
+        self.interface.set_option('EXTENSION', ['.dat'])
+        self.interface.set_option('POLLING', ['TRUE'])
+        self.interface.set_option('RECURSIVE', ['TRUE'])
+        self.interface.set_option('THROTTLE', ['100'])
+        details = self.interface.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check that it includes the expected keys specific to FileInterface
+        self.assertIn('command_write_folder', details)
+        self.assertIn('telemetry_read_folder', details)
+        self.assertIn('telemetry_archive_folder', details)
+        self.assertIn('file_read_size', details)
+        self.assertIn('stored', details)
+        self.assertIn('filename', details)
+        self.assertIn('extension', details)
+        self.assertIn('label', details)
+        self.assertIn('queue_length', details)
+        self.assertIn('polling', details)
+        self.assertIn('recursive', details)
+        self.assertIn('throttle', details)
+        self.assertIn('discard_file_header_bytes', details)
+        
+        # Verify the specific values are correct
+        self.assertEqual(details['command_write_folder'], "/cmd")
+        self.assertEqual(details['telemetry_read_folder'], "/tlm")
+        self.assertEqual(details['telemetry_archive_folder'], "/archive")
+        self.assertEqual(details['file_read_size'], 32768)
+        self.assertTrue(details['stored'])
+        self.assertEqual(details['filename'], '')  # No file currently open
+        self.assertEqual(details['extension'], '.dat')
+        self.assertEqual(details['label'], 'test_label')
+        self.assertEqual(details['queue_length'], 0)  # Empty queue
+        self.assertTrue(details['polling'])
+        self.assertTrue(details['recursive'])
+        self.assertEqual(details['throttle'], 100)
+        self.assertIsNone(details['discard_file_header_bytes'])
+
+    def test_details_with_none_folders(self):
+        """Test details with None folder values"""
+        self.interface = FileInterface(None, None, None)
+        details = self.interface.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check None values are preserved
+        self.assertIsNone(details['command_write_folder'])
+        self.assertIsNone(details['telemetry_read_folder'])
+        self.assertIsNone(details['telemetry_archive_folder'])
+        self.assertEqual(details['file_read_size'], 65536)  # default value
+        self.assertTrue(details['stored'])  # default value
+
+    def test_details_with_current_file(self):
+        """Test details includes current file path when file is open"""
+        filename = os.path.join(self.telemetry_dir, 'test.bin')
+        with open(filename, 'wb') as file:
+            file.write(b'\x01\x02\x03\x04')
+            
+        self.interface = FileInterface(self.command_dir, self.telemetry_dir, self.archive_dir)
+        self.interface.file_path = filename
+        details = self.interface.details()
+        
+        # Verify the filename is included
+        self.assertEqual(details['filename'], filename)
+
 
 if __name__ == '__main__':
     unittest.main()

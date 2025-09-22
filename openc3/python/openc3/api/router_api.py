@@ -205,7 +205,7 @@ def router_target_enable(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get(name=router_name, scope=scope)
+    router = RouterModel.get_model(name=router_name, scope=scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -227,7 +227,7 @@ def router_target_disable(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get(name=router_name, scope=scope)
+    router = RouterModel.get_model(name=router_name, scope=scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False

@@ -40,7 +40,7 @@ class RouterTopic(Topic):
         while True:
             for topic, msg_id, msg_hash, redis in Topic.read_topics(RouterTopic.topics(router, scope)):
                 result = yield topic, msg_id, msg_hash, redis
-                if "CMD}ROUTER" in topic:
+                if result is not None and "CMD}ROUTER" in topic:
                     ack_topic = topic.split("__")
                     ack_topic[1] = "ACK" + ack_topic[1]
                     ack_topic = "__".join(ack_topic)

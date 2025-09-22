@@ -1068,3 +1068,87 @@ class TestCrcProtocol(unittest.TestCase):
         self.interface.write(packet)
         self.assertEqual(len(TestCrcProtocol.buffer), 20)
         self.assertEqual(TestCrcProtocol.buffer, buffer)
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "TRUE",  # strip crc
+                "ERROR",  # bad strategy
+                -32,  # bit offset
+                32,  # bit size
+                "BIG_ENDIAN",  # endianness
+                0xABCD,  # poly
+                0x1234,  # seed
+                "TRUE",  # xor
+                "FALSE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CrcProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check CRC protocol specific write fields
+        self.assertIn("write_item_name", details)
+        self.assertEqual(details["write_item_name"], "CRC")
+        self.assertIn("endianness", details)
+        self.assertEqual(details["endianness"], "BIG_ENDIAN")
+        self.assertIn("bit_offset", details)
+        self.assertEqual(details["bit_offset"], -32)
+        self.assertIn("bit_size", details)
+        self.assertEqual(details["bit_size"], 32)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "TRUE",  # strip crc
+                "DISCONNECT",  # bad strategy
+                -16,  # bit offset
+                16,  # bit size
+                "LITTLE_ENDIAN",  # endianness
+                0x1234,  # poly
+                0x5678,  # seed
+                "FALSE",  # xor
+                "TRUE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CrcProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check CRC protocol specific read fields
+        self.assertIn("strip_crc", details)
+        self.assertEqual(details["strip_crc"], True)
+        self.assertIn("bad_strategy", details)
+        self.assertEqual(details["bad_strategy"], "DISCONNECT")
+        self.assertIn("endianness", details)
+        self.assertEqual(details["endianness"], "LITTLE_ENDIAN")
+        self.assertIn("bit_offset", details)
+        self.assertEqual(details["bit_offset"], -16)
+        self.assertIn("bit_size", details)
+        self.assertEqual(details["bit_size"], 16)

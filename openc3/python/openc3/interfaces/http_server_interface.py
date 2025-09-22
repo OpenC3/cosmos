@@ -191,7 +191,7 @@ class HttpServerInterface(Interface):
         result = super().details()
         result['listen_address'] = self.listen_address
         result['port'] = self.port
-        if self.server:
+        if self.server is not None:
             result['request_queue_length'] = self.server.request_queue.qsize()
         else:
             result['request_queue_length'] = 0

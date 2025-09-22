@@ -134,7 +134,7 @@ module OpenC3
     end
 
     def write_details
-      result = {name: self.class.name.to_s.split("::")[-1]}
+      result = {'name' => self.class.name.to_s.split("::")[-1]}
       if @write_data_input_time
         result['write_data_input_time'] = @write_data_input_time.iso8601
       else
@@ -151,7 +151,7 @@ module OpenC3
     end
 
     def read_details
-      result = {name: self.class.name.to_s.split("::")[-1]}
+      result = {'name' => self.class.name.to_s.split("::")[-1]}
       if @read_data_input_time
         result['read_data_input_time'] = @read_data_input_time.iso8601
       else

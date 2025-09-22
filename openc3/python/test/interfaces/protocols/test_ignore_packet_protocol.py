@@ -281,3 +281,47 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Verify the read works
         packet = self.interface.read()
         self.assertEqual(packet.buffer, TestIgnorePacketProtocol.buffer)
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(IgnorePacketProtocol, ["SYSTEM", "META"], "READ_WRITE")
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "IgnorePacketProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check ignore packet protocol specific fields
+        self.assertIn("target_name", details)
+        self.assertEqual(details["target_name"], "SYSTEM")
+        self.assertIn("packet_name", details)
+        self.assertEqual(details["packet_name"], "META")
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(IgnorePacketProtocol, ["INST", "HEALTH_STATUS"], "READ_WRITE")
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "IgnorePacketProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check ignore packet protocol specific read fields (same as write for this protocol)
+        self.assertIn("target_name", details)
+        self.assertEqual(details["target_name"], "INST")
+        self.assertIn("packet_name", details)
+        self.assertEqual(details["packet_name"], "HEALTH_STATUS")

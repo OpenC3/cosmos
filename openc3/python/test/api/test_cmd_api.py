@@ -79,6 +79,8 @@ class TestCmdApi(unittest.TestCase):
         self.interface.target_names = ["INST"]
         self.interface.cmd_target_names = ["INST"]
         self.interface.tlm_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True}
+        self.interface.tlm_target_enabled = {"INST": True}
         model = InterfaceModel(name="INST_INT", scope="DEFAULT")
         model.create()
         InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
