@@ -197,6 +197,7 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   CriticalCmdDialog,
   CommandEditor,
+  AceEditorUtils,
   Openc3Screen,
   TopBar,
 } from '@openc3/vue-common/components'
@@ -739,7 +740,12 @@ export default {
           }
         }
         if (this.disableCommandValidation) {
-          msg += '", validate: false)'
+          const language = AceEditorUtils.getDefaultScriptingLanguage()
+          if (language === 'python') {
+            msg += '", validate=False)'
+          } else {
+            msg += '", validate: false)'
+          }
         } else {
           msg += '")'
         }

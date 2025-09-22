@@ -65,28 +65,26 @@ async function runScript(page, utils, filename, callback = async () => {}) {
 }
 
 test('opens a target file', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  put_target_file("INST/test.txt", "file contents")
-  file = get_target_file("INST/test.txt")
-  puts file.read
-  file.delete
-  delete_target_file("INST/test.txt")
-  get_target_file("INST/test.txt") # Causes error
-
-  file = get_target_file("INST/screens/web.txt")
-  web = file.read
-  web += 'LABEL "TEST"'
-  put_target_file("INST/screens/web.txt", web)
-  file = get_target_file("INST/screens/web.txt")
-  if file.read.include?("TEST")
-    puts "Edited web"
-  end
-  file = get_target_file("INST/screens/web.txt", original: true)
-  if !file.read.include?("TEST")
-    puts "Original web"
-  end
-  delete_target_file("INST/screens/web.txt") # Cleanup modified
-  `)
+  await page.locator('textarea')
+    .fill(`put_target_file("INST/test.txt", "file contents")
+file = get_target_file("INST/test.txt")
+puts file.read
+file.delete
+delete_target_file("INST/test.txt")
+get_target_file("INST/test.txt") # Causes error
+file = get_target_file("INST/screens/web.txt")
+web = file.read
+web += 'LABEL "TEST"'
+put_target_file("INST/screens/web.txt", web)
+file = get_target_file("INST/screens/web.txt")
+if file.read.include?("TEST")
+  puts "Edited web"
+end
+file = get_target_file("INST/screens/web.txt", original: true)
+if !file.read.include?("TEST")
+  puts "Original web"
+end
+delete_target_file("INST/screens/web.txt") # Cleanup modified`)
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
@@ -122,9 +120,9 @@ test('opens a target file', async ({ page, utils }) => {
 })
 
 test('runs a script', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`
-  script_run("INST/procedures/disconnect.rb")
-  `)
+  await page
+    .locator('textarea')
+    .fill(`script_run("INST/procedures/disconnect.rb")`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',

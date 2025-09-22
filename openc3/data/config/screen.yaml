@@ -19,7 +19,7 @@ SCREEN:
       description: Number of seconds between screen updates
       values: '[0-9]*\.?[0-9]+'
   example: |
-    SCREEN AUTO AUTO 1.0 FIXED
+    SCREEN AUTO AUTO 1.0
 END:
   summary: Indicates the close of a layout widget
   description: All layout widgets must be closed to properly identify where they
