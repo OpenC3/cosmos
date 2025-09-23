@@ -23,14 +23,29 @@
 require 'pg'
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
+# require 'openc3/script/extract'
+# require 'openc3/utilities/authorization'
+# require 'openc3/api/tlm_api'
+OpenC3.require_file 'openc3/api/api'
+
+module OpenC3
+  class LocalApi
+    # include Extract
+    # include Authorization
+    include Api
+  end
+end
 
 class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
-  def initialize(streaming_api, collection, max_batch_size = 100, scope:)
+  def initialize(streaming_api, collection, max_batch_size = 3600, scope:, token:)
     super(streaming_api, collection, max_batch_size)
     @thread_mode = :SETUP
     @scope = scope
+    @token = token
+    @@conn_mutex = Mutex.new
+    @local_api = OpenC3::LocalApi.new
   end
 
   def thread_body
@@ -105,18 +120,13 @@ class LoggedStreamingThread < StreamingThread
   def tsdb_thread_body(objects)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     done = false
-    results = []
 
     unless item_objects_by_topic.empty?
-      done = stream_items(item_objects_by_topic, results, topics, offsets)
+      done = stream_items(item_objects_by_topic, topics, offsets)
     end
     unless packet_objects_by_topic.empty?
-      done = stream_packets(packet_objects_by_topic, results, topics, offsets)
+      done = stream_packets(packet_objects_by_topic, topics, offsets)
     end
-
-    # Transmit less than a batch if we have that
-    @streaming_api.transmit_results(results)
-    results.clear
 
     if done # We reached the end time
       OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
@@ -128,12 +138,27 @@ class LoggedStreamingThread < StreamingThread
     @thread_mode = :STREAM
   end
 
-  def stream_items(objects_by_topic, results, topics, offsets)
+  def stream_items(objects_by_topic, topics, offsets)
     tables = {}
     names = []
+    item_keys = []
+    items = []
 
     start_time = nil
     end_time = nil
+
+    objects_by_topic.each do |topic, objects|
+      break if @cancel_thread
+      objects.each do |object|
+        _type, _cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
+        items << "#{tgt}__#{pkt}__#{item}__#{value_type}"
+      end
+    end
+
+    # Figure out what is actually available
+    available = @local_api.get_tlm_available(items, scope: @scope, token: @token)
+
+    item_index = 0
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
 
@@ -154,27 +179,27 @@ class LoggedStreamingThread < StreamingThread
           end
         end
 
-        if object.item_key.nil?
-          names << "*"
+        table_index = tables.find_index {|k,v| k == table_name }
+        item_keys << object.item_key
+        item = available[item_index]
+        tgt, pkt, item_name, value_type = item.split('__')
+        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
+        # NOTE: Semicolon added as it appears invalid
+        item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
+        case value_type
+        when 'WITH_UNITS'
+          names << "\"T#{table_index}.#{item_name}__U\""
+        when 'FORMATTED'
+          names << "\"T#{table_index}.#{item_name}__F\""
+        when 'CONVERTED'
+          names << "\"T#{table_index}.#{item_name}__C\""
         else
-          index = tables.find_index {|k,v| k == table_name }
-          type, cmd_tlm, tgt, pkt, item_name, value_type = object.item_key.split('__')
-          # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-          # NOTE: Semicolon added as it appears invalid
-          item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
-          case value_type
-          when 'WITH_UNITS'
-            names << "\"T#{index}.#{item_name}__U\""
-          when 'FORMATTED'
-            names << "\"T#{index}.#{item_name}__F\""
-          when 'CONVERTED'
-            names << "\"T#{index}.#{item_name}__C\""
-          else
-            names << "\"T#{index}.#{item_name}\""
-          end
+          names << "\"T#{table_index}.#{item_name}\""
         end
+        item_index += 1
       end
     end
+    names << "T0.timestamp"
 
     # Build the SQL query
     query = "SELECT #{names.join(", ")} FROM "
@@ -185,13 +210,16 @@ class LoggedStreamingThread < StreamingThread
         query += "ASOF JOIN #{table_name} as T#{index} "
       end
     end
-    query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+    query += "WHERE T0.timestamp >= #{(start_time / 1000.0).to_i}"
+    if end_time
+      query += " AND T0.timestamp < #{(end_time / 1000.0).to_i}"
+    end
 
-    results = []
-    offset = 0
+    done = false
+    min = 0
+    max = @max_batch_size
     retry_count = 0
-    while true
-      break if @cancel_thread
+    while !done and !@cancel_thread
       begin
         @@conn_mutex.synchronize do
           @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
@@ -205,19 +233,26 @@ class LoggedStreamingThread < StreamingThread
             # Try playback with P_2.2,2 and P(:6;): from the DEMO
             @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
           end
-          query += " OFFSET #{offset} LIMIT #{@max_batch_size}"
-          Logger.debug("QuestDB stream: #{query}")
-          result = @@conn.exec(query)
+          # QuestDB only uses the LIMIT keyword as a range
+          # See https://questdb.com/docs/reference/sql/limit/
+          query_offset = "#{query} LIMIT #{min}, #{max}"
+          puts "QuestDB query:#{query_offset}"
+          OpenC3::Logger.debug("QuestDB query: #{query_offset}")
+          results = []
+          result = @@conn.exec(query_offset)
+          min += @max_batch_size
+          max += @max_batch_size
           if result.nil? or result.ntuples == 0
-            break
+            done = true
           else
             result.each do |tuples|
-              entry = {}
-              tuples.each do |tuple|
+              entry = { "__type" => "items" }
+              tuples.each_with_index do |tuple, index|
                 if tuple[0] == 'timestamp'
-                  entry['__time'] = tuple[1].to_i
+                  # tuple[1] is a Ruby time object which we convert to nanoseconds
+                  entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
                 else
-                  entry[tuple[0]] = tuple[1]
+                  entry[item_keys[index]] = tuple[1]
                 end
               end
               results << entry
@@ -232,8 +267,8 @@ class LoggedStreamingThread < StreamingThread
           # After the 5th retry just raise the error
           raise "Error querying QuestDB: #{e.message}"
         end
-        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-        Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
+        OpenC3::Logger.warn("QuestDB: Retrying due to error: #{e.message}")
+        OpenC3::Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
         @@conn_mutex.synchronize do
           if @@conn and !@@conn.finished?
             @@conn.finish()
@@ -244,20 +279,11 @@ class LoggedStreamingThread < StreamingThread
         retry
       end
     end
-    return if @cancel_thread
-
-    # Transmit less than a batch if we have that
-    @streaming_api.transmit_results(results)
-    results.clear
-
-    if done # We reached the end time
-      OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
-      finish(@collection.objects)
-      return
+    if end_time
+      return true
+    else
+      return false
     end
-
-    # Switch to Redis
-    @thread_mode = :STREAM
   end
 
   # Transfers item to realtime thread when complete (if continued)

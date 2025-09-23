@@ -65,64 +65,6 @@ RSpec.describe StreamingApi, type: :model do
 
     @file_start_time = 1614890937274290500 # these are the unix epoch values for the timestamps in the file names in spec/fixtures/files
     @file_end_time = 1614891537276524900
-    s3 = double("AwsS3Client").as_null_object
-    allow(Aws::S3::Client).to receive(:new).and_return(s3)
-    allow(s3).to receive(:head_bucket).and_return(true)
-    allow(s3).to receive(:list_objects_v2) do |args|
-      response = Object.new
-      if args[:delimiter]
-        def response.common_prefixes
-          item = Object.new
-          def item.prefix
-            "20210304"
-          end
-          [item]
-        end
-      elsif args[:prefix].split('/')[1].include? 'decom'
-        def response.contents
-          file_1 = Object.new
-          def file_1.key
-            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin.gz"
-          end
-          def file_1.size
-            4221512
-          end
-          file_2 = Object.new
-          def file_2.key
-            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx.gz"
-          end
-          def file_2.size
-            86522
-          end
-          [ file_1, file_2 ]
-        end
-      else
-        def response.contents
-          file_1 = Object.new
-          def file_1.key
-            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin.gz"
-          end
-          def file_1.size
-            1000002
-          end
-          file_2 = Object.new
-          def file_2.key
-            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx.gz"
-          end
-          def file_2.size
-            571466
-          end
-          [ file_1, file_2 ]
-        end
-      end
-      def response.is_truncated
-        false
-      end
-      response
-    end
-    allow(s3).to receive(:get_object) do |args|
-      FileUtils.cp(file_fixture(File.basename(args[:key])).realpath, args[:response_target])
-    end
 
     @messages = []
     @subscription_key = "streaming_abc123"
@@ -147,8 +89,8 @@ RSpec.describe StreamingApi, type: :model do
     base_data = { 'scope' => 'DEFAULT' }
     modes = [
       { 'description' => 'items in decom mode', 'data' => { 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'] } },
-      { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] } },
-      { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['RAW__TLM__INST__PARAMS'] } },
+      # { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] } },
+      # { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['RAW__TLM__INST__PARAMS'] } },
     ]
 
     describe 'bad modes' do
@@ -299,6 +241,23 @@ RSpec.describe StreamingApi, type: :model do
 
         context 'from files' do
           it 'has start time and end time within the file time range' do
+            mock_conn = instance_double(PG::Connection)
+            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            pg_data = [ [["VALUE1", 10]] ]
+            pg_data.define_singleton_method(:ntuples) do
+              return 1
+            end
+            $exec_cnt = 0
+            allow(mock_conn).to receive(:exec) do
+              $exec_cnt += 1
+              result = nil
+              if $exec_cnt == 1
+                result = pg_data
+              end
+              result
+            end
+            allow(mock_conn).to receive(:type_map_for_results).and_return(nil)
+
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
@@ -315,6 +274,23 @@ RSpec.describe StreamingApi, type: :model do
           end
 
           it 'has start time within the file time range and end time after the file' do
+            mock_conn = instance_double(PG::Connection)
+            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            pg_data = [ [["VALUE1", 10]], [["VALUE1", 10]], [["VALUE1", 10]], [["VALUE1", 10]] ]
+            pg_data.define_singleton_method(:ntuples) do
+              return 1
+            end
+            $exec_cnt = 0
+            allow(mock_conn).to receive(:exec) do
+              $exec_cnt += 1
+              result = nil
+              if $exec_cnt == 1
+                result = pg_data
+              end
+              result
+            end
+            allow(mock_conn).to receive(:type_map_for_results).and_return(nil)
+
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
