@@ -133,18 +133,19 @@ module OpenC3
       end
 
       it "processes a string" do
-        expect(@api.tlm_formatted("INST HEALTH_STATUS TEMP1")).to eql "-100.000"
+        expect(@api.tlm_formatted("INST HEALTH_STATUS TEMP1")).to eql "-100.000 C"
       end
 
       it "returns the value using LATEST" do
-        expect(@api.tlm_formatted("INST LATEST TEMP1")).to eql "-100.000"
+        expect(@api.tlm_formatted("INST LATEST TEMP1")).to eql "-100.000 C"
       end
 
       it "processes parameters" do
-        expect(@api.tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")).to eql "-100.000"
+        expect(@api.tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")).to eql "-100.000 C"
       end
     end
 
+    # DEPRECATED
     describe "tlm_with_units" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_with_units)
@@ -177,21 +178,21 @@ module OpenC3
       it "processes a string" do
         expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :CONVERTED)).to eql(-100.0)
         expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :FORMATTED)).to eql "-100.000"
+        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :FORMATTED)).to eql "-100.000 C"
         expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :WITH_UNITS)).to eql "-100.000 C"
       end
 
       it "returns the value using LATEST" do
         expect(@api.tlm_variable("INST LATEST TEMP1", :CONVERTED)).to eql(-100.0)
         expect(@api.tlm_variable("INST LATEST TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST LATEST TEMP1", :FORMATTED)).to eql "-100.000"
+        expect(@api.tlm_variable("INST LATEST TEMP1", :FORMATTED)).to eql "-100.000 C"
         expect(@api.tlm_variable("INST LATEST TEMP1", :WITH_UNITS)).to eql "-100.000 C"
       end
 
       it "processes parameters" do
         expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :CONVERTED)).to eql(-100.0)
         expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :FORMATTED)).to eql "-100.000"
+        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :FORMATTED)).to eql "-100.000 C"
         expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :WITH_UNITS)).to eql "-100.000 C"
       end
 

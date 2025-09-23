@@ -40,7 +40,7 @@ module OpenC3
     # check('target_name packet_name item_name > 1')
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
       _check(*args, scope: scope) { |tgt, pkt, item| tlm(tgt, pkt, item, type: type, scope: scope, token: token) }
     end
@@ -53,8 +53,9 @@ module OpenC3
       check(*args, type: :FORMATTED, scope: scope, token: token)
     end
 
+    # @deprecated
     def check_with_units(*args, scope: $openc3_scope, token: $openc3_token)
-      check(*args, type: :WITH_UNITS, scope: scope, token: token)
+      check(*args, type: :FORMATTED, scope: scope, token: token)
     end
 
     # Executes the passed method and expects an exception to be raised.
@@ -162,7 +163,7 @@ module OpenC3
     # wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def wait(*args, type: :CONVERTED, quiet: false, scope: $openc3_scope, token: $openc3_token)
       time_diff = nil
 
@@ -301,7 +302,7 @@ module OpenC3
     # wait_check('target_name packet_name item_name > 1', timeout, polling_rate)
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def wait_check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token, &block)
       target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate = _wait_check_process_args(args)
       start_time = Time.now.sys

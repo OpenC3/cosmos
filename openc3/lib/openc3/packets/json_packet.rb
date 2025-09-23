@@ -77,7 +77,7 @@ module OpenC3
         end
       end
       if reduced_type
-        raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported" if value_type == :WITH_UNITS or value_type == :FORMATTED
+        raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported" if value_type == :FORMATTED
         if value_type == :CONVERTED
           case reduced_type
           when :AVG
@@ -104,13 +104,6 @@ module OpenC3
         when :MAX
           value = @json_hash["#{name}__X"]
         end
-        if value
-          value = value[array_index] if array_index
-          return value
-        end
-      end
-      if value_type == :WITH_UNITS
-        value = @json_hash["#{name}__U"]
         if value
           value = value[array_index] if array_index
           return value
@@ -197,10 +190,8 @@ module OpenC3
           postfix = ''
         when :CONVERTED
           postfix = 'C'
-        when :FORMATTED
+        when :FORMATTED, :WITH_UNITS
           postfix = 'F'
-        when :WITH_UNITS
-          postfix = 'U'
         end
         case reduced_type
         when :MIN

@@ -74,7 +74,7 @@ WHITELIST.extend(
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 # @return [Object] The telemetry value formatted as requested
 def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(args, "tlm", cache_timeout=cache_timeout, scope=scope)
@@ -108,7 +108,7 @@ def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", cache_timeout=cache_timeout, scope=scope)
     authorize(
@@ -125,7 +125,7 @@ def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
 # @param target_name [String] Target name of the packet
 # @param packet_name [String] Packet name of the packet
 # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
     authorize(
         permission="tlm_set",
@@ -247,7 +247,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
         target_name (str) Name of the target
         packet_name (str) Name of the packet
         stale_time (int) Time in seconds from Time.now that packet will be marked stale
-        type (str) Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+        type (str) Types returned, :RAW, :CONVERTED (default), :FORMATTED
 
     Return:
         (List[String, Object, Symbol|None]) Returns an Array consisting of

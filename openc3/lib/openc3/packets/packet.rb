@@ -114,7 +114,7 @@ module OpenC3
     attr_accessor :restricted
 
     # Valid format types
-    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
+    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Creates a new packet by initializing the attributes.
@@ -595,9 +595,10 @@ module OpenC3
     #   Must be one of {VALUE_TYPES}
     # @param buffer (see Structure#read_item)
     # @param given_raw Given raw value to optimize
-    # @return The value. :FORMATTED and :WITH_UNITS values are always returned
-    #   as Strings. :RAW values will match their data_type. :CONVERTED values
-    #   can be any type.
+    # @return The value
+    #   :FORMATTED values are always returned as Strings
+    #   :RAW values will match their data_type
+    #   :CONVERTED values can be any type
     def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
       if given_raw
         # Must clone this since value is returned
@@ -613,7 +614,7 @@ module OpenC3
       case value_type
       when :RAW
         # Done above
-      when :CONVERTED, :FORMATTED, :WITH_UNITS
+      when :CONVERTED, :FORMATTED
         if item.read_conversion
           using_cached_value = false
 
@@ -703,7 +704,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED"
       end
       return value
     end
@@ -763,7 +764,7 @@ module OpenC3
             raise e
           end
         end
-      when :FORMATTED, :WITH_UNITS
+      when :FORMATTED
         raise ArgumentError, "Invalid value type on write: #{value_type}"
       else
         # Trim potentially long string (like if they accidentally pass buffer as value_type)
@@ -773,7 +774,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED"
       end
       if @read_conversion_cache
         synchronize() do
@@ -1288,7 +1289,6 @@ module OpenC3
         given_raw = json_hash[item.name]
         json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
         json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
-        json_hash["#{item.name}__U"] = read_item(item, :WITH_UNITS, @buffer, given_raw) if item.units
         limits_state = item.limits.state
         json_hash["#{item.name}__L"] = limits_state if limits_state
       end
@@ -1452,7 +1452,7 @@ module OpenC3
           value = value.to_s
         end
       end
-      value << ' ' << item.units if value_type == :WITH_UNITS and item.units
+      value << ' ' << item.units if item.units
       value
     end
 
