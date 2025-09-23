@@ -161,7 +161,7 @@ module OpenC3
 
       before do
         allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
-        allow(processor).to receive(:cmd_no_hazardous_check)
+        allow(processor).to receive(:cmd)
         processor.state = 'RELEASE'
       end
 
@@ -184,9 +184,9 @@ module OpenC3
         processor.process_queued_commands
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
-        expect(processor).to have_received(:cmd_no_hazardous_check)
+        expect(processor).to have_received(:cmd)
           .with(command1['value'], queue: false, scope: scope, token: 'test_token')
-        expect(processor).to have_received(:cmd_no_hazardous_check)
+        expect(processor).to have_received(:cmd)
           .with(command2['value'], queue: false, scope: scope, token: 'test_token')
       end
 
@@ -199,16 +199,16 @@ module OpenC3
         processor.process_queued_commands
 
         expect(Store).to have_received(:bzpopmin).once
-        expect(processor).not_to have_received(:cmd_no_hazardous_check)
+        expect(processor).not_to have_received(:cmd)
       end
 
-      it 'handles errors and continues processing when cmd_no_hazardous_check fails' do
+      it 'handles errors and continues processing when cmd fails' do
         allow(Store).to receive(:bzpopmin) do
           processor.state = 'HOLD' if processor.state == 'RELEASE'
           ["#{scope}:QUEUE", command1.to_json, 0]
         end
         allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
-        allow(processor).to receive(:cmd_no_hazardous_check).and_raise(StandardError.new('Command failed'))
+        allow(processor).to receive(:cmd).and_raise(StandardError.new('Command failed'))
         expect(logger).to receive(:error).with(/QueueProcessor failed to process command from queue/)
 
         processor.process_queued_commands

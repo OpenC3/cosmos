@@ -23,6 +23,7 @@
 require 'spec_helper'
 require 'openc3'
 require 'openc3/script'
+load 'openc3/script/script.rb' # load to prevent prompt_for_hazardous overrides
 require 'openc3/api/api'
 require 'openc3/models/target_model'
 require 'openc3/microservices/interface_microservice'
