@@ -17,7 +17,10 @@
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
-from openc3.script.storage import _get_storage_file
+from openc3.script.storage import (
+    _get_storage_file,
+    _get_download_url,
+)
 from openc3.models.script_status_model import ScriptStatusModel
 from openc3.top_level import get_class_from_module, add_to_search_path
 from openc3.utilities.string import (
@@ -1480,7 +1483,7 @@ setattr(openc3.script, "local_screen", local_screen)
 
 
 def download_file(path, scope=OPENC3_SCOPE):
-    url = openc3.script._get_download_url(path, scope=scope)
+    url = _get_download_url(path, scope=scope)
     running_script_anycable_publish(
         f"running-script-channel:{RunningScript.instance.id()}",
         {"type": "downloadfile", "filename": os.path.basename(path), "url": url},
