@@ -105,7 +105,7 @@ import time
 import sys
 import traceback
 import threading
-from datetime import datetime, timezone
+from datetime import datetime as cdatetime, timezone
 from threading import Lock
 from openc3.environment import *
 from openc3.utilities.store import Store
@@ -270,7 +270,7 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = datetime.now(timezone.utc).strftime(
+        self.output_time = cdatetime.now(timezone.utc).strftime(
             RunningScript.STRFTIME_FORMAT
         )
         self.output_time_value = time.time()
@@ -409,7 +409,7 @@ class RunningScript:
     def do_stop(self):
         if RunningScript.run_thread:
             self.stop = True
-            self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+            self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
             self.update_running_script_store("stopped")
             kill_thread(self, RunningScript.run_thread)
             RunningScript.run_thread = None
@@ -649,7 +649,7 @@ class RunningScript:
 
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
-            datetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+            cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
             + " (SCRIPTRUNNER): "
             + string
         )
@@ -673,7 +673,7 @@ class RunningScript:
             filename = self.script_status.current_filename
         if not line_number:
             line_number = self.script_status.line_no
-        self.output_time = datetime.now(timezone.utc).strftime(
+        self.output_time = cdatetime.now(timezone.utc).strftime(
             RunningScript.STRFTIME_FORMAT
         )
         self.output_time_value = time.time()
@@ -882,7 +882,7 @@ class RunningScript:
         )
 
     def mark_crashed(self):
-        self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
         self.update_running_script_store("crashed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -895,7 +895,7 @@ class RunningScript:
         )
 
     def mark_completed(self):
-        self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
         self.update_running_script_store("completed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -1371,7 +1371,7 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
     if complete:
         RunningScript.instance.script_status.state = 'completed'
-        RunningScript.instance.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        RunningScript.instance.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
         RunningScript.instance.script_status.update(queued = True)
         raise StopScript
 

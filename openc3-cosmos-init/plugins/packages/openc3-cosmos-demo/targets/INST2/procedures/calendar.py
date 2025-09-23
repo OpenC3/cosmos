@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+import datetime
 
 tl = create_timeline("PythonTL", color="#FF0000")
 print(tl) #=> {'name': 'PythonTL', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737129062249843763}
@@ -11,9 +11,9 @@ print(tls[0])  #=> {'name': 'PythonTL', 'color': '#FF0000', 'execute': True, 'sh
 set_timeline_color("PythonTL", "#4287f5")
 print(get_timeline("PythonTL")) #=> {'name': 'PythonTL', 'color': '#4287f5', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737129508391137136}
 
-now = datetime.now(timezone.utc)
-start = now + timedelta(hours=1)
-stop = start + timedelta(hours=1)
+now = datetime.datetime.now(datetime.timezone.utc)
+start = now + datetime.timedelta(hours=1)
+stop = start + datetime.timedelta(hours=1)
 act1 = create_timeline_activity("PythonTL", kind="reserve", start=start, stop=stop)
 print(act1)  # =>
 # {'name': 'PythonTL', 'updated_at': 1737129305507111708, 'start': 1737132902, 'stop': 1737136502,
@@ -27,8 +27,8 @@ print(act2) #=>
 #  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
 #  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
-start = now + timedelta(hours=2)
-stop = start + timedelta(hours=1)
+start = now + datetime.timedelta(hours=2)
+stop = start + datetime.timedelta(hours=1)
 act3 = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop,
   data={'environment': [{'key': "USER", 'value': "JASON"}], 'script': "INST2/procedures/checks.py"})
 print(act3) #=>
@@ -45,7 +45,7 @@ print(act) #=>
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 
 # Get activities in the past ... should be none
-tlas = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now)
+tlas = get_timeline_activities("PythonTL", start=now - datetime.timedelta(hours=2), stop=now)
 print(tlas)
 print(type(tlas))
 check_expression(f"{len(tlas)} == 0")
@@ -54,8 +54,8 @@ tlas = get_timeline_activities("PythonTL")
 check_expression(f"{len(tlas)} == 3")
 
 # Create and delete a new activity
-start = start + timedelta(hours=2)
-stop = start + timedelta(minutes=30)
+start = start + datetime.timedelta(hours=2)
+stop = start + datetime.timedelta(minutes=30)
 act = create_timeline_activity("PythonTL", kind="reserve", start=start, stop=stop)
 tlas = get_timeline_activities("PythonTL")
 check_expression(f"{len(tlas)} == 4")
