@@ -614,7 +614,7 @@ module OpenC3
       case value_type
       when :RAW
         # Done above
-      when :CONVERTED, :FORMATTED
+      when :CONVERTED, :FORMATTED, :WITH_UNITS
         if item.read_conversion
           using_cached_value = false
 
@@ -764,7 +764,7 @@ module OpenC3
             raise e
           end
         end
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         raise ArgumentError, "Invalid value type on write: #{value_type}"
       else
         # Trim potentially long string (like if they accidentally pass buffer as value_type)
@@ -1288,7 +1288,7 @@ module OpenC3
       @sorted_items.each do |item|
         given_raw = json_hash[item.name]
         json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
+        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
         limits_state = item.limits.state
         json_hash["#{item.name}__L"] = limits_state if limits_state
       end
@@ -1451,8 +1451,8 @@ module OpenC3
         else
           value = value.to_s
         end
+        value << ' ' << item.units if item.units
       end
-      value << ' ' << item.units if item.units
       value
     end
 

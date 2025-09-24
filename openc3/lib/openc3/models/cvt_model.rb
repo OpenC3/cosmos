@@ -339,7 +339,6 @@ module OpenC3
         hash[item_name] = value
         hash["#{item_name}__C"] = value
         hash["#{item_name}__F"] = value.to_s
-        hash["#{item_name}__U"] = value.to_s
       when :RAW
         hash[item_name] = value
       when :CONVERTED
