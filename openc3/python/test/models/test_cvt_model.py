@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -35,7 +35,7 @@ class TestCvtModel(unittest.TestCase):
         json_hash = {}
         json_hash["TEMP1"] = 1
         json_hash["TEMP1__C"] = 2
-        json_hash["TEMP1__F"] = "2.00"
+        json_hash["TEMP1__F"] = "2.00 C"
         json_hash["TEMP1__U"] = "2.00 C"
         json_hash["TEMP1__L"] = "GREEN"
         if rxtime is None:
@@ -56,7 +56,7 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
-            "2.00",
+            "2.00 C",
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS", scope="DEFAULT"),
@@ -91,7 +91,7 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("TGT", "PKT", "ARY", type="FORMATTED", scope="DEFAULT"),
-            "['0x2', '0x4']",
+            "['0x2 V', '0x4 V']",
         )
         self.assertEqual(
             CvtModel.get_item("TGT", "PKT", "ARY", type="WITH_UNITS", scope="DEFAULT"),
@@ -129,7 +129,7 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
-            "2.00",
+            "2.00 C",
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS", scope="DEFAULT"),
@@ -285,7 +285,7 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][1], "GREEN")
         self.assertEqual(result[1][0], 2)
         self.assertEqual(result[1][1], "GREEN")
-        self.assertEqual(result[2][0], "2.00")
+        self.assertEqual(result[2][0], "2.00 C")
         self.assertEqual(result[2][1], "GREEN")
         self.assertEqual(result[3][0], "2.00 C")
         self.assertEqual(result[3][1], "GREEN")
@@ -345,7 +345,7 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
-            "2.00",
+            "2.00 C",
         )
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type="FORMATTED", scope="DEFAULT")
         self.assertEqual(
@@ -354,7 +354,7 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS", scope="DEFAULT"),
-            "2.00 C",
+            "0",
         )
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type="WITH_UNITS", scope="DEFAULT")
         self.assertEqual(
@@ -440,7 +440,7 @@ class TestCvtModel(unittest.TestCase):
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT")
         self.assertEqual(
             CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
-            "2.00",
+            "2.00 C",
         )
         # Once the last override is gone the key should be cleared
         self.assertIsNone(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS"))
@@ -493,7 +493,7 @@ class TestCvtModel(unittest.TestCase):
             scope="DEFAULT",
         )
         overrides = CvtModel.overrides()
-        self.assertEqual(len(overrides), 10)
+        self.assertEqual(len(overrides), 8)
         self.assertEqual(
             overrides[0],
             (
@@ -548,18 +548,6 @@ class TestCvtModel(unittest.TestCase):
             (
                 {
                     "target_name": "INST",
-                    "packet_name": "HEALTH_STATUS",
-                    "item_name": "TEMP2",
-                    "value_type": "WITH_UNITS",
-                    "value": "2",
-                }
-            ),
-        )
-        self.assertEqual(
-            overrides[5],
-            (
-                {
-                    "target_name": "INST",
                     "packet_name": "ADCS",
                     "item_name": "POSX",
                     "value_type": "RAW",
@@ -568,7 +556,7 @@ class TestCvtModel(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            overrides[6],
+            overrides[5],
             (
                 {
                     "target_name": "INST",
@@ -580,7 +568,7 @@ class TestCvtModel(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            overrides[7],
+            overrides[6],
             (
                 {
                     "target_name": "INST",
@@ -592,19 +580,7 @@ class TestCvtModel(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            overrides[8],
-            (
-                {
-                    "target_name": "INST",
-                    "packet_name": "ADCS",
-                    "item_name": "POSX",
-                    "value_type": "WITH_UNITS",
-                    "value": "3",
-                }
-            ),
-        )
-        self.assertEqual(
-            overrides[9],
+            overrides[7],
             (
                 {
                     "target_name": "SYSTEM",

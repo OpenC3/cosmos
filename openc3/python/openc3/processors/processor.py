@@ -26,7 +26,7 @@ class Processor:
         value_type = value_type.upper()
         self.value_type = value_type
         if self.value_type not in Packet.VALUE_TYPES:
-            raise ValueError(f"value_type must be RAW, CONVERTED, FORMATTED, or WITH_UNITS. Is {self.value_type}")
+            raise ValueError(f"value_type must be RAW, CONVERTED, or FORMATTED. Is {self.value_type}")
 
         self.results = {}
 

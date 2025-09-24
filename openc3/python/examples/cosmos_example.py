@@ -18,7 +18,6 @@ from openc3.script import *
 print(tlm("INST HEALTH_STATUS TEMP1"))
 print(tlm_raw("INST HEALTH_STATUS TEMP1"))
 print(tlm_formatted("INST HEALTH_STATUS TEMP1"))
-print(tlm_with_units("INST HEALTH_STATUS TEMP1"))
 print(set_tlm("INST HEALTH_STATUS TEMP1 = 5"))
 print(get_tlm_packet("INST", "HEALTH_STATUS"))
 print(

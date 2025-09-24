@@ -55,11 +55,6 @@
             <v-col>{{ formattedValue }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="1"></v-col>
-            <v-col cols="4" class="label">With Units Value</v-col>
-            <v-col>{{ unitsValue }}</v-col>
-          </v-row>
-          <v-row no-gutters>
             <v-col cols="5" class="label">Bit Offset</v-col>
             <v-col>{{ details.bit_offset }}</v-col>
           </v-row>
@@ -244,7 +239,6 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
                 `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
                 `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
-                `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
                 for (let value of values) {

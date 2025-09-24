@@ -53,7 +53,7 @@ module OpenC3
         expect(p.read("TEMP1", :RAW)).to eql 0
         expect(p.read("TEMP1", :CONVERTED)).to eql(-100.0)
         expect(p.read("TEMP1")).to eql(-100.0)
-        expect(p.read("TEMP1", :FORMATTED)).to eql '-100.000'
+        expect(p.read("TEMP1", :FORMATTED)).to eql '-100.000 C'
         expect(p.read("TEMP1", :WITH_UNITS)).to eql '-100.000 C'
       end
 
@@ -115,13 +115,13 @@ module OpenC3
         expect(p.read("ARY", :RAW)).to eql [0,1,2,3,4,5,6,7,8,9]
         expect(p.read("ARY", :CONVERTED)).to eql [0,1,2,3,4,5,6,7,8,9]
         expect(p.read("ARY")).to eql [0,1,2,3,4,5,6,7,8,9]
-        expect(p.read("ARY", :FORMATTED)).to eql '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+        expect(p.read("ARY", :FORMATTED)).to eql ['0 V', '1 V', '2 V', '3 V', '4 V', '5 V', '6 V', '7 V', '8 V', '9 V']
         expect(p.read("ARY", :WITH_UNITS)).to eql ['0 V', '1 V', '2 V', '3 V', '4 V', '5 V', '6 V', '7 V', '8 V', '9 V']
         (0..9).each do |i|
           expect(p.read("ARY[#{i}]", :RAW)).to eql i
           expect(p.read("ARY[#{i}]", :CONVERTED)).to eql i
           expect(p.read("ARY[#{i}]")).to eql i
-          expect(p.read("ARY[#{i}]", :FORMATTED)).to eql i.to_s
+          expect(p.read("ARY[#{i}]", :FORMATTED)).to eql "#{i} V"
           expect(p.read("ARY[#{i}]", :WITH_UNITS)).to eql "#{i} V"
         end
       end
@@ -282,9 +282,9 @@ module OpenC3
         all = p.read_all_names(:CONVERTED)
         expect(all).to eql %w(CCSDSTYPE CCSDSSHF CCSDSSEQFLAGS TEMP1 TEMP2 TEMP3 TEMP4 COLLECT_TYPE ASCIICMD GROUND1STATUS GROUND2STATUS)
         all = p.read_all_names(:FORMATTED)
-        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4)
+        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
         all = p.read_all_names(:WITH_UNITS)
-        expect(all).to eql %w(TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
+        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
 
         all = p.read_all_names(:RAW, :AVG)
         expect(all).to eql %w(TEMP1 TEMP2)

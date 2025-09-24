@@ -68,6 +68,7 @@ def check_formatted(*args, scope="DEFAULT"):
     return _check(*args, type="FORMATTED", scope=scope)
 
 
+# DEPRECATED
 def check_with_units(*args, scope="DEFAULT"):
     """Check the formatted with units value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
@@ -77,7 +78,7 @@ def check_with_units(*args, scope="DEFAULT"):
     or
     check('target_name packet_name item_name > 1')
     """
-    return _check(*args, type="WITH_UNITS", scope=scope)
+    return _check(*args, type="FORMATTED", scope=scope)
 
 
 def check_exception(method_name, *args, **kwargs):

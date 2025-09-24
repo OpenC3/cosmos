@@ -193,9 +193,6 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
     'INST HEALTH_STATUS COLLECTS = 10, type: :FORMATTED',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :WITH_UNITS',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
     'INST HEALTH_STATUS DURATION = 10, type: :CONVERTED',
   )
 
@@ -210,9 +207,6 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
   )
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSFORMATTED10',
-  )
-  await expect(page.locator('.v-dialog >> tbody')).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSWITH_UNITS10',
   )
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',

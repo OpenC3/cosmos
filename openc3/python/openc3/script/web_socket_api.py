@@ -505,7 +505,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     #   item_key is an optional shortened name to return the data as
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
@@ -513,7 +513,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def add(
         self,
@@ -547,14 +547,14 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
     #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def remove(self, items=None, packets=None, scope=OPENC3_SCOPE):
         data_hash = {}

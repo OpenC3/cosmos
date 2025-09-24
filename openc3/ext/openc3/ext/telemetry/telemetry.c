@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -139,9 +139,10 @@ static VALUE packet_and_item(VALUE self, VALUE target_name, VALUE packet_name, V
  * @param item_name (see #packet_and_item)
  * @param value_type [Symbol] How to convert the item before returning.
  * Must be one of {Packet::VALUE_TYPES}
- * @return The value. :FORMATTED and :WITH_UNITS values are always returned
- * as Strings. :RAW values will match their data_type. :CONVERTED values
- * can be any type.
+ * @return The value
+ * :FORMATTED is always returned as a String
+ * :RAW values will match their data_type
+ * :CONVERTED values can be any type
  */
 static VALUE value(int argc, VALUE *argv, VALUE self)
 {

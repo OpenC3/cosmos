@@ -203,10 +203,7 @@ test('changes the polling rate', async ({ page, utils }) => {
 //
 // Test the View menu
 //
-test('displays formatted items with units by default', async ({
-  page,
-  utils,
-}) => {
+test('displays formatted items by default', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   // Check for exactly 3 decimal points followed by units
   await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
@@ -216,15 +213,6 @@ test('searches on packets without data', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('EXAMPLE', 'STATUS')
   await page.locator('[data-test="search"] input').fill('STRING')
   await expect.poll(() => page.locator('tbody > tr').count()).toEqual(1)
-})
-
-test('displays formatted items with units', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await page.locator('[data-test="search"] input').fill('TEMP1')
-  await page.locator('[data-test=packet-viewer-view]').click()
-  await page.locator('text=Formatted Items with Units').click()
-  // Check for exactly 3 decimal points followed by units
-  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
 })
 
 test('displays raw items', async ({ page, utils }) => {
@@ -249,11 +237,9 @@ test('displays formatted items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
-  // Use text-is because we have to match exactly since there is
-  // also a 'Formatted Items with Units' option
-  await page.locator(':text-is("Formatted Items")').click()
-  // Check for exactly 3 decimal points
-  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}$/)
+  await page.locator('text=Formatted').click()
+  // Check for exactly 3 decimal points followed by units
+  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
 })
 
 test('shows ignored items', async ({ page, utils }) => {

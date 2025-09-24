@@ -338,7 +338,7 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     #   item_key is an optional shortened name to return the data as
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
@@ -346,7 +346,7 @@ module OpenC3
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: $openc3_scope)
       data_hash = {}
@@ -380,14 +380,14 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
     #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def remove(items: nil, packets: nil, scope: $openc3_scope)
       data_hash = {}

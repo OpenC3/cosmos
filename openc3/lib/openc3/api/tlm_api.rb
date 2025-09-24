@@ -40,7 +40,7 @@ module OpenC3
                        'tlm',
                        'tlm_raw',
                        'tlm_formatted',
-                       'tlm_with_units',
+                       'tlm_with_units', # DEPRECATED
                        'tlm_variable', # DEPRECATED
                        'set_tlm',
                        'inject_tlm',
@@ -75,7 +75,7 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     # @return [Object] The telemetry value formatted as requested
     def tlm(*args, type: :CONVERTED, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'tlm', cache_timeout: cache_timeout, scope: scope)
@@ -91,8 +91,9 @@ module OpenC3
       tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
+    # @deprecated Use tlm_formatted
     def tlm_with_units(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :WITH_UNITS, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
+      tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     # @deprecated Use tlm with type:
@@ -114,7 +115,7 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def set_tlm(*args, type: :CONVERTED, manual: false, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name, value = _set_tlm_process_args(args, __method__, cache_timeout: cache_timeout, scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
@@ -126,7 +127,7 @@ module OpenC3
     # @param target_name [String] Target name of the packet
     # @param packet_name [String] Packet name of the packet
     # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       type = type.to_s.intern
@@ -184,7 +185,7 @@ module OpenC3
     # @param args The args must either be a string followed by a value or
     #   three strings followed by a value (see the calling style in the
     #   description).
-    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
     def override_tlm(*args, type: :ALL, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name, value = _set_tlm_process_args(args, __method__, scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
@@ -208,7 +209,7 @@ module OpenC3
     #
     # @param args The args must either be a string or three strings
     #   (see the calling style in the description).
-    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
     #   Also takes :ALL which means to normalize all telemetry types
     def normalize_tlm(*args, type: :ALL, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, __method__, scope: scope)
@@ -239,7 +240,7 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
     # @param stale_time [Integer] Time in seconds from Time.now that packet will be marked stale
-    # @param type [Symbol] Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Types returned, :RAW, :CONVERTED (default), :FORMATTED
     # @return [Array<String, Object, Symbol|nil>] Returns an Array consisting
     #   of [item name, item value, item limits state] where the item limits
     #   state can be one of {OpenC3::Limits::LIMITS_STATES}
@@ -257,7 +258,7 @@ module OpenC3
 
     # Returns the available items from a list of requested screen items
     # This does the packet introspection to determine what is actually available
-    # Like if you ask for WITH_UNITS but only RAW is available
+    # Like if you ask for FORMATTED but only RAW is available
     def get_tlm_available(items, manual: false, scope: $openc3_scope, token: $openc3_token)
       results = []
       items.each do |item|
@@ -288,18 +289,7 @@ module OpenC3
           end
 
           case value_type
-          when 'WITH_UNITS'
-            if item['units']
-              results << [target_name, orig_packet_name, item_name, 'WITH_UNITS'].join('__')
-            elsif item['format_string']
-              results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
-            # This logic must match the logic in Packet#decom
-            elsif item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
-              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
-            else
-              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
-            end
-          when 'FORMATTED'
+          when 'FORMATTED', 'WITH_UNITS'
             if item['format_string']
               results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
             # This logic must match the logic in Packet#decom
@@ -575,10 +565,8 @@ module OpenC3
         return ''
       when :CONVERTED
         return 'C'
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         return 'F'
-      when :WITH_UNITS
-        return 'U'
       else
         return nil
       end
