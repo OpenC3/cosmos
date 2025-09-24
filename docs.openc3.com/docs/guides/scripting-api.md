@@ -3206,13 +3206,13 @@ set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                             |
-| --------- | --------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                             |
-| Packet    | Packet name                                                                             |
-| Item      | Item name                                                                               |
-| Value     | Value to set                                                                            |
-| type      | Value type RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| Target    | Target name                                                                   |
+| Packet    | Packet name                                                                   |
+| Item      | Item name                                                                     |
+| Value     | Value to set                                                                  |
+| type      | Value type RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3265,7 +3265,7 @@ inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
 | Target    | Target name                                                                                                                                                      |
 | Packet    | Packet name                                                                                                                                                      |
 | Item Hash | Hash of item name/value for each item. If an item is not specified in the hash, the current value table value will be used. Optional parameter, defaults to nil. |
-| type      | Type of values in the item hash, RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string)                                                    |
+| type      | Type of values in the item hash, RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string)                                                              |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3307,13 +3307,13 @@ override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                         |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                         |
-| Packet    | Packet name                                                                                         |
-| Item      | Item name                                                                                           |
-| Value     | Value to set                                                                                        |
-| type      | Type to override, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                               |
+| --------- | ----------------------------------------------------------------------------------------- |
+| Target    | Target name                                                                               |
+| Packet    | Packet name                                                                               |
+| Item      | Item name                                                                                 |
+| Value     | Value to set                                                                              |
+| type      | Type to override, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3357,12 +3357,12 @@ normalize_tlm("<Target> <Packet> <Item>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                          |
-| Packet    | Packet name                                                                                          |
-| Item      | Item name                                                                                            |
-| type      | Type to normalize, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                                |
+| --------- | ------------------------------------------------------------------------------------------ |
+| Target    | Target name                                                                                |
+| Packet    | Packet name                                                                                |
+| Item      | Item name                                                                                  |
+| type      | Type to normalize, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3414,8 +3414,7 @@ override_tlm("INST HEALTH_STATUS TEMP1 = 5")
 puts get_overrides() #=>
 # [ {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>5}
 #   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>5}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"WITH_UNITS", "value"=>"5"} ]
+#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"} ]
 ```
 
 </TabItem>
@@ -3427,8 +3426,7 @@ override_tlm("INST HEALTH_STATUS TEMP1 = 5")
 print(get_overrides()) #=>
 # [ {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'RAW', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'CONVERTED', 'value': 5},
-#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'},
-#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'WITH_UNITS', 'value': '5'} ]
+#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'} ]
 ```
 
 </TabItem>
@@ -3738,16 +3736,16 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| Parameter    | Description                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| Target Name  | Name of the target of the telemetry item.                                                                      |
+| Packet Name  | Name of the telemetry packet of the telemetry item.                                                            |
+| Item Name    | Name of the telemetry item.                                                                                    |
+| Comparison   | A comparison to perform against the telemetry item.                                                            |
+| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
+| type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
+| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3797,17 +3795,17 @@ success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Va
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| Parameter      | Description                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target of the telemetry item.                                                                      |
+| Packet Name    | Name of the telemetry packet of the telemetry item.                                                            |
+| Item Name      | Name of the telemetry item.                                                                                    |
+| Expected Value | Expected value of the telemetry item.                                                                          |
+| Tolerance      | ± Tolerance on the expected value.                                                                             |
+| Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
+| type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
+| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                        |
 
 Ruby Examples:
 
@@ -3966,15 +3964,15 @@ elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Ti
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter    | Description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| Target Name  | Name of the target of the telemetry item.                                                                   |
+| Packet Name  | Name of the telemetry packet of the telemetry item.                                                         |
+| Item Name    | Name of the telemetry item.                                                                                 |
+| Comparison   | A comparison to perform against the telemetry item.                                                         |
+| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+| type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4020,16 +4018,16 @@ elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expec
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter      | Description                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target of the telemetry item.                                                                   |
+| Packet Name    | Name of the telemetry packet of the telemetry item.                                                         |
+| Item Name      | Name of the telemetry item.                                                                                 |
+| Expected Value | Expected value of the telemetry item.                                                                       |
+| Tolerance      | ± Tolerance on the expected value.                                                                          |
+| Timeout        | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+| type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">

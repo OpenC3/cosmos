@@ -244,7 +244,6 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
                 `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
                 `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
-                `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
                 for (let value of values) {

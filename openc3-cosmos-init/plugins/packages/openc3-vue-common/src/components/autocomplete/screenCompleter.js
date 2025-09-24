@@ -34,7 +34,7 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 //       { 'Target name': 1 },
 //       { 'Packet name': 1 },
 //       { 'Item name': 1 },
-//       { RAW: 'raw description', CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+//       { RAW: 'raw description', CONVERTED: 1, FORMATTED: 1 },
 //       { '<Number of characters>': 'characters description' },
 //     ],
 //   },
