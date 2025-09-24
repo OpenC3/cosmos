@@ -68,7 +68,6 @@ case $1 in
   hash )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright
-    pnpm run fixlinux
     pnpm test
     pnpm coverage
     cd -

@@ -67,7 +67,7 @@ jobs:
         run: ./playwright.sh run-chromium --grep-invert='enterprise'
         working-directory: playwright
       - name: Generate coverage
-        run: pnpm fixlinux; pnpm cobertura
+        run: pnpm cobertura
         working-directory: playwright
       - uses: codecov/codecov-action@v5
         with:
