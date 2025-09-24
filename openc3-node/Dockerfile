@@ -8,7 +8,7 @@ USER root
 
 RUN apk update \
   && apk add npm \
-  && npm install --global pnpm@latest-10 \
+  && npm install --global --ignore-scripts pnpm@latest-10 \
   && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}

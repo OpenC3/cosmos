@@ -38,7 +38,7 @@ COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
 ARG NPM_URL=https://registry.npmjs.org
 RUN pnpm config set registry $NPM_URL && pnpm config set fetch-timeout 600000
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build @openc3/js-common and @openc3/vue-common
 RUN pnpm build:common
@@ -119,7 +119,7 @@ FROM openc3-frontend-tmp AS openc3-tmp5
 # Build docs tool
 COPY --from=base /openc3 /openc3/
 COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && pnpm install
+RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && pnpm install --ignore-scripts
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "docs-openc3-com"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
