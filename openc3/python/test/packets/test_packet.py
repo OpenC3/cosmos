@@ -327,27 +327,27 @@ class PacketReadReadItem(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.read("ITEM", b"\00")
 
@@ -445,19 +445,20 @@ class PacketReadReadItem(unittest.TestCase):
     def test_reads_the_formatted_value(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x02"), "2")
-        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02"), "2")
+        i.units = "V"
+        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x02"), "2 V")
+        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02"), "2 V")
         i.format_string = "0x%x"
-        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x02"), "0x2")
-        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02"), "0x2")
-        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02", 1), "0x1")
+        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x02"), "0x2 V")
+        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02"), "0x2 V")
+        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02", 1), "0x1 V")
         i.states = {"TRUE": 1, "FALSE": 2}
         self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x01"), "TRUE")
         self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x01"), "TRUE")
         self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x02"), "FALSE")
         self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x02"), "FALSE")
-        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x04"), "0x4")
-        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x04"), "0x4")
+        self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x04"), "0x4 V")
+        self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x04"), "0x4 V")
         i.read_conversion = GenericConversion("value / 2")
         self.assertEqual(self.p.read("ITEM", "FORMATTED", b"\x04"), "FALSE")
         self.assertEqual(self.p.read_item(i, "FORMATTED", b"\x04"), "FALSE")
@@ -512,7 +513,7 @@ class PacketReadReadItem(unittest.TestCase):
         i = self.p.get_item("ITEM2")
         i.units = "V"
         i.read_conversion = GenericConversion("[1,2,3,4,5]")
-        self.assertEqual(self.p.read("ITEM2", "FORMATTED", ""), ["1", "2", "3", "4", "5"])
+        self.assertEqual(self.p.read("ITEM2", "FORMATTED", ""), ["1 V", "2 V", "3 V", "4 V", "5 V"])
         self.assertEqual(self.p.read("ITEM2", "WITH_UNITS", ""), ["1 V", "2 V", "3 V", "4 V", "5 V"])
 
 
@@ -562,8 +563,8 @@ class PacketReadDerived(unittest.TestCase):
         i.states = {"TRUE": 1, "FALSE": 0}
         i.units = "V"
         i.read_conversion = GenericConversion("3")
-        self.assertEqual(self.p.read("ITEM", "FORMATTED", ""), "0x3")
-        self.assertEqual(self.p.read_item(i, "FORMATTED", ""), "0x3")
+        self.assertEqual(self.p.read("ITEM", "FORMATTED", ""), "0x3 V")
+        self.assertEqual(self.p.read_item(i, "FORMATTED", ""), "0x3 V")
 
     def test_reads_the_with_units_value(self):
         self.p.append_item("item", 0, "DERIVED")
@@ -627,27 +628,27 @@ class PacketWrite(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
 
@@ -1744,10 +1745,10 @@ class PacketDecom(unittest.TestCase):
 
         p.buffer = b"\x01\x02"
         vals = p.decom()
+        self.assertEqual(len(vals), 3)
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST1__C"], [2, 4])
-        self.assertEqual(vals["TEST1__F"], ["0x2", "0x4"])
-        self.assertEqual(vals["TEST1__U"], ["0x2 C", "0x4 C"])
+        self.assertEqual(vals["TEST1__F"], ["0x2 C", "0x4 C"])
 
     def test_creates_decommutated_block_data(self):
         p = Packet("tgt", "pkt")
@@ -1781,15 +1782,10 @@ class PacketDecom(unittest.TestCase):
         self.assertEqual(vals.get("TEST3__C"), 0x02030405)
         self.assertEqual(vals.get("TEST4__C"), None)
 
-        self.assertEqual(vals.get("TEST1__F"), ["0x1", "0x2"])
+        self.assertEqual(vals.get("TEST1__F"), ["0x1 C", "0x2 C"])
         self.assertEqual(vals.get("TEST2__F"), None)
         self.assertEqual(vals.get("TEST3__F"), None)
         self.assertEqual(vals.get("TEST4__F"), None)
-
-        self.assertEqual(vals.get("TEST1__U"), ["0x1 C", "0x2 C"])
-        self.assertEqual(vals.get("TEST2__U"), None)
-        self.assertEqual(vals.get("TEST3__U"), None)
-        self.assertEqual(vals.get("TEST4__U"), None)
 
         self.assertEqual(vals["TEST3__L"], "RED")
 
@@ -1806,15 +1802,10 @@ class PacketDecom(unittest.TestCase):
         self.assertEqual(vals.get("TEST3__C"), 52)
         self.assertEqual(vals.get("TEST4__C"), None)
 
-        self.assertEqual(vals.get("TEST1__F"), ["0x1", "0x2"])
+        self.assertEqual(vals.get("TEST1__F"), ["0x1 C", "0x2 C"])
         self.assertEqual(vals.get("TEST2__F"), None)
         self.assertEqual(vals.get("TEST3__F"), None)
         self.assertEqual(vals.get("TEST4__F"), None)
-
-        self.assertEqual(vals.get("TEST1__U"), ["0x1 C", "0x2 C"])
-        self.assertEqual(vals.get("TEST2__U"), None)
-        self.assertEqual(vals.get("TEST3__U"), None)
-        self.assertEqual(vals.get("TEST4__U"), None)
 
         self.assertEqual(vals.get("TEST3__L"), "RED")
 

@@ -704,7 +704,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED or :FORMATTED"
       end
       return value
     end
@@ -774,7 +774,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED or :FORMATTED"
       end
       if @read_conversion_cache
         synchronize() do

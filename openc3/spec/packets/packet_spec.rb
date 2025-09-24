@@ -451,12 +451,12 @@ module OpenC3
       it "complains about unknown value_type" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
-        expect { @p.read("ITEM", :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.read("ITEM", 'MINE', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.read_item(i, :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.read_item(i, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED, :FORMATTED")
+        expect { @p.read("ITEM", :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read("ITEM", 'MINE', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read_item(i, :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read_item(i, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED or :FORMATTED")
         buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
-        expect { @p.read("ITEM", buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED, :FORMATTED/)
+        expect { @p.read("ITEM", buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED or :FORMATTED/)
       end
 
       it "reads the RAW value" do
@@ -683,12 +683,12 @@ module OpenC3
       it "complains about unknown value_type" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
-        expect { @p.write("ITEM", 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.write("ITEM", 0, 'MINE') }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.write_item(i, 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED")
-        expect { @p.write_item(i, 0, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED, :FORMATTED")
+        expect { @p.write("ITEM", 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write("ITEM", 0, 'MINE') }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write_item(i, 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write_item(i, 0, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED or :FORMATTED")
         buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
-        expect { @p.write("ITEM", 0x01020304, buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED, :FORMATTED/)
+        expect { @p.write("ITEM", 0x01020304, buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED or :FORMATTED/)
       end
 
       it "writes the RAW value" do

@@ -73,9 +73,9 @@ Example Usage:
 
 ### Getting Telemetry
 
-The following methods are used to get telemetry: tlm, tlm_raw, tlm_formatted, tlm_with_units
+The following methods are used to get telemetry: tlm, tlm_raw, tlm_formatted
 
-The tlm method returns the current converted value of a telemetry point. The tlm_raw method returns the current raw value of a telemetry point. The tlm_formatted method returns the current formatted value of a telemetry point. The tlm_with_units method returns the current formatted value of a telemetry point with its units appended to the end.
+The tlm method returns the current converted value of a telemetry point. The tlm_raw method returns the current raw value of a telemetry point. The tlm_formatted method returns the current formatted value of a telemetry point with its units appended.
 
 Two parameter syntaxes are supported.
 
@@ -117,5 +117,5 @@ If developing an interface for the JSON API from another language, the best way 
 You can also try sending these raw commands from the terminal with a program like `curl`:
 
 ```bash
-curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"WITH_UNITS","scope":"DEFAULT"}}' http://localhost:2900/openc3-api/api  -H "Authorization: password"
+curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"FORMATTED","scope":"DEFAULT"}}' http://localhost:2900/openc3-api/api  -H "Authorization: password"
 ```

@@ -1582,12 +1582,12 @@ get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target.                                                                                  |
-| Command Name   | Name of the command.                                                                                 |
-| Parameter Name | Name of the command parameter.                                                                       |
-| Value Type     | Value Type to read. RAW, CONVERTED, FORMATTED, or WITH_UNITS. NOTE: Symbol in Ruby and str in Python |
+| Parameter      | Description                                                                             |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target.                                                                     |
+| Command Name   | Name of the command.                                                                    |
+| Parameter Name | Name of the command parameter.                                                          |
+| Value Type     | Value Type to read. RAW, CONVERTED or FORMATTED. NOTE: Symbol in Ruby and str in Python |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2369,7 +2369,7 @@ queue_delete('TEST')
 
 These methods allow the user to interact with telemetry items.
 
-### check, check_raw, check_formatted, check_with_units
+### check, check_raw, check_formatted
 
 Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
@@ -2405,7 +2405,6 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
-check_with_units("INST HEALTH_STATUS COLLECTS > 1")
 # Ruby passes type as symbol
 check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 ```
@@ -2418,7 +2417,6 @@ check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
-check_with_units("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
 check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 ```
@@ -2582,7 +2580,7 @@ check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 </TabItem>
 </Tabs>
 
-### tlm, tlm_raw, tlm_formatted, tlm_with_units
+### tlm, tlm_raw, tlm_formatted
 
 Reads the specified form of a telemetry item.
 
@@ -2606,12 +2604,12 @@ tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name | Name of the target of the telemetry item.                                                                          |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name   | Name of the telemetry item.                                                                                        |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter   | Description                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item.                                                                |
+| Packet Name | Name of the telemetry packet of the telemetry item.                                                      |
+| Item Name   | Name of the telemetry item.                                                                              |
+| type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2621,7 +2619,6 @@ value = tlm("INST HEALTH_STATUS COLLECTS")
 value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
-value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
 # Equivalent to tlm_raw
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
 ```
@@ -2635,7 +2632,6 @@ value = tlm("INST HEALTH_STATUS COLLECTS")
 value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
-value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
 # Equivalent to tlm_raw
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 ```
@@ -2716,11 +2712,11 @@ get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target.                                                                                                   |
-| Packet Name | Name of the packet.                                                                                                   |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, or WITH_UNITS (Ruby symbol, Python string). |
+| Parameter   | Description                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| Target Name | Name of the target.                                                                                      |
+| Packet Name | Name of the packet.                                                                                      |
+| type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2742,7 +2738,7 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 
 ### get_tlm_available
 
-Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
+Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__FORMATTED` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2770,8 +2766,8 @@ actual = get_tlm_available(<Items>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
-puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
+puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
 ```
 
 </TabItem>
@@ -2779,8 +2775,8 @@ puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1
 <TabItem value="python" label="Python Example">
 
 ```python
-values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
-print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
+print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
 ```
 
 </TabItem>

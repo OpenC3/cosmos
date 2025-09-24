@@ -56,7 +56,7 @@ class Packet(Structure):
     ]
     ANY_STATE = "ANY"
     # Valid format types
-    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
+    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED"]
 
     def __init__(
         self,
@@ -523,9 +523,10 @@ class Packet(Structure):
     #   Must be one of {VALUE_TYPES}
     # self.param buffer (see Structure#read_item)
     # self.param given_raw Given raw value to optimize
-    # self.return The value. 'FORMATTED' and 'WITH_UNITS' values are always returned
-    #   as Strings. 'RAW' values will match their data_type. 'CONVERTED' values
-    #   can be any type.
+    # self.return The value
+    #   'FORMATTED' values are always returned as a string
+    #   'CONVERTED' values can be any type
+    #   'RAW' values will match their data_type
     def read_item(self, item, value_type="CONVERTED", buffer=None, given_raw=None):
         if not buffer:
             buffer = self._buffer
@@ -612,7 +613,7 @@ class Packet(Structure):
                         value_type = simple_formatted(value_type)
                     value_type += "..."
                 raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"
+                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED' or 'FORMATTED'"
                 )
         return value
 
@@ -682,7 +683,7 @@ class Packet(Structure):
                         value_type = simple_formatted(value_type)
                     value_type += "..."
                 raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"
+                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED' or 'FORMATTED'"
                 )
         with self.synchronize():
             self.read_conversion_cache = {}
@@ -1200,10 +1201,8 @@ class Packet(Structure):
             given_raw = json_hash[item.name]
             if item.states or (item.read_conversion and item.data_type != "DERIVED"):
                 json_hash[f"{item.name}__C"] = self.read_item(item, "CONVERTED", self.buffer, given_raw)
-            if item.format_string:
+            if item.format_string or item.units:
                 json_hash[f"{item.name}__F"] = self.read_item(item, "FORMATTED", self.buffer, given_raw)
-            if item.units:
-                json_hash[f"{item.name}__U"] = self.read_item(item, "WITH_UNITS", self.buffer, given_raw)
             limits_state = item.limits.state
             if limits_state:
                 json_hash[f"{item.name}__L"] = limits_state
@@ -1312,8 +1311,8 @@ class Packet(Structure):
                 value = f"{item.format_string}" % value
             else:
                 value = str(value)
-        if value_type == "WITH_UNITS" and item.units:
-            value += " " + item.units
+            if item.units:
+                value += " " + item.units
         return value
 
     def packet_define_item(self, item, format_string, read_conversion, write_conversion, id_value):

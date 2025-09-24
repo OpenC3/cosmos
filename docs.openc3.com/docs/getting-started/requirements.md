@@ -230,15 +230,15 @@ Telemetry Grapher performs graphing of telemetry points in both realtime and log
 
 Data Extractor processes logged data and extracts data into a CSV format for analysis in Excel or other tools.
 
-| Reqt. ID | Description                                                                                                                       | Test Description                         |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| DE-1     | Data Extractor shall support adding individual telemetry points.                                                                  | Add an individual telemetry point.       |
-| DE-2     | Data Extractor shall support adding entire telemetry packets.                                                                     | Add an entire packet.                    |
-| DE-3     | Data Extractor shall support adding entire telemetry targets.                                                                     | Add all packets for a target.            |
-| DE-4     | Data Extractor shall support selecting the value type to extract for each telemetry point (RAW, CONVERTED, FORMATTED, WITH_UNITS) | Click an item and change the value type. |
-| DE-5     | Data Extractor shall support saving configurations.                                                                               | Select File->Save Config                 |
-| DE-6     | Data Extractor shall support loading configurations.                                                                              | Select File->Load Config                 |
-| DE-7     | Data Extractor shall support deleting items                                                                                       | Select an Item and press delete          |
+| Reqt. ID | Description                                                                                                             | Test Description                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| DE-1     | Data Extractor shall support adding individual telemetry points.                                                        | Add an individual telemetry point.       |
+| DE-2     | Data Extractor shall support adding entire telemetry packets.                                                           | Add an entire packet.                    |
+| DE-3     | Data Extractor shall support adding entire telemetry targets.                                                           | Add all packets for a target.            |
+| DE-4     | Data Extractor shall support selecting the value type to extract for each telemetry point (RAW, CONVERTED or FORMATTED) | Click an item and change the value type. |
+| DE-5     | Data Extractor shall support saving configurations.                                                                     | Select File->Save Config                 |
+| DE-6     | Data Extractor shall support loading configurations.                                                                    | Select File->Load Config                 |
+| DE-7     | Data Extractor shall support deleting items                                                                             | Select an Item and press delete          |
 
 ## Data Viewer
 
