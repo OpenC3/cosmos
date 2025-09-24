@@ -39,7 +39,6 @@
         </v-toolbar>
         <v-stepper
           v-model="dialogStep"
-          editable
           :items="['Activity Times', 'Activity Type']"
         >
           <template v-if="dialogStep === 2" #actions>
@@ -203,16 +202,21 @@
                 >
                 </v-select>
                 <div v-if="kind === 'COMMAND'">
-                  <v-text-field
-                    v-model="activityData"
-                    type="text"
-                    label="Command Input"
-                    placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
-                    prefix="cmd('"
-                    suffix="')"
-                    hint="Timeline runs commands with cmd_no_hazardous_check"
-                    data-test="activity-cmd"
-                  />
+                  <v-row dense class="ma-0">
+                    <v-text-field
+                      v-model="activityData"
+                      readonly
+                      type="text"
+                      label="Command Input"
+                      data-test="activity-cmd"
+                    />
+                    <v-btn
+                      icon="mdi-pencil"
+                      variant="text"
+                      data-test="edit-command"
+                      @click="editItem()"
+                    />
+                  </v-row>
                 </div>
                 <div v-else-if="kind === 'SCRIPT'" class="ma-3">
                   <script-chooser @file="fileHandler" />
@@ -230,12 +234,59 @@
         </v-stepper>
       </v-card>
     </v-dialog>
+
+    <!-- Command Editor Dialog -->
+    <v-dialog
+      v-model="showCommandDialog"
+      max-width="1200"
+      persistent
+      scrollable
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <span>{{ dialogTitle }}</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
+        </v-card-title>
+        <v-card-text class="pa-0">
+          <div v-if="dialogError" class="error-message">
+            <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+            <span class="flex-grow-1">{{ dialogError }}</span>
+            <v-btn
+              icon="mdi-close"
+              size="small"
+              variant="text"
+              color="error"
+              class="ml-2"
+              @click="clearDialogError"
+            />
+          </div>
+          <command-editor
+            ref="commandEditor"
+            :send-disabled="false"
+            :states-in-hex="statesInHex"
+            :show-ignored-params="showIgnoredParams"
+            :cmd-raw="cmdRaw"
+            :cmd-string="dialogCmdString"
+            :show-command-button="false"
+            @build-cmd="updateCommand($event)"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="updateCommand()">
+            Update Command
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { EnvironmentChooser, ScriptChooser } from '@/components'
+import { EnvironmentChooser, ScriptChooser, CommandEditor } from '@/components'
 import { TimeFilters } from '@/util'
 import CreateDialog from './CreateDialog'
 
@@ -243,6 +294,7 @@ export default {
   components: {
     EnvironmentChooser,
     ScriptChooser,
+    CommandEditor,
   },
   mixins: [CreateDialog, TimeFilters],
   props: {
@@ -273,6 +325,10 @@ export default {
       frequency: 90,
       timeSpan: 'minutes',
       timeSpans: ['minutes', 'hours', 'days'],
+      showCommandDialog: false,
+      dialogTitle: 'Add Command',
+      dialogError: '',
+      dialogCmdString: null,
     }
   },
   computed: {
@@ -439,6 +495,31 @@ export default {
       }
       // We don't do the $emit or set show here because it has to be in the callback
       this.clearHandler()
+    },
+    editItem: function () {
+      // Set up dialog for editing
+      this.dialogTitle = 'Edit Command'
+      this.dialogCmdString = this.activityData
+      this.showCommandDialog = true
+    },
+    closeCommandDialog: function () {
+      this.showCommandDialog = false
+      this.dialogCmdString = null
+      this.dialogError = ''
+    },
+    clearDialogError: function () {
+      this.dialogError = ''
+    },
+    updateCommand: function () {
+      let commandString = ''
+      try {
+        commandString = this.$refs.commandEditor.getCmdString()
+      } catch (error) {
+        this.dialogError = error.message || 'Please fix command parameters'
+        return
+      }
+      this.activityData = commandString
+      this.showCommandDialog = false
     },
   },
 }
