@@ -56,6 +56,11 @@ The following examples use the parallel group, but these apply to the serial gro
         playwright> set PWDEBUG=1
         playwright> pnpm test:parallel --headed
 
+1.  _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixlinux` if not on Windows).
+    Tests will run successfully without this step and you will get coverage statistics, but line-by-line coverage won't work.
+
+        playwright> pnpm fixwindows
+
 1.  Create code coverage
 
         playwright> pnpm coverage

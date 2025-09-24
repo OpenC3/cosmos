@@ -52,6 +52,14 @@ sidebar_custom_props:
    cosmos-playwright % pnpm test
    ```
 
+1. _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixwindows` if not on Linux).
+
+   Tests will run successfully without this step and you will get coverage statistics, but line-by-line coverage won't work.
+
+   ```bash
+   cosmos-playwright % pnpm fixlinux
+   ```
+
 1. Generate code coverage
 
    ```bash
