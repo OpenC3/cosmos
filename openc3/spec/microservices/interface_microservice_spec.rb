@@ -147,6 +147,9 @@ module OpenC3
         expect(interface.target_names).to eql ["INST"]
         expect(interface.cmd_target_names).to eql ["INST"]
         expect(interface.tlm_target_names).to eql ["INST"]
+        expect(im.instance_variable_get(:@queued)).to eql true
+        expect(StoreQueued.instance.update_interval).to eql 0.1
+
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["name"]).to eql "INST_INT"
         expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
