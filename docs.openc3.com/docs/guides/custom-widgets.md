@@ -81,7 +81,7 @@ task :build do
 
   # Build the widget and gem using sh built into Rake:
   # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
-  sh('yarn', 'run', 'build')
+  sh('pnpm', 'run', 'build')
 
   # ...
 end
@@ -241,14 +241,14 @@ YOURCUSTOM <%= target_name %> HEALTH_STATUS TEMP1
 
 ## Step 8: Build and Deploy Your Plugin
 
-In order to build a widget, a container containing `node` and `yarn` is necessary.
+In order to build a widget, a container containing `node` and `pnpm` is necessary.
 
 <Tabs groupId="operating-system">
 <TabItem value="linux" label="Linux / macOS">
 
 ```bash
 % docker run -it -v `pwd`:/openc3/local:z -w /openc3/local openc3inc/openc3-node sh
-/openc3/local $ yarn
+/openc3/local $ pnpm install
 /openc3/local $ rake build
 ```
 
@@ -258,7 +258,7 @@ In order to build a widget, a container containing `node` and `yarn` is necessar
 
 ```bash
 docker run -it -v %cd%:/openc3/local -w /openc3/local openc3inc/openc3-node sh
-/openc3/local $ yarn
+/openc3/local $ pnpm install
 /openc3/local $ rake build
 ```
 
@@ -267,8 +267,8 @@ docker run -it -v %cd%:/openc3/local -w /openc3/local openc3inc/openc3-node sh
 
 Notes:
 - The `openc3-node` container is currently missing the `openc3` gem, so the gem validation will fail. This does not impact widget development.
-- The `openc3-node` container may need to be run as `root` so that `yarn` has the permissions to create `node_modules` in the host widget directory.
-- If you are behind a firewall/proxy, the `NODE_EXTRA_CA_CERTS` in the container may need to be set for `yarn` to work. The `Error: self-signed certificate in certificate chain error` signifies the need for this env variable.
+- The `openc3-node` container may need to be run as `root` so that `pnpm` has the permissions to create `node_modules` in the host widget directory.
+- If you are behind a firewall/proxy, the `NODE_EXTRA_CA_CERTS` in the container may need to be set for `pnpm` to work. The `Error: self-signed certificate in certificate chain error` signifies the need for this env variable.
 
 Now open Telemetry Viewer and select your screen to see your custom widget in action!
 

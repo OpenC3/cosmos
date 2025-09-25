@@ -153,7 +153,7 @@ GOTO :EOF
 GOTO :EOF
 
 :zip
-  zip -r openc3.zip *.* -x "*.git*" -x "*coverage*" -x "*tmp/cache*" -x "*node_modules*" -x "*yarn.lock"
+  zip -r openc3.zip *.* -x "*.git*" -x "*coverage*" -x "*tmp/cache*" -x "*node_modules*"
 GOTO :EOF
 
 :clean
@@ -165,8 +165,8 @@ GOTO :EOF
     echo Removing "%%i"
     @rmdir /s /q "%%i"
   )
-  REM Prompt for removing yarn.lock files
-  forfiles /S /M yarn.lock /C "cmd /c del /P @path"
+  REM Prompt for removing pnpm-lock.yaml files
+  forfiles /S /M pnpm-lock.yaml /C "cmd /c del /P @path"
   REM Prompt for removing Gemfile.lock files
   forfiles /S /M Gemfile.lock /C "cmd /c del /P @path"
 GOTO :EOF

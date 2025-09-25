@@ -24,7 +24,7 @@ case $1 in
 
         rm -rf node_modules
 
-        yarn; yarn playwright install --with-deps; yarn playwright --version
+        pnpm install; pnpm exec playwright install --with-deps; pnpm playwright --version
 
         ./reset_storage_state.sh
         ;;
@@ -45,16 +45,16 @@ case $1 in
         ;;
 
     run-chromium )
-        yarn test
+        pnpm test
         ;;
 
     run-enterprise )
-        yarn test:enterprise
+        pnpm test:enterprise
         ;;
 
     run-aws )
         sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
-        KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* yarn test:keycloak
-        yarn test:enterprise
+        KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* pnpm test:keycloak
+        pnpm test:enterprise
         ;;
 esac

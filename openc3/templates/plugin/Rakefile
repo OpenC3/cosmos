@@ -15,10 +15,10 @@ task :build => [:require_version] do
     puts "Warning: Building gem on Windows will lose file permissions"
   end
 
-  # Run yarn build if we have a package.json
+  # Run pnpm build if we have a package.json
   if File.exist?('package.json')
-    sh('yarn run build') do |ok, status|
-      raise "yarn run build failed" if !ok
+    sh('pnpm run build') do |ok, status|
+      raise "pnpm run build failed" if !ok
     end
   end
 

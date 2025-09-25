@@ -167,8 +167,8 @@ push() {
 cleanFiles() {
   find . -type d -name "node_modules" | xargs -I {} echo "Removing {}"; rm -rf {}
   find . -type d -name "coverage" | xargs -I {} echo "Removing {}"; rm -rf {}
-  # Prompt for removing yarn.lock files
-  find . -type f -name "yarn.lock" | xargs -I {} rm -i {}
+  # Prompt for removing pnpm-lock.yaml files
+  find . -type f -name "pnpm-lock.yaml" | xargs -I {} rm -i {}
   # Prompt for removing Gemfile.lock files
   find . -type f -name "Gemfile.lock" | xargs -I {} rm -i {}
 }

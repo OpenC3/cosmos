@@ -12,8 +12,8 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "7.26.1",
     "@openc3/ace-diff": "3.1.0",
-    "@openc3/js-common": "6.8.2-beta0",
-    "@openc3/vue-common": "6.8.2-beta0",
+    "@openc3/js-common": "workspace:*",
+    "@openc3/vue-common": "workspace:*",
     "ace-builds": "1.43.3",
     "single-spa-vue": "3.0.1"
   },
