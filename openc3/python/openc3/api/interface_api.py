@@ -179,8 +179,8 @@ def unmap_target_from_interface(
     else:
         target_names = [target_name]
     for name in target_names:
-        interface.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
-        Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
+        interface.unmap_target(name, cmd_only=cmd_only, tlm_only=tlm_only)
+        Logger.info(f"Target {name} unmapped from Interface {interface_name}", scope=scope)
 
 
 def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):

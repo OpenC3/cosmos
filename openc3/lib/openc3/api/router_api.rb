@@ -149,6 +149,8 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get_model(name: router_name, scope: scope)
+      raise "Router '#{router_name}' does not exist" unless router
+      
       if Array === target_name
         target_names = target_name
       else
@@ -170,6 +172,8 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get_model(name: router_name, scope: scope)
+      raise "Router '#{router_name}' does not exist" unless router
+      
       if Array === target_name
         target_names = target_name
       else

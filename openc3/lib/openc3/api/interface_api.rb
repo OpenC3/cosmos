@@ -165,6 +165,8 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
       interface = InterfaceModel.get_model(name: interface_name, scope: scope)
+      raise "Interface '#{interface_name}' does not exist" unless interface
+      
       if Array === target_name
         target_names = target_name
       else

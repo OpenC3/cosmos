@@ -180,6 +180,73 @@ module OpenC3
       end
     end
 
+    describe "unmap_target_from_interface" do
+      it "successfully unmaps a single target from an interface" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        # Setup interface with multiple targets
+        model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2"]
+        model.cmd_target_names = ["INST", "INST2"]  
+        model.tlm_target_names = ["INST", "INST2"]
+        model.update
+
+        # Mock the interface model's unmap_target method
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT")
+      end
+
+      it "successfully unmaps multiple targets from an interface" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        TargetModel.new(name: "INST3", scope: "DEFAULT").create
+
+        # Setup interface with multiple targets
+        model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2", "INST3"]
+        model.cmd_target_names = ["INST", "INST2", "INST3"]  
+        model.tlm_target_names = ["INST", "INST2", "INST3"]
+        model.update
+
+        # Mock the interface model's unmap_target method for multiple calls
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST3", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_interface(["INST2", "INST3"], "INST_INT")
+      end
+
+      it "unmaps target with cmd_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: true, tlm_only: false)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT", cmd_only: true)
+      end
+
+      it "unmaps target with tlm_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: true)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT", tlm_only: true)
+      end
+
+      it "raises error for non-existent interface" do
+        expect { @api.unmap_target_from_interface("INST", "NONEXISTENT_INT") }.to raise_error(/does not exist/)
+      end
+
+      it "returns nil on successful unmap" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target)
+        result = @api.unmap_target_from_interface("INST2", "INST_INT")
+        
+        expect(result).to be_nil
+      end
+    end
+
     describe "interface_cmd" do
       it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")

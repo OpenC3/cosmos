@@ -20,6 +20,7 @@ from openc3.utilities.authorization import authorize
 from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
 from openc3.topics.router_topic import RouterTopic
+from openc3.utilities.logger import Logger
 
 WHITELIST.extend(
     [
@@ -193,8 +194,8 @@ def unmap_target_from_router(
     else:
         target_names = [target_name]
     for name in target_names:
-        router.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
-        Logger.info(f"Target {name} mapped to Router {router_name}", scope=scope)
+        router.unmap_target(name, cmd_only=cmd_only, tlm_only=tlm_only)
+        Logger.info(f"Target {name} unmapped from Router {router_name}", scope=scope)
 
 
 def router_target_enable(
