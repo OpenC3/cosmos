@@ -12,9 +12,11 @@ name: Python Unit Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   OPENC3_CLOUD: local
