@@ -56,6 +56,7 @@ module OpenC3
     attr_accessor :plugin_txt_lines
     attr_accessor :needs_dependencies
     attr_accessor :store_id
+    attr_accessor :img_path
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -179,6 +180,12 @@ module OpenC3
             raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
+
+        # Process app store metadata
+        img_path = pkg.spec.metadata['openc3_store_image']
+        plugin_model.img_path = File.join('gems', gem_name.split(".gem")[0], img_path) if img_path
+        plugin_model.update()
+
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
 
@@ -302,6 +309,7 @@ module OpenC3
       plugin_txt_lines: [],
       needs_dependencies: false,
       store_id: nil,
+      img_path: nil,
       updated_at: nil,
       scope:
     )
@@ -310,6 +318,7 @@ module OpenC3
       @plugin_txt_lines = plugin_txt_lines
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
       @store_id = store_id
+      @img_path = img_path
     end
 
     def create(update: false, force: false, queued: false)
@@ -324,6 +333,7 @@ module OpenC3
         'plugin_txt_lines' => @plugin_txt_lines,
         'needs_dependencies' => @needs_dependencies,
         'store_id' => @store_id,
+        'img_path' => @img_path,
         'updated_at' => @updated_at
       }
     end

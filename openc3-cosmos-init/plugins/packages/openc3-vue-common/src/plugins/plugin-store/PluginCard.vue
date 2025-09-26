@@ -46,12 +46,12 @@
           -->
         </v-card-subtitle>
         <v-card-text>
-          <v-img v-if="image_url" :src="image_url" max-height="160" />
+          <v-img v-if="img_path" :src="img_path" max-height="160" />
           <div
             :class="{
               'truncate-description': true,
-              'truncate-2': !!image_url,
-              'truncate-10': !image_url,
+              'truncate-2': !!img_path,
+              'truncate-10': !img_path,
             }"
             v-text="description"
           />
