@@ -76,7 +76,7 @@
       </v-card-subtitle>
       -->
       <v-card-text>
-        <v-img v-if="image_url" :src="image_url" />
+        <v-img v-if="img_path" :src="img_path" />
         <div v-text="description" />
         <div class="mt-3 text-caption font-italic">License: {{ license }}</div>
         <v-text-field
