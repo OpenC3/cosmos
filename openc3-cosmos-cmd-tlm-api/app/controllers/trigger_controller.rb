@@ -64,7 +64,7 @@ class TriggerController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::TriggerInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -113,7 +113,7 @@ class TriggerController < ApplicationController
       name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create() # Create sends a notification
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue OpenC3::TriggerInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -149,7 +149,7 @@ class TriggerController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the trigger
       model.notify(kind: 'updated')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::TriggerInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -191,7 +191,7 @@ class TriggerController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user enabling the trigger
       model.notify_enable()
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
@@ -227,7 +227,7 @@ class TriggerController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user disabling the trigger
       model.notify_disable()
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
@@ -261,7 +261,7 @@ class TriggerController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user deleting the trigger
       model.notify(kind: 'deleted')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500

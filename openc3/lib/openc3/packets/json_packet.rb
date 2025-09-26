@@ -48,7 +48,7 @@ module OpenC3
       end
       @extra = extra
       @json_hash = json_data
-      @json_hash = JSON.parse(json_data, :allow_nan => true, :create_additions => true) if String === json_data
+      @json_hash = JSON.parse(json_data, allow_nan: true, create_additions: true) if String === json_data
       if key_map
         uncompressed = {}
         @json_hash.each do |key, value|

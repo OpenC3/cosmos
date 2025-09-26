@@ -197,7 +197,7 @@ module OpenC3
     def <=>(other)
       return nil unless other.respond_to?(:as_json)
 
-      self.as_json(:allow_nan => true) <=> other.as_json(:allow_nan => true)
+      self.as_json() <=> other.as_json()
     end
 
     # @param a [Array] Array of options
@@ -268,7 +268,7 @@ module OpenC3
     # @param request_headers [Hash] Request Header to include the auth token
     # @return [JsonRpcRequest]
     def self.from_json(request_data, request_headers)
-      hash = JSON.parse(request_data, :allow_nan => true, :create_additions => true)
+      hash = JSON.parse(request_data, allow_nan: true, create_additions: true)
       hash['keyword_params']['token'] = request_headers['HTTP_AUTHORIZATION'] if request_headers['HTTP_AUTHORIZATION']
       hash['keyword_params']['manual'] = request_headers['HTTP_MANUAL'] if request_headers['HTTP_MANUAL']
       # Verify the jsonrpc version is correct and there is a method and id
@@ -307,7 +307,7 @@ module OpenC3
     def self.from_json(response_data)
       msg = "Invalid JSON-RPC 2.0 Response#{response_data.inspect}\n"
       begin
-        hash = JSON.parse(response_data, :allow_nan => true, :create_additions => true)
+        hash = JSON.parse(response_data, allow_nan: true, create_additions: true)
       rescue
         raise $!, msg, $!.backtrace
       end

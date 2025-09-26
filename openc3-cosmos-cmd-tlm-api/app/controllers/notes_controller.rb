@@ -91,7 +91,7 @@ class NotesController < ApplicationController
         scope: params[:scope],
         user: username(),
       )
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     end
   end
 
@@ -165,7 +165,7 @@ class NotesController < ApplicationController
         scope: params[:scope],
         user: username(),
       )
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     end
   end
 

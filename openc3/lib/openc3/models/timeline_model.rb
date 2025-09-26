@@ -72,7 +72,7 @@ module OpenC3
 
     # @return [TimelineModel] Model generated from the passed JSON
     def self.from_json(json, name:, scope:)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
@@ -120,7 +120,7 @@ module OpenC3
     # @return [] update the redis stream / timeline topic that something has changed
     def notify(kind:)
       notification = {
-        'data' => JSON.generate(as_json(:allow_nan => true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
         'kind' => kind,
         'type' => 'timeline',
         'timeline' => @timeline_name

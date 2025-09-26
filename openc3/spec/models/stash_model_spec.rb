@@ -49,7 +49,7 @@ module OpenC3
 
       it "as_json" do
         model = StashModel.new(name: 'sm', value: 'stashef', scope: 'DEFAULT')
-        expect(model.as_json(:allow_nan => true)['name']).to eq('sm')
+        expect(model.as_json()['name']).to eq('sm')
       end
     end
   end

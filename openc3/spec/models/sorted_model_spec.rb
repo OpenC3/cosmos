@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -54,7 +54,7 @@ module OpenC3
         json = SortedModel.get_current_value(
           scope: 'DEFAULT'
         )
-        hash = JSON.parse(json, :allow_nan => true, :create_additions => true)
+        hash = JSON.parse(json, allow_nan: true, create_additions: true)
         expect(hash['start']).to eql(now)
       end
     end
@@ -195,7 +195,7 @@ module OpenC3
       it "stores the start" do
         create_model(start: 100)
         data = Store.zrange(SortedModel.pk('DEFAULT'), 0, 1)
-        result = JSON.parse(data[0], :allow_nan => true, :create_additions => true) # zrange returns array
+        result = JSON.parse(data[0], allow_nan: true, create_additions: true) # zrange returns array
         expect(result['start']).to eql 100
       end
 
@@ -232,7 +232,7 @@ module OpenC3
       it "encodes all the input parameters" do
         now = Time.now.to_i
         model = create_model(start: now)
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json["start"]).to eql(now)
         expect(json['type']).to eql("sorted")
       end
@@ -241,8 +241,8 @@ module OpenC3
     describe "from_json" do
       it "encodes all the input parameters" do
         model = create_model()
-        hash = model.as_json(:allow_nan => true)
-        json = JSON.generate(hash)
+        hash = model.as_json()
+        json = JSON.generate(hash, allow_nan: true)
         new_model = SortedModel.from_json(json, scope: 'DEFAULT')
         expect(new_model).to be_a SortedModel
         expect(new_model.start).to eql(hash['start'])

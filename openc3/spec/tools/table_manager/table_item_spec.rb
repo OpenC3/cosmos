@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -53,17 +53,16 @@ module OpenC3
 
     describe "as_json" do
       it "converts to a Hash" do
-        hash = @ti.as_json(:allow_nan => true)
+        hash = @ti.as_json()
         # Check the values from StructureItem
         expect(hash.keys).to include('editable')
         expect(hash["editable"]).to eql true
 
         @ti.editable = false
 
-        hash = @ti.as_json(:allow_nan => true)
+        hash = @ti.as_json()
         expect(hash["editable"]).to eql false
       end
     end
   end
 end
-

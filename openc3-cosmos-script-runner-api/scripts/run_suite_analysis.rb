@@ -29,4 +29,4 @@ require '../app/models/script'
 require 'openc3/utilities/running_script'
 require ARGV[1]
 
-puts OpenC3::SuiteRunner.build_suites.as_json(:allow_nan => true).to_json(:allow_nan => true)
+puts OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)

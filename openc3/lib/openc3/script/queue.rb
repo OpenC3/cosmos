@@ -30,10 +30,10 @@ module OpenC3
       if response.nil?
         raise "Failed to #{action}. No response from server."
       elsif response.status != 200 and response.status != 201
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        result = JSON.parse(response.body, allow_nan: true, create_additions: true)
         raise "Failed to #{action} due to #{result['message']}"
       end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
 
     def queue_all(scope: $openc3_scope)

@@ -50,7 +50,7 @@ module OpenC3
 
       it "as_json" do
         model = SecretModel.new(name: 'secreter', value: 'silent', scope: 'DEFAULT')
-        expect(model.as_json(:allow_nan => true)['name']).to eq('secreter')
+        expect(model.as_json()['name']).to eq('secreter')
       end
     end
   end

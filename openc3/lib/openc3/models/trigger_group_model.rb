@@ -101,19 +101,19 @@ module OpenC3
 
     # @return [TriggerGroupModel] Model generated from the passed JSON
     def self.from_json(json, name:, scope:)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     # @return [] update the redis stream / trigger topic that something has changed
     def notify(kind:, error: nil)
-      data = as_json(:allow_nan => true)
+      data = as_json()
       data['error'] = error unless error.nil?
       notification = {
         'kind' => kind,
         'type' => 'group',
-        'data' => JSON.generate(data),
+        'data' => JSON.generate(data, allow_nan: true),
       }
       AutonomicTopic.write_notification(notification, scope: @scope)
     end

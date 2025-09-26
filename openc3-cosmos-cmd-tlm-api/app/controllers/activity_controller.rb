@@ -52,7 +52,7 @@ class ActivityController < ApplicationController
         limit = ((stop - start) / 60).to_i # 1 event every minute ... shouldn't ever be more than this!
       end
       model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop, limit: limit)
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue ArgumentError => e
       log_error(e)
       render json: { status: 'error', message: 'Invalid date provided. Recommend ISO format' }, status: 400
@@ -105,7 +105,7 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: hash['data']['username']
       )
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue ArgumentError, TypeError => e
       log_error(e)
       render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
@@ -165,7 +165,7 @@ class ActivityController < ApplicationController
       if model.nil?
         render json: { status: 'error', message: NOT_FOUND }, status: 404
       else
-        render json: model.as_json(:allow_nan => true)
+        render json: model.as_json()
       end
     rescue StandardError => e
       log_error(e)
@@ -209,7 +209,7 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: username()
       )
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::ActivityError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
@@ -261,7 +261,7 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: hash['data']['username']
       )
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue ArgumentError, TypeError => e
       log_error(e)
       render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
@@ -363,7 +363,7 @@ class ActivityController < ApplicationController
           scope: params[:scope],
           user: hash['data']['username']
         )
-        ret << model.as_json(:allow_nan => true)
+        ret << model.as_json()
       rescue ArgumentError, TypeError => e
         log_error(e)
         ret << { status: 'error', message: "Invalid input, #{e.message}", input: input, type: e.class, err: 400 }

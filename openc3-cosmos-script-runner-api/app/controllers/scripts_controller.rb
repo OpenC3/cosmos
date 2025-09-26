@@ -80,7 +80,7 @@ class ScriptsController < ApplicationController
       end
       # Using 'render json: results' results in a raw json string like:
       # {"contents":"{\"json_class\":\"String\",\"raw\":[35,226,128...]}","breakpoints":[],"locked":false}
-      render plain: JSON.generate(results)
+      render plain: JSON.generate(results, allow_nan: true)
     else
       head :not_found
     end
@@ -118,7 +118,7 @@ class ScriptsController < ApplicationController
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
     # TODO 7.0: Should suiteRunner be snake case?
-    suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
+    suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
     running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no)

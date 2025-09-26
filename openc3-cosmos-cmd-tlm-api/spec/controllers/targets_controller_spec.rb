@@ -31,14 +31,14 @@ RSpec.describe TargetsController, :type => :controller do
       allow(OpenC3::TargetModel).to receive(:all_modified).and_return(["INST"])
       get :all_modified, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret).to eql(['INST'])
     end
 
     it "rejects a bad scope param" do
       get :all_modified, params: { scope: '../DEFAULT' }
       expect(response).to have_http_status(:bad_request)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['message']).to eql('Invalid scope: ../DEFAULT')
     end
   end
