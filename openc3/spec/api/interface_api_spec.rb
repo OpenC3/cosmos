@@ -90,10 +90,10 @@ module OpenC3
       it "connects the interface" do
         expect(@api.get_interface("INST_INT")['state']).to eql "CONNECTED"
         @api.disconnect_interface("INST_INT")
-        sleep 0.01
+        sleep 0.1
         expect(@api.get_interface("INST_INT")['state']).to eql "DISCONNECTED"
         @api.connect_interface("INST_INT")
-        sleep 0.01
+        sleep 0.1
         expect(@api.get_interface("INST_INT")['state']).to eql "ATTEMPTING"
       end
     end
@@ -188,7 +188,7 @@ module OpenC3
         # Setup interface with multiple targets
         model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
         model.target_names = ["INST", "INST2"]
-        model.cmd_target_names = ["INST", "INST2"]  
+        model.cmd_target_names = ["INST", "INST2"]
         model.tlm_target_names = ["INST", "INST2"]
         model.update
 
@@ -206,7 +206,7 @@ module OpenC3
         # Setup interface with multiple targets
         model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
         model.target_names = ["INST", "INST2", "INST3"]
-        model.cmd_target_names = ["INST", "INST2", "INST3"]  
+        model.cmd_target_names = ["INST", "INST2", "INST3"]
         model.tlm_target_names = ["INST", "INST2", "INST3"]
         model.update
 
@@ -239,10 +239,10 @@ module OpenC3
 
       it "returns nil on successful unmap" do
         TargetModel.new(name: "INST2", scope: "DEFAULT").create
-        
+
         expect_any_instance_of(InterfaceModel).to receive(:unmap_target)
         result = @api.unmap_target_from_interface("INST2", "INST_INT")
-        
+
         expect(result).to be_nil
       end
     end
