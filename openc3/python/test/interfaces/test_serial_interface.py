@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import sys
+import math
 from unittest.mock import Mock
 
 # Mock dependencies before imports
@@ -79,8 +80,8 @@ class TestSerialInterface:
         assert details['baud_rate'] == 115200
         assert details['parity'] == "EVEN"
         assert details['stop_bits'] == 2
-        assert details['write_timeout'] == 5.0
-        assert details['read_timeout'] == 10.0
+        assert math.isclose(details['write_timeout'],5.0)
+        assert math.isclose(details['read_timeout'],10.0)
         assert details['flow_control'] == 'NONE'  # default value
         assert details['data_bits'] == 8  # default value
 
@@ -99,7 +100,7 @@ class TestSerialInterface:
         assert details['parity'] == "NONE"
         assert details['stop_bits'] == 1
         assert details['write_timeout'] is None
-        assert details['read_timeout'] == 10.0
+        assert math.isclose(details['read_timeout'],10.0)
 
     def test_details_with_different_settings(self):
         """Test that details works with various parameter combinations"""
@@ -115,5 +116,5 @@ class TestSerialInterface:
         assert details['baud_rate'] == 38400
         assert details['parity'] == "ODD"
         assert details['stop_bits'] == 2
-        assert details['write_timeout'] == 15.0
+        assert math.isclose(details['write_timeout'],15.0)
         assert details['read_timeout'] is None
