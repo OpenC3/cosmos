@@ -189,7 +189,7 @@ class RouterTopic(Topic):
         )
 
     @classmethod
-    def router_details(cls, router_name, scope=OPENC3_SCOPE):
+    def router_details(cls, router_name, scope=OPENC3_SCOPE, timeout = None):
         router_name = router_name.upper()
 
         if timeout is None:

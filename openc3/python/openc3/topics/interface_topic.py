@@ -221,7 +221,7 @@ class InterfaceTopic(Topic):
         )
 
     @classmethod
-    def interface_details(cls, interface_name, scope=OPENC3_SCOPE):
+    def interface_details(cls, interface_name, scope=OPENC3_SCOPE, timeout = None):
         interface_name = interface_name.upper()
 
         if timeout is None:

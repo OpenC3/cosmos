@@ -123,7 +123,7 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def self.router_details(router_name, scope:)
+    def self.router_details(router_name, timeout: nil, scope:)
       router_name = router_name.upcase
 
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout

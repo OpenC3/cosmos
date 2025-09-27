@@ -143,7 +143,7 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def self.interface_details(interface_name, scope:)
+    def self.interface_details(interface_name, timeout: nil, scope:)
       interface_name = interface_name.upcase
 
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
