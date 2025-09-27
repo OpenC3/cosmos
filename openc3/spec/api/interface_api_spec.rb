@@ -90,10 +90,10 @@ module OpenC3
       it "connects the interface" do
         expect(@api.get_interface("INST_INT")['state']).to eql "CONNECTED"
         @api.disconnect_interface("INST_INT")
-        sleep 0.01
+        sleep 0.1
         expect(@api.get_interface("INST_INT")['state']).to eql "DISCONNECTED"
         @api.connect_interface("INST_INT")
-        sleep 0.01
+        sleep 0.1
         expect(@api.get_interface("INST_INT")['state']).to eql "ATTEMPTING"
       end
     end
@@ -180,6 +180,73 @@ module OpenC3
       end
     end
 
+    describe "unmap_target_from_interface" do
+      it "successfully unmaps a single target from an interface" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        # Setup interface with multiple targets
+        model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2"]
+        model.cmd_target_names = ["INST", "INST2"]
+        model.tlm_target_names = ["INST", "INST2"]
+        model.update
+
+        # Mock the interface model's unmap_target method
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT")
+      end
+
+      it "successfully unmaps multiple targets from an interface" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        TargetModel.new(name: "INST3", scope: "DEFAULT").create
+
+        # Setup interface with multiple targets
+        model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2", "INST3"]
+        model.cmd_target_names = ["INST", "INST2", "INST3"]
+        model.tlm_target_names = ["INST", "INST2", "INST3"]
+        model.update
+
+        # Mock the interface model's unmap_target method for multiple calls
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST3", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_interface(["INST2", "INST3"], "INST_INT")
+      end
+
+      it "unmaps target with cmd_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: true, tlm_only: false)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT", cmd_only: true)
+      end
+
+      it "unmaps target with tlm_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: true)
+
+        @api.unmap_target_from_interface("INST2", "INST_INT", tlm_only: true)
+      end
+
+      it "raises error for non-existent interface" do
+        expect { @api.unmap_target_from_interface("INST", "NONEXISTENT_INT") }.to raise_error(/does not exist/)
+      end
+
+      it "returns nil on successful unmap" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(InterfaceModel).to receive(:unmap_target)
+        result = @api.unmap_target_from_interface("INST2", "INST_INT")
+
+        expect(result).to be_nil
+      end
+    end
+
     describe "interface_cmd" do
       it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")
@@ -197,6 +264,39 @@ module OpenC3
 
         expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", "param1", {index: -1, read_write: "READ_WRITE"})
         @api.interface_protocol_cmd("INST_INT", "cmd1", "param1")
+      end
+    end
+
+    describe "interface_target_enable" do
+      it "enables a target on an interface" do
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST")
+
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST", cmd_only: true)
+
+        expect(InterfaceTopic).to receive(:interface_target_enable).with("INST_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.interface_target_enable("INST_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "interface_target_disable" do
+      it "disables a target on an interface" do
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST")
+
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST", cmd_only: true)
+
+        expect(InterfaceTopic).to receive(:interface_target_disable).with("INST_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.interface_target_disable("INST_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "interface_details" do
+      it "gets interface details" do
+        expect(InterfaceTopic).to receive(:interface_details).with("INST_INT", scope: "DEFAULT")
+        @api.interface_details("INST_INT")
       end
     end
   end

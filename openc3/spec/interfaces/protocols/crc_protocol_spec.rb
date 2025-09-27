@@ -1021,5 +1021,58 @@ module OpenC3
         expect($buffer).to eql buffer
       end
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(CrcProtocol, [nil, 'TRUE', 'ERROR', -16, 16], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('CrcProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes CRC protocol-specific configuration" do
+        @interface.add_protocol(CrcProtocol, ['CRC_FIELD', 'FALSE', 'ERROR', -32, 32, 'BIG_ENDIAN', 0x1234, 0x5678, 'TRUE', 'FALSE'], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['write_item_name']).to eq('CRC_FIELD')
+        expect(details['endianness']).to eq(:BIG_ENDIAN)
+        expect(details['bit_offset']).to eq(-32)
+        expect(details['bit_size']).to eq(32)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(CrcProtocol, [nil, 'TRUE', 'ERROR', -16, 16], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('CrcProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes CRC protocol-specific configuration" do
+        @interface.add_protocol(CrcProtocol, ['CRC_FIELD', 'FALSE', 'DISCONNECT', -32, 32, 'LITTLE_ENDIAN', 0x1234, 0x5678, 'TRUE', 'FALSE'], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['strip_crc']).to eq(false)
+        expect(details['bad_strategy']).to eq('DISCONNECT')
+        expect(details['endianness']).to eq(:LITTLE_ENDIAN)
+        expect(details['bit_offset']).to eq(-32)
+        expect(details['bit_size']).to eq(32)
+      end
+    end
   end
 end

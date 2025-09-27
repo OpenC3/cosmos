@@ -121,3 +121,16 @@ class SerialInterface(StreamInterface):
             self.flow_control = option_values[0]
         elif option_name_upper == 'DATA_BITS':
             self.data_bits = int(option_values[0])
+
+    def details(self):
+        result = super().details()
+        result['write_port_name'] = self.write_port_name
+        result['read_port_name'] = self.read_port_name
+        result['baud_rate'] = self.baud_rate
+        result['parity'] = self.parity
+        result['stop_bits'] = self.stop_bits
+        result['write_timeout'] = self.write_timeout
+        result['read_timeout'] = self.read_timeout
+        result['flow_control'] = self.flow_control
+        result['data_bits'] = self.data_bits
+        return result

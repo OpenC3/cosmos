@@ -191,6 +191,53 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(model1.target_names, ["INST", "INST2"])
         self.assertEqual(model2.target_names, [])
 
+    @patch("openc3.models.interface_model.InterfaceModel.get_model")
+    def test_unmaps_target_from_interface(self, mock_get_model):
+        # Create mock interface with unmap_target method
+        mock_interface = Mock()
+        mock_interface.unmap_target = Mock()
+        mock_get_model.return_value = mock_interface
+
+        # Test unmapping single target
+        unmap_target_from_interface("INST", "INST_INT")
+        mock_get_model.assert_called_with(name="INST_INT", scope="DEFAULT")
+        mock_interface.unmap_target.assert_called_with("INST", cmd_only=False, tlm_only=False)
+
+        # Test unmapping with cmd_only=True
+        unmap_target_from_interface("INST", "INST_INT", cmd_only=True)
+        mock_interface.unmap_target.assert_called_with("INST", cmd_only=True, tlm_only=False)
+
+        # Test unmapping with tlm_only=True
+        unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
+        mock_interface.unmap_target.assert_called_with("INST", cmd_only=False, tlm_only=True)
+
+        # Test unmapping list of targets
+        mock_interface.unmap_target.reset_mock()
+        unmap_target_from_interface(["INST", "INST2"], "INST_INT")
+        self.assertEqual(mock_interface.unmap_target.call_count, 2)
+        mock_interface.unmap_target.assert_any_call("INST", cmd_only=False, tlm_only=False)
+        mock_interface.unmap_target.assert_any_call("INST2", cmd_only=False, tlm_only=False)
+
+        # Test with custom scope
+        unmap_target_from_interface("INST", "INST_INT", scope="TEST")
+        mock_get_model.assert_called_with(name="INST_INT", scope="TEST")
+
+    @patch("openc3.models.interface_model.InterfaceModel.get_model")
+    def test_unmap_target_from_interface_error_handling(self, mock_get_model):
+        # Test with non-existent interface
+        mock_get_model.side_effect = RuntimeError("Interface 'NONEXISTENT_INT' does not exist")
+        with self.assertRaises(RuntimeError):
+            unmap_target_from_interface("INST", "NONEXISTENT_INT")
+
+        # Test with interface.unmap_target raising exception
+        mock_interface = Mock()
+        mock_interface.unmap_target.side_effect = Exception("Unmap failed")
+        mock_get_model.side_effect = None
+        mock_get_model.return_value = mock_interface
+        
+        with self.assertRaises(Exception):
+            unmap_target_from_interface("INST", "INST_INT")
+
     def test_sends_an_interface_cmd(self):
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd1")
@@ -240,3 +287,30 @@ class TestInterfaceApi(unittest.TestCase):
                 "param2",
             ),
         )
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_target_enable")
+    def test_enables_a_target_on_an_interface(self, mock_enable):
+        interface_target_enable("INST_INT", "INST")
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        interface_target_enable("INST_INT", "INST", cmd_only=True)
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        interface_target_enable("INST_INT", "INST", tlm_only=True)
+        mock_enable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_target_disable")
+    def test_disables_a_target_on_an_interface(self, mock_disable):
+        interface_target_disable("INST_INT", "INST")
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        interface_target_disable("INST_INT", "INST", cmd_only=True)
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        interface_target_disable("INST_INT", "INST", tlm_only=True)
+        mock_disable.assert_called_with("INST_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.interface_details")
+    def test_gets_interface_details(self, mock_details):
+        interface_details("INST_INT")
+        mock_details.assert_called_with("INST_INT", scope="DEFAULT")

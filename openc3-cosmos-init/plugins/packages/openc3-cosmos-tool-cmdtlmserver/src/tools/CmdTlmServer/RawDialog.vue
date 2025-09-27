@@ -83,13 +83,7 @@
             <span> {{ receivedCount }} </span>
           </v-col>
         </v-row>
-        <v-textarea
-          v-model="rawData"
-          class="pa-0 ma-0"
-          :rows="numRows"
-          no-resize
-          readonly
-        />
+        <raw-buffer v-model="rawData" @formatted="updateFormatted" />
       </v-card-text>
     </v-card>
   </div>
@@ -99,8 +93,12 @@
 import { format } from 'date-fns'
 
 import Updater from './Updater'
+import RawBuffer from './RawBuffer.vue'
 
 export default {
+  components: {
+    RawBuffer,
+  },
   mixins: [Updater],
   props: {
     type: {
@@ -127,6 +125,7 @@ export default {
       header: '',
       receivedTime: '',
       rawData: '',
+      formattedData: '',
       paused: false,
       receivedCount: '',
       dragX: 0,
@@ -164,18 +163,15 @@ export default {
       style['z-index'] = this.zIndex
       return style
     },
-    numRows() {
-      // This is because v-textarea doesn't behave correctly with really long monospace text
-      let lines = this.rawData.split('\n').length
-      // Add a small fudge factor every 2000 lines to prevent clipping at the bottom
-      return lines + Math.floor(lines / 2000)
-    },
   },
   mounted() {
     this.$refs.bar.onmousedown = this.dragMouseDown
     this.$refs.rawDialog.onmouseup = this.focusEvent
   },
   methods: {
+    updateFormatted: function (formatted) {
+      this.formattedData = formatted
+    },
     focusEvent: function (e) {
       this.$emit('focus')
     },
@@ -210,7 +206,7 @@ export default {
       this.top = Math.max(-47, this.top)
     },
     buildRawData: function () {
-      return `${this.header}\nReceived Time: ${this.receivedTime}\nCount: ${this.receivedCount}\n${this.rawData}`
+      return `${this.header}\nReceived Time: ${this.receivedTime}\nCount: ${this.receivedCount}\n${this.formattedData}`
     },
     copyRawData: function () {
       navigator.clipboard.writeText(this.buildRawData())
@@ -246,83 +242,19 @@ export default {
       this.api
         .get_tlm_buffer(this.targetName, this.packetName)
         .then((result) => {
-          let buffer_data = result.buffer
-          if (buffer_data.raw !== undefined) {
-            buffer_data = buffer_data.raw
-          } else {
-            let utf8Encode = new TextEncoder()
-            buffer_data = utf8Encode.encode(buffer_data)
-          }
           this.receivedTime = new Date(result.time / 1000000)
           this.receivedCount = result.received_count
-          this.rawData =
-            'Address   Data                                             Ascii\n' +
-            '---------------------------------------------------------------------------\n' +
-            this.formatBuffer(buffer_data)
+          this.rawData = result.buffer
         })
     },
     updateCommand: function () {
       this.api
         .get_cmd_buffer(this.targetName, this.packetName)
         .then((result) => {
-          let buffer_data = result.buffer
-          if (buffer_data.raw !== undefined) {
-            buffer_data = buffer_data.raw
-          } else {
-            let utf8Encode = new TextEncoder()
-            buffer_data = utf8Encode.encode(buffer_data)
-          }
           this.receivedTime = new Date(result.time / 1000000)
           this.receivedCount = result.received_count
-          this.rawData =
-            'Address   Data                                             Ascii\n' +
-            '---------------------------------------------------------------------------\n' +
-            this.formatBuffer(buffer_data)
+          this.rawData = result.buffer
         })
-    },
-    // TODO: Perhaps move this to a utility library
-    formatBuffer: function (buffer) {
-      let string = ''
-      let index = 0
-      let ascii = ''
-      buffer.forEach((byte) => {
-        if (index % 16 === 0) {
-          string += this.numHex(index, 8) + ': '
-        }
-        string += this.numHex(byte)
-
-        // Create the ASCII representation if printable
-        if (byte >= 32 && byte <= 126) {
-          ascii += String.fromCharCode(byte)
-        } else {
-          ascii += ' '
-        }
-
-        index++
-
-        if (index % 16 === 0) {
-          string += '  ' + ascii + '\n'
-          ascii = ''
-        } else {
-          string += ' '
-        }
-      })
-
-      // We're done printing all the bytes. Now check to see if we ended in the
-      // middle of a line. If so we have to print out the final ASCII if
-      // requested.
-      if (index % 16 != 0) {
-        let existing_length = (index % 16) - 1 + (index % 16) * 2
-        // 47 is (16 * 2) + 15 separator spaces
-        let filler = ' '.repeat(47 - existing_length)
-        let ascii_filler = ' '.repeat(16 - ascii.length)
-        string += filler + '  ' + ascii + ascii_filler
-      }
-      return string
-    },
-    numHex(num, width = 2) {
-      let hex = num.toString(16)
-      return '0'.repeat(width - hex.length) + hex
     },
   },
 }

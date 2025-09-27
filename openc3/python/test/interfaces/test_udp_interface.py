@@ -255,3 +255,60 @@ class TestUdpInterface(unittest.TestCase):
         i.disconnect()
         close_socket(read)
         i.stream_log_pair.shutdown()
+
+    def test_details(self):
+        i = UdpInterface(
+            "192.168.1.100",
+            "8888",
+            "8889",
+            "8890",
+            "10.10.10.2",
+            "128",
+            "10.0",
+            "15.0",
+            "10.10.10.3",
+        )
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check that it includes the expected keys specific to UdpInterface
+        self.assertIn('hostname', details)
+        self.assertIn('write_dest_port', details)
+        self.assertIn('read_port', details)
+        self.assertIn('write_src_port', details)
+        self.assertIn('interface_address', details)
+        self.assertIn('ttl', details)
+        self.assertIn('write_timeout', details)
+        self.assertIn('read_timeout', details)
+        self.assertIn('bind_address', details)
+        
+        # Verify the specific values are correct
+        self.assertEqual(details['hostname'], "192.168.1.100")
+        self.assertEqual(details['write_dest_port'], 8888)
+        self.assertEqual(details['read_port'], 8889)
+        self.assertEqual(details['write_src_port'], 8890)
+        self.assertEqual(details['interface_address'], "10.10.10.2")
+        self.assertEqual(details['ttl'], 128)
+        self.assertEqual(details['write_timeout'], 10.0)
+        self.assertEqual(details['read_timeout'], 15.0)
+        self.assertEqual(details['bind_address'], "10.10.10.3")
+
+    def test_details_with_none_values(self):
+        i = UdpInterface("localhost", "None", "8889")
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check None and default values are handled correctly
+        self.assertEqual(details['hostname'], "127.0.0.1")  # localhost converted
+        self.assertIsNone(details['write_dest_port'])
+        self.assertEqual(details['read_port'], 8889)
+        self.assertIsNone(details['write_src_port'])
+        self.assertIsNone(details['interface_address'])
+        self.assertEqual(details['ttl'], 128)  # default value
+        self.assertEqual(details['write_timeout'], 10.0)  # default value
+        self.assertIsNone(details['read_timeout'])
+        self.assertEqual(details['bind_address'], "0.0.0.0")  # default value

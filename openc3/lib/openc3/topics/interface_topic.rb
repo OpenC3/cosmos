@@ -42,10 +42,13 @@ module OpenC3
       while true
         Topic.read_topics(InterfaceTopic.topics(interface, scope: scope)) do |topic, msg_id, msg_hash, redis|
           result = yield topic, msg_id, msg_hash, redis
-          ack_topic = topic.split("__")
-          ack_topic[1] = 'ACK' + ack_topic[1]
-          ack_topic = ack_topic.join("__")
-          Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, '*', 100)
+          if result
+            # Only ack if we intend to - Disabled targets will not ack
+            ack_topic = topic.split("__")
+            ack_topic[1] = 'ACK' + ack_topic[1]
+            ack_topic = ack_topic.join("__")
+            Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, '*', 100)
+          end
         end
       end
     end
@@ -120,6 +123,43 @@ module OpenC3
       data['item_hash'] = item_hash
       data['type'] = type
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.interface_target_enable(interface_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['cmd_only'] = cmd_only
+      data['tlm_only'] = tlm_only
+      data['action'] = 'enable'
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.interface_target_disable(interface_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['cmd_only'] = cmd_only
+      data['tlm_only'] = tlm_only
+      data['action'] = 'disable'
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.interface_details(interface_name, timeout: nil, scope:)
+      interface_name = interface_name.upcase
+
+      timeout = COMMAND_ACK_TIMEOUT_S unless timeout
+      ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
+      Topic.update_topic_offsets([ack_topic])
+
+      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_details' => 'true' }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == cmd_id
+            return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for cmd ack"
     end
   end
 end

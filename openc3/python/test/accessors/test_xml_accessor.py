@@ -24,8 +24,7 @@ from collections import namedtuple
 class TestXmlAccessor(unittest.TestCase):
     def setUp(self):
         self.data1 = bytearray(
-            '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li><li>[1,2,3]</li></ul></p></body></html>',
-            encoding="utf-8",
+            b'<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li><li>[1,2,3]</li></ul></p></body></html>'
         )
         self.Xml = namedtuple("Xml", ("name", "key", "data_type", "array_size"))
 

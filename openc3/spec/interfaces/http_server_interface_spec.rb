@@ -157,5 +157,48 @@ module OpenC3
         expect { @interface.convert_packet_to_data(Packet.new('TGT', 'PKT')) }.to raise_error(RuntimeError, "Commands cannot be sent to HttpServerInterface")
       end
     end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = HttpServerInterface.new(8080)
+        i.instance_variable_set(:@listen_address, '192.168.1.100')
+        i.instance_variable_set(:@request_queue, Queue.new)
+
+        details = i.details
+
+        expect(details).to be_a(Hash)
+        expect(details['listen_address']).to eql('192.168.1.100')
+        expect(details['port']).to eql(8080)
+        expect(details['request_queue_length']).to eql(0)
+
+        # Check that base interface details are included
+        expect(details['name']).to eql('HttpServerInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "shows current request queue length" do
+        i = HttpServerInterface.new(8080)
+        request_queue = Queue.new
+        request_queue.push(['test1', {}])
+        request_queue.push(['test2', {}])
+        i.instance_variable_set(:@request_queue, request_queue)
+
+        details = i.details
+
+        expect(details['request_queue_length']).to eql(2)
+      end
+
+      it "handles default listen address" do
+        i = HttpServerInterface.new(8080)
+        i.instance_variable_set(:@request_queue, Queue.new)
+
+        details = i.details
+
+        expect(details['listen_address']).to eql('0.0.0.0')
+        expect(details['port']).to eql(8080)
+      end
+    end
   end
 end

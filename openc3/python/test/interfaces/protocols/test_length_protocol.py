@@ -753,3 +753,73 @@ class TestLengthProtocol(unittest.TestCase):
         self.interface.write(packet)
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04")
         self.assertEqual(TestLengthProtocol.buffer, b"\xBA\x5E\xBA\x11\x09\x01\x02\x03\x04")
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            LengthProtocol,
+            [16, 32, 8, 2, "LITTLE_ENDIAN", 4, "0xDEADBEEF", 1024, True],
+            "READ_WRITE",
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "LengthProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check length protocol specific fields
+        self.assertIn("length_bit_offset", details)
+        self.assertEqual(details["length_bit_offset"], 16)
+        self.assertIn("length_bit_size", details)
+        self.assertEqual(details["length_bit_size"], 32)
+        self.assertIn("length_value_offset", details)
+        self.assertEqual(details["length_value_offset"], 8)
+        self.assertIn("length_bytes_per_count", details)
+        self.assertEqual(details["length_bytes_per_count"], 2)
+        self.assertIn("length_endianness", details)
+        self.assertEqual(details["length_endianness"], "LITTLE_ENDIAN")
+        self.assertIn("length_bytes_needed", details)
+        self.assertIn("max_length", details)
+        self.assertEqual(details["max_length"], 1024)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            LengthProtocol,
+            [8, 16, 4, 1, "BIG_ENDIAN", 2, "0xABCD", 512, False],
+            "READ_WRITE",
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "LengthProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check length protocol specific read fields (same as write for this protocol)
+        self.assertIn("length_bit_offset", details)
+        self.assertEqual(details["length_bit_offset"], 8)
+        self.assertIn("length_bit_size", details)
+        self.assertEqual(details["length_bit_size"], 16)
+        self.assertIn("length_value_offset", details)
+        self.assertEqual(details["length_value_offset"], 4)
+        self.assertIn("length_bytes_per_count", details)
+        self.assertEqual(details["length_bytes_per_count"], 1)
+        self.assertIn("length_endianness", details)
+        self.assertEqual(details["length_endianness"], "BIG_ENDIAN")
+        self.assertIn("length_bytes_needed", details)
+        self.assertIn("max_length", details)
+        self.assertEqual(details["max_length"], 512)

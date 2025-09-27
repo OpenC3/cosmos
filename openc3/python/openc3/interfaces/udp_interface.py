@@ -202,3 +202,16 @@ class UdpInterface(Interface):
         self.write_interface_base(data, extra)
         self.write_socket.write(data, self.write_timeout)
         return data, extra
+
+    def details(self):
+      result = super().details()
+      result['hostname'] = self.hostname
+      result['write_dest_port'] = self.write_dest_port
+      result['read_port'] = self.read_port
+      result['write_src_port'] = self.write_src_port
+      result['interface_address'] = self.interface_address
+      result['ttl'] = self.ttl
+      result['write_timeout'] = self.write_timeout
+      result['read_timeout'] = self.read_timeout
+      result['bind_address'] = self.bind_address
+      return result

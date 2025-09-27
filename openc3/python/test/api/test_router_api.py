@@ -96,6 +96,104 @@ class TestRouterApi(unittest.TestCase):
         model.create()
         self.assertEqual(get_router_names(), ["INT1", "INT2", "ROUTE_INT"])
 
+    @patch("openc3.models.router_model.RouterModel.get_model")
+    def test_maps_target_to_router(self, mock_get_model):
+        # Create mock router with map_target method
+        mock_router = Mock()
+        mock_router.map_target = Mock()
+        mock_get_model.return_value = mock_router
+
+        # Test mapping single target
+        map_target_to_router("INST", "ROUTE_INT")
+        mock_get_model.assert_called_with(name="ROUTE_INT", scope="DEFAULT")
+        mock_router.map_target.assert_called_with("INST", cmd_only=False, tlm_only=False, unmap_old=True)
+
+        # Test mapping with cmd_only=True
+        map_target_to_router("INST", "ROUTE_INT", cmd_only=True)
+        mock_router.map_target.assert_called_with("INST", cmd_only=True, tlm_only=False, unmap_old=True)
+
+        # Test mapping with tlm_only=True
+        map_target_to_router("INST", "ROUTE_INT", tlm_only=True)
+        mock_router.map_target.assert_called_with("INST", cmd_only=False, tlm_only=True, unmap_old=True)
+
+        # Test mapping with unmap_old=False
+        map_target_to_router("INST", "ROUTE_INT", unmap_old=False)
+        mock_router.map_target.assert_called_with("INST", cmd_only=False, tlm_only=False, unmap_old=False)
+
+        # Test mapping list of targets
+        mock_router.map_target.reset_mock()
+        map_target_to_router(["INST", "INST2"], "ROUTE_INT")
+        self.assertEqual(mock_router.map_target.call_count, 2)
+        mock_router.map_target.assert_any_call("INST", cmd_only=False, tlm_only=False, unmap_old=True)
+        mock_router.map_target.assert_any_call("INST2", cmd_only=False, tlm_only=False, unmap_old=True)
+
+        # Test with custom scope
+        map_target_to_router("INST", "ROUTE_INT", scope="TEST")
+        mock_get_model.assert_called_with(name="ROUTE_INT", scope="TEST")
+
+    @patch("openc3.models.router_model.RouterModel.get_model")
+    def test_unmaps_target_from_router(self, mock_get_model):
+        # Create mock router with unmap_target method
+        mock_router = Mock()
+        mock_router.unmap_target = Mock()
+        mock_get_model.return_value = mock_router
+
+        # Test unmapping single target
+        unmap_target_from_router("INST", "ROUTE_INT")
+        mock_get_model.assert_called_with(name="ROUTE_INT", scope="DEFAULT")
+        mock_router.unmap_target.assert_called_with("INST", cmd_only=False, tlm_only=False)
+
+        # Test unmapping with cmd_only=True
+        unmap_target_from_router("INST", "ROUTE_INT", cmd_only=True)
+        mock_router.unmap_target.assert_called_with("INST", cmd_only=True, tlm_only=False)
+
+        # Test unmapping with tlm_only=True
+        unmap_target_from_router("INST", "ROUTE_INT", tlm_only=True)
+        mock_router.unmap_target.assert_called_with("INST", cmd_only=False, tlm_only=True)
+
+        # Test unmapping list of targets
+        mock_router.unmap_target.reset_mock()
+        unmap_target_from_router(["INST", "INST2"], "ROUTE_INT")
+        self.assertEqual(mock_router.unmap_target.call_count, 2)
+        mock_router.unmap_target.assert_any_call("INST", cmd_only=False, tlm_only=False)
+        mock_router.unmap_target.assert_any_call("INST2", cmd_only=False, tlm_only=False)
+
+        # Test with custom scope
+        unmap_target_from_router("INST", "ROUTE_INT", scope="TEST")
+        mock_get_model.assert_called_with(name="ROUTE_INT", scope="TEST")
+
+    @patch("openc3.models.router_model.RouterModel.get_model")
+    def test_map_target_to_router_error_handling(self, mock_get_model):
+        # Test with non-existent router
+        mock_get_model.side_effect = RuntimeError("Router 'NONEXISTENT_ROUTER' does not exist")
+        with self.assertRaises(RuntimeError):
+            map_target_to_router("INST", "NONEXISTENT_ROUTER")
+
+        # Test with router.map_target raising exception
+        mock_router = Mock()
+        mock_router.map_target.side_effect = Exception("Map failed")
+        mock_get_model.side_effect = None
+        mock_get_model.return_value = mock_router
+        
+        with self.assertRaises(Exception):
+            map_target_to_router("INST", "ROUTE_INT")
+
+    @patch("openc3.models.router_model.RouterModel.get_model")
+    def test_unmap_target_from_router_error_handling(self, mock_get_model):
+        # Test with non-existent router
+        mock_get_model.side_effect = RuntimeError("Router 'NONEXISTENT_ROUTER' does not exist")
+        with self.assertRaises(RuntimeError):
+            unmap_target_from_router("INST", "NONEXISTENT_ROUTER")
+
+        # Test with router.unmap_target raising exception
+        mock_router = Mock()
+        mock_router.unmap_target.side_effect = Exception("Unmap failed")
+        mock_get_model.side_effect = None
+        mock_get_model.return_value = mock_router
+        
+        with self.assertRaises(Exception):
+            unmap_target_from_router("INST", "ROUTE_INT")
+
     # def test_connects_the_router(self):
     #     self.assertEqual(get_router("ROUTE_INT")["state"], "CONNECTED")
     #     disconnect_router("ROUTE_INT")
@@ -181,3 +279,30 @@ class TestRouterApi(unittest.TestCase):
     #             "param2",
     #         ),
     #     )
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_target_enable")
+    def test_enables_a_target_on_a_router(self, mock_enable):
+        router_target_enable("ROUTE_INT", "INST")
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        router_target_enable("ROUTE_INT", "INST", cmd_only=True)
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        router_target_enable("ROUTE_INT", "INST", tlm_only=True)
+        mock_enable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_target_disable")
+    def test_disables_a_target_on_a_router(self, mock_disable):
+        router_target_disable("ROUTE_INT", "INST")
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=False, scope="DEFAULT")
+
+        router_target_disable("ROUTE_INT", "INST", cmd_only=True)
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=True, tlm_only=False, scope="DEFAULT")
+
+        router_target_disable("ROUTE_INT", "INST", tlm_only=True)
+        mock_disable.assert_called_with("ROUTE_INT", "INST", cmd_only=False, tlm_only=True, scope="DEFAULT")
+
+    @patch("openc3.topics.router_topic.RouterTopic.router_details")
+    def test_gets_router_details(self, mock_details):
+        router_details("ROUTE_INT")
+        mock_details.assert_called_with("ROUTE_INT", scope="DEFAULT")

@@ -95,7 +95,7 @@ module OpenC3
       return data_to_send, extra
     end
 
-    protected
+    # protected
 
     def read_length_field_followed_by_string(length_num_bytes)
       # Read bytes for string length
@@ -202,6 +202,19 @@ module OpenC3
       end
 
       raise "Error should never reach end of method #{@reduction_state}"
+    end
+
+    def write_details
+      result = super()
+      result['max_length'] = @max_length
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['max_length'] = @max_length
+      result['reduction_state'] = @reduction_state
+      return result
     end
   end
 end

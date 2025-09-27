@@ -24,6 +24,7 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
 
   require 'spec_helper'
   require 'openc3/interfaces/serial_interface'
+  require 'openc3/interfaces/protocols/burst_protocol'
 
   module OpenC3
     describe SerialInterface do
@@ -102,6 +103,54 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
             end
           end
         end
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = SerialInterface.new('/dev/ttyUSB0', '/dev/ttyUSB0', 9600, :NONE, 1, 5.0, 10.0)
+
+        details = i.details
+
+        expect(details).to be_a(Hash)
+        expect(details['write_port_name']).to eql('/dev/ttyUSB0')
+        expect(details['read_port_name']).to eql('/dev/ttyUSB0')
+        expect(details['baud_rate']).to eql(9600)
+        expect(details['parity']).to eql(:NONE)
+        expect(details['stop_bits']).to eql(1)
+        expect(details['write_timeout']).to eql(5.0)
+        expect(details['read_timeout']).to eql(10.0)
+        expect(details['flow_control']).to eql(:NONE)
+        expect(details['data_bits']).to eql(8)
+
+        # Check that base interface details are included
+        expect(details['name']).to eql('SerialInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "handles different configurations" do
+        i = SerialInterface.new('/dev/ttyS0', '/dev/ttyS1', 115200, :ODD, 2, nil, nil)
+
+        details = i.details
+
+        expect(details['write_port_name']).to eql('/dev/ttyS0')
+        expect(details['read_port_name']).to eql('/dev/ttyS1')
+        expect(details['baud_rate']).to eql(115200)
+        expect(details['parity']).to eql(:ODD)
+        expect(details['stop_bits']).to eql(2)
+        expect(details['write_timeout']).to be_nil
+        expect(details['read_timeout']).to be_nil
+      end
+
+      it "handles nil port names" do
+        i = SerialInterface.new('nil', '/dev/ttyUSB0', 9600, :NONE, 1, 5.0, 10.0)
+
+        details = i.details
+
+        expect(details['write_port_name']).to be_nil
+        expect(details['read_port_name']).to eql('/dev/ttyUSB0')
       end
     end
   end

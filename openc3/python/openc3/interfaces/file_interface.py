@@ -233,3 +233,20 @@ class FileInterface(Interface):
                 attempt += 1
             else:
                 return filename
+
+    def details(self):
+        result = super().details()
+        result['command_write_folder'] = self.command_write_folder
+        result['telemetry_read_folder'] = self.telemetry_read_folder
+        result['telemetry_archive_folder'] = self.telemetry_archive_folder
+        result['file_read_size'] = self.file_read_size
+        result['stored'] = self.stored
+        result['filename'] = self.file_path if self.file_path else ''
+        result['extension'] = self.extension
+        result['label'] = self.label
+        result['queue_length'] = self.queue.qsize()
+        result['polling'] = self.polling
+        result['recursive'] = self.recursive
+        result['throttle'] = self.throttle
+        result['discard_file_header_bytes'] = self.discard_file_header_bytes
+        return result

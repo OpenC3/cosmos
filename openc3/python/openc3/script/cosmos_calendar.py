@@ -65,8 +65,8 @@ def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOP
     if kind not in kinds:
         raise RuntimeError(f"Unknown kind: {kind}. Must be one of {', '.join(kinds)}.")
     post_data = {}
-    post_data["start"] = start.isoformat()
-    post_data["stop"] = stop.isoformat()
+    post_data["start"] = start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    post_data["stop"] = stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     post_data["kind"] = kind
     post_data["data"] = data
     response = openc3.script.API_SERVER.request(

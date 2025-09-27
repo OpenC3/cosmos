@@ -18,6 +18,7 @@
 
 require 'spec_helper'
 require 'openc3/interfaces/http_client_interface'
+require 'openc3/accessors/form_accessor'
 
 module OpenC3
   describe HttpClientInterface do
@@ -261,6 +262,55 @@ module OpenC3
 
         expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = HttpClientInterface.new('api.example.com', 443, 'https', 30.0, 60.0, 10.0, true)
+        i.instance_variable_set(:@request_queue, Queue.new)
+
+        details = i.details
+
+        expect(details).to be_a(Hash)
+        expect(details['url']).to eql('https://api.example.com')
+        expect(details['write_timeout']).to eql(30.0)
+        expect(details['read_timeout']).to eql(60.0)
+        expect(details['connect_timeout']).to eql(10.0)
+        expect(details['include_request_in_response']).to be true
+        expect(details['request_queue_length']).to eql(0)
+
+        # Check that base interface details are included
+        expect(details['name']).to eql('HttpClientInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "shows current request queue length" do
+        i = HttpClientInterface.new('example.com', 80)
+        request_queue = Queue.new
+        request_queue.push(['test1', {}])
+        request_queue.push(['test2', {}])
+        request_queue.push(['test3', {}])
+        i.instance_variable_set(:@request_queue, request_queue)
+
+        details = i.details
+
+        expect(details['request_queue_length']).to eql(3)
+      end
+
+      it "handles default values" do
+        i = HttpClientInterface.new('localhost', '8080')
+        i.instance_variable_set(:@request_queue, Queue.new)
+
+        details = i.details
+
+        expect(details['url']).to eql('http://localhost:8080')
+        expect(details['write_timeout']).to eql(5.0)
+        expect(details['read_timeout']).to eql(nil)
+        expect(details['connect_timeout']).to eql(5.0)
+        expect(details['include_request_in_response']).to be false
       end
     end
   end

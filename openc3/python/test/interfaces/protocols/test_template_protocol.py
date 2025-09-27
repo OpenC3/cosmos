@@ -523,3 +523,64 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.write(packet)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"GO\xAD")
         self.assertEqual(self.read_result.read("STRING"), "OpenC3")
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            TemplateProtocol,
+            ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False],
+            "READ_WRITE"
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "TemplateProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check template protocol specific fields
+        self.assertIn("response_template", details)
+        self.assertIn("response_packet", details)
+        self.assertIn("response_target_name", details)
+        self.assertIn("ignore_lines", details)
+        self.assertEqual(details["ignore_lines"], 2)
+        self.assertIn("response_lines", details)
+        self.assertEqual(details["response_lines"], 1)
+        self.assertIn("initial_read_delay", details)
+        self.assertIn("response_timeout", details)
+        self.assertEqual(details["response_timeout"], 0.5)
+        self.assertIn("response_polling_period", details)
+        self.assertEqual(details["response_polling_period"], 0.1)
+        self.assertIn("connect_complete_time", details)
+        self.assertIn("raise_exceptions", details)
+        self.assertEqual(details["raise_exceptions"], False)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            TemplateProtocol,
+            ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False],
+            "READ_WRITE"
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "TemplateProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check template protocol specific fields (same as write_details for this protocol)
+        self.assertIn("response_template", details)
+        self.assertIn("response_packet", details)

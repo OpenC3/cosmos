@@ -149,5 +149,163 @@ module OpenC3
         @api.router_protocol_cmd("ROUTE_INT", "cmd1", "param1")
       end
     end
+
+    describe "map_target_to_router" do
+      it "successfully maps a single target to a router" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        # Mock the router model's map_target method
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST2", cmd_only: false, tlm_only: false, unmap_old: true)
+
+        result = @api.map_target_to_router("INST2", "ROUTE_INT")
+        expect(result).to be_nil
+      end
+
+      it "successfully maps multiple targets to a router" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        TargetModel.new(name: "INST3", scope: "DEFAULT").create
+
+        # Mock the router model's map_target method for multiple calls
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST2", cmd_only: false, tlm_only: false, unmap_old: true)
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST3", cmd_only: false, tlm_only: false, unmap_old: true)
+
+        @api.map_target_to_router(["INST2", "INST3"], "ROUTE_INT")
+      end
+
+      it "maps target with cmd_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST2", cmd_only: true, tlm_only: false, unmap_old: true)
+
+        @api.map_target_to_router("INST2", "ROUTE_INT", cmd_only: true)
+      end
+
+      it "maps target with tlm_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST2", cmd_only: false, tlm_only: true, unmap_old: true)
+
+        @api.map_target_to_router("INST2", "ROUTE_INT", tlm_only: true)
+      end
+
+      it "maps target with unmap_old set to false" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(RouterModel).to receive(:map_target).with("INST2", cmd_only: false, tlm_only: false, unmap_old: false)
+
+        @api.map_target_to_router("INST2", "ROUTE_INT", unmap_old: false)
+      end
+
+      it "raises error for non-existent router" do
+        expect { @api.map_target_to_router("INST", "NONEXISTENT_ROUTER") }.to raise_error(/does not exist/)
+      end
+
+      it "returns nil on successful map" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        
+        expect_any_instance_of(RouterModel).to receive(:map_target)
+        result = @api.map_target_to_router("INST2", "ROUTE_INT")
+        
+        expect(result).to be_nil
+      end
+    end
+
+    describe "unmap_target_from_router" do
+      it "successfully unmaps a single target from a router" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        # Setup router with multiple targets
+        model = RouterModel.get_model(name: "ROUTE_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2"]
+        model.update
+
+        # Mock the router model's unmap_target method
+        expect_any_instance_of(RouterModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_router("INST2", "ROUTE_INT")
+      end
+
+      it "successfully unmaps multiple targets from a router" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        TargetModel.new(name: "INST3", scope: "DEFAULT").create
+
+        # Setup router with multiple targets
+        model = RouterModel.get_model(name: "ROUTE_INT", scope: "DEFAULT")
+        model.target_names = ["INST", "INST2", "INST3"]
+        model.update
+
+        # Mock the router model's unmap_target method for multiple calls
+        expect_any_instance_of(RouterModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: false)
+        expect_any_instance_of(RouterModel).to receive(:unmap_target).with("INST3", cmd_only: false, tlm_only: false)
+
+        @api.unmap_target_from_router(["INST2", "INST3"], "ROUTE_INT")
+      end
+
+      it "unmaps target with cmd_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(RouterModel).to receive(:unmap_target).with("INST2", cmd_only: true, tlm_only: false)
+
+        @api.unmap_target_from_router("INST2", "ROUTE_INT", cmd_only: true)
+      end
+
+      it "unmaps target with tlm_only option" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        expect_any_instance_of(RouterModel).to receive(:unmap_target).with("INST2", cmd_only: false, tlm_only: true)
+
+        @api.unmap_target_from_router("INST2", "ROUTE_INT", tlm_only: true)
+      end
+
+      it "raises error for non-existent router" do
+        expect { @api.unmap_target_from_router("INST", "NONEXISTENT_ROUTER") }.to raise_error(/does not exist/)
+      end
+
+      it "returns nil on successful unmap" do
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+        
+        expect_any_instance_of(RouterModel).to receive(:unmap_target)
+        result = @api.unmap_target_from_router("INST2", "ROUTE_INT")
+        
+        expect(result).to be_nil
+      end
+    end
+
+    describe "router_target_enable" do
+      it "enables a target on a router" do
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST")
+
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST", cmd_only: true)
+
+        expect(RouterTopic).to receive(:router_target_enable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.router_target_enable("ROUTE_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "router_target_disable" do
+      it "disables a target on a router" do
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST")
+
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: true, tlm_only: false, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST", cmd_only: true)
+
+        expect(RouterTopic).to receive(:router_target_disable).with("ROUTE_INT", "INST", cmd_only: false, tlm_only: true, scope: "DEFAULT")
+        @api.router_target_disable("ROUTE_INT", "INST", tlm_only: true)
+      end
+    end
+
+    describe "router_details" do
+      it "gets router details" do
+        expect(RouterTopic).to receive(:router_details).with("ROUTE_INT", scope: "DEFAULT")
+        @api.router_details("ROUTE_INT")
+      end
+    end
   end
 end

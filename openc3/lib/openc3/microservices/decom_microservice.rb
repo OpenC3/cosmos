@@ -202,7 +202,11 @@ module OpenC3
     def limits_change_callback(packet, item, old_limits_state, value, log_change)
       return if @cancel_thread
       # Make a copy because packet_time is frozen
-      packet_time = packet.packet_time.dup
+      if packet.packet_time
+        packet_time = packet.packet_time.dup
+      else
+        packet_time = Time.now.utc
+      end
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
         if item.limits.values

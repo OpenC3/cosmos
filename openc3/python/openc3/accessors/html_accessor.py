@@ -23,7 +23,7 @@ class HtmlAccessor(XmlAccessor):
     @classmethod
     def _buffer_to_doc(cls, buffer):
         # Override the XML implementation to use the HTML parser
-        return HTML.fromstring(buffer.decode())
+        return HTML.fromstring(bytes(buffer))
 
     @classmethod
     def _doc_to_buffer(cls, doc):

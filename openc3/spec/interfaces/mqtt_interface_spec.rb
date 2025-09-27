@@ -166,5 +166,58 @@ module OpenC3
         expect { i.write(pkt) }.to raise_error(RuntimeError, "Command packet 'INST CLEAR' requires a META TOPIC or TOPICS")
       end
     end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = MqttInterface.new('test-server', '1883', true)
+        
+        details = i.details
+        
+        expect(details).to be_a(Hash)
+        expect(details['hostname']).to eql('test-server')
+        expect(details['port']).to eql(1883)
+        expect(details['ssl']).to be true
+        
+        # Check that base interface details are included
+        expect(details['name']).to eql('MqttInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "masks sensitive information" do
+        i = MqttInterface.new('test-server', '1883')
+        i.set_option('USERNAME', ['test_user'])
+        i.set_option('PASSWORD', ['secret_pass'])
+        i.set_option('CERT', ['cert_content'])
+        i.set_option('KEY', ['key_content'])
+        i.set_option('CA_FILE', ['ca_content'])
+        
+        details = i.details
+        
+        expect(details['username']).to eql('test_user')
+        expect(details['password']).to eql('Set')
+        expect(details['cert']).to eql('Set')
+        expect(details['key']).to eql('Set')
+        expect(details['ca_file']).to eql('Set')
+        
+        # Verify sensitive options are removed from options hash
+        expect(details['options']).to_not have_key('PASSWORD')
+        expect(details['options']).to_not have_key('CERT')
+        expect(details['options']).to_not have_key('KEY')
+        expect(details['options']).to_not have_key('CA_FILE')
+      end
+
+      it "handles missing sensitive fields" do
+        i = MqttInterface.new('test-server', '1883')
+        
+        details = i.details
+        
+        expect(details).to_not have_key('password')
+        expect(details).to_not have_key('cert')
+        expect(details).to_not have_key('key')
+        expect(details).to_not have_key('ca_file')
+      end
+    end
   end
 end

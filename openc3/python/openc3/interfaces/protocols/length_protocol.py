@@ -171,3 +171,25 @@ class LengthProtocol(BurstProtocol):
         self.data = self.data[packet_length:]
 
         return (packet_data, self.extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result['length_bit_offset'] = self.length_bit_offset
+        result['length_bit_size'] = self.length_bit_size
+        result['length_value_offset'] = self.length_value_offset
+        result['length_bytes_per_count'] = self.length_bytes_per_count
+        result['length_endianness'] = self.length_endianness
+        result['length_bytes_needed'] = self.length_bytes_needed
+        result['max_length'] = self.max_length
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['length_bit_offset'] = self.length_bit_offset
+        result['length_bit_size'] = self.length_bit_size
+        result['length_value_offset'] = self.length_value_offset
+        result['length_bytes_per_count'] = self.length_bytes_per_count
+        result['length_endianness'] = self.length_endianness
+        result['length_bytes_needed'] = self.length_bytes_needed
+        result['max_length'] = self.max_length
+        return result

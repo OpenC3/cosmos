@@ -123,7 +123,7 @@ class Model:
             if not existing and update:
                 raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
         if isoformat:
-            self.updated_at = datetime.datetime.now().isoformat()
+            self.updated_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             self.updated_at = time.time() * 1_000_000_000
 

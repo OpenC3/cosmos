@@ -127,13 +127,23 @@ export default {
   },
   created() {
     this.api.get_target_names().then((targets) => {
-      targets.map((target) => {
-        this.api.get_all_cmd_names(target).then((names) => {
+      const promises = targets.map((target) => {
+        return this.api.get_all_cmd_names(target)
+      })
+
+      Promise.all(promises).then((responses) => {
+        let index = 0
+        targets.forEach((target) => {
+          let names = responses[index]
           this.data = this.data.concat(
             names.map((packet) => {
               return { target_name: target, packet_name: packet, count: 0 }
             }),
           )
+          index += 1
+        })
+        this.$nextTick(() => {
+          this.update()
         })
       })
     })
@@ -173,7 +183,7 @@ export default {
     },
     update() {
       if (this.tabId != this.curTab) return
-      if (this.visible === null) return
+      if (this.visible === null || this.visible.length === 0) return
       this.api.get_cmd_cnts(this.visible).then((counts) => {
         for (let i = 0; i < counts.length; i++) {
           let index = this.data.findIndex(

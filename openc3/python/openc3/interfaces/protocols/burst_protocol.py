@@ -212,3 +212,17 @@ class BurstProtocol(Protocol):
         packet_data = self.data[:]
         self.data = b""
         return (packet_data, self.extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result['discard_leading_bytes'] = self.discard_leading_bytes
+        result['sync_pattern'] = repr(self.sync_pattern)
+        result['fill_fields'] = self.fill_fields
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['discard_leading_bytes'] = self.discard_leading_bytes
+        result['sync_pattern'] = repr(self.sync_pattern)
+        result['fill_fields'] = self.fill_fields
+        return result

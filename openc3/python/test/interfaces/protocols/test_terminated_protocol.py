@@ -166,3 +166,53 @@ class TestTerminatedProtocol(unittest.TestCase):
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
         self.assertEqual(TestTerminatedProtocol.buffer, b"\xDE\xAD\x00\x01\x02\x03\xCD\xEF")
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            TerminatedProtocol,
+            ["0xCDEF", "0xABCD", True, 2, "DEAD", False],
+            "READ_WRITE"
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "TerminatedProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+
+        # Check terminated protocol specific write fields
+        self.assertIn("write_termination_characters", details)
+        self.assertEqual(details["write_termination_characters"], "bytearray(b'\\xcd\\xef')")
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            TerminatedProtocol,
+            ["0xCDEF", "0xABCD", False, 1, "BEEF", True],
+            "READ_WRITE"
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "TerminatedProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+
+        # Check terminated protocol specific read fields
+        self.assertIn("read_termination_characters", details)
+        self.assertEqual(details["read_termination_characters"], "bytearray(b'\\xab\\xcd')")
+        self.assertIn("strip_read_termination", details)
+        self.assertEqual(details["strip_read_termination"], False)

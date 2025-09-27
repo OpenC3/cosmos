@@ -84,3 +84,14 @@ class TerminatedProtocol(BurstProtocol):
             return (packet_data, self.extra)
         except ValueError:  # sync_index = None
             return ("STOP", self.extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result['write_termination_characters'] = repr(self.write_termination_characters)
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['read_termination_characters'] = repr(self.read_termination_characters)
+        result['strip_read_termination'] = self.strip_read_termination
+        return result

@@ -251,3 +251,45 @@ class TestTcpipServerInterface(unittest.TestCase):
         time.sleep(0.11)
         self.assertEqual(i.num_clients(), 0)
         i.disconnect()
+
+    def test_details(self):
+        i = TcpipServerInterface("8888", "8889", "10.0", "15.0", "burst")
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check that it includes the expected keys specific to TcpipServerInterface
+        self.assertIn('write_port', details)
+        self.assertIn('read_port', details)
+        self.assertIn('write_timeout', details)
+        self.assertIn('read_timeout', details)
+        self.assertIn('listen_address', details)
+        
+        # Verify the specific values are correct
+        self.assertEqual(details['write_port'], 8888)
+        self.assertEqual(details['read_port'], 8889)
+        self.assertEqual(details['write_timeout'], 10.0)
+        self.assertEqual(details['read_timeout'], 15.0)
+        self.assertEqual(details['listen_address'], "0.0.0.0")  # Default value
+
+    def test_details_with_none_ports(self):
+        i = TcpipServerInterface("None", "8889", "None", "5", "burst")
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check None values are preserved
+        self.assertIsNone(details['write_port'])
+        self.assertEqual(details['read_port'], 8889)
+        self.assertIsNone(details['write_timeout'])
+        self.assertEqual(details['read_timeout'], 5.0)
+
+    def test_details_with_listen_address_option(self):
+        i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
+        i.set_option("LISTEN_ADDRESS", ["192.168.1.10"])
+        details = i.details()
+        
+        # Verify the listen address was set correctly
+        self.assertEqual(details['listen_address'], "192.168.1.10")
