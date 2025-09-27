@@ -15,9 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import time
 from openc3.topics.topic import Topic
 from openc3.system.system import System
-from openc3.utilities.json import JsonEncoder
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonDecoder
 
@@ -197,7 +197,7 @@ class RouterTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}ROUTER__{router_name}"
         Topic.update_topic_offsets([ack_topic])
 
-        Topic.write_topic(
+        cmd_id =Topic.write_topic(
             f"{{{scope}__CMD}}ROUTER__{router_name}",
             {"router_details": "true"},
             "*",

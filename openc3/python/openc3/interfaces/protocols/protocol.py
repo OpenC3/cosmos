@@ -118,12 +118,12 @@ class Protocol:
     def write_details(self):
         result = { "name": self.__class__.__name__ }
         if self.write_data_input_time:
-            result['write_data_input_time'] = self.write_data_input_time.isoformat()
+            result['write_data_input_time'] = self.write_data_input_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['write_data_input_time'] = None
         result['write_data_input'] = self.write_data_input
         if self.write_data_output_time:
-            result['write_data_output_time'] = self.write_data_output_time.isoformat()
+            result['write_data_output_time'] = self.write_data_output_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['write_data_output_time'] = None
         result['write_data_output'] = self.write_data_output
@@ -132,12 +132,12 @@ class Protocol:
     def read_details(self):
         result = { "name": self.__class__.__name__ }
         if self.read_data_input_time:
-            result['read_data_input_time'] = self.read_data_input_time.isoformat()
+            result['read_data_input_time'] = self.read_data_input_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['read_data_input_time'] = None
         result['read_data_input'] = self.read_data_input
         if self.read_data_output_time:
-            result['read_data_output_time'] = self.read_data_output_time.isoformat()
+            result['read_data_output_time'] = self.read_data_output_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['read_data_output_time'] = None
         result['read_data_output'] = self.read_data_output

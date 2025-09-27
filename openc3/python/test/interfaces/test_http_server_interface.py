@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import Mock, patch
 from test.test_helper import mock_redis, setup_system
 from openc3.interfaces.http_server_interface import HttpServerInterface
 

@@ -34,7 +34,7 @@ from openc3.microservices.interface_decom_common import (
     handle_inject_tlm,
 )
 from openc3.top_level import kill_thread
-
+from datetime import datetime, timezone
 
 class LimitsResponseThread:
     def __init__(self, microservice_name, queue, logger, metric, scope):
@@ -71,7 +71,7 @@ class LimitsResponseThread:
 
                 try:
                     item.limits.response.call(packet, item, old_limits_state)
-                except Exception as error:
+                except Exception:
                     self.error_count += 1
                     self.metric.set(name="limits_response_error_total", value=self.error_count, type="counter")
                     self.logger.error(
@@ -210,7 +210,10 @@ class DecomMicroservice(Microservice):
     def limits_change_callback(self, packet, item, old_limits_state, value, log_change):
         if self.cancel_thread:
             return
-        packet_time = packet.packet_time
+        if packet.packet_time is not None:
+            packet_time = packet.packet_time
+        else:
+            packet_time = datetime.now(timezone.utc)
         if value:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
             if item.limits.values:

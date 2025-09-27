@@ -282,7 +282,7 @@ class TemplateProtocol(TerminatedProtocol):
         result['response_timeout'] = self.response_timeout
         result['response_polling_period'] = self.response_polling_period
         if self.connect_complete_time:
-            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).isoformat()
+            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['connect_complete_time'] = None
         result['raise_exceptions'] = self.raise_exceptions
@@ -299,7 +299,7 @@ class TemplateProtocol(TerminatedProtocol):
         result['response_timeout'] = self.response_timeout
         result['response_polling_period'] = self.response_polling_period
         if self.connect_complete_time:
-            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).isoformat()
+            result['connect_complete_time'] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['connect_complete_time'] = None
         result['raise_exceptions'] = self.raise_exceptions

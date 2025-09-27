@@ -537,11 +537,11 @@ class Interface:
         result['read_raw_data'] = self.read_raw_data
         result['written_raw_data'] = self.written_raw_data
         if self.read_raw_data_time is not None:
-            result['read_raw_data_time'] = self.read_raw_data_time.isoformat()
+            result['read_raw_data_time'] = self.read_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['read_raw_data_time'] = None
         if self.written_raw_data_time is not None:
-            result['written_raw_data_time'] = self.written_raw_data_time.isoformat()
+            result['written_raw_data_time'] = self.written_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             result['written_raw_data_time'] = None
 

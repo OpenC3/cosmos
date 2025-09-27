@@ -229,7 +229,7 @@ class InterfaceTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
         Topic.update_topic_offsets([ack_topic])
 
-        Topic.write_topic(
+        cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"interface_details": "true"},
             "*",
