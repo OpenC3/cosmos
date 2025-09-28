@@ -83,7 +83,7 @@ So now that you have COSMOS up and running how do you develop an individual COSM
 1.  Bootstrap the frontend with pnpm
 
 ```bash
-openc3-init/plugins % pnpm install
+openc3-init/plugins % pnpm install --frozen-lockfile --ignore-scripts
 openc3-init/plugins % pnpm build:common
 ```
 

@@ -4,7 +4,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
 
 1.  Bootstrap the frontend with pnpm
 
-        openc3-cosmos-init> pnpm install
+        openc3-cosmos-init> pnpm install --frozen-lockfile --ignore-scripts
 
 1.  Start openc3
 
@@ -14,7 +14,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
 1.  Serve a local OpenC3 COSMOS application (CmdTlmServer, ScriptRunner, etc)
 
         openc3-cosmos-init> cd plugins/packages/openc3-cosmos-tool-scriptrunner
-        openc3-cosmos-tool-scriptrunner> pnpm install
+        openc3-cosmos-tool-scriptrunner> pnpm install --frozen-lockfile --ignore-scripts
         ...
         openc3-cosmos-tool-scriptrunner> pnpm serve
 

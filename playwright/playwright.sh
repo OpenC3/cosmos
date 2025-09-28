@@ -24,7 +24,7 @@ case $1 in
 
         rm -rf node_modules
 
-        pnpm install; pnpm exec playwright install --with-deps; pnpm playwright --version
+        pnpm install --frozen-lockfile --ignore-scripts; pnpm exec playwright install --with-deps; pnpm playwright --version
 
         ./reset_storage_state.sh
         ;;

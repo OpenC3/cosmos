@@ -112,18 +112,19 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 
 # Build demo config
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo", "widgets_src"]
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS base
 FROM openc3-frontend-tmp AS openc3-tmp5
 
 # Build docs tool
 COPY --from=base /openc3 /openc3/
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-WORKDIR /openc3/plugins/packages/openc3-cosmos-tool-docs/scripts
+COPY --from=docs . /openc3/openc3-cosmos-tool-docs/
+WORKDIR /openc3/openc3-cosmos-tool-docs/scripts
 RUN ruby generate_docs_from_yaml.rb PLUGIN
-RUN pnpm install --ignore-scripts
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "docs-openc3-com"]
+WORKDIR /openc3/openc3-cosmos-tool-docs
+RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "/openc3/openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
@@ -134,6 +135,7 @@ COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-js-common/ /openc3/plugins/packages/openc3-js-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-vue-common/ /openc3/plugins/packages/openc3-vue-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-lock.yaml /openc3/plugins/pnpm-lock.yaml
