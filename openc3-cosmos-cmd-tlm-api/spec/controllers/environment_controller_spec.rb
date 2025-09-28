@@ -30,7 +30,7 @@ RSpec.describe EnvironmentController, :type => :controller do
   describe "GET index" do
     it "returns an empty array and status code 200" do
       get :index, params: { "scope" => "DEFAULT" }
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json).to eql([])
       expect(response).to have_http_status(:ok)
     end
@@ -41,7 +41,7 @@ RSpec.describe EnvironmentController, :type => :controller do
       post :create, params: { 'scope' => 'ANOTHER', 'key' => 'NAME3', 'value' => 'Mike' }
       get :index, params: { "scope" => "DEFAULT" }
       expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.length).to eql(2)
       expect(json[0].keys.sort).to eql(%w(key name updated_at value))
       expect(json[0]['value']).to eql('Jason')
@@ -49,7 +49,7 @@ RSpec.describe EnvironmentController, :type => :controller do
 
       get :index, params: { "scope" => "ANOTHER" }
       expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json[0].keys.sort).to eql(%w(key name updated_at value))
       expect(json[0]['value']).to eql('Mike')
     end
@@ -59,7 +59,7 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "returns a json hash of name and status code 201" do
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(:created)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["key"]).to eql('NAME')
       expect(json["value"]).to eql('Jason')
     end
@@ -67,7 +67,7 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "requires scope" do
       post :create, params: { 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(401)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['status']).to eql('error')
       expect(json['message']).to eql('Scope is required')
     end
@@ -75,7 +75,7 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "requires key" do
       post :create, params: { 'scope' => 'DEFAULT', 'value' => 'Jason' }
       expect(response).to have_http_status(400)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['status']).to eql('error')
       expect(json['message']).to eql("Parameter 'key' is required")
     end
@@ -83,7 +83,7 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "requires value" do
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME' }
       expect(response).to have_http_status(400)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['status']).to eql('error')
       expect(json['message']).to eql("Parameter 'value' is required")
     end
@@ -93,7 +93,7 @@ RSpec.describe EnvironmentController, :type => :controller do
       expect(response).to have_http_status(:created)
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(409)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['status']).to eql('error')
       expect(json['message']).to eql("Key: 'NAME' value: 'Jason' already exists")
     end
@@ -101,12 +101,12 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "updates an existing value" do
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(:created)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["key"]).to eql('NAME')
       expect(json["value"]).to eql('Jason')
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME', 'value' => 'Ryan' }
       expect(response).to have_http_status(:created)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["key"]).to eql('NAME')
       expect(json["value"]).to eql('Ryan')
     end
@@ -115,7 +115,7 @@ RSpec.describe EnvironmentController, :type => :controller do
   describe "DELETE" do
     it "returns error if key / value not found" do
       delete :destroy, params: { 'scope' => 'DEFAULT', "name" => "abc123" }
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['status']).to eql('error')
       expect(json['message']).not_to be_nil
       expect(response).to have_http_status(:not_found)
@@ -124,12 +124,12 @@ RSpec.describe EnvironmentController, :type => :controller do
     it "deletes an existing item" do
       post :create, params: { 'scope' => 'DEFAULT', 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(:created)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       delete :destroy, params: { 'scope' => 'DEFAULT', 'name' => json['name'] }
       expect(response).to have_http_status(:success)
       get :index, params: { 'scope' => 'DEFAULT', 'name' => json['name'] }
       expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json).to eql([])
     end
   end

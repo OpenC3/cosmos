@@ -219,7 +219,7 @@ module OpenC3
     describe "as_json" do
       it "creates a Hash" do
         item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
-        hash = item.as_json(:allow_nan => true)
+        hash = item.as_json()
         expect(hash.keys.length).to eql 8
         expect(hash.keys).to include('name', 'bit_offset', 'bit_size', 'data_type', 'endianness', 'array_size', 'overflow')
         expect(hash["name"]).to eql "TEST"
@@ -236,7 +236,7 @@ module OpenC3
     describe "self.from_json" do
       it "creates StructureItem from hash" do
         item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
-        new_item = StructureItem.from_json(item.as_json(:allow_nan => true))
+        new_item = StructureItem.from_json(item.as_json())
         expect(new_item.name).to eql item.name
         expect(new_item.bit_offset).to eql item.bit_offset
         expect(new_item.bit_size).to eql item.bit_size

@@ -88,7 +88,7 @@ module OpenC3
           if r.nil?
             nil
           else
-            JSON.parse(r, :allow_nan => true, :create_additions => true)
+            JSON.parse(r, allow_nan: true, create_additions: true)
           end
         end
         return result
@@ -113,7 +113,7 @@ module OpenC3
           if r.nil?
             nil
           else
-            JSON.parse(r, :allow_nan => true, :create_additions => true)
+            JSON.parse(r, allow_nan: true, create_additions: true)
           end
         end
         return result
@@ -204,7 +204,7 @@ module OpenC3
       else
         write_store = self.class.store
       end
-      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
+      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(), allow_nan: true))
 
       # Also add to ordered set on create
       write_store.zadd(@primary_key + "__LIST", @name.to_i, @name) if not update

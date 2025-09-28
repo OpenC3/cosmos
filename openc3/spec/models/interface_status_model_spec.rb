@@ -49,7 +49,7 @@ module OpenC3
 
       it "as_json" do
         model = InterfaceStatusModel.new(name: 'IS', state: 'up', scope: 'DEFAULT')
-        expect(model.as_json(:allow_nan => true)['name']).to eq('IS')
+        expect(model.as_json()['name']).to eq('IS')
       end
     end
   end

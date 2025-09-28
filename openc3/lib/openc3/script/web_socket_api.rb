@@ -91,8 +91,8 @@ module OpenC3
       unless @subscribed
         json_hash = {}
         json_hash['command'] = 'subscribe'
-        json_hash['identifier'] = JSON.generate(@identifier)
-        @stream.write(JSON.generate(json_hash))
+        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+        @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = true
       end
     end
@@ -102,8 +102,8 @@ module OpenC3
       if @subscribed
         json_hash = {}
         json_hash['command'] = 'unsubscribe'
-        json_hash['identifier'] = JSON.generate(@identifier)
-        @stream.write(JSON.generate(json_hash))
+        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+        @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = false
       end
     end
@@ -112,9 +112,9 @@ module OpenC3
     def write_action(data_hash)
       json_hash = {}
       json_hash['command'] = 'message'
-      json_hash['identifier'] = JSON.generate(@identifier)
-      json_hash['data'] = JSON.generate(data_hash)
-      write(JSON.generate(json_hash))
+      json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+      json_hash['data'] = JSON.generate(data_hash, allow_nan: true)
+      write(JSON.generate(json_hash, allow_nan: true))
     end
 
     # General write to the websocket

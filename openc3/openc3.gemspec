@@ -80,7 +80,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
   s.add_runtime_dependency 'fiddle',    '~> 1.1'
-  s.add_runtime_dependency 'json',      '~> 2.6'
+  s.add_runtime_dependency 'json',      '~> 2.14' # Breaking change in 2.14 for require 'json/add/string'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
   s.add_runtime_dependency 'ostruct',   '~> 0.6'

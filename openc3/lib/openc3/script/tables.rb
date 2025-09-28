@@ -40,10 +40,10 @@ module OpenC3
     def _tables_handle_response(response, error_message)
       return nil if response.nil?
       if response.status >= 400
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        result = JSON.parse(response.body, allow_nan: true, create_additions: true)
         raise "#{error_message} due to #{result['message']}"
       end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
   end
 end
