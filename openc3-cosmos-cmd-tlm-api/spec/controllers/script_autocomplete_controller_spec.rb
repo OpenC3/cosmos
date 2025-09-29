@@ -67,8 +67,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
           {"Item name"=>"The item name"},
           {"CONVERTED"=>"The type of the value to display. Default is CONVERTED.",
            "FORMATTED"=>"The type of the value to display. Default is CONVERTED.",
-           "RAW"=>"The type of the value to display. Default is CONVERTED.",
-           "WITH_UNITS"=>"The type of the value to display. Default is CONVERTED."},
+           "RAW"=>"The type of the value to display. Default is CONVERTED."},
           # Optional parameter so <>
           {"<Number of characters>"=>
             "The number of characters wide to make the value box (default = 12)"}],
