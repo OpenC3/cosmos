@@ -70,7 +70,7 @@ module OpenC3
       @write_extra = nil
       if packet.extra
         @write_flags |= COSMOS4_EXTRA_FLAG_MASK
-        @write_extra = packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        @write_extra = packet.extra.as_json().to_json(allow_nan: true)
       end
       return packet
     end
@@ -161,7 +161,7 @@ module OpenC3
         @read_extra = read_length_field_followed_by_string(4)
         return :STOP if @read_extra == :STOP
 
-        @read_extra = JSON.parse(@read_extra, :allow_nan => true, :create_additions => true)
+        @read_extra = JSON.parse(@read_extra, allow_nan: true, create_additions: true)
         @reduction_state = :FLAGS_REMOVED
       end
 

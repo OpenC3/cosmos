@@ -184,7 +184,7 @@ module OpenC3
     describe "as_json" do
       it "encodes all the input parameters" do
         model = ToolModel.new(name: "TEST", scope: "DEFAULT")
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['name']).to eq "TEST"
         params = model.method(:initialize).parameters
         params.each do |type, name|
@@ -208,7 +208,7 @@ module OpenC3
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
         end
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['url']).to eql 'myurl'
         expect(json['icon']).to eql 'mdi-icon'
         tf.unlink

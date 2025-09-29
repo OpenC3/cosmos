@@ -63,7 +63,7 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::QueueError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
@@ -86,7 +86,7 @@ class QueuesController < ApplicationController
         state = params[:state] if params[:state]
         model = @model_class.new(name: params[:name], state: state, scope: params[:scope])
         model.create()
-        render json: model.as_json(:allow_nan => true), status: 201
+        render json: model.as_json(), status: 201
       else
         render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400
       end
@@ -255,7 +255,7 @@ class QueuesController < ApplicationController
       return
     end
     model.destroy()
-    render json: model.as_json(:allow_nan => true)
+    render json: model.as_json()
   end
 
   private
@@ -270,7 +270,7 @@ class QueuesController < ApplicationController
       end
       model.state = state
       model.update()
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500

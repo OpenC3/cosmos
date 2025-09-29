@@ -67,7 +67,7 @@ module OpenC3
 
     def self.connect_router(router_name, *router_params, scope:)
       if router_params && !router_params.empty?
-        Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'connect' => 'true', 'params' => JSON.generate(router_params) }, '*', 100)
+        Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'connect' => 'true', 'params' => JSON.generate(router_params, allow_nan: true) }, '*', 100)
       else
         Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'connect' => 'true' }, '*', 100)
       end

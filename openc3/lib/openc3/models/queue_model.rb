@@ -98,7 +98,7 @@ module OpenC3
     def notify(kind:)
       notification = {
         'kind' => kind,
-        'data' => JSON.generate(as_json(:allow_nan => true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
       }
       QueueTopic.write_notification(notification, scope: @scope)
     end

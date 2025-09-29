@@ -56,13 +56,13 @@ module OpenC3
         raise ActivityInputError.new "start: #{start} must be <= stop: #{stop}"
       end
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start, stop, :limit => [0, limit])
-      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      return array.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
     end
 
     # @return [Array<Hash>] Array up to the limit of the models (as Hash objects) stored under the primary key
     def self.all(name:, scope:, limit: 100)
       array = Store.zrange("#{scope}#{PRIMARY_KEY}__#{name}", 0, -1, :limit => [0, limit])
-      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      return array.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
     end
 
     # @return [String|nil] String of the saved json or nil if score not found under primary_key
@@ -108,7 +108,7 @@ module OpenC3
 
       # First find all the activities at the score
       json = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 100])
-      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed = json.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
       parsed.each_with_index do |value, index|
         if uuid
           # If the uuid is given then only delete activities that match the uuid
@@ -128,7 +128,7 @@ module OpenC3
 
       notification = {
         # start / stop to match SortedModel
-        'data' => JSON.generate({'start' => score, 'uuid' => uuid}),
+        'data' => JSON.generate({'start' => score, 'uuid' => uuid}, allow_nan: true),
         'kind' => 'deleted',
         'type' => 'activity',
         'timeline' => name
@@ -143,7 +143,7 @@ module OpenC3
       result = Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", min, max)
       notification = {
         # start / stop to match SortedModel
-        'data' => JSON.generate({'start' => min, 'stop' => max}),
+        'data' => JSON.generate({'start' => min, 'stop' => max}, allow_nan: true),
         'kind' => 'deleted',
         'type' => 'activity',
         'timeline' => name
@@ -154,7 +154,7 @@ module OpenC3
 
     # @return [ActivityModel] Model generated from the passed JSON
     def self.from_json(json, name:, scope:)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
@@ -204,7 +204,7 @@ module OpenC3
       # Adding a '(' makes the max value exclusive
       array = Store.zrevrangebyscore(@primary_key, "(#{stop}", start - MAX_DURATION)
       array.each do |value|
-        activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
+        activity = JSON.parse(value, allow_nan: true, create_additions: true)
         if ignore_score == activity['start']
           next
         elsif activity['stop'] > start
@@ -289,7 +289,7 @@ module OpenC3
           # Get all the existing events in the recurring time range as well as those before
           # the start of the recurring time range to ensure we don't start inside an existing event
           existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
-          existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+          existing.map! {|value| JSON.parse(value, allow_nan: true, create_additions: true) }
         end
         last_stop = nil
 
@@ -315,7 +315,7 @@ module OpenC3
                 end
               end
             end
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
             last_stop = @stop
           end
         end
@@ -331,7 +331,7 @@ module OpenC3
         end
         @updated_at = Time.now.to_nsec_from_epoch
         add_event(status: 'created')
-        Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+        Store.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
         notify(kind: 'created')
       end
     end
@@ -359,12 +359,12 @@ module OpenC3
 
       add_event(status: 'updated')
       json = Store.zrangebyscore(@primary_key, old_start, old_start)
-      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed = json.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
       parsed.each_with_index do |value, index|
         if value['uuid'] == old_uuid
           Store.multi do |multi|
             multi.zrem(@primary_key, json[index])
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
           end
         end
       end
@@ -387,12 +387,12 @@ module OpenC3
       @events << event
 
       json = Store.zrangebyscore(@primary_key, @start, @start)
-      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed = json.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
       parsed.each_with_index do |value, index|
         if value['uuid'] == @uuid
           Store.multi do |multi|
             multi.zrem(@primary_key, json[index])
-            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
           end
         end
       end
@@ -412,7 +412,7 @@ module OpenC3
     # update the redis stream / timeline topic that something has changed
     def notify(kind:, extra: nil)
       notification = {
-        'data' => JSON.generate(as_json(:allow_nan => true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
         'kind' => kind,
         'type' => 'activity',
         'timeline' => @name
