@@ -109,6 +109,13 @@ module OpenC3
           return value
         end
       end
+      if value_type == :WITH_UNITS
+        value = @json_hash["#{name}__U"]
+        if value
+          value = value[array_index] if array_index
+          return value
+        end
+      end
       if value_type == :WITH_UNITS or value_type == :FORMATTED
         value = @json_hash["#{name}__F"]
         if value
