@@ -429,7 +429,7 @@ module OpenC3
         Store.zrem("DEFAULT__openc3_timelines__timeline", json)
         parsed = JSON.parse(json)
         parsed.delete("uuid")
-        Store.zadd("DEFAULT__openc3_timelines__timeline", start, JSON.generate(parsed.as_json))
+        Store.zadd("DEFAULT__openc3_timelines__timeline", start, JSON.generate(parsed.as_json, allow_nan: true))
 
         # Create another activity with the same start time
         model2 = ActivityModel.new(
@@ -831,7 +831,7 @@ module OpenC3
         name = "foobar"
         scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
-        json = activity.as_json(:allow_nan => true)
+        json = activity.as_json()
         expect(json["start"]).to eql(activity.start)
         expect(json["stop"]).to eql(activity.stop)
         expect(json["kind"]).to eql(activity.kind)
@@ -844,8 +844,8 @@ module OpenC3
         name = "foobar"
         scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
-        model_hash = activity.as_json(:allow_nan => true)
-        json = JSON.generate(model_hash)
+        model_hash = activity.as_json()
+        json = JSON.generate(model_hash, allow_nan: true)
         new_activity = ActivityModel.from_json(json, name: name, scope: scope)
         expect(activity.start).to eql(new_activity.start)
         expect(activity.stop).to eql(new_activity.stop)

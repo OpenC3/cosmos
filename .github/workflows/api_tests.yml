@@ -11,9 +11,11 @@ name: API Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   RUBYOPT: --disable=frozen_string_literal

@@ -28,7 +28,7 @@ module OpenC3
 
     def self.write(type, event)
       event['type'] = type
-      Topic.write_topic(PRIMARY_KEY, {event: JSON.generate(event)}, '*', 1000)
+      Topic.write_topic(PRIMARY_KEY, {event: JSON.generate(event, allow_nan: true)}, '*', 1000)
     end
 
     def self.read()

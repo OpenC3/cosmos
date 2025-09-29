@@ -53,7 +53,7 @@ class Script < OpenC3::TargetFile
 
   def self.get_breakpoints(scope, name)
     breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
-    return JSON.parse(breakpoints, :allow_nan => true, :create_additions => true) if breakpoints
+    return JSON.parse(breakpoints, allow_nan: true, create_additions: true) if breakpoints
     []
   end
 
@@ -154,7 +154,7 @@ class Script < OpenC3::TargetFile
       success = process.exit_code == 0
     else
       require temp.path
-      stdout_results = OpenC3::SuiteRunner.build_suites.as_json(:allow_nan => true).to_json(:allow_nan => true)
+      stdout_results = OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)
     end
     temp.delete
     puts "Processed #{name} in #{Time.now - start} seconds"
@@ -177,7 +177,7 @@ class Script < OpenC3::TargetFile
         OpenC3::Store.hdel("#{params[:scope]}__script-breakpoints", params[:name])
       else
         OpenC3::Store.hset("#{params[:scope]}__script-breakpoints", params[:name],
-          breakpoints.as_json(:allow_nan => true).to_json(:allow_nan => true))
+          breakpoints.as_json().to_json(allow_nan: true))
       end
     end
   end
@@ -219,7 +219,7 @@ class Script < OpenC3::TargetFile
             text,
             filename,
             true,
-          ).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+          ).split("\n").as_json().to_json(allow_nan: true),
       }
     elsif language == 'python'
       start = Time.now
@@ -258,13 +258,13 @@ class Script < OpenC3::TargetFile
         return {
           'title' => 'Instrumented Script',
           'description' =>
-            stdout_results.to_s.split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+            stdout_results.to_s.split("\n").as_json().to_json(allow_nan: true),
         }
       else
         return {
           'title' => 'Error Instrumenting Script',
           'description' =>
-            (stdout_results.to_s + stderr_results.to_s).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+            (stdout_results.to_s + stderr_results.to_s).split("\n").as_json().to_json(allow_nan: true),
         }
       end
     else
@@ -321,13 +321,13 @@ class Script < OpenC3::TargetFile
             lines << line
           end
           return(
-            { 'title' => 'Mnemonics Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+            { 'title' => 'Mnemonics Check Failed', 'description' => lines.as_json().to_json(allow_nan: true) }
           )
         else
           return(
             {
               'title' => 'Mnemonics Check Successful',
-              'description' => ["Mnemonics OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+              'description' => ["Mnemonics OK"].as_json().to_json(allow_nan: true),
             }
           )
         end
@@ -357,7 +357,7 @@ class Script < OpenC3::TargetFile
           return(
             {
               'title' => 'Syntax Check Successful',
-              'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true),
+              'description' => results.as_json().to_json(allow_nan: true),
             }
           )
         else
@@ -366,7 +366,7 @@ class Script < OpenC3::TargetFile
           # are writing to the process this is blank so we throw it away
           results.map! { |result| result.split(':')[1..-1].join(':') }
           return(
-            { 'title' => 'Syntax Check Failed', 'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+            { 'title' => 'Syntax Check Failed', 'description' => results.as_json().to_json(allow_nan: true) }
           )
         end
       else
@@ -391,13 +391,13 @@ class Script < OpenC3::TargetFile
             lines << line
           end
           return(
-            { 'title' => 'Syntax Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+            { 'title' => 'Syntax Check Failed', 'description' => lines.as_json().to_json(allow_nan: true) }
           )
         else
           return(
             {
               'title' => 'Syntax Check Successful',
-              'description' => ["Syntax OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+              'description' => ["Syntax OK"].as_json().to_json(allow_nan: true),
             }
           )
         end
@@ -430,13 +430,13 @@ class Script < OpenC3::TargetFile
               lines << line
             end
             return(
-              { 'title' => 'Syntax Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+              { 'title' => 'Syntax Check Failed', 'description' => lines.as_json().to_json(allow_nan: true) }
             )
           else
             return(
               {
                 'title' => 'Syntax Check Successful',
-                'description' => ["Syntax OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+                'description' => ["Syntax OK"].as_json().to_json(allow_nan: true),
               }
             )
           end

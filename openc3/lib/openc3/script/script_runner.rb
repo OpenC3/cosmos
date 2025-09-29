@@ -34,7 +34,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script list request failed", scope: scope)
       else
-        scripts = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        scripts = JSON.parse(response.body, allow_nan: true, create_additions: true)
         # Remove the '*' from the script names
         return scripts.each { |script| script.gsub!(/\*$/, '') }
       end
@@ -50,7 +50,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script syntax check request failed", scope: scope)
       else
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        result = JSON.parse(response.body, allow_nan: true, create_additions: true)
         if result['title'] == "Syntax Check Successful"
           result['success'] = true
         else
@@ -66,7 +66,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Failed to get #{filename}", scope: scope)
       else
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        result = JSON.parse(response.body, allow_nan: true, create_additions: true)
         return result['contents']
       end
     end
@@ -142,9 +142,9 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script instrumented request failed", scope: scope)
       else
-        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        result = JSON.parse(response.body, allow_nan: true, create_additions: true)
         if result['title'] == "Instrumented Script"
-          parsed = JSON.parse(result['description'], :allow_nan => true, :create_additions => true)
+          parsed = JSON.parse(result['description'], allow_nan: true, create_additions: true)
           return parsed.join("\n")
         else
           raise result.inspect
@@ -158,7 +158,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script create request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        return JSON.parse(response.body, allow_nan: true, create_additions: true)
       end
     end
 
@@ -178,7 +178,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Running script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)['items']
+        return JSON.parse(response.body, allow_nan: true, create_additions: true)['items']
       end
     end
 
@@ -188,7 +188,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Running script show request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        return JSON.parse(response.body, allow_nan: true, create_additions: true)
       end
     end
     alias running_script_get script_get # Deprecated alias for compatibility
@@ -275,7 +275,7 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Completed script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)['items']
+        return JSON.parse(response.body, allow_nan: true, create_additions: true)['items']
       end
     end
   end
