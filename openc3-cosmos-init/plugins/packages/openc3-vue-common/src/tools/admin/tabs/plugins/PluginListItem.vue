@@ -18,7 +18,7 @@
 
 <template>
   <tr
-    :class="{ 'cursor-pointer': hasStoreListing }"
+    :class="{ 'cursor-pointer': hasDetails }"
     data-test="plugin-list-item"
     @click="openDetails"
   >
@@ -118,32 +118,9 @@ export default {
   data() {
     return {
       showCard: false,
-      imageContents: null,
     }
   },
   computed: {
-    imageContentsWithMimeType: function () {
-      if (this.imageContents) {
-        const magicNumbers = {
-          'image/bmp': [0x42, 0x4d],
-          'image/jpeg': [0xff, 0xd8, 0xff],
-          'image/png': [0x89, 0x50, 0x4e, 0x47],
-          'image/gif': [0x47, 0x49, 0x46, 0x38],
-          'image/webp': [0x52, 0x49, 0x46, 0x46],
-        }
-        const fileHead = new TextEncoder()
-          .encode(window.atob(this.imageContents.slice(0, 6)))
-          .slice(1)
-        const found = Object.entries(magicNumbers).find(([_, magicNumber]) => {
-          return magicNumber.every((byte, i) => byte === fileHead[i])
-        })
-        if (found) {
-          const [mimeType] = found
-          return `data:${mimeType};base64,${this.imageContents}`
-        }
-      }
-      return undefined
-    },
     displayTitle: function () {
       if (this.title) {
         return this.title
@@ -153,25 +130,9 @@ export default {
         .replace(/-?\d+\.\d+\.\d+(?:\.pre\.beta\d+\.\d+)?\.gem(?:__\d+)?$/, '') // '-6.6.1.pre.beta0.20250801182255.gem__20250801182444' or '6.6.1.gem'
     },
   },
-  created: async function () {
-    if (this.img_path) {
-      try {
-        const params = new URLSearchParams({
-          volume: 'OPENC3_GEMS_VOLUME',
-          scope: window.openc3Scope,
-        })
-        const { data } = await Api.get(
-          `/openc3-api/storage/download_file/${encodeURIComponent(this.img_path)}?${params}`,
-        )
-        this.imageContents = data.contents
-      } catch (e) {
-        // Failed to get image, don't do anything
-      }
-    }
-  },
   methods: {
     openDetails: function () {
-      if (this.hasStoreListing) {
+      if (this.hasDetails) {
         this.showCard = true
       }
     },

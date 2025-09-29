@@ -76,11 +76,41 @@
       </v-card-subtitle>
       -->
       <v-card-text>
-        <v-img v-if="img_path" :src="img_path" />
-        <div v-text="description" />
-        <div class="mt-3 text-caption font-italic">License: {{ license }}</div>
+        <v-img
+          v-if="imageContentsWithMimeType"
+          :src="imageContentsWithMimeType"
+        />
+        <div class="mt-3" v-text="description" />
+        <div class="mt-3 text-caption">
+          Keywords:
+          <template v-if="keywords">
+            <v-chip
+              v-for="keyword in keywords"
+              :key="keyword"
+              variant="flat"
+              color="primary"
+              size="x-small"
+              class="ml-1"
+            >
+              {{ keyword }}
+            </v-chip>
+          </template>
+          <span v-else class="font-italic"> none </span>
+        </div>
+        <div class="mt-3 text-caption font-italic">
+          Licenses:
+          <v-chip
+            v-for="license in licenses"
+            :key="license"
+            size="x-small"
+            class="ml-1"
+          >
+            {{ license }}
+          </v-chip>
+        </div>
         <v-text-field
           v-model="checksum"
+          class="mt-3"
           label="SHA256"
           variant="solo"
           density="compact"
@@ -125,6 +155,7 @@
           @click="install"
         />
         <v-btn
+          v-if="repository"
           text="Repository"
           append-icon="mdi-open-in-new"
           variant="outlined"
@@ -132,6 +163,7 @@
           target="_blank"
         />
         <v-btn
+          v-if="homepage"
           text="Homepage"
           append-icon="mdi-open-in-new"
           variant="outlined"
