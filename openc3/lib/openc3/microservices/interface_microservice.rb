@@ -525,7 +525,7 @@ module OpenC3
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           update_interval = option_values[0].to_f
-          if update_interface <= 0.0
+          if update_interval <= 0.0
             @queued = false
           else
             EphemeralStoreQueued.instance.set_update_interval(update_interval)
