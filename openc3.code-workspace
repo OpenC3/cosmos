@@ -29,9 +29,6 @@
     },
     {
       "path": "../openc3-schedule"
-    },
-    {
-      "path": "../openc3-cosmos-tool-cfdp"
     }
   ],
   "settings": {
