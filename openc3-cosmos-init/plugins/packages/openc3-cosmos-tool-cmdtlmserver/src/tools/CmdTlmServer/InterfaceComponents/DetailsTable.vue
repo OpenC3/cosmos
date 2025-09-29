@@ -27,8 +27,12 @@
         @click="pause"
       />
       <v-spacer />
-      <v-btn icon @click="closeClick">
-        <v-icon>mdi-close</v-icon>
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        data-test="close"
+        @click="closeClick"
+      >
       </v-btn>
     </v-card-title>
     <v-card-text class="overflow-y-auto flex-grow-1 pa-0">
@@ -236,3 +240,11 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.details-table {
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+</style>

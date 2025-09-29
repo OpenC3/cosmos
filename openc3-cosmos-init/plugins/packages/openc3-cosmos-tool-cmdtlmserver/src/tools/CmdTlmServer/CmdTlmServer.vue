@@ -87,10 +87,6 @@ export default {
       curTab: 1,
       tabs: [
         {
-          name: 'Data Flows',
-          path: { name: 'DataFlowsTab' },
-        },
-        {
           name: 'Interfaces',
           path: { name: 'InterfacesTab' },
         },
@@ -109,6 +105,10 @@ export default {
         {
           name: 'Routers',
           path: { name: 'RoutersTab' },
+        },
+        {
+          name: 'Data Flows',
+          path: { name: 'DataFlowsTab' },
         },
         {
           name: 'Status',

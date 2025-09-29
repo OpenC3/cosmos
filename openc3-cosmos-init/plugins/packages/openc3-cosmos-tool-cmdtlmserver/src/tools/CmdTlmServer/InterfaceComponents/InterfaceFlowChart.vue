@@ -18,7 +18,7 @@
 
 <script setup>
 import { ref, watch, defineProps, inject, nextTick } from 'vue'
-import { VueFlow, Handle, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { ControlButton, Controls } from '@vue-flow/controls'
 import { Background } from '@vue-flow/background'
 import DetailsTable from './DetailsTable.vue'
