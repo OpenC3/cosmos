@@ -84,8 +84,8 @@ jobs:
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
-      - name: Build Yarn Packages
-        run: yarn; yarn build:common
+      - name: Build pnpm Packages
+        run: pnpm install --frozen-lockfile --ignore-scripts; pnpm build:common
         working-directory: openc3-cosmos-init/plugins
       - name: build_multi_arch
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718

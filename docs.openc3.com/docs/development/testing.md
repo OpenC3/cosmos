@@ -9,22 +9,23 @@ sidebar_custom_props:
 
 ### Prerequesits
 
-1. Install Yarn
+1. Install pnpm
 
    ```bash
-   npm install --global yarn
+   npm install --global pnpm@latest-10
    ```
 
-1. Clone the COSMOS Playwright repo
+1. Clone the COSMOS repo
 
    ```bash
-   git clone https://github.com/OpenC3/cosmos-playwright
+   git clone https://github.com/OpenC3/cosmos
    ```
 
 1. Install Playwright and dependencies
 
    ```bash
-   cosmos-playwright % yarn install
+   cd cosmos/playwright
+   cosmos/playwright % ./playwright.sh install-playwright
    ```
 
 ### Playwright Testing
@@ -42,14 +43,14 @@ sidebar_custom_props:
    Tests are split into a group that runs in parallel and a group that runs serially. This is done to improve overall execution time.
 
    ```bash
-   cosmos-playwright % yarn test:parallel --headed
-   cosmos-playwright % yarn test:serial --headed
+   cosmos/playwright % pnpm test:parallel --headed
+   cosmos/playwright % pnpm test:serial --headed
    ```
 
    You can run both groups together, but the --headed option will not apply to both groups:
 
    ```bash
-   cosmos-playwright % yarn test
+   cosmos/playwright % pnpm test
    ```
 
 1. _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixwindows` if not on Linux).
@@ -57,16 +58,16 @@ sidebar_custom_props:
    Tests will run successfully without this step and you will get coverage statistics, but line-by-line coverage won't work.
 
    ```bash
-   cosmos-playwright % yarn fixlinux
+   cosmos/playwright % pnpm fixlinux
    ```
 
 1. Generate code coverage
 
    ```bash
-   cosmos-playwright % yarn coverage
+   cosmos/playwright % pnpm coverage
    ```
 
-Code coverage reports can be viewed at `openc3-playwright/coverage/index.html`
+Code coverage reports can be viewed at `cosmos/playwright/coverage/index.html`
 
 ## Ruby Unit Tests
 

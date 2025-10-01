@@ -34,6 +34,7 @@ major = split_version[0]
 minor = split_version[1]
 if version =~ /[a-zA-Z]+/
   # Prerelease version
+  is_prod_release = false
   remainder = split_version[2..-1].join(".")
   remainder.gsub!('-', '.pre.') # Rubygems replaces dashes with .pre.
   remainder_split = remainder.split('.')
@@ -42,6 +43,7 @@ if version =~ /[a-zA-Z]+/
   gem_version = "#{major}.#{minor}.#{patch}.#{other}"
 else
   # Production Release Version
+  is_prod_release = true
   patch = split_version[2]
   other = split_version[3..-1].join('.')
   gem_version = version
@@ -132,21 +134,25 @@ package_dot_json_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /\"version\":/
       mod_data << "  \"version\": \"#{version}\",\n"
-    elsif line =~ /\"@openc3\/js-common\":/
-      mod_data << "    \"@openc3/js-common\": \"#{version}\""
-      # Don't assume the line has a comma because it could be at the end
-      if line.include?(',')
-        mod_data << ",\n"
-      else
-        mod_data << "\n"
-      end
-    elsif line =~ /\"@openc3\/vue-common\":/
-      mod_data << "    \"@openc3/vue-common\": \"#{version}\""
-      # Don't assume the line has a comma because it could be at the end
-      if line.include?(',')
-        mod_data << ",\n"
-      else
-        mod_data << "\n"
+    elsif is_prod_release and rel_path.start_with? 'openc3/templates/'
+      # These dependencies should stay at a released version.
+      # Stuff in 'openc3-cosmos-init' references these dependencies via the workspace, so no need to update here.
+      if line =~ /\"@openc3\/js-common\":/
+        mod_data << "    \"@openc3/js-common\": \"#{version}\""
+        # Don't assume the line has a comma because it could be at the end
+        if line.include?(',')
+          mod_data << ",\n"
+        else
+          mod_data << "\n"
+        end
+      elsif line =~ /\"@openc3\/vue-common\":/
+        mod_data << "    \"@openc3/vue-common\": \"#{version}\""
+        # Don't assume the line has a comma because it could be at the end
+        if line.include?(',')
+          mod_data << ",\n"
+        else
+          mod_data << "\n"
+        end
       end
     else
       mod_data << line
