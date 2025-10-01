@@ -22,6 +22,8 @@ from datetime import datetime
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
+    DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning 'STOP'). Can be True, False, or None, where
     # None is interpreted as True if not the Protocol is the last Protocol of the chain.
@@ -118,12 +120,12 @@ class Protocol:
     def write_details(self):
         result = { "name": self.__class__.__name__ }
         if self.write_data_input_time:
-            result['write_data_input_time'] = self.write_data_input_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result['write_data_input_time'] = self.write_data_input_time.strftime(self.DATETIME_FORMAT)
         else:
             result['write_data_input_time'] = None
         result['write_data_input'] = self.write_data_input
         if self.write_data_output_time:
-            result['write_data_output_time'] = self.write_data_output_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result['write_data_output_time'] = self.write_data_output_time.strftime(self.DATETIME_FORMAT)
         else:
             result['write_data_output_time'] = None
         result['write_data_output'] = self.write_data_output
@@ -132,12 +134,12 @@ class Protocol:
     def read_details(self):
         result = { "name": self.__class__.__name__ }
         if self.read_data_input_time:
-            result['read_data_input_time'] = self.read_data_input_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result['read_data_input_time'] = self.read_data_input_time.strftime(self.DATETIME_FORMAT)
         else:
             result['read_data_input_time'] = None
         result['read_data_input'] = self.read_data_input
         if self.read_data_output_time:
-            result['read_data_output_time'] = self.read_data_output_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result['read_data_output_time'] = self.read_data_output_time.strftime(self.DATETIME_FORMAT)
         else:
             result['read_data_output_time'] = None
         result['read_data_output'] = self.read_data_output

@@ -1008,10 +1008,6 @@ watch(
   border-radius: 4px;
 }
 
-.vue-flow__edges path {
-  stroke-width: 3;
-}
-
 .vue-flow__node {
   background-color: rgb(23, 38, 53);
 }
@@ -1020,5 +1016,3 @@ watch(
   stroke-width: 2;
 }
 </style>
-
-<style scoped></style>
