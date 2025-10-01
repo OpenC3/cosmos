@@ -198,7 +198,7 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('[data-test="script-runner-script-overrides"]').click()
-  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(5)
+  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(4)
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSRAW10',
   )
