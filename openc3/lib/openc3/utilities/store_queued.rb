@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -21,6 +21,8 @@ require 'openc3/utilities/sleeper'
 
 module OpenC3
   class StoreQueued
+    attr_reader :update_interval
+
     # Variable that holds the singleton instance
     @instance = nil
 
@@ -62,7 +64,7 @@ module OpenC3
     end
 
     def set_update_interval(interval)
-      if interval < @update_interval and interval > 0.0
+      if interval > 0.0
         @update_interval = interval
       end
     end

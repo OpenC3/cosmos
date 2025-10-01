@@ -28,7 +28,7 @@ For more information about how Interfaces fit with Protocols and Accessors see [
 
 ## Provided Interfaces
 
-COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+COSMOS provides the following interfaces: TCP/IP Client, TCP/IP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
 COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, InfluxDB.
 
@@ -80,23 +80,23 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-| Option              | Description                                                                                                                                                                                                                                                      |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OPTIMIZE_THROUGHPUT | Number of seconds to wait before writing packets to Redis. By default packets are immediately written to Redis (both the Current Value Table (CVT) and the stream). If you have high rate data this can improve performance by buffering packets before writing. |
+| Option          | Description                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UPDATE_INTERVAL | Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```python
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Wait 1 second before writing packets
-  OPTION OPTIMIZE_THROUGHPUT 1
+  # Wait 0.5 second before writing packets
+  OPTION UPDATE_INTERVAL 0.5
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Wait 1 second before writing packets
-  OPTION OPTIMIZE_THROUGHPUT 1
+  # Wait 0.5 second before writing packets
+  OPTION UPDATE_INTERVAL 0.5
 ```
 </TabItem>
 </Tabs>
@@ -122,9 +122,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-### TCPIP Client Interface
+### TCP/IP Client Interface
 
-The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
+The TCP/IP client interface connects to a TCP/IP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
 
 | Parameter          | Description                                                                                                    | Required |
 | ------------------ | -------------------------------------------------------------------------------------------------------------- | -------- |
@@ -161,9 +161,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-### TCPIP Server Interface
+### TCP/IP Server Interface
 
-The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
+The TCP/IP server interface creates a TCP/IP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
 
 NOTE: To receive connections from outside the internal docker network you need to expose the TCP port in the compose.yaml file. For example, to allow connections on port 8080 find the openc3-operator section and modify like the following example:
 
