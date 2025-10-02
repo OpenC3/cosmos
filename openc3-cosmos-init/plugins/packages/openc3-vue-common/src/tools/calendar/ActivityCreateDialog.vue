@@ -53,7 +53,7 @@
               </v-btn>
             </v-row>
           </template>
-          
+
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -235,21 +235,14 @@
                 >
                 </v-select>
                 <div v-if="kind === 'COMMAND'">
-                  <v-row dense class="ma-0">
-                    <v-text-field
-                      v-model="activityData"
-                      readonly
-                      type="text"
-                      label="Command Input"
-                      data-test="activity-cmd"
-                    />
-                    <v-btn
-                      icon="mdi-pencil"
-                      variant="text"
-                      data-test="edit-command"
-                      @click="editItem()"
-                    />
-                  </v-row>
+                  <v-text-field
+                    v-model="activityData"
+                    readonly
+                    type="text"
+                    label="Command Input"
+                    data-test="activity-cmd"
+                    @click:control="editItem()"
+                  />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'" class="ma-3">
                   <script-chooser @file="fileHandler" />
@@ -488,7 +481,7 @@ export default {
       let data = {
         environment: this.activityEnvironment,
         customTitle: this.customTitle,
-        notes: this.notes
+        notes: this.notes,
       }
       data[kind] = this.activityData
       let recurring = {}
