@@ -79,6 +79,8 @@ class TestCmdApi(unittest.TestCase):
         self.interface.target_names = ["INST"]
         self.interface.cmd_target_names = ["INST"]
         self.interface.tlm_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True}
+        self.interface.tlm_target_enabled = {"INST": True}
         model = InterfaceModel(name="INST_INT", scope="DEFAULT")
         model.create()
         InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
@@ -777,11 +779,11 @@ class BuildCommand(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
     def tearDown(self):
         self.dm.shutdown()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
     def test_complains_about_unknown_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?"):

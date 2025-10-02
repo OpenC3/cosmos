@@ -5432,13 +5432,13 @@ for interface in interface_info():
 
 ### map_target_to_interface
 
-Map a target to an interface allowing target commands and telemetry to be processed by that interface.
+Map a target to an interface allowing target commands and telemetry to be processed by that interface. Note this will cause the interface to respawn.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
+map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false, unmap_old: true)
 ```
 
 </TabItem>
@@ -5446,7 +5446,7 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only,
 <TabItem value="python" label="Python Syntax">
 
 ```python
-map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
+map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False, unmap_old=True)
 ```
 
 </TabItem>
@@ -5465,6 +5465,8 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only,
 
 ```ruby
 map_target_to_interface("INST", "INST_INT", unmap_old: false)
+map_target_to_interface("INST", "INST_INT", cmd_only: true)
+map_target_to_interface("INST", "INST_INT", tlm_only: true)
 ```
 
 </TabItem>
@@ -5473,6 +5475,61 @@ map_target_to_interface("INST", "INST_INT", unmap_old: false)
 
 ```python
 map_target_to_interface("INST", "INST_INT", unmap_old=False)
+map_target_to_interface("INST", "INST_INT", cmd_only=True)
+map_target_to_interface("INST", "INST_INT", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### unmap_target_from_interface
+
+> Since 6.9.0
+
+Unmap a target from an interface. This removes all knowledge of the target and will cause the interface to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target                                                                       |
+| Interface Name | Name of the interface                                                                    |
+| cmd_only       | Named parameter whether to unmap target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to unmap target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_interface("INST", "INST_INT")
+unmap_target_from_interface("INST", "INST_INT", cmd_only: true)
+unmap_target_from_interface("INST", "INST_INT", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+unmap_target_from_interface("INST", "INST_INT")
+unmap_target_from_interface("INST", "INST_INT", cmd_only=True)
+unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
 ```
 
 </TabItem>
@@ -5567,6 +5624,158 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1
 
 ```python
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_target_enable
+
+> Since 6.9.0
+
+Enable commanding and telemetry processing for a given target in an interface.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_enable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_target_enable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| Interface Name | Name of the interface                                                                     |
+| Target Name    | Name of the target                                                                        |
+| cmd_only       | Named parameter whether to enable target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to enable target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_enable("INST_INT", "INST")
+interface_target_enable("INST_INT", "INST", cmd_only: true)
+interface_target_enable("INST_INT", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_target_enable("INST_INT", "INST")
+interface_target_enable("INST_INT", "INST", cmd_only=True)
+interface_target_enable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_target_disable
+
+> Since 6.9.0
+
+Disable commanding and telemetry processing for a given target in an interface.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_disable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_target_disable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| Interface Name | Name of the interface                                                                      |
+| Target Name    | Name of the target                                                                         |
+| cmd_only       | Named parameter whether to disable target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to disable target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_disable("INST_INT", "INST")
+interface_target_disable("INST_INT", "INST", cmd_only: true)
+interface_target_disable("INST_INT", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_target_disable("INST_INT", "INST")
+interface_target_disable("INST_INT", "INST", cmd_only=True)
+interface_target_disable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_details
+
+> Since 6.9.0
+
+Get details on the interface and its protocols.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_details("<Interface Name>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_details("<Interface Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description           |
+| -------------- | --------------------- |
+| Interface Name | Name of the interface |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_details("INST_INT")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_details("INST_INT")
 ```
 
 </TabItem>
@@ -5809,6 +6018,113 @@ for router in router_info:
 </TabItem>
 </Tabs>
 
+### map_target_to_router
+
+> Since 6.9.0
+
+Map a target to an router allowing target commands and telemetry to be processed by that router. Note: this will cause the router to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+map_target_to_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false, unmap_old: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+map_target_to_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False, unmap_old=True)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                         |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Target Name | Name of the target                                                                  |
+| Router Name | Name of the router                                                                  |
+| cmd_only    | Named parameter whether to map target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to map target telemetry only to the router (default: false) |
+| unmap_old   | Named parameter whether remove the target from all existing routers (default: true) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+map_target_to_router("INST", "INST_ROUTER", unmap_old: false)
+map_target_to_router("INST", "INST_ROUTER", cmd_only: true)
+map_target_to_router("INST", "INST_ROUTER", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+map_target_to_router("INST", "INST_ROUTER", unmap_old=False)
+map_target_to_router("INST", "INST_ROUTER", cmd_only=True)
+map_target_to_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### unmap_target_from_router
+
+> Since 6.9.0
+
+Unmap a target from an router. This removes all knowledge of the target and will cause the router to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                           |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Target Name | Name of the target                                                                    |
+| Router Name | Name of the router                                                                    |
+| cmd_only    | Named parameter whether to unmap target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to unmap target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_router("INST", "INST_ROUTER")
+unmap_target_from_router("INST", "INST_ROUTER", cmd_only: true)
+unmap_target_from_router("INST", "INST_ROUTER", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+unmap_target_from_router("INST", "INST_ROUTER")
+unmap_target_from_router("INST", "INST_ROUTER", cmd_only=True)
+unmap_target_from_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
 ### start_raw_logging_router
 
 Starts logging of raw data on one or all routers. This is for debugging purposes only.
@@ -5986,6 +6302,158 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+</Tabs>
+
+### router_target_enable
+
+> Since 6.9.0
+
+Enable commanding and telemetry processing for a given target in a router.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_enable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_target_enable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                            |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Router Name | Name of the router                                                                     |
+| Target Name | Name of the target                                                                     |
+| cmd_only    | Named parameter whether to enable target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to enable target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_enable("INST_ROUTER", "INST")
+router_target_enable("INST_ROUTER", "INST", cmd_only: true)
+router_target_enable("INST_ROUTER", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_target_enable("INST_ROUTER", "INST")
+router_target_enable("INST_ROUTER", "INST", cmd_only=True)
+router_target_enable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### router_target_disable
+
+> Since 6.9.0
+
+Disable commanding and telemetry processing for a given target in a router.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_disable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_target_disable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                             |
+| ----------- | --------------------------------------------------------------------------------------- |
+| Router Name | Name of the router                                                                      |
+| Target Name | Name of the target                                                                      |
+| cmd_only    | Named parameter whether to disable target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to disable target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_disable("INST_ROUTER", "INST")
+router_target_disable("INST_ROUTER", "INST", cmd_only: true)
+router_target_disable("INST_ROUTER", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_target_disable("INST_ROUTER", "INST")
+router_target_disable("INST_ROUTER", "INST", cmd_only=True)
+router_target_disable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### router_details
+
+> Since 6.9.0
+
+Get details on the router and its protocols.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_details("<Router Name>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_details("<Router Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description        |
+| ----------- | ------------------ |
+| Router Name | Name of the router |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_details("INST_ROUTER")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_details("INST_ROUTER")
 ```
 
 </TabItem>

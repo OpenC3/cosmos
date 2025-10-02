@@ -157,5 +157,68 @@ module OpenC3
         i.write(pkt)
       end
     end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = MqttStreamInterface.new('mqtt-server', '8883', true, 'cmd_topic', 'tlm_topic')
+        
+        details = i.details
+        
+        expect(details).to be_a(Hash)
+        expect(details['hostname']).to eql('mqtt-server')
+        expect(details['port']).to eql(8883)
+        expect(details['ssl']).to be true
+        expect(details['write_topic']).to eql('cmd_topic')
+        expect(details['read_topic']).to eql('tlm_topic')
+        
+        # Check that base interface details are included
+        expect(details['name']).to eql('MqttStreamInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "masks sensitive information" do
+        i = MqttStreamInterface.new('mqtt-server', '1883', false, 'cmd_topic', 'tlm_topic')
+        i.set_option('USERNAME', ['test_user'])
+        i.set_option('PASSWORD', ['secret_pass'])
+        i.set_option('CERT', ['cert_content'])
+        i.set_option('KEY', ['key_content'])
+        i.set_option('CA_FILE', ['ca_content'])
+        i.set_option('ACK_TIMEOUT', ['15.0'])
+        
+        details = i.details
+        
+        expect(details['username']).to eql('test_user')
+        expect(details['password']).to eql('Set')
+        expect(details['cert']).to eql('Set')
+        expect(details['key']).to eql('Set')
+        expect(details['ca_file']).to eql('Set')
+        expect(details['ack_timeout']).to eql(15.0)
+        
+        # Verify sensitive options are removed from options hash
+        expect(details['options']).to_not have_key('PASSWORD')
+        expect(details['options']).to_not have_key('CERT')
+        expect(details['options']).to_not have_key('KEY')
+        expect(details['options']).to_not have_key('CA_FILE')
+      end
+
+      it "handles missing sensitive fields" do
+        i = MqttStreamInterface.new('mqtt-server', '1883', false, 'cmd_topic', 'tlm_topic')
+        
+        details = i.details
+        
+        expect(details['hostname']).to eql('mqtt-server')
+        expect(details['port']).to eql(1883)
+        expect(details['ssl']).to be false
+        expect(details['write_topic']).to eql('cmd_topic')
+        expect(details['read_topic']).to eql('tlm_topic')
+        
+        expect(details).to_not have_key('password')
+        expect(details).to_not have_key('cert')
+        expect(details).to_not have_key('key')
+        expect(details).to_not have_key('ca_file')
+      end
+    end
   end
 end

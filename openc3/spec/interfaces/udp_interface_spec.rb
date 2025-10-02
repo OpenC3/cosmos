@@ -179,7 +179,7 @@ module OpenC3
         i.disconnect
         OpenC3.close_socket(write)
         i.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
     end
 
@@ -231,7 +231,7 @@ module OpenC3
         i.disconnect
         OpenC3.close_socket(read)
         i.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
     end
 
@@ -280,8 +280,46 @@ module OpenC3
         i.disconnect
         OpenC3.close_socket(read)
         i.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
+    end
+  end
+
+  describe "details" do
+    it "returns detailed interface information" do
+      i = UdpInterface.new('localhost', '8888', '8889', '8890', '127.0.0.1', '64', '5.0', '10.0', '0.0.0.0')
+
+      details = i.details
+
+      expect(details).to be_a(Hash)
+      expect(details['hostname']).to eql('127.0.0.1')
+      expect(details['write_dest_port']).to eql(8888)
+      expect(details['read_port']).to eql(8889)
+      expect(details['write_src_port']).to eql(8890)
+      expect(details['interface_address']).to eql('127.0.0.1')
+      expect(details['ttl']).to eql(64)
+      expect(details['write_timeout']).to eql(5.0)
+      expect(details['read_timeout']).to eql(10.0)
+      expect(details['bind_address']).to eql('0.0.0.0')
+
+      # Check that base interface details are included
+      expect(details['name']).to eql('UdpInterface')
+      expect(details).to have_key('read_allowed')
+      expect(details).to have_key('write_allowed')
+      expect(details).to have_key('write_raw_allowed')
+      expect(details).to have_key('options')
+    end
+
+    it "handles nil values correctly" do
+      i = UdpInterface.new('localhost', 'nil', '8889')
+
+      details = i.details
+
+      expect(details['hostname']).to eql('127.0.0.1')
+      expect(details['write_dest_port']).to be_nil
+      expect(details['read_port']).to eql(8889)
+      expect(details['write_src_port']).to be_nil
+      expect(details['interface_address']).to be_nil
     end
   end
 end

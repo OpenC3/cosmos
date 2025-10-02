@@ -92,7 +92,6 @@ class Initialize(unittest.TestCase):
         self.assertTrue(i.auto_reconnect)
         self.assertEqual(i.reconnect_delay, 5.0)
         self.assertFalse(i.disable_disconnect)
-        self.assertEqual(i.packet_log_writer_pairs, [])
         self.assertEqual(i.stream_log_pair, None)
         self.assertEqual(i.routers, [])
         self.assertEqual(i.read_count, 0)
@@ -607,7 +606,7 @@ class CopyTo(unittest.TestCase):
         i.auto_reconnect = False
         i.reconnect_delay = 1.0
         i.disable_disconnect = True
-        i.packet_log_writer_pairs = [1, 2]
+        i.stream_log_pair = [1, 2]
         i.routers = [3, 4]
         i.read_count = 1
         i.write_count = 2
@@ -628,7 +627,7 @@ class CopyTo(unittest.TestCase):
         self.assertFalse(i2.auto_reconnect)
         self.assertEqual(i2.reconnect_delay, 1.0)
         self.assertTrue(i2.disable_disconnect)
-        self.assertEqual(i2.packet_log_writer_pairs, [1, 2])
+        self.assertEqual(i2.stream_log_pair, [1, 2])
         self.assertEqual(i2.routers, [3, 4])
         self.assertEqual(i2.read_count, 1)
         self.assertEqual(i2.write_count, 2)
@@ -740,3 +739,78 @@ class ProtocolCmd(unittest.TestCase):
         self.assertIsNone(self.read_protocol.cmd_name)
         self.assertEqual(self.read_write_protocol.cmd_name, "A")
         self.assertEqual(self.read_write_protocol.cmd_args, ("GREAT", "CMD"))
+
+
+class TestInterfaceNewFeatures(unittest.TestCase):
+    def test_initializes_cmd_target_enabled_and_tlm_target_enabled(self):
+        i = Interface()
+        self.assertEqual(i.cmd_target_enabled, {})
+        self.assertEqual(i.tlm_target_enabled, {})
+
+    def test_copies_cmd_target_enabled_and_tlm_target_enabled(self):
+        i = Interface()
+        i.cmd_target_enabled = {"TARGET1": True, "TARGET2": False}
+        i.tlm_target_enabled = {"TARGET1": False, "TARGET2": True}
+
+        i2 = Interface()
+        i.copy_to(i2)
+
+        self.assertEqual(i2.cmd_target_enabled, {"TARGET1": True, "TARGET2": False})
+        self.assertEqual(i2.tlm_target_enabled, {"TARGET1": False, "TARGET2": True})
+
+    def test_properly_handles_options_that_support_multiple_instances(self):
+        i = Interface()
+        i.options["TEST_OPTION"] = [["value1", "value2"], ["value3", "value4"]]
+
+        i2 = Interface()
+        with patch.object(i2, 'set_option') as mock_set_option:
+            i.copy_to(i2)
+            # Should be called twice with each sub-array
+            mock_set_option.assert_any_call("TEST_OPTION", ["value1", "value2"])
+            mock_set_option.assert_any_call("TEST_OPTION", ["value3", "value4"])
+
+    def test_returns_detailed_interface_information(self):
+        i = Interface()
+        i.name = "TEST_INT"
+        i.cmd_target_names = ["TARGET1"]
+        i.tlm_target_names = ["TARGET2"]
+        i.cmd_target_enabled = {"TARGET1": True}
+        i.tlm_target_enabled = {"TARGET2": False}
+        i.connect_on_startup = False
+        i.auto_reconnect = False
+        i.reconnect_delay = 10.0
+        i.disable_disconnect = True
+        i.read_allowed = False
+        i.write_allowed = False
+        i.write_raw_allowed = False
+        i.options = {"TEST_OPTION": ["value1"]}
+
+        # Mock protocols
+        class MockReadProtocol:
+            def read_details(self):
+                return {"type": "read"}
+
+        class MockWriteProtocol:
+            def write_details(self):
+                return {"type": "write"}
+
+        i.read_protocols = [MockReadProtocol()]
+        i.write_protocols = [MockWriteProtocol()]
+
+        details = i.details()
+
+        self.assertEqual(details["name"], "TEST_INT")
+        self.assertEqual(details["cmd_target_names"], ["TARGET1"])
+        self.assertEqual(details["tlm_target_names"], ["TARGET2"])
+        self.assertEqual(details["cmd_target_enabled"], {"TARGET1": True})
+        self.assertEqual(details["tlm_target_enabled"], {"TARGET2": False})
+        self.assertFalse(details["connect_on_startup"])
+        self.assertFalse(details["auto_reconnect"])
+        self.assertEqual(details["reconnect_delay"], 10.0)
+        self.assertTrue(details["disable_disconnect"])
+        self.assertFalse(details["read_allowed"])
+        self.assertFalse(details["write_allowed"])
+        self.assertFalse(details["write_raw_allowed"])
+        self.assertEqual(details["options"], {"TEST_OPTION": ["value1"]})
+        self.assertEqual(details["read_protocols"], [{"type": "read"}])
+        self.assertEqual(details["write_protocols"], [{"type": "write"}])

@@ -34,6 +34,11 @@ const routes = [
         path: '',
       },
       {
+        component: () => import('./tools/CmdTlmServer/DataFlowsTab'),
+        name: 'DataFlowsTab',
+        path: 'data-flows',
+      },
+      {
         component: () => import('./tools/CmdTlmServer/InterfacesTab'),
         name: 'InterfacesTab',
         path: 'interfaces',

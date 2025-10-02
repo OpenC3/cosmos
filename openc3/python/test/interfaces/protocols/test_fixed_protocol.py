@@ -175,3 +175,51 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(packet.packet_name, "STARTLOGGING")
         self.assertEqual(packet.buffer, buffer)
         target.cmd_unique_id_mode = False
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(FixedProtocol, [8, 2, "0xDEADBEEF", True, False, True], "READ_WRITE")
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "FixedProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check fixed protocol specific fields
+        self.assertIn("min_id_size", details)
+        self.assertEqual(details["min_id_size"], 8)
+        self.assertIn("telemetry", details)
+        self.assertEqual(details["telemetry"], True)
+        self.assertIn("unknown_raise", details)
+        self.assertEqual(details["unknown_raise"], True)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(FixedProtocol, [4, 1, "0xABCD", False, True, False], "READ_WRITE")
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "FixedProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check fixed protocol specific read fields (same as write for this protocol)
+        self.assertIn("min_id_size", details)
+        self.assertEqual(details["min_id_size"], 4)
+        self.assertIn("telemetry", details)
+        self.assertEqual(details["telemetry"], False)
+        self.assertIn("unknown_raise", details)
+        self.assertEqual(details["unknown_raise"], False)

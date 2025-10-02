@@ -99,3 +99,72 @@ class TestMqttStreamInterface(unittest.TestCase):
         pkt.restore_defaults()
         i.write(pkt)
         mock_client_instance.publish.assert_called_with("write_topic", pkt.buffer)
+
+    def test_details(self):
+        i = MqttStreamInterface("mqtt.example.com", "1883", True, "cmd_topic", "tlm_topic")
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check that it includes the expected keys specific to MqttStreamInterface
+        self.assertIn('hostname', details)
+        self.assertIn('port', details)
+        self.assertIn('ssl', details)
+        self.assertIn('write_topic', details)
+        self.assertIn('read_topic', details)
+        self.assertIn('ack_timeout', details)
+        self.assertIn('username', details)
+        
+        # Verify the specific values are correct
+        self.assertEqual(details['hostname'], "mqtt.example.com")
+        self.assertEqual(details['port'], 1883)
+        self.assertTrue(details['ssl'])
+        self.assertEqual(details['write_topic'], "cmd_topic")
+        self.assertEqual(details['read_topic'], "tlm_topic")
+        self.assertEqual(details['ack_timeout'], 5.0)  # default value
+        self.assertIsNone(details['username'])
+
+    def test_details_with_sensitive_data(self):
+        i = MqttStreamInterface("mqtt.example.com", "1883", False, "write_topic", "read_topic")
+        i.set_option("USERNAME", ["test_user"])
+        i.set_option("PASSWORD", ["secret_pass"])
+        i.set_option("CERT", ["cert_content"])
+        i.set_option("KEY", ["key_content"])
+        i.set_option("CA_FILE", ["ca_file_content"])
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Verify basic settings
+        self.assertEqual(details['hostname'], "mqtt.example.com")
+        self.assertEqual(details['port'], 1883)
+        self.assertFalse(details['ssl'])
+        self.assertEqual(details['username'], "test_user")
+        
+        # Verify sensitive fields show "Set" instead of actual values
+        self.assertEqual(details['password'], 'Set')
+        self.assertEqual(details['cert'], 'Set')
+        self.assertEqual(details['key'], 'Set')
+        self.assertEqual(details['ca_file'], 'Set')
+        
+        # Verify sensitive options are removed from options dict
+        self.assertNotIn('PASSWORD', details['options'])
+        self.assertNotIn('CERT', details['options'])
+        self.assertNotIn('KEY', details['options'])
+        self.assertNotIn('CA_FILE', details['options'])
+
+    def test_details_with_none_topics(self):
+        i = MqttStreamInterface("localhost", "1883", False, None, None)
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check None values are preserved
+        self.assertEqual(details['hostname'], "localhost")
+        self.assertEqual(details['port'], 1883)
+        self.assertFalse(details['ssl'])
+        self.assertIsNone(details['write_topic'])
+        self.assertIsNone(details['read_topic'])

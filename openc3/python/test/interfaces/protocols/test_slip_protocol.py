@@ -253,3 +253,73 @@ class TestSlipProtocol(unittest.TestCase):
         pkt.buffer = b"\x00\xE0\xE1\xE1\xE0\x02\x03"
         self.interface.write(pkt)
         self.assertEqual(TestSlipProtocol.buffer, b"\x00\xE1\xE2\xE1\xE3\xE1\xE3\xE1\xE2\x02\x03\xE0")
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            SlipProtocol,
+            ["0xC0", "True", "False", "True", "0xD0", "0xDB", "0xDC", "0xDD"],
+            "READ_WRITE"
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "SlipProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+
+        # Check slip protocol specific write fields
+        self.assertIn("start_char", details)
+        self.assertEqual(details["start_char"], "b'\\xc0'")
+        self.assertIn("end_char", details)
+        self.assertEqual(details["end_char"], "b'\\xd0'")
+        self.assertIn("esc_char", details)
+        self.assertEqual(details["esc_char"], "b'\\xdb'")
+        self.assertIn("esc_end_char", details)
+        self.assertEqual(details["esc_end_char"], "b'\\xdc'")
+        self.assertIn("esc_esc_char", details)
+        self.assertEqual(details["esc_esc_char"], "b'\\xdd'")
+        self.assertIn("write_enable_escaping", details)
+        self.assertEqual(details["write_enable_escaping"], True)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            SlipProtocol,
+            [None, "False", "True"],
+            "READ_WRITE"
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "SlipProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+
+        # Check slip protocol specific read fields
+        self.assertIn("start_char", details)
+        self.assertEqual(details["start_char"], "None")
+        self.assertIn("end_char", details)
+        self.assertEqual(details["end_char"], "b'\\xc0'")
+        self.assertIn("esc_char", details)
+        self.assertEqual(details["esc_char"], "b'\\xdb'")
+        self.assertIn("esc_end_char", details)
+        self.assertEqual(details["esc_end_char"], "b'\\xdc'")
+        self.assertIn("esc_esc_char", details)
+        self.assertEqual(details["esc_esc_char"], "b'\\xdd'")
+        self.assertIn("read_strip_characters", details)
+        self.assertEqual(details["read_strip_characters"], False)
+        self.assertIn("read_enable_escaping", details)
+        self.assertEqual(details["read_enable_escaping"], True)
