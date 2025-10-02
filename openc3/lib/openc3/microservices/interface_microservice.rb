@@ -219,7 +219,7 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('interface_details')
-              next @interface.details.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              next @interface.details.as_json.to_json(allow_nan: true)
             end
           end
 
@@ -489,7 +489,7 @@ module OpenC3
             next 'SUCCESS'
           end
           if msg_hash.key?('router_details')
-            next @router.details.as_json(:allow_nan => true).to_json(:allow_nan => true)
+            next @router.details.as_json.to_json(allow_nan: true)
           end
           next 'SUCCESS'
         end

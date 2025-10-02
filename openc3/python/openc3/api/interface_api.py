@@ -33,6 +33,7 @@ WHITELIST.extend(
         "get_all_interface_info",
         "map_target_to_interface",
         "unmap_target_from_interface",
+        "interface_cmd",
         "interface_protocol_cmd",
         "interface_target_enable",
         "interface_target_disable",
