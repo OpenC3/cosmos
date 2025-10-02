@@ -67,8 +67,8 @@ module OpenC3
         'name' => @name,
         'state' => @state,
         'count' => @count,
-        'error' => @error.as_json(:allow_nan => true),
-        'custom' => @custom.as_json(:allow_nan => true),
+        'error' => @error.as_json(),
+        'custom' => @custom.as_json(),
         'plugin' => @plugin,
         'updated_at' => @updated_at
       }

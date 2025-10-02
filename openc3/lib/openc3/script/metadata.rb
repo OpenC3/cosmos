@@ -36,7 +36,7 @@ module OpenC3
       response = $api_server.request('get', "/openc3-api/metadata", query: { limit: limit }, scope: scope)
       # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
     alias all_metadata metadata_all
 
@@ -51,7 +51,7 @@ module OpenC3
       end
       # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
     alias get_metadata metadata_get
 
@@ -76,7 +76,7 @@ module OpenC3
       elsif response.status != 201
         raise "Failed to set metadata due to #{response.status}"
       end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
     alias set_metadata metadata_set
 
@@ -104,7 +104,7 @@ module OpenC3
       if response.nil? || response.status != 200
         raise "Failed to update metadata"
       end
-      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
     alias update_metadata metadata_update
 

@@ -41,6 +41,19 @@
           v-model="dialogStep"
           :items="['Activity Times', 'Activity Type']"
         >
+          <template v-if="dialogStep === 1" #actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-spacer />
+              <v-btn
+                color="primary"
+                :disabled="validationError"
+                @click="dialogStep = 2"
+              >
+                Next
+              </v-btn>
+            </v-row>
+          </template>
+          
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -75,6 +88,26 @@
                   class="pb-2"
                 >
                 </v-select>
+                <v-text-field
+                  v-model="customTitle"
+                  type="text"
+                  label="Custom Title"
+                  class="pb-2"
+                  data-test="activity-custom-title"
+                  hide-details
+                  variant="outlined"
+                  density="compact"
+                />
+                <v-textarea
+                  v-model="notes"
+                  label="Notes"
+                  class="py-2 mb-2"
+                  data-test="activity-notes"
+                  hide-details
+                  variant="outlined"
+                  density="compact"
+                  rows="3"
+                />
                 <v-row dense>
                   <v-text-field
                     v-model="startDate"
@@ -316,6 +349,8 @@ export default {
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
       activityData: '',
       activityEnvironment: [],
+      customTitle: '',
+      notes: '',
       rules: {
         required: (value) => !!value || 'Required',
       },
@@ -369,6 +404,9 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+    validationError: function () {
+      return !!this.timeError || !this.timeline
+    },
   },
   mounted: function () {
     this.updateValues()
@@ -397,6 +435,8 @@ export default {
         this.kind = this.activity.kind.toUpperCase()
         this.activityData = this.activity.data[this.activity.kind]
         this.activityEnvironment = this.activity.data.environment
+        this.customTitle = this.activity.data.customTitle || ''
+        this.notes = this.activity.data.notes || ''
         if (this.activity.recurring?.uuid) {
           this.recurring = true
           const rDate = new Date(this.activity.recurring.end * 1000)
@@ -412,6 +452,8 @@ export default {
         this.kind = ''
         this.activityData = ''
         this.activityEnvironment = []
+        this.customTitle = ''
+        this.notes = ''
         this.timeline = this.timelineNames[0]
       }
     },
@@ -443,7 +485,11 @@ export default {
         }
       }
       const kind = this.kind.toLowerCase()
-      let data = { environment: this.activityEnvironment }
+      let data = {
+        environment: this.activityEnvironment,
+        customTitle: this.customTitle,
+        notes: this.notes
+      }
       data[kind] = this.activityData
       let recurring = {}
       if (this.recurring) {

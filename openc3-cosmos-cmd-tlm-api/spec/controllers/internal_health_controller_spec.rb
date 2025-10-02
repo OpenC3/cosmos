@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -30,7 +30,7 @@ RSpec.describe InternalHealthController, :type => :controller do
   describe "GET health" do
     it "returns a Hash<> and status code 200" do
       get :health, params: { 'scope'=>'DEFAULT' }
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json['redis']).to be_a(Array)
       expect(response).to have_http_status(:ok)
     end

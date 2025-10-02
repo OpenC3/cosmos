@@ -133,7 +133,7 @@ module OpenC3
 
         store_id = Integer(store_id) if store_id
         model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, scope: scope)
-        result = model.as_json(:allow_nan => true)
+        result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
       ensure
@@ -293,7 +293,7 @@ module OpenC3
         FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
-      return plugin_model.as_json(:allow_nan => true)
+      return plugin_model.as_json()
     end
 
     def initialize(
@@ -313,7 +313,12 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false)
-      @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
+      if not update and not @name.index("__")
+        existing_names = Set.new(self.class.names(scope: @scope))
+        counter = 0
+        counter += 1 while existing_names.include?("#{@name}__#{counter}")
+        @name = "#{@name}__#{counter}"
+      end
       super(update: update, force: force, queued: queued)
     end
 
@@ -389,7 +394,7 @@ module OpenC3
 
     # Reinstall
     def restore
-      plugin_hash = self.as_json(:allow_nan => true)
+      plugin_hash = self.as_json()
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
       @destroyed = false
     end

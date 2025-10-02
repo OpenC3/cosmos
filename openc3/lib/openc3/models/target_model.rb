@@ -207,7 +207,7 @@ module OpenC3
       json = Store.hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
 
-      JSON.parse(json, :allow_nan => true, :create_additions => true)
+      JSON.parse(json, allow_nan: true, create_additions: true)
     end
 
     # @return [Array<Hash>] All packet hashes under the target_name
@@ -218,7 +218,7 @@ module OpenC3
       result = []
       packets = Store.hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
       packets.sort.each do |_packet_name, packet_json|
-        result << JSON.parse(packet_json, :allow_nan => true, :create_additions => true)
+        result << JSON.parse(packet_json, allow_nan: true, create_additions: true)
       end
       result
     end
@@ -232,7 +232,7 @@ module OpenC3
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
 
       begin
-        Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
+        Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
       rescue JSON::GeneratorError => e
         Logger.error("Invalid text present in #{target_name} #{packet_name} #{type.to_s.downcase} packet")
         raise e
@@ -289,7 +289,7 @@ module OpenC3
     def self.limits_groups(scope:)
       groups = Store.hgetall("#{scope}__limits_groups")
       if groups
-        groups.map { |group, items| [group, JSON.parse(items, :allow_nan => true, :create_additions => true)] }.to_h
+        groups.map { |group, items| [group, JSON.parse(items, allow_nan: true, create_additions: true)] }.to_h
       else
         {}
       end
@@ -302,10 +302,10 @@ module OpenC3
       target_name = target_name.upcase
       json_data = Store.get(item_map_key)
       if json_data
-        item_map = JSON.parse(json_data, :allow_nan => true, :create_additions => true)
+        item_map = JSON.parse(json_data, allow_nan: true, create_additions: true)
       else
         item_map = build_item_to_packet_map(target_name, scope: scope)
-        Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
+        Store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
       end
       @@item_map_cache[target_name] = [Time.now, item_map]
       return item_map
@@ -462,7 +462,7 @@ module OpenC3
         'reduced_day_log_retain_time' => @reduced_day_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
-        'target_microservices' => @target_microservices.as_json(:allow_nan => true),
+        'target_microservices' => @target_microservices.as_json(),
         'reducer_disable' => @reducer_disable,
         'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization,
         'disable_erb' => @disable_erb,
@@ -802,7 +802,7 @@ module OpenC3
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
-            Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
+            Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
           rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
             raise e
@@ -826,7 +826,7 @@ module OpenC3
         packets.each do |packet_name, packet|
           Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
-            Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
+            Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
           rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} cmd packet")
             raise e
@@ -838,7 +838,7 @@ module OpenC3
     def update_store_limits_groups(system)
       system.limits.groups.each do |group, items|
         begin
-          Store.hset("#{@scope}__limits_groups", group, JSON.generate(items))
+          Store.hset("#{@scope}__limits_groups", group, JSON.generate(items, allow_nan: true))
         rescue JSON::GeneratorError => e
           Logger.error("Invalid text present in #{group} limits group")
           raise e
@@ -859,7 +859,7 @@ module OpenC3
       # Create item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
-      Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
+      Store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
       @@item_map_cache[@name] = [Time.now, item_map]
     end
 

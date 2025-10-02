@@ -63,7 +63,7 @@ module OpenC3
         spc.add_segment(10, 1, 2)
         spc.add_segment(5,  2, 2)
         spc.add_segment(15, 3, 2)
-        json = spc.as_json(:allow_nan => true)
+        json = spc.as_json()
         expect(json['class']).to eql "OpenC3::SegmentedPolynomialConversion"
         new_spc = OpenC3::const_get(json['class']).new(json['params'])
         spc.segments.each_with_index do |segment, index|
