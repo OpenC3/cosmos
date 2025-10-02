@@ -16,6 +16,7 @@ WORKDIR /openc3/plugins/
 USER root
 
 COPY ./plugins/*.json ./
+COPY ./plugins/*.yaml ./
 COPY ./plugins/packages/openc3-tool-base/*.json packages/openc3-tool-base/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
@@ -36,12 +37,12 @@ COPY ./plugins/packages/openc3-vue-common/ packages/openc3-vue-common/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
 ARG NPM_URL=https://registry.npmjs.org
-RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
+RUN pnpm config set registry "$NPM_URL"
+RUN pnpm config set fetch-timeout 600000
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# yarn build hangs for some reason on vue tools in UBI
-# So we use npm run build instead
-RUN cd packages/openc3-js-common && npm run build
-RUN cd packages/openc3-vue-common && npm run build
+# Build @openc3/js-common and @openc3/vue-common
+RUN pnpm build:common
 
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh
@@ -111,16 +112,19 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 
 # Build demo config
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo", "widgets_src"]
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS base
 FROM openc3-frontend-tmp AS openc3-tmp5
 
 # Build docs tool
 COPY --from=base /openc3 /openc3/
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "docs-openc3-com"]
+COPY --from=docs . /openc3/openc3-cosmos-tool-docs/
+WORKDIR /openc3/openc3-cosmos-tool-docs/scripts
+RUN ruby generate_docs_from_yaml.rb PLUGIN
+WORKDIR /openc3/openc3-cosmos-tool-docs
+RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "/openc3/openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
@@ -131,9 +135,11 @@ COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-js-common/ /openc3/plugins/packages/openc3-js-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-vue-common/ /openc3/plugins/packages/openc3-vue-common/
-COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
+COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-lock.yaml /openc3/plugins/pnpm-lock.yaml
+COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-workspace.yaml /openc3/plugins/pnpm-workspace.yaml
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
 
 COPY --from=minio-mc /bin/mc /bin/mc
