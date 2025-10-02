@@ -278,6 +278,11 @@
         ></pre>
         <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
+            <v-list-item
+              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
+              @click="openCommandEditor"
+            />
+            <v-divider />
             <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
               v-if="scriptId"
@@ -294,8 +299,6 @@
               title="Clear Local Breakpoints"
               @click="clearBreakpoints"
             />
-            <v-divider />
-            <v-list-item title="Insert Command" @click="openCommandEditor" />
             <v-divider />
             <v-list-item
               title="Toggle Vim mode"
@@ -518,6 +521,7 @@
           ref="commandEditor"
           :initial-target-name="commandEditor.targetName"
           :initial-packet-name="commandEditor.packetName"
+          :cmd-string="commandEditor.cmdString"
           :send-disabled="false"
           :show-command-button="false"
           @build-cmd="insertCommand($event)"
@@ -758,7 +762,11 @@ export default {
         targetName: null,
         commandName: null,
         dialogError: null,
+        cmdString: null,
+        isEditing: false,
+        editLine: null,
       },
+      currentLineHasCommand: false,
       activePromptId: '',
       api: null,
       timeZone: 'local',
@@ -1270,6 +1278,21 @@ export default {
     },
     openCommandEditor() {
       this.executeSelectionMenu = false
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+
+      if (this.currentLineHasCommand) {
+        // Extract and parse the command from the line
+        const cmdString = this.parseCommandFromLine(line)
+        this.commandEditor.cmdString = cmdString
+        this.commandEditor.isEditing = true
+        this.commandEditor.editLine = position.row
+      } else {
+        // Inserting a new command
+        this.commandEditor.cmdString = null
+        this.commandEditor.isEditing = false
+        this.commandEditor.editLine = null
+      }
       this.commandEditor.show = true
       this.commandEditor.dialogError = null
     },
@@ -1286,8 +1309,34 @@ export default {
         return
       }
 
-      const position = this.editor.getCursorPosition()
-      this.editor.session.insert(position, `cmd("${commandString}")\n`)
+      if (
+        this.commandEditor.isEditing &&
+        this.commandEditor.editLine !== null
+      ) {
+        // Replace the existing line
+        const line = this.editor.session.getLine(this.commandEditor.editLine)
+        const indent = line.match(/^\s*/)[0] // Preserve indentation
+        // Extract trailing comment if present
+        const commentMatch = line.match(/\s+#.*$/)
+        const trailingComment = commentMatch ? commentMatch[0] : ''
+        const newLine = `${indent}cmd("${commandString}")${trailingComment}`
+        const Range = this.Range
+        this.editor.session.replace(
+          new Range(
+            this.commandEditor.editLine,
+            0,
+            this.commandEditor.editLine,
+            line.length,
+          ),
+          newLine,
+        )
+      } else {
+        // Insert a new command at the cursor position
+        const position = this.editor.getCursorPosition()
+        this.editor.session.insert(position, `cmd("${commandString}")\n`)
+      }
+
+      this.fileModified = true
       this.commandEditor.show = false
     },
     closeCommandDialog: function () {
@@ -1427,7 +1476,25 @@ export default {
     showExecuteSelectionMenu: function ($event) {
       this.menuX = $event.pageX
       this.menuY = $event.pageY
+      // Check if the current line contains a command
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+      this.currentLineHasCommand = this.isCommandLine(line)
       this.executeSelectionMenu = true
+    },
+    isCommandLine: function (line) {
+      // Check if line contains cmd() or cmd_no_hazardous_check() or similar command patterns
+      const trimmedLine = line.trim()
+      // Match patterns like: cmd("...", cmd_no_hazardous_check("...", cmd_raw("...", etc.
+      return /^\s*cmd(_\w+)?\s*\(/.test(trimmedLine)
+    },
+    parseCommandFromLine: function (line) {
+      // Extract the command string from patterns like: cmd("TARGET COMMAND with PARAM value")
+      const match = line.match(/cmd(_\w+)?\s*\(\s*["'](.+?)["']\s*\)/)
+      if (match) {
+        return match[2] // Return the command string
+      }
+      return null
     },
     runFromCursor: function () {
       const start_row = this.editor.getCursorPosition().row + 1
@@ -2783,6 +2850,25 @@ class TestSuite(Suite):
 </script>
 
 <style scoped>
+hr {
+  color: white;
+  height: 3px;
+}
+
+.error-message {
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #d32f2f;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
+}
+
 #sr-controls {
   padding: 0px;
 }
@@ -2890,19 +2976,5 @@ class TestSuite(Suite):
 
 .apply-top .v-snackbar__wrapper {
   top: var(--classification-height-top);
-}
-
-.error-message {
-  border: 2px solid #f44336;
-  border-radius: 8px;
-  background-color: rgba(244, 67, 54, 0.1);
-  color: #d32f2f;
-  padding-left: 8px;
-  padding-right: 8px;
-  margin: 16px;
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
 }
 </style>

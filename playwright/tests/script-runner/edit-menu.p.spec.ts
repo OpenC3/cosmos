@@ -55,3 +55,5 @@ openc3 is everything I thought it could be`
   await page.locator('text=Aa').click()
   await expect(page.locator('text=0 of 0')).toBeVisible()
 })
+
+test('inserts and edits commands', async ({ page, utils }) => {})
