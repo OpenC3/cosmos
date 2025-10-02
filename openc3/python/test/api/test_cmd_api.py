@@ -779,11 +779,11 @@ class BuildCommand(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
     def tearDown(self):
         self.dm.shutdown()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
     def test_complains_about_unknown_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?"):

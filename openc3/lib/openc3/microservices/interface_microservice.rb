@@ -508,13 +508,14 @@ module OpenC3
             packet.received_count = msg_hash["received_count"].to_i
             packet.buffer = msg_hash["buffer"]
 
-          begin
-            @router.write(packet)
-            RouterStatusModel.set(@router.as_json(), queued: true, scope: @scope)
-            next 'SUCCESS'
-          rescue => e
-            @logger.error "#{@router.name}: #{e.formatted}"
-            next e.message
+            begin
+              @router.write(packet)
+              RouterStatusModel.set(@router.as_json(), queued: true, scope: @scope)
+              next 'SUCCESS'
+            rescue => e
+              @logger.error "#{@router.name}: #{e.formatted}"
+              next e.message
+            end
           end
         else
           next nil # Don't ack disabled targets
