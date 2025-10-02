@@ -241,3 +241,13 @@ class HttpClientInterface(Interface):
                 extra.pop("HTTP_REQUEST", None)
         packet.extra = extra
         return packet
+
+    def details(self):
+        result = super().details()
+        result['url'] = self.url
+        result['write_timeout'] = None  # Python version doesn't use write_timeout
+        result['read_timeout'] = self.read_timeout
+        result['connect_timeout'] = self.connect_timeout
+        result['include_request_in_response'] = self.include_request_in_response
+        result['request_queue_length'] = self.response_queue.qsize()
+        return result

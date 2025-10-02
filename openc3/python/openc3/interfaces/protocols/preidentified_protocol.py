@@ -202,3 +202,14 @@ class PreidentifiedProtocol(BurstProtocol):
             return (packet_data, self.extra)
 
         raise RuntimeError(f"Error should never reach end of method {self.reduction_state}")
+
+    def write_details(self):
+        result = super().write_details()
+        result['max_length'] = self.max_length
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['max_length'] = self.max_length
+        result['reduction_state'] = self.reduction_state
+        return result

@@ -12,6 +12,13 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ## Installing OpenC3 COSMOS on Host Machines
 
+### Installation Video for macOS
+
+<div style={{textAlign: 'center'}}>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+</div>
+
+
 ### PREREQUISITES
 
 If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).

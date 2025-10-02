@@ -84,7 +84,7 @@ export default {
       title: 'CmdTlmServer',
       timeZone: 'local',
       panel: 0,
-      curTab: null,
+      curTab: 1,
       tabs: [
         {
           name: 'Interfaces',
@@ -105,6 +105,10 @@ export default {
         {
           name: 'Routers',
           path: { name: 'RoutersTab' },
+        },
+        {
+          name: 'Data Flows',
+          path: { name: 'DataFlowsTab' },
         },
         {
           name: 'Status',

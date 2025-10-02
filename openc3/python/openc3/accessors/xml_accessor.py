@@ -65,7 +65,7 @@ class XmlAccessor(Accessor):
 
     @classmethod
     def _buffer_to_doc(cls, buffer):
-        return ET.fromstring(buffer.decode())
+        return ET.fromstring(bytes(buffer)) # Works better with bytes than decoded
 
     @classmethod
     def _doc_to_buffer(cls, doc):

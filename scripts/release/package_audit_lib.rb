@@ -22,13 +22,14 @@
 require 'open3'
 require 'fileutils'
 require 'json'
+require 'yaml'
 
 $overall_apk = []
 $overall_apt = []
 $overall_rpm = []
 $overall_gems = []
 $overall_wheels = []
-$overall_yarn = []
+$overall_pnpm = []
 
 def get_docker_version(path)
   args = {}
@@ -160,42 +161,48 @@ def extract_wheels(container)
   make_sorted_hash(name_versions)
 end
 
-def extract_yarn(container)
+def extract_pnpm(container)
   container_name = container[:name]
   name_versions = []
-  yarn_lock_paths = container[:yarn]
-  yarn_lock_paths.each do |path|
+  pnpm_lock_paths = container[:pnpm]
+  pnpm_lock_paths.each do |path|
     id = `docker create #{container_name}`.strip
     `docker cp #{id}:#{path} .`
     `docker rm -v #{id}`
     data = File.read(path.split('/')[-1])
-    name_versions.concat(process_yarn(data))
+    name_versions.concat(process_pnpm(data))
   end
-  $overall_yarn.concat(name_versions)
+  $overall_pnpm.concat(name_versions)
   make_sorted_hash(name_versions)
 end
 
-def process_yarn(data)
+def process_pnpm(data)
   result = []
-  name = nil
-  version_next = false
-  data.each_line do |line|
-    if version_next
-      version_next = false
-      version = line.split('"')[1]
-      result << [name, version, nil]
-    end
-    if line[0] != " " and line[0] != '#' and line.strip != ""
-      if line[0] == '"'
-        part = line.split('"')[1]
-        last_at = part.rindex('@')
-        name = part[0..(last_at - 1)]
-      else
-        name = line.split('@')[0]
+  begin
+    lock_data = YAML.safe_load(data)
+    if lock_data['packages']
+      lock_data['packages'].each do |package_key, _package_info|
+        next if package_key.nil? || package_key.empty?
+
+        if package_key.start_with?('@') && package_key.count('@') >= 2 # like '@babel/core@7.28.4'
+          last_at_index = package_key.rindex('@')
+          name = package_key[0...last_at_index]
+          version = package_key[last_at_index + 1..-1]
+        elsif !package_key.start_with?('@') && package_key.include?('@') # like 'vue@3.5.21'
+          parts = package_key.split('@')
+          name = parts[0]
+          version = parts[1]
+        else
+          name = package_key
+          version = 'unknown'
+        end
+        result << [name, version, nil] if !name&.empty? && !version&.empty?
       end
-      version_next = true
     end
+  rescue StandardError => e
+    puts "Error parsing pnpm-lock.yaml: #{e.message}"
   end
+
   result
 end
 
@@ -248,8 +255,8 @@ def build_summary_report(containers)
     report << build_section("Python Wheels", make_sorted_hash($overall_wheels), false)
     report << "\n"
   end
-  if $overall_yarn.length > 0
-    report << build_section("Node Packages", make_sorted_hash($overall_yarn), false)
+  if $overall_pnpm.length > 0
+    report << build_section("Node Packages", make_sorted_hash($overall_pnpm), false)
     report << "\n"
   end
   report
@@ -274,7 +281,7 @@ def build_container_report(container, client)
   report << build_section("RPM Packages", extract_rpm(container), true) if container[:rpm]
   report << build_section("Ruby Gems", extract_gems(container), false) if container[:gems]
   report << build_section("Python Wheels", extract_wheels(container), false) if container[:python]
-  report << build_section("Node Packages", extract_yarn(container), false) if container[:yarn]
+  report << build_section("Node Packages", extract_pnpm(container), false) if container[:pnpm]
   report << "\n"
   report
 end

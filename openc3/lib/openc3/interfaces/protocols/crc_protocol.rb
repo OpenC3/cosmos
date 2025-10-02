@@ -199,5 +199,24 @@ module OpenC3
       end
       return data, extra
     end
+
+    def write_details
+      result = super()
+      result['write_item_name'] = @write_item_name
+      result['endianness'] = @endianness
+      result['bit_offset'] = @bit_offset
+      result['bit_size'] = @bit_size
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['strip_crc'] = @strip_crc
+      result['bad_strategy'] = @bad_strategy
+      result['endianness'] = @endianness
+      result['bit_offset'] = @bit_offset
+      result['bit_size'] = @bit_size
+      return result
+    end
   end
 end

@@ -158,7 +158,7 @@ module OpenC3
       super()
     end
 
-    protected
+    # protected
 
     def first_pending_packet
       packet = nil

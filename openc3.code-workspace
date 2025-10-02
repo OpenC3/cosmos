@@ -29,6 +29,12 @@
     },
     {
       "path": "../openc3-schedule"
+    },
+    {
+      "path": "../../Development/openc3-cosmos-zendir"
+    },
+    {
+      "path": "../../Development/openc3-cosmos-vueflow"
     }
   ],
   "settings": {

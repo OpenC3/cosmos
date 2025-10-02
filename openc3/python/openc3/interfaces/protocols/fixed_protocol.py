@@ -148,3 +148,17 @@ class FixedProtocol(BurstProtocol):
             return ("STOP", self.extra)
 
         return self.identify_and_finish_packet()
+
+    def write_details(self):
+        result = super().write_details()
+        result['min_id_size'] = self.min_id_size
+        result['telemetry'] = self.telemetry
+        result['unknown_raise'] = self.unknown_raise
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result['min_id_size'] = self.min_id_size
+        result['telemetry'] = self.telemetry
+        result['unknown_raise'] = self.unknown_raise
+        return result
