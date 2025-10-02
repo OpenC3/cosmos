@@ -313,7 +313,7 @@ export default {
     getCmdString() {
       let cmd = `${this.targetName} ${this.commandName}`
       if (this.computedRows.length === 0) return cmd
-      cmd += ' with '
+      cmd += ' with'
       for (const row of this.computedRows) {
         // null value indicates required parameter not set, see updateCmdParams
         if (row.val === null) {

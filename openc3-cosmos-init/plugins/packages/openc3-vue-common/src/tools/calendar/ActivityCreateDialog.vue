@@ -235,11 +235,12 @@
                 >
                 </v-select>
                 <div v-if="kind === 'COMMAND'">
-                  <v-text-field
+                  <v-textarea
                     v-model="activityData"
-                    readonly
-                    type="text"
                     label="Command Input"
+                    rows="1"
+                    readonly
+                    auto-grow
                     data-test="activity-cmd"
                     @click:control="editItem()"
                   />

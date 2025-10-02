@@ -56,4 +56,32 @@ openc3 is everything I thought it could be`
   await expect(page.locator('text=0 of 0')).toBeVisible()
 })
 
-test('inserts and edits commands', async ({ page, utils }) => {})
+test('inserts and edits commands', async ({ page, utils }) => {
+  // await page.locator('textarea').click({ button: 'right' })
+  await page.locator('.ace_content').click({
+    button: 'right',
+  })
+  await page.getByText('Insert Command').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+
+  await page.locator('.ace_content').click({
+    button: 'right',
+  })
+  await page.getByText('Insert Command').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await page
+    .locator('[data-test="cmd-param-select"]')
+    .getByRole('combobox')
+    .first()
+    .click()
+  await page.getByRole('option', { name: 'NORMAL' }).click()
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+
+  await expect(page.locator('.ace_content')).toContainText(
+    'cmd("INST ABORT")\n',
+  )
+  await expect(page.locator('.ace_content')).toContainText(
+    'cmd("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 0xAB, TEMP 0")\n',
+  )
+})
