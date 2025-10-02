@@ -237,7 +237,7 @@ export default {
   },
   methods: {
     getType() {
-      let type = 'WITH_UNITS'
+      let type = 'FORMATTED'
       if (this.parameters[3]) {
         type = this.parameters[3]
       }

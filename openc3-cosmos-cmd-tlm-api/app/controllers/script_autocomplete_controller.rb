@@ -175,7 +175,7 @@ class ScriptAutocompleteController < ApplicationController
   #   { '<Target Name>': 1 },
   #   { '<Packet Name>': 1 },
   #   { '<Item Name>': 1 },
-  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1 },
   #   { '<Number of characters>': 1 },
   # ],
 

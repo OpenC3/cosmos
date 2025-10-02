@@ -38,7 +38,6 @@ export default {
           'check',
           'check_raw',
           'check_formatted',
-          'check_with_units',
           'check_exception',
           'check_tolerance',
           'check_expression',

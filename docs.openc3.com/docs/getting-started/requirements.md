@@ -188,16 +188,16 @@ Script Runner now also provides a structured methodology for designing system le
 
 Packet Viewer provides a simple tool to view the realtime contents of any telemetry packet defined in the system in a tabular, key-value format.
 
-| Reqt. ID | Description                                                                                                                                   | Test Description                                                                                                                    |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| PV-1     | Packet Viewer shall allow selection of a telemetry packet by target name and packet name.                                                     | Select a specific telemetry packet by target name and packet name in the drop down menus.                                           |
-| PV-2     | Packet Viewer shall display the contents of the selected telemetry packet.                                                                    | Ensure all items of the selected telemetry packet are displayed and updating.                                                       |
-| PV-3     | Packet Viewer shall provide a mechanism to get detailed information on a telemetry item.                                                      | Right click on a telemetry item and select "Details" from the context menu.                                                         |
-| PV-4     | Packet Viewer shall provide a mechanism to view a graph of any telemetry item.                                                                | Right click on a telemetry item and select "Graph" from the context menu.                                                           |
-| PV-5     | Packet Viewer shall color telemetry values based upon limits state.                                                                           | View a packet with items containing limits and verify they are colored.                                                             |
-| PV-6     | Packet Viewer shall support a configurable polling rate.                                                                                      | Select File->Options and change the polling rate.                                                                                   |
-| PV-7     | Packet Viewer shall support a color-blind mode to allow distinguishing limits states for those who are color blind.                           | Select View->Color Blind Mode and verify that items with limits are also displayed with a textual indication of limits state color. |
-| PV-8     | Packet Viewer shall support displaying telemetry in each of the four COSMOS value types (raw, converted, formatted, and formatted with units) | In the View menu, select each of the four value types and verify values are displayed accordingly.                                  |
+| Reqt. ID | Description                                                                                                            | Test Description                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| PV-1     | Packet Viewer shall allow selection of a telemetry packet by target name and packet name.                              | Select a specific telemetry packet by target name and packet name in the drop down menus.                                           |
+| PV-2     | Packet Viewer shall display the contents of the selected telemetry packet.                                             | Ensure all items of the selected telemetry packet are displayed and updating.                                                       |
+| PV-3     | Packet Viewer shall provide a mechanism to get detailed information on a telemetry item.                               | Right click on a telemetry item and select "Details" from the context menu.                                                         |
+| PV-4     | Packet Viewer shall provide a mechanism to view a graph of any telemetry item.                                         | Right click on a telemetry item and select "Graph" from the context menu.                                                           |
+| PV-5     | Packet Viewer shall color telemetry values based upon limits state.                                                    | View a packet with items containing limits and verify they are colored.                                                             |
+| PV-6     | Packet Viewer shall support a configurable polling rate.                                                               | Select File->Options and change the polling rate.                                                                                   |
+| PV-7     | Packet Viewer shall support a color-blind mode to allow distinguishing limits states for those who are color blind.    | Select View->Color Blind Mode and verify that items with limits are also displayed with a textual indication of limits state color. |
+| PV-8     | Packet Viewer shall support displaying telemetry in each of the four COSMOS value types (RAW, CONVERTED and FORMATTED) | In the View menu, select each of the value types and verify values are displayed accordingly.                                       |
 
 ## Telemetry Viewer
 
@@ -230,15 +230,15 @@ Telemetry Grapher performs graphing of telemetry points in both realtime and log
 
 Data Extractor processes logged data and extracts data into a CSV format for analysis in Excel or other tools.
 
-| Reqt. ID | Description                                                                                                                       | Test Description                         |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| DE-1     | Data Extractor shall support adding individual telemetry points.                                                                  | Add an individual telemetry point.       |
-| DE-2     | Data Extractor shall support adding entire telemetry packets.                                                                     | Add an entire packet.                    |
-| DE-3     | Data Extractor shall support adding entire telemetry targets.                                                                     | Add all packets for a target.            |
-| DE-4     | Data Extractor shall support selecting the value type to extract for each telemetry point (RAW, CONVERTED, FORMATTED, WITH_UNITS) | Click an item and change the value type. |
-| DE-5     | Data Extractor shall support saving configurations.                                                                               | Select File->Save Config                 |
-| DE-6     | Data Extractor shall support loading configurations.                                                                              | Select File->Load Config                 |
-| DE-7     | Data Extractor shall support deleting items                                                                                       | Select an Item and press delete          |
+| Reqt. ID | Description                                                                                                             | Test Description                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| DE-1     | Data Extractor shall support adding individual telemetry points.                                                        | Add an individual telemetry point.       |
+| DE-2     | Data Extractor shall support adding entire telemetry packets.                                                           | Add an entire packet.                    |
+| DE-3     | Data Extractor shall support adding entire telemetry targets.                                                           | Add all packets for a target.            |
+| DE-4     | Data Extractor shall support selecting the value type to extract for each telemetry point (RAW, CONVERTED or FORMATTED) | Click an item and change the value type. |
+| DE-5     | Data Extractor shall support saving configurations.                                                                     | Select File->Save Config                 |
+| DE-6     | Data Extractor shall support loading configurations.                                                                    | Select File->Load Config                 |
+| DE-7     | Data Extractor shall support deleting items                                                                             | Select an Item and press delete          |
 
 ## Data Viewer
 

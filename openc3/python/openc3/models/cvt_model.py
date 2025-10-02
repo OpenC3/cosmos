@@ -41,7 +41,7 @@ class CvtModel(Model):
     _conn = None
     _conn_mutex = threading.Lock()
 
-    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
+    VALUE_TYPES = { "RAW", "CONVERTED", "FORMATTED" }
 
     @classmethod
     def build_json_from_packet(cls, packet):
@@ -99,16 +99,13 @@ class CvtModel(Model):
     ):
         pkt_hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
         match type:
-            case "WITH_UNITS":
-                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
             case "RAW":
                 pkt_hash[item_name] = value
             case "ALL":
-                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
                 pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[item_name] = value
@@ -185,9 +182,7 @@ class CvtModel(Model):
             for char in "?.,'\\/:()+*%~;-":
                 safe_item_name = safe_item_name.replace(char, '_')
 
-            if value_type == 'WITH_UNITS':
-                names.append(f'"T{index}.{safe_item_name}__U"')
-            elif value_type == 'FORMATTED':
+            if value_type == 'FORMATTED' or value_type == 'WITH_UNITS':
                 names.append(f'"T{index}.{safe_item_name}__F"')
             elif value_type == 'CONVERTED':
                 names.append(f'"T{index}.{safe_item_name}__C"')
@@ -346,9 +341,7 @@ class CvtModel(Model):
                         value_type_key = "R"
                     item["item_name"] = item_name
                     match value_type_key:
-                        case "U":
-                            item["value_type"] = "WITH_UNITS"
-                        case "F":
+                        case "F" | "U":
                             item["value_type"] = "FORMATTED"
                         case "C":
                             item["value_type"] = "CONVERTED"
@@ -371,15 +364,12 @@ class CvtModel(Model):
                 pkt_hash[item_name] = value
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[f"{item_name}__F"] = str(value)
-                pkt_hash[f"{item_name}__U"] = str(value)
             case "RAW":
                 pkt_hash[item_name] = value
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
-            case "WITH_UNITS":
-                pkt_hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
@@ -399,19 +389,15 @@ class CvtModel(Model):
                 pkt_hash.pop(item_name, None)
                 pkt_hash.pop(f"{item_name}__C", None)
                 pkt_hash.pop(f"{item_name}__F", None)
-                pkt_hash.pop(f"{item_name}__U", None)
             case "RAW":
                 if item_name in pkt_hash:
                     pkt_hash.pop(item_name)
             case "CONVERTED":
                 if f"{item_name}__C" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__C")
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 if f"{item_name}__F" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__F")
-            case "WITH_UNITS":
-                if f"{item_name}__U" in pkt_hash:
-                    pkt_hash.pop(f"{item_name}__U")
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
@@ -459,15 +445,7 @@ class CvtModel(Model):
         override_key = item_name
         types = []
         match type:
-            case "WITH_UNITS":
-                types = [
-                    f"{item_name}__U",
-                    f"{item_name}__F",
-                    f"{item_name}__C",
-                    item_name,
-                ]
-                override_key = f"{item_name}__U"
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 types = [f"{item_name}__F", f"{item_name}__C", item_name]
                 override_key = f"{item_name}__F"
             case "CONVERTED":
@@ -517,21 +495,14 @@ class CvtModel(Model):
         target_name, packet_name, item_name, value_type = item
 
         # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-        # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+        # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value
         match str(value_type):
             case "RAW":
                 keys = [item_name]
             case "CONVERTED":
                 keys = [f"{item_name}__C", item_name]
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 keys = [f"{item_name}__F", f"{item_name}__C", item_name]
-            case "WITH_UNITS":
-                keys = [
-                    f"{item_name}__U",
-                    f"{item_name}__F",
-                    f"{item_name}__C",
-                    item_name,
-                ]
             case _:
                 raise ValueError(f"Unknown value type '{value_type}'")
 

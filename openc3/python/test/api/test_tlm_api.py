@@ -92,13 +92,13 @@ class TestTlmApi(unittest.TestCase):
     def test_processes_a_string(self):
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), -100.0)
         self.assertEqual(tlm_raw("INST HEALTH_STATUS TEMP1"), 0)
-        self.assertEqual(tlm_formatted("INST HEALTH_STATUS TEMP1"), "-100.000")
+        self.assertEqual(tlm_formatted("INST HEALTH_STATUS TEMP1"), "-100.000 C")
         self.assertEqual(tlm_with_units("INST HEALTH_STATUS TEMP1"), "-100.000 C")
 
     def test_processes_parameters(self):
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1"), -100.0)
         self.assertEqual(tlm_raw("INST", "HEALTH_STATUS", "TEMP1"), 0)
-        self.assertEqual(tlm_formatted("INST", "HEALTH_STATUS", "TEMP1"), "-100.000")
+        self.assertEqual(tlm_formatted("INST", "HEALTH_STATUS", "TEMP1"), "-100.000 C")
         self.assertEqual(tlm_with_units("INST", "HEALTH_STATUS", "TEMP1"), "-100.000 C")
 
     def test_complains_if_too_many_parameters(self):
@@ -301,7 +301,7 @@ class TestTlmApi(unittest.TestCase):
     def test_overrides_all_values(self):
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (0))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0)
-        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000 C"))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C"))
         # Case doesn't matter
         override_tlm("inst Health_Status Temp1 = 10")
@@ -333,7 +333,7 @@ class TestTlmApi(unittest.TestCase):
         )
         self.assertEqual(
             tlm("INST", "HEALTH_STATUS", "ARY", type="FORMATTED"),
-            ("[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]"),
+            ("['0 V', '0 V', '0 V', '0 V', '0 V', '0 V', '0 V', '0 V', '0 V', '0 V']"),
         )
         self.assertEqual(
             tlm("INST", "HEALTH_STATUS", "ARY", type="WITH_UNITS"),
@@ -365,7 +365,7 @@ class TestTlmApi(unittest.TestCase):
         normalize_tlm("INST HEALTH_STATUS TEMP1")
 
     def test_overrides_formatted_values(self):
-        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "-100.000")
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "-100.000 C")
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "5.000", type="FORMATTED")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), "5.000")
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", "10.000", type="FORMATTED")
@@ -388,7 +388,7 @@ class TestTlmApi(unittest.TestCase):
         override_tlm("INST HEALTH_STATUS temp1 = 10")
         override_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type="RAW")
         overrides = get_overrides()
-        self.assertEqual(len(overrides), 5)  # 4 for TEMP1 and 1 for ARY
+        self.assertEqual(len(overrides), 4)  # 3 for TEMP1 and 1 for ARY
         self.assertEqual(
             overrides[0],
             (
@@ -431,18 +431,6 @@ class TestTlmApi(unittest.TestCase):
                 {
                     "target_name": "INST",
                     "packet_name": "HEALTH_STATUS",
-                    "item_name": "TEMP1",
-                    "value_type": "WITH_UNITS",
-                    "value": "10",
-                }
-            ),
-        )
-        self.assertEqual(
-            overrides[4],
-            (
-                {
-                    "target_name": "INST",
-                    "packet_name": "HEALTH_STATUS",
                     "item_name": "ARY",
                     "value_type": "RAW",
                     "value": [1, 2, 3],
@@ -476,12 +464,12 @@ class TestTlmApi(unittest.TestCase):
         override_tlm("INST", "HEALTH_STATUS", "TEMP1", "50.00 F", type="WITH_UNITS")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (5.0))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), (50.0))
-        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("50.00"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("50.00 F"))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("50.00 F"))
         normalize_tlm("INST", "HEALTH_STATUS", "temp1")
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="RAW"), (0))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED"), -100.0)
-        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000"))
+        self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED"), ("-100.000 C"))
         self.assertEqual(tlm("INST", "HEALTH_STATUS", "TEMP1", type="WITH_UNITS"), ("-100.000 C"))
 
     # get_tlm_buffer
@@ -689,16 +677,16 @@ class TestTlmApi(unittest.TestCase):
     def test_reads_all_telemetry_items_as_formatted(self):
         vals = get_tlm_packet("INST", "HEALTH_STATUS", type="FORMATTED")
         self.assertEqual(vals[11][0], "TEMP1")
-        self.assertEqual(vals[11][1], "-100.000")
+        self.assertEqual(vals[11][1], "-100.000 C")
         self.assertEqual(vals[11][2], "RED_LOW")
         self.assertEqual(vals[12][0], "TEMP2")
-        self.assertEqual(vals[12][1], "-100.000")
+        self.assertEqual(vals[12][1], "-100.000 C")
         self.assertEqual(vals[12][2], "RED_LOW")
         self.assertEqual(vals[13][0], "TEMP3")
-        self.assertEqual(vals[13][1], "-100.000")
+        self.assertEqual(vals[13][1], "-100.000 C")
         self.assertEqual(vals[13][2], "RED_LOW")
         self.assertEqual(vals[14][0], "TEMP4")
-        self.assertEqual(vals[14][1], "-100.000")
+        self.assertEqual(vals[14][1], "-100.000 C")
         self.assertEqual(vals[14][2], "RED_LOW")
 
     def test_reads_all_telemetry_items_as_with_units(self):
@@ -828,7 +816,7 @@ class TestTlmApi(unittest.TestCase):
         vals = get_tlm_values(items)
         self.assertEqual(vals[0][0], 0)
         self.assertEqual(vals[1][0], (-100.0))
-        self.assertEqual(vals[2][0], "-100.000")
+        self.assertEqual(vals[2][0], "-100.000 C")
         self.assertEqual(vals[3][0], "-100.000 C")
         self.assertEqual(vals[0][1], "RED_LOW")
         self.assertEqual(vals[1][1], "RED_LOW")
@@ -917,8 +905,8 @@ class TestTlmApi(unittest.TestCase):
         ]
         result = get_tlm_available(items)
 
-        # TEMP1 has units, so should return WITH_UNITS
-        self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS")
+        # TEMP1 has units, so should return FORMATTED
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__TEMP1__FORMATTED__LIMITS")
         # TEMP2 has format_string, so should return FORMATTED
         self.assertEqual(result[1], "INST__HEALTH_STATUS__TEMP2__FORMATTED__LIMITS")
         # TEMP3 has read_conversion, so should return CONVERTED
@@ -1008,7 +996,7 @@ class TestTlmApi(unittest.TestCase):
 
         vals = get_tlm_available(items)
         expected = [
-            "INST__HEALTH_STATUS__TEMP1__WITH_UNITS__LIMITS",
+            "INST__HEALTH_STATUS__TEMP1__FORMATTED__LIMITS",
             "INST__ADCS__Q1__FORMATTED",
             "INST__LATEST__CCSDSTYPE__CONVERTED",
             "INST__LATEST__CCSDSVER__RAW",
