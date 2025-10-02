@@ -295,6 +295,8 @@
               @click="clearBreakpoints"
             />
             <v-divider />
+            <v-list-item title="Insert Command" @click="openCommandEditor" />
+            <v-divider />
             <v-list-item
               title="Toggle Vim mode"
               prepend-icon="extras:vim"
@@ -491,6 +493,45 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <!-- Command Editor Dialog -->
+  <v-dialog v-model="commandEditor.show" max-width="1200" persistent scrollable>
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <span>Insert Command</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
+      </v-card-title>
+      <v-card-text class="pa-0">
+        <div v-if="commandEditor.dialogError" class="error-message">
+          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+          <span class="flex-grow-1">{{ commandEditor.dialogError }}</span>
+          <v-btn
+            icon="mdi-close"
+            size="small"
+            variant="text"
+            color="error"
+            @click="commandEditor.dialogError = null"
+            class="ml-2"
+          />
+        </div>
+        <command-editor
+          ref="commandEditor"
+          :initial-target-name="commandEditor.targetName"
+          :initial-packet-name="commandEditor.packetName"
+          :send-disabled="false"
+          :show-command-button="false"
+          @build-cmd="insertCommand($event)"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
+        <v-btn color="primary" variant="flat" @click="insertCommand()">
+          Insert Command
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <v-bottom-sheet v-model="showScripts">
     <v-sheet class="pb-11 pt-5 px-5">
       <running-scripts
@@ -535,6 +576,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import {
@@ -574,6 +616,7 @@ export default {
     RunningScripts,
     ScriptLogMessages,
     CriticalCmdDialog,
+    CommandEditor,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -710,6 +753,12 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
+      commandEditor: {
+        show: false,
+        targetName: null,
+        commandName: null,
+        dialogError: null,
+      },
       activePromptId: '',
       api: null,
       timeZone: 'local',
@@ -1218,6 +1267,31 @@ export default {
   methods: {
     toggleVimMode() {
       AceEditorUtils.toggleVimMode(this.editor)
+    },
+    openCommandEditor() {
+      this.executeSelectionMenu = false
+      this.commandEditor.show = true
+      this.commandEditor.dialogError = null
+    },
+    insertCommand(event) {
+      let commandString = ''
+      try {
+        commandString = this.$refs.commandEditor.getCmdString()
+        let parts = commandString.split(' ')
+        this.commandEditor.targetName = parts[0]
+        this.commandEditor.commandName = parts[1]
+      } catch (error) {
+        this.commandEditor.dialogError =
+          error.message || 'Please fix command parameters'
+        return
+      }
+
+      const position = this.editor.getCursorPosition()
+      this.editor.session.insert(position, `cmd("${commandString}")\n`)
+      this.commandEditor.show = false
+    },
+    closeCommandDialog: function () {
+      this.commandEditor.show = false
     },
     doResize() {
       this.editor.resize()
@@ -2816,5 +2890,19 @@ class TestSuite(Suite):
 
 .apply-top .v-snackbar__wrapper {
   top: var(--classification-height-top);
+}
+
+.error-message {
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #d32f2f;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
 }
 </style>
