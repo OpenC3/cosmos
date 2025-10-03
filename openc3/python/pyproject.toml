@@ -11,7 +11,7 @@ dependencies = [
     "boto3 (>=1.36.13,<2.0.0)",
     "cbor2 (>=5.6.5,<6.0.0)",
     "jsonpath-ng (>=1.7.0,<2.0.0)",
-    "lxml (>=5.3.0,<6.0.0)",
+    "lxml (>=6.0.0,<7.0.0)",
     "numpy (>= 2.0, < 3.0)",
     "paho-mqtt (>=2.1.0,<3.0.0)",
     "psycopg[binary,pool] (>=3.2.9,<4.0.0)",
@@ -31,12 +31,12 @@ openc3pycli = "openc3.cli:main"
 poetry-plugin-export = ">=1.9"
 
 [tool.poetry.group.dev.dependencies]
-black = "^25.1.0"
-coverage = "^7.6.10"
-fakeredis = "^2.26.2"
-pytest = "^8.3.4"
-ruff = "^0.12.7"
-pytest-profiling = "^1.8.1"
+black = "^25.9"
+coverage = "^7.10"
+fakeredis = "^2.31"
+pytest = "^8.3"
+ruff = "^0.13"
+pytest-profiling = "^1.8"
 
 [build-system]
 requires = ["poetry-core"]
