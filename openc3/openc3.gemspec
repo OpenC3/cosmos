@@ -86,7 +86,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'ostruct',   '~> 0.6'
   s.add_runtime_dependency 'prism',     '~> 1.3'
   s.add_runtime_dependency 'psych',     '~> 5.0'
-  s.add_runtime_dependency 'puma',      '~> 6.2'
+  s.add_runtime_dependency 'puma',      '~> 7.0'
   s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
@@ -97,7 +97,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'yard',      '~> 0.9'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
-  s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
+  s.add_runtime_dependency 'cbor', '~> 0.5.10'
   s.add_runtime_dependency 'childprocess', '~> 5.0'
   s.add_runtime_dependency 'connection_pool', '~> 2.4'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
