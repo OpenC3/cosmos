@@ -1,0 +1,66 @@
+ARG OPENC3_DEPENDENCY_REGISTRY=registry1.dso.mil
+ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
+ARG OPENC3_UBI_TAG=9.6
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG} AS builder
+
+RUN microdnf install -y --setopt=tsflags=nodocs wget gnupg2 ca-certificates tar unzip maven git
+
+WORKDIR /tmp
+ADD https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz /tmp
+RUN mkdir -p /usr/lib/jvm/java-17-amazon-corretto \
+    && tar --extract --gzip --file amazon-corretto-17-x64-linux-jdk.tar.gz \
+    && cp -r amazon-corretto-17.0.16.8.1-linux-x64/. /usr/lib/jvm/java-17-amazon-corretto
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+
+WORKDIR /build
+
+ARG QUESTDB_VERSION=9.0.3
+RUN git clone --depth=1 --progress --branch ${QUESTDB_VERSION} --verbose https://github.com/questdb/questdb.git
+
+WORKDIR /devel/
+COPY cacert.pem cacert.pem
+COPY pem_to_keystore.sh pem_to_keystore.sh
+RUN chmod +x pem_to_keystore.sh
+RUN ./pem_to_keystore.sh cacert.pem password cacert_keystore
+
+WORKDIR /build/questdb
+ARG NPM_URL=https://registry.npmjs.org
+ARG MAVEN_URL=https://repo.maven.apache.org/maven2/
+ENV MAVEN_URL=${MAVEN_URL}
+
+COPY settings.xml /tmp/settings.xml
+
+# core/pom.xml has a hard coded path to pull dependencies from the NPM registry
+RUN sed 's#https://registry.npmjs.org#${NPM_URL}#g' -i core/pom.xml
+
+RUN mvn -s "/tmp/settings.xml" clean package -Djavax.net.ssl.trustStore=/devel/cacert_keystore -Djdk.lang.Process.launchMechanism=vfork -Dmaven.resolver.transport=wagon -Dmaven.wagon.httpconnectionManager.ttlSeconds=30 -DskipTests -P build-web-console,build-binaries
+
+WORKDIR /build/questdb/core/target
+RUN tar xvfz questdb-*-rt-*.tar.gz
+RUN rm questdb-*-rt-*.tar.gz
+
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
+WORKDIR /app
+COPY --from=builder /build/questdb/core/target/questdb-*-rt-* .
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Create questdb user and group
+RUN groupadd -g 10001 questdb && \
+    useradd -u 10001 -g 10001 -d /var/lib/questdb -M -s /sbin/nologin questdb && \
+    mkdir -p /var/lib/questdb && \
+    chown -R questdb:questdb /var/lib/questdb
+
+USER questdb
+
+WORKDIR /var/lib/questdb
+
+# Make port 9000 available to the world outside this container
+EXPOSE 9000/tcp
+EXPOSE 8812/tcp
+EXPOSE 9009/tcp
+
+ENV DO_CHOWN="false"
+ENV IGNORE_DATA_ROOT_MOUNT_CHECK="true"
+CMD ["/docker-entrypoint.sh"]

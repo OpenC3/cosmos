@@ -46,6 +46,7 @@ cp ./cacert.pem openc3-ruby/cacert.pem
 cp ./cacert.pem openc3-redis/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
 cp ./cacert.pem openc3-minio/cacert.pem
+cp ./cacert.pem openc3-tsdb/cacert.pem
 
 docker --version
 if [ "$?" -ne 0 ]; then
