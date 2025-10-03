@@ -112,5 +112,23 @@ module OpenC3
       Logger.error(msg)
       raise msg if @raise_exceptions
     end
+
+    def write_details
+      result = super()
+      result['response_timeout'] = @response_timeout
+      result['response_polling_period'] = @response_polling_period
+      result['raise_exceptions'] = @raise_exceptions
+      result['response_packet'] = @response_packet
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['response_timeout'] = @response_timeout
+      result['response_polling_period'] = @response_polling_period
+      result['raise_exceptions'] = @raise_exceptions
+      result['response_packet'] = @response_packet
+      return result
+    end
   end
 end

@@ -65,7 +65,7 @@ module OpenC3
       return packet
     end
 
-    protected
+    # protected
 
     # Identifies an unknown buffer of data as a Packet. The raw data is
     # returned but the packet that matched is recorded so it can be set in the
@@ -167,6 +167,22 @@ module OpenC3
       return :STOP if @data.length < @min_id_size
 
       identify_and_finish_packet()
+    end
+
+    def write_details
+      result = super()
+      result['min_id_size'] = @min_id_size
+      result['telemetry'] = @telemetry
+      result['unknown_raise'] = @unknown_raise
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['min_id_size'] = @min_id_size
+      result['telemetry'] = @telemetry
+      result['unknown_raise'] = @unknown_raise
+      return result
     end
   end
 end

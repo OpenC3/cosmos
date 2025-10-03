@@ -67,7 +67,20 @@ module OpenC3
       return data, extra
     end
 
-    protected
+    def write_details
+      result = super()
+      result['write_termination_characters'] = @write_termination_characters.inspect
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['read_termination_characters'] = @read_termination_characters.inspect
+      result['strip_read_termination'] = @strip_read_termination
+      return result
+    end
+
+    # protected
 
     def reduce_to_single_packet
       index = @data.index(@read_termination_characters)

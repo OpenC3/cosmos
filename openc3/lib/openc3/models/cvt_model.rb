@@ -399,7 +399,10 @@ module OpenC3
           latest_packet_name = packet_name
         end
       end
-      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" if latest == -1
+      # Return the first packet name if no packets have been received
+      if latest == -1
+        latest_packet_name = packet_names[0]
+      end
       return latest_packet_name
     end
 

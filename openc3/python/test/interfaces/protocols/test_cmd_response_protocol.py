@@ -177,3 +177,61 @@ class TestCmdResponseProtocol(unittest.TestCase):
         time.sleep(0.003)
         self.assertEqual(TestCmdResponseProtocol.write_buffer, b"SOUR:VOLT 11, (@1)")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CmdResponseProtocol, 
+            [0.5, 0.02, True], 
+            "READ_WRITE"
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CmdResponseProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+        
+        # Check cmd response protocol specific fields
+        self.assertIn("response_timeout", details)
+        self.assertEqual(details["response_timeout"], 0.5)
+        self.assertIn("response_polling_period", details)
+        self.assertEqual(details["response_polling_period"], 0.02)
+        self.assertIn("raise_exceptions", details)
+        self.assertEqual(details["raise_exceptions"], True)
+        self.assertIn("response_packet", details)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CmdResponseProtocol, 
+            [1.0, 0.1, False], 
+            "READ_WRITE"
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+        
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CmdResponseProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+        
+        # Check cmd response protocol specific read fields (same as write for this protocol)
+        self.assertIn("response_timeout", details)
+        self.assertEqual(details["response_timeout"], 1.0)
+        self.assertIn("response_polling_period", details)
+        self.assertEqual(details["response_polling_period"], 0.1)
+        self.assertIn("raise_exceptions", details)
+        self.assertEqual(details["raise_exceptions"], False)
+        self.assertIn("response_packet", details)

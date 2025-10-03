@@ -42,14 +42,14 @@ class Interface:
         self.target_names = []
         self.cmd_target_names = []
         self.tlm_target_names = []
+        self.cmd_target_enabled = {}
+        self.tlm_target_enabled = {}
         self.connect_on_startup = True
         self.auto_reconnect = True
         self.reconnect_delay = 5.0
         self.disable_disconnect = False
-        self.packet_log_writer_pairs = []
-        self.stored_packet_log_writer_pairs = []
+        self.stream_log_pair = None
         self.routers = []
-        self.cmd_routers = []
         self.read_count = 0
         self.write_count = 0
         self.bytes_read = 0
@@ -65,6 +65,7 @@ class Interface:
         self.read_protocols = []
         self.write_protocols = []
         self.protocol_info = []
+        self.save_raw_data = True
         self.read_raw_data = ""
         self.written_raw_data = ""
         self.read_raw_data_time = None
@@ -163,6 +164,7 @@ class Interface:
             first = True
             while True:
                 extra = None
+                blank_test = False
                 # Protocols may have cached data for a packet, so initially just inject a blank string
                 # Otherwise we can hold off outputting other packets where all the data has already
                 # been received
@@ -175,9 +177,14 @@ class Interface:
                 else:
                     data = b""
                     first = False
+                    blank_test = True
 
                 for protocol in self.read_protocols:
+                    if not blank_test:
+                        protocol.read_protocol_input_base(data, extra)
                     data, extra = protocol.read_data(data, extra)
+                    if not blank_test:
+                        protocol.read_protocol_output_base(data, extra)
                     if data == "DISCONNECT":
                         Logger.info(
                             f"{self.name}: Protocol {protocol.__class__.__name__} read_data requested disconnect"
@@ -185,6 +192,10 @@ class Interface:
                         return None
                     if data == "STOP":
                         break
+                    if blank_test:
+                        # This means the blank test returned something so we can log
+                        protocol.read_protocol_input_base('', None)
+                        protocol.read_protocol_output_base(data, extra)
                 if data == "STOP":
                     continue
 
@@ -240,7 +251,9 @@ class Interface:
 
             # Potentially modify packet data
             for protocol in self.write_protocols:
+                protocol.write_protocol_input_base(data, extra)
                 data, extra = protocol.write_data(data, extra)
+                protocol.write_protocol_output_base(data, extra)
                 if data == "DISCONNECT":
                     Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
@@ -337,13 +350,13 @@ class Interface:
         other_interface.target_names = self.target_names[:]
         other_interface.cmd_target_names = self.cmd_target_names[:]
         other_interface.tlm_target_names = self.tlm_target_names[:]
+        other_interface.cmd_target_enabled = self.cmd_target_enabled.copy()
+        other_interface.tlm_target_enabled = self.tlm_target_enabled.copy()
         other_interface.connect_on_startup = self.connect_on_startup
         other_interface.auto_reconnect = self.auto_reconnect
         other_interface.reconnect_delay = self.reconnect_delay
         other_interface.disable_disconnect = self.disable_disconnect
-        other_interface.packet_log_writer_pairs = self.packet_log_writer_pairs[:]
         other_interface.routers = self.routers[:]
-        other_interface.cmd_routers = self.cmd_routers[:]
         other_interface.read_count = self.read_count
         other_interface.write_count = self.write_count
         other_interface.bytes_read = self.bytes_read
@@ -354,7 +367,12 @@ class Interface:
         # read_queue_size is the number of packets in the queue so don't copy
         # write_queue_size is the number of packets in the queue so don't copy
         for option_name, option_values in self.options.items():
-            other_interface.set_option(option_name, option_values)
+            if option_values and isinstance(option_values[0], list):
+                # Properly Handle option that supports multiple instances
+                for ovs in option_values:
+                    other_interface.set_option(option_name, ovs)
+            else:
+                other_interface.set_option(option_name, option_values)
         other_interface.protocol_info = []
         for protocol_class, protocol_args, read_write in self.protocol_info:
             if not read_write == "PARAMS":
@@ -403,8 +421,9 @@ class Interface:
     #
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
-        self.read_raw_data_time = datetime.now(timezone.utc)
-        self.read_raw_data = data
+        if self.save_raw_data:
+            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
             self.stream_log_pair.read_log.write(data)
@@ -416,8 +435,9 @@ class Interface:
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
     def write_interface_base(self, data, extra=None):
-        self.written_raw_data_time = datetime.now(timezone.utc)
-        self.written_raw_data = data
+        if self.save_raw_data:
+            self.written_raw_data_time = datetime.now(timezone.utc)
+            self.written_raw_data = data
         self.bytes_written += len(data)
         if self.stream_log_pair:
             self.stream_log_pair.write_log.write(data)
@@ -500,6 +520,45 @@ class Interface:
                 if result:
                     handled = True
         return handled
+
+    def details(self):
+        result = self.as_json()
+        result['cmd_target_names'] = self.cmd_target_names
+        result['tlm_target_names'] = self.tlm_target_names
+        result['cmd_target_enabled'] = self.cmd_target_enabled
+        result['tlm_target_enabled'] = self.tlm_target_enabled
+        result['connect_on_startup'] = self.connect_on_startup
+        result['auto_reconnect'] = self.auto_reconnect
+        result['reconnect_delay'] = self.reconnect_delay
+        result['disable_disconnect'] = self.disable_disconnect
+        result['read_allowed'] = self.read_allowed
+        result['write_allowed'] = self.write_allowed
+        result['write_raw_allowed'] = self.write_raw_allowed
+        result['read_raw_data'] = self.read_raw_data
+        result['written_raw_data'] = self.written_raw_data
+        if self.read_raw_data_time is not None:
+            result['read_raw_data_time'] = self.read_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            result['read_raw_data_time'] = None
+        if self.written_raw_data_time is not None:
+            result['written_raw_data_time'] = self.written_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            result['written_raw_data_time'] = None
+
+        if self.stream_log_pair is not None and (self.stream_log_pair.write_log.logging_enabled or self.stream_log_pair.read_log.logging_enabled):
+            result['stream_log'] = True
+        else:
+            result['stream_log'] = False
+
+        result['options'] = self.options
+        result['read_protocols'] = []
+        for read_protocol in self.read_protocols:
+            result['read_protocols'].append(read_protocol.read_details())
+        result['write_protocols'] = []
+        for write_protocol in self.write_protocols:
+            result['write_protocols'].append(write_protocol.write_details())
+
+        return result
 
     def run_periodic_cmd(self, log_dont_log, cmd_string):
         if self.connected():

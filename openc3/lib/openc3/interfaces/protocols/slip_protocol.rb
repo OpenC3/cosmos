@@ -145,6 +145,29 @@ module OpenC3
         return :STOP
       end
     end
+
+    def write_details
+      result = super()
+      result['start_char'] = @start_char.inspect
+      result['end_char'] = @end_char.inspect
+      result['esc_char'] = @esc_char.inspect
+      result['esc_end_char'] = @esc_end_char.inspect
+      result['esc_esc_char'] = @esc_esc_char.inspect
+      result['write_enable_escaping'] = @write_enable_escaping
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['start_char'] = @start_char.inspect
+      result['end_char'] = @end_char.inspect
+      result['esc_char'] = @esc_char.inspect
+      result['esc_end_char'] = @esc_end_char.inspect
+      result['esc_esc_char'] = @esc_esc_char.inspect
+      result['read_strip_characters'] = @read_strip_characters
+      result['read_enable_escaping'] = @read_enable_escaping
+      return result
+    end
   end
 
 end

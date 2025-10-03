@@ -186,5 +186,52 @@ module OpenC3
         expect($buffer).to eql("\xDE\xAD\x00\x01\x02\x03\xCD\xEF")
       end
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(TerminatedProtocol, ['0xCDEF', ''], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('TerminatedProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes terminated protocol-specific configuration" do
+        @interface.add_protocol(TerminatedProtocol, ['0xCDEF', '0xABCD'], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['write_termination_characters']).to eq("\xCD\xEF".inspect)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(TerminatedProtocol, ['', '0xABCD', true], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('TerminatedProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes terminated protocol-specific configuration" do
+        @interface.add_protocol(TerminatedProtocol, ['', '0xABCD', false, 2, 'DEAD', true], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['read_termination_characters']).to eq("\xAB\xCD".inspect)
+        expect(details['strip_read_termination']).to eq(false)
+      end
+    end
   end
 end

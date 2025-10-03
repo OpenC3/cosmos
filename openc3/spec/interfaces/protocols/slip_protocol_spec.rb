@@ -262,5 +262,62 @@ module OpenC3
         expect($buffer).to eql("\x00\xE1\xE2\xE1\xE3\xE1\xE3\xE1\xE2\x02\x03\xE0")
       end
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(SlipProtocol, [], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('SlipProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes slip protocol-specific configuration" do
+        @interface.add_protocol(SlipProtocol, ["0xC0", "false", "true", "false", "0xC0", "0xDB", "0xDC", "0xDD"], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['start_char']).to eq("\xC0".inspect)
+        expect(details['write_enable_escaping']).to eq(false)
+        expect(details['end_char']).to eq("\xC0".inspect)
+        expect(details['esc_char']).to eq("\xDB".inspect)
+        expect(details['esc_end_char']).to eq("\xDC".inspect)
+        expect(details['esc_esc_char']).to eq("\xDD".inspect)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(SlipProtocol, [], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('SlipProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes slip protocol-specific configuration" do
+        @interface.add_protocol(SlipProtocol, ["0xA0", "true", "false", "true", "0xE0", "0xE1", "0xE2", "0xE3"], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['start_char']).to eq("\xA0".inspect)
+        expect(details['read_strip_characters']).to eq(true)
+        expect(details['read_enable_escaping']).to eq(false)
+        expect(details['end_char']).to eq("\xE0".inspect)
+        expect(details['esc_char']).to eq("\xE1".inspect)
+        expect(details['esc_end_char']).to eq("\xE2".inspect)
+        expect(details['esc_esc_char']).to eq("\xE3".inspect)
+      end
+    end
   end
 end

@@ -22,7 +22,7 @@ from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
 from openc3.conversions.generic_conversion import GenericConversion
-
+from openc3.utilities.store import Store
 
 class TestCvtModel(unittest.TestCase):
     def setUp(self):
@@ -595,3 +595,13 @@ class TestCvtModel(unittest.TestCase):
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP2", type="ALL", scope="DEFAULT")
         CvtModel.normalize("INST", "ADCS", "POSX", type="ALL", scope="DEFAULT")
         CvtModel.normalize("SYSTEM", "META", "OPERATOR_NAME", type="ALL", scope="DEFAULT")
+
+    def test_determine_latest_packet_for_item_works_if_not_received(self):
+        model = TargetModel(folder_name="INST", name="INST", scope="DEFAULT")
+        model.create()
+        names = TargetModel.names(scope="DEFAULT")
+        self.assertIn("INST", names)
+        Store.set(f"DEFAULT__INST__item_to_packet_map", json.dumps({"PACKET_ID": ["PACKET1"]}))
+        Store.hset(f"DEFAULT__tlm__INST", "PACKET1", json.dumps({"PACKET_TIMESECONDS": None}))
+        packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope="DEFAULT")
+        self.assertNotEqual(packet_name, None)

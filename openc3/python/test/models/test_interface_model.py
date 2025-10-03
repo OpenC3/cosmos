@@ -219,3 +219,31 @@ class TestInterfaceModel(unittest.TestCase):
         #       next
 
         #   self.assertTrue(json.key?( str(name)))
+
+    def test_initializes_cmd_target_enabled_and_tlm_target_enabled(self):
+        model = InterfaceModel(
+            name="TEST_INT",
+            scope="DEFAULT",
+            cmd_target_names=["TARGET1", "TARGET2"],
+            tlm_target_names=["TARGET3", "TARGET4"],
+        )
+        self.assertTrue(model.cmd_target_enabled["TARGET1"])
+        self.assertTrue(model.cmd_target_enabled["TARGET2"])
+        self.assertTrue(model.cmd_target_enabled["UNKNOWN"])
+        self.assertTrue(model.tlm_target_enabled["TARGET3"])
+        self.assertTrue(model.tlm_target_enabled["TARGET4"])
+        self.assertTrue(model.tlm_target_enabled["UNKNOWN"])
+
+    def test_accepts_cmd_target_enabled_and_tlm_target_enabled_parameters(self):
+        model = InterfaceModel(
+            name="TEST_INT",
+            scope="DEFAULT",
+            cmd_target_names=["TARGET1"],
+            tlm_target_names=["TARGET2"],
+            cmd_target_enabled={"TARGET1": False, "UNKNOWN": True},
+            tlm_target_enabled={"TARGET2": False, "UNKNOWN": True},
+        )
+        self.assertFalse(model.cmd_target_enabled["TARGET1"])
+        self.assertTrue(model.cmd_target_enabled["UNKNOWN"])
+        self.assertFalse(model.tlm_target_enabled["TARGET2"])
+        self.assertTrue(model.tlm_target_enabled["UNKNOWN"])

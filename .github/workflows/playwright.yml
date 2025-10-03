@@ -25,17 +25,18 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          # cache: "yarn"
-          # cache-dependency-path: "**/yarn.lock"
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
       - name: Install playwright dependencies
         run: ./playwright.sh install-playwright
         working-directory: playwright
       - name: Check for test.only
-        run: yarn playwright test --list --forbid-only
+        run: pnpm playwright test --list --forbid-only
         working-directory: playwright
       - name: openc3.sh run
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
@@ -61,14 +62,14 @@ jobs:
         working-directory: playwright
         # Ensure we're connected and running
       - name: Wait for build
-        run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
+        run: pnpm playwright test --project=chromium tests/wait-for-build.spec.ts
         working-directory: playwright
       - name: Run Playwright tests
         # Run separately to allow for parallelism
         run: ./playwright.sh run-chromium --grep-invert='enterprise'
         working-directory: playwright
       - name: Generate coverage
-        run: yarn fixlinux; yarn cobertura
+        run: pnpm fixlinux; pnpm cobertura
         working-directory: playwright
       - uses: codecov/codecov-action@v5
         with:
