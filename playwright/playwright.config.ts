@@ -53,6 +53,7 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: process.env.CI ? 'on-first-retry' : 'on',
     screenshot: 'only-on-failure',
+    viewport: { width: 1600, height: 1200 },
   },
 
   projects: [
@@ -80,6 +81,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         storageState: STORAGE_STATE,
+        viewport: { width: 1600, height: 1200 },
       },
     },
     {
@@ -87,6 +89,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Firefox'],
         storageState: STORAGE_STATE,
+        viewport: { width: 1600, height: 1200 },
       },
       dependencies: ['setup'],
     },
