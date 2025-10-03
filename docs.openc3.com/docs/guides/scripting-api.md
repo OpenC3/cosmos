@@ -4563,7 +4563,7 @@ print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 ### set_limits
 
-The set_limits_method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
