@@ -1459,8 +1459,10 @@ export default {
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
+      console.log(`Trying to load running script ${id}`)
       return Api.get(`/script-api/running-script/${id}`)
         .then((response) => {
+          console.log(response)
           if (response.data) {
             let state = response.data.state
             if (
@@ -1487,6 +1489,7 @@ export default {
           }
         })
         .catch((error) => {
+          console.log(error)
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
@@ -1497,6 +1500,7 @@ export default {
     },
     tryLoadSuites: function (response) {
       if (response.data.suite_runner) {
+        console.log('suites', response.data.suite_runner)
         this.startOrGoDisabled = true
         this.suiteRunner = true
         this.suiteMap = JSON.parse(response.data.suite_runner)

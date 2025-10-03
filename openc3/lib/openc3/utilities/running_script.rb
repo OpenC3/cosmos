@@ -458,8 +458,8 @@ class RunningScript
       start_time: start_time, # Time the script started ISO format
       end_time: nil, # Time the script ended ISO format
       disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: status_environment.as_json().to_json(allow_nan: true), # nil or Hash of key/value pairs for environment variables
-      suite_runner: suite_runner ? suite_runner.as_json().to_json(allow_nan: true) : nil,
+      environment: JSON.generate(status_environment.as_json, allow_nan: true),
+      suite_runner: suite_runner ? JSON.generate(suite_runner.as_json, allow_nan: true) : nil,
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       script_engine: script_engine, # script engine filename
