@@ -72,6 +72,14 @@ module OpenC3
       return _make_request(action: 'exec command', verb: 'post', uri: "/openc3-api/queues/#{name}/exec_command", data: data, scope: scope)
     end
 
+    # No queue_insert because we do that through the cmd APIs with the queue kwarg
+
+    def queue_remove(name, index: nil, scope: $openc3_scope)
+      data = {}
+      data['index'] = index if index
+      return _make_request(action: 'remove command', verb: 'post', uri: "/openc3-api/queues/#{name}/remove_command", data: data, scope: scope)
+    end
+
     def queue_delete(name, scope: $openc3_scope)
       return _make_request(action: 'delete queue', verb: 'delete', uri: "/openc3-api/queues/#{name}", scope: scope)
     end
