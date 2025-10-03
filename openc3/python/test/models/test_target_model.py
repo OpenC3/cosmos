@@ -30,6 +30,7 @@ from openc3.utilities.store import Store
 class TestTargetModel(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
+        TargetModel.item_map_cache = {}
 
     def test_returns_the_specified_model(self):
         model = TargetModel(folder_name="TEST", name="TEST2", scope="DEFAULT")

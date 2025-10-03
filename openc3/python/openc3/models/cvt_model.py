@@ -442,8 +442,9 @@ class CvtModel(Model):
             if pkt_hash["PACKET_TIMESECONDS"] and pkt_hash["PACKET_TIMESECONDS"] > latest:
                 latest = pkt_hash["PACKET_TIMESECONDS"]
                 latest_packet_name = packet_name
+        # Return the first packet name if no packets have been received
         if latest == -1:
-            raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
+            latest_packet_name = packet_names[0]
         return latest_packet_name
 
     @classmethod
