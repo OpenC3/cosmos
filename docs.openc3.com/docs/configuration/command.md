@@ -651,7 +651,7 @@ Validator class is used to validate the command success or failure with both a p
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```python
-VALIDATOR custom_validator.rb
+VALIDATOR custom_validator.py
 
 Defined in custom_validator.py:
 
@@ -666,10 +666,14 @@ class CustomValidator(CommandValidator):
         if tlm("TGT PKT ITEM") == 0:
             return [False, "TGT PKT ITEM is 0"]
         self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        # Return true to indicate Success, false to indicate Failure,
+        # and nil to indicate Unknown. The second value is the optional message.
         return [True, None]
 
     def post_check(self, command):
         wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        # Return true to indicate Success, false to indicate Failure,
+        # and nil to indicate Unknown. The second value is the optional message.
         return [True, None]
 ```
 </TabItem>
@@ -692,10 +696,14 @@ class CustomValidator < OpenC3::CommandValidator
       return [false, "TGT PKT ITEM is 0"]
     end
     @cmd_acpt_cnt = tlm("TGT PKT CMD_ACPT_CNT")
+    # Return true to indicate Success, false to indicate Failure,
+    # and nil to indicate Unknown. The second value is the optional message.
     return [true, nil]
   end
   def post_check(packet)
     wait_check("TGT PKT CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
+    # Return true to indicate Success, false to indicate Failure,
+    # and nil to indicate Unknown. The second value is the optional message.
     return [true, nil]
   end
 end
