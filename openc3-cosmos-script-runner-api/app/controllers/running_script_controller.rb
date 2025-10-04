@@ -38,7 +38,7 @@ class RunningScriptController < ApplicationController
       if running_script['suite_runner']
         name = running_script['filename']
         file = Script.body(params[:scope], name)
-        # Since this is a running script the suite should process sucessfully
+        # Since this is a running script the suite should process successfully
         results_suites, _results_error, _success = Script.process_suite(name, file, username: username(), scope: params[:scope])
         running_script['suites'] = results_suites
       end
