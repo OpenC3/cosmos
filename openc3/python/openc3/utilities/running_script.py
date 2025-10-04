@@ -470,7 +470,6 @@ class RunningScript:
 
     def run(self):
         if self.script_status.suite_runner is not None:
-            self.script_status.suite_runner = json.loads(self.script_status.suite_runner)  # Convert to hash
             if "options" in self.script_status.suite_runner:
                 self.parse_options(self.script_status.suite_runner["options"])
             else:

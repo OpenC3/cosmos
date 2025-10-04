@@ -430,6 +430,9 @@ export default {
       this.suiteChanged(this.suites[0])
     },
     suiteChanged(event) {
+      if (!event || this.suiteMap[event] == undefined) {
+        return
+      }
       this.suite = event
       this.group = ''
       this.script = ''
@@ -438,6 +441,13 @@ export default {
       this.groupChanged(this.groups[0])
     },
     groupChanged(event) {
+      if (
+        !event ||
+        this.suiteMap[this.suite] == undefined ||
+        this.suiteMap[this.suite].groups[event] == undefined
+      ) {
+        return
+      }
       this.group = event
       this.script = ''
       this.scripts = this.suiteMap[this.suite].groups[event].scripts
