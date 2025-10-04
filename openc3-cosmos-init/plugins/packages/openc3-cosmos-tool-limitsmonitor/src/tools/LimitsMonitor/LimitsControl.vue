@@ -230,7 +230,7 @@ export default {
           sortable: true,
           minWidth: '100px',
           width: '200px',
-          maxWidth: '300px',
+          maxWidth: '410px', // Widest without overflow at 100% zoom
         },
         {
           title: 'Value',
@@ -595,4 +595,5 @@ export default {
   font-weight: bold;
   background-color: var(--color-background-base-default);
 }
+
 </style>
