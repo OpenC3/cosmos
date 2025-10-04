@@ -84,7 +84,7 @@ export default {
       title: 'CmdTlmServer',
       timeZone: 'local',
       panel: 0,
-      curTab: 1,
+      curTab: 0,
       tabs: [
         {
           name: 'Interfaces',
