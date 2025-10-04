@@ -458,8 +458,8 @@ class RunningScript
       start_time: start_time, # Time the script started ISO format
       end_time: nil, # Time the script ended ISO format
       disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: JSON.generate(status_environment.as_json, allow_nan: true),
-      suite_runner: suite_runner ? JSON.generate(suite_runner.as_json, allow_nan: true) : nil,
+      environment: status_environment, # hash of environment variables set for the script
+      suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       script_engine: script_engine, # script engine filename
@@ -770,7 +770,6 @@ class RunningScript
 
   def run
     if @script_status.suite_runner
-      @script_status.suite_runner = JSON.parse(@script_status.suite_runner, allow_nan: true, create_additions: true) # Convert to hash
       if @script_status.suite_runner['options']
         parse_options(@script_status.suite_runner['options'])
       else
