@@ -43,7 +43,7 @@ You then record the note to create the note event on the calendar.
 
 ### Activity
 
-Scheduled on a timeline, activities take both a start and end time.
+Scheduled on a timeline, activities take both a start and end time. A custom title and notes can also be specified. If a custom title is specified, that title will appear on the calendar instead of the default title that is generated.
 
 ![CreateActivity1](/img/calendar/create_activity1.png)
 
@@ -53,7 +53,7 @@ Activities can run single commands, run a script, or simply "Reserve" space on t
 
 When calendar activities are scheduled they appear with a status icon, compliant with the AstroUX standards. As calendar activities are executed, there are lifecycle hooks set to track and display the latest status update from the executed script or command. Green circle will signify nominal (created, started, completed states), yellow square signifies warnings (script stopped, paused, hit breakpoint, completed with errors, disabled), and red triangle signifies error states (error, failed, crashed). Clicking into a Calendar Activity will show the details of the status updates.
 
-![Calendar](/img/calendar/calendar.png)
+![Activity](/img/calendar/activity.png)
 
 ### Gantt View
 
