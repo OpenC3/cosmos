@@ -162,8 +162,10 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
+      puts "remove command params: #{params}"
       index = params[:index]&.to_f
       command_data = model.remove_command(index)
+      puts "index: #{index} command_data: #{command_data}"
       if command_data
         render json: command_data
       else
@@ -217,8 +219,10 @@ class QueuesController < ApplicationController
       command_data = model.remove_command(index)
       if command_data
         hazardous = false
+        puts "command_data: #{command_data}"
+        token = get_token(command_data['username'], scope: params[:scope])
+        puts "exec_command token: #{token}"
         begin
-          token = get_token(command_data['username'], scope: params[:scope])
           if hazardous
             cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
           else

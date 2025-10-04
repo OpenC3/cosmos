@@ -30,8 +30,9 @@ module OpenC3
       if response.nil?
         raise "Failed to #{action}. No response from server."
       elsif response.status != 200 and response.status != 201
+        puts "response:#{response}"
         result = JSON.parse(response.body, allow_nan: true, create_additions: true)
-        raise "Failed to #{action} due to #{result['message']}"
+        raise "#{action} failed with status #{response.status}. Message body was #{response.body}."
       end
       return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
@@ -66,7 +67,7 @@ module OpenC3
       return _make_request(action: 'disable queue', verb: 'post', uri: "/openc3-api/queues/#{name}/disable", scope: scope)
     end
 
-    def queue_exec(name, index: nil, scope: $openc3_scope)
+    def queue_exec(name, index=nil, scope: $openc3_scope)
       data = {}
       data['index'] = index if index
       return _make_request(action: 'exec command', verb: 'post', uri: "/openc3-api/queues/#{name}/exec_command", data: data, scope: scope)
@@ -74,7 +75,7 @@ module OpenC3
 
     # No queue_insert because we do that through the cmd APIs with the queue kwarg
 
-    def queue_remove(name, index: nil, scope: $openc3_scope)
+    def queue_remove(name, index=nil, scope: $openc3_scope)
       data = {}
       data['index'] = index if index
       return _make_request(action: 'remove command', verb: 'post', uri: "/openc3-api/queues/#{name}/remove_command", data: data, scope: scope)
