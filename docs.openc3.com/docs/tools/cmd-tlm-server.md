@@ -7,8 +7,7 @@ sidebar_custom_props:
 
 ## Introduction
 
-The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Interfaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
-both raw and formatted command and telemetry packets as they go through the COSMOS system. At the bottom of the Command and Telemetry Server is the Log Messages showing server messages.
+The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Interfaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view both raw and formatted command and telemetry packets as they go through the COSMOS system. At the bottom of the Command and Telemetry Server is the Log Messages showing server messages.
 
 ![Cmd Tlm Server](/img/cmd_tlm_server/cmd_tlm_server.png)
 
@@ -27,6 +26,12 @@ This dialog changes the refresh rate of the Command and Telemetry Server to redu
 The Interfaces tab displays all the interfaces defined by your COSMOS installation. You can Connect or Disconnect interfaces and view raw byte and packet counts.
 
 ![Interfaces](/img/cmd_tlm_server/interfaces.png)
+
+You can get additional details about the interface by clicking the details button.
+
+![Interface Details](/img/cmd_tlm_server/interface_details.png)
+
+See the Data Flows tab for more details on how to interact with the interface data flows.
 
 ## Targets Tab
 
@@ -61,6 +66,20 @@ Clicking on View Raw opens a dialog displaying the raw bytes for that telemetry 
 ![Raw Telemetry](/img/cmd_tlm_server/tlm_raw.png)
 
 Clicking View in Packet Viewer opens up a new [Packet Viewer](packet-viewer.md) window with the specified telemetry packet.
+
+## Data Flows Tab
+
+The Data Flows tab displays all the Interface data flows through the system.
+
+![Data Flows](/img/cmd_tlm_server/data_flows.png)
+
+You can disconnect the interface from the COSMOS Processing by clicking and deleting the lines connecting the Processing to the Interface. This will leave the interface "connected" but no commands are sent out or telemetry processed. Removing the lines from the Interface to the Target will effectively "unmap" the interface and restart it. This may require re-installing the plugin to restore the interface.
+
+From the Details dialog you can also view details about the individual Protocols applied to the Interface. In the EXAMPLE_INT Interface, when you click on the Length protocol you can see the details of the protocol.
+
+![Protocol Details](/img/cmd_tlm_server/protocol_details.png)
+
+This dialog shows the various settings for the protocol as well as the raw data processed by the protocol.
 
 ## Status Tab
 
