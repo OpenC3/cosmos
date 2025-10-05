@@ -30,9 +30,8 @@ module OpenC3
       if response.nil?
         raise "Failed to #{action}. No response from server."
       elsif response.status != 200 and response.status != 201
-        puts "response:#{response}"
         result = JSON.parse(response.body, allow_nan: true, create_additions: true)
-        raise "#{action} failed with status #{response.status}. Message body was #{response.body}."
+        raise "#{action} failed with status #{response.status}. #{result['message']}."
       end
       return JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
