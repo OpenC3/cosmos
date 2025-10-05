@@ -2304,7 +2304,7 @@ queue_exec('<Queue Name>', '<Optional Index>')
 
 ```ruby
 queue_exec('TEST') # Removes and executes the first command in the queue
-queue_exec('TEST', index: 5)
+queue_exec('TEST', index: 5) # Removes and executes the command at index 5
 ```
 
 </TabItem>
@@ -2313,7 +2313,56 @@ queue_exec('TEST', index: 5)
 
 ```python
 queue_exec('TEST') # Removes and executes the first command in the queue
-queue_exec('TEST', index=5)
+queue_exec('TEST', index=5) # Removes and executes the command at index 5
+```
+
+</TabItem>
+</Tabs>
+
+### queue_remove
+
+Removes a command from the queue.
+
+> Since 6.9.1
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_remove('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_remove('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                                                                            |
+| ---------- | -------------------------------------------------------------------------------------- |
+| Queue Name | Case sensitive name of the queue                                                       |
+| Index      | Remove at the specified index. If the index is not given the first command is removed. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_remove('TEST') # Removes the first command in the queue
+queue_remove('TEST', index: 5) # Removes the command at index 5
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_remove('TEST') # Removes the first command in the queue
+queue_remove('TEST', index=5) # Removes the command at index 5
 ```
 
 </TabItem>
