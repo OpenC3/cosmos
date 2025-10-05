@@ -1,6 +1,6 @@
 {
   "name": "widgets_src",
-  "version": "6.9.1",
+  "version": "6.9.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {

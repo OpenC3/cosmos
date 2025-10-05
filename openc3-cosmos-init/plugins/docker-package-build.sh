@@ -4,7 +4,7 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=6.9.1
+OPENC3_RELEASE_VERSION=6.9.2-beta0
 
 # 2nd argument provides an override for the build folder
 FOLDER_NAME=$2
