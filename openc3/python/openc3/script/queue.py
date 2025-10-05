@@ -78,19 +78,19 @@ def queue_disable(name, scope: str = OPENC3_SCOPE):
     return _make_request('disable queue', 'post', f'/openc3-api/queues/{name}/disable', scope)
 
 
-def queue_exec(name, index=None, scope: str = OPENC3_SCOPE):
-    """Pop a value from the queue at the specified index or first value if no index"""
+def queue_exec(name, id=None, scope: str = OPENC3_SCOPE):
+    """Pop a value from the queue at the specified id or first value if no id"""
     data = {}
-    if index is not None:
-        data['index'] = index
+    if id is not None:
+        data['id'] = id
     return _make_request('exec command', 'post', f'/openc3-api/queues/{name}/exec_command', scope, data=data)
 
 
-def queue_remove(name, index=None, scope: str = OPENC3_SCOPE):
-    """Remove a command from the queue at the specified index"""
+def queue_remove(name, id=None, scope: str = OPENC3_SCOPE):
+    """Remove a command from the queue at the specified id"""
     data = {}
-    if index is not None:
-        data['index'] = index
+    if id is not None:
+        data['id'] = id
     return _make_request('remove command', 'post', f'/openc3-api/queues/{name}/remove_command', scope, data=data)
 
 def queue_delete(name, scope: str = OPENC3_SCOPE):

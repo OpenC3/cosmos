@@ -141,12 +141,12 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = nil
-      if params[:index]
-        index = params[:index].to_f
+      id = nil
+      if params[:id]
+        id = params[:id].to_f
       end
-      # If params[:index] is not given this will be nil which means insert at the end
-      model.insert_command(index, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
+      # If params[:id] is not given this will be nil which means insert at the end
+      model.insert_command(id, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -162,10 +162,8 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      puts "remove command params: #{params}"
-      index = params[:index]&.to_f
-      command_data = model.remove_command(index)
-      puts "index: #{index} command_data: #{command_data}"
+      id = params[:id]&.to_f
+      command_data = model.remove_command(id)
       if command_data
         render json: command_data
       else
@@ -191,12 +189,12 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = params[:index]
-      if index.nil?
-        render json: { status: 'error', message: 'index is required' }, status: 400
+      id = params[:id]
+      if id.nil?
+        render json: { status: 'error', message: 'id is required' }, status: 400
         return
       end
-      model.update_command(index: index, username: username(), command: command)
+      model.update_command(id: id, username: username(), command: command)
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)
@@ -215,13 +213,11 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = params[:index]&.to_f
-      command_data = model.remove_command(index)
+      id = params[:id]&.to_f
+      command_data = model.remove_command(id)
       if command_data
         hazardous = false
-        puts "command_data: #{command_data}"
-        token = get_token(command_data['username'], scope: params[:scope])
-        puts "exec_command token: #{token}"
+        token = get_token(username(), scope: params[:scope])
         begin
           if hazardous
             cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
@@ -239,8 +235,8 @@ class QueuesController < ApplicationController
         end
         render json: command_data
       else
-        if index
-          render json: { status: 'error', message: "No command in queue #{params[:name]} at index #{index}" }, status: 404
+        if id
+          render json: { status: 'error', message: "No command in queue #{params[:name]} at id #{id}" }, status: 404
         else
           render json: { status: 'error', message: "No commands in queue #{params[:name]}" }, status: 404
         end
