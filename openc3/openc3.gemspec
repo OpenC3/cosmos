@@ -46,7 +46,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.9.1.pre.beta0'
+  s.version = '6.9.1'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables

@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "6.9.1-beta0",
+  "version": "6.9.1",
   "type": "module",
   "scripts": {
     "serve": "vite build --watch --mode dev-server",
