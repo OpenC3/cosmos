@@ -61,6 +61,8 @@ module OpenC3
       @interface.target_names = %w[INST]
       @interface.cmd_target_names = %w[INST]
       @interface.tlm_target_names = %w[INST]
+      @interface.cmd_target_enabled = {"INST" => true}
+      @interface.tlm_target_enabled = {"INST" => true}
 
       # Stub to make the InterfaceCmdHandlerThread happy
       @interface_data = ''

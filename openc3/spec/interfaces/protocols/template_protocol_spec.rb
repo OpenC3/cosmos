@@ -459,5 +459,61 @@ module OpenC3
       expect($write_buffer).to eql("GO\xAD")
       expect(read_result.read("STRING")).to eq 'OpenC3'
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(TemplateProtocol, %w(0xABCD 0xABCD), :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('TemplateProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes protocol-specific configuration" do
+        @interface.add_protocol(TemplateProtocol, %w(0xABCD 0xEF01 0 1.5 2 true 0 nil false 2.0 0.1 false), :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details['write_termination_characters']).to eq("\xAB\xCD".inspect)
+        expect(details['initial_read_delay']).to eq(1.5)
+        expect(details['response_lines']).to eq(2)
+        expect(details['response_timeout']).to eq(2.0)
+        expect(details['response_polling_period']).to eq(0.1)
+        expect(details['raise_exceptions']).to eq(false)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(TemplateProtocol, %w(0xABCD 0xEF01), :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('TemplateProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes protocol-specific configuration" do
+        @interface.add_protocol(TemplateProtocol, %w(0xABCD 0xEF01 0 1.5 2 true 0 nil false 2.0 0.1 false), :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details['read_termination_characters']).to eq("\xEF\x01".inspect)
+        expect(details['initial_read_delay']).to eq(1.5)
+        expect(details['response_lines']).to eq(2)
+        expect(details['response_timeout']).to eq(2.0)
+        expect(details['response_polling_period']).to eq(0.1)
+        expect(details['raise_exceptions']).to eq(false)
+      end
+    end
   end
 end

@@ -22,6 +22,7 @@
 
 require 'spec_helper'
 require 'openc3/interfaces/tcpip_client_interface'
+require 'openc3/interfaces/protocols/burst_protocol'
 
 module OpenC3
   describe TcpipClientInterface do
@@ -82,6 +83,39 @@ module OpenC3
         expect(i.connected?).to be false
         i.connect
         expect(i.connected?).to be true
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = TcpipClientInterface.new('localhost', '8888', '8889', '5.0', '10.0', 'burst')
+
+        details = i.details
+
+        expect(details).to be_a(Hash)
+        expect(details['hostname']).to eql('localhost')
+        expect(details['write_port']).to eql(8888)
+        expect(details['read_port']).to eql(8889)
+        expect(details['write_timeout']).to eql(5.0)
+        expect(details['read_timeout']).to eql(10.0)
+
+        # Check that base interface details are included
+        expect(details['name']).to eql('TcpipClientInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "handles nil values correctly" do
+        i = TcpipClientInterface.new('localhost', 'nil', '8889', 'nil', '5.0', 'burst')
+
+        details = i.details
+
+        expect(details['hostname']).to eql('localhost')
+        expect(details['write_port']).to be_nil
+        expect(details['read_port']).to eql(8889)
+        expect(details['write_timeout']).to be_nil
+        expect(details['read_timeout']).to eql(5.0)
       end
     end
   end

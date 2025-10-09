@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -32,8 +32,12 @@ WHITELIST.extend(
         "stop_raw_logging_interface",
         "get_all_interface_info",
         "map_target_to_interface",
+        "unmap_target_from_interface",
         "interface_cmd",
         "interface_protocol_cmd",
+        "interface_target_enable",
+        "interface_target_disable",
+        "interface_details",
     ]
 )
 
@@ -146,14 +150,38 @@ def map_target_to_interface(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    new_interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
         target_names = [target_name]
     for name in target_names:
-        new_interface.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
+        interface.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
         Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
+
+
+# Removes the association of a target and all its commands and telemetry with a particular
+# interface. None of the commands will go out over and no telemetry be received
+# from that interface.
+#
+# @param target_name [String/Array] The name of the target(s)
+# @param interface_name (see #connect_interface)
+def unmap_target_from_interface(
+    target_name,
+    interface_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if isinstance(target_name, list):
+        target_names = target_name
+    else:
+        target_names = [target_name]
+    for name in target_names:
+        interface.unmap_target(name, cmd_only=cmd_only, tlm_only=tlm_only)
+        Logger.info(f"Target {name} unmapped from Interface {interface_name}", scope=scope)
 
 
 def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
@@ -178,3 +206,52 @@ def interface_protocol_cmd(
         index=index,
         scope=scope,
     )
+
+
+def interface_target_enable(
+    interface_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if cmd_only and tlm_only:
+        cmd_only = False
+        tlm_only = False
+    if not tlm_only:
+        interface.cmd_target_enabled[target_name.upper()] = True
+    if not cmd_only:
+        interface.tlm_target_enabled[target_name.upper()] = True
+    interface.update()
+    InterfaceTopic.interface_target_enable(
+        interface_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def interface_target_disable(
+    interface_name,
+    target_name,
+    cmd_only=False,
+    tlm_only=False,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if cmd_only and tlm_only:
+        cmd_only = False
+        tlm_only = False
+    if not tlm_only:
+        interface.cmd_target_enabled[target_name.upper()] = False
+    if not cmd_only:
+        interface.tlm_target_enabled[target_name.upper()] = False
+    interface.update()
+    InterfaceTopic.interface_target_disable(
+        interface_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
+    )
+
+
+def interface_details(interface_name, scope=OPENC3_SCOPE):
+    authorize(permission="system", interface_name=interface_name, scope=scope)
+    return InterfaceTopic.interface_details(interface_name, scope=scope)

@@ -181,5 +181,48 @@ module OpenC3
         expect(i.connection_string).to eql "listening on 127.0.0.1:8888 (R/W)"
       end
     end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = TcpipServerInterface.new('8888', '8889', '5.0', '10.0', 'burst')
+        i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
+        
+        details = i.details
+        
+        expect(details).to be_a(Hash)
+        expect(details['write_port']).to eql(8888)
+        expect(details['read_port']).to eql(8889)
+        expect(details['write_timeout']).to eql(5.0)
+        expect(details['read_timeout']).to eql(10.0)
+        expect(details['listen_address']).to eql('127.0.0.1')
+        
+        # Check that base interface details are included
+        expect(details['name']).to eql('TcpipServerInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "handles default listen address" do
+        i = TcpipServerInterface.new('8888', '8889', '5.0', '10.0', 'burst')
+        
+        details = i.details
+        
+        expect(details['write_port']).to eql(8888)
+        expect(details['read_port']).to eql(8889)
+        expect(details['listen_address']).to eql('0.0.0.0')
+      end
+
+      it "handles nil values correctly" do
+        i = TcpipServerInterface.new('8888', 'nil', 'nil', '10.0', 'burst')
+        
+        details = i.details
+        
+        expect(details['write_port']).to eql(8888)
+        expect(details['read_port']).to be_nil
+        expect(details['write_timeout']).to be_nil
+        expect(details['read_timeout']).to eql(10.0)
+      end
+    end
   end
 end

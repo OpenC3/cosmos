@@ -221,5 +221,59 @@ module OpenC3
         expect(packet).to be_nil
       end
     end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(FixedProtocol, [2, 1, '0xDEADBEEF', false, true], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('FixedProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes fixed protocol-specific configuration" do
+        @interface.add_protocol(FixedProtocol, [4, 2, '0x1234', true, false], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['min_id_size']).to eq(4)
+        expect(details['discard_leading_bytes']).to eq(2)
+        expect(details['sync_pattern']).to eq("\x12\x34".inspect)
+        expect(details['telemetry']).to eq(true)
+        expect(details['fill_fields']).to eq(false)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(FixedProtocol, [1], :READ)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('FixedProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes fixed protocol-specific configuration" do
+        @interface.add_protocol(FixedProtocol, [8, 6, '0x1ACFFC1D', false, true, false], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['min_id_size']).to eq(8)
+        expect(details['discard_leading_bytes']).to eq(6)
+        expect(details['sync_pattern']).to eq("\x1A\xCF\xFC\x1D".inspect)
+        expect(details['telemetry']).to eq(false)
+        expect(details['fill_fields']).to eq(true)
+      end
+    end
   end
 end

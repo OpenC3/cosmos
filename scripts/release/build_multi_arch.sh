@@ -301,9 +301,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [ "${1:-default}" = "ubi" ]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.5.0
+  OPENC3_TRAEFIK_RELEASE=v3.5.3
 else
-  OPENC3_TRAEFIK_RELEASE=v3.5.2
+  OPENC3_TRAEFIK_RELEASE=v3.5.3
 fi
 cd ../openc3-traefik
 docker buildx build \

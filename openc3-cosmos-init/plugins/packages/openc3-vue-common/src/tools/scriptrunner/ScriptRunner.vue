@@ -278,6 +278,11 @@
         ></pre>
         <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
+            <v-list-item
+              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
+              @click="openCommandEditor"
+            />
+            <v-divider />
             <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
               v-if="scriptId"
@@ -338,65 +343,94 @@
     </splitpanes>
   </template>
 
-  <div v-if="inline">
-    <v-row>
-      <v-col class="v-col-10" style="margin: 0px; padding: 0px">
-        <pre
-          ref="editor"
-          class="editor"
-          style="height: 200px"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-      </v-col>
-      <v-col
-        class="v-col-2"
-        style="
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: var(--color-background-surface-default);
-        "
-      >
-        <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            class="mx-1"
-            color="primary"
-            text="Start"
-            data-test="start-button"
-            :disabled="startOrGoDisabled || !executeUser"
-            :hidden="suiteRunner"
-            @click="startHandler"
-          />
-        </div>
-        <div v-else>
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Go"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-            @click="go"
-          />
-          <v-btn
-            color="primary"
-            class="ma-2"
-            :text="pauseOrRetryButton"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-            @click="pauseOrRetry"
-          />
+  <div
+    v-if="inline"
+    style="
+      background-color: var(--color-background-base-default);
+      margin: 0px;
+      padding: 0px;
+    "
+  >
+    <v-tabs v-model="inlineTab" density="compact">
+      <v-tab value="script" text="Script" data-test="script-tab" />
+      <v-tab value="messages" text="Messages" data-test="messages-tab" />
+    </v-tabs>
 
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Stop"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-            @click="stop"
+    <v-tabs-window v-model="inlineTab">
+      <v-tabs-window-item value="script">
+        <v-row>
+          <v-col
+            class="v-col-10"
+            style="margin: 15px 0px 0px 0px; padding: 0px"
+          >
+            <pre
+              ref="editor"
+              class="editor"
+              style="height: 200px"
+              @contextmenu.prevent="showExecuteSelectionMenu"
+            ></pre>
+          </v-col>
+          <v-col
+            class="v-col-2"
+            style="
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              background-color: var(--color-background-surface-default);
+            "
+          >
+            <div v-if="startOrGoButton === 'Start'">
+              <v-btn
+                class="mx-1"
+                color="primary"
+                text="Start"
+                data-test="start-button"
+                :disabled="startOrGoDisabled || !executeUser"
+                :hidden="suiteRunner"
+                @click="startHandler"
+              />
+            </div>
+            <div v-else>
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Go"
+                :disabled="startOrGoDisabled"
+                data-test="go-button"
+                @click="go"
+              />
+              <v-btn
+                color="primary"
+                class="ma-2"
+                :text="pauseOrRetryButton"
+                :disabled="pauseOrRetryDisabled"
+                data-test="pause-retry-button"
+                @click="pauseOrRetry"
+              />
+
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Stop"
+                data-test="stop-button"
+                :disabled="stopDisabled"
+                @click="stop"
+              />
+            </div>
+          </v-col>
+        </v-row>
+      </v-tabs-window-item>
+
+      <v-tabs-window-item value="messages">
+        <div style="height: 200px; overflow: hidden">
+          <script-log-messages
+            v-model="messages"
+            :newest-on-top="messagesNewestOnTop"
+            @message-order-changed="messageOrderChanged"
           />
         </div>
-      </v-col>
-    </v-row>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </div>
 
   <file-open-save-dialog
@@ -491,6 +525,46 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <!-- Command Editor Dialog -->
+  <v-dialog v-model="commandEditor.show" max-width="1200" persistent scrollable>
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <span>Insert Command</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
+      </v-card-title>
+      <v-card-text class="pa-0">
+        <div v-if="commandEditor.dialogError" class="error-message">
+          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+          <span class="flex-grow-1">{{ commandEditor.dialogError }}</span>
+          <v-btn
+            icon="mdi-close"
+            size="small"
+            variant="text"
+            color="error"
+            @click="commandEditor.dialogError = null"
+            class="ml-2"
+          />
+        </div>
+        <command-editor
+          ref="commandEditor"
+          :initial-target-name="commandEditor.targetName"
+          :initial-packet-name="commandEditor.packetName"
+          :cmd-string="commandEditor.cmdString"
+          :send-disabled="false"
+          :show-command-button="false"
+          @build-cmd="insertCommand($event)"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
+        <v-btn color="primary" variant="flat" @click="insertCommand()">
+          Insert Command
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <v-bottom-sheet v-model="showScripts">
     <v-sheet class="pb-11 pt-5 px-5">
       <running-scripts
@@ -535,6 +609,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import {
@@ -574,6 +649,7 @@ export default {
     RunningScripts,
     ScriptLogMessages,
     CriticalCmdDialog,
+    CommandEditor,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -655,6 +731,7 @@ export default {
       receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
+      inlineTab: 'script',
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {
@@ -710,6 +787,16 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
+      commandEditor: {
+        show: false,
+        targetName: null,
+        commandName: null,
+        dialogError: null,
+        cmdString: null,
+        isEditing: false,
+        editLine: null,
+      },
+      currentLineHasCommand: false,
       activePromptId: '',
       api: null,
       timeZone: 'local',
@@ -1219,6 +1306,72 @@ export default {
     toggleVimMode() {
       AceEditorUtils.toggleVimMode(this.editor)
     },
+    openCommandEditor() {
+      this.executeSelectionMenu = false
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+
+      if (this.currentLineHasCommand) {
+        // Extract and parse the command from the line
+        const cmdString = this.parseCommandFromLine(line)
+        this.commandEditor.cmdString = cmdString
+        this.commandEditor.isEditing = true
+        this.commandEditor.editLine = position.row
+      } else {
+        // Inserting a new command
+        this.commandEditor.cmdString = null
+        this.commandEditor.isEditing = false
+        this.commandEditor.editLine = null
+      }
+      this.commandEditor.show = true
+      this.commandEditor.dialogError = null
+    },
+    insertCommand(event) {
+      let commandString = ''
+      try {
+        commandString = this.$refs.commandEditor.getCmdString()
+        let parts = commandString.split(' ')
+        this.commandEditor.targetName = parts[0]
+        this.commandEditor.commandName = parts[1]
+      } catch (error) {
+        this.commandEditor.dialogError =
+          error.message || 'Please fix command parameters'
+        return
+      }
+
+      if (
+        this.commandEditor.isEditing &&
+        this.commandEditor.editLine !== null
+      ) {
+        // Replace the existing line
+        const line = this.editor.session.getLine(this.commandEditor.editLine)
+        const indent = line.match(/^\s*/)[0] // Preserve indentation
+        // Extract trailing comment if present
+        const commentMatch = line.match(/\s+#.*$/)
+        const trailingComment = commentMatch ? commentMatch[0] : ''
+        const newLine = `${indent}cmd("${commandString}")${trailingComment}`
+        const Range = this.Range
+        this.editor.session.replace(
+          new Range(
+            this.commandEditor.editLine,
+            0,
+            this.commandEditor.editLine,
+            line.length,
+          ),
+          newLine,
+        )
+      } else {
+        // Insert a new command at the cursor position
+        const position = this.editor.getCursorPosition()
+        this.editor.session.insert(position, `cmd("${commandString}")\n`)
+      }
+
+      this.fileModified = true
+      this.commandEditor.show = false
+    },
+    closeCommandDialog: function () {
+      this.commandEditor.show = false
+    },
     doResize() {
       this.editor.resize()
       // nextTick allows the resize to work correctly
@@ -1334,6 +1487,8 @@ export default {
           }
         })
         .catch((error) => {
+          // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
+          // We should probably not allow the bottom sheet to blur the screen
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
@@ -1343,17 +1498,35 @@ export default {
         })
     },
     tryLoadSuites: function (response) {
-      if (response.data.suite_runner) {
+      if (response.data.suites) {
         this.startOrGoDisabled = true
         this.suiteRunner = true
-        this.suiteMap = JSON.parse(response.data.suite_runner)
+        this.suiteMap = JSON.parse(response.data.suites)
       }
       this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
       this.menuX = $event.pageX
       this.menuY = $event.pageY
+      // Check if the current line contains a command
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+      this.currentLineHasCommand = this.isCommandLine(line)
       this.executeSelectionMenu = true
+    },
+    isCommandLine: function (line) {
+      // Check if line contains cmd() or cmd_no_hazardous_check() or similar command patterns
+      const trimmedLine = line.trim()
+      // Match patterns like: cmd("...", cmd_no_hazardous_check("...", cmd_raw("...", etc.
+      return /^\s*cmd(_\w+)?\s*\(/.test(trimmedLine)
+    },
+    parseCommandFromLine: function (line) {
+      // Extract the command string from patterns like: cmd("TARGET COMMAND with PARAM value")
+      const match = line.match(/cmd(_\w+)?\s*\(\s*["'](.+?)["']\s*\)/)
+      if (match) {
+        return match[2] // Return the command string
+      }
+      return null
     },
     runFromCursor: function () {
       const start_row = this.editor.getCursorPosition().row + 1
@@ -2709,6 +2882,25 @@ class TestSuite(Suite):
 </script>
 
 <style scoped>
+hr {
+  color: white;
+  height: 3px;
+}
+
+.error-message {
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #d32f2f;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
+}
+
 #sr-controls {
   padding: 0px;
 }

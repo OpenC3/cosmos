@@ -344,6 +344,17 @@ module OpenC3
           end)
         expect(packet_name).not_to eq('something')
       end
+
+      it "works_if_not_received" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create()
+        names = TargetModel.names(scope:"DEFAULT")
+        expect(names.include?("INST"))
+        Store.set("DEFAULT__INST__item_to_packet_map", JSON.generate({"PACKET_ID" => ["PACKET1"]}))
+        Store.hset("DEFAULT__tlm__INST", "PACKET1", JSON.generate({"PACKET_TIMESECONDS" => nil}))
+        packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope:"DEFAULT")
+        expect(packet_name != nil)
+      end
     end
 
     describe "overrides" do

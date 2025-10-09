@@ -34,6 +34,14 @@ class RunningScriptController < ApplicationController
     return unless authorization('script_view')
     running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
+      # If this is a suite being run, pull the file and process the suites for the frontend
+      if running_script['suite_runner']
+        name = running_script['filename']
+        file = Script.body(params[:scope], name)
+        # Since this is a running script the suite should process successfully
+        results_suites, _results_error, _success = Script.process_suite(name, file, username: username(), scope: params[:scope])
+        running_script['suites'] = results_suites
+      end
       render json: running_script
     else
       head :not_found

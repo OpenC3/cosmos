@@ -17,11 +17,13 @@
 
 from openc3.api import *
 from openc3.config.config_parser import ConfigParser
-
+from datetime import datetime
 
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
+    DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning 'STOP'). Can be True, False, or None, where
     # None is interpreted as True if not the Protocol is the last Protocol of the chain.
@@ -31,6 +33,14 @@ class Protocol:
         self.reset()
 
     def reset(self):
+        self.read_data_input_time = None
+        self.read_data_input = b''
+        self.read_data_output_time = None
+        self.read_data_output = b''
+        self.write_data_input_time = None
+        self.write_data_input = b''
+        self.write_data_output_time = None
+        self.write_data_output = b''
         self.extra = None
 
     def connect_reset(self):
@@ -38,6 +48,46 @@ class Protocol:
 
     def disconnect_reset(self):
         self.reset()
+
+    # Called to provide insight into the protocol read_data for the input data
+    def read_protocol_input_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.read_data_input_time = datetime.now(timezone.utc)
+                self.read_data_input = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.read_log.write(data)
+
+    # Called to provide insight into the protocol read_data for the output data
+    def read_protocol_output_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.read_data_output_time = datetime.now(timezone.utc)
+                self.read_data_output = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.read_log.write(data)
+
+    # Called to provide insight into the protocol write_data for the input data
+    def write_protocol_input_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.write_data_input_time = datetime.now(timezone.utc)
+                self.write_data_input = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.write_log.write(data)
+
+    # Called to provide insight into the protocol write_data for the output data
+    def write_protocol_output_base(self, data, _extra = None):
+        if self.interface is not None:
+            if self.interface.save_raw_data is not None:
+                self.write_data_output_time = datetime.now(timezone.utc)
+                self.write_data_output = data
+            # Todo in future enhancement with packet logger
+            # if self.interface.stream_log_pair is not None:
+            #     self.interface.stream_log_pair.write_log.write(data)
 
     # Ensure we have some data in match this is the only protocol:
     def read_data(self, data, extra=None):
@@ -66,3 +116,31 @@ class Protocol:
     def protocol_cmd(self, cmd_name, *cmd_args):
         # Default do nothing - Implemented by subclasses
         return False
+
+    def write_details(self):
+        result = { "name": self.__class__.__name__ }
+        if self.write_data_input_time:
+            result['write_data_input_time'] = self.write_data_input_time.strftime(self.DATETIME_FORMAT)
+        else:
+            result['write_data_input_time'] = None
+        result['write_data_input'] = self.write_data_input
+        if self.write_data_output_time:
+            result['write_data_output_time'] = self.write_data_output_time.strftime(self.DATETIME_FORMAT)
+        else:
+            result['write_data_output_time'] = None
+        result['write_data_output'] = self.write_data_output
+        return result
+
+    def read_details(self):
+        result = { "name": self.__class__.__name__ }
+        if self.read_data_input_time:
+            result['read_data_input_time'] = self.read_data_input_time.strftime(self.DATETIME_FORMAT)
+        else:
+            result['read_data_input_time'] = None
+        result['read_data_input'] = self.read_data_input
+        if self.read_data_output_time:
+            result['read_data_output_time'] = self.read_data_output_time.strftime(self.DATETIME_FORMAT)
+        else:
+            result['read_data_output_time'] = None
+        result['read_data_output'] = self.read_data_output
+        return result

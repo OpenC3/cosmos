@@ -4,7 +4,7 @@
   "license": "ISC",
   "description": "OpenC3 integration testing",
   "scripts": {
-    "test": "yarn test:parallel --quiet && yarn test:serial --quiet",
+    "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet",
     "test:parallel": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
     "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
     "test:enterprise": "ENTERPRISE=1 playwright test ./tests/enterprise/*.spec.ts --project=chromium --workers=1",
@@ -17,14 +17,14 @@
     "format": "prettier -w ./"
   },
   "dependencies": {
-    "@playwright/test": "1.55.0",
+    "@playwright/test": "1.55.1",
     "date-fns": "4.1.0",
     "jszip": "^3.10.1",
     "nyc": "^17.1.0",
     "prettier": "^3.6.2"
   },
   "devDependencies": {
-    "@types/node": "^22.15.3"
+    "@types/node": "^24.6.2"
   },
   "nyc": {
     "excludeAfterRemap": false,
@@ -35,6 +35,5 @@
       ".ts",
       ".vue"
     ]
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  }
 }

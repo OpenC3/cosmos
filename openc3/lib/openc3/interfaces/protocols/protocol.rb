@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -52,6 +52,50 @@ module OpenC3
       reset()
     end
 
+    # Called to provide insight into the protocol read_data for the input data
+    def read_protocol_input_base(data, _extra = nil)
+      if @interface
+        if @interface.save_raw_data
+          @read_data_input_time = Time.now
+          @read_data_input = data.clone
+        end
+        # Todo: @interface.stream_log_pair.read_log.write(data) if @interface.stream_log_pair
+      end
+    end
+
+    # Called to provide insight into the protocol read_data for the output data
+    def read_protocol_output_base(data, _extra = nil)
+      if @interface
+        if @interface.save_raw_data
+          @read_data_output_time = Time.now
+          @read_data_output = data.clone
+        end
+        # Todo: @interface.stream_log_pair.read_log.write(data) if @interface.stream_log_pair
+      end
+    end
+
+    # Called to provide insight into the protocol write_data for the input data
+    def write_protocol_input_base(data, _extra = nil)
+      if @interface
+        if @interface.save_raw_data
+          @write_data_input_time = Time.now
+          @write_data_input = data.clone
+        end
+        # Todo: @interface.stream_log_pair.write_log.write(data) if @interface.stream_log_pair
+      end
+    end
+
+    # Called to provide insight into the protocol write_data for the output data
+    def write_protocol_output_base(data, _extra = nil)
+      if @interface
+        if @interface.save_raw_data
+          @write_data_output_time = Time.now
+          @write_data_output = data.clone
+        end
+        # Todo: @interface.stream_log_pair.write_log.write(data) if @interface.stream_log_pair
+      end
+    end
+
     # Ensure we have some data in case this is the only protocol
     def read_data(data, extra = nil)
       if data.length <= 0
@@ -87,6 +131,40 @@ module OpenC3
     def protocol_cmd(cmd_name, *cmd_args)
       # Default do nothing - Implemented by subclasses
       return false
+    end
+
+    def write_details
+      result = {'name' => self.class.name.to_s.split("::")[-1]}
+      if @write_data_input_time
+        result['write_data_input_time'] = @write_data_input_time.iso8601
+      else
+        result['write_data_input_time'] = nil
+      end
+      result['write_data_input'] = @write_data_input
+      if @write_data_output_time
+        result['write_data_output_time'] = @write_data_output_time.iso8601
+      else
+        result['write_data_output_time'] = nil
+      end
+      result['write_data_output'] = @write_data_output
+      return result
+    end
+
+    def read_details
+      result = {'name' => self.class.name.to_s.split("::")[-1]}
+      if @read_data_input_time
+        result['read_data_input_time'] = @read_data_input_time.iso8601
+      else
+        result['read_data_input_time'] = nil
+      end
+      result['read_data_input'] = @read_data_input
+      if @read_data_output_time
+        result['read_data_output_time'] = @read_data_output_time.iso8601
+      else
+        result['read_data_output_time'] = nil
+      end
+      result['read_data_output'] = @read_data_output
+      return result
     end
   end
 end

@@ -193,7 +193,9 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
 test('disables all suite buttons when running', async ({ page, utils }) => {
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup < OpenC3::Group
-  def test_test; wait; end
+  def test_test
+    wait
+  end
 end
 class TestSuite < OpenC3::Suite
   def initialize
@@ -218,7 +220,33 @@ end`)
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()
   await expect(page.locator('[data-test=teardown-suite]')).toBeDisabled()
   await expect(page.locator('[data-test=teardown-group]')).toBeDisabled()
+  await utils.sleep(2000)
 
+  // Navigate to another tool and back to verify we can resume the script
+  await page.goto('/tools/cmdsender')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.sleep(1000)
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+
+  // Manually connect to the script
+  await page.locator('[data-test=script-runner-script]').click()
+  await page.getByText('Execution Status').click()
+  await page.getByRole('tab', { name: 'Running Scripts' }).click()
+  await page.getByRole('button', { name: 'Connect' }).first().click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+  )
+  await expect(
+    page.locator('[data-test="select-suite"]').getByText('TestSuite'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test="select-group"]').getByText('TestGroup'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test="select-script"]').getByText('test'),
+  ).toBeVisible()
+  await utils.sleep(2000)
   await page.locator('[data-test=go-button]').click()
   // Wait for the results
   await expect(page.locator('.v-dialog')).toContainText('Script Results')
