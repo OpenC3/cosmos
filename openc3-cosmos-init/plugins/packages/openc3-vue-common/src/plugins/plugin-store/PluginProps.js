@@ -29,7 +29,8 @@ export default {
     // authorSlug: String,
     description: String,
     keywords: Array,
-    img_path: String,
+    img_path: String, // Set for local plugins
+    image_url: String, // Set for app store plugins
     licenses: Array,
     // rating: Number,
     // downloads: Number,
@@ -58,6 +59,7 @@ export default {
         description: this.description,
         keywords: this.keywords,
         img_path: this.img_path,
+        image_url: this.image_url,
         licenses: this.licenses,
         // rating: this.rating,
         // downloads: this.downloads,
@@ -78,7 +80,7 @@ export default {
           'image/webp': [0x52, 0x49, 0x46, 0x46],
         }
         const fileHead = new TextEncoder()
-          .encode(window.atob(this.imageContents.slice(0, 6))) // only atob as much as we need
+          .encode(globalThis.atob(this.imageContents.slice(0, 6))) // only atob as much as we need
           .slice(1) // second call to slice on the decoded data because base64 bytes aren't 1:1
         const found = Object.entries(magicNumbers).find(([_, magicNumber]) => {
           return magicNumber.every((byte, i) => byte === fileHead[i])
@@ -114,20 +116,20 @@ export default {
     try {
       this._storeUrl =
         (await this._api.get_setting(settingName)) || defaultStoreUrl
-    } catch (e) {
+    } catch {
       this._storeUrl = defaultStoreUrl
     }
     if (this.img_path) {
       try {
         const params = new URLSearchParams({
           volume: 'OPENC3_GEMS_VOLUME',
-          scope: window.openc3Scope,
+          scope: globalThis.openc3Scope,
         })
         const { data } = await Api.get(
           `/openc3-api/storage/download_file/${encodeURIComponent(this.img_path)}?${params}`,
         )
         this.imageContents = data.contents
-      } catch (e) {
+      } catch {
         // Failed to get image, don't do anything
       }
     }

@@ -76,6 +76,7 @@
       </v-card-subtitle>
       -->
       <v-card-text>
+        <v-img v-if="image_url" :src="image_url" />
         <v-img
           v-if="imageContentsWithMimeType"
           :src="imageContentsWithMimeType"
