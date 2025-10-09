@@ -14,11 +14,11 @@ OpenC3 COSMOS provides all the functionality needed to send commands to and rece
 
 So what can you use this for? We use it to test about everything we create and OpenC3 COSMOS is great for automating embedded systems testing or operation. It can provide a fully featured user interface to any piece of hardware that provides an electronic way of communicating with it (TCP/IP, UDP, Serial, etc). Potential uses range from testing embedded systems, to home automation, to verifying cell phones, to helping you make that next great thing that changes the world! The sky is the limit...
 
-After configuring OpenC3 COSMOS to talk to your hardware, you immediately can use the following tools:
+After configuring OpenC3 COSMOS to talk to your hardware, you can immediately use the following tools:
 
 1. **Command and Telemetry Server**
 
-   - This provides status of all the target connections within the OpenC3 COSMOS system. It provides allows interfaces to be connected and disconnected and allows raw packet data to be viewed.
+   - This provides status of all the target connections within the OpenC3 COSMOS system. It allows interfaces to be connected and disconnected and allows raw packet data to be viewed.
 
 1. **Limits Monitor**
 
@@ -30,21 +30,21 @@ After configuring OpenC3 COSMOS to talk to your hardware, you immediately can us
 
 1. **Script Runner**
 
-   - Script Runner allows for running OpenC3 COSMOS test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At anytime during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
+   - Script Runner allows for running OpenC3 COSMOS test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At any time during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
 
    - Script Runner also allows you to break your operational or test procedures down into discrete test cases that each complete with either SUCCESS or FAILURE. After running, a script report is automatically created for you. Convenient features such as the ability to loop testing help get the kinks out of your system before formal runs.
 
 1. **Packet Viewer**
 
-   - Packet Viewer provide a simple key value list of each telemetry item in the system giving you full view of the most recent realtime value of any telemetry point.
+   - Packet Viewer provides a simple key-value list of each telemetry item in the system, giving you full view of the most recent real-time value of any telemetry point.
 
 1. **Telemetry Viewer**
 
-   - Create custom organized telemetry screens using a wide variety of available telemetry widgets for display. Provide exactly the views that your users need to see for each subsystem in you system.
+   - Create custom organized telemetry screens using a wide variety of available telemetry widgets for display. Provide exactly the views that your users need to see for each subsystem in your system.
 
 1. **Telemetry Grapher**
 
-   - Realtime and offline line graphing of telemetry points. Multiple telemetry points per graphs and multiple graphs per window allow you to efficiently organize your data. Great for graphing temperatures and voltages both in realtime and post-test.
+   - Real-time and offline line graphing of telemetry points. Multiple telemetry points per graphs and multiple graphs per window allow you to efficiently organize your data. Great for graphing temperatures and voltages both in real time and post-test.
 
 1. **Data Extractor**
 
@@ -56,7 +56,7 @@ After configuring OpenC3 COSMOS to talk to your hardware, you immediately can us
 
 1. **Bucket Explorer**
 
-   - Used to view configuration and log data which is stored in either MINIO (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
+   - Used to view configuration and log data which is stored in either MinIO (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
 
 1. **Table Manager**
 
@@ -68,9 +68,9 @@ After configuring OpenC3 COSMOS to talk to your hardware, you immediately can us
 
 1. **Documentation**
 
-   - All the COSMOS documentation is bundled as an application for easy viewing even when offline.
+   - All the COSMOS documentation is bundled as an application for easy viewing, even when offline.
 
-OpenC3 COSMOS was originally created by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) and is build and maintained by OpenC3, Inc.
+OpenC3 COSMOS was originally created by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) and is built and maintained by OpenC3, Inc.
 
 ## Getting Started
 
