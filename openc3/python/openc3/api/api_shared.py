@@ -16,6 +16,7 @@
 
 import sys
 import time
+import traceback
 from openc3.api.tlm_api import tlm
 from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
