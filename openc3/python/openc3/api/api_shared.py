@@ -93,8 +93,8 @@ def check_exception(method_name, *args, **kwargs):
         if orig_kwargs:
             method += f", {orig_kwargs}"
         method += ")"
-    except Exception as error:
-        print(f"CHECK: {method} raised {repr(error)}")
+    except Exception:
+        print(f"CHECK: {method} raised {traceback.format_exc()}")
     else:
         raise CheckError(f"{method} should have raised an exception but did not.")
 

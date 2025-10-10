@@ -101,8 +101,8 @@ class StreamLog(LogWriter):
                 self.prepare_write(time_nsec_since_epoch, len(data))
                 if self.file:
                     self.write_entry(time_nsec_since_epoch, data)
-        except RuntimeError as error:
-            Logger.error(f"Error writing {self.filename} : {repr(error)}")
+        except RuntimeError:
+            Logger.error(f"Error writing {self.filename} : {traceback.format_exc()}")
             # OpenC3.handle_critical_exception(err)
 
     def write_entry(self, time_nsec_since_epoch, data):

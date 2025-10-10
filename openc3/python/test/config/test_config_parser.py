@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import traceback
 import unittest
 import tempfile
 from unittest.mock import *
@@ -447,7 +448,7 @@ class TestConfigParser(unittest.TestCase):
 
         for _, _ in self.cp.parse_file(tf.name):
             error = self.cp.error("Hello")
-            self.assertIn("Hello", repr(error))
+            self.assertIn("Hello", traceback.format_exc())
             self.assertEqual(error.keyword, "KEYWORD")
             self.assertEqual(error.filename, tf.name)
         tf.close()
@@ -468,8 +469,8 @@ class TestConfigParser(unittest.TestCase):
                 # if keyword == "KEYWORD3":
                 #     raise self.cp.error("Invalid KEYWORD3")
         except Exception as error:
-            self.assertIn("Invalid KEYWORD1", repr(error))
-            # self.assertIn("Invalid KEYWORD3", repr(error))
+            self.assertIn("Invalid KEYWORD1", traceback.format_exc())
+            # self.assertIn("Invalid KEYWORD3", traceback.format_exc())
         tf.close()
 
     def test_none_converts_none_and_null(self):

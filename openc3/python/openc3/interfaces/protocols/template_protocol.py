@@ -18,6 +18,7 @@ import re
 import time
 from queue import SimpleQueue, Empty
 from datetime import datetime, timezone
+import traceback
 from openc3.config.config_parser import ConfigParser
 from openc3.system.system import System
 from openc3.packets.packet import Packet
@@ -172,7 +173,7 @@ class TemplateProtocol(TerminatedProtocol):
                     interface_name = ""
                     if self.interface:
                         interface_name = self.interface.name
-                    self.handle_error(f"{interface_name}: Could not write value {value} due to {repr(error)}")
+                    self.handle_error(f"{interface_name}: Could not write value {value} due to {traceback.format_exc()}")
 
             self.response_packets = []
 

@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import traceback
 from requests import Session
 from threading import Lock
 from typing import Optional
@@ -190,7 +191,7 @@ class JsonApiObject:
             self.response_data = resp.text
             return resp
         except Exception as error:
-            self.log[2] = f"{method} Exception: {repr(error)}"
+            self.log[2] = f"{method} Exception: {traceback.format_exc()}"
             self.disconnect()
             error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
             raise RuntimeError(error)
