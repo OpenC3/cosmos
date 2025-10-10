@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <template v-if="!inline">
+  <div
+    v-if="!inline"
+    class="d-flex flex-column overflow-hidden"
+    :style="{
+      height: containerHeight,
+    }"
+  >
     <top-bar :menus="menus" :title="title" />
     <v-snackbar
       v-model="showAlert"
@@ -259,8 +265,12 @@
         </div>
       </v-card-text>
     </v-card>
-    <splitpanes horizontal style="height: 100%" @resize="calcHeight">
-      <pane class="editorbox" size="50">
+    <splitpanes
+      horizontal
+      class="flex-grow-1 overflow-hidden"
+      @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
+    >
+      <pane class="editorbox" :size="editorBoxSize">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -308,7 +318,7 @@
           </v-list>
         </v-menu>
       </pane>
-      <pane id="messages" ref="messagesDiv" class="mt-2">
+      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
         <div v-if="showDebug" id="debug" class="pa-0">
           <v-row no-gutters>
             <v-btn
@@ -341,10 +351,10 @@
         />
       </pane>
     </splitpanes>
-  </template>
+  </div>
 
   <div
-    v-if="inline"
+    v-else
     style="
       background-color: var(--color-background-base-default);
       margin: 0px;
@@ -812,6 +822,7 @@ export default {
       criticalCmdString: null,
       criticalCmdUser: null,
       displayCriticalCmd: false,
+      editorBoxSize: 50,
     }
   },
   computed: {
@@ -1095,6 +1106,20 @@ export default {
         },
       ]
     },
+    containerHeight: function () {
+      // if openc3-tool-base/src/App.vue <v-main /> style is changed from using min-height to height, this may become unnecessary
+      const header = document.getElementById('openc3-app-toolbar')
+      const footer = document.getElementById('footer')
+      const main = document.getElementsByTagName('main')[0]
+      const mainDiv = main.children[0]
+      const mainDivStyles = getComputedStyle(mainDiv)
+      const headerHeight =
+        header.clientHeight +
+        footer.clientHeight +
+        Number.parseInt(mainDivStyles.paddingTop) +
+        Number.parseInt(mainDivStyles.paddingBottom)
+      return `calc(100vh - ${headerHeight}px)`
+    },
   },
   watch: {
     isLocked: function (val) {
@@ -1242,10 +1267,6 @@ export default {
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
 
-    // Allow the charts to dynamically resize when the window resizes
-    window.addEventListener('resize', this.calcHeight)
-    this.calcHeight()
-
     this.cable = new Cable('/script-api/cable')
 
     if (!this.inline && localStorage['script_runner__recent']) {
@@ -1374,31 +1395,6 @@ export default {
     },
     doResize() {
       this.editor.resize()
-      // nextTick allows the resize to work correctly
-      // when we remove the SuiteRunner chrome
-      this.$nextTick(() => {
-        this.calcHeight()
-      })
-    },
-    calcHeight() {
-      const editor = document.getElementsByClassName('editorbox')[0]
-      const h = Math.max(
-        document.documentElement.offsetHeight,
-        window.innerHeight || 0,
-      )
-      let editorHeight = 0
-      if (editor) {
-        editorHeight = editor.offsetHeight
-      }
-      let suitesHeight = 0
-      const suites = document.getElementsByClassName('suite-runner')[0]
-      if (suites) {
-        suitesHeight = suites.offsetHeight
-      }
-      let logMessages = document.getElementById('script-log-messages')
-      if (logMessages) {
-        logMessages.style.height = `${h - editorHeight - suitesHeight}px`
-      }
     },
     scriptDisconnect() {
       if (this.subscription) {
@@ -2921,10 +2917,6 @@ hr {
 }
 </style>
 <style>
-.splitpanes {
-  height: 100%;
-}
-
 .splitpanes--horizontal > .splitpanes__splitter {
   min-height: 4px;
   position: relative;
