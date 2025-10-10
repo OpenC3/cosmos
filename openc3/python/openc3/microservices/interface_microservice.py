@@ -817,7 +817,7 @@ class InterfaceMicroservice(Microservice):
     def handle_connection_lost(self, error=None, reconnect=True):
         if error:
             self.error = error
-            self.logger.info(f"{self.interface.name}: Connection Lost: {traceback.format_exc()}")
+            self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
             # match err:
             #   case SignalException:
             #     self.logger.info(f"{self.interface.name}: Closing from signal")
