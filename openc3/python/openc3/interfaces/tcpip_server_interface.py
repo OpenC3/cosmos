@@ -509,7 +509,7 @@ class TcpipServerInterface(StreamInterface):
                 if data:
                     self._write_to_clients("write_raw", data)
 
-        except Exception as error:
+        except Exception:
             self._shutdown_interfaces(self.write_interface_infos)
             Logger.error(f"{self.name}: Tcpip server write raw thread unexpectedly died")
             Logger.error(traceback.format_exc())

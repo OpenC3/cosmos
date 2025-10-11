@@ -16,6 +16,7 @@
 
 import copy
 from datetime import datetime, timezone
+import traceback
 from .log_writer import LogWriter
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.time import to_nsec_from_epoch

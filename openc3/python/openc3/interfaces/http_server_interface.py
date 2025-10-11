@@ -110,7 +110,7 @@ class HttpServerInterface(Interface):
                 path = None
                 try:
                     path = packet.read("HTTP_PATH")
-                except Exception as error:
+                except Exception:
                     # No HTTP_PATH is an error
                     Logger.error(
                         f"HttpServerInterface Packet {target_name} {packet_name} unable to read HTTP_PATH\n{traceback.format_exc()}"

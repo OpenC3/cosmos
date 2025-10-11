@@ -190,7 +190,7 @@ class JsonApiObject:
             self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
             self.response_data = resp.text
             return resp
-        except Exception as error:
+        except Exception:
             self.log[2] = f"{method} Exception: {traceback.format_exc()}"
             self.disconnect()
             error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"

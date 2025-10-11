@@ -1154,7 +1154,7 @@ class Packet(Structure):
                     packet.accessor = accessor(packet, *hash["accessor_args"])
                 else:
                     packet.accessor = accessor(packet)
-            except RuntimeError as error:
+            except RuntimeError:
                 Logger.error(
                     f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {traceback.format_exc()}"
                 )
@@ -1163,7 +1163,7 @@ class Packet(Structure):
                 filename = class_name_to_filename(hash["validator"])
                 validator = get_class_from_module(filename, hash["validator"])
                 packet.validator = validator(packet)
-            except RuntimeError as error:
+            except RuntimeError:
                 Logger.error(
                     f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {traceback.format_exc()}"
                 )

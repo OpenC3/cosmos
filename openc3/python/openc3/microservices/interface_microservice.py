@@ -162,7 +162,7 @@ class InterfaceCmdHandlerThread:
                         CommandTopic.write_packet(command, scope=self.scope)
                         self.logger.info(f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope = self.scope)
                         self.interface.write_raw(msg_hash[b"raw"])
-                    except RuntimeError as error:
+                    except RuntimeError:
                         self.logger.error(f"{self.interface.name}: write_raw: {traceback.format_exc()}")
                         return traceback.format_exc()
                     return "SUCCESS"
@@ -183,7 +183,7 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
+                except RuntimeError:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {traceback.format_exc()}")
                     return traceback.format_exc()
                 return "SUCCESS"
@@ -201,7 +201,7 @@ class InterfaceCmdHandlerThread:
                         index=params["index"],
                     )
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
+                except RuntimeError:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{traceback.format_exc()}")
                     return traceback.format_exc()
                 return "SUCCESS"
@@ -279,7 +279,7 @@ class InterfaceCmdHandlerThread:
                 orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
-            except Exception as error:
+            except Exception:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
                 return traceback.format_exc()
@@ -330,7 +330,7 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
                             reason = traceback.format_exc()
                         if not result:
@@ -354,7 +354,7 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
                             reason = traceback.format_exc()
                         command.extra["cmd_success"] = result
@@ -372,9 +372,9 @@ class InterfaceCmdHandlerThread:
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            except WriteRejectError as error:
+            except WriteRejectError:
                 return traceback.format_exc()
-        except RuntimeError as error:
+        except RuntimeError:
             self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
             return traceback.format_exc()
 
@@ -528,7 +528,7 @@ class RouterTlmHandlerThread:
                         self.router.write(packet)
                         RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
                         return "SUCCESS"
-                    except RuntimeError as error:
+                    except RuntimeError:
                         self.logger.error(f"{self.router.name}: {traceback.format_exc()}")
                         return traceback.format_exc()
                 else:
@@ -656,7 +656,7 @@ class InterfaceMicroservice(Microservice):
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
-        except RuntimeError as error:
+        except RuntimeError:
             self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}")
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -864,7 +864,7 @@ class InterfaceMicroservice(Microservice):
             try:
                 if self.interface.connected():
                     self.interface.disconnect()
-            except RuntimeError as error:
+            except RuntimeError:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
 
         # If the interface is set to auto_reconnect then delay so the thread

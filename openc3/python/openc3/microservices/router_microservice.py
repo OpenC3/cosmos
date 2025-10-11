@@ -71,7 +71,7 @@ class RouterMicroservice(InterfaceMicroservice):
                             self.logger.warn(
                                 f"Unidentified packet of {len(packet.buffer_no_copy())} bytes being routed to target {self.interface.cmd_target_names[0]}"
                             )
-                except RuntimeError as error:
+                except RuntimeError:
                     self.logger.error(f"Problem formatting command from router=\n{traceback.format_exc()}")
 
                 RouterTopic.route_command(packet, self.interface.cmd_target_names, scope=self.scope)

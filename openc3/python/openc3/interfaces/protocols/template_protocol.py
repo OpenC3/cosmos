@@ -169,7 +169,7 @@ class TemplateProtocol(TerminatedProtocol):
                 try:
                     for i, value in enumerate(response_values):
                         result_packet.write(response_item_names[i], value)
-                except (ValueError, RuntimeError) as error:
+                except (ValueError, RuntimeError):
                     interface_name = ""
                     if self.interface:
                         interface_name = self.interface.name
