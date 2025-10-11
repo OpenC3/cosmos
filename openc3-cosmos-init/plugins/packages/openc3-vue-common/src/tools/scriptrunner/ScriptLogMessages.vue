@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-card>
+  <v-card style="height: 100%; display: flex; flex-direction: column">
     <v-card-title class="d-flex align-center">
       <v-btn
         class="mx-2"
@@ -68,10 +68,9 @@
         @click="clearLog"
       />
     </v-card-title>
-    <v-card-text>
+    <v-card-text style="overflow: auto">
       <v-data-table
         id="script-log-messages"
-        style="overflow: auto"
         :headers="headers"
         :items="messages"
         :search="search"
