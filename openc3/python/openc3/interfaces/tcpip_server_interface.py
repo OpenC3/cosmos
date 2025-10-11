@@ -19,6 +19,7 @@ import select
 import socket
 import threading
 import multiprocessing
+import traceback
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
 from openc3.config.config_parser import ConfigParser
@@ -249,7 +250,7 @@ class TcpipServerInterface(StreamInterface):
         try:
             self.write_condition_variable.notify_all()
         except RuntimeError as error:
-            if "cannot notify on un-acquired lock" in repr(error):
+            if "cannot notify on un-acquired lock" in traceback.format_exc():
                 pass
             else:
                 raise error
@@ -266,7 +267,7 @@ class TcpipServerInterface(StreamInterface):
         try:
             self.write_raw_condition_variable.notify_all()
         except RuntimeError as error:
-            if "cannot notify on un-acquired lock" in repr(error):
+            if "cannot notify on un-acquired lock" in traceback.format_exc():
                 return data
             else:
                 raise error
@@ -427,9 +428,9 @@ class TcpipServerInterface(StreamInterface):
         try:
             try:
                 self._read_thread_body(interface_info.interface)
-            except Exception as error:
+            except Exception:
                 Logger.error(f"{self.name}: Tcpip server read thread unexpectedly died")
-                Logger.error(repr(error))
+                Logger.error(traceback.format_exc())
             Logger.info(
                 f"{self.name}: Tcpip server lost read connection to {interface_info.hostname}({interface_info.host_ip}):{interface_info.port}"
             )
@@ -448,9 +449,9 @@ class TcpipServerInterface(StreamInterface):
                     index += 1
             if index_to_delete:
                 del self.read_interface_infos[index_to_delete]
-        except Exception as error:
+        except Exception:
             Logger.error(f"{self.name}: Tcpip server read thread unexpectedly died")
-            Logger.error(repr(error))
+            Logger.error(traceback.format_exc())
 
     def _write_thread_body(self):
         try:
@@ -478,10 +479,10 @@ class TcpipServerInterface(StreamInterface):
                 if packet:
                     self._write_to_clients("write", packet)
 
-        except Exception as error:
+        except Exception :
             self._shutdown_interfaces(self.write_interface_infos)
             Logger.error(f"{self.name}: Tcpip server write thread unexpectedly died")
-            Logger.error(repr(error))
+            Logger.error(traceback.format_exc())
 
     def _write_raw_thread_body(self):
         try:
@@ -508,10 +509,10 @@ class TcpipServerInterface(StreamInterface):
                 if data:
                     self._write_to_clients("write_raw", data)
 
-        except Exception as error:
+        except Exception:
             self._shutdown_interfaces(self.write_interface_infos)
             Logger.error(f"{self.name}: Tcpip server write raw thread unexpectedly died")
-            Logger.error(repr(error))
+            Logger.error(traceback.format_exc())
 
     def _write_thread_hook(self, packet):
         return packet  # By default just return the packet
@@ -603,7 +604,7 @@ class TcpipServerInterface(StreamInterface):
                     # Client has normally disconnected
                     need_disconnect = True
                 except Exception as error:
-                    Logger.error(f"{self.name}: Error sending to client: {error.__class__.__name__} {repr(error)}")
+                    Logger.error(f"{self.name}: Error sending to client: {error.__class__.__name__} {traceback.format_exc()}")
                     need_disconnect = True
 
                 if need_disconnect:

@@ -16,6 +16,7 @@
 
 import os
 import json
+import traceback
 from openc3.utilities.extract import *
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
@@ -48,7 +49,7 @@ def get_screen_list(scope: str = OPENC3_SCOPE):
             screen_list[target_name].append(screen_name)
         return screen_list
     except Exception as error:
-        raise RuntimeError(f"get_screen_list failed due to {repr(error)}") from error
+        raise RuntimeError(f"get_screen_list failed due to {traceback.format_exc()}") from error
 
 
 def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
@@ -77,7 +78,7 @@ def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC
 
         return response.text
     except Exception as error:
-        raise RuntimeError(f"get_screen_definition failed due to {repr(error)}") from error
+        raise RuntimeError(f"get_screen_definition failed due to {traceback.format_exc()}") from error
 
 
 def create_screen(target_name: str, screen_name: str, definition: str, scope: str = OPENC3_SCOPE):
@@ -104,7 +105,7 @@ def create_screen(target_name: str, screen_name: str, definition: str, scope: st
                 raise RuntimeError("create_screen failed")
         return response.text
     except Exception as error:
-        raise RuntimeError(f"create_screen failed due to {repr(error)}") from error
+        raise RuntimeError(f"create_screen failed due to {traceback.format_exc()}") from error
 
 
 def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
@@ -130,7 +131,7 @@ def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE)
 
         return response.text
     except Exception as error:
-        raise RuntimeError(f"delete_screen failed due to {repr(error)}") from error
+        raise RuntimeError(f"delete_screen failed due to {traceback.format_exc()}") from error
 
 
 def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):

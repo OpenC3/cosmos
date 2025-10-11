@@ -17,6 +17,7 @@ import io
 import os
 import json
 import tempfile
+import traceback
 import requests
 from openc3.utilities.extract import *
 import openc3.script
@@ -45,7 +46,7 @@ def delete_target_file(path: str, scope: str = OPENC3_SCOPE):
         if not response or response.status_code != 200:
             raise Exception(f"Failed to delete {delete_path}")
     except Exception as error:
-        raise Exception(f"Failed deleting {path} due to {repr(error)}") from error
+        raise Exception(f"Failed deleting {path} due to {traceback.format_exc()}") from error
     return None
 
 
@@ -90,7 +91,7 @@ def put_target_file(path: str, io_or_string: io.IOBase | str, scope: str = OPENC
             )
             return result.content
     except Exception as error:
-        raise Exception(f"Failed to write {upload_path} due to {repr(error)}") from error
+        raise Exception(f"Failed to write {upload_path} due to {traceback.format_exc()}") from error
 
 
 def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE):

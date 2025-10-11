@@ -238,5 +238,5 @@ class Microservice:
                 if self.microservice_status_sleeper.sleep(self.microservice_status_period_seconds):
                     break
             except RuntimeError as error:
-                self.logger.error(f"{self.name} status thread died: {repr(error)}")
+                self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
                 raise error

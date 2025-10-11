@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime, timezone
+import traceback
 from openc3.system.system import System
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
@@ -90,7 +91,7 @@ class FixedProtocol(BurstProtocol):
                     if target:
                         unique_id_mode = target.cmd_unique_id_mode
             except RuntimeError as error:
-                if "does not exist" in repr(error):
+                if "does not exist" in traceback.format_exc():
                     # No commands/telemetry for this target
                     continue
                 else:

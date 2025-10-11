@@ -19,6 +19,7 @@
 
 from datetime import datetime, timezone
 import json
+import traceback
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
@@ -63,6 +64,6 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
         }
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
-    except RuntimeError as error:
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": repr(error)}
+    except RuntimeError:
+        msg_hash = {"id": msg_id, "result": "ERROR", "message": traceback.format_exc()}
     Topic.write_topic(ack_topic, msg_hash)
