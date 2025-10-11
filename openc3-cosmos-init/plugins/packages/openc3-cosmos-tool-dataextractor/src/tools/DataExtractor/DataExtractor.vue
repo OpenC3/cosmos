@@ -957,9 +957,9 @@ export default {
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
-                let hexString = ''
+                let hexString = '0x'
                 rawVal.forEach((val) => {
-                  hexString += val.toString(16)
+                  hexString += val.toString(16).padStart(2, '0').toUpperCase()
                 })
                 row[columnIndex] = hexString
               } else {
