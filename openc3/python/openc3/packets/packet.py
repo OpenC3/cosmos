@@ -21,6 +21,7 @@ import copy
 import base64
 import hashlib
 import datetime
+import traceback
 from .structure import Structure
 from .packet_item import PacketItem
 from .packet_item_limits import PacketItemLimits
@@ -665,7 +666,7 @@ class Packet(Structure):
                 try:
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
-                    if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
+                    if item.states and isinstance(value, str) and "invalid literal for" in traceback.format_exc():
                         raise ValueError(
                             f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}"
                         ) from error
@@ -1153,18 +1154,18 @@ class Packet(Structure):
                     packet.accessor = accessor(packet, *hash["accessor_args"])
                 else:
                     packet.accessor = accessor(packet)
-            except RuntimeError as error:
+            except RuntimeError:
                 Logger.error(
-                    f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {repr(error)}"
+                    f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {traceback.format_exc()}"
                 )
         if "validator" in hash:
             try:
                 filename = class_name_to_filename(hash["validator"])
                 validator = get_class_from_module(filename, hash["validator"])
                 packet.validator = validator(packet)
-            except RuntimeError as error:
+            except RuntimeError:
                 Logger.error(
-                    f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {repr(error)}"
+                    f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {traceback.format_exc()}"
                 )
         if "template" in hash:
             packet.template = base64.b64decode(hash["template"])
