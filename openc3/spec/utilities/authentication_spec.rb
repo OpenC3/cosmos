@@ -96,8 +96,8 @@ module OpenC3
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Error message should contain obfuscated password in hash format
-            expect(error.message).to include('"password" => "***"')
+            # Error message should contain obfuscated password (works with both Ruby 3.2 and 3.3+ inspect formats)
+            expect(error.message).to match(/"password"\s*=>\s*"\*\*\*"/)
             # Error message should NOT contain actual password
             expect(error.message).not_to include('testpassword')
           end
@@ -127,10 +127,10 @@ module OpenC3
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Other parameters should still be visible in hash format
-            expect(error.message).to include('"username" => "testuser"')
-            expect(error.message).to include('"grant_type" => "password"')
-            expect(error.message).to include('"client_id" => "api"')
+            # Other parameters should still be visible (works with both Ruby 3.2 and 3.3+ inspect formats)
+            expect(error.message).to match(/"username"\s*=>\s*"testuser"/)
+            expect(error.message).to match(/"grant_type"\s*=>\s*"password"/)
+            expect(error.message).to match(/"client_id"\s*=>\s*"api"/)
           end
         end
       end
@@ -156,8 +156,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual password
-          expect(stdout.string).to include('"password" => "testpassword"')
+          # In debug mode, STDOUT should contain the actual password (works with both Ruby 3.2 and 3.3+ inspect formats)
+          expect(stdout.string).to match(/"password"\s*=>\s*"testpassword"/)
         end
       end
 
@@ -175,8 +175,8 @@ module OpenC3
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Refresh token should be obfuscated in hash format
-            expect(error.message).to include('"refresh_token" => "***"')
+            # Refresh token should be obfuscated (works with both Ruby 3.2 and 3.3+ inspect formats)
+            expect(error.message).to match(/"refresh_token"\s*=>\s*"\*\*\*"/)
             # Error message should NOT contain actual refresh token
             expect(error.message).not_to include('test_refresh_token')
           end
@@ -200,8 +200,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual refresh token
-          expect(stdout.string).to include('"refresh_token" => "test_refresh_token"')
+          # In debug mode, STDOUT should contain the actual refresh token (works with both Ruby 3.2 and 3.3+ inspect formats)
+          expect(stdout.string).to match(/"refresh_token"\s*=>\s*"test_refresh_token"/)
         end
       end
     end
