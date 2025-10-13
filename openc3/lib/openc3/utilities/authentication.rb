@@ -150,7 +150,9 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      @log[0] = "request uri: #{uri} header: #{headers} body: #{data}"
+      # Obfuscate password and refresh token in logs unless debug mode is enabled
+      log_data = JsonDRb.debug? ? data : data.gsub(/password=[^&]*/, 'password=***').gsub(/refresh_token=[^&]*/, 'refresh_token=***')
+      @log[0] = "request uri: #{uri} header: #{headers} body: #{log_data}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
