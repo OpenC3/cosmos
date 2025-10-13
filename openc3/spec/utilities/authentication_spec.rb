@@ -54,9 +54,8 @@ module OpenC3
       ENV['OPENC3_API_USER'] = 'testuser'
       ENV['OPENC3_API_PASSWORD'] = 'testpassword'
       ENV['OPENC3_KEYCLOAK_REALM'] = 'openc3'
-      # Mock Faraday to return our mock connection and handle the block
-      allow(mock_builder).to receive(:request)
-      allow(Faraday).to receive(:new).and_yield(mock_builder).and_return(mock_http)
+      # Mock Faraday to return our mock connection
+      allow(Faraday).to receive(:new).and_return(mock_http)
     end
 
     after(:each) do
