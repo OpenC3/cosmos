@@ -17,6 +17,7 @@
 import threading
 import time
 import json
+from urllib.parse import urlencode
 from openc3.environment import *
 from requests import Session
 
@@ -98,7 +99,13 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         client_id = OPENC3_API_CLIENT or "api"
         if OPENC3_API_USER and OPENC3_API_PASSWORD:
             # Username and password
-            data = f"username={OPENC3_API_USER}&password={OPENC3_API_PASSWORD}&client_id={client_id}&grant_type=password&scope={openid_scope}"
+            data = {
+                "username": OPENC3_API_USER,
+                "password": OPENC3_API_PASSWORD,
+                "client_id": client_id,
+                "grant_type": "password",
+                "scope": openid_scope,
+            }
             headers = {
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": OPENC3_USER_AGENT,
@@ -118,7 +125,11 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
     # Refresh the token and save token to instance
     def _refresh_token(self, current_time):
         client_id = OPENC3_API_CLIENT or "api"
-        data = f"client_id={client_id}&refresh_token={self.refresh_token}&grant_type=refresh_token"
+        data = {
+            "client_id": client_id,
+            "refresh_token": self.refresh_token,
+            "grant_type": "refresh_token",
+        }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
             "User-Agent": OPENC3_USER_AGENT,
@@ -133,14 +144,25 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
     def _make_request(self, headers, data):
         realm = OPENC3_KEYCLOAK_REALM or "openc3"
         url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
-        request_kwargs = {
-            "url": url,
-            "data": data,
-            "headers": headers,
-        }
-        self.log[0] = f"Request: {request_kwargs}"
+
+        # Obfuscate password and refresh token in logs unless debug mode is enabled
+        if OPENC3_DEVEL:
+            log_data = str(data)
+        else:
+            # Create a copy of the dict with sensitive values obfuscated
+            log_data = data.copy()
+            if "password" in log_data:
+                log_data["password"] = "***"
+            if "refresh_token" in log_data:
+                log_data["refresh_token"] = "***"
+            log_data = str(log_data)
+
+        self.log[0] = f"request uri: {url} header: {headers} body: {log_data}"
         # print(self.log[0])
-        resp = self.http.post(**request_kwargs)
+
+        # URL encode the data
+        resp = self.http.post(url, data=urlencode(data), headers=headers)
+
         self.log[1] = f"response status: {resp.status_code} header: {resp.headers} body: {resp.text}"
         # print(self.log[1])
         if resp.status_code >= 200 and resp.status_code <= 299:

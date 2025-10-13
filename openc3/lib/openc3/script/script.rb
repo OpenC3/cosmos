@@ -232,7 +232,7 @@ module OpenC3
         raise "initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set."
       end
       auth = OpenC3KeycloakAuthentication.new(keycloak_url)
-      auth.token(include_bearer: true, openid_scope: 'openid%20offline_access')
+      auth.token(include_bearer: true, openid_scope: 'openid offline_access')
       set_offline_access(auth.refresh_token)
     end
 

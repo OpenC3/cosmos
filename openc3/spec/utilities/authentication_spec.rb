@@ -48,12 +48,15 @@ module OpenC3
   describe OpenC3KeycloakAuthentication do
     let(:test_url) { "http://test-keycloak.local" }
     let(:mock_http) { instance_double(Faraday::Connection) }
+    let(:mock_builder) { instance_double(Faraday::RackBuilder) }
 
     before(:each) do
       ENV['OPENC3_API_USER'] = 'testuser'
       ENV['OPENC3_API_PASSWORD'] = 'testpassword'
       ENV['OPENC3_KEYCLOAK_REALM'] = 'openc3'
-      allow(Faraday).to receive(:new).and_return(mock_http)
+      # Mock Faraday to return our mock connection and handle the block
+      allow(mock_builder).to receive(:request)
+      allow(Faraday).to receive(:new).and_yield(mock_builder).and_return(mock_http)
     end
 
     after(:each) do
@@ -94,10 +97,10 @@ module OpenC3
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Error message should contain obfuscated password
-            expect(error.message).to include('password=***')
+            # Error message should contain obfuscated password in hash format
+            expect(error.message).to include('"password" => "***"')
             # Error message should NOT contain actual password
-            expect(error.message).not_to include('password=testpassword')
+            expect(error.message).not_to include('testpassword')
           end
         end
 
@@ -118,17 +121,17 @@ module OpenC3
           end
 
           # STDOUT should not contain the actual password
-          expect(stdout.string).not_to include('password=testpassword')
+          expect(stdout.string).not_to include('testpassword')
         end
 
         it "preserves other parameters in logs" do
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Other parameters should still be visible
-            expect(error.message).to include('username=testuser')
-            expect(error.message).to include('grant_type=password')
-            expect(error.message).to include('client_id=api')
+            # Other parameters should still be visible in hash format
+            expect(error.message).to include('"username" => "testuser"')
+            expect(error.message).to include('"grant_type" => "password"')
+            expect(error.message).to include('"client_id" => "api"')
           end
         end
       end
@@ -155,7 +158,7 @@ module OpenC3
           end
 
           # In debug mode, STDOUT should contain the actual password
-          expect(stdout.string).to include('password=testpassword')
+          expect(stdout.string).to include('"password" => "testpassword"')
         end
       end
 
@@ -173,10 +176,10 @@ module OpenC3
           expect {
             auth.token
           }.to raise_error(OpenC3AuthenticationError) do |error|
-            # Refresh token should be obfuscated
-            expect(error.message).to include('refresh_token=***')
+            # Refresh token should be obfuscated in hash format
+            expect(error.message).to include('"refresh_token" => "***"')
             # Error message should NOT contain actual refresh token
-            expect(error.message).not_to include('refresh_token=test_refresh_token')
+            expect(error.message).not_to include('test_refresh_token')
           end
         end
 
@@ -199,7 +202,7 @@ module OpenC3
           end
 
           # In debug mode, STDOUT should contain the actual refresh token
-          expect(stdout.string).to include('refresh_token=test_refresh_token')
+          expect(stdout.string).to include('"refresh_token" => "test_refresh_token"')
         end
       end
     end
@@ -255,6 +258,36 @@ module OpenC3
         expect {
           auth.token
         }.to raise_error(OpenC3AuthenticationRetryableError)
+      end
+    end
+
+    describe "URL encoding of special characters" do
+      # This test runs without any mocking to verify Faraday's behavior
+      context "Faraday middleware verification" do
+        after(:each) do
+          RSpec::Mocks.space.proxy_for(Faraday).reset if RSpec::Mocks.space.proxies.any?
+        end
+
+        it "verifies Faraday URL encodes hash data" do
+          RSpec::Mocks.space.proxy_for(Faraday).reset if RSpec::Mocks.space.proxies.any?
+
+          # Simple test to verify Faraday's url_encoded middleware works
+          conn = Faraday.new do |f|
+            f.request :url_encoded
+            f.adapter :test do |stub|
+              stub.post('/test') do |env|
+                [200, {}, env[:body]]
+              end
+            end
+          end
+
+          response = conn.post('/test', {'password' => 'my&pass=word%'})
+          expect(response.body).to eq('password=my%26pass%3Dword%25')
+
+          # Restore the mock for other tests
+          allow(mock_builder).to receive(:request)
+          allow(Faraday).to receive(:new).and_yield(mock_builder).and_return(mock_http)
+        end
       end
     end
   end
