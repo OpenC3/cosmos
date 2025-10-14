@@ -39,7 +39,9 @@ You can safely ignore `WARNING: daemon is not using the default seccomp profile`
 
 ### COSMOS Autocompletion in ZSH
 
-Create a directory in your home for the autocomplete file if you do not have one already, example create `~/.zsh/completions/` running `mkdir -p ~/.zsh/completions`. Copy `_openc3` from a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) and add the following to your `~/.zshrc` file:
+Create a directory in your home for the autocomplete file if you do not have one already. For example, create `~/.zsh/completions/` by running `mkdir -p ~/.zsh/completions`. 
+
+Then, copy `_openc3` from a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) repository and add the following to your `~/.zshrc` file:
 
 ```shell
 fpath=(~/.zsh/completions $fpath) 
