@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="800" @keydown.enter="success()">
+  <v-dialog
+    v-model="show"
+    persistent
+    width="800"
+    @keydown.enter="success()"
+    @keydown.esc="disableButtons ? null : (show = false)"
+  >
     <v-card>
       <v-overlay :model-value="loading">
         <v-progress-circular

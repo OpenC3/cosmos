@@ -536,7 +536,13 @@
     @status="promptDialogCallback"
   />
   <!-- Command Editor Dialog -->
-  <v-dialog v-model="commandEditor.show" max-width="1200" persistent scrollable>
+  <v-dialog
+    v-model="commandEditor.show"
+    max-width="1200"
+    persistent
+    scrollable
+    @keydown.esc="closeCommandDialog"
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <span>Insert Command</span>

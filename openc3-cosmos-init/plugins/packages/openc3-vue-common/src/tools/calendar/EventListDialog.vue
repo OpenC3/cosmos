@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" persistent width="80vw">
+    <v-dialog v-model="show" persistent width="80vw" @keydown.esc="close">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />

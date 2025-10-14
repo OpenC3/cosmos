@@ -165,7 +165,12 @@
         </template>
       </v-data-table>
     </v-card>
-    <v-dialog v-model="uploadPathDialog" max-width="600">
+    <v-dialog
+      v-model="uploadPathDialog"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelFileUpload"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -194,7 +199,7 @@
                 variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
-                @click="uploadPathDialog = false"
+                @click="cancelFileUpload"
               >
                 Cancel
               </v-btn>
@@ -212,11 +217,7 @@
         </v-card-text>
       </v-card>
     </v-dialog>
-    <v-dialog
-      v-model="optionsDialog"
-      max-width="300"
-      @keydown.esc="optionsDialog = false"
-    >
+    <v-dialog v-model="optionsDialog" max-width="300">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -571,6 +572,10 @@ export default {
         this.path = ''
       }
       this.updateFiles()
+    },
+    cancelFileUpload() {
+      this.file = null
+      this.uploadPathDialog = false
     },
     deleteFile(filename) {
       let root = this.root.toUpperCase()

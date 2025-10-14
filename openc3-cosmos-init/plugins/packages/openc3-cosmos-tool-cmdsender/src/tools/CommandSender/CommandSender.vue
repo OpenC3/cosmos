@@ -89,6 +89,7 @@
       :cmd-user="criticalCmdUser"
     />
 
+    <!-- This dialog is informational, should not be persistent -->
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
         <v-toolbar height="24">
@@ -118,7 +119,12 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="displaySendHazardous" max-width="600">
+    <v-dialog
+      v-model="displaySendHazardous"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelHazardousCmd"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -140,7 +146,12 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="displaySendRaw" max-width="600">
+    <v-dialog
+      v-model="displaySendRaw"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelRawCmd"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -882,10 +893,10 @@ export default {
     //   reader.readAsArrayBuffer(this.rawCmdFile)
     // },
 
-    // cancelRawCmd() {
-    //   this.displaySendRaw = false
-    //   this.status = 'Raw command not sent'
-    // },
+    cancelRawCmd() {
+      this.displaySendRaw = false
+      this.status = 'Raw command not sent'
+    },
   },
 }
 </script>

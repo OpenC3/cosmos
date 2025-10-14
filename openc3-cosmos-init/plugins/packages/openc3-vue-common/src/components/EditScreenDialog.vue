@@ -18,7 +18,12 @@
 
 <template>
   <!-- Edit dialog -->
-  <v-dialog v-model="show" persistent width="75vw">
+  <v-dialog
+    v-model="show"
+    persistent
+    width="75vw"
+    @keydown.esc="$emit('cancel')"
+  >
     <v-card>
       <v-toolbar height="24">
         <v-btn
