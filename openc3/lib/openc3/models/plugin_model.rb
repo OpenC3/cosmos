@@ -201,7 +201,7 @@ module OpenC3
           img_path = default_img_path if File.exist? full_default_path
         end
         plugin_model.img_path = File.join('gems', gem_name.split(".gem")[0], img_path) if img_path # convert this filesystem path to volumes mount path
-        plugin_model.update()
+        plugin_model.update() unless validate_only
 
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
