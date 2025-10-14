@@ -22,6 +22,7 @@ import sys
 import time
 import json
 import threading
+import traceback
 import uuid
 from datetime import datetime, timezone
 from openc3.microservices.microservice import Microservice
@@ -161,9 +162,9 @@ class InterfaceCmdHandlerThread:
                         CommandTopic.write_packet(command, scope=self.scope)
                         self.logger.info(f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope = self.scope)
                         self.interface.write_raw(msg_hash[b"raw"])
-                    except RuntimeError as error:
-                        self.logger.error(f"{self.interface.name}: write_raw: {repr(error)}")
-                        return repr(error)
+                    except RuntimeError:
+                        self.logger.error(f"{self.interface.name}: write_raw: {traceback.format_exc()}")
+                        return traceback.format_exc()
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
@@ -182,9 +183,9 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
-                    self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
-                    return repr(error)
+                except RuntimeError:
+                    self.logger.error(f"{self.interface.name}: interface_cmd: {traceback.format_exc()}")
+                    return traceback.format_exc()
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -200,9 +201,9 @@ class InterfaceCmdHandlerThread:
                         index=params["index"],
                     )
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
-                    self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
-                    return repr(error)
+                except RuntimeError:
+                    self.logger.error(f"{self.interface.name}: protocol_cmd:{traceback.format_exc()}")
+                    return traceback.format_exc()
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -278,10 +279,10 @@ class InterfaceCmdHandlerThread:
                 orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
-            except Exception as error:
+            except Exception:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
-                self.logger.error(f"{self.interface.name}: {repr(error)}")
-                return repr(error)
+                self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
+                return traceback.format_exc()
 
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
@@ -329,9 +330,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
-                            reason = repr(error)
+                            reason = traceback.format_exc()
                         if not result:
                             message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
                             raise WriteRejectError(message)
@@ -353,9 +354,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
-                            reason = repr(error)
+                            reason = traceback.format_exc()
                         command.extra["cmd_success"] = result
                         if reason:
                             command.extra["cmd_reason"] = reason
@@ -371,11 +372,11 @@ class InterfaceCmdHandlerThread:
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            except WriteRejectError as error:
-                return repr(error)
-        except RuntimeError as error:
-            self.logger.error(f"{self.interface.name}: {repr(error)}")
-            return repr(error)
+            except WriteRejectError:
+                return traceback.format_exc()
+        except RuntimeError:
+            self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
+            return traceback.format_exc()
 
 
 class RouterTlmHandlerThread:
@@ -462,7 +463,7 @@ class RouterTlmHandlerThread:
                         )
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     except RuntimeError as error:
-                        self.logger.error(f"{self.router.name}: router_cmd: {repr(error)}")
+                        self.logger.error(f"{self.router.name}: router_cmd: {traceback.format_exc()}")
                         return error.message
                     return "SUCCESS"
                 if msg_hash.get(b"protocol_cmd"):
@@ -478,7 +479,7 @@ class RouterTlmHandlerThread:
                             index=params["index"],
                         )
                     except RuntimeError as error:
-                        self.logger.error(f"{self.router.name}: protocol_cmd: {repr(error)}")
+                        self.logger.error(f"{self.router.name}: protocol_cmd: {traceback.format_exc()}")
                         return str(error)
                     return "SUCCESS"
                 if msg_hash.get(b"target_control"):
@@ -527,9 +528,9 @@ class RouterTlmHandlerThread:
                         self.router.write(packet)
                         RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
                         return "SUCCESS"
-                    except RuntimeError as error:
-                        self.logger.error(f"{self.router.name}: {repr(error)}")
-                        return repr(error)
+                    except RuntimeError:
+                        self.logger.error(f"{self.router.name}: {traceback.format_exc()}")
+                        return traceback.format_exc()
                 else:
                     return None
 
@@ -655,8 +656,8 @@ class InterfaceMicroservice(Microservice):
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
-        except RuntimeError as error:
-            self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {repr(error)}")
+        except RuntimeError:
+            self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}")
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
             #   self.cancel_thread = True
@@ -722,7 +723,7 @@ class InterfaceMicroservice(Microservice):
                                 self.handle_connection_lost()
         except RuntimeError as error:
             if not isinstance(error, SystemExit):  # or signal exception
-                self.logger.error(f"{self.interface.name}: Packet reading thread died: {repr(error)}")
+                self.logger.error(f"{self.interface.name}: Packet reading thread died: {traceback.format_exc()}")
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
@@ -863,8 +864,8 @@ class InterfaceMicroservice(Microservice):
             try:
                 if self.interface.connected():
                     self.interface.disconnect()
-            except RuntimeError as error:
-                self.logger.error(f"Disconnect: {self.interface.name}: {repr(error)}")
+            except RuntimeError:
+                self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.

@@ -1,0 +1,191 @@
+<!doctype html><html lang=en dir=ltr class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-guides/roles-permissions" data-has-hydrated=false><head><meta charset=UTF-8><meta name=generator content="Docusaurus v3.9.1"><title data-rh=true>Roles and Permissions | OpenC3 Docs</title><meta data-rh=true name=viewport content="width=device-width, initial-scale=1.0"/><meta data-rh=true name=twitter:card content=summary_large_image /><meta data-rh=true property=og:url content=https://docs.openc3.com/docs/guides/roles-permissions /><meta data-rh=true property=og:locale content=en /><meta data-rh=true name=docusaurus_locale content=en /><meta data-rh=true name=docsearch:language content=en /><meta data-rh=true name=docusaurus_version content=current /><meta data-rh=true name=docusaurus_tag content=docs-default-current /><meta data-rh=true name=docsearch:version content=current /><meta data-rh=true name=docsearch:docusaurus_tag content=docs-default-current /><meta data-rh=true property=og:title content="Roles and Permissions | OpenC3 Docs"/><meta data-rh=true name=description content="Understanding COSMOS Enterprise roles and access control"/><meta data-rh=true property=og:description content="Understanding COSMOS Enterprise roles and access control"/><link data-rh=true rel=icon href=/img/favicon.png /><link data-rh=true rel=canonical href=https://docs.openc3.com/docs/guides/roles-permissions /><link data-rh=true rel=alternate href=https://docs.openc3.com/docs/guides/roles-permissions hreflang=en /><link data-rh=true rel=alternate href=https://docs.openc3.com/docs/guides/roles-permissions hreflang=x-default /><script data-rh=true type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","item":"https://docs.openc3.com/docs/guides","name":"Guides","position":1},{"@type":"ListItem","item":"https://docs.openc3.com/docs/guides/roles-permissions","name":"Roles and Permissions","position":2}]}</script><link rel=stylesheet href=/assets/css/styles.946be27d.css /><script src=/assets/js/runtime~main.ed5055dc.js defer></script><script src=/assets/js/main.78c2f736.js defer></script></head><body class=navigation-with-keyboard><svg style="display: none;"><defs>
+<symbol id=theme-svg-external-link viewBox="0 0 24 24"><path fill=currentColor d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{for(var[t,e]of new URLSearchParams(window.location.search).entries())if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id=__docusaurus><link rel=preload as=image href=/img/logo.svg /><div role=region aria-label="Skip to main content"><a class=skipToContent_TKVD href=#__docusaurus_skipToContent_fallback>Skip to main content</a></div><nav aria-label=Main class="theme-layout-navbar navbar navbar--fixed-top"><div class=navbar__inner><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded=false class="navbar__toggle clean-btn" type=button><svg width=30 height=30 viewBox="0 0 30 30" aria-hidden=true><path stroke=currentColor stroke-linecap=round stroke-miterlimit=10 stroke-width=2 d="M4 7h22M4 15h22M4 23h22"/></svg></button><a class=navbar__brand href=/><div class=navbar__logo><img src=/img/logo.svg alt="OpenC3 Logo" class="themedComponent_hQOn themedComponent--light_cpFH"/><img src=/img/logo.svg alt="OpenC3 Logo" class="themedComponent_hQOn themedComponent--dark_whA_"/></div><b class="navbar__title text--truncate">OpenC3 Docs</b></a><a href=https://openc3.com target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">Home</a><a href=https://openc3.com/enterprise/ target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">Enterprise</a><a aria-current=page class="navbar__item navbar__link navbar__link--active" href=/docs>Documentation</a><a href=https://openc3.com/news/ target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">News</a><a href=https://openc3.com/contact/ target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">Contact</a><a href=https://openc3.com/about/ target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">About</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href=https://github.com/OpenC3/cosmos target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">GitHub</a><div class="toggle_uYZL colorModeToggle_bPuK"><button class="clean-btn toggleButton_Wj62 toggleButtonDisabled_A6HD" type=button disabled title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_YNHb lightToggleIcon_hIbN"><path fill=currentColor d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"/></svg><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_YNHb darkToggleIcon_IQyx"><path fill=currentColor d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"/></svg><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_YNHb systemToggleIcon_x9QH"><path fill=currentColor d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"/></svg></button></div><div class=navbarSearchContainer_YWZZ><div class=navbar__search><span aria-label="expand searchbar" role=button class=search-icon tabindex=0></span><input id=search_input_react type=search placeholder=Loading... aria-label=Search class="navbar__search-input search-bar" disabled/></div></div></div></div><div role=presentation class=navbar-sidebar__backdrop></div></nav><div id=__docusaurus_skipToContent_fallback class="theme-layout-main main-wrapper mainWrapper_E2as"><div class=docsWrapper_helv><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_C8jb" type=button></button><div class=docRoot_qfDj><aside class="theme-doc-sidebar-container docSidebarContainer_akt7"><div class=sidebarViewport__oqk><div class=sidebar_mbPS><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_cdbq"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class=menu__link href=/docs><span title=Introduction class=linkLabel_THKR>Introduction</span></a><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist" href=/docs/getting-started><span title="Getting Started" class=categoryLinkLabel_gwYM>Getting Started</span></a><button aria-label="Expand sidebar category 'Getting Started'" aria-expanded=false type=button class="clean-btn menu__caret"></button></div><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist" href=/docs/configuration><span title=Configuration class=categoryLinkLabel_gwYM>Configuration</span></a><button aria-label="Expand sidebar category 'Configuration'" aria-expanded=false type=button class="clean-btn menu__caret"></button></div><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist" href=/docs/tools><span title=Tools class=categoryLinkLabel_gwYM>Tools</span></a><button aria-label="Expand sidebar category 'Tools'" aria-expanded=false type=button class="clean-btn menu__caret"></button></div><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist menu__link--active" href=/docs/guides><span title=Guides class=categoryLinkLabel_gwYM>Guides</span></a><button aria-label="Collapse sidebar category 'Guides'" aria-expanded=true type=button class="clean-btn menu__caret"></button></div><ul class=menu__list><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/bridges><span title=Bridges class=linkLabel_THKR>Bridges</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/cfs><span title="COSMOS and NASA cFS" class=linkLabel_THKR>COSMOS and NASA cFS</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/custom-widgets><span title="Custom Widgets" class=linkLabel_THKR>Custom Widgets</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/dynamic-packets><span title="Dynamic Packets" class=linkLabel_THKR>Dynamic Packets</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/exposing-microservices><span title="Exposing Microservices" class=linkLabel_THKR>Exposing Microservices</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/little-endian-bitfields><span title="Little Endian Bitfields" class=linkLabel_THKR>Little Endian Bitfields</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/local-mode><span title="Local Mode" class=linkLabel_THKR>Local Mode</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/logging><span title=Logging class=linkLabel_THKR>Logging</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/monitoring><span title=Monitoring class=linkLabel_THKR>Monitoring</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/performance><span title=Performance class=linkLabel_THKR>Performance</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/raspberrypi><span title="Raspberry Pi" class=linkLabel_THKR>Raspberry Pi</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/reference-architectures><span title="Reference Architectures" class=linkLabel_THKR>Reference Architectures</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current=page tabindex=0 href=/docs/guides/roles-permissions><span title="Roles and Permissions" class=linkLabel_THKR>Roles and Permissions</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/script-writing><span title="Script Writing Guide" class=linkLabel_THKR>Script Writing Guide</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/scripting-api><span title="Scripting API Guide" class=linkLabel_THKR>Scripting API Guide</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/docs/guides/troubleshooting><span title=Troubleshooting class=linkLabel_THKR>Troubleshooting</span></a></ul><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist" href=/docs/development><span title=Development class=categoryLinkLabel_gwYM>Development</span></a><button aria-label="Expand sidebar category 'Development'" aria-expanded=false type=button class="clean-btn menu__caret"></button></div><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class=menu__list-item-collapsible><a class="categoryLink_m86C menu__link menu__link--sublist" href=/docs/meta><span title=Meta class=categoryLinkLabel_gwYM>Meta</span></a><button aria-label="Expand sidebar category 'Meta'" aria-expanded=false type=button class="clean-btn menu__caret"></button></div><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class=menu__link href=/docs/privacy><span title="OpenC3, Inc. Privacy Policy" class=linkLabel_THKR>OpenC3, Inc. Privacy Policy</span></a></ul></nav></div></div></aside><main class=docMainContainer_Aig4><div class="container padding-top--md padding-bottom--lg"><div class=row><div class="col docItemCol_rdr9"><div class=docItemContainer_jIg7><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_rdSc" aria-label=Breadcrumbs><ul class=breadcrumbs><li class=breadcrumbs__item><a aria-label="Home page" class=breadcrumbs__link href=/><svg viewBox="0 0 24 24" class=breadcrumbHomeIcon_u_XA><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill=currentColor /></svg></a><li class=breadcrumbs__item><a class=breadcrumbs__link href=/docs/guides><span>Guides</span></a><li class="breadcrumbs__item breadcrumbs__item--active"><span class=breadcrumbs__link>Roles and Permissions</span></ul></nav><div class="tocCollapsible_xgee theme-doc-toc-mobile tocMobile_JnGb"><button type=button class="clean-btn tocCollapsibleButton_c5np">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Roles and Permissions</h1></header><p>COSMOS Enterprise provides a comprehensive role-based access control (RBAC) system that allows you to manage user permissions across different scopes. This system integrates with Keycloak for authentication and authorization.</p>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=overview>Overview<a href=#overview class=hash-link aria-label="Direct link to Overview" title="Direct link to Overview" translate=no>​</a></h2>
+<p>Roles in COSMOS Enterprise control what actions users can perform within the system. Roles are assigned to users per scope, allowing fine-grained control over access to different missions or projects.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=role-naming-convention>Role Naming Convention<a href=#role-naming-convention class=hash-link aria-label="Direct link to Role Naming Convention" title="Direct link to Role Naming Convention" translate=no>​</a></h3>
+<p>Roles are assigned using the format: <code>{SCOPE}__{ROLE_NAME}</code></p>
+<ul>
+<li><code>SCOPE</code>: The scope name (e.g., <code>DEFAULT</code>) or <code>ALLSCOPES</code> for global permissions</li>
+<li><code>ROLE_NAME</code>: One of the built-in roles or a custom role name</li>
+</ul>
+<p>Examples:</p>
+<ul>
+<li><code>DEFAULT__operator</code> - Operator role in the DEFAULT scope</li>
+<li><code>MISSION1__viewer</code> - Viewer role in the MISSION1 scope</li>
+<li><code>ALLSCOPES__admin</code> - Admin role across all scopes</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=built-in-roles>Built-in Roles<a href=#built-in-roles class=hash-link aria-label="Direct link to Built-in Roles" title="Direct link to Built-in Roles" translate=no>​</a></h2>
+<p>Individual built-in roles in COSMOS Enterprise are scoped to a minimal set of permissions. Individual users can have multiple roles (e.g., Admin and Operator) if users need administrative access and commanding access. COSMOS Enterprise includes five built-in roles with predefined permission sets:</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=admin>Admin<a href=#admin class=hash-link aria-label="Direct link to Admin" title="Direct link to Admin" translate=no>​</a></h3>
+<p>The <strong>Admin</strong> role provides administrative access within a scope. Admins can also manage the files within the MinIO bucket.</p>
+<p><strong>Permissions:</strong></p>
+<ul>
+<li><code>system</code> - View system information</li>
+<li><code>system_set</code> - Modify system settings</li>
+<li><code>tlm</code> - View telemetry data</li>
+<li><code>cmd_info</code> - View command information</li>
+<li><code>script_view</code> - View scripts</li>
+<li><code>admin</code> - Administrative functions (manage plugins, targets, interfaces, etc.)</li>
+</ul>
+<p><strong>Special Cases:</strong></p>
+<ul>
+<li>When assigned to <code>ALLSCOPES</code>, gains <code>superadmin</code> permission for system-wide administration</li>
+<li>Can release command authority taken by other users in their scope</li>
+</ul>
+<p><strong>Use Case:</strong> Users responsible for system configuration and management.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=operator>Operator<a href=#operator class=hash-link aria-label="Direct link to Operator" title="Direct link to Operator" translate=no>​</a></h3>
+<p>The <strong>Operator</strong> role has full access except for administrative functions and approval rights.</p>
+<p><strong>Permissions:</strong></p>
+<ul>
+<li><code>system</code> - View system information</li>
+<li><code>system_set</code> - Modify system settings</li>
+<li><code>tlm</code> - View telemetry data</li>
+<li><code>tlm_set</code> - Modify telemetry settings</li>
+<li><code>cmd_info</code> - View command information</li>
+<li><code>cmd_raw</code> - Send raw commands</li>
+<li><code>cmd</code> - Send commands</li>
+<li><code>script_view</code> - View scripts</li>
+<li><code>script_edit</code> - Create and edit scripts</li>
+<li><code>script_run</code> - Run scripts</li>
+</ul>
+<p><strong>Use Case:</strong> Power users who need full operational control but not administrative access.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=viewer>Viewer<a href=#viewer class=hash-link aria-label="Direct link to Viewer" title="Direct link to Viewer" translate=no>​</a></h3>
+<p>The <strong>Viewer</strong> role provides read-only access to the system.</p>
+<p><strong>Permissions:</strong></p>
+<ul>
+<li><code>system</code> - View system information</li>
+<li><code>tlm</code> - View telemetry data</li>
+<li><code>cmd_info</code> - View command information</li>
+<li><code>script_view</code> - View scripts</li>
+</ul>
+<p><strong>Use Case:</strong> Users who need to monitor telemetry and system status without making changes.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=approver>Approver<a href=#approver class=hash-link aria-label="Direct link to Approver" title="Direct link to Approver" translate=no>​</a></h3>
+<p>The <strong>Approver</strong> role is specifically for command approval workflows.</p>
+<p><strong>Permissions:</strong></p>
+<ul>
+<li><code>approve_hazardous</code> - Approve hazardous commands</li>
+<li><code>approve_restricted</code> - Approve restricted commands</li>
+<li><code>approve_normal</code> - Approve normal commands</li>
+</ul>
+<p><strong>Use Case:</strong> Users responsible for reviewing and approving commands before execution.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=runner>Runner<a href=#runner class=hash-link aria-label="Direct link to Runner" title="Direct link to Runner" translate=no>​</a></h3>
+<p>The <strong>Runner</strong> role allows users to execute commands and scripts but cannot create or edit them. Runner does not come with approval rights.</p>
+<p><strong>Permissions:</strong></p>
+<ul>
+<li><code>system</code> - View system information</li>
+<li><code>system_set</code> - Modify system settings</li>
+<li><code>tlm</code> - View telemetry data</li>
+<li><code>tlm_set</code> - Modify telemetry settings</li>
+<li><code>cmd_info</code> - View command information</li>
+<li><code>cmd_raw</code> - Send raw commands</li>
+<li><code>cmd</code> - Send commands</li>
+<li><code>script_view</code> - View scripts</li>
+<li><code>script_run</code> - Run scripts</li>
+</ul>
+<p><strong>Use Case:</strong> Operators who execute procedures and send commands but don't modify configurations or scripts.</p>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=permission-definitions>Permission Definitions<a href=#permission-definitions class=hash-link aria-label="Direct link to Permission Definitions" title="Direct link to Permission Definitions" translate=no>​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=system-permissions>System Permissions<a href=#system-permissions class=hash-link aria-label="Direct link to System Permissions" title="Direct link to System Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>system</strong> - View system information and status</li>
+<li><strong>system_set</strong> - Modify system settings and configurations</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=telemetry-permissions>Telemetry Permissions<a href=#telemetry-permissions class=hash-link aria-label="Direct link to Telemetry Permissions" title="Direct link to Telemetry Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>tlm</strong> - View telemetry data</li>
+<li><strong>tlm_set</strong> - Modify telemetry settings (limits, conversions, etc.)</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=command-permissions>Command Permissions<a href=#command-permissions class=hash-link aria-label="Direct link to Command Permissions" title="Direct link to Command Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>cmd_info</strong> - View command definitions and parameters</li>
+<li><strong>cmd_raw</strong> - Send raw binary commands</li>
+<li><strong>cmd</strong> - Send commands to targets</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=script-permissions>Script Permissions<a href=#script-permissions class=hash-link aria-label="Direct link to Script Permissions" title="Direct link to Script Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>script_view</strong> - View script contents</li>
+<li><strong>script_edit</strong> - Create, edit, and delete scripts</li>
+<li><strong>script_run</strong> - Execute scripts</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=administrative-permissions>Administrative Permissions<a href=#administrative-permissions class=hash-link aria-label="Direct link to Administrative Permissions" title="Direct link to Administrative Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>admin</strong> - Manage scope-level resources (targets, plugins, interfaces, routers, etc.)</li>
+<li><strong>superadmin</strong> - System-wide administration across all scopes (requires <code>ALLSCOPES__admin</code>)</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=approval-permissions>Approval Permissions<a href=#approval-permissions class=hash-link aria-label="Direct link to Approval Permissions" title="Direct link to Approval Permissions" translate=no>​</a></h3>
+<ul>
+<li><strong>approve_hazardous</strong> - Approve hazardous commands</li>
+<li><strong>approve_restricted</strong> - Approve restricted commands</li>
+<li><strong>approve_normal</strong> - Approve normal commands</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=command-authority>Command Authority<a href=#command-authority class=hash-link aria-label="Direct link to Command Authority" title="Direct link to Command Authority" translate=no>​</a></h2>
+<p>When command authority is enabled for a scope, an additional layer of authorization is applied to command-related permissions:</p>
+<ul>
+<li>Users must "take" command authority for a specific target before sending commands</li>
+<li>Only the user who holds command authority can send commands to that target</li>
+<li>Admin users (with <code>ALLSCOPES__admin</code> or <code>{SCOPE}__admin</code>) can release authority taken by other users</li>
+<li>Command authority applies to these permissions when executed manually:<!-- -->
+<ul>
+<li><code>tlm_set</code></li>
+<li><code>cmd_raw</code></li>
+<li><code>cmd</code></li>
+<li><code>script_run</code></li>
+</ul>
+</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=custom-roles>Custom Roles<a href=#custom-roles class=hash-link aria-label="Direct link to Custom Roles" title="Direct link to Custom Roles" translate=no>​</a></h2>
+<p>In addition to the built-in roles, you can create custom roles with specific permission combinations.</p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=creating-custom-roles>Creating Custom Roles<a href=#creating-custom-roles class=hash-link aria-label="Direct link to Creating Custom Roles" title="Direct link to Creating Custom Roles" translate=no>​</a></h3>
+<p>Custom roles are managed through the Admin Tool:</p>
+<ol>
+<li>Navigate to the Admin Tool</li>
+<li>Go to the Roles tab</li>
+<li>Click "Add" and enter a role name (single lowercase word recommended)</li>
+<li>Click "Edit" to configure permissions for the role</li>
+</ol>
+<p><img decoding=async loading=lazy alt="Add Role" src=/assets/images/add_role-e99225cd280a9de1e354586f00c92f52d0dae856ac015a561da2dd405de6cb55.png width=2566 height=860 class=img_m1Wr /></p>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=custom-role-permissions>Custom Role Permissions<a href=#custom-role-permissions class=hash-link aria-label="Direct link to Custom Role Permissions" title="Direct link to Custom Role Permissions" translate=no>​</a></h3>
+<p>Custom roles can have granular permissions that target specific resources:</p>
+<ul>
+<li><strong>target_name</strong> - Restrict permission to a specific target</li>
+<li><strong>packet_name</strong> - Restrict permission to a specific packet</li>
+<li><strong>interface_name</strong> - Restrict permission to a specific interface</li>
+<li><strong>router_name</strong> - Restrict permission to a specific router</li>
+</ul>
+<p>Example: A custom role could allow <code>cmd</code> permission only for the <code>INST1</code> target.</p>
+<p><img decoding=async loading=lazy alt="Edit Role" src=/assets/images/edit_role-1ea95cfab9edd9173196018fe14ec39ad0537e0c04c8f0f5af53fcf3173867df.png width=1062 height=1228 class=img_m1Wr /></p>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=authorization-flow>Authorization Flow<a href=#authorization-flow class=hash-link aria-label="Direct link to Authorization Flow" title="Direct link to Authorization Flow" translate=no>​</a></h2>
+<p>When a user attempts an action, COSMOS Enterprise performs the following checks:</p>
+<ol>
+<li><strong>Token Validation</strong> - Verify the JWT token from Keycloak</li>
+<li><strong>Role Extraction</strong> - Extract roles from the token's <code>realm_access</code> claim</li>
+<li><strong>Scope Matching</strong> - Match user roles against the requested scope or <code>ALLSCOPES</code></li>
+<li><strong>Permission Check</strong> - Verify the action's required permission is granted by the role</li>
+<li><strong>Resource Matching</strong> - For custom roles, check if specific resources match</li>
+<li><strong>Command Authority</strong> - If applicable, verify command authority for the target</li>
+</ol>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=default-users>Default Users<a href=#default-users class=hash-link aria-label="Direct link to Default Users" title="Direct link to Default Users" translate=no>​</a></h2>
+<p>COSMOS Enterprise Keycloak realm includes default test users for each role:</p>
+<table><thead><tr><th>Username<th>Password<th>Default Role<th>Email<tbody><tr><td>operator<td>operator<td>DEFAULT__operator<td><a href=mailto:operator@openc3.com target=_blank rel="noopener noreferrer">operator@openc3.com</a><tr><td>runner<td>runner<td>DEFAULT__runner<td><a href=mailto:runner@openc3.com target=_blank rel="noopener noreferrer">runner@openc3.com</a><tr><td>viewer<td>viewer<td>DEFAULT__viewer<td><a href=mailto:viewer@openc3.com target=_blank rel="noopener noreferrer">viewer@openc3.com</a><tr><td>admin<td>admin<td>ALLSCOPES__admin<td><a href=mailto:admin@openc3.com target=_blank rel="noopener noreferrer">admin@openc3.com</a><tr><td>approver<td>approver<td>DEFAULT__approver<td><a href=mailto:approver@openc3.com target=_blank rel="noopener noreferrer">approver@openc3.com</a></table>
+<p><strong>Note:</strong> These are default development/testing accounts. In production deployments, you should configure proper authentication and remove or change these default credentials.</p>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=best-practices>Best Practices<a href=#best-practices class=hash-link aria-label="Direct link to Best Practices" title="Direct link to Best Practices" translate=no>​</a></h2>
+<ol>
+<li><strong>Principle of Least Privilege</strong> - Assign users the minimum permissions needed for their role</li>
+<li><strong>Use Scopes</strong> - Leverage scopes to separate different missions or projects</li>
+<li><strong>Custom Roles</strong> - Create custom roles for specialized needs rather than giving admin access</li>
+<li><strong>Command Authority</strong> - Enable command authority for production systems to prevent conflicts</li>
+<li><strong>Regular Audits</strong> - Review user roles and permissions periodically</li>
+<li><strong>Production Security</strong> - Replace default credentials and integrate with your organization's SSO/IdP</li>
+</ol>
+<h2 class="anchor anchorWithStickyNavbar_TUrh" id=managing-roles>Managing Roles<a href=#managing-roles class=hash-link aria-label="Direct link to Managing Roles" title="Direct link to Managing Roles" translate=no>​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_TUrh" id=viewing--assigning-roles-to-users>Viewing / Assigning Roles to Users<a href=#viewing--assigning-roles-to-users class=hash-link aria-label="Direct link to Viewing / Assigning Roles to Users" title="Direct link to Viewing / Assigning Roles to Users" translate=no>​</a></h3>
+<p>Roles are managed in Keycloak:</p>
+<ol>
+<li>Access the Keycloak admin console</li>
+<li>Navigate to Users</li>
+<li>Select a user</li>
+<li>Go to Role Mappings</li>
+<li>Assign roles using the <code>{SCOPE}__{ROLE_NAME}</code> format</li>
+</ol>
+<p><img decoding=async loading=lazy alt="Keycloak User Roles" src=/assets/images/keycloak_user_roles-d4c78e2a5d33c4ea3016250d849b3363deccd21b9562561793b81981acf773fe.png width=2980 height=1354 class=img_m1Wr /></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class=col><a href=https://github.com/OpenC3/cosmos/tree/main/docs.openc3.com/docs/guides/roles-permissions.md target=_blank rel="noopener noreferrer" class=theme-edit-this-page><svg fill=currentColor height=20 width=20 viewBox="0 0 40 40" class=iconEdit_CuGa aria-hidden=true><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"/></g></svg>Edit this page</a></div><div class="col lastUpdated_h4bd"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href=/docs/guides/reference-architectures><div class=pagination-nav__sublabel>Previous</div><div class=pagination-nav__label>Reference Architectures</div></a><a class="pagination-nav__link pagination-nav__link--next" href=/docs/guides/script-writing><div class=pagination-nav__sublabel>Next</div><div class=pagination-nav__label>Script Writing Guide</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_rhgf thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href=#overview class="table-of-contents__link toc-highlight">Overview</a><ul><li><a href=#role-naming-convention class="table-of-contents__link toc-highlight">Role Naming Convention</a></ul><li><a href=#built-in-roles class="table-of-contents__link toc-highlight">Built-in Roles</a><ul><li><a href=#admin class="table-of-contents__link toc-highlight">Admin</a><li><a href=#operator class="table-of-contents__link toc-highlight">Operator</a><li><a href=#viewer class="table-of-contents__link toc-highlight">Viewer</a><li><a href=#approver class="table-of-contents__link toc-highlight">Approver</a><li><a href=#runner class="table-of-contents__link toc-highlight">Runner</a></ul><li><a href=#permission-definitions class="table-of-contents__link toc-highlight">Permission Definitions</a><ul><li><a href=#system-permissions class="table-of-contents__link toc-highlight">System Permissions</a><li><a href=#telemetry-permissions class="table-of-contents__link toc-highlight">Telemetry Permissions</a><li><a href=#command-permissions class="table-of-contents__link toc-highlight">Command Permissions</a><li><a href=#script-permissions class="table-of-contents__link toc-highlight">Script Permissions</a><li><a href=#administrative-permissions class="table-of-contents__link toc-highlight">Administrative Permissions</a><li><a href=#approval-permissions class="table-of-contents__link toc-highlight">Approval Permissions</a></ul><li><a href=#command-authority class="table-of-contents__link toc-highlight">Command Authority</a><li><a href=#custom-roles class="table-of-contents__link toc-highlight">Custom Roles</a><ul><li><a href=#creating-custom-roles class="table-of-contents__link toc-highlight">Creating Custom Roles</a><li><a href=#custom-role-permissions class="table-of-contents__link toc-highlight">Custom Role Permissions</a></ul><li><a href=#authorization-flow class="table-of-contents__link toc-highlight">Authorization Flow</a><li><a href=#default-users class="table-of-contents__link toc-highlight">Default Users</a><li><a href=#best-practices class="table-of-contents__link toc-highlight">Best Practices</a><li><a href=#managing-roles class="table-of-contents__link toc-highlight">Managing Roles</a><ul><li><a href=#viewing--assigning-roles-to-users class="table-of-contents__link toc-highlight">Viewing / Assigning Roles to Users</a></ul></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class=footer__title>Homepage</div><ul class="footer__items clean-list"><li class=footer__item><a href=https://openc3.com target=_blank rel="noopener noreferrer" class=footer__link-item>Home</a></ul></div><div class="theme-layout-footer-column col footer__col"><div class=footer__title>Docs</div><ul class="footer__items clean-list"><li class=footer__item><a class=footer__link-item href=/docs>Documentation</a></ul></div><div class="theme-layout-footer-column col footer__col"><div class=footer__title>Community</div><ul class="footer__items clean-list"><li class=footer__item><a href=https://www.linkedin.com/company/openc3 target=_blank rel="noopener noreferrer" class=footer__link-item>LinkedIn<svg width=13.5 height=13.5 aria-label="(opens in new tab)" class=iconExternalLink_mMqu><use href=#theme-svg-external-link /></svg></a></ul></div><div class="theme-layout-footer-column col footer__col"><div class=footer__title>More</div><ul class="footer__items clean-list"><li class=footer__item><a href=https://github.com/OpenC3/cosmos target=_blank rel="noopener noreferrer" class=footer__link-item>GitHub<svg width=13.5 height=13.5 aria-label="(opens in new tab)" class=iconExternalLink_mMqu><use href=#theme-svg-external-link /></svg></a><li class=footer__item><a class=footer__link-item href=/docs/privacy>Privacy</a></ul></div></div><div class="footer__bottom text--center"><div class=footer__copyright>Copyright © 2025 OpenC3, Inc.</div></div></div></footer></div></body>
