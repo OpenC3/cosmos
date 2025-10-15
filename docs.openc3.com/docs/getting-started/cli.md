@@ -37,6 +37,24 @@ Usage:
 You can safely ignore `WARNING: daemon is not using the default seccomp profile`
 :::
 
+### COSMOS Autocompletion in ZSH
+
+Create a directory in your home for the autocomplete file if you do not have one already. For example, create `~/.zsh/completions/` by running `mkdir -p ~/.zsh/completions`. 
+
+Then, copy `_openc3` from a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) repository and add the following to your `~/.zshrc` file:
+
+```shell
+fpath=(~/.zsh/completions $fpath) 
+autoload -Uz compinit
+compinit
+```
+
+Then, either run `exec zsh` in your current shell or open a new shell in your terminal application. 
+
+:::note issues getting argument completion
+If you are having issues getting "argument completion" working for `openc3.sh` try clearing the ZSH autocomplete cache running `rm ~/.zcompdump*` and then reinitialize the completion system with `compinit`.
+:::
+
 ## Rake
 
 You can execute rake tasks using `openc3.sh cli rake`. The most typical usage is to generate a plugin and then build it. For example:
