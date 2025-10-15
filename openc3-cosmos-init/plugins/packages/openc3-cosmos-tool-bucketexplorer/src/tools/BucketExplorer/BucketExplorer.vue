@@ -262,6 +262,8 @@ export default {
     OutputDialog,
   },
   data() {
+    const refreshInterval = Number.parseInt(localStorage.getItem('bucketExplorerRefreshInterval')) || 60
+
     return {
       title: 'Bucket Explorer',
       search: '',
@@ -271,7 +273,7 @@ export default {
       volumes: [],
       uploadPathDialog: false,
       optionsDialog: false,
-      refreshInterval: 60,
+      refreshInterval,
       updater: null,
       updating: false,
       path: '',
@@ -348,6 +350,9 @@ export default {
       this.uploadPathDialog = true
     },
     refreshInterval() {
+      if (this.refreshInterval != null) {
+        localStorage.setItem('bucketExplorerRefreshInterval', String(this.refreshInterval))
+      }
       this.changeUpdater()
     },
   },
