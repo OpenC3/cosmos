@@ -655,9 +655,6 @@ VALIDATOR custom_validator.py
 
 Defined in custom_validator.py:
 
-from openc3.packets.command_validator import CommandValidator
-from openc3.api import *
-
 class CustomValidator(CommandValidator):
     # Both the pre_check and post_check are passed the command packet that was sent
     # You can inspect the command in your checks as follows:
@@ -687,8 +684,6 @@ VALIDATOR custom_validator.rb
 Defined in custom_validator.rb:
 
 require 'openc3/packets/command_validator'
-require 'openc3/api/api'
-
 class CustomValidator < OpenC3::CommandValidator
   # Both the pre_check and post_check are passed the command packet that was sent
   # You can inspect the command in your checks as follows:
