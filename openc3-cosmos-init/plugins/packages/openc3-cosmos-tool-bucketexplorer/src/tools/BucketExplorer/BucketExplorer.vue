@@ -262,7 +262,7 @@ export default {
     OutputDialog,
   },
   data() {
-    const refreshInterval = parseInt(localStorage.getItem('bucketExplorerRefreshInterval')) || 60
+    const refreshInterval = Number.parseInt(localStorage.getItem('bucketExplorerRefreshInterval')) || 60
 
     return {
       title: 'Bucket Explorer',
