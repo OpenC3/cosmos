@@ -34,8 +34,9 @@
           </v-row>
         </div>
 
-        <v-container v-else>
+        <v-container v-else class="d-flex pb-0">
           <target-packet-item-chooser
+            class="flex-grow-1"
             :initial-target-name="$route.params.target"
             :initial-packet-name="$route.params.packet"
             :initial-item-name="$route.params.item"
@@ -45,43 +46,20 @@
             show-latest
             @add-item="addItem"
           />
-          <!-- All this row / col stuff is to setup a structure similar to the
-            target-packet-item-chooser so it will layout the same 
-            TODO: make this a slot in target-packet-item-chooser -->
-          <v-row class="grapher-info">
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 300px; pointer-events: none"></v-col>
-            <v-col style="max-width: 140px">
-              <v-btn
-                v-show="state === 'pause'"
-                class="blink"
-                color="primary"
-                data-test="start-graph"
-                icon="mdi-play"
-                size="large"
-                @click="
-                  () => {
-                    state = 'start'
-                  }
-                "
-              >
-              </v-btn>
-              <v-btn
-                v-show="state === 'start'"
-                color="primary"
-                data-test="pause-graph"
-                icon="mdi-pause"
-                size="large"
-                @click="
-                  () => {
-                    state = 'pause'
-                  }
-                "
-              />
-              <v-spacer />
-            </v-col>
-          </v-row>
+          <v-btn
+            :class="{
+              blink: isPaused,
+              'mt-4': true,
+              'ml-8': true,
+            }"
+            color="primary"
+            :data-test="isPaused ? 'start-graph' : 'pause-graph'"
+            :icon="isPaused ? 'mdi-play' : 'mdi-pause'"
+            size="104"
+            @click="togglePause"
+          >
+            <v-icon size="36" />
+          </v-btn>
         </v-container>
       </v-expansion-panel-text>
     </v-expansion-panel>
@@ -301,6 +279,9 @@ export default {
     }
   },
   computed: {
+    isPaused: function () {
+      return this.state === 'pause'
+    },
     currentConfig: function () {
       return {
         settings: {
@@ -557,6 +538,13 @@ export default {
         this.startTime = time
       }
     },
+    togglePause: function () {
+      if (this.state === 'start') {
+        this.state = 'pause'
+      } else {
+        this.state = 'start'
+      }
+    },
     applyConfig: async function (config) {
       // Don't save the default config while we're applying new config
       this.dontSaveDefaultConfig = true
@@ -615,11 +603,6 @@ export default {
   max-width: unset;
   padding-top: 0px;
   padding-bottom: 10px;
-}
-.grapher-info {
-  position: relative;
-  top: -115px;
-  height: 0px;
 }
 .v-expansion-panel-text {
   .container {

@@ -144,7 +144,7 @@
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pa-3">
+    <v-row no-gutters class="pt-3 px-3">
       <v-col :cols="colSize" :class="{ 'openc3-yellow': hazardous }">
         Description: {{ description }}
         <template v-if="hazardous"> (HAZARDOUS) </template>
