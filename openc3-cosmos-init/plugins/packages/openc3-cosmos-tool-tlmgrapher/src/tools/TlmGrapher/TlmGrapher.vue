@@ -45,17 +45,17 @@
             show-latest
             @add-item="addItem"
           />
-
-          <!-- This row floats over TPIChooser and puts a button in the bottom-right corner -->
+          <!-- All this row / col stuff is to setup a structure similar to the
+            target-packet-item-chooser so it will layout the same 
+            TODO: make this a slot in target-packet-item-chooser -->
           <v-row class="grapher-info">
-            <v-col
-              cols="12"
-              class="d-flex justify-end"
-              style="max-width: 1364px"
-            >
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 140px">
               <v-btn
                 v-show="state === 'pause'"
-                class="blink mr-9"
+                class="blink"
                 color="primary"
                 data-test="start-graph"
                 icon="mdi-play"
@@ -69,7 +69,6 @@
               </v-btn>
               <v-btn
                 v-show="state === 'start'"
-                class="mr-9"
                 color="primary"
                 data-test="pause-graph"
                 icon="mdi-pause"
@@ -80,6 +79,7 @@
                   }
                 "
               />
+              <v-spacer />
             </v-col>
           </v-row>
         </v-container>
