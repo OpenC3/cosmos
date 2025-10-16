@@ -18,12 +18,17 @@
 
 <template>
   <tr
-    :class="{ 'cursor-pointer': hasStoreListing }"
+    :class="{ 'cursor-pointer': hasDetails }"
     data-test="plugin-list-item"
     @click="openDetails"
   >
     <td>
-      <v-img v-if="image_url" :src="image_url" max-height="56" min-width="56" />
+      <v-img
+        v-if="imageContentsWithMimeType"
+        :src="imageContentsWithMimeType"
+        max-height="56"
+        min-width="56"
+      />
     </td>
     <td>
       <div class="text-h6" v-text="displayTitle" />
@@ -127,7 +132,7 @@ export default {
   },
   methods: {
     openDetails: function () {
-      if (this.hasStoreListing) {
+      if (this.hasDetails) {
         this.showCard = true
       }
     },
