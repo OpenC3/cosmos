@@ -542,8 +542,8 @@
             size="small"
             variant="text"
             color="error"
-            @click="commandEditor.dialogError = null"
             class="ml-2"
+            @click="commandEditor.dialogError = null"
           />
         </div>
         <command-editor
@@ -1115,6 +1115,17 @@ export default {
           localStorage.removeItem('script_runner__filename')
         } else {
           localStorage['script_runner__filename'] = filename
+        }
+      }
+    },
+    readOnlyUser: function (val) {
+      if (this.editor) {
+        if (val) {
+          this.editor.setReadOnly(true)
+          this.editor.renderer.$cursorLayer.element.style.display = 'none'
+        } else {
+          this.editor.setReadOnly(false)
+          this.editor.renderer.$cursorLayer.element.style.display = null
         }
       }
     },
