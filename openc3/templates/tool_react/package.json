@@ -1,1 +1,51 @@
+{
+  "scripts": {
+    "start": "webpack serve",
+    "start:standalone": "webpack serve --env standalone",
+    "build": "concurrently pnpm:build:*",
+    "build:webpack": "webpack --mode=production",
+    "analyze": "webpack --mode=production --env analyze",
+    "lint": "eslint src --ext js",
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+    "test": "cross-env BABEL_ENV=test jest",
+    "watch-tests": "cross-env BABEL_ENV=test jest --watch",
+    "coverage": "cross-env BABEL_ENV=test jest --coverage"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^6.1.1",
     "@openc3/js-common": "6.9.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "single-spa-react": "^5.1.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/eslint-parser": "^7.25.1",
+    "@babel/plugin-transform-runtime": "^7.25.4",
+    "@babel/preset-env": "^7.25.4",
+    "@babel/preset-react": "^7.23.3",
+    "@babel/runtime": "^7.25.6",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "babel-jest": "^29.7.0",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-react-important-stuff": "^3.0.0",
+    "eslint-plugin-prettier": "^5.1.2",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-cli": "^29.7.0",
+    "prettier": "^3.1.1",
+    "pretty-quick": "^4.0.0",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-config-single-spa-react": "^4.0.5",
+    "webpack-dev-server": "^5.1.0",
+    "webpack-merge": "^6.0.1"
+  }
+}

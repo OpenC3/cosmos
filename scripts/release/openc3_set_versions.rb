@@ -153,6 +153,8 @@ package_dot_json_files.each do |rel_path|
         else
           mod_data << "\n"
         end
+      else
+        mod_data << line
       end
     else
       mod_data << line
