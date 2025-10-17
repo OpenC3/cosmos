@@ -25,7 +25,7 @@
 
 <template>
   <div class="pt-4 pb-4">
-    <v-row :no-gutters="!vertical">
+    <v-row class="align-center" :no-gutters="!vertical">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
           v-model="selectedTargetName"
@@ -110,7 +110,7 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row v-if="selectTypes" class="pt-6" no-gutters>
+    <v-row v-if="selectTypes" class="pt-6 align-center" no-gutters>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
           v-model="selectedValueType"
@@ -144,7 +144,7 @@
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pt-3 px-3">
+    <v-row no-gutters class="pt-3 px-3 align-center">
       <v-col :cols="colSize" :class="{ 'openc3-yellow': hazardous }">
         Description: {{ description }}
         <template v-if="hazardous"> (HAZARDOUS) </template>
