@@ -29,20 +29,20 @@
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
         </div>
-          <v-list-item
-            v-for="(target, index) in modifiedTargets"
-            :key="index"
-            lines="two"
-          >
-            <v-list-item-title>{{ target.name }}</v-list-item-title>
-            <div class="file-list-container">
-              <v-list-item-subtitle
-                v-for="(file, itemIndex) in target.files"
-                :key="itemIndex"
-                >{{ file }}</v-list-item-subtitle
-              >
-            </div>
-          </v-list-item>
+        <v-list-item
+          v-for="(target, index) in modifiedTargets"
+          :key="index"
+          lines="two"
+        >
+          <v-list-item-title>{{ target.name }}</v-list-item-title>
+          <div class="file-list-container">
+            <v-list-item-subtitle
+              v-for="(file, itemIndex) in target.files"
+              :key="itemIndex"
+              >{{ file }}</v-list-item-subtitle
+            >
+          </div>
+        </v-list-item>
         <v-checkbox
           v-model="deleteModified"
           label="DELETE MODIFIED! THIS CAN NOT BE UNDONE!!!"
