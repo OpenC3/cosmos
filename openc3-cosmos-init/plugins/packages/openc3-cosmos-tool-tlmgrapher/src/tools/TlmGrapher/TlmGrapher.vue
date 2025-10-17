@@ -55,7 +55,7 @@
             color="primary"
             :data-test="isPaused ? 'start-graph' : 'pause-graph'"
             :icon="isPaused ? 'mdi-play' : 'mdi-pause'"
-            size="x-large"
+            size="small"
             @click="togglePause"
           />
         </v-container>
