@@ -33,8 +33,10 @@ test('add item start, pause, resume and stop', async ({ page, utils }) => {
   await utils.sleep(3000) // Wait for graphing to occur
   // Add another item while it is already graphing
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
+  await page.locator('[data-test=data-type] i').click()
+  await page.getByRole('option', { name: 'RAW', exact: true }).click()
   await page.locator('button:has-text("Add Item")').click()
-  await expect(page.locator('#chart0')).toContainText('TEMP2')
+  await expect(page.locator('#chart0')).toContainText('TEMP2 (RAW)')
   // Use the graph buttons first
   await page.locator('[data-test=pause-graph]').click()
   await utils.sleep(1000) // Wait for graphing to pause
