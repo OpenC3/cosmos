@@ -235,13 +235,10 @@ export default {
                   // This is binary data, display in hex.
                   let result = '0x'
                   for (let i = 0; i < message.message.raw.length; i++) {
-                    let nibble = message.message.raw[i]
+                    result += message.message.raw[i]
                       .toString(16)
+                      .padStart(2, '0')
                       .toUpperCase()
-                    if (nibble.length < 2) {
-                      nibble = '0' + nibble
-                    }
-                    result += nibble
                   }
                   message.message = result
                 } else {
