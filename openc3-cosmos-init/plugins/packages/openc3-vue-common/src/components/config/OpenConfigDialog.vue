@@ -35,7 +35,7 @@
             <v-row dense>
               <v-text-field
                 v-model="search"
-                label="search"
+                label="Search"
                 type="text"
                 prepend-inner-icon="mdi-magnify"
                 clearable
