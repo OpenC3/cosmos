@@ -18,7 +18,7 @@
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte)
+    GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Called by openc3cli with ARGV[1..-1]
@@ -384,6 +384,35 @@ module OpenC3
       puts "To use the limits response add the following to a telemetry item:"
       puts "  LIMITS_RESPONSE #{response_basename}"
       return response_name
+    end
+
+    def self.generate_command_validator(args)
+      if args.length < 3 or args.length > 4
+        abort("Usage: cli generate command_validator <TARGET> <NAME> (--ruby or --python)")
+      end
+
+      # Create the local variables
+      target_name = args[1].upcase
+      unless File.exist?("targets/#{target_name}")
+        abort("Target '#{target_name}' does not exist! Command validators must be created for existing targets.")
+      end
+      validator_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_COMMAND_VALIDATOR"
+      validator_basename = "#{validator_name.downcase}.#{@@language}"
+      validator_class = validator_basename.filename_to_class_name # NOSONAR
+      validator_filename = "targets/#{target_name}/lib/#{validator_basename}"
+      if File.exist?(validator_filename)
+        abort("Command validator #{validator_filename} already exists!")
+      end
+
+      process_template("#{TEMPLATES_DIR}/command_validator", binding) do |filename|
+        filename.sub!("command_validator.#{@@language}", validator_filename)
+        false
+      end
+
+      puts "Command validator #{validator_filename} successfully generated!"
+      puts "To use the command validator add the following to a command:"
+      puts "  VALIDATOR #{validator_basename}"
+      return validator_name
     end
   end
 end

@@ -114,6 +114,7 @@ _openc3_cli() {
                     'conversion:generate a conversion (requires TARGET NAME)'
                     'processor:generate a processor (requires TARGET NAME)'
                     'limits_response:generate a limits response (requires TARGET NAME)'
+                    'command_validator:generate a command validator (requires TARGET NAME)'
                     'tool:generate a tool (requires "Tool Name")'
                     'tool_vue:generate a Vue tool (requires "Tool Name")'
                     'tool_angular:generate an Angular tool (requires "Tool Name")'
@@ -124,7 +125,7 @@ _openc3_cli() {
             elif (( CURRENT == 3 )); then
                 # Different generators have different requirements
                 case $gen_type in
-                    conversion|processor|limits_response)
+                    conversion|processor|limits_response|command_validator)
                         # These require TARGET as first arg
                         _message -r 'TARGET (required)'
                         return 0
@@ -137,7 +138,7 @@ _openc3_cli() {
                 esac
             elif (( CURRENT == 4 )); then
                 case $gen_type in
-                    conversion|processor|limits_response)
+                    conversion|processor|limits_response|command_validator)
                         # After TARGET, need NAME
                         _message -r 'NAME (required)'
                         return 0
