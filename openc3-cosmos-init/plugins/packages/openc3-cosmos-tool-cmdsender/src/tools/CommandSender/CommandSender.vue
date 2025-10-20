@@ -353,6 +353,13 @@ export default {
         if (command === '') {
           return
         }
+        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo"))
+        // Reset queue to null first
+        this.queueName = null
+        const queueMatch = command.match(/queue:\s*"([^"]+)"/)
+        if (queueMatch) {
+          this.queueName = queueMatch[1]
+        }
         // Remove the cmd("") wrapper
         let firstQuote = command.indexOf('"')
         let lastQuote = command.lastIndexOf('"')
