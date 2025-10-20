@@ -105,7 +105,7 @@ module OpenC3
     #
     # @param (see #identify_tlm!)
     # @return (see #identify_tlm!)
-    def identify(packet_data, target_names = nil)
+    def identify(packet_data, target_names = nil, subpackets: false)
       identified_packet = nil
 
       target_names = target_names() unless target_names
@@ -121,9 +121,10 @@ module OpenC3
         end
 
         target = System.targets[target_name]
-        if target and target.cmd_unique_id_mode
+        if target and ((not subpackets and target.cmd_unique_id_mode) or (subpackets and target.cmd_subpacket_unique_id_mode))
           # Iterate through the packets and see if any represent the buffer
           target_packets.each do |_packet_name, packet|
+            next unless packet.subpacket == subpackets
             if packet.identify?(packet_data)
               identified_packet = packet
               break
@@ -132,9 +133,20 @@ module OpenC3
         else
           # Do a hash lookup to quickly identify the packet
           if target_packets.length > 0
-            packet = target_packets.first[1]
+            packet = nil
+            target_packets.each do |_packet_name, target_packet|
+              next if target_packet.virtual
+              next unless target_packet.subpacket == subpackets
+              packet = target_packet
+              break
+            end
+            return nil unless packet
             key = packet.read_id_values(packet_data)
-            hash = @config.cmd_id_value_hash[target_name]
+            if subpackets
+              hash = @config.cmd_subpacket_id_value_hash[target_name]
+            else
+              hash = @config.cmd_id_value_hash[target_name]
+            end
             identified_packet = hash[key]
             identified_packet = hash['CATCHALL'.freeze] unless identified_packet
           end

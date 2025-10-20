@@ -264,8 +264,8 @@ module OpenC3
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet with its data set to the given
     #   packet_data buffer. Returns nil if no packet could be identified.
-    def identify!(packet_data, target_names = nil)
-      identified_packet = identify(packet_data, target_names)
+    def identify!(packet_data, target_names = nil, subpackets: false)
+      identified_packet = identify(packet_data, target_names, subpackets: subpackets)
       identified_packet.buffer = packet_data if identified_packet
       return identified_packet
     end
@@ -277,7 +277,7 @@ module OpenC3
     # @param target_names [Array<String>] List of target names to limit the search. The
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
-    def identify(packet_data, target_names = nil)
+    def identify(packet_data, target_names = nil, subpackets: false)
       target_names = target_names() unless target_names
 
       target_names.each do |target_name|
@@ -293,17 +293,29 @@ module OpenC3
         end
 
         target = System.targets[target_name]
-        if target and target.tlm_unique_id_mode
+        if target and ((not subpackets and target.tlm_unique_id_mode) or (subpackets and target.tlm_subpacket_unique_id_mode))
           # Iterate through the packets and see if any represent the buffer
           target_packets.each do |_packet_name, packet|
+            next unless packet.subpacket == subpackets
             return packet if packet.identify?(packet_data)
           end
         else
           # Do a hash lookup to quickly identify the packet
           if target_packets.length > 0
-            packet = target_packets.first[1]
+            packet = nil
+            target_packets.each do |_packet_name, target_packet|
+              next if target_packet.virtual
+              next unless target_packet.subpacket == subpackets
+              packet = target_packet
+              break
+            end
+            return nil unless packet
             key = packet.read_id_values(packet_data)
-            hash = @config.tlm_id_value_hash[target_name]
+            if subpackets
+              hash = @config.tlm_subpacket_id_value_hash[target_name]
+            else
+              hash = @config.tlm_id_value_hash[target_name]
+            end
             identified_packet = hash[key]
             identified_packet = hash['CATCHALL'.freeze] unless identified_packet
             return identified_packet if identified_packet
@@ -314,9 +326,9 @@ module OpenC3
       return nil
     end
 
-    def identify_and_define_packet(packet, target_names = nil)
+    def identify_and_define_packet(packet, target_names = nil, subpackets: false)
       if !packet.identified?
-        identified_packet = identify(packet.buffer(false), target_names)
+        identified_packet = identify(packet.buffer(false), target_names, subpackets: subpackets)
         return nil unless identified_packet
 
         identified_packet = identified_packet.clone

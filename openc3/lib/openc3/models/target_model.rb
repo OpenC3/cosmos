@@ -61,8 +61,6 @@ module OpenC3
     attr_accessor :ignored_items
     attr_accessor :limits_groups
     attr_accessor :cmd_tlm_files
-    attr_accessor :cmd_unique_id_mode
-    attr_accessor :tlm_unique_id_mode
     attr_accessor :id
     attr_accessor :cmd_buffer_depth
     attr_accessor :cmd_log_cycle_time
@@ -347,8 +345,6 @@ module OpenC3
       ignored_items: [],
       limits_groups: [],
       cmd_tlm_files: [],
-      cmd_unique_id_mode: false,
-      tlm_unique_id_mode: false,
       id: nil,
       updated_at: nil,
       plugin: nil,
@@ -398,8 +394,6 @@ module OpenC3
       @ignored_items = ignored_items
       @limits_groups = limits_groups
       @cmd_tlm_files = cmd_tlm_files
-      @cmd_unique_id_mode = cmd_unique_id_mode
-      @tlm_unique_id_mode = tlm_unique_id_mode
       @id = id
       @cmd_buffer_depth = cmd_buffer_depth
       @cmd_log_cycle_time = cmd_log_cycle_time
@@ -438,8 +432,6 @@ module OpenC3
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
         'cmd_tlm_files' => @cmd_tlm_files,
-        'cmd_unique_id_mode' => @cmd_unique_id_mode,
-        'tlm_unique_id_mode' => @tlm_unique_id_mode,
         'id' => @id,
         'updated_at' => @updated_at,
         'plugin' => @plugin,
@@ -786,8 +778,6 @@ module OpenC3
       @ignored_parameters = target.ignored_parameters
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
-      @cmd_unique_id_mode = target.cmd_unique_id_mode
-      @tlm_unique_id_mode = target.tlm_unique_id_mode
       @limits_groups = system.limits.groups.keys
       update()
     end

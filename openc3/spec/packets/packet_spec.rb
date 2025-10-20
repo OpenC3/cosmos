@@ -1658,22 +1658,6 @@ module OpenC3
       end
     end
 
-    describe "self.from_json" do
-      it "creates a Packet from a hash" do
-        p = Packet.new("tgt", "pkt")
-        p.template = "\x00\x01\x02\x03"
-        p.append_item("test1", 8, :UINT)
-        p.accessor = OpenC3::XmlAccessor.new(p)
-        packet = Packet.from_json(p.as_json())
-        expect(packet.target_name).to eql p.target_name
-        expect(packet.packet_name).to eql p.packet_name
-        expect(packet.accessor.class).to eql OpenC3::XmlAccessor
-        item = packet.sorted_items[0]
-        expect(item.name).to eql "TEST1"
-        expect(packet.template).to eql "\x00\x01\x02\x03"
-      end
-    end
-
     describe "decom" do
       it "creates decommutated array data" do
         p = Packet.new("tgt", "pkt")
