@@ -868,7 +868,7 @@ export default {
               icon: 'mdi-file-plus',
               disabled: this.scriptId || this.readOnlyUser,
               command: () => {
-                this.newFile()
+                this.newFileWithConfirm()
               },
             },
             {
@@ -897,7 +897,7 @@ export default {
               icon: 'mdi-folder-open',
               disabled: this.scriptId,
               command: () => {
-                this.openFile()
+                this.openFileWithConfirm()
               },
             },
             {
@@ -2307,6 +2307,24 @@ export default {
       this.showAlert = true
     },
     // ScriptRunner File menu actions
+    async confirmUnsavedChanges() {
+      if (this.fileModified === '*') {
+        return await this.$dialog.confirm(
+          'You have unsaved changes. Are you sure you want to continue?',
+          {
+            okText: 'Continue',
+            cancelText: 'Cancel',
+          }
+        )
+      }
+      return true
+    },
+    async newFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.newFile()
+      }
+    },
     newFile() {
       this.unlockFile()
       this.filename = NEW_FILENAME
@@ -2331,6 +2349,8 @@ export default {
       this.doResize()
     },
     async newRubyTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -2376,6 +2396,8 @@ end
       await this.saveFile('auto')
     },
     async newPythonTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`from openc3.script.suite import Suite, Group
 
@@ -2429,6 +2451,8 @@ class TestSuite(Suite):
         label: filename,
         icon: fileIcon(filename),
         command: async (event) => {
+          const confirmed = await this.confirmUnsavedChanges()
+          if (!confirmed) return
           this.filename = event.label
           await this.reloadFile()
         },
@@ -2448,6 +2472,12 @@ class TestSuite(Suite):
         if (localStorage['script_runner__filename'] === filename) {
           localStorage.removeItem('script_runner__filename')
         }
+      }
+    },
+    async openFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.openFile()
       }
     },
     openFile() {
