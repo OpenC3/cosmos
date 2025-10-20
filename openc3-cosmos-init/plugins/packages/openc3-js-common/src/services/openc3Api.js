@@ -863,23 +863,6 @@ export default class OpenC3Api {
     return this.exec('get_metrics', [])
   }
 
-  // Queue methods
-  get_all_queues() {
-    return this.exec('queue_all', [])
-  }
-
-  get_queue(name) {
-    return this.exec('queue_get', [name])
-  }
-
-  create_queue(name, state = 'HOLD') {
-    return this.exec('queue_create', [name], { state: state })
-  }
-
-  delete_queue(name) {
-    return this.exec('queue_delete', [name])
-  }
-
   // TODO: Currently unused but seemed like a useful function
   async hashString(string) {
     if (window.isSecureContext) {
