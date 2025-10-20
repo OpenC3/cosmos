@@ -24,7 +24,7 @@
         <span> Modified Plugin </span>
         <v-spacer />
       </v-toolbar>
-      <v-card-text class="pa-3">
+      <v-card-text class="pa-3 card-container">
         <div>
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
@@ -126,6 +126,11 @@ export default {
 </script>
 
 <style scoped>
+.card-container {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
 .file-list-container {
   max-height: 50vh;
   overflow-y: auto;
