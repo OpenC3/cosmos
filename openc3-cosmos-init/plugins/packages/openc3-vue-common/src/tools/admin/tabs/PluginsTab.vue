@@ -183,21 +183,25 @@ export default {
   },
   data() {
     return {
-      api: new OpenC3Api(),
+      // Control state
+      pluginName: null,
+      variables: {},
+      storeId: null,
+      pluginTxt: '',
       file: null,
       currentPlugin: null,
+      pluginHashTmp: null,
+      existingPluginTxt: null,
+      progress: 0,
+      pluginDelete: false,
+
+      api: new OpenC3Api(),
       plugins: [],
       targets: {},
       processes: {},
       alert: '',
       alertType: 'success',
       showAlert: false,
-      pluginName: null,
-      variables: {},
-      storeId: null,
-      pluginTxt: '',
-      pluginHashTmp: null,
-      existingPluginTxt: null,
       showDownloadDialog: false,
       showProcessOutput: false,
       processOutput: '',
@@ -205,8 +209,6 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
-      progress: 0,
-      pluginDelete: false,
       // When updating update local_mode.rb, local_mode.py, plugins.spec.ts
       defaultPlugins: [
         'openc3-cosmos-tool-admin',
@@ -264,6 +266,18 @@ export default {
     }
   },
   methods: {
+    resetControlState: function () {
+      this.pluginName = null
+      this.variables = {}
+      this.storeId = null
+      this.pluginTxt = ''
+      this.file = null
+      this.currentPlugin = null
+      this.pluginHashTmp = null
+      this.existingPluginTxt = null
+      this.progress = 0
+      this.pluginDelete = false
+    },
     pluginTargets: function (plugin) {
       let result = []
       for (const target in this.targets) {
@@ -412,6 +426,7 @@ export default {
       })
     },
     editPlugin: function (plugin) {
+      this.resetControlState()
       Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {
         let existingPluginTxt = null
         if (response.data.existing_plugin_txt_lines !== undefined) {
@@ -425,6 +440,7 @@ export default {
       })
     },
     deletePrompt: function (plugin) {
+      this.resetControlState()
       this.$dialog
         .confirm(`Are you sure you want to remove: ${plugin}`, {
           okText: 'Delete',
@@ -453,15 +469,12 @@ export default {
       this.update()
     },
     upgradePlugin(plugin) {
-      this.file = null
+      this.resetControlState()
       this.currentPlugin = plugin
-      this.progress = 0
       this.$refs.fileInput.click()
     },
     selectFile() {
-      this.file = null
-      this.currentPlugin = null
-      this.progress = 0
+      this.resetControlState()
       this.$refs.fileInput.click()
     },
     fileChange(event) {
@@ -524,6 +537,7 @@ export default {
       }
     },
     openStore() {
+      this.resetControlState()
       this.showPluginStore = true
     },
   },
