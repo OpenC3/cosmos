@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" persistent width="600" @keydown.esc="cancel">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -55,12 +55,7 @@
         <v-btn
           variant="outlined"
           data-test="modified-plugin-cancel"
-          @click="
-            () => {
-              show = false
-              $emit('cancel')
-            }
-          "
+          @click="cancel"
         >
           Cancel
         </v-btn>
@@ -96,6 +91,12 @@ export default {
       modifiedTargets: [],
       deleteModified: false,
     }
+  },
+  methods: {
+    cancel() {
+      this.show = false
+      this.$emit('cancel')
+    },
   },
   computed: {
     show: {

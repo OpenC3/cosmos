@@ -140,6 +140,7 @@
         is loaded.
       </div>
     </v-card>
+    <!-- Changes in this dialog are applied immediately, so persistent is not necessary -->
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-card>
         <v-toolbar height="24">

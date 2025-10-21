@@ -47,6 +47,8 @@
   </v-card>
   <div style="height: 15px" />
   <log-messages :time-zone="timeZone" />
+
+  <!-- This dialog updates at time of input, so it does not need to be persistent -->
   <v-dialog v-model="optionsDialog" max-width="300">
     <v-card>
       <v-toolbar height="24">
