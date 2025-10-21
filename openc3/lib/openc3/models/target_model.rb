@@ -169,7 +169,7 @@ module OpenC3
       tmp_dir = Dir.mktmpdir
       zip_filename = File.join(tmp_dir, "#{target_name}.zip")
       Zip.continue_on_exists_proc = true
-      zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+      zip = Zip::File.open(zip_filename, create: true)
 
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
@@ -756,7 +756,7 @@ module OpenC3
       prefix = File.dirname(target_folder) + '/'
       output_file = File.join(temp_dir, @name + '_' + @id + '.zip')
       Zip.continue_on_exists_proc = true
-      Zip::File.open(output_file, Zip::File::CREATE) do |zipfile|
+      Zip::File.open(output_file, create: true) do |zipfile|
         target_files.each do |target_file|
           zip_file_path = target_file.delete_prefix(prefix)
           if File.directory?(target_file)
