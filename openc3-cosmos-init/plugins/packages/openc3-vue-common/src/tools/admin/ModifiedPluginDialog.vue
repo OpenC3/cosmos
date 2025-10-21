@@ -24,7 +24,7 @@
         <span> Modified Plugin </span>
         <v-spacer />
       </v-toolbar>
-      <v-card-text class="pa-3">
+      <v-card-text class="pa-3 card-container">
         <div>
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
@@ -35,11 +35,13 @@
           lines="two"
         >
           <v-list-item-title>{{ target.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            v-for="(file, itemIndex) in target.files"
-            :key="itemIndex"
-            >{{ file }}</v-list-item-subtitle
-          >
+          <div class="file-list-container">
+            <v-list-item-subtitle
+              v-for="(file, itemIndex) in target.files"
+              :key="itemIndex"
+              >{{ file }}</v-list-item-subtitle
+            >
+          </div>
         </v-list-item>
         <v-checkbox
           v-model="deleteModified"
@@ -123,4 +125,14 @@ export default {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.card-container {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.file-list-container {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+</style>
