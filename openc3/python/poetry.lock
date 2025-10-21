@@ -1207,59 +1207,59 @@ dev = ["black", "build", "mypy", "pytest", "pytest-cov", "setuptools", "tox", "t
 
 [[package]]
 name = "questdb"
-version = "3.0.0"
+version = "4.0.0"
 description = "QuestDB client library for Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "questdb-3.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:c216abb13ac3701ddef6950a5b542328e98f933445344a4391fc280eb9211c73"},
-    {file = "questdb-3.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:19108965a046c829e5d3ac7951a18e153ccd415c4405617b718d41067ba1d891"},
-    {file = "questdb-3.0.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2b0ff3211833a5ff218eac9021edf7b47f5b2cbd1f6402bc9cc8e3f3ad2cdd24"},
-    {file = "questdb-3.0.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:967a46dbefecb13d452dc763bec9518c3de9b109ddc2d3ff18a057d68e43055f"},
-    {file = "questdb-3.0.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:9336f25603316e2b595fd9e9e1a970f4d2a485d9ec87b4f03a4ae4967898679d"},
-    {file = "questdb-3.0.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:204eaa6408a14e35b881a4ad6204db2bd5fd9da8e1701ca161818b81ba469c1f"},
-    {file = "questdb-3.0.0-cp310-cp310-win32.whl", hash = "sha256:e9bc159736a1d1713200125e37862925051c9286e19d10466710f65661833027"},
-    {file = "questdb-3.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:3f0ddbc9679dcbc1e7cb47a727da900981126d95dfcaf73abe834f7acadd5cf6"},
-    {file = "questdb-3.0.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:618f72c5cc350c2e435cb41b341298da2f2568b451e059221daa76a80271eeb4"},
-    {file = "questdb-3.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:0a6f34d1b1a754a9ec2fc4c030e1205748806d839dca16a8ac1a3360822d8d8a"},
-    {file = "questdb-3.0.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:37662076affd2ee3f5ecd22f2aed02e087a5564c0d5b1178c31ae6762486f23d"},
-    {file = "questdb-3.0.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:9cb27ed31714f100b75c46f1ba4bc1265d85acca988c1a62210b0ac92430a7a8"},
-    {file = "questdb-3.0.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:36eb1cd09ddbeadc17bd94ea00bc58d738b03130749b44d2c406aaf3e5abf779"},
-    {file = "questdb-3.0.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:2b3a5de42fa40a3488ec34663bf14075892175d6dd9a43a36d94b048b4e396e3"},
-    {file = "questdb-3.0.0-cp311-cp311-win32.whl", hash = "sha256:92a24e136355db7f8e73ddbcc92fa4d23f7cb7ad3a357cd931afed981b4d9ee7"},
-    {file = "questdb-3.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:f8cec40315228a0ce40223e4eaf43e95c9b9113fd91ab96be499d0fcb4bf79ae"},
-    {file = "questdb-3.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:9f59ec6c8fac6d3cb343dc9edcd09e67c1bc79971cbc0ba5eced667acd6fb335"},
-    {file = "questdb-3.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2f7009fe441917cbd4cee1d1a488f40d8a528552dce387f4f43108d69ccfb48e"},
-    {file = "questdb-3.0.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e1e7baf6f2dd96f43e08c335cc343ed5ae11c5ff8e90d3f33da1a531eab61a20"},
-    {file = "questdb-3.0.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:7bbf02a6be42743f98d8093fe3f9bdc8036a9bf24d50d8d2a0005b4989b55e9d"},
-    {file = "questdb-3.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:92112b9dd0748f5e542b0f23842829b822a800fd50c4c263990156017f23edd1"},
-    {file = "questdb-3.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:263dea4245cd72b1d0192bfeb54b384ee3a6b2627ef0bbf739e933f8550548e7"},
-    {file = "questdb-3.0.0-cp312-cp312-win32.whl", hash = "sha256:de062bd8c7a3d58426666711948b818e944fda317deb1f8a1a2b7245573a745f"},
-    {file = "questdb-3.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:77dfa9fb077bfe0638791aff8439ad812b0fc014b342f21013ef8baf40fe48a3"},
-    {file = "questdb-3.0.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:8607de9d4d2dad266419840750e61e39c5ef9ae23a5fe7c50872274b77948bd1"},
-    {file = "questdb-3.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:24103d0b45f9ee24b29ee8fe8c59861370a41f4f96c729d9c35fb98ce2532398"},
-    {file = "questdb-3.0.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:18e96d6680f76e3cb6bfbff14716d93312107e21327e958a16ab25901b7a8cfc"},
-    {file = "questdb-3.0.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:390e8ea76becb175785de005d69bcec2922a77bdc69314fc0737197106979e6f"},
-    {file = "questdb-3.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:6c89248b5b958f916b929be058f3fd6e5b2d0b8ce97e1d3cf176cd16b1b209ec"},
-    {file = "questdb-3.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:953bad826cdf440278cc7949e148f1a8716b642dfbdd07e699c6d135afac2059"},
-    {file = "questdb-3.0.0-cp313-cp313-win32.whl", hash = "sha256:3cc9dee77eaaaed319e2352811f6bd3523fe588724ed3be0153ef42ba877cfe5"},
-    {file = "questdb-3.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:b01ee4e872eb70f627f48d444d6e7277e10a55d3c54565012ed4aec9fe173962"},
-    {file = "questdb-3.0.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:0b5d7cbf4b22c8b9a1590ad6e5de168ca65502c0b1bcc24b611ffcab25359c5c"},
-    {file = "questdb-3.0.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:2c746513c952987c1bf47ea7acae396e298a73a5eeff5fd2c9b9caa042a72669"},
-    {file = "questdb-3.0.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2a8d7a8341312e9c1ebebc34db891e96de22d5f4ddbd432ee809857dec17b512"},
-    {file = "questdb-3.0.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:0f039a574c1bf3f0e6b0ac9f7dfb620e3cde9caddc1a835960bcd659734c997b"},
-    {file = "questdb-3.0.0-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:e5cb34f86d2031ae87a657ddbc31d3371167ac9da496594c1f3b438023e84ce4"},
-    {file = "questdb-3.0.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:b7363f38d6bcaa916a4bb8fd754f20f1dbe548e4f6d797b3b0112cb5cb6e4da4"},
-    {file = "questdb-3.0.0-cp39-cp39-win32.whl", hash = "sha256:d6bc7b3bbf63bbe0ad052fb6ef40675483f98c4323074285495daf89b616b7a0"},
-    {file = "questdb-3.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:b29af3b9cf5f5786f77c818fa994102834b1f3449efa1f4eaa85e0a2962caa72"},
-    {file = "questdb-3.0.0-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ac463929a328cf7f5e2836011f979926c517abe32c9aec133c0311a5d0fc269e"},
-    {file = "questdb-3.0.0-pp310-pypy310_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:06f910cd9d62f1283c72542dad08d24b51023283445ff27ff878b8ca1a6f1a27"},
-    {file = "questdb-3.0.0-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1183feefd94354c0f31320a68da28b15d8674e780a7ab01db6933b8714b8c258"},
-    {file = "questdb-3.0.0-pp311-pypy311_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:ad5f88814945f047bf68fd03537bf7a4eca869adf0d461fabdc8ab8930209660"},
-    {file = "questdb-3.0.0-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b5b59a34ebff07a8ccf94fce397379ad05645e4f7b3306851edcbeb079565ffe"},
-    {file = "questdb-3.0.0-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:235267af043ba997a656cb263771ad88ab29ad29d5d7d3a641f4b9266cca8c45"},
-    {file = "questdb-3.0.0.tar.gz", hash = "sha256:162413c36284a1c5b3805640b042babaa8590ba503976f81927efa2f8befb9dd"},
+    {file = "questdb-4.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:94047bf8bc162e48c970623251c290eb2e6d4a319d894f9f64234f8d76e4d1f1"},
+    {file = "questdb-4.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e4b023cfd991c5b3f6891a19a2afbe5f6420de4c8e87082377a6f468618266c8"},
+    {file = "questdb-4.0.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:05ec2993bdc6fb1393570ef8decab20c27d061ca03470e2f88b57f15812753dc"},
+    {file = "questdb-4.0.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:6051a7952e6e204cde0c3015a0671207659bf4aa99740b91394505aa21742f15"},
+    {file = "questdb-4.0.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:fe65b62e784df4f7cb86809eaf2af4f996b10a8c25e72e1624be804b49cf2818"},
+    {file = "questdb-4.0.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:57872fa761b42838c7e8b3aac42ba6743f8f0a088e99bbcb53fa73d56949ef7f"},
+    {file = "questdb-4.0.0-cp310-cp310-win32.whl", hash = "sha256:c98f0195aba20bbd689fb01af4f59bfdf80326b4a1440e44031f678d677fcd6c"},
+    {file = "questdb-4.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:c8bfc6bca01d8e7009906e35fdaea605b85ab8a3adb70275ca2c2faca092a758"},
+    {file = "questdb-4.0.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:5529ef1dfd0c2d790b43bddf3475a088f9a831ef253605605c461fce004cbea9"},
+    {file = "questdb-4.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:d07e8463dbe60a2bfbdeab53363f96b33521e2376459b538df89a4a2e03c4f93"},
+    {file = "questdb-4.0.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:10ee9806d678d60be0cf04200bffb1d1cf1f4119a84dec8a0f5df1eb11b2c403"},
+    {file = "questdb-4.0.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:b42d40a49302aa1e3d88a33097116026bddbcd51b27295e22798ff4127a8ff09"},
+    {file = "questdb-4.0.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:a98d9f211c288908b5ac3952e10fb735ab0790cc58584e561a37ffdde4fca5d5"},
+    {file = "questdb-4.0.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:d5f0351a46befc7ffe187cbe389c6ccb8caa6181c07c4cf56725c9b9078bc732"},
+    {file = "questdb-4.0.0-cp311-cp311-win32.whl", hash = "sha256:be6c1f2e6c7fdf7a61c3ba91cd48b9b724355089c8dae4ccfaf46edcf519795e"},
+    {file = "questdb-4.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:cefeaff5e374d40dbdcb2be55b59d49f043dd398dcb6f85a0a2b3071c1edf78e"},
+    {file = "questdb-4.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:f3caefe8a7ecf33d8c1511c941b3bb32d1c1874c0db1ca389a9fb258fccf6105"},
+    {file = "questdb-4.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e71c12f85d8d9c13db18d99ce60d235d1a30e6e323025c3a15f25337d3a7fb3f"},
+    {file = "questdb-4.0.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2990ed387a0577b7b3b198c9eaa9f7f4016f42b1f54d76d30281884e76430889"},
+    {file = "questdb-4.0.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:c7bcad2df27f49361e7c9b8de0e126a12af607f2305183dde959edd9bc5d8652"},
+    {file = "questdb-4.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:cf4de66256ebb97d6c2b0b4e1c516d72f3632d14460d38f5c213ed6a872658f2"},
+    {file = "questdb-4.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:28167cae25ec38fcc999ec7b79e27b65e2d0a3b2b5e4b16956dc6ae335d60a34"},
+    {file = "questdb-4.0.0-cp312-cp312-win32.whl", hash = "sha256:b86d0c6f7222e23281506e280d60ba1c5cb801070c74087e3b56a41e4ee1b6b2"},
+    {file = "questdb-4.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:7836535e635636301803a24abe7a2bf7106127b064d032f047ef4c4c37f95254"},
+    {file = "questdb-4.0.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:184c6578a79c20080b7d6d58d3e41ac9f58e79abd57f7af20334f758ad859005"},
+    {file = "questdb-4.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:5ea8dc8531a1b36bb68503995e6f8c08c8a3da88691cbf446f63edb3715b7f30"},
+    {file = "questdb-4.0.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:402540696446dfb53ab9afca85d170d11d39765ec0330ce1b055831198f3fbf7"},
+    {file = "questdb-4.0.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:ee0e0747ab2f6e9325d107367ad602795ed390c340893c6727b0c26790be100b"},
+    {file = "questdb-4.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:778bad226edf03857ed174a211c99f368fe4f55f34f2ea435b096d0f42dea37b"},
+    {file = "questdb-4.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:5db85658904ecc057f8c655ca8ed5e90ed4af0abe63c8315f98d2a17f6b186a2"},
+    {file = "questdb-4.0.0-cp313-cp313-win32.whl", hash = "sha256:75146c5eb30dd0a30e361bc7f5455ac022311f7761bacb57e9567fa8e0e1adc1"},
+    {file = "questdb-4.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:e1666450ce0e1de24d5769499653cb797fb25ac8de44ec3462a3dbcd9d7cfc36"},
+    {file = "questdb-4.0.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:0f0d980bdf8188da157aa55ccf20b3c25539c50b598e342fd6163e40223dda09"},
+    {file = "questdb-4.0.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:0bc6d0bf8437faa98af5901ecb6746d91444d3e90401920d6c00564a9d538745"},
+    {file = "questdb-4.0.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6b7b07447163b58fd813448638284bcd243444b0620c125660e976e50e573650"},
+    {file = "questdb-4.0.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:84a64cb06698cdf3ba304a2a65c17d3011b02a5571460cc2f6de87549753d0f9"},
+    {file = "questdb-4.0.0-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:c43ff615c29075f860fe566e2292c7412593934a67199c3d89c495d75f44e2aa"},
+    {file = "questdb-4.0.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:0a1f32d533d07f76d6cd37da03abeca1b7ec7d873e5622441246d0bf3954d396"},
+    {file = "questdb-4.0.0-cp39-cp39-win32.whl", hash = "sha256:3c3a2d61c25b9cdc3c77e5acf24dd627b1692bd91001953b73a7b860acc3b4e7"},
+    {file = "questdb-4.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:6f9a6960fa500e0aa84c21f669270b06c3b19c0e35d106a88d6eff00e1734e4f"},
+    {file = "questdb-4.0.0-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6a0bf09ffd2ec18ec70570b6f42e9f790844003a546c5a334be4b9f97664567c"},
+    {file = "questdb-4.0.0-pp310-pypy310_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:a26929f78377dbbe465c491edc44acb5336c01c1053d2cd7c0797131a4dba145"},
+    {file = "questdb-4.0.0-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fe3b73714c25de6a223866b3f94691f0d058086962b006ecd43f8b6daab446ad"},
+    {file = "questdb-4.0.0-pp311-pypy311_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:aa52f0b6b562a111024d6b54f0979999ae76c979eff1276b814ebba71ce019d1"},
+    {file = "questdb-4.0.0-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:09c73f4a69a60a8f9274f929648e51d520306caca889b0419ee6f0c83b511310"},
+    {file = "questdb-4.0.0-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:08cd11e22752164bb57c61575a1f02a9f0bb658eadef510edc76069f7f9f3202"},
+    {file = "questdb-4.0.0.tar.gz", hash = "sha256:78c6e438f6fe76920f7332a7518e22a60762e9141ed705aaf6330bca35449405"},
 ]
 
 [package.dependencies]
@@ -1315,31 +1315,31 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "ruff"
-version = "0.13.3"
+version = "0.14.1"
 description = "An extremely fast Python linter and code formatter, written in Rust."
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
 files = [
-    {file = "ruff-0.13.3-py3-none-linux_armv6l.whl", hash = "sha256:311860a4c5e19189c89d035638f500c1e191d283d0cc2f1600c8c80d6dcd430c"},
-    {file = "ruff-0.13.3-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:2bdad6512fb666b40fcadb65e33add2b040fc18a24997d2e47fee7d66f7fcae2"},
-    {file = "ruff-0.13.3-py3-none-macosx_11_0_arm64.whl", hash = "sha256:fc6fa4637284708d6ed4e5e970d52fc3b76a557d7b4e85a53013d9d201d93286"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1c9e6469864f94a98f412f20ea143d547e4c652f45e44f369d7b74ee78185838"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:5bf62b705f319476c78891e0e97e965b21db468b3c999086de8ffb0d40fd2822"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:78cc1abed87ce40cb07ee0667ce99dbc766c9f519eabfd948ed87295d8737c60"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:4fb75e7c402d504f7a9a259e0442b96403fa4a7310ffe3588d11d7e170d2b1e3"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:17b951f9d9afb39330b2bdd2dd144ce1c1335881c277837ac1b50bfd99985ed3"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:6052f8088728898e0a449f0dde8fafc7ed47e4d878168b211977e3e7e854f662"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dc742c50f4ba72ce2a3be362bd359aef7d0d302bf7637a6f942eaa763bd292af"},
-    {file = "ruff-0.13.3-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:8e5640349493b378431637019366bbd73c927e515c9c1babfea3e932f5e68e1d"},
-    {file = "ruff-0.13.3-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:6b139f638a80eae7073c691a5dd8d581e0ba319540be97c343d60fb12949c8d0"},
-    {file = "ruff-0.13.3-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:6b547def0a40054825de7cfa341039ebdfa51f3d4bfa6a0772940ed351d2746c"},
-    {file = "ruff-0.13.3-py3-none-musllinux_1_2_i686.whl", hash = "sha256:9cc48a3564423915c93573f1981d57d101e617839bef38504f85f3677b3a0a3e"},
-    {file = "ruff-0.13.3-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:1a993b17ec03719c502881cb2d5f91771e8742f2ca6de740034433a97c561989"},
-    {file = "ruff-0.13.3-py3-none-win32.whl", hash = "sha256:f14e0d1fe6460f07814d03c6e32e815bff411505178a1f539a38f6097d3e8ee3"},
-    {file = "ruff-0.13.3-py3-none-win_amd64.whl", hash = "sha256:621e2e5812b691d4f244638d693e640f188bacbb9bc793ddd46837cea0503dd2"},
-    {file = "ruff-0.13.3-py3-none-win_arm64.whl", hash = "sha256:9e9e9d699841eaf4c2c798fa783df2fabc680b72059a02ca0ed81c460bc58330"},
-    {file = "ruff-0.13.3.tar.gz", hash = "sha256:5b0ba0db740eefdfbcce4299f49e9eaefc643d4d007749d77d047c2bab19908e"},
+    {file = "ruff-0.14.1-py3-none-linux_armv6l.whl", hash = "sha256:083bfc1f30f4a391ae09c6f4f99d83074416b471775b59288956f5bc18e82f8b"},
+    {file = "ruff-0.14.1-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:f6fa757cd717f791009f7669fefb09121cc5f7d9bd0ef211371fad68c2b8b224"},
+    {file = "ruff-0.14.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d6191903d39ac156921398e9c86b7354d15e3c93772e7dbf26c9fcae59ceccd5"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ed04f0e04f7a4587244e5c9d7df50e6b5bf2705d75059f409a6421c593a35896"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:5c9e6cf6cd4acae0febbce29497accd3632fe2025c0c583c8b87e8dbdeae5f61"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a6fa2458527794ecdfbe45f654e42c61f2503a230545a91af839653a0a93dbc6"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:39f1c392244e338b21d42ab29b8a6392a722c5090032eb49bb4d6defcdb34345"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:7382fa12a26cce1f95070ce450946bec357727aaa428983036362579eadcc5cf"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:dd0bf2be3ae8521e1093a487c4aa3b455882f139787770698530d28ed3fbb37c"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cabcaa9ccf8089fb4fdb78d17cc0e28241520f50f4c2e88cb6261ed083d85151"},
+    {file = "ruff-0.14.1-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:747d583400f6125ec11a4c14d1c8474bf75d8b419ad22a111a537ec1a952d192"},
+    {file = "ruff-0.14.1-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:5a6e74c0efd78515a1d13acbfe6c90f0f5bd822aa56b4a6d43a9ffb2ae6e56cd"},
+    {file = "ruff-0.14.1-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:0ea6a864d2fb41a4b6d5b456ed164302a0d96f4daac630aeba829abfb059d020"},
+    {file = "ruff-0.14.1-py3-none-musllinux_1_2_i686.whl", hash = "sha256:0826b8764f94229604fa255918d1cc45e583e38c21c203248b0bfc9a0e930be5"},
+    {file = "ruff-0.14.1-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:cbc52160465913a1a3f424c81c62ac8096b6a491468e7d872cb9444a860bc33d"},
+    {file = "ruff-0.14.1-py3-none-win32.whl", hash = "sha256:e037ea374aaaff4103240ae79168c0945ae3d5ae8db190603de3b4012bd1def6"},
+    {file = "ruff-0.14.1-py3-none-win_amd64.whl", hash = "sha256:59d599cdff9c7f925a017f6f2c256c908b094e55967f93f2821b1439928746a1"},
+    {file = "ruff-0.14.1-py3-none-win_arm64.whl", hash = "sha256:e3b443c4c9f16ae850906b8d0a707b2a4c16f8d2f0a7fe65c475c5886665ce44"},
+    {file = "ruff-0.14.1.tar.gz", hash = "sha256:1dd86253060c4772867c61791588627320abcb6ed1577a90ef432ee319729b69"},
 ]
 
 [[package]]
@@ -1621,4 +1621,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "ef89485348268c617b04ed408bbc47944b244c7512ad524b8b8e84ab392ab9e1"
+content-hash = "b0217ada21e272de9fb936808fd6ff5732697650b1af1c33da57a377ac40bf6f"
