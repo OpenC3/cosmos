@@ -110,7 +110,7 @@ File.open("openc3_package_report.txt", "w") do |file|
 end
 
 puts "\n\nRun the following:"
-puts "cd openc3-cosmos-init/plugins; pnpm install; pnpm update --interactive --latest; cd ../.."
+puts "cd openc3-cosmos-init/plugins; pnpm install; pnpm update --interactive --latest --recursive; cd ../.."
 puts "cd playwright; pnpm install; pnpm update --interactive --latest; cd .."
 puts "cd docs.openc3.com; pnpm install; pnpm update --interactive --latest; cd .."
 

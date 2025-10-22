@@ -105,7 +105,7 @@ module OpenC3
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
 
-      @trackStars = Array.new
+      @trackStars = []
       @trackStars[0] = 1237
       @trackStars[1] = 1329
       @trackStars[2] = 1333

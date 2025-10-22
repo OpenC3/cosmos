@@ -166,10 +166,14 @@ module OpenC3
     end
 
     def self.download(target_name, scope:)
+      # Validate target_name to not allow directory traversal
+      if target_name.include?('..') || target_name.include?('/') || target_name.include?('\\')
+        raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
+      end
       tmp_dir = Dir.mktmpdir
       zip_filename = File.join(tmp_dir, "#{target_name}.zip")
       Zip.continue_on_exists_proc = true
-      zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+      zip = Zip::File.open(zip_filename, create: true)
 
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
@@ -756,7 +760,7 @@ module OpenC3
       prefix = File.dirname(target_folder) + '/'
       output_file = File.join(temp_dir, @name + '_' + @id + '.zip')
       Zip.continue_on_exists_proc = true
-      Zip::File.open(output_file, Zip::File::CREATE) do |zipfile|
+      Zip::File.open(output_file, create: true) do |zipfile|
         target_files.each do |target_file|
           zip_file_path = target_file.delete_prefix(prefix)
           if File.directory?(target_file)
@@ -807,7 +811,7 @@ module OpenC3
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
             raise e
           end
-          json_hash = Hash.new
+          json_hash = {}
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
             TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
