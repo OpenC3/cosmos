@@ -45,8 +45,8 @@ class ToolsController < ModelController
   end
 
   def importmap
-    result = Hash.new
-    result["imports"] = Hash.new
+    result = {}
+    result["imports"] = {}
 
     tools = @model_class.all_scopes
     inline_tools = {}

@@ -237,7 +237,7 @@ module OpenC3
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]
     def generate_topics
-      topics = Hash.new
+      topics = {}
       if @left['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{left['target']}}__#{left['packet']}"] = 1
       end
