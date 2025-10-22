@@ -19,6 +19,7 @@ class <%= validator_class %>(CommandValidator):
         # target_name = command['target_name']
         # command_name = command['cmd_name']
         # params = command['cmd_params']
+        # self.count = tlm("TARGET PACKET COUNT")
         #
         # if some_condition:
         #     return [False, "Command validation failed: reason"]
@@ -35,10 +36,12 @@ class <%= validator_class %>(CommandValidator):
         # Add your post-command validation logic here
         # Example:
         # Use the OpenC3 API to check telemetry or wait for responses
-        # wait_check("TARGET PACKET ITEM == 'EXPECTED'", 5) # Wait up to 5 seconds
+        # wait_check(f"TARGET PACKET COUNT > {self.count}", 5) # Wait up to 5 seconds
         #
         # if some_condition:
         #     return [False, "Post-command validation failed: reason"]
+        #
+        # Wait for telemetry
 
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
