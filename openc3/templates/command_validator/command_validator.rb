@@ -39,6 +39,7 @@ module OpenC3
       # Add your post-command validation logic here
       # Example:
       # Use the OpenC3 API to check telemetry or wait for responses
+      # wait_check("TARGET PACKET ITEM == 'EXPECTED'", 5) # Wait up to 5 seconds
       # wait_check("TARGET PACKET COUNT > #{@count}", 5) # Wait up to 5 seconds
       #
       # if some_condition
