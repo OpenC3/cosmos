@@ -17,6 +17,7 @@
 import os
 import sys
 import re
+import traceback
 from openc3.utilities.extract import remove_quotes
 
 
@@ -356,11 +357,11 @@ class ConfigParser:
         for error in errors:
             if issubclass(error, ConfigParser.Error):
                 message += f"\n{os.path.basename(error.filename)}:{error.line_number}: {error.line}"
-                message += f"\nError: {repr(error)}"
+                message += f"\nError: {traceback.format_exc()}"
                 if not error.usage:
                     message += f"\nUsage: {error.usage}"
             else:
-                message += f"\n{repr(error)}"
+                message += f"\n{traceback.format_exc()}"
         message += "\n"
         raise ConfigParser.Error(self, message)
 

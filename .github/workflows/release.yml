@@ -76,7 +76,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
-      - uses: stefanzweifel/git-auto-commit-action@v6
+      - uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
@@ -84,7 +84,7 @@ jobs:
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
       - name: Build pnpm Packages
@@ -139,28 +139,16 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: openc3/python/dist
-      - name: publish npm js package
+      - name: publish common npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
-        run: npm publish --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
+        run: pnpm -F "@openc3/*-common" publish --access public
+        working-directory: openc3-cosmos-init/plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: publish npm js package pre
+      - name: publish common npm packages pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
-        run: npm publish --tag pre --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: publish npm vue package
-        if: ${{ github.event.inputs.update_latest == 'true' }}
-        run: npm publish --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: publish npm vue package pre
-        if: ${{ github.event.inputs.update_latest != 'true' }}
-        run: npm publish --tag pre --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
+        run: pnpm -F "@openc3/*-common" publish --tag pre --access public
+        working-directory: openc3-cosmos-init/plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Update version to next
@@ -168,7 +156,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.next_version }}
-      - uses: stefanzweifel/git-auto-commit-action@v6
+      - uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
           push_options: --force

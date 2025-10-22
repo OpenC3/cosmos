@@ -16,6 +16,7 @@
 
 import os
 import sys
+import traceback
 from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.system.system import System
 from openc3.models.router_status_model import RouterStatusModel
@@ -70,13 +71,13 @@ class RouterMicroservice(InterfaceMicroservice):
                             self.logger.warn(
                                 f"Unidentified packet of {len(packet.buffer_no_copy())} bytes being routed to target {self.interface.cmd_target_names[0]}"
                             )
-                except RuntimeError as error:
-                    self.logger.error(f"Problem formatting command from router=\n{repr(error)}")
+                except RuntimeError:
+                    self.logger.error(f"Problem formatting command from router=\n{traceback.format_exc()}")
 
                 RouterTopic.route_command(packet, self.interface.cmd_target_names, scope=self.scope)
             except RuntimeError as error:
                 self.error = error
-                self.logger.error(f"Error routing command from {self.interface.name}\n{repr(error)}")
+                self.logger.error(f"Error routing command from {self.interface.name}\n{traceback.format_exc()}")
 
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):

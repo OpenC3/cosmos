@@ -18,7 +18,12 @@
 
 <template>
   <!-- Edit Item dialog -->
-  <v-dialog v-model="show" max-width="700" @keydown.esc="$emit('cancel')">
+  <v-dialog
+    v-model="show"
+    persistent
+    max-width="700"
+    @keydown.esc="$emit('cancel')"
+  >
     <v-toolbar height="24">
       <v-spacer />
       <span> Edit Graph </span>

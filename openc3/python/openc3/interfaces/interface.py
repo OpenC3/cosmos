@@ -296,7 +296,7 @@ class Interface:
         try:
             yield
         except WriteRejectError as error:
-            Logger.error(f"{self.name}: Write rejected by interface {repr(error)}")
+            Logger.error(f"{self.name}: Write rejected by interface {traceback.format_exc()}")
             raise error
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error writing to interface")
