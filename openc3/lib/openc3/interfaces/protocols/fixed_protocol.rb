@@ -89,12 +89,10 @@ module OpenC3
         begin
           if @telemetry
             target_packets = System.telemetry.packets(target_name)
-            target = System.targets[target_name]
-            unique_id_mode = target.tlm_unique_id_mode if target
+            unique_id_mode = System.telemetry.tlm_unique_id_mode(target_name)
           else
             target_packets = System.commands.packets(target_name)
-            target = System.targets[target_name]
-            unique_id_mode = target.cmd_unique_id_mode if target
+            unique_id_mode = System.commands.cmd_unique_id_mode(target_name)
           end
         rescue RuntimeError
           # No commands/telemetry for this target
@@ -103,7 +101,7 @@ module OpenC3
 
         if unique_id_mode
           target_packets.each do |_packet_name, packet|
-            if packet.identify?(@data[@discard_leading_bytes..-1])
+            if not packet.subpacket and packet.identify?(@data[@discard_leading_bytes..-1]) # identify? handles virtual
               identified_packet = packet
               break
             end
@@ -111,15 +109,23 @@ module OpenC3
         else
           # Do a hash lookup to quickly identify the packet
           if target_packets.length > 0
-            packet = target_packets.first[1]
-            key = packet.read_id_values(@data[@discard_leading_bytes..-1])
-            if @telemetry
-              hash = System.telemetry.config.tlm_id_value_hash[target_name]
-            else
-              hash = System.commands.config.cmd_id_value_hash[target_name]
+            packet = nil
+            target_packets.each do |_packet_name, target_packet|
+              next if target_packet.virtual
+              next if target_packet.subpacket
+              packet = target_packet
+              break
             end
-            identified_packet = hash[key]
-            identified_packet = hash['CATCHALL'.freeze] unless identified_packet
+            if packet
+              key = packet.read_id_values(@data[@discard_leading_bytes..-1])
+              if @telemetry
+                hash = System.telemetry.config.tlm_id_value_hash[target_name]
+              else
+                hash = System.commands.config.cmd_id_value_hash[target_name]
+              end
+              identified_packet = hash[key]
+              identified_packet = hash['CATCHALL'.freeze] unless identified_packet
+            end
           end
         end
 

@@ -21,7 +21,7 @@ require 'openc3/interfaces/mqtt_stream_interface'
 
 module OpenC3
   describe MqttStreamInterface do
-    MQTT_CLIENT = 'MQTT::Client'.freeze
+    MY_MQTT_CLIENT = 'MQTT::Client'.freeze
 
     before(:all) do
       setup_system()
@@ -49,7 +49,7 @@ module OpenC3
 
     describe "connect" do
       it "sets various ssl settings based on options" do
-        double = double(MQTT_CLIENT)
+        double = double(MY_MQTT_CLIENT)
         expect(double).to receive(:ack_timeout=).with(10.0)
         expect(double).to receive(:host=).with('localhost')
         expect(double).to receive(:port=).with(1883)
@@ -78,7 +78,7 @@ module OpenC3
       end
 
       it "sets ssl even without cert_file, key_file, or ca_file" do
-        double = double(MQTT_CLIENT).as_null_object
+        double = double(MY_MQTT_CLIENT).as_null_object
         expect(double).to receive(:ssl=).with(true)
         expect(double).to receive(:connected?).and_return(true)
         allow(MQTT::Client).to receive(:new).and_return(double)
@@ -91,7 +91,7 @@ module OpenC3
 
     describe "disconnect" do
       it "disconnects the mqtt client" do
-        double = double(MQTT_CLIENT).as_null_object
+        double = double(MY_MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:disconnect)
         allow(MQTT::Client).to receive(:new).and_return(double)
@@ -106,7 +106,7 @@ module OpenC3
 
     describe "read" do
       it "reads a message from the mqtt client" do
-        double = double(MQTT_CLIENT).as_null_object
+        double = double(MY_MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         expect(double).to receive(:get).and_return(['HEALTH_STATUS', "\x00\x01\x02\x03\x04\x05"])
@@ -126,7 +126,7 @@ module OpenC3
       end
 
       it "disconnects if the mqtt client returns no data" do
-        double = double(MQTT_CLIENT).as_null_object
+        double = double(MY_MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         expect(double).to receive(:get).and_return(['HEALTH_STATUS', nil])
@@ -144,7 +144,7 @@ module OpenC3
 
     describe "write" do
       it "writes a message to the mqtt client" do
-        double = double(MQTT_CLIENT).as_null_object
+        double = double(MY_MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         allow(MQTT::Client).to receive(:new).and_return(double)
@@ -161,16 +161,16 @@ module OpenC3
     describe "details" do
       it "returns detailed interface information" do
         i = MqttStreamInterface.new('mqtt-server', '8883', true, 'cmd_topic', 'tlm_topic')
-        
+
         details = i.details
-        
+
         expect(details).to be_a(Hash)
         expect(details['hostname']).to eql('mqtt-server')
         expect(details['port']).to eql(8883)
         expect(details['ssl']).to be true
         expect(details['write_topic']).to eql('cmd_topic')
         expect(details['read_topic']).to eql('tlm_topic')
-        
+
         # Check that base interface details are included
         expect(details['name']).to eql('MqttStreamInterface')
         expect(details).to have_key('read_allowed')
@@ -186,16 +186,16 @@ module OpenC3
         i.set_option('KEY', ['key_content'])
         i.set_option('CA_FILE', ['ca_content'])
         i.set_option('ACK_TIMEOUT', ['15.0'])
-        
+
         details = i.details
-        
+
         expect(details['username']).to eql('test_user')
         expect(details['password']).to eql('Set')
         expect(details['cert']).to eql('Set')
         expect(details['key']).to eql('Set')
         expect(details['ca_file']).to eql('Set')
         expect(details['ack_timeout']).to eql(15.0)
-        
+
         # Verify sensitive options are removed from options hash
         expect(details['options']).to_not have_key('PASSWORD')
         expect(details['options']).to_not have_key('CERT')
@@ -205,15 +205,15 @@ module OpenC3
 
       it "handles missing sensitive fields" do
         i = MqttStreamInterface.new('mqtt-server', '1883', false, 'cmd_topic', 'tlm_topic')
-        
+
         details = i.details
-        
+
         expect(details['hostname']).to eql('mqtt-server')
         expect(details['port']).to eql(1883)
         expect(details['ssl']).to be false
         expect(details['write_topic']).to eql('cmd_topic')
         expect(details['read_topic']).to eql('tlm_topic')
-        
+
         expect(details).to_not have_key('password')
         expect(details).to_not have_key('cert')
         expect(details).to_not have_key('key')

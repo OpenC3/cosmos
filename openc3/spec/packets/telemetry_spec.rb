@@ -276,9 +276,8 @@ module OpenC3
 
       it "works in unique id mode and not" do
         System.targets["TGT1"] = Target.new("TGT1", Dir.pwd)
-        target = System.targets["TGT1"]
         buffer = "\x01\x02\x03\x04"
-        target.tlm_unique_id_mode = false
+        System.telemetry.config.tlm_unique_id_mode["TGT1"] = false
         pkt = @tlm.identify!(buffer, ["TGT1"])
         pkt.enable_method_missing
         expect(pkt.item1).to eql 1
@@ -286,7 +285,7 @@ module OpenC3
         expect(pkt.item3).to eql 6.0
         expect(pkt.item4).to eql 8.0
         buffer = "\x01\x02\x01\x02"
-        target.tlm_unique_id_mode = true
+        System.telemetry.config.tlm_unique_id_mode["TGT1"] = true
         @tlm.identify!(buffer, ["TGT1"])
         pkt = @tlm.packet("TGT1", "PKT1")
         pkt.enable_method_missing
@@ -294,7 +293,7 @@ module OpenC3
         expect(pkt.item2).to eql 2
         expect(pkt.item3).to eql 2.0
         expect(pkt.item4).to eql 4.0
-        target.tlm_unique_id_mode = false
+        System.telemetry.config.tlm_unique_id_mode["TGT1"] = false
       end
 
       it "returns nil with unknown targets given" do

@@ -180,8 +180,7 @@ module OpenC3
 
       it "works in unique id mode or not" do
         System.targets["TGT1"] = Target.new("TGT1", Dir.pwd)
-        target = System.targets["TGT1"]
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode["TGT1"] = false
         buffer = "\x01\x02\x03\x04"
         pkt = @cmd.identify(buffer, ["TGT1"])
         pkt.enable_method_missing
@@ -189,7 +188,7 @@ module OpenC3
         expect(pkt.item2).to eql 2
         expect(pkt.item3).to eql 3
         expect(pkt.item4).to eql 4
-        target.cmd_unique_id_mode = true
+        System.commands.config.cmd_unique_id_mode["TGT1"] = true
         buffer = "\x01\x02\x01\x02"
         pkt = @cmd.identify(buffer, ["TGT1"])
         pkt.enable_method_missing
@@ -197,7 +196,7 @@ module OpenC3
         expect(pkt.item2).to eql 2
         expect(pkt.item3).to eql 1
         expect(pkt.item4).to eql 2
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode["TGT1"] = false
       end
 
       it "returns nil with unknown targets given" do

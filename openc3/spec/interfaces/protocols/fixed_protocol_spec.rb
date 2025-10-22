@@ -23,6 +23,7 @@
 require 'spec_helper'
 require 'openc3/interfaces/protocols/fixed_protocol'
 require 'openc3/interfaces/interface'
+require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
 
 module OpenC3
@@ -114,7 +115,6 @@ module OpenC3
       end
 
       it "reads telemetry data from the stream" do
-        target = System.targets['SYSTEM']
         @interface.add_protocol(FixedProtocol, [1], :READ_WRITE)
         @interface.instance_variable_set(:@stream, FixedStream.new)
         @interface.target_names = ['SYSTEM']
@@ -130,7 +130,7 @@ module OpenC3
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'LIMITS_CHANGE'
-        target.tlm_unique_id_mode = true
+        System.telemetry.config.tlm_unique_id_mode['SYSTEM'] = true
         $index = 1
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
@@ -141,11 +141,10 @@ module OpenC3
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'LIMITS_CHANGE'
-        target.tlm_unique_id_mode = false
+        System.telemetry.config.tlm_unique_id_mode['SYSTEM'] = false
       end
 
       it "reads command data from the stream" do
-        target = System.targets['SYSTEM']
         packet = System.commands.packet("SYSTEM", "STARTLOGGING")
         packet.restore_defaults
         $buffer = packet.buffer.clone
@@ -165,19 +164,19 @@ module OpenC3
         @interface.target_names = ['SYSTEM']
         @interface.cmd_target_names = ['SYSTEM']
         @interface.tlm_target_names = ['SYSTEM']
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode['SYSTEM'] = false
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.01).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'STARTLOGGING'
         expect(packet.buffer).to eql $buffer
-        target.cmd_unique_id_mode = true
+        System.commands.config.cmd_unique_id_mode['SYSTEM'] = true
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.01).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'STARTLOGGING'
         expect(packet.buffer).to eql $buffer
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode['SYSTEM'] = false
       end
 
       it "breaks apart telemetry data from the stream" do
@@ -227,7 +226,7 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [2, 1, '0xDEADBEEF', false, true], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('FixedProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -240,7 +239,7 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [4, 2, '0x1234', true, false], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['min_id_size']).to eq(4)
         expect(details['discard_leading_bytes']).to eq(2)
         expect(details['sync_pattern']).to eq("\x12\x34".inspect)
@@ -254,7 +253,7 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [1], :READ)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('FixedProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -267,7 +266,7 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [8, 6, '0x1ACFFC1D', false, true, false], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['min_id_size']).to eq(8)
         expect(details['discard_leading_bytes']).to eq(6)
         expect(details['sync_pattern']).to eq("\x1A\xCF\xFC\x1D".inspect)

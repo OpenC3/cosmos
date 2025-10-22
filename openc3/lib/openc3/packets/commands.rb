@@ -120,27 +120,33 @@ module OpenC3
           next
         end
 
-        target = System.targets[target_name]
-        if target and ((not subpackets and target.cmd_unique_id_mode) or (subpackets and target.cmd_subpacket_unique_id_mode))
+        if (not subpackets and System.commands.cmd_unique_id_mode(target_name)) or (subpackets and System.commands.cmd_subpacket_unique_id_mode(target_name))
           # Iterate through the packets and see if any represent the buffer
           target_packets.each do |_packet_name, packet|
-            next unless packet.subpacket == subpackets
-            if packet.identify?(packet_data)
+            if subpackets
+              next unless packet.subpacket
+            else
+              next if packet.subpacket
+            end
+            if packet.identify?(packet_data) # Handles virtual
               identified_packet = packet
               break
             end
           end
         else
           # Do a hash lookup to quickly identify the packet
-          if target_packets.length > 0
-            packet = nil
-            target_packets.each do |_packet_name, target_packet|
-              next if target_packet.virtual
-              next unless target_packet.subpacket == subpackets
-              packet = target_packet
-              break
+          packet = nil
+          target_packets.each do |_packet_name, target_packet|
+            next if target_packet.virtual
+            if subpackets
+              next unless target_packet.subpacket
+            else
+              next if target_packet.subpacket
             end
-            return nil unless packet
+            packet = target_packet
+            break
+          end
+          if packet
             key = packet.read_id_values(packet_data)
             if subpackets
               hash = @config.cmd_subpacket_id_value_hash[target_name]
@@ -274,6 +280,14 @@ module OpenC3
 
     def dynamic_add_packet(packet, affect_ids: false)
       @config.dynamic_add_packet(packet, :COMMAND, affect_ids: affect_ids)
+    end
+
+    def cmd_unique_id_mode(target_name)
+      return @config.cmd_unique_id_mode[target_name.upcase]
+    end
+
+    def cmd_subpacket_unique_id_mode(target_name)
+      return @config.cmd_subpacket_unique_id_mode[target_name.upcase]
     end
 
     protected
