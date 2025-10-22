@@ -9,25 +9,25 @@
     "format": "prettier --write \"./**\""
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.26.1",
+    "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.12.0",
+    "axios": "1.12.2",
     "date-fns": "4.1.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
-    "vuetify": "3.9.7"
+    "vuetify": "3.10.5"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.27.1",
     "@types/systemjs": "6.15.3",
     "@vitejs/plugin-vue": "5.2.3",
-    "eslint": "9.34.0",
+    "eslint": "9.38.0",
     "prettier": "3.6.2",
-    "sass": "1.92.0",
+    "sass": "1.93.2",
     "serve": "14.2.5",
     "vite": "6.3.6",
-    "vue": "3.5.21",
+    "vue": "3.5.22",
     "vue-eslint-parser": "10.2.0"
   },
   "peerDependencies": {
