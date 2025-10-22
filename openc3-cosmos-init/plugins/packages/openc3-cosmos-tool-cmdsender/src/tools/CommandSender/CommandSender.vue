@@ -353,12 +353,15 @@ export default {
         if (command === '') {
           return
         }
-        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo"))
+        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo") or cmd("...", queue="Foo"))
         // Reset queue to null first
         this.queueName = null
-        const queueMatch = command.match(/queue:\s*"([^"]+)"/)
+        const queueMatch = command.match(/,\s*queue[:=]\s*"([^"]+)"/)
         if (queueMatch) {
           this.queueName = queueMatch[1]
+          console.log('Queue extracted from history:', this.queueName)
+          // Remove the queue parameter from the command string
+          command = command.replace(/,\s*queue[:=]\s*"[^"]+"/, '')
         }
         // Remove the cmd("") wrapper
         let firstQuote = command.indexOf('"')
