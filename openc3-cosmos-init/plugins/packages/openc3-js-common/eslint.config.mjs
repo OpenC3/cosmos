@@ -1,5 +1,6 @@
-import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended"
-import globals from "globals"
+import prettierConfig from '@vue/eslint-config-prettier'
+import globals from 'globals'
+import parser from 'vue-eslint-parser'
 
 export default [
   {
@@ -8,18 +9,31 @@ export default [
         ...globals.node,
       },
 
+      parser: parser,
       ecmaVersion: 2022,
-      sourceType: "module",
+      sourceType: 'module',
     },
 
     rules: {
-      "no-console": "error",
-      "no-debugger": "error",
+      'no-console': 'error',
+      'no-debugger': 'error',
 
-      "prettier/prettier": ["warn", {
-        endOfLine: "auto",
-      }],
+      'prettier/prettier': [
+        'warn',
+        {
+          endOfLine: 'auto',
+        },
+      ],
     },
   },
-  eslintPluginPrettierRecommended,
-];
+  {
+    files: ['**/__tests__/*.{j,t}s?(x)', '**/tests/unit/**/*.spec.{j,t}s?(x)'],
+
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+  prettierConfig,
+]

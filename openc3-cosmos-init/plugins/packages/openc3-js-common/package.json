@@ -55,10 +55,6 @@
     "uplot": "1.6.32"
   },
   "devDependencies": {
-    "eslint": "9.38.0",
-    "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-prettier": "5.5.4",
-    "eslint-plugin-vue": "10.5.1",
     "prettier": "3.6.2",
     "vite": "6.3.6"
   }
