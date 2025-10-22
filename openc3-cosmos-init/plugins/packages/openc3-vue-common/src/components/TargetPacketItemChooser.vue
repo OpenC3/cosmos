@@ -71,7 +71,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          :disabled="autocompleteDisabled"
+          :disabled="autocompleteDisabled || queueNames.length === 1"
           :items="queueNames"
           item-title="label"
           item-value="value"
