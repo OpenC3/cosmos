@@ -1023,6 +1023,8 @@ class RunningScript:
 
                 # Execute the script
                 self.pre_line_time = time.time()
+                self.script_globals["__name__"] = "__main__"
+                self.script_globals["__file__"] = instrument_filename
                 exec(instrumented_script, self.script_globals)
 
             self.handle_output_io()
@@ -1364,9 +1366,37 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
             RunningScript.instance.script_engine.run_text(instrumented_script, filename = procedure_name)
     else:
         if bind_variables:
-            exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+            # Save parent's __name__ and __file__ before executing subscript
+            saved_name = RunningScript.instance.script_binding[0].get("__name__")
+            saved_file = RunningScript.instance.script_binding[0].get("__file__")
+            try:
+                # Set __name__ to module name for subscripts (Python import-like behavior)
+                # Convert filename to module format: "TARGET/procedures/my_script.py" -> "TARGET.procedures.my_script"
+                RunningScript.instance.script_binding[0]["__name__"] = filename_to_module(procedure_name)
+                RunningScript.instance.script_binding[0]["__file__"] = procedure_name
+                exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+            finally:
+                # Restore parent's __name__ and __file__ after subscript completes
+                if saved_name is not None:
+                    RunningScript.instance.script_binding[0]["__name__"] = saved_name
+                if saved_file is not None:
+                    RunningScript.instance.script_binding[0]["__file__"] = saved_file
         else:
-            exec(instrumented_script, RunningScript.instance.script_globals)
+            # Save parent's __name__ and __file__ before executing subscript
+            saved_name = RunningScript.instance.script_globals.get("__name__")
+            saved_file = RunningScript.instance.script_globals.get("__file__")
+            try:
+                # Set __name__ to module name for subscripts (Python import-like behavior)
+                # Convert filename to module format: "TARGET/procedures/my_script.py" -> "TARGET.procedures.my_script"
+                RunningScript.instance.script_globals["__name__"] = filename_to_module(procedure_name)
+                RunningScript.instance.script_globals["__file__"] = procedure_name
+                exec(instrumented_script, RunningScript.instance.script_globals)
+            finally:
+                # Restore parent's __name__ and __file__ after subscript completes
+                if saved_name is not None:
+                    RunningScript.instance.script_globals["__name__"] = saved_name
+                if saved_file is not None:
+                    RunningScript.instance.script_globals["__file__"] = saved_file
 
     if complete:
         RunningScript.instance.script_status.state = 'completed'
