@@ -256,6 +256,7 @@ test('mnemonic check', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=New File').click()
+  await page.locator('button:has-text("Continue")').click()
 
   await page
     .locator('textarea')
