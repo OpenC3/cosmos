@@ -633,5 +633,83 @@ module OpenC3
         end
       end
     end
+
+    describe "identify with subpackets" do
+      before(:each) do
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY tgt3 pkt1 LITTLE_ENDIAN "Normal Telemetry"'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.puts 'TELEMETRY tgt3 sub1 LITTLE_ENDIAN "Subpacket 1"'
+        tf.puts '  SUBPACKET'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.puts 'TELEMETRY tgt3 sub2 LITTLE_ENDIAN "Subpacket 2"'
+        tf.puts '  SUBPACKET'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 20 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.close
+
+        pc = PacketConfig.new
+        pc.process_file(tf.path, "TGT3")
+        @tlm3 = Telemetry.new(pc)
+        tf.unlink
+      end
+
+      it "identifies normal packet when subpackets: false" do
+        buffer = "\x01\x02"
+        pkt = @tlm3.identify(buffer, ["TGT3"], subpackets: false)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "PKT1"
+      end
+
+      it "does not identify subpacket when subpackets: false" do
+        buffer = "\x0A\x02"
+        pkt = @tlm3.identify(buffer, ["TGT3"], subpackets: false)
+        expect(pkt).to be_nil
+      end
+
+      it "identifies subpacket when subpackets: true" do
+        buffer = "\x0A\x02"
+        pkt = @tlm3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "SUB1"
+      end
+
+      it "does not identify normal packet when subpackets: true" do
+        buffer = "\x01\x02"
+        pkt = @tlm3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to be_nil
+      end
+
+      it "identifies different subpackets" do
+        buffer = "\x14\x03"
+        pkt = @tlm3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "SUB2"
+      end
+
+      it "identifies! sets buffer on subpacket" do
+        buffer = "\x0A\x05"
+        pkt = @tlm3.identify!(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "SUB1"
+        expect(pkt.buffer).to eql buffer
+      end
+    end
+
+    describe "tlm_unique_id_mode" do
+      it "returns unique_id_mode for target" do
+        expect(@tlm.tlm_unique_id_mode("TGT1")).to be_falsey
+        expect(@tlm.tlm_unique_id_mode("TGT2")).to be_falsey
+      end
+    end
+
+    describe "tlm_subpacket_unique_id_mode" do
+      it "returns subpacket unique_id_mode for target" do
+        expect(@tlm.tlm_subpacket_unique_id_mode("TGT1")).to be_falsey
+        expect(@tlm.tlm_subpacket_unique_id_mode("TGT2")).to be_falsey
+      end
+    end
   end
 end

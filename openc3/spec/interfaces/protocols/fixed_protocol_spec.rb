@@ -25,6 +25,7 @@ require 'openc3/interfaces/protocols/fixed_protocol'
 require 'openc3/interfaces/interface'
 require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
+require 'tempfile'
 
 module OpenC3
   describe FixedProtocol do
@@ -161,7 +162,7 @@ module OpenC3
         # Require 8 bytes, discard 6 leading bytes, use 0x1ACFFC1D sync, telemetry = false (command)
         @interface.add_protocol(FixedProtocol, [8, 6, '0x1ACFFC1D', false], :READ_WRITE)
         @interface.instance_variable_set(:@stream, FixedStream2.new)
-        @interface.target_names = ['SYSTEM']
+        @interface.target_names = ['SfYSTEM']
         @interface.cmd_target_names = ['SYSTEM']
         @interface.tlm_target_names = ['SYSTEM']
         System.commands.config.cmd_unique_id_mode['SYSTEM'] = false
@@ -272,6 +273,89 @@ module OpenC3
         expect(details['sync_pattern']).to eq("\x1A\xCF\xFC\x1D".inspect)
         expect(details['telemetry']).to eq(false)
         expect(details['fill_fields']).to eq(true)
+      end
+    end
+
+    describe "packet identification with subpackets" do
+      before(:all) do
+        setup_system()
+      end
+
+      before(:each) do
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY TEST PKT1 BIG_ENDIAN "Normal Packet"'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.puts 'TELEMETRY TEST SUB1 BIG_ENDIAN "Subpacket"'
+        tf.puts '  SUBPACKET'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.puts 'TELEMETRY TEST VIRTUAL_PKT BIG_ENDIAN "Virtual Packet"'
+        tf.puts '  VIRTUAL'
+        tf.puts '  APPEND_ID_ITEM item1 8 UINT 99 "Item1"'
+        tf.puts '  APPEND_ITEM item2 8 UINT "Item2"'
+        tf.close
+
+        pc = PacketConfig.new
+        pc.process_file(tf.path, "TEST")
+        telemetry = Telemetry.new(pc)
+        tf.unlink
+        allow(System).to receive_message_chain(:telemetry).and_return(telemetry)
+      end
+
+      $subpacket_index = 0
+      class SubpacketStream < Stream
+        def connect; end
+        def connected?; true; end
+
+        def read
+          case $subpacket_index
+          when 0
+            "\x01\x05" # Normal packet PKT1
+          when 1
+            "\x0A\x06" # Subpacket SUB1
+          when 2
+            "\x63\x07" # Virtual packet (should not be identified)
+          else
+            "\xFF\xFF" # Unknown
+          end
+        end
+      end
+
+      it "identifies normal packets but not subpackets" do
+        @interface.add_protocol(FixedProtocol, [2, 0, nil, true], :READ)
+        @interface.instance_variable_set(:@stream, SubpacketStream.new)
+        @interface.target_names = ['TEST']
+        @interface.tlm_target_names = ['TEST']
+
+        $subpacket_index = 0
+        packet = @interface.read
+        expect(packet.target_name).to eql "TEST"
+        expect(packet.packet_name).to eql "PKT1"
+      end
+
+      it "does not identify subpackets at interface level" do
+        @interface.add_protocol(FixedProtocol, [2, 0, nil, true], :READ)
+        @interface.instance_variable_set(:@stream, SubpacketStream.new)
+        @interface.target_names = ['TEST']
+        @interface.tlm_target_names = ['TEST']
+
+        $subpacket_index = 1
+        packet = @interface.read
+        expect(packet.target_name).to be_nil
+        expect(packet.packet_name).to be_nil
+      end
+
+      it "does not identify virtual packets" do
+        @interface.add_protocol(FixedProtocol, [2, 0, nil, true], :READ)
+        @interface.instance_variable_set(:@stream, SubpacketStream.new)
+        @interface.target_names = ['TEST']
+        @interface.tlm_target_names = ['TEST']
+
+        $subpacket_index = 2
+        packet = @interface.read
+        expect(packet.target_name).to be_nil
+        expect(packet.packet_name).to be_nil
       end
     end
   end
