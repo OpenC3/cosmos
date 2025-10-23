@@ -255,7 +255,6 @@ class TestFixedProtocol(unittest.TestCase):
         # Create interface with fixed protocol
         from openc3.interfaces.stream_interface import StreamInterface
         from openc3.interfaces.protocols.fixed_protocol import FixedProtocol
-        from io import BytesIO
 
         interface = StreamInterface()
         interface.add_protocol(FixedProtocol, [2, 0, None, True], "READ_WRITE")

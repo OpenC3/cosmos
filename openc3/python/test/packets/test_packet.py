@@ -26,7 +26,6 @@ from openc3.packets.packet_item import PacketItem
 from openc3.utilities.logger import Logger
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.accessors.json_accessor import JsonAccessor
 from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,

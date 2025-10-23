@@ -42,9 +42,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     simple_formatted,
     quote_if_necessary,
-    class_name_to_filename,
 )
-from openc3.top_level import get_class_from_module
 
 
 class Packet(Structure):
