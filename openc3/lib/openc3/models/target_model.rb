@@ -797,7 +797,7 @@ module OpenC3
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
             raise e
           end
-          json_hash = Hash.new
+          json_hash = {}
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
             TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
