@@ -168,9 +168,12 @@ class DecomMicroservice(Microservice):
         )
 
         start = time.time()
+
+        #######################################
+        # Build packet object from topic data
+        #######################################
         target_name = msg_hash[b"target_name"].decode()
         packet_name = msg_hash[b"packet_name"].decode()
-
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
         # Note: Packet time will be recalculated as part of decom so not setting
@@ -180,22 +183,34 @@ class DecomMicroservice(Microservice):
         if extra is not None:
             packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
-        # Processors are user code points which must be rescued
-        # so the TelemetryDecomTopic can write the packet
-        try:
-            packet.process()  # Run processors
-        except Exception as error:
-            self.error_count += 1
-            self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
-            self.error = error
-            self.logger.error(f"Processor error:\n{traceback.format_exc()}")
-        # Process all the limits and call the limits_change_callback (as necessary)
-        # check_limits also can call user code in the limits response
-        # but that is rescued separately in the limits_change_callback
-        packet.check_limits(System.limits_set())
 
-        # This is what updates the CVT
-        TelemetryDecomTopic.write_packet(packet, scope=self.scope)
+        ################################################################################
+        # Break packet into subpackets (if necessary)
+        # Subpackets are typically channelized data
+        ################################################################################
+        subpackets = packet.subpacketize()
+
+        for subpacket in subpackets:
+            #####################################################################################
+            # Run Processors
+            # This must be before the full decom so that processor derived values are available
+            #####################################################################################
+            try:
+                subpacket.process()  # Run processors
+            except Exception as error:
+                self.error_count += 1
+                self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
+                self.error = error
+                self.logger.error(f"Processor error:\n{traceback.format_exc()}")
+
+            #############################################################################
+            # Process all the limits and call the limits_change_callback (as necessary)
+            # This must be before the full decom so that limits states are available
+            #############################################################################
+            subpacket.check_limits(System.limits_set())
+
+            # This is what actually decommutates the packet and updates the CVT
+            TelemetryDecomTopic.write_packet(subpacket, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
 

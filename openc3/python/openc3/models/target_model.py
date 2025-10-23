@@ -347,8 +347,6 @@ class TargetModel(Model):
         ignored_items=[],
         limits_groups=[],
         cmd_tlm_files=[],
-        cmd_unique_id_mode=False,
-        tlm_unique_id_mode=False,
         id=None,
         updated_at=None,
         plugin=None,

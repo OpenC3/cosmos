@@ -180,10 +180,10 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.add_protocol(FixedProtocol, [8, 2, "0xDEADBEEF", True, False, True], "READ_WRITE")
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "FixedProtocol")
@@ -191,7 +191,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertIn("write_data_input", details)
         self.assertIn("write_data_output_time", details)
         self.assertIn("write_data_output", details)
-        
+
         # Check fixed protocol specific fields
         self.assertIn("min_id_size", details)
         self.assertEqual(details["min_id_size"], 8)
@@ -204,10 +204,10 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.add_protocol(FixedProtocol, [4, 1, "0xABCD", False, True, False], "READ_WRITE")
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "FixedProtocol")
@@ -215,7 +215,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertIn("read_data_input", details)
         self.assertIn("read_data_output_time", details)
         self.assertIn("read_data_output", details)
-        
+
         # Check fixed protocol specific read fields (same as write for this protocol)
         self.assertIn("min_id_size", details)
         self.assertEqual(details["min_id_size"], 4)
@@ -223,3 +223,94 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(details["telemetry"], False)
         self.assertIn("unknown_raise", details)
         self.assertEqual(details["unknown_raise"], False)
+
+    def test_identifies_normal_packets_but_not_subpackets(self):
+        import tempfile
+        from openc3.packets.packet_config import PacketConfig
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("TELEMETRY TEST PKT1 BIG_ENDIAN 'Normal Packet'\n")
+        tf.write("  APPEND_ID_ITEM item1 8 UINT 1 'Item1'\n")
+        tf.write("  APPEND_ITEM item2 8 UINT 'Item2'\n")
+        tf.write("TELEMETRY TEST SUB1 BIG_ENDIAN 'Subpacket'\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM item1 8 UINT 10 'Item1'\n")
+        tf.write("  APPEND_ITEM item2 8 UINT 'Item2'\n")
+        tf.write("TELEMETRY TEST VIRTUAL_PKT BIG_ENDIAN 'Virtual Packet'\n")
+        tf.write("  VIRTUAL\n")
+        tf.write("  APPEND_ID_ITEM item1 8 UINT 99 'Item1'\n")
+        tf.write("  APPEND_ITEM item2 8 UINT 'Item2'\n")
+        tf.seek(0)
+
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TEST")
+        tf.close()
+
+        from openc3.system.system import System
+        from openc3.packets.telemetry import Telemetry
+
+        System.telemetry = Telemetry(pc, System)
+        System.telemetry.config = pc
+
+        # Create interface with fixed protocol
+        from openc3.interfaces.stream_interface import StreamInterface
+        from openc3.interfaces.protocols.fixed_protocol import FixedProtocol
+        from io import BytesIO
+
+        interface = StreamInterface()
+        interface.add_protocol(FixedProtocol, [2, 0, None, True], "READ_WRITE")
+        interface.target_names = ["TEST"]
+        interface.tlm_target_names = ["TEST"]
+
+        # Test normal packet PKT1 (ID=1)
+        class MockStream1:
+            def __init__(self):
+                self.data = b"\x01\x05"
+                self.index = 0
+
+            def read(self, count=None):
+                return self.data
+
+            def connected(self):
+                return True
+
+        interface.stream = MockStream1()
+        packet = interface.read()
+        self.assertIsNotNone(packet)
+        self.assertEqual(packet.buffer, b"\x01\x05")
+        self.assertEqual(packet.target_name, "TEST")
+        self.assertEqual(packet.packet_name, "PKT1")
+
+        # Test subpacket SUB1 (ID=10) - should not be identified
+        class MockStream2:
+            def __init__(self):
+                self.data = b"\x0A\x06"
+                self.index = 0
+
+            def read(self, count=None):
+                return self.data
+
+            def connected(self):
+                return True
+
+        interface.stream = MockStream2()
+        packet = interface.read()
+        self.assertIsNone(packet.target_name)
+        self.assertIsNone(packet.packet_name)
+
+        # Test virtual packet (ID=99) - should not be identified
+        class MockStream3:
+            def __init__(self):
+                self.data = b"\x63\x07"
+                self.index = 0
+
+            def read(self, count=None):
+                return self.data
+
+            def connected(self):
+                return True
+
+        interface.stream = MockStream3()
+        packet = interface.read()
+        self.assertIsNone(packet.target_name)
+        self.assertIsNone(packet.packet_name)

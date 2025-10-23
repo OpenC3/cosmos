@@ -1996,3 +1996,50 @@ class PacketObfuscation(unittest.TestCase):
                     mock_logger.call_args[0][0],
                 )
                 self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")
+
+    def test_subpacketize_returns_array_with_single_packet_when_no_subpacketizer(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("item1", 8, "UINT")
+        p.buffer = b"\x01"
+        result = p.subpacketize()
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], p)
+
+    def test_subpacketize_calls_subpacketizer_when_present(self):
+        from openc3.subpacketizers.subpacketizer import Subpacketizer
+
+        class TestSubpacketizer(Subpacketizer):
+            def call(self, packet):
+                # Create two subpackets
+                sub1 = Packet("tgt", "sub1")
+                sub1.append_item("item1", 8, "UINT")
+                sub1.buffer = packet.buffer[0:1]
+                sub2 = Packet("tgt", "sub2")
+                sub2.append_item("item1", 8, "UINT")
+                sub2.buffer = packet.buffer[1:2]
+                return [sub1, sub2]
+
+        p = Packet("tgt", "pkt")
+        p.append_item("item1", 16, "UINT")
+        p.buffer = b"\x01\x02"
+        p.subpacketizer = TestSubpacketizer()
+
+        result = p.subpacketize()
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].packet_name, "SUB1")
+        self.assertEqual(result[1].packet_name, "SUB2")
+
+    def test_subpacket_attribute_defaults_to_false(self):
+        p = Packet("tgt", "pkt")
+        self.assertFalse(p.subpacket)
+
+    def test_subpacket_attribute_can_be_set(self):
+        p = Packet("tgt", "pkt")
+        p.subpacket = True
+        self.assertTrue(p.subpacket)
+
+    def test_subpacketizer_attribute_defaults_to_none(self):
+        p = Packet("tgt", "pkt")
+        self.assertIsNone(p.subpacketizer)

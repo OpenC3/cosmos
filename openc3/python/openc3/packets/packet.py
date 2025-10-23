@@ -102,7 +102,9 @@ class Packet(Structure):
         self.ignore_overlap = False
         self.virtual = False
         self.restricted = False
+        self.subpacket = False
         self.validator = None
+        self.subpacketizer = None
         self.obfuscated_items = []
         self.obfuscated_items_hash = {}
 
@@ -1010,10 +1012,15 @@ class Packet(Structure):
             config += f'TELEMETRY {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
+        if self.subpacketizer:
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.subpacketizer.args])
+            config += f"  SUBPACKETIZER {self.subpacketizer.__class__.__name__} {args_str}\n"
         if self.accessor.__class__.__name__ != "BinaryAccessor":
-            config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.accessor.args])
+            config += f"  ACCESSOR {self.accessor.__class__.__name__} {args_str}\n"
         if self.validator:
-            config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
+            config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
         # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
         if self.template:
             config += f"  TEMPLATE '{self.template}'\n"
@@ -1029,6 +1036,8 @@ class Packet(Structure):
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
+        if self.subpacket:
+            config += "  SUBPACKET\n"
         if self.restricted:
             config += "  RESTRICTED\n"
 
@@ -1317,3 +1326,14 @@ class Packet(Structure):
             except Exception as e:
                 Logger.error(f"{item.name} obfuscation failed with error: {repr(e)}")
                 continue
+
+    def subpacketize(self):
+        """Break packet into subpackets using subpacketizer if defined.
+
+        Returns:
+            list: List of packet objects (subpackets or [self] if no subpacketizer)
+        """
+        if self.subpacketizer:
+            return self.subpacketizer.call(self)
+        else:
+            return [self]
