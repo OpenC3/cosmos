@@ -1,6 +1,6 @@
 ---
 sidebar_position: 6
-title: Utilities
+title: Utility Commands
 description: Using openc3.sh util
 sidebar_custom_props:
   myEmoji: ⌨️
@@ -8,7 +8,13 @@ sidebar_custom_props:
 
 The COSMOS Util is a command on `openc3.sh` and `openc3.bat` which are included in the COSMOS [project](https://github.com/OpenC3/cosmos-project) (more about [projects](key-concepts#projects)).
 
-If you followed the [Installation Guide](installation.md) you should already be inside a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved). To see all the available type the following:
+If you followed the [Installation Guide](installation.md) you should already be inside a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved).
+
+:::note
+The utility script automatically detects and uses either Docker or Podman. If Docker is not found, it will use Podman as a fallback. If neither is available, the script will exit with an error.
+:::
+
+To see all the available commands, type the following:
 
 ```zsh
 ❯ ./openc3.sh util
@@ -54,20 +60,7 @@ Parameters:
 
 ## Save
 
-Save images to tar file. This command pulls all 11 COSMOS Docker images from the specified repository and saves them as tar files in the `tmp/` directory.
-
-Images saved:
-- openc3-ruby
-- openc3-node
-- openc3-base
-- openc3-operator
-- openc3-cosmos-cmd-tlm-api
-- openc3-cosmos-script-runner-api
-- openc3-traefik
-- openc3-redis
-- openc3-tsdb
-- openc3-minio
-- openc3-cosmos-init
+Save images to tar file. This command pulls all COSMOS Docker images from the specified repository and saves them as tar files in the `tmp/` directory.
 
 ```zsh
 ❯ ./openc3.sh util save docker.io openc3inc 5.19.0
@@ -88,7 +81,7 @@ Parameters:
 
 ## Load
 
-Load images from tar files in the `tmp/` directory. This command loads all 11 COSMOS Docker images from previously saved tar files.
+Load images from tar files in the `tmp/` directory. This command loads all COSMOS Docker images from previously saved tar files.
 
 ```zsh
 ❯ ./openc3.sh util load 5.19.0
@@ -139,7 +132,7 @@ Example with different namespace and tag:
 
 ## Push
 
-Push all 11 COSMOS Docker images to a remote repository.
+Push all COSMOS Docker images to a remote repository.
 
 ```zsh
 ❯ ./openc3.sh util push localhost:12345 openc3inc latest
