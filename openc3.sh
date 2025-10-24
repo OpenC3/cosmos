@@ -117,6 +117,8 @@ case $1 in
     fi
     ;;
   build )
+    # Change to cosmos directory since openc3_setup.sh uses relative paths
+    cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
@@ -127,6 +129,8 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
+    # Change to cosmos directory since scripts use relative paths
+    cd "$(dirname -- "$0")"
     set -a
     . "$(dirname -- "$0")/.env"
     if test -f /etc/ssl/certs/ca-bundle.crt
@@ -146,6 +150,8 @@ case $1 in
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
+    # Change to cosmos directory since openc3_setup.sh uses relative paths
+    cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
