@@ -23,6 +23,7 @@
 require 'spec_helper'
 require 'openc3/interfaces/protocols/ignore_packet_protocol'
 require 'openc3/interfaces/interface'
+require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
 
 module OpenC3
@@ -305,7 +306,7 @@ module OpenC3
         @interface.add_protocol(IgnorePacketProtocol, ['SYSTEM', 'META'], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('IgnorePacketProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -318,7 +319,7 @@ module OpenC3
         @interface.add_protocol(IgnorePacketProtocol, ['INST', 'HEALTH_STATUS'], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['target_name']).to eq('INST')
         expect(details['packet_name']).to eq('HEALTH_STATUS')
       end
@@ -329,7 +330,7 @@ module OpenC3
         @interface.add_protocol(IgnorePacketProtocol, ['SYSTEM', 'META'], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('IgnorePacketProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -342,7 +343,7 @@ module OpenC3
         @interface.add_protocol(IgnorePacketProtocol, ['INST', 'ADCS'], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['target_name']).to eq('INST')
         expect(details['packet_name']).to eq('ADCS')
       end

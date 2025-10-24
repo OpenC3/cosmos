@@ -105,7 +105,7 @@ module OpenC3
     #
     # @param (see #identify_tlm!)
     # @return (see #identify_tlm!)
-    def identify(packet_data, target_names = nil)
+    def identify(packet_data, target_names = nil, subpackets: false)
       identified_packet = nil
 
       target_names = target_names() unless target_names
@@ -120,21 +120,39 @@ module OpenC3
           next
         end
 
-        target = System.targets[target_name]
-        if target and target.cmd_unique_id_mode
+        if (not subpackets and System.commands.cmd_unique_id_mode(target_name)) or (subpackets and System.commands.cmd_subpacket_unique_id_mode(target_name))
           # Iterate through the packets and see if any represent the buffer
           target_packets.each do |_packet_name, packet|
-            if packet.identify?(packet_data)
+            if subpackets
+              next unless packet.subpacket
+            else
+              next if packet.subpacket
+            end
+            if packet.identify?(packet_data) # Handles virtual
               identified_packet = packet
               break
             end
           end
         else
           # Do a hash lookup to quickly identify the packet
-          if target_packets.length > 0
-            packet = target_packets.first[1]
+          packet = nil
+          target_packets.each do |_packet_name, target_packet|
+            next if target_packet.virtual
+            if subpackets
+              next unless target_packet.subpacket
+            else
+              next if target_packet.subpacket
+            end
+            packet = target_packet
+            break
+          end
+          if packet
             key = packet.read_id_values(packet_data)
-            hash = @config.cmd_id_value_hash[target_name]
+            if subpackets
+              hash = @config.cmd_subpacket_id_value_hash[target_name]
+            else
+              hash = @config.cmd_id_value_hash[target_name]
+            end
             identified_packet = hash[key]
             identified_packet = hash['CATCHALL'.freeze] unless identified_packet
           end
@@ -262,6 +280,14 @@ module OpenC3
 
     def dynamic_add_packet(packet, affect_ids: false)
       @config.dynamic_add_packet(packet, :COMMAND, affect_ids: affect_ids)
+    end
+
+    def cmd_unique_id_mode(target_name)
+      return @config.cmd_unique_id_mode[target_name.upcase]
+    end
+
+    def cmd_subpacket_unique_id_mode(target_name)
+      return @config.cmd_subpacket_unique_id_mode[target_name.upcase]
     end
 
     protected

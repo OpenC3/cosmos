@@ -58,7 +58,17 @@ class PacketConfig:
         self.latest_data = {}
         self.warnings = []
         self.cmd_id_value_hash = {}
+        self.cmd_subpacket_id_value_hash = {}
+        self.cmd_id_signature = {}
+        self.cmd_subpacket_id_signature = {}
+        self.cmd_unique_id_mode = {}
+        self.cmd_subpacket_unique_id_mode = {}
         self.tlm_id_value_hash = {}
+        self.tlm_subpacket_id_value_hash = {}
+        self.tlm_id_signature = {}
+        self.tlm_subpacket_id_signature = {}
+        self.tlm_unique_id_mode = {}
+        self.tlm_subpacket_unique_id_mode = {}
 
         # Create unknown packets
         self.commands["UNKNOWN"] = {}
@@ -211,9 +221,11 @@ class PacketConfig:
                         | "DISABLE_MESSAGES"
                         | "HIDDEN"
                         | "DISABLED"
+                        | "SUBPACKET"
                         | "VIRTUAL"
                         | "ACCESSOR"
                         | "VALIDATOR"
+                        | "SUBPACKETIZER"
                         | "TEMPLATE"
                         | "TEMPLATE_FILE"
                         | "RESPONSE"
@@ -329,19 +341,37 @@ class PacketConfig:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    id_values = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                    if not id_values:
-                        id_values = {}
-                    self.cmd_id_value_hash[self.current_packet.target_name] = id_values
-                    self.update_id_value_hash(self.current_packet, id_values)
+                    if self.current_packet.subpacket:
+                        self.build_id_metadata(
+                            self.current_packet,
+                            self.cmd_subpacket_id_value_hash,
+                            self.cmd_subpacket_id_signature,
+                            self.cmd_subpacket_unique_id_mode,
+                        )
+                    else:
+                        self.build_id_metadata(
+                            self.current_packet,
+                            self.cmd_id_value_hash,
+                            self.cmd_id_signature,
+                            self.cmd_unique_id_mode,
+                        )
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    id_values = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                    if not id_values:
-                        id_values = {}
-                    self.tlm_id_value_hash[self.current_packet.target_name] = id_values
-                    self.update_id_value_hash(self.current_packet, id_values)
+                    if self.current_packet.subpacket:
+                        self.build_id_metadata(
+                            self.current_packet,
+                            self.tlm_subpacket_id_value_hash,
+                            self.tlm_subpacket_id_signature,
+                            self.tlm_subpacket_unique_id_mode,
+                        )
+                    else:
+                        self.build_id_metadata(
+                            self.current_packet,
+                            self.tlm_id_value_hash,
+                            self.tlm_id_signature,
+                            self.tlm_unique_id_mode,
+                        )
 
             self.current_packet = None
             self.current_item = None
@@ -350,12 +380,18 @@ class PacketConfig:
         if cmd_or_tlm == "COMMAND":
             self.commands[packet.target_name][packet.packet_name] = packet
 
-            if affect_ids:
-                id_values = self.cmd_id_value_hash.get(packet.target_name, None)
-                if not id_values:
-                    id_values = {}
-                self.cmd_id_value_hash[packet.target_name] = id_values
-                self.update_id_value_hash(packet, id_values)
+            if affect_ids and not packet.virtual:
+                if packet.subpacket:
+                    self.build_id_metadata(
+                        packet,
+                        self.cmd_subpacket_id_value_hash,
+                        self.cmd_subpacket_id_signature,
+                        self.cmd_subpacket_unique_id_mode,
+                    )
+                else:
+                    self.build_id_metadata(
+                        packet, self.cmd_id_value_hash, self.cmd_id_signature, self.cmd_unique_id_mode
+                    )
         else:
             self.telemetry[packet.target_name][packet.packet_name] = packet
 
@@ -368,12 +404,58 @@ class PacketConfig:
                 if packet not in latest_data_packets:
                     latest_data_packets.append(packet)
 
-            if affect_ids:
-                id_values = self.tlm_id_value_hash.get(packet.target_name, None)
-                if not id_values:
-                    id_values = {}
-                self.tlm_id_value_hash[packet.target_name] = id_values
-                self.update_id_value_hash(packet, id_values)
+            if affect_ids and not packet.virtual:
+                if packet.subpacket:
+                    self.build_id_metadata(
+                        packet,
+                        self.tlm_subpacket_id_value_hash,
+                        self.tlm_subpacket_id_signature,
+                        self.tlm_subpacket_unique_id_mode,
+                    )
+                else:
+                    self.build_id_metadata(
+                        packet, self.tlm_id_value_hash, self.tlm_id_signature, self.tlm_unique_id_mode
+                    )
+
+    def build_id_metadata(self, packet, id_value_hash, id_signature_hash, unique_id_mode_hash):
+        """Build identification metadata for a packet.
+
+        Args:
+            packet: The packet to build metadata for
+            id_value_hash: Hash mapping target names to ID value hashes
+            id_signature_hash: Hash mapping target names to ID signatures
+            unique_id_mode_hash: Hash mapping target names to unique ID mode flags
+        """
+        target_id_value_hash = id_value_hash.get(packet.target_name)
+        if not target_id_value_hash:
+            target_id_value_hash = {}
+            id_value_hash[packet.target_name] = target_id_value_hash
+        self.update_id_value_hash(packet, target_id_value_hash, id_signature_hash, unique_id_mode_hash)
+
+    def update_id_value_hash(self, packet, target_id_value_hash, id_signature_hash, unique_id_mode_hash):
+        """Update the ID value hash for a packet and track ID signatures.
+
+        Args:
+            packet: The packet to update
+            target_id_value_hash: Hash mapping ID values to packets for this target
+            id_signature_hash: Hash mapping target names to ID signatures
+            unique_id_mode_hash: Hash mapping target names to unique ID mode flags
+        """
+        if packet.id_items and len(packet.id_items) > 0:
+            key = []
+            id_signature = ""
+            for item in packet.id_items:
+                key.append(item.id_value)
+                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}"
+            target_id_value_hash[repr(key)] = packet
+            target_id_signature = id_signature_hash.get(packet.target_name)
+            if target_id_signature:
+                if id_signature != target_id_signature:
+                    unique_id_mode_hash[packet.target_name] = True
+            else:
+                id_signature_hash[packet.target_name] = id_signature
+        else:
+            target_id_value_hash["CATCHALL"] = packet
 
     # This method provides way to quickly test packet configs
     #
@@ -396,16 +478,6 @@ class PacketConfig:
             tf.seek(0)
             pc.process_file(tf.name, process_target_name)
         return pc
-
-    def update_id_value_hash(self, packet, hash):
-        if packet.id_items and len(packet.id_items) > 0:
-            key = []
-            for item in packet.id_items:
-                key.append(item.id_value)
-
-            hash[repr(key)] = packet
-        else:
-            hash["CATCHALL"] = packet
 
     def reset_processing_variables(self):
         self.current_cmd_or_tlm = None
@@ -511,12 +583,17 @@ class PacketConfig:
                 self.current_packet.disabled = True
                 self.current_packet.virtual = True
 
+            case "SUBPACKET":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.subpacket = True
+
             case "RESTRICTED":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
                 self.current_packet.restricted = True
 
-            case "ACCESSOR":
+            case "ACCESSOR" | "VALIDATOR" | "SUBPACKETIZER":
                 usage = f"{keyword} <File name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
                 klass = None
@@ -527,30 +604,22 @@ class PacketConfig:
                     )
                 except ModuleNotFoundError:
                     try:
-                        # Fall back to the deprecated behavior of passing the ClassName (only works with built-in accessors)
+                        # Fall back to the deprecated behavior of passing the ClassName
                         filename = class_name_to_filename(params[0])
-                        klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
+                        if keyword == "ACCESSOR":
+                            klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
+                        elif keyword == "VALIDATOR":
+                            klass = get_class_from_module(f"openc3.validators.{filename}", params[0])
+                        elif keyword == "SUBPACKETIZER":
+                            klass = get_class_from_module(f"openc3.subpacketizers.{filename}", params[0])
                     except ModuleNotFoundError:
                         raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}")
-                if len(params) > 1:
-                    self.current_packet.accessor = klass(self.current_packet, *params[1:])
-                else:
-                    self.current_packet.accessor = klass(self.current_packet)
 
-            case "VALIDATOR":
-                usage = f"{keyword} <Class name> <Optional parameters> ..."
-                parser.verify_num_parameters(1, None, usage)
-                try:
-                    klass = get_class_from_module(
-                        filename_to_module(params[0]),
-                        filename_to_class_name(params[0]),
-                    )
-                    if len(params) > 1:
-                        self.current_packet.validator = klass(self.current_packet, *params[1:])
-                    else:
-                        self.current_packet.validator = klass(self.current_packet)
-                except ModuleNotFoundError as error:
-                    raise parser.error(error)
+                keyword_attr = keyword.lower()
+                if len(params) > 1:
+                    setattr(self.current_packet, keyword_attr, klass(self.current_packet, *params[1:]))
+                else:
+                    setattr(self.current_packet, keyword_attr, klass(self.current_packet))
 
             case "TEMPLATE":
                 usage = f"{keyword} <Template string>"
@@ -725,7 +794,7 @@ class PacketConfig:
                 parser.verify_num_parameters(2, 2, usage)
                 self.current_item.units_full = params[0]
                 self.current_item.units = params[1]
-            
+
             # Obfuscate the parameter in logs
             case "OBFUSCATE":
                 usage = "OBFUSCATE"
