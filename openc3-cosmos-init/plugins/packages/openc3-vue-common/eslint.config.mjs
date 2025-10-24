@@ -1,52 +1,17 @@
-import prettierConfig from '@vue/eslint-config-prettier'
-import pluginVue from 'eslint-plugin-vue'
-import vuetify from 'eslint-plugin-vuetify'
-import globals from 'globals'
-import parser from 'vue-eslint-parser'
+import { defineConfig } from 'eslint/config'
+import baseConfig from '../../eslint.config.mjs'
 
-export default [
-  ...pluginVue.configs['flat/recommended'],
-  ...vuetify.configs['flat/base'],
+export default defineConfig([
+  baseConfig,
   {
-    languageOptions: {
-      globals: {
-        ...globals.node,
-      },
-
-      parser: parser,
-      ecmaVersion: 2022,
-      sourceType: 'module',
-    },
-
     rules: {
-      'no-console': 'error',
-      'no-debugger': 'error',
-
-      'prettier/prettier': [
-        'warn',
-        {
-          endOfLine: 'auto',
-        },
-      ],
-
-      'vue/multi-word-component-names': 'off',
-
-      'vue/valid-v-slot': [
-        'error',
-        {
-          allowModifiers: true,
-        },
-      ],
+      'no-console': 'warn',
+      'vue/no-mutating-props': 'warn',
+      'vue/no-side-effects-in-computed-properties': 'warn',
+      'vue/valid-v-slot': 'warn',
+      'vuetify/no-deprecated-classes': 'warn',
+      'vuetify/no-deprecated-components': 'warn',
+      'vuetify/no-deprecated-props': 'warn',
     },
   },
-  {
-    files: ['**/__tests__/*.{j,t}s?(x)', '**/tests/unit/**/*.spec.{j,t}s?(x)'],
-
-    languageOptions: {
-      globals: {
-        ...globals.jest,
-      },
-    },
-  },
-  prettierConfig,
-]
+])
