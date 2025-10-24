@@ -98,9 +98,9 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
     """Get a handle to access a target file
 
     Args:
-        path (str) Path to a file in a target directory, e.g. "INST/procedures/test.rb"
-        original (bool) Whether to get the original or modified file; defaults to False
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        path (str): Path to a file in a target directory, e.g. "INST/procedures/test.rb"
+        original (bool): Whether to get the original or modified file; defaults to False
+        scope (str): Optional, defaults to env.OPENC3_SCOPE
 
     Return:
         (File | None)
