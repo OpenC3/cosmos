@@ -15,6 +15,16 @@ then
   fi
 fi
 
+# Helper function to find script - checks PATH first, then falls back to script location
+find_script() {
+  local script_name="$1"
+  if command -v "$script_name" &> /dev/null; then
+    echo "$script_name"
+  else
+    echo "$(dirname -- "$0")/scripts/linux/$script_name"
+  fi
+}
+
 export DOCKER_COMPOSE_COMMAND="docker compose"
 ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
 if [ "$?" -ne 0 ]; then
@@ -71,12 +81,12 @@ case $1 in
     set +a
     ;;
   start )
-    ./openc3.sh build
-    ./openc3.sh run
+    openc3.sh build
+    openc3.sh run
     ;;
   start-ubi )
-    ./openc3.sh build-ubi
-    ./openc3.sh run-ubi
+    openc3.sh build-ubi
+    openc3.sh run-ubi
     ;;
   stop )
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
@@ -101,16 +111,16 @@ case $1 in
     fi
     if [ "$2" == "local" ]
     then
-      cd plugins/DEFAULT
+      cd "$(dirname -- "$0")/plugins/DEFAULT"
       ls | grep -xv "README.md" | xargs rm -r
       cd ../..
     fi
     ;;
   build )
-    scripts/linux/openc3_setup.sh
+    "$(find_script openc3_setup.sh)"
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
-    chmod -R +r .
+    chmod -R +r "$(dirname -- "$0")"
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
@@ -121,10 +131,10 @@ case $1 in
     . "$(dirname -- "$0")/.env"
     if test -f /etc/ssl/certs/ca-bundle.crt
     then
-      cp /etc/ssl/certs/ca-bundle.crt ./cacert.pem
+      cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
     fi
-    scripts/linux/openc3_setup.sh
-    scripts/linux/openc3_build_ubi.sh
+    "$(find_script openc3_setup.sh)"
+    "$(find_script openc3_build_ubi.sh)"
     set +a
     ;;
   run )
@@ -136,14 +146,14 @@ case $1 in
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
-    scripts/linux/openc3_setup.sh
+    "$(find_script openc3_setup.sh)"
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
-    scripts/linux/openc3_test.sh "${@:2}"
+    "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   util )
     set -a
     . "$(dirname -- "$0")/.env"
-    scripts/linux/openc3_util.sh "${@:2}"
+    "$(find_script openc3_util.sh)" "${@:2}"
     set +a
     ;;
   * )

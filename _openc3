@@ -2,6 +2,115 @@
 
 # Zsh completion script for openc3.sh
 
+_openc3_util() {
+    local curcontext="$curcontext"
+
+    # First argument to util command
+    if (( CURRENT == 1 )); then
+        local -a util_commands
+        util_commands=(
+            'encode:encode a string to base64'
+            'hash:hash a string using SHA-256'
+            'save:save images to a tar file'
+            'load:load images from a tar file'
+            'tag:tag images'
+            'push:push images'
+            'clean:remove node_modules, coverage, etc'
+            'hostsetup:configure host for redis'
+            'hostenter:sh into vm host'
+        )
+        _describe 'util commands' util_commands
+        return
+    fi
+
+    # Subsequent arguments depend on the util subcommand
+    local util_cmd=$words[1]
+    case $util_cmd in
+        encode|hash)
+            _message -r 'STRING'
+            return 0
+            ;;
+        save)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        load)
+            if (( CURRENT == 2 )); then
+                _message 'TAG (optional, default: latest)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        tag)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO1 (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'REPO2 (e.g., localhost:12345)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'NAMESPACE1 (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message -r 'TAG1 (e.g., latest)'
+                return 0
+            elif (( CURRENT == 6 )); then
+                _message 'NAMESPACE2 (optional, defaults to NAMESPACE1)'
+                return 0
+            elif (( CURRENT == 7 )); then
+                _message 'TAG2 (optional, defaults to TAG1)'
+                return 0
+            elif (( CURRENT == 8 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        push)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., localhost:12345)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        hostsetup)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            fi
+            ;;
+        clean|hostenter)
+            # These commands don't take arguments
+            ;;
+    esac
+}
+
 _openc3_cli() {
     local curcontext="$curcontext"
 
@@ -302,7 +411,27 @@ _openc3() {
                     words=("${save_words[@]}")
                     CURRENT=$save_current
                     ;;
-                util|test)
+                util)
+                    # Adjust words array to make it relative to util subcommand
+                    local -a util_words
+                    util_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'util'
+                    local util_current=$((CURRENT - 2))
+
+                    # Save original values
+                    local save_words=("${words[@]}")
+                    local save_current=$CURRENT
+
+                    # Set context for util completion
+                    words=("${util_words[@]}")
+                    CURRENT=$util_current
+
+                    _openc3_util
+
+                    # Restore original values
+                    words=("${save_words[@]}")
+                    CURRENT=$save_current
+                    ;;
+                test)
                     # These accept variable arguments, provide file completion
                     _files
                     ;;
