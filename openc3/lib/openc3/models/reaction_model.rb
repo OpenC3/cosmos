@@ -143,7 +143,7 @@ module OpenC3
       unless triggers.is_a?(Array)
         raise ReactionInputError.new "invalid triggers, must be array of hashes: #{triggers}"
       end
-      trigger_hash = Hash.new()
+      trigger_hash = {}
       triggers.each do | trigger |
         unless trigger.is_a?(Hash)
           raise ReactionInputError.new "invalid trigger, must be hash: #{trigger}"

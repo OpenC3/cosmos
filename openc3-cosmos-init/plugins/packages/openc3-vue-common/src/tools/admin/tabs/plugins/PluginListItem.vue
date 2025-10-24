@@ -17,11 +17,7 @@
 -->
 
 <template>
-  <tr
-    :class="{ 'cursor-pointer': hasDetails }"
-    data-test="plugin-list-item"
-    @click="openDetails"
-  >
+  <tr :class="{ 'cursor-pointer': hasDetails }" data-test="plugin-list-item">
     <td>
       <v-img
         v-if="imageContentsWithMimeType"
@@ -31,7 +27,7 @@
       />
     </td>
     <td>
-      <div class="text-h6" v-text="displayTitle" />
+      <div class="text-h6" v-text="displayTitle" @click="openDetails" />
       <div class="text-subtitle-2 v-list-item-subtitle pl-0">
         <!-- subtitle -->
         <template v-if="isModified"> * </template>

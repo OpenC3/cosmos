@@ -39,7 +39,7 @@ class QueuesController < ApplicationController
     return unless authorization('cmd_info')
     begin
       queues = @model_class.all(scope: params[:scope])
-      ret = Array.new
+      ret = []
       queues.each do |_, trigger|
         ret << trigger
       end

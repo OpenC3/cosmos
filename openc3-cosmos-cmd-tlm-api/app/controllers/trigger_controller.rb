@@ -38,7 +38,7 @@ class TriggerController < ApplicationController
   def index
     return unless authorization('system')
     begin
-      ret = Array.new
+      ret = []
       triggers = @model_class.all(group: params[:group], scope: params[:scope])
       triggers.each do |_, trigger|
         ret << trigger
