@@ -146,6 +146,21 @@ docker build \
   .
 cd ..
 
+# openc3-tsdb
+cd openc3-tsdb
+docker build \
+  -f Dockerfile-ubi \
+  --network host \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY} \
+  --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+  --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+  --build-arg NPM_URL=${NPM_URL} \
+  --build-arg MAVEN_URL=${MAVEN_URL} \
+  --platform linux/amd64 \
+  -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
+  .
+cd ..
+
 # NOTE: Ensure OPENC3_MC_RELEASE is on IronBank:
 # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fmc
 # NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
