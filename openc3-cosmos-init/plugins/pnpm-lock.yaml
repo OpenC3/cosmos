@@ -44,7 +44,7 @@ importers:
         version: 1.14.0
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       prettier:
         specifier: 3.6.2
         version: 3.6.2
@@ -52,11 +52,11 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vite-plugin-style-inject:
         specifier: 0.0.1
-        version: 0.0.1(vite@6.3.6(sass@1.93.2))
+        version: 0.0.1(vite@6.4.1(sass@1.93.2))
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -84,7 +84,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -95,8 +95,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -130,7 +130,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -141,8 +141,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -179,7 +179,7 @@ importers:
         version: 1.14.0
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -190,8 +190,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -243,7 +243,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -254,8 +254,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -286,7 +286,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -297,8 +297,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -332,7 +332,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -343,8 +343,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -378,7 +378,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -389,8 +389,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -427,7 +427,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -438,8 +438,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -473,7 +473,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -484,8 +484,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -519,7 +519,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -530,8 +530,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -571,7 +571,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -582,8 +582,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -617,7 +617,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -628,8 +628,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -669,7 +669,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -680,8 +680,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -724,7 +724,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -735,8 +735,8 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -784,8 +784,8 @@ importers:
         specifier: 3.6.2
         version: 3.6.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
 
   packages/openc3-tool-base:
     dependencies:
@@ -831,7 +831,7 @@ importers:
         version: 6.15.3
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       prettier:
         specifier: 3.6.2
         version: 3.6.2
@@ -842,8 +842,8 @@ importers:
         specifier: 14.2.5
         version: 14.2.5
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
       vue:
         specifier: 3.5.22
         version: 3.5.22
@@ -913,13 +913,13 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 5.2.3
-        version: 5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)
+        version: 5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)
       prettier:
         specifier: 3.6.2
         version: 3.6.2
       vite:
-        specifier: 6.3.6
-        version: 6.3.6(sass@1.93.2)
+        specifier: 6.4.1
+        version: 6.4.1(sass@1.93.2)
 
 packages:
 
@@ -2649,8 +2649,8 @@ packages:
     peerDependencies:
       vite: ^2.0.0
 
-  vite@6.3.6:
-    resolution: {integrity: sha512-0msEVHJEScQbhkbVTb/4iHZdJ6SXp/AvxL2sjwYQFfBqleHtnCqv1J3sa9zbWz/6kW1m9Tfzn92vW+kZ1WV6QA==}
+  vite@6.4.1:
+    resolution: {integrity: sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -3272,9 +3272,9 @@ snapshots:
 
   '@types/web-bluetooth@0.0.20': {}
 
-  '@vitejs/plugin-vue@5.2.3(vite@6.3.6(sass@1.93.2))(vue@3.5.22)':
+  '@vitejs/plugin-vue@5.2.3(vite@6.4.1(sass@1.93.2))(vue@3.5.22)':
     dependencies:
-      vite: 6.3.6(sass@1.93.2)
+      vite: 6.4.1(sass@1.93.2)
       vue: 3.5.22
 
   '@vue-flow/background@1.3.2(@vue-flow/core@1.47.0(vue@3.5.22))(vue@3.5.22)':
@@ -4396,11 +4396,11 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-plugin-style-inject@0.0.1(vite@6.3.6(sass@1.93.2)):
+  vite-plugin-style-inject@0.0.1(vite@6.4.1(sass@1.93.2)):
     dependencies:
-      vite: 6.3.6(sass@1.93.2)
+      vite: 6.4.1(sass@1.93.2)
 
-  vite@6.3.6(sass@1.93.2):
+  vite@6.4.1(sass@1.93.2):
     dependencies:
       esbuild: 0.25.8
       fdir: 6.4.6(picomatch@4.0.3)
