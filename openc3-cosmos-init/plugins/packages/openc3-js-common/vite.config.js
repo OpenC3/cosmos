@@ -6,8 +6,8 @@ export default defineConfig({
     sourcemap: true,
     lib: {
       entry: {
-        'services': './src/services/index.js',
-        'utils': './src/utils/index.js',
+        services: './src/services/index.js',
+        utils: './src/utils/index.js',
       },
       name: '@openc3/js-common',
     },
