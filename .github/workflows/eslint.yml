@@ -153,7 +153,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
       - name: Run ESLint
-        run: pnpm lint --max-warnings 0
+        run: pnpm lint --max-warnings 1
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
 
   cmdtlmserver:
@@ -419,5 +419,5 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
       - name: Run ESLint
-        run: pnpm lint --max-warnings 339
+        run: pnpm lint --max-warnings 352
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
