@@ -1,0 +1,34 @@
+name: SonarQube Scan
+
+on:
+  workflow_run:
+    workflows:
+      - playwright.yml
+      - python_unit_tests.yml
+      - api_tests.yml
+    types:
+      - completed
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # all history for all branches and tags
+      - name: Download artifacts from other workflows
+        uses: actions/download-artifact@v3
+        with:
+          workflow: |
+            playwright.yml
+            python_unit_tests.yml
+            api_tests.yml
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.organization=openc3
+            -Dsonar.projectKey=OpenC3_cosmos
+            -Dsonar.sources=.
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

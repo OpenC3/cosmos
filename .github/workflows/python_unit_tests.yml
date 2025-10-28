@@ -2,10 +2,6 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-# This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
-# For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
-
-# Reference environment variables: https://docs.github.com/en/actions/reference/environment-variables
 
 name: Python Unit Tests
 
@@ -15,15 +11,14 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
 
 env:
   OPENC3_CLOUD: local
 
 jobs:
   unit-test:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -50,20 +45,3 @@ jobs:
           poetry run coverage run -m pytest ./test/
           poetry run coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@v5
-        with:
-          working-directory: openc3/python
-          flags: python # See codecov.yml
-          token: ${{ secrets.CODECOV_TOKEN }}
-      # - name: SonarQube Scan
-      #   uses: SonarSource/sonarqube-scan-action@v5
-      #   with:
-      #     projectBaseDir: openc3/python
-      #     args: >
-      #       -Dsonar.organization=openc3
-      #       -Dsonar.projectKey=OpenC3_cosmos
-      #       -Dsonar.python.coverage.reportPaths=coverage.xml
-      #       -Dsonar.sources=openc3/
-      #       -Dsonar.tests=test/
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

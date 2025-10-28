@@ -11,12 +11,11 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
 
 jobs:
   openc3-build-test:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

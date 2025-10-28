@@ -14,8 +14,8 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
 
 env:
   RUBYOPT: --disable=frozen_string_literal
@@ -31,7 +31,6 @@ env:
 
 jobs:
   cmd-tlm-api:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,9 +38,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        # Only needed for SonarQube Scan
-        # with:
-        #   fetch-depth: 0 # all history for all branches and tags
+        with:
+          fetch-depth: 0 # all history for all branches and tags
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         env:
@@ -60,20 +58,13 @@ jobs:
         working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@v5
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
         with:
-          directory: openc3-cosmos-cmd-tlm-api/coverage
-          flags: ruby-api # See codecov.yml
-          token: ${{ secrets.CODECOV_TOKEN }}
-      # Attempt at using separate SonarQube Scan task
-      # - name: Store coverage report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: cmd-tlm-api-${{ matrix.ruby-version }}
-      #     path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
+          name: cmd-tlm-api-${{ matrix.ruby-version }}
+          path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
 
   script-runner-api-ruby:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -82,9 +73,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        # Only needed for SonarQube Scan
-        # with:
-        #   fetch-depth: 0
+        with:
+          fetch-depth: 0
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         env:
@@ -101,19 +91,13 @@ jobs:
         working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@v5
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
         with:
-          directory: openc3-cosmos-script-runner-api/coverage
-          flags: ruby-api # See codecov.yml
-          token: ${{ secrets.CODECOV_TOKEN }}
-      # - name: Store coverage report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: script-runner-api-ruby-${{ matrix.ruby-version }}
-      #     path: openc3-cosmos-script-runner-api/coverage/coverage.json
+          name: script-runner-api-ruby-${{ matrix.ruby-version }}
+          path: openc3-cosmos-script-runner-api/coverage/coverage.json
 
   script-runner-api-python:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -121,9 +105,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        # Only needed for SonarQube Scan
-        # with:
-        #   fetch-depth: 0
+        with:
+          fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -143,38 +126,8 @@ jobs:
           poetry run coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
           poetry run coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@v5
+      - name: Store coverage report
+        uses: actions/upload-artifact@v4
         with:
-          working-directory: openc3/python
-          flags: python # See codecov.yml
-          token: ${{ secrets.CODECOV_TOKEN }}
-      # - name: Store coverage report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: script-runner-api-python-${{ matrix.python-version }}
-      #     path: openc3/python/coverage.xml
-
-  # This was an attempt to use SonarQube to report coverage
-  # It is currently disabled because we reverted to Automatic Analysis
-  # report-coverage:
-  #   needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v5
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Download coverage reports
-  #       uses: actions/download-artifact@v4
-  #     - name: SonarQube Scan
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       with:
-  #         args: >
-  #           -Dsonar.organization=openc3
-  #           -Dsonar.projectKey=OpenC3_cosmos
-  #           -Dsonar.python.coverage.reportPaths=script-runner-api-python-3.12/coverage.xml
-  #           -Dsonar.ruby.coverage.reportPaths=cmd-tlm-api-3.3/coverage.json,script-runner-api-ruby-3.3/coverage.json
-  #           -Dsonar.sources=openc3/lib,openc3/python,openc3-cosmos-cmd-tlm-api/app,openc3-cosmos-script-runner-api/app,openc3-cosmos-script-runner-api/scripts
-  #           -Dsonar.tests=openc3-cosmos-cmd-tlm-api/spec,openc3-cosmos-script-runner-api/spec,openc3-cosmos-script-runner-api/test
-  #           -Dsonar.test.exclusions=openc3-cosmos-cmd-tlm-api/spec/fixtures/**/*
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          name: script-runner-api-python-${{ matrix.python-version }}
+          path: openc3/python/coverage.xml
