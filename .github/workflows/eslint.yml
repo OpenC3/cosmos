@@ -2,6 +2,8 @@ name: eslint
 
 on:
   pull_request:
+    branches-ignore:
+      - 'dependabot/**'
     types:
       - opened
       - reopened
@@ -11,7 +13,6 @@ on:
 
 jobs:
   changes:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
