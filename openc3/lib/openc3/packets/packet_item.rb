@@ -404,7 +404,8 @@ module OpenC3
       end
       config << " #{self.endianness}" if self.endianness != default_endianness && self.data_type != :STRING && self.data_type != :BLOCK
       config << "\n"
-
+      
+      config << "    KEY #{self.key}\n" if self.key
       config << "    VARIABLE_BIT_SIZE '#{self.variable_bit_size['length_item_name']}' #{self.variable_bit_size['length_bits_per_count']} #{self.variable_bit_size['length_value_bit_offset']}\n" if self.variable_bit_size
       config << "    REQUIRED\n" if self.required
       config << "    FORMAT_STRING #{self.format_string.to_s.quote_if_necessary}\n" if self.format_string
@@ -516,7 +517,8 @@ module OpenC3
           config['limits'][limits_set] = limits
         end
       end
-
+      
+      config['key'] = self.key if self.key
       config['meta'] = @meta if @meta
       config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
       config['obfuscate'] = self.obfuscate
