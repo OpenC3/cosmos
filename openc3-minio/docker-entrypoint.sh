@@ -2,10 +2,8 @@
 #
 
 # If command starts with an option, prepend minio.
-if [ "${1}" != "minio" ]; then
-    if [ -n "${1}" ]; then
-        set -- minio "$@"
-    fi
+if [ -n "${1}" ] && [ "${1}" != "minio" ]; then
+	set -- minio "$@"
 fi
 
 docker_switch_user() {
