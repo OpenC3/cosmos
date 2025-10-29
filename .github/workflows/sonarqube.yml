@@ -8,7 +8,10 @@ on:
       - completed
 
 jobs:
+  python-unit-tests:
+    uses: ./.github/workflows/python_unit_tests.yml
   scan:
+    needs: [python-unit-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
