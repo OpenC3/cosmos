@@ -39,7 +39,6 @@
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
-    "vetur.validation.template": false,
     "eslint.validate": ["vue", "html", "javascript"],
     "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
     "editor.formatOnSave": true,
@@ -49,16 +48,8 @@
     "explorer.confirmDragAndDrop": true,
     "editor.tabSize": 2,
     "editor.insertSpaces": true,
-    "vetur.completion.scaffoldSnippetSources": {
-      "workspace": "",
-      "user": "",
-      "vetur": ""
-    },
     "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
-    "git.ignoreLimitWarning": true,
-    "ruby.rubocop.onSave": true,
-    "ruby.format": "rubocop"
-  },
-  "files.associations": {}
+    "git.ignoreLimitWarning": true
+  }
 }

@@ -30,7 +30,9 @@ version_tag = ARGV[0] || "latest"
 # Get versions from the Dockerfiles
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 redis_version = get_docker_version("openc3-redis/Dockerfile")
-minio_version = get_docker_version("openc3-minio/Dockerfile")
+mc_version = get_docker_version("openc3-cosmos-init/Dockerfile", arg: 'OPENC3_MC_RELEASE')
+minio_version = get_docker_version("openc3-minio/Dockerfile", arg: 'OPENC3_MINIO_RELEASE')
+go_version = get_docker_version("openc3-minio/Dockerfile", arg: 'GO_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
@@ -45,9 +47,8 @@ containers = [
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:#{minio_version}", rpm: true },
+  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "golang:#{go_version}-alpine#{ENV['ALPINE_VERSION']}", apk: true },
 ]
-
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `rm Gemfile.lock 2>&1`
@@ -73,11 +74,10 @@ summary_report = build_summary_report(containers)
 # Now check for latest versions
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
-check_minio(client, containers)
+check_minio(client, containers, mc_version, minio_version, go_version)
 check_container_version(client, containers, 'redis')
 base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
-
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Check the bundles

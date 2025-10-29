@@ -66,7 +66,7 @@ cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
