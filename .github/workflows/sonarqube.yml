@@ -1,11 +1,12 @@
 name: SonarQube Scan
 
 on:
-  workflow_run:
-    workflows: [API Tests, Python Unit Tests]
-    # workflows: [API Tests, Python Unit Tests, Ruby Unit Tests, Playwright Tests]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+  pull_request:
+    branches-ignore:
+      - 'dependabot/**'
 
 jobs:
   python-unit-tests:
