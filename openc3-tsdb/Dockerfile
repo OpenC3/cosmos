@@ -8,6 +8,12 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}${
 
 ARG OPENC3_TSDB_VERSION_EXT
 
+COPY cacert.pem /devel/cacert.pem
+ENV SSL_CERT_FILE=/devel/cacert.pem
+ENV CURL_CA_BUNDLE=/devel/cacert.pem
+ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
+ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
+
 USER root
 # Update packages to eliminate CVEs if we're not using the ubi image
 RUN if [ "$OPENC3_TSDB_VERSION_EXT" = "" ]; then \
