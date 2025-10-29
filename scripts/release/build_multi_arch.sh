@@ -204,6 +204,7 @@ if [ "${1:-default}" = "ubi" ]; then
 fi
 cd ../openc3-minio
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \

@@ -64,6 +64,7 @@ cd ..
 # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
   --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
