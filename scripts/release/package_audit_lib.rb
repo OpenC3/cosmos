@@ -339,40 +339,6 @@ def check_minio(client, containers, mc_version, minio_version, go_version)
     mc_versions << entry['name']
   end
 
-  File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
-    file.each do |line|
-      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
-        parts = line.split('=')
-        if parts[1].strip != minio_version
-          puts "WARN: Update build_multi_arch.rb to match Minio Dockerfile: #{minio_version}, Current value: #{parts[1].strip}"
-        end
-      end
-      if line.include?('OPENC3_MC_RELEASE=RELEASE')
-        parts = line.split('=')
-        if parts[1].strip != mc_version
-          puts "WARN: Update build_multi_arch.rb to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{parts[1].strip}"
-        end
-      end
-    end
-  end
-  File.open(File.join(File.dirname(__FILE__), '../linux', 'openc3_build_ubi.sh')) do |file|
-    file.each do |line|
-      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
-        parts = line.split('=')
-        version = parts[1].strip[0..-2].strip # Removing trailing \
-        if version != minio_version
-          puts "WARN: Update openc3_build_ubi.rb to match Minio Dockerfile: #{minio_version}, Current value: #{version}"
-        end
-      end
-      if line.include?('OPENC3_MC_RELEASE=RELEASE')
-        parts = line.split('=')
-        version = parts[1].strip[0..-2].strip # Removing trailing \
-        if version != mc_version
-          puts "WARN: Update openc3_build_ubi.sh to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{version}"
-        end
-      end
-    end
-  end
   check_minio_mc(minio_versions, minio_version, 'Minio')
   check_minio_mc(mc_versions, mc_version, 'MC')
 
@@ -405,6 +371,56 @@ def check_minio_mc(versions, requested_version, name)
     puts "#{name} up to date: #{requested_version}"
   else
     puts "ERROR: Could not find #{name} image: #{requested_version}"
+  end
+end
+
+def check_build_files(mc_version, minio_version, traefik_version)
+  File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
+    file.each do |line|
+      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+        parts = line.split('=')
+        if parts[1].strip != minio_version
+          puts "WARN: Update build_multi_arch.rb to match Minio Dockerfile: #{minio_version}, Current value: #{parts[1].strip}"
+        end
+      end
+      if line.include?('OPENC3_MC_RELEASE=RELEASE')
+        parts = line.split('=')
+        if parts[1].strip != mc_version
+          puts "WARN: Update build_multi_arch.rb to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{parts[1].strip}"
+        end
+      end
+      if line.include?('OPENC3_TRAEFIK_RELEASE=v')
+        parts = line.split('=')
+        if parts[1].strip != traefik_version
+          puts "WARN: Update build_multi_arch.rb to match traefik Dockerfile: #{traefik_version}, Current value: #{parts[1].strip}"
+        end
+      end
+    end
+  end
+  File.open(File.join(File.dirname(__FILE__), '../linux', 'openc3_build_ubi.sh')) do |file|
+    file.each do |line|
+      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != minio_version
+          puts "WARN: Update openc3_build_ubi.rb to match Minio Dockerfile: #{minio_version}, Current value: #{version}"
+        end
+      end
+      if line.include?('OPENC3_MC_RELEASE=RELEASE')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != mc_version
+          puts "WARN: Update openc3_build_ubi.sh to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{version}"
+        end
+      end
+      if line.include?('OPENC3_TRAEFIK_RELEASE=v')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != traefik_version
+          puts "WARN: Update openc3_build_ubi.sh to match traefik Dockerfile: #{traefik_version}, Current value: #{version}"
+        end
+      end
+    end
   end
 end
 

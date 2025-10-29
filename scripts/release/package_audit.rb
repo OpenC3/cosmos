@@ -32,6 +32,10 @@ traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 redis_version = get_docker_version("openc3-redis/Dockerfile")
 mc_version = get_docker_version("openc3-cosmos-init/Dockerfile", arg: 'OPENC3_MC_RELEASE')
 minio_version = get_docker_version("openc3-minio/Dockerfile", arg: 'OPENC3_MINIO_RELEASE')
+minio_ubi_version = get_docker_version("openc3-minio/Dockerfile-ubi", arg: 'OPENC3_MINIO_RELEASE')
+if minio_version != minio_ubi_version
+  puts "WARN: minio versions for standard and UBI do not match: #{minio_version} != #{minio_ubi_version}"
+end
 go_version = get_docker_version("openc3-minio/Dockerfile", arg: 'GO_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
@@ -72,6 +76,7 @@ report = build_report(containers, client)
 summary_report = build_summary_report(containers)
 
 # Now check for latest versions
+check_build_files(mc_version, minio_version, traefik_version)
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_minio(client, containers, mc_version, minio_version, go_version)
