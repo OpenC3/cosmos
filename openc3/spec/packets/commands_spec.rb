@@ -180,8 +180,7 @@ module OpenC3
 
       it "works in unique id mode or not" do
         System.targets["TGT1"] = Target.new("TGT1", Dir.pwd)
-        target = System.targets["TGT1"]
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode["TGT1"] = false
         buffer = "\x01\x02\x03\x04"
         pkt = @cmd.identify(buffer, ["TGT1"])
         pkt.enable_method_missing
@@ -189,7 +188,7 @@ module OpenC3
         expect(pkt.item2).to eql 2
         expect(pkt.item3).to eql 3
         expect(pkt.item4).to eql 4
-        target.cmd_unique_id_mode = true
+        System.commands.config.cmd_unique_id_mode["TGT1"] = true
         buffer = "\x01\x02\x01\x02"
         pkt = @cmd.identify(buffer, ["TGT1"])
         pkt.enable_method_missing
@@ -197,7 +196,7 @@ module OpenC3
         expect(pkt.item2).to eql 2
         expect(pkt.item3).to eql 1
         expect(pkt.item4).to eql 2
-        target.cmd_unique_id_mode = false
+        System.commands.config.cmd_unique_id_mode["TGT1"] = false
       end
 
       it "returns nil with unknown targets given" do
@@ -482,6 +481,77 @@ module OpenC3
     describe "all" do
       it "returns all packets" do
         expect(@cmd.all.keys).to eql %w(UNKNOWN TGT1 TGT2)
+      end
+    end
+
+    describe "identify with subpackets" do
+      before(:each) do
+        tf = Tempfile.new('unittest')
+        tf.puts 'COMMAND tgt3 pkt1 LITTLE_ENDIAN "Normal Command"'
+        tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
+        tf.puts '  APPEND_PARAMETER item2 8 UINT 0 255 2 "Item2"'
+        tf.puts 'COMMAND tgt3 sub1 LITTLE_ENDIAN "Subcommand 1"'
+        tf.puts '  SUBPACKET'
+        tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 10 10 10 "Item1"'
+        tf.puts '  APPEND_PARAMETER item2 8 UINT 0 255 2 "Item2"'
+        tf.puts 'COMMAND tgt3 sub2 LITTLE_ENDIAN "Subcommand 2"'
+        tf.puts '  SUBPACKET'
+        tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 20 20 20 "Item1"'
+        tf.puts '  APPEND_PARAMETER item2 8 UINT 0 255 3 "Item2"'
+        tf.close
+
+        pc = PacketConfig.new
+        pc.process_file(tf.path, "TGT3")
+        @cmd3 = Commands.new(pc)
+        tf.unlink
+      end
+
+      it "identifies normal packet when subpackets: false" do
+        buffer = "\x01\x02"
+        pkt = @cmd3.identify(buffer, ["TGT3"], subpackets: false)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "PKT1"
+      end
+
+      it "does not identify subpacket when subpackets: false" do
+        buffer = "\x0A\x02"
+        pkt = @cmd3.identify(buffer, ["TGT3"], subpackets: false)
+        expect(pkt).to be_nil
+      end
+
+      it "identifies subpacket when subpackets: true" do
+        buffer = "\x0A\x02"
+        pkt = @cmd3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "SUB1"
+      end
+
+      it "does not identify normal packet when subpackets: true" do
+        buffer = "\x01\x02"
+        pkt = @cmd3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to be_nil
+      end
+
+      it "identifies different subpackets" do
+        buffer = "\x14\x03"
+        pkt = @cmd3.identify(buffer, ["TGT3"], subpackets: true)
+        expect(pkt).to_not be_nil
+        expect(pkt.packet_name).to eql "SUB2"
+      end
+    end
+
+    describe "cmd_unique_id_mode" do
+      it "returns unique_id_mode for target" do
+        expect(@cmd.cmd_unique_id_mode("TGT1")).to be_falsey
+        # TGT2 has pkt6 and pkt7 with same ID but different bit sizes, triggering unique_id_mode
+        expect(@cmd.cmd_unique_id_mode("TGT2")).to be_truthy
+      end
+    end
+
+    describe "cmd_subpacket_unique_id_mode" do
+      it "returns subpacket unique_id_mode for target" do
+        expect(@cmd.cmd_subpacket_unique_id_mode("TGT1")).to be_falsey
+        expect(@cmd.cmd_subpacket_unique_id_mode("TGT2")).to be_falsey
       end
     end
   end

@@ -154,9 +154,12 @@ module OpenC3
         @metric.set(name: 'decom_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and decom start')
 
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+        #######################################
+        # Build packet object from topic data
+        #######################################
         target_name = msg_hash["target_name"]
         packet_name = msg_hash["packet_name"]
-
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
         # Note: Packet time will be recalculated as part of decom so not setting
@@ -168,23 +171,36 @@ module OpenC3
           packet.extra = extra
         end
         packet.buffer = msg_hash["buffer"]
-        # Processors are user code points which must be rescued
-        # so the TelemetryDecomTopic can write the packet
-        begin
-          packet.process # Run processors
-        rescue Exception => e
-          @error_count += 1
-          @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
-          @error = e
-          @logger.error e.message
-        end
-        # Process all the limits and call the limits_change_callback (as necessary)
-        # check_limits also can call user code in the limits response
-        # but that is rescued separately in the limits_change_callback
-        packet.check_limits(System.limits_set)
 
-        # This is what actually decommutates the packet and updates the CVT
-        TelemetryDecomTopic.write_packet(packet, scope: @scope)
+        ################################################################################
+        # Break packet into subpackets (if necessary)
+        # Subpackets are typically channelized data
+        ################################################################################
+        subpackets = packet.subpacketize
+
+        subpackets.each do |subpacket|
+          #####################################################################################
+          # Run Processors
+          # This must be before the full decom so that processor derived values are available
+          #####################################################################################
+          begin
+            subpacket.process # Run processors
+          rescue Exception => e
+            @error_count += 1
+            @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+            @error = e
+            @logger.error e.message
+          end
+
+          #############################################################################
+          # Process all the limits and call the limits_change_callback (as necessary)
+          # This must be before the full decom so that limits states are available
+          #############################################################################
+          subpacket.check_limits(System.limits_set)
+
+          # This is what actually decommutates the packet and updates the CVT
+          TelemetryDecomTopic.write_packet(subpacket, scope: @scope)
+        end
 
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')

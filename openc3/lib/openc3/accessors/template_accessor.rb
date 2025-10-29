@@ -25,6 +25,7 @@ module OpenC3
       @left_char = left_char
       @right_char = right_char
       @configured = false
+      @args = [left_char, right_char]
     end
 
     def configure

@@ -176,6 +176,19 @@ ACCESSOR:
       description: Additional argument passed to the accessor class constructor
       values: .+
   since: 5.0.10
+SUBPACKETIZER:
+  summary: Defines a class used to break up the packet into subpackets before decom
+  description: Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+  parameters:
+    - name: Subpacketizer Class Name
+      required: true
+      description: The name of the Subpacketizer class
+      values: .+
+    - name: Argument
+      required: false
+      description: Additional argument passed to the Subpacketizer class constructor
+      values: .+
+  since: 6.10.0
 TEMPLATE:
   summary: Defines a template string used to initialize the command before default values are filled in
   description: Generally the template string is formatted in JSON or HTML and then values are filled in with
@@ -256,6 +269,10 @@ RESTRICTED:
   summary: Marks this packet as restricted and will require approval if critical commanding is enabled
   description: Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
   since: 5.20.0
+SUBPACKET:
+  summary: Marks this packet as as a subpacket which will exclude it from Interface level identification
+  description: Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
+  since: 6.10.0
 VALIDATOR:
   summary: Defines a validator class for a command
   description: Validator class is used to validate the command success or failure with both a pre_check and post_check method.

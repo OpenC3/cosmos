@@ -35,6 +35,15 @@
     },
     {
       "path": "../../Development/openc3-cosmos-vueflow"
+    },
+    {
+      "path": "../../Development/fprime"
+    },
+    {
+      "path": "../openc3-cosmos-fprime"
+    },
+    {
+      "path": "../openc3-cosmos-script-engine-cstol"
     }
   ],
   "settings": {

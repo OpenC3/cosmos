@@ -82,14 +82,10 @@ class FixedProtocol(BurstProtocol):
             try:
                 if self.telemetry:
                     target_packets = System.telemetry.packets(target_name)
-                    target = System.targets[target_name]
-                    if target:
-                        unique_id_mode = target.tlm_unique_id_mode
+                    unique_id_mode = System.telemetry.tlm_unique_id_mode(target_name)
                 else:
                     target_packets = System.commands.packets(target_name)
-                    target = System.targets[target_name]
-                    if target:
-                        unique_id_mode = target.cmd_unique_id_mode
+                    unique_id_mode = System.commands.cmd_unique_id_mode(target_name)
             except RuntimeError as error:
                 if "does not exist" in traceback.format_exc():
                     # No commands/telemetry for this target
@@ -99,21 +95,31 @@ class FixedProtocol(BurstProtocol):
 
             if unique_id_mode:
                 for _, packet in target_packets.items():
-                    if packet.identify(self.data[self.discard_leading_bytes :]):
+                    if not packet.subpacket and packet.identify(
+                        self.data[self.discard_leading_bytes :]
+                    ):  # identify handles virtual
                         identified_packet = packet
                         break
             else:
                 # Do a lookup to quickly identify the packet
                 if len(target_packets) > 0:
-                    packet = next(iter(target_packets.values()))
-                    key = packet.read_id_values(self.data[self.discard_leading_bytes :])
-                    if self.telemetry:
-                        id_values = System.telemetry.config.tlm_id_value_hash[target_name]
-                    else:
-                        id_values = System.commands.config.cmd_id_value_hash[target_name]
-                    identified_packet = id_values.get(repr(key))
-                    if identified_packet is None:
-                        identified_packet = id_values.get("CATCHALL")
+                    packet = None
+                    for _, target_packet in target_packets.items():
+                        if target_packet.virtual:
+                            continue
+                        if target_packet.subpacket:
+                            continue
+                        packet = target_packet
+                        break
+                    if packet:
+                        key = packet.read_id_values(self.data[self.discard_leading_bytes :])
+                        if self.telemetry:
+                            id_values = System.telemetry.config.tlm_id_value_hash[target_name]
+                        else:
+                            id_values = System.commands.config.cmd_id_value_hash[target_name]
+                        identified_packet = id_values.get(repr(key))
+                        if identified_packet is None:
+                            identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
                 if identified_packet.defined_length + self.discard_leading_bytes > len(self.data):

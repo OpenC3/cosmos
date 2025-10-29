@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -68,12 +68,6 @@ module OpenC3
     # @return [Integer] The number of telemetry packets received from this target
     attr_accessor :tlm_cnt
 
-    # @return [Boolean] Indicates if all command packets identify using different fields
-    attr_accessor :cmd_unique_id_mode
-
-    # @return [Boolean] Indicates if telemetry packets identify using different fields
-    attr_accessor :tlm_unique_id_mode
-
     # @return [String] Id of the target configuration
     attr_accessor :id
 
@@ -91,13 +85,10 @@ module OpenC3
       @ignored_parameters = []
       @ignored_items = []
       @cmd_tlm_files = []
-      # @auto_screen_substitute = false
       @interface = nil
       @routers = []
       @cmd_cnt = 0
       @tlm_cnt = 0
-      @cmd_unique_id_mode = false
-      @tlm_unique_id_mode = false
       @name = target_name.clone.upcase.freeze
       get_target_dir(path, gem_path)
       process_target_config_file()
@@ -174,20 +165,8 @@ module OpenC3
 
           @cmd_tlm_files << filename
 
-          # when 'AUTO_SCREEN_SUBSTITUTE'
-          # usage = "#{keyword}"
-          # parser.verify_num_parameters(0, 0, usage)
-          # @auto_screen_substitute = true
-
-        when 'CMD_UNIQUE_ID_MODE'
-          usage = "#{keyword}"
-          parser.verify_num_parameters(0, 0, usage)
-          @cmd_unique_id_mode = true
-
-        when 'TLM_UNIQUE_ID_MODE'
-          usage = "#{keyword}"
-          parser.verify_num_parameters(0, 0, usage)
-          @tlm_unique_id_mode = true
+        when 'CMD_UNIQUE_ID_MODE', 'TLM_UNIQUE_ID_MODE'
+          # Deprecated - Now autodetected
 
         else
           # blank lines will have a nil keyword and should not raise an exception
@@ -202,15 +181,7 @@ module OpenC3
       config['requires'] = @requires
       config['ignored_parameters'] = @ignored_parameters
       config['ignored_items'] = @ignored_items
-      # config['auto_screen_substitute'] = true if @auto_screen_substitute
       config['cmd_tlm_files'] = @cmd_tlm_files
-      # config['filename'] = @filename
-      # config['interface'] = @interface.name if @interface
-      # config['dir'] = @dir
-      # config['cmd_cnt'] = @cmd_cnt
-      # config['tlm_cnt'] = @tlm_cnt
-      config['cmd_unique_id_mode'] = true if @cmd_unique_id_mode
-      config['tlm_unique_id_mode'] = true if @tlm_unique_id_mode
       config['id'] = @id
       config
     end

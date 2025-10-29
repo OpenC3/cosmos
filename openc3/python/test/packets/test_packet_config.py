@@ -24,6 +24,19 @@ from test.test_helper import *
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
 from cbor2 import dump, loads
+from openc3.subpacketizers.subpacketizer import Subpacketizer
+
+
+class DummySubpacketizer(Subpacketizer):
+    """Test subpacketizer class for unit tests"""
+
+    def __init__(self, packet, *args):
+        super().__init__()
+        self.packet = packet
+        self.args = list(args)
+
+    def call(self, packet):
+        return [packet]
 
 
 class TestPacketConfig(unittest.TestCase):
@@ -1300,4 +1313,78 @@ class TestPacketConfig(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         item = self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1")
         self.assertEqual(item.states, {"ZERO": 0x00, "ONE": 0x01, "TWO": 0x02})
+        tf.close()
+
+    def test_processes_subpacket_keyword(self):
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+        self.assertTrue(packet.subpacket)
+        tf.close()
+
+    def test_processes_subpacketizer_keyword(self):
+        # Directly set the subpacketizer on a packet to test it works
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.seek(0)
+
+        self.pc.process_file(tf.name, "TGT1")
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+
+        # Manually set subpacketizer to test the attribute works
+        packet.subpacketizer = DummySubpacketizer(packet, "arg1", "arg2")
+
+        self.assertIsNotNone(packet.subpacketizer)
+        self.assertIsInstance(packet.subpacketizer, DummySubpacketizer)
+        self.assertEqual(packet.subpacketizer.args, ["arg1", "arg2"])
+        tf.close()
+
+    def test_unique_id_mode_autodetection_for_commands(self):
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two packets with same ID but different field layouts - should trigger unique_id_mode
+        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER PARAM1 8 UINT 1 1 1\n")
+        tf.write("  APPEND_PARAMETER PARAM2 8 UINT 0 0 0\n")
+        tf.write("COMMAND TGT1 PKT2 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER PARAM1 16 UINT 1 1 1\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertTrue(self.pc.cmd_unique_id_mode.get("TGT1"))
+        tf.close()
+
+    def test_unique_id_mode_autodetection_for_telemetry(self):
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two packets with same ID but different field layouts - should trigger unique_id_mode
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("  APPEND_ITEM ITEM2 8 UINT\n")
+        tf.write("TELEMETRY TGT1 PKT2 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 16 UINT 1\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
+        tf.close()
+
+    def test_subpacket_id_value_hash_separation(self):
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Create a normal packet and a subpacket with the same ID
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        # Both should be in separate hashes
+        self.assertIn("TGT1", self.pc.tlm_id_value_hash)
+        self.assertIn("TGT1", self.pc.tlm_subpacket_id_value_hash)
+        # Normal packet should be in main hash
+        self.assertIn(repr([1]), self.pc.tlm_id_value_hash["TGT1"])
+        # Subpacket should be in subpacket hash
+        self.assertIn(repr([1]), self.pc.tlm_subpacket_id_value_hash["TGT1"])
         tf.close()
