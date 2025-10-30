@@ -27,16 +27,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "5.2.3",
-    "@vue/eslint-config-prettier": "10.2.0",
     "@vue/test-utils": "2.4.6",
-    "eslint": "9.38.0",
-    "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-prettier": "5.5.4",
-    "eslint-plugin-vue": "10.5.1",
     "prettier": "3.6.2",
     "sass": "1.93.2",
     "vite": "6.4.1",
-    "vue": "3.5.22",
-    "vue-eslint-parser": "10.2.0"
+    "vue": "3.5.22"
   }
 }
