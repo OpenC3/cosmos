@@ -179,6 +179,13 @@ module OpenC3
         subpackets = packet.subpacketize
 
         subpackets.each do |subpacket|
+          if subpacket.subpacket
+            subpacket.received_time = packet.received_time unless subpacket.received_time
+            subpacket.stored = packet.stored
+            subpacket.extra = packet.extra
+            TargetModel.sync_tlm_packet_counts(subpacket, @target_names, scope: @scope)
+          end
+
           #####################################################################################
           # Run Processors
           # This must be before the full decom so that processor derived values are available

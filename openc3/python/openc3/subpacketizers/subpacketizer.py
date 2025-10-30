@@ -23,8 +23,9 @@ class Subpacketizer:
     multiple channels that need to be processed independently.
     """
 
-    def __init__(self):
+    def __init__(self, packet=None):
         """Initialize the subpacketizer with empty args list."""
+        self.packet = packet
         self.args = []
 
     def call(self, packet):

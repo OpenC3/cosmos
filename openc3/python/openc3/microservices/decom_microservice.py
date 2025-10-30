@@ -33,6 +33,7 @@ from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
 )
+from openc3.models.target_model import TargetModel
 from openc3.top_level import kill_thread
 from datetime import datetime, timezone
 
@@ -191,6 +192,13 @@ class DecomMicroservice(Microservice):
         subpackets = packet.subpacketize()
 
         for subpacket in subpackets:
+            if subpacket.subpacket:
+                if subpacket.received_time is None:
+                    subpacket.received_time = packet.received_time
+                subpacket.stored = packet.stored
+                subpacket.extra = packet.extra
+                TargetModel.sync_tlm_packet_counts(subpacket, self.target_names, scope=self.scope)
+
             #####################################################################################
             # Run Processors
             # This must be before the full decom so that processor derived values are available

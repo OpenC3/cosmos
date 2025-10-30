@@ -1,7 +1,8 @@
 class Subpacketizer
   attr_reader :args
 
-  def initialize
+  def initialize(packet=nil)
+    @packet = packet
     @args = []
   end
 

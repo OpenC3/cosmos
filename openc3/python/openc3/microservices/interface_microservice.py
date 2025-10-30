@@ -35,7 +35,6 @@ from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
-from openc3.topics.topic import Topic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.router_topic import RouterTopic
 from openc3.topics.command_topic import CommandTopic
@@ -47,7 +46,6 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
 from openc3.utilities.json import JsonDecoder, JsonEncoder
-from openc3.utilities.store import Store, openc3_redis_cluster
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.top_level import kill_thread
@@ -567,19 +565,7 @@ class InterfaceMicroservice(Microservice):
         for target_name in self.interface.target_names:
             target = System.targets[target_name]
             target.interface = self.interface
-        for target_name in self.interface.tlm_target_names:
-            # Initialize the target's packet counters based on the Topic stream
-            # Prevents packet count resetting to 0 when interface restarts
-            try:
-                for packet_name, packet in System.telemetry.packets(target_name).items():
-                    topic = f"{self.scope}__TELEMETRY__{{target_name}}__{packet_name}"
-                    msg_id, msg_hash = Topic.get_newest_message(topic)
-                    if msg_id:
-                        packet.received_count = int(msg_hash[b"received_count"])
-                    else:
-                        packet.received_count = 0
-            except RuntimeError:
-                pass  # Handle targets without telemetry
+        TargetModel.init_tlm_packet_counts(self.interface.tlm_target_names, scope=self.scope)
         if self.interface.connect_on_startup:
             self.interface.state = "ATTEMPTING"
         else:
@@ -590,9 +576,6 @@ class InterfaceMicroservice(Microservice):
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
         self.queued = False
-        self.sync_packet_count_data = {}
-        self.sync_packet_count_time = None
-        self.sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
         for option_name, option_values in self.interface.options.items():
             if option_name.upper() == "OPTIMIZE_THROUGHPUT":
                 self.queued = True
@@ -600,7 +583,7 @@ class InterfaceMicroservice(Microservice):
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
                 StoreQueued.instance().set_update_interval(update_interval)
             if option_name.upper() == 'SYNC_PACKET_COUNT_DELAY_SECONDS':
-                self.sync_packet_count_delay_seconds = float(option_values[0])
+                TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -792,7 +775,7 @@ class InterfaceMicroservice(Microservice):
 
         # Write to stream
         if self.interface.tlm_target_enabled.get(packet.target_name, False):
-            self.sync_tlm_packet_counts(packet)
+            TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
     def handle_connection_failed(self, connection, connect_error):
@@ -915,60 +898,6 @@ class InterfaceMicroservice(Microservice):
 
     def graceful_kill(self):
         pass  # Just to avoid warning
-
-    def sync_tlm_packet_counts(self, packet):
-        if self.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
-            # Perfect but slow method
-            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=self.scope)
-        else:
-            # Eventually consistent method
-            # Only sync every period (default 1 second) to avoid hammering Redis
-            # This is a trade off between speed and accuracy
-            # The packet count is eventually consistent
-            if self.sync_packet_count_data.get(packet.target_name) is None:
-                self.sync_packet_count_data[packet.target_name] = {}
-            if self.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
-                self.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
-            self.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
-
-            # Ensures counters change between syncs
-            packet.received_count += 1
-
-            # Check if we need to sync the packet counts
-            if self.sync_packet_count_time is None or (time.time() - self.sync_packet_count_time) > self.sync_packet_count_delay_seconds:
-                self.sync_packet_count_time = time.time()
-
-                result = []
-                inc_count = 0
-                # Use pipeline to make this one transaction
-                with Store.instance().redis_pool.get() as redis:
-                    pipeline = redis.pipeline(transaction=False)
-                    thread_id = threading.get_native_id()
-                    Store.instance().redis_pool.pipelines[thread_id] = pipeline
-                    try:
-                        # Increment global counters for packets received
-                        for target_name, packet_data in self.sync_packet_count_data.items():
-                            for packet_name, count in packet_data.items():
-                                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=self.scope)
-                                inc_count += 1
-                        self.sync_packet_count_data = {}
-
-                        # Get all the packet counts with the global counters
-                        for target_name in self.interface.tlm_target_names:
-                            TargetModel.get_all_telemetry_counts(target_name, scope=self.scope)
-                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=self.scope)
-
-                        result = pipeline.execute()
-                    finally:
-                        Store.instance().redis_pool.pipelines[thread_id] = None
-                for target_name in self.interface.tlm_target_names:
-                    for packet_name, count in result[inc_count].items():
-                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                        update_packet.received_count = int(count)
-                    inc_count += 1
-                for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
-                    update_packet.received_count = int(count)
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     InterfaceMicroservice.class_run()
