@@ -1,13 +1,13 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_VERSION=3.21
 ARG GO_VERSION=1.25.3
-# Also update in scripts/linux/openc3_build_ubi.sh & scripts/release/build_multi_arch.sh
+# Also update in scripts/linux/openc3_build_ubi.sh
 ARG OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
 ARG OPENC3_MINIO_RELEASE
-ADD https://github.com/minio/minio/archive/refs/tags/${OPENC3_MINIO_RELEASE}.tar.gz /go/
-RUN tar -xzf ${OPENC3_MINIO_RELEASE}.tar.gz --strip-components=1 && \
+COPY --chown=1001 minio-${OPENC3_MINIO_RELEASE}.tar.gz /go/minio.tar.gz
+RUN tar -xzf minio.tar.gz --strip-components=1 && \
     go build
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/golang:${GO_VERSION}-alpine${ALPINE_VERSION}
