@@ -405,6 +405,8 @@ class PacketItem(StructureItem):
             config += " {self.endianness}"
         config += "\n"
 
+        if self.key:
+            config += f"    KEY {self.key}\n"
         if self.required:
             config += "    REQUIRED\n"
         if self.format_string:
@@ -467,6 +469,8 @@ class PacketItem(StructureItem):
         config["maximum"] = self.maximum
         config["endianness"] = self.endianness
         config["required"] = self.required
+        if self.key:
+            config["key"] = self.key
         if self.format_string:
             config["format_string"] = self.format_string
         if self.units:
