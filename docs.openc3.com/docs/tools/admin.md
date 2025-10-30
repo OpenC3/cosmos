@@ -75,3 +75,15 @@ The Settings tab contains various settings used throughout COSMOS. These includi
 
 ![Settings1](/img/admin/settings1.png)
 ![Settings2](/img/admin/settings2.png)
+
+### Roles (Enterprise)
+
+The Roles tab allows users to create custom roles for role-based access control (RBAC). Roles define permissions and access levels throughout the COSMOS system. For more details, visit [Roles and Permissions](../guides/roles-permissions.md).
+
+![Roles](/img/admin/roles.png)
+
+### Scopes (Enterprise)
+
+The Scopes tab allows users to create scopes which define data boundaries between separate environments. This enables a single COSMOS deployment to manage multiple environments with isolated data (e.g., separate constellations). Scopes can be added using the top dialog, and scope configurations can be managed here. Users can toggle between their scopes from the top-right scopes dropdown. [Command Authority](../configuration/command.md#command-authority-enterprise) and [Critical Commanding](../configuration/command.md#critical-commanding-enterprise) can also be configured per scope from this tab.
+
+![Scopes](/img/admin/scopes.png)
