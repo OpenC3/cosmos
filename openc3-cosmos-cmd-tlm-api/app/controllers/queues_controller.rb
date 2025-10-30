@@ -38,12 +38,23 @@ class QueuesController < ApplicationController
   def index
     return unless authorization('cmd_info')
     begin
-      queues = @model_class.all(scope: params[:scope])
-      ret = []
-      queues.each do |_, trigger|
-        ret << trigger
+      models = @model_class.all(scope: params[:scope])
+      queues = []
+      models.each do |_, queue|
+        queues << queue
       end
-      render json: ret
+      # Sort queues by name
+      queues.sort_by! { |queue| queue['name'] }
+      # If OPENC3_DEFAULT_QUEUE is set, move it to the front of the list
+      default_queue = ENV['OPENC3_DEFAULT_QUEUE']
+      if default_queue
+        default_index = queues.find_index { |queue| queue['name'] == default_queue }
+        if default_index
+          default_queue_obj = queues.delete_at(default_index)
+          queues.unshift(default_queue_obj)
+        end
+      end
+      render json: queues
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
