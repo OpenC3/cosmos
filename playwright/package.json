@@ -24,7 +24,7 @@
     "prettier": "^3.6.2"
   },
   "devDependencies": {
-    "@types/node": "^24.9.1"
+    "@types/node": "^24.9.2"
   },
   "nyc": {
     "excludeAfterRemap": false,
