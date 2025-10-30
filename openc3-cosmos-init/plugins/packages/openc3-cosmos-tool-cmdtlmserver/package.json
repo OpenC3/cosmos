@@ -20,7 +20,7 @@
     "@vue-flow/minimap": "1.5.4",
     "@vue-flow/node-resizer": "1.5.0",
     "@vue-flow/node-toolbar": "1.1.1",
-    "axios": "1.12.2",
+    "axios": "1.13.1",
     "date-fns": "4.1.0",
     "single-spa-vue": "3.0.1",
     "sprintf-js": "1.1.3"

@@ -14,7 +14,7 @@
     "@braintree/sanitize-url": "7.1.1",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.12.2",
+    "axios": "1.13.1",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
     "single-spa-vue": "3.0.1",
