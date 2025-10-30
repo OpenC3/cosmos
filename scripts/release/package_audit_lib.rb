@@ -31,7 +31,7 @@ $overall_gems = []
 $overall_wheels = []
 $overall_pnpm = []
 
-def get_docker_version(path)
+def get_docker_version(path, arg: nil)
   args = {}
   version = ''
   File.open(path) do |file|
@@ -39,6 +39,9 @@ def get_docker_version(path)
       if line.include?("ARG")
         parts = line.split("ARG")[1].strip.split('=')
         args[parts[0]] = parts[1]
+        if arg and line.include?(arg)
+          return parts[1].strip
+        end
       end
       if line.include?("FROM")
         # Remove "AS ..." qualifiers in the FROM line
@@ -321,31 +324,103 @@ def check_alpine(client)
   end
 end
 
-def check_minio(client, containers)
-  container = containers.select { |val| val[:name].include?('openc3-minio') }[0]
-  minio_version = container[:base_image].split(':')[-1]
-  resp = client.get('https://registry.hub.docker.com/v2/repositories/minio/minio/tags?page_size=1024').body
+def check_minio(client, containers, mc_version, minio_version, go_version)
+  puts "Checking minio against Minio version: #{minio_version}, MC version: #{mc_version}, Go version: #{go_version}"
+  resp = client.get('https://api.github.com/repos/minio/minio/tags').body
+  tags = JSON.parse(resp)
+  minio_versions = []
+  tags.each do |entry|
+    minio_versions << entry['name']
+  end
+  resp = client.get('https://api.github.com/repos/minio/mc/tags').body
+  tags = JSON.parse(resp)
+  mc_versions = []
+  tags.each do |entry|
+    mc_versions << entry['name']
+  end
+
+  check_minio_mc(minio_versions, minio_version, 'Minio')
+  check_minio_mc(mc_versions, mc_version, 'MC')
+
+  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/golang/tags?name=alpine#{ENV['ALPINE_VERSION']}&page_size=1024").body
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|
-    versions << image['name']
+    version = image['name'].split('-alpine')[0]
+    if version =~ /^\d+\.\d+(\.\d+)?$/
+      versions << version
+    end
   end
-  if versions.include?(minio_version)
-    split_version = minio_version.split('.')
+  validate_versions(versions, go_version, 'Go')
+end
+
+def check_minio_mc(versions, requested_version, name)
+  if versions.include?(requested_version)
+    split_version = requested_version.split('.')
     minio_time = DateTime.parse(split_version[1])
     versions.each do |version|
       split_version = version.split('.')
       if split_version[0] == 'RELEASE'
         version_time = DateTime.parse(split_version[1])
         if version_time > minio_time
-          puts "NOTE: Minio has a new version: #{version}, Current Version: #{minio_version}"
+          puts "NOTE: #{name} has a new version: #{version}, Current Version: #{requested_version}"
           return
         end
       end
     end
-    puts "Minio up to date: #{minio_version}"
+    puts "#{name} up to date: #{requested_version}"
   else
-    puts "ERROR: Could not find Minio image: #{minio_version}"
+    puts "ERROR: Could not find #{name} image: #{requested_version}"
+  end
+end
+
+def check_build_files(mc_version, minio_version, traefik_version)
+  File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
+    file.each do |line|
+      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+        parts = line.split('=')
+        if parts[1].strip != minio_version
+          puts "WARN: Update build_multi_arch.rb to match Minio Dockerfile: #{minio_version}, Current value: #{parts[1].strip}"
+        end
+      end
+      if line.include?('OPENC3_MC_RELEASE=RELEASE')
+        parts = line.split('=')
+        if parts[1].strip != mc_version
+          puts "WARN: Update build_multi_arch.rb to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{parts[1].strip}"
+        end
+      end
+      if line.include?('OPENC3_TRAEFIK_RELEASE=v')
+        parts = line.split('=')
+        if parts[1].strip != traefik_version
+          puts "WARN: Update build_multi_arch.rb to match traefik Dockerfile: #{traefik_version}, Current value: #{parts[1].strip}"
+        end
+      end
+    end
+  end
+  File.open(File.join(File.dirname(__FILE__), '../linux', 'openc3_build_ubi.sh')) do |file|
+    file.each do |line|
+      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != minio_version
+          puts "WARN: Update openc3_build_ubi.rb to match Minio Dockerfile: #{minio_version}, Current value: #{version}"
+        end
+      end
+      if line.include?('OPENC3_MC_RELEASE=RELEASE')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != mc_version
+          puts "WARN: Update openc3_build_ubi.sh to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{version}"
+        end
+      end
+      if line.include?('OPENC3_TRAEFIK_RELEASE=v')
+        parts = line.split('=')
+        version = parts[1].strip[0..-2].strip # Removing trailing \
+        if version != traefik_version
+          puts "WARN: Update openc3_build_ubi.sh to match traefik Dockerfile: #{traefik_version}, Current value: #{version}"
+        end
+      end
+    end
   end
 end
 

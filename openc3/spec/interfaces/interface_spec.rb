@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/interfaces'
 require 'openc3/interfaces/interface'
 require 'openc3/interfaces/protocols/protocol'
 
@@ -79,6 +80,35 @@ module OpenC3
     describe "include API" do
       it "includes API" do
         expect(Interface.new.methods).to include :cmd
+      end
+    end
+
+    describe 'interfaces.rb autoload' do
+      it "loads Interface and Protocol classes" do
+        expect(defined?(OpenC3::FileInterface)).to eql 'constant'
+        expect(defined?(OpenC3::HttpClientInterface)).to eql 'constant'
+        expect(defined?(OpenC3::HttpServerInterface)).to eql 'constant'
+        expect(defined?(OpenC3::Interface)).to eql 'constant'
+        expect(defined?(OpenC3::MqttInterface)).to eql 'constant'
+        expect(defined?(OpenC3::MqttStreamInterface)).to eql 'constant'
+        expect(defined?(OpenC3::SerialInterface)).to eql 'constant'
+        expect(defined?(OpenC3::SimulatedTargetInterface)).to eql 'constant'
+        expect(defined?(OpenC3::StreamInterface)).to eql 'constant'
+        expect(defined?(OpenC3::TcpipClientInterface)).to eql 'constant'
+        expect(defined?(OpenC3::TcpipServerInterface)).to eql 'constant'
+        expect(defined?(OpenC3::UdpInterface)).to eql 'constant'
+        expect(defined?(OpenC3::BurstProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CmdResponseProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CobsProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CrcProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::FixedProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::IgnorePacketProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::LengthProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::PreidentifiedProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::Protocol)).to eql 'constant'
+        expect(defined?(OpenC3::SlipProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::TemplateProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::TerminatedProtocol)).to eql 'constant'
       end
     end
 
