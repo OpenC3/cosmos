@@ -67,7 +67,14 @@
     </div>
     <v-spacer />
     <span class=""> Click on a plugin to see more information about it </span>
-    <v-container>
+    <v-alert
+      v-if="storeError"
+      class="mt-6"
+      color="error"
+      :title="storeError.title"
+      :text="storeError.body"
+    />
+    <v-container v-else>
       <v-row>
         <v-col v-for="plugin in filteredPlugins" :key="plugin.id" cols="4">
           <plugin-card v-bind="plugin" @trigger-install="install" />
@@ -99,6 +106,7 @@ export default {
       verifiedOnly: false,
       showSettingsDialog: false,
       plugins: [],
+      storeError: null,
     }
   },
   computed: {
@@ -123,8 +131,15 @@ export default {
   },
   methods: {
     fetchPluginStoreData: function () {
-      Api.get('/openc3-api/pluginstore').then((response) => {
-        this.plugins = response.data
+      Api.get('/openc3-api/pluginstore').then(({ data }) => {
+        if (data.error) {
+          const { title, body } = data
+          this.storeError = { title, body }
+          this.plugins = []
+        } else {
+          this.storeError = null
+          this.plugins = data
+        }
       })
     },
     close: function () {
