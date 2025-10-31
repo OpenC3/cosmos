@@ -16,6 +16,7 @@ on:
   pull_request:
     branches-ignore:
       - 'dependabot/**'
+      - 'sonarqube'
 
 env:
   RUBYOPT: --disable=frozen_string_literal

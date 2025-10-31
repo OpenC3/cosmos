@@ -2,14 +2,14 @@
 
 name: CodeQL
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
+      - 'sonarqube'
 
 jobs:
   analyze:

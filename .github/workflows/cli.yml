@@ -5,21 +5,20 @@
 
 name: CLI Tests
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
+      - 'sonarqube'
 
 env:
   OPENC3_API_PASSWORD: password
 
 jobs:
   openc3-cli:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

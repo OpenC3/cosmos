@@ -7,12 +7,7 @@ name: Playwright Tests
 
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
+  workflow_call:
 
 jobs:
   openc3-build-test:

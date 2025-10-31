@@ -5,14 +5,14 @@
 
 name: Trivy Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'dependabot/**'
+      - 'sonarqube'
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
@@ -21,7 +21,6 @@ env:
 
 jobs:
   openc3-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
