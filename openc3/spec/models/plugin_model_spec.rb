@@ -82,6 +82,10 @@ module OpenC3
             file.puts "VARIABLE VAR2 HI THERE"
           end
         end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
@@ -161,6 +165,10 @@ module OpenC3
         existing << "VARIABLE VAR1 11"
         existing << "VARIABLE VAR2 NOPE"
         expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         model = PluginModel.install_phase1(__FILE__, existing_plugin_txt_lines: existing, process_existing: true, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
         expect(model['variables']['VAR1']).to eq({ 'value' => '11' })
@@ -192,6 +200,10 @@ module OpenC3
         # Old format: simple string values
         existing_vars = { "VAR1" => "12", "VAR2" => "YES" }
         expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         model = PluginModel.install_phase1(__FILE__, existing_variables: existing_vars, existing_plugin_txt_lines: existing_plugin_txt, process_existing: true, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
         expect(model['variables']['VAR1']['value']).to eq('12')
@@ -207,6 +219,10 @@ module OpenC3
           end
         end
         allow(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE name 'target_name' is reserved/)
 
         allow(gem).to receive(:extract_files) do |path|
