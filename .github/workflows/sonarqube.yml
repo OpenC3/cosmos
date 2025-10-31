@@ -12,20 +12,28 @@ jobs:
   python-unit-tests:
     if: ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/python_unit_tests.yml
+  ruby-unit-tests:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/ruby_unit_tests.yml
   scan:
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    needs: [python-unit-tests]
+    needs: [python-unit-tests, ruby-unit-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # all history for all branches and tags
-      - name: Download artifacts from other workflows
+      - name: Download artifacts from Python Unit Tests
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           path: openc3/python/coverage
           pattern: python-unit-tests-coverage-*
+      - name: Download artifacts from Ruby Unit Tests
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          path: openc3/coverage
+          pattern: ruby-unit-tests-coverage-*
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
