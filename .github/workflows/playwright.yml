@@ -7,16 +7,10 @@ name: Playwright Tests
 
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - "**"
+  workflow_call:
 
 jobs:
   openc3-build-test:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
