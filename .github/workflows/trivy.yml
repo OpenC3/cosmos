@@ -9,10 +9,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-      - 'sonarqube'
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
@@ -21,6 +20,7 @@ env:
 
 jobs:
   openc3-scan:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

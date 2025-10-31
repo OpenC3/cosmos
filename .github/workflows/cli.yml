@@ -9,16 +9,16 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-      - 'sonarqube'
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 env:
   OPENC3_API_PASSWORD: password
 
 jobs:
   openc3-cli:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

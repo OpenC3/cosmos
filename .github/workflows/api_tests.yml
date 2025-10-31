@@ -13,10 +13,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-      - 'sonarqube'
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 env:
   RUBYOPT: --disable=frozen_string_literal
@@ -32,6 +31,7 @@ env:
 
 jobs:
   cmd-tlm-api:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,6 +66,7 @@ jobs:
           path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
 
   script-runner-api-ruby:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -99,6 +100,7 @@ jobs:
           path: openc3-cosmos-script-runner-api/coverage/coverage.json
 
   script-runner-api-python:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

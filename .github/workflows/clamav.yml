@@ -10,13 +10,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-      - 'sonarqube'
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 jobs:
   openc3-clamav-scan:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

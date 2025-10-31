@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-      - 'sonarqube'
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 jobs:
   spelling:

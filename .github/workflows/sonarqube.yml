@@ -5,11 +5,12 @@ on:
     branches:
       - main
   pull_request:
-    branches-ignore:
-      - 'dependabot/**'
+    branches:
+      - '**'
 
 jobs:
   python-unit-tests:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/python_unit_tests.yml
   scan:
     env:
