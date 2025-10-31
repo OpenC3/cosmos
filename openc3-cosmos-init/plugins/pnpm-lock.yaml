@@ -886,6 +886,9 @@ importers:
       sass:
         specifier: 1.97.1
         version: 1.97.1
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
       single-spa:
         specifier: 6.0.3
         version: 6.0.3
