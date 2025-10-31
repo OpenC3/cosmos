@@ -5,7 +5,6 @@
 
 name: Python Unit Tests
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   workflow_call:
 
