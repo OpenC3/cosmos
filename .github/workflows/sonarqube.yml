@@ -22,7 +22,12 @@ jobs:
           fetch-depth: 0 # all history for all branches and tags
       - name: Download artifacts from other workflows
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          path: openc3/python
+          pattern: python-unit-tests-coverage-*
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Check files
+        run: ls -R openc3/python
