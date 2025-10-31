@@ -140,6 +140,7 @@
       :plugin-txt="pluginTxt"
       :existing-plugin-txt="existingPluginTxt"
       :store-id="storeId"
+      :min-cosmos-version="minCosmosVersion"
       @callback="pluginCallback"
     />
     <modified-plugin-dialog
@@ -187,6 +188,7 @@ export default {
       pluginName: null,
       variables: {},
       storeId: null,
+      minCosmosVersion: null,
       pluginTxt: '',
       file: null,
       currentPlugin: null,
@@ -270,6 +272,7 @@ export default {
       this.pluginName = null
       this.variables = {}
       this.storeId = null
+      this.minCosmosVersion = null
       this.pluginTxt = ''
       this.file = null
       this.currentPlugin = null
@@ -366,6 +369,7 @@ export default {
           this.pluginName = response.data.name
           this.variables = response.data.variables
           this.storeId = response.data.store_id
+          this.minCosmosVersion = response.data.minimum_cosmos_version
           this.pluginTxt = pluginTxt
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
