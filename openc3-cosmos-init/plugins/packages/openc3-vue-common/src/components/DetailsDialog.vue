@@ -214,7 +214,6 @@ export default {
     return {
       details: Object,
       available: null,
-      actualPacketName: null,
       updater: null,
       rawValue: null,
       convertedValue: null,
@@ -336,7 +335,6 @@ export default {
       return result
     },
     async requestDetails() {
-      this.actualPacketName = this.packetName
       if (this.type === 'tlm') {
         this.api
           .get_tlm_available([
@@ -346,15 +344,11 @@ export default {
             `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
           ])
           .then((available) => {
-            // Parse the result to extract actual packet name
-            // Result format: TGT__PKT__ITEM__TYPE
             if (available && available.length > 0) {
-              const parts = available[0].split('__')
-              this.actualPacketName = parts[1]
               this.available = available
             }
             this.api
-              .get_item(this.targetName, this.actualPacketName, this.itemName)
+              .get_item(this.targetName, this.packetName, this.itemName)
               .then((details) => {
                 this.details = details
                 // If the item does not have limits explicitly null it
@@ -366,7 +360,7 @@ export default {
           })
       } else {
         this.api
-          .get_parameter(this.targetName, this.actualPacketName, this.itemName)
+          .get_parameter(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
           })
@@ -376,13 +370,13 @@ export default {
       if (this.details.limits.enabled) {
         await this.api.enable_limits(
           this.targetName,
-          this.actualPacketName,
+          this.packetName,
           this.itemName,
         )
       } else {
         await this.api.disable_limits(
           this.targetName,
-          this.actualPacketName,
+          this.packetName,
           this.itemName,
         )
       }
