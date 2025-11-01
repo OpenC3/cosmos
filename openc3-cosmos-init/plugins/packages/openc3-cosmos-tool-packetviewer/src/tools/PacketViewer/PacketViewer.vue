@@ -253,6 +253,8 @@ export default {
       itemName: '',
       x: 0,
       y: 0,
+      latestAvailable: null,
+      latestItems: null,
     }
   },
   computed: {
@@ -589,6 +591,45 @@ export default {
           })
       }
     },
+    latestGetTlmValues(values) {
+      if (values != null && values.length > 0) {
+        this.counter += 1
+        let derived = []
+        let other = []
+        this.latestItemNames.forEach((itemName, index) => {
+          if (!this.showIgnored && this.ignoredItems.includes(itemName)) {
+            return
+          }
+          const itemValue = values[index]
+          if (itemValue) {
+            if (this.derivedItems.includes(itemName)) {
+              derived.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: true,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
+              })
+            } else {
+              other.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: false,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
+              })
+            }
+          }
+        })
+        if (this.derivedLast) {
+          this.rows = other.concat(derived)
+        } else {
+          this.rows = derived.concat(other)
+        }
+      }
+    },
     changeUpdater(clearExisting) {
       if (this.updater != null) {
         clearInterval(this.updater)
@@ -596,6 +637,8 @@ export default {
       }
       if (clearExisting) {
         this.rows = []
+        this.latestAvailable = null
+        this.latestItems = null
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
@@ -604,66 +647,40 @@ export default {
 
         // Handle LATEST packet using get_tlm_values
         if (this.packetName === 'LATEST') {
-          this.api
-            .get_all_tlm_item_names(this.targetName)
-            .then((itemNames) => {
-              // Build items array in format TGT__LATEST__ITEM__TYPE
-              const items = itemNames.map(
-                (item) =>
-                  `${this.targetName}__LATEST__${item}__${this.valueType}`,
-              )
-              return this.api
-                .get_tlm_values(items, this.staleLimit)
-                .then((values) => {
-                  return { itemNames, values }
-                })
-            })
-            .then(({ itemNames, values }) => {
-              if (values != null && values.length > 0) {
-                this.counter += 1
-                let derived = []
-                let other = []
-                itemNames.forEach((itemName, index) => {
-                  if (
-                    !this.showIgnored &&
-                    this.ignoredItems.includes(itemName)
-                  ) {
-                    return
-                  }
-                  const itemValue = values[index]
-                  if (itemValue) {
-                    if (this.derivedItems.includes(itemName)) {
-                      derived.push({
-                        name: itemName,
-                        value: itemValue[0],
-                        limitsState: itemValue[1],
-                        derived: true,
-                        counter: this.counter,
-                        pinned: this.isPinned(itemName),
-                      })
-                    } else {
-                      other.push({
-                        name: itemName,
-                        value: itemValue[0],
-                        limitsState: itemValue[1],
-                        derived: false,
-                        counter: this.counter,
-                        pinned: this.isPinned(itemName),
-                      })
-                    }
-                  }
-                })
-                if (this.derivedLast) {
-                  this.rows = other.concat(derived)
-                } else {
-                  this.rows = derived.concat(other)
-                }
-              }
-            })
-            .catch((error) => {
-              // eslint-disable-next-line
-              console.log(error)
-            })
+          if (this.latestAvailable) {
+            this.api
+              .get_tlm_values(this.latestAvailable, this.staleLimit)
+              .then((values) => {
+                this.latestGetTlmValues(values)
+              })
+              .catch((error) => {
+                // eslint-disable-next-line
+                console.log(error)
+              })
+          } else {
+            this.api
+              .get_all_tlm_item_names(this.targetName)
+              .then((itemNames) => {
+                this.latestItemNames = itemNames
+                // Build items array in format TGT__LATEST__ITEM__TYPE
+                const items = itemNames.map(
+                  (item) =>
+                    `${this.targetName}__LATEST__${item}__${this.valueType}`,
+                )
+                return this.api.get_tlm_available(items)
+              })
+              .then((available) => {
+                this.latestAvailable = available
+                return this.api.get_tlm_values(available, this.staleLimit)
+              })
+              .then((values) => {
+                this.latestGetTlmValues(values)
+              })
+              .catch((error) => {
+                // eslint-disable-next-line
+                console.log(error)
+              })
+          }
         } else {
           // Regular packet handling using get_tlm_packet
           this.api

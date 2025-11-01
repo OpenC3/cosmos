@@ -452,7 +452,7 @@ def get_tlm(*args, scope: str = OPENC3_SCOPE):
 get_telemetry = get_tlm
 
 
-def get_item(*args, scope: str = OPENC3_SCOPE):
+def get_item(*args, scope: str = OPENC3_SCOPE, cache_timeout=0.1):
     """Returns a telemetry packet item hash
 
     Args:
@@ -462,6 +462,8 @@ def get_item(*args, scope: str = OPENC3_SCOPE):
         (dict) Telemetry packet hash
     """
     target_name, packet_name, item_name = _extract_target_packet_item_names("get_item", *args)
+    if packet_name == 'LATEST':
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout=cache_timeout, scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
