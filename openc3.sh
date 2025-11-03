@@ -45,25 +45,69 @@ fi
 set -e
 
 usage() {
-  echo "Usage: $1 [COMMAND]" >&2
-  echo "" >&2
-  echo "Commands:" >&2
-  echo "*  cli: run a cli command as the default user" 1>&2
-  echo "       ('cli help' for CLI commands, 'cli --wrapper-help' for wrapper info)" 1>&2
-  echo "*  start: build and run OpenC3" >&2
-  echo "*  stop: stop the containers gracefully" >&2
-  echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
-  echo "*  build: build the OpenC3 containers" >&2
-  echo "*  run: run the OpenC3 containers" >&2
-  echo "*  test: run OpenC3 tests" >&2
-  echo "*  util: various utility commands" >&2
-  echo "" >&2
-  echo "UBI (Red Hat Universal Base Image) commands:" >&2
-  echo "*  start-ubi: build and run OpenC3 with UBI images" >&2
-  echo "*  build-ubi: build OpenC3 containers using UBI base images" >&2
-  echo "*  run-ubi: run OpenC3 containers with UBI images" >&2
-  echo "" >&2
-  echo "Run '$1 COMMAND --help' for detailed help on each command." >&2
+  cat >&2 << EOF
+OpenC3 - Command and Control System
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  OpenC3 is a command and control system for embedded systems. This script
+  provides a convenient interface for building, running, testing, and managing
+  OpenC3 in Docker containers.
+
+COMMON COMMANDS:
+  start                 Build and run OpenC3 (equivalent to: build + run)
+                        This is the typical command to get OpenC3 running.
+
+  stop                  Stop all running OpenC3 containers gracefully
+                        Allows containers to shutdown cleanly.
+
+  cli [COMMAND]         Run OpenC3 CLI commands in a container
+                        Use 'cli help' for available commands
+                        Use 'cli --wrapper-help' for Docker wrapper info
+                        Examples:
+                          $1 cli generate plugin MyPlugin
+                          $1 cli validate myplugin.gem
+
+DEVELOPMENT COMMANDS:
+  build                 Build all OpenC3 Docker containers from source
+                        Required before first run or after code changes.
+
+  run                   Start OpenC3 containers in detached mode
+                        Access at: http://localhost:2900
+
+  test [COMMAND]        Run test suites (rspec, playwright, hash)
+                        Use '$1 test' to see available test commands.
+
+  util [COMMAND]        Utility commands (encode, hash, save, load, etc.)
+                        Use '$1 util' to see available utilities.
+
+CLEANUP:
+  cleanup [OPTIONS]     Remove Docker volumes and data
+                        WARNING: This deletes all OpenC3 data!
+                        Options:
+                          local  - Also remove local plugin files
+                          force  - Skip confirmation prompt
+
+ENTERPRISE/AIRGAPPED:
+  start-ubi             Build and run with Red Hat UBI images
+  build-ubi             Build containers using UBI base images
+  run-ubi               Run containers with UBI images
+                        For air-gapped or government environments.
+
+GETTING STARTED:
+  1. First time setup:     $1 start
+  2. Access OpenC3:        http://localhost:2900
+  3. Stop when done:       $1 stop
+  4. Remove everything:    $1 cleanup
+
+MORE INFORMATION:
+  Run '$1 COMMAND --help' for detailed help on any command.
+  Documentation: https://docs.openc3.com
+
+OPTIONS:
+  -h, --help            Show this help message
+
+EOF
   exit 1
 }
 
