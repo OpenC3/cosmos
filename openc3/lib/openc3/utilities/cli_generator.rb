@@ -386,35 +386,73 @@ module OpenC3
 
     def self.generate_tool(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate #{args[0]} 'TOOL NAME' (--ruby or --python)"
-        puts ""
-        puts "Generate a new custom tool within an existing plugin"
-        puts ""
-        puts "Arguments:"
-        puts "  TOOL NAME         Display name of the tool (required, can include spaces)"
-        puts "                    Will be converted to lowercase without spaces for directory name"
-        puts ""
-        puts "Options:"
-        puts "  --ruby            Generate Ruby plugin (or set OPENC3_LANGUAGE=ruby)"
-        puts "  --python          Generate Python plugin (or set OPENC3_LANGUAGE=python)"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Tool Types:"
-        puts "  tool              Generate Vue.js tool (default)"
-        puts "  tool_vue          Generate Vue.js tool"
-        puts "  tool_angular      Generate Angular tool"
-        puts "  tool_react        Generate React tool"
-        puts "  tool_svelte       Generate Svelte tool"
-        puts ""
-        puts "Example:"
-        puts "  cli generate tool 'Data Viewer' --ruby"
-        puts "  Creates: tools/dataviewer/"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/guides/custom-tools"
-        exit(args[1].nil? ? 1 : 0)
+        tool_type = args[0].to_s.downcase.gsub('-', '_')
+
+        # Specific help for tool variants
+        if tool_type != 'tool'
+          framework = case tool_type
+                      when 'tool_vue' then 'Vue.js'
+                      when 'tool_react' then 'React'
+                      when 'tool_angular' then 'Angular'
+                      when 'tool_svelte' then 'Svelte'
+                      else 'Custom'
+                      end
+
+          puts "Usage: cli generate #{args[0]} 'TOOL NAME' (--ruby or --python)"
+          puts ""
+          puts "Generate a new #{framework} tool within an existing plugin"
+          puts ""
+          puts "Arguments:"
+          puts "  TOOL NAME         Display name of the tool (required, can include spaces)"
+          puts "                    Will be converted to lowercase without spaces for directory name"
+          puts ""
+          puts "Options:"
+          puts "  --ruby            Generate Ruby plugin (or set OPENC3_LANGUAGE=ruby)"
+          puts "  --python          Generate Python plugin (or set OPENC3_LANGUAGE=python)"
+          puts "  -h, --help        Show this help message"
+          puts ""
+          puts "Example:"
+          puts "  cli generate #{args[0]} 'Data Viewer' --ruby"
+          puts "  Creates: tools/dataviewer/ (#{framework}-based)"
+          puts ""
+          puts "Note: Must be run from within an existing plugin directory"
+          puts "      For other tool types, see: cli generate tool --help"
+          puts ""
+          puts "Documentation:"
+          puts "  https://docs.openc3.com/docs/guides/custom-tools"
+          exit(args[1].nil? ? 1 : 0)
+        else
+          # Generic help showing all types
+          puts "Usage: cli generate #{args[0]} 'TOOL NAME' (--ruby or --python)"
+          puts ""
+          puts "Generate a new custom tool within an existing plugin"
+          puts ""
+          puts "Arguments:"
+          puts "  TOOL NAME         Display name of the tool (required, can include spaces)"
+          puts "                    Will be converted to lowercase without spaces for directory name"
+          puts ""
+          puts "Options:"
+          puts "  --ruby            Generate Ruby plugin (or set OPENC3_LANGUAGE=ruby)"
+          puts "  --python          Generate Python plugin (or set OPENC3_LANGUAGE=python)"
+          puts "  -h, --help        Show this help message"
+          puts ""
+          puts "Tool Types:"
+          puts "  tool              Generate Vue.js tool (default)"
+          puts "  tool_vue          Generate Vue.js tool"
+          puts "  tool_angular      Generate Angular tool"
+          puts "  tool_react        Generate React tool"
+          puts "  tool_svelte       Generate Svelte tool"
+          puts ""
+          puts "Example:"
+          puts "  cli generate tool 'Data Viewer' --ruby"
+          puts "  Creates: tools/dataviewer/"
+          puts ""
+          puts "Note: Must be run from within an existing plugin directory"
+          puts ""
+          puts "Documentation:"
+          puts "  https://docs.openc3.com/docs/guides/custom-tools"
+          exit(args[1].nil? ? 1 : 0)
+        end
       end
       if args.length < 2 or args.length > 3
         abort("Usage: cli generate #{args[0]} 'Tool Name' (--ruby or --python)")
