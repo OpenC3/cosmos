@@ -89,9 +89,10 @@ cd ..
 # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -165,7 +166,7 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.5.3 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.5.4 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .

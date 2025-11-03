@@ -75,7 +75,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-firefox
           path: playwright/test-results
