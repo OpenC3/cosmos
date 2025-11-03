@@ -46,4 +46,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ruby-unit-tests-coverage-${{ matrix.ruby-version }}
-          path: openc3/coverage/coverage.xml
+          path: openc3/coverage/coverage.json
