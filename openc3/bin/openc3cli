@@ -875,6 +875,22 @@ if not ARGV[0].nil? # argument(s) given
   case ARGV[0].downcase
 
   when 'irb'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli irb"
+      puts ""
+      puts "Start an interactive Ruby (IRB) session with COSMOS libraries loaded"
+      puts ""
+      puts "This provides access to all COSMOS classes and methods for interactive"
+      puts "debugging and exploration. Use 'exit' or Ctrl-D to quit the IRB session."
+      puts ""
+      puts "Example:"
+      puts "  cli irb"
+      puts "  > require 'openc3'"
+      puts "  > OpenC3::System.targets"
+      puts ""
+      puts "Note: For IRB-specific options, start IRB first then type 'help'"
+      exit 0
+    end
     ARGV.clear
     IRB.start
 
@@ -882,6 +898,29 @@ if not ARGV[0].nil? # argument(s) given
     cli_script(ARGV[1..-1])
 
   when 'rake'
+    # Check for --help first, before checking for Rakefile
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli rake [RAKE_OPTIONS] [TASKS...]"
+      puts ""
+      puts "Run rake tasks in the current directory"
+      puts ""
+      puts "This runs the standard Ruby rake tool with all COSMOS libraries available."
+      puts "A Rakefile must exist in the current directory."
+      puts ""
+      puts "Common rake options:"
+      puts "  -T, --tasks              List all available rake tasks with descriptions"
+      puts "  -D, --describe PATTERN   Describe tasks matching PATTERN"
+      puts "  -h, --help               Show rake's full help message"
+      puts ""
+      puts "Examples:"
+      puts "  cli rake -T              # List all available tasks"
+      puts "  cli rake build           # Run the 'build' task"
+      puts "  cli rake test            # Run tests"
+      puts ""
+      puts "Note: Must be run in a directory containing a Rakefile"
+      exit 0
+    end
+    # Now check for Rakefile existence
     if File.exist?('Rakefile')
       puts `rake #{ARGV[1..-1].join(' ')}`
     else
@@ -908,20 +947,48 @@ if not ARGV[0].nil? # argument(s) given
   when 'load'
     # Check for help flag or missing arguments
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
-      puts "Usage: cli load PLUGIN.gem [SCOPE] [PLUGIN_HASH.json] [force]"
-      puts "   or: cli load PLUGIN.gem --variables VARIABLES.json [SCOPE] [PLUGIN_HASH.json] [force]"
+      puts "Usage:"
+      puts "  cli load PLUGIN.gem"
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json"
+      puts "  cli load PLUGIN.gem SCOPE PLUGIN_HASH.json [force]"
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json SCOPE PLUGIN_HASH.json [force]"
       puts ""
       puts "Load a COSMOS plugin gem file"
+      puts ""
+      puts "Common Usage (Auto-detect):"
+      puts "  cli load PLUGIN.gem"
+      puts "    - Installs new plugin in DEFAULT scope"
+      puts "    - Automatically detects and upgrades if plugin already exists"
+      puts "    - Skips installation if same version already installed"
+      puts ""
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json"
+      puts "    - Same as above, but provides variables for plugin configuration"
+      puts ""
+      puts "Advanced Usage (Manual Control):"
+      puts "  cli load PLUGIN.gem SCOPE PLUGIN_HASH.json [force]"
+      puts "    - Used by Admin UI for plugin create/edit/upgrade operations"
+      puts "    - Requires PLUGIN_HASH.json (output from install_phase1)"
+      puts "    - 'force' argument forces reinstall even if version unchanged"
       puts ""
       puts "Arguments:"
       puts "  PLUGIN.gem           Plugin gem file to load (required)"
       puts "  SCOPE                Scope to install plugin in (default: DEFAULT)"
-      puts "  PLUGIN_HASH.json     Plugin hash JSON file (optional)"
-      puts "  force                Force plugin installation (optional)"
+      puts "  PLUGIN_HASH.json     Plugin hash JSON file from install_phase1 (optional)"
+      puts "  force                Force plugin installation even if no changes (optional)"
       puts ""
       puts "Options:"
       puts "  --variables FILE     Variables JSON file for plugin installation"
       puts "  -h, --help           Show this help message"
+      puts ""
+      puts "IMPORTANT LIMITATION:"
+      puts "  To specify SCOPE without PLUGIN_HASH.json, you must use the --variables"
+      puts "  option (even with an empty JSON file) to prevent argument misinterpretation."
+      puts ""
+      puts "Examples:"
+      puts "  cli load my-plugin-1.0.0.gem"
+      puts "  cli load my-plugin-1.0.0.gem --variables vars.json"
+      puts "  cli load my-plugin-1.0.0.gem DEFAULT plugin_hash.json"
+      puts "  cli load my-plugin-1.0.0.gem DEFAULT plugin_hash.json force"
       exit(ARGV[1].nil? ? 1 : 0)
     end
 
