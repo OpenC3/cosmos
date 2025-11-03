@@ -231,6 +231,8 @@ module OpenC3
           cmd_name = msg_hash['cmd_name']
           manual = ConfigParser.handle_true_false(msg_hash['manual'])
           cmd_params = nil
+          range_check = true
+          raw = false
           cmd_buffer = nil
           hazardous_check = nil
           if msg_hash['cmd_params']
@@ -288,14 +290,13 @@ module OpenC3
             if @critical_commanding and @critical_commanding != 'OFF' and not release_critical
               restricted = command.restricted
               if hazardous or restricted or (@critical_commanding == 'ALL' and manual)
+                cmd_type = 'NORMAL'
                 if hazardous
-                  type = 'HAZARDOUS'
+                  cmd_type = 'HAZARDOUS'
                 elsif restricted
-                  type = 'RESTRICTED'
-                else
-                  type = 'NORMAL'
+                  cmd_type = 'RESTRICTED'
                 end
-                model = CriticalCmdModel.new(name: SecureRandom.uuid, type: type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
+                model = CriticalCmdModel.new(name: SecureRandom.uuid, type: cmd_type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
                 model.create
                 @logger.info("Critical Cmd Pending: #{msg_hash['cmd_string']}", user: msg_hash['username'], scope: @scope)
                 next "CriticalCmdError\n#{model.name}"
@@ -428,10 +429,12 @@ module OpenC3
               params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
             end
             @router = @tlm.attempting(*params)
+            next 'SUCCESS'
           end
           if msg_hash['disconnect']
             @logger.info "#{@router.name}: Disconnect requested"
             @tlm.disconnect(false)
+            next 'SUCCESS'
           end
           if msg_hash.key?('log_stream')
             if msg_hash['log_stream'] == 'true'
@@ -441,6 +444,7 @@ module OpenC3
               @logger.info "#{@router.name}: Disable stream logging"
               @router.stop_raw_logging
             end
+            next 'SUCCESS'
           end
           if msg_hash.key?('router_cmd')
             params = JSON.parse(msg_hash['router_cmd'], allow_nan: true, create_additions: true)
