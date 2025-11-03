@@ -206,8 +206,11 @@ module OpenC3
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
 
-        # Handle python requirements.txt
-        if File.exist?(File.join(gem_path, 'requirements.txt'))
+        # Handle python dependencies (pyproject.toml or requirements.txt)
+        pyproject_path = File.join(gem_path, 'pyproject.toml')
+        requirements_path = File.join(gem_path, 'requirements.txt')
+        
+        if File.exist?(pyproject_path) || File.exist?(requirements_path)
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
             if pypi_url
@@ -226,11 +229,20 @@ module OpenC3
             end
           end
           unless validate_only
-            Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-              pip_args = "--no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}"
+            if File.exist?(pyproject_path)
+              Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
+              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+                pip_args = "--no-warn-script-location -i #{pypi_url} #{gem_path}"
+              else
+                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
+              end
             else
-              pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{File.join(gem_path, 'requirements.txt')}"
+              Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+                pip_args = "--no-warn-script-location -i #{pypi_url} -r #{requirements_path}"
+              else
+                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
+              end
             end
             puts `/openc3/bin/pipinstall #{pip_args}`
           end
