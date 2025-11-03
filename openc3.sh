@@ -63,10 +63,13 @@ COMMON COMMANDS:
 
   cli [COMMAND]         Run OpenC3 CLI commands in a container
                         Use 'cli help' for available commands
-                        Use 'cli --wrapper-help' for Docker wrapper info
+                        Use 'cli --help' for Docker wrapper info
                         Examples:
                           $1 cli generate plugin MyPlugin
                           $1 cli validate myplugin.gem
+
+  cliroot [COMMAND]     Run OpenC3 CLI commands as root user
+                        Same as 'cli' but with root privileges
 
 DEVELOPMENT COMMANDS:
   build                 Build all OpenC3 Docker containers from source
@@ -128,7 +131,7 @@ check_root() {
 
 case $1 in
   cli )
-    if [ "$2" == "--wrapper-help" ]; then
+    if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cli [COMMAND] [OPTIONS]"
       echo ""
       echo "Run OpenC3 CLI commands inside a Docker container as the default user."
@@ -155,7 +158,8 @@ case $1 in
       echo "Note: Use 'cliroot' instead of 'cli' to run as root user."
       echo ""
       echo "Options:"
-      echo "  --wrapper-help    Show this wrapper help message"
+      echo "  -h, --help        Show this help message"
+      echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
     # Source the .env file to setup environment variables
@@ -167,6 +171,46 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    set +a
+    ;;
+  cliroot )
+    if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 cliroot [COMMAND] [OPTIONS]"
+      echo ""
+      echo "Run OpenC3 CLI commands inside a Docker container as root user."
+      echo ""
+      echo "This is the same as 'cli' but runs as root instead of the default user."
+      echo "Use this when you need elevated privileges inside the container."
+      echo ""
+      echo "What this wrapper does:"
+      echo "  - Starts a temporary Docker container (removed after use)"
+      echo "  - Mounts your current directory as /openc3/local inside the container"
+      echo "  - Runs the Ruby CLI tool (/openc3/bin/openc3cli) with your arguments"
+      echo "  - Uses interactive terminal mode (-it) for commands that need input"
+      echo "  - Runs as root user (--user=root)"
+      echo ""
+      echo "Prerequisites:"
+      echo "  - Containers must be built first: $0 build"
+      echo "  - .env file must exist in the OpenC3 directory"
+      echo ""
+      echo "Common commands:"
+      echo "  $0 cliroot help                       Show CLI command help"
+      echo "  $0 cliroot validate plugin.gem        Validate a plugin"
+      echo "  $0 cliroot load plugin.gem            Load a plugin"
+      echo ""
+      echo "For detailed CLI command help, run: $0 cliroot help"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help        Show this help message"
+      echo "  --wrapper-help    (same as --help)"
+      exit 0
+    fi
+    # Source the .env file to setup environment variables
+    set -a
+    . "$(dirname -- "$0")/.env"
+    # Same as cli but run as root user
+    args=`echo $@ | { read _ args; echo $args; }`
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )

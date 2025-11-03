@@ -521,6 +521,7 @@ _openc3() {
             local -a commands
             commands=(
                 'cli:run a cli command as the default user'
+                'cliroot:run a cli command as root user'
                 'start:build and run'
                 'stop:stop the containers'
                 'cleanup:REMOVE volumes / data'
@@ -541,10 +542,10 @@ _openc3() {
                         'local[also cleanup local plugin files]' \
                         'force[skip confirmation prompt]'
                     ;;
-                cli)
+                cli|cliroot)
                     # Adjust words array to make it relative to cli subcommand
                     local -a cli_words
-                    cli_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'cli'
+                    cli_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'cli'/'cliroot'
                     local cli_current=$((CURRENT - 2))
 
                     # Save original values
