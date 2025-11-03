@@ -43,6 +43,8 @@ module OpenC3
         puts "  tool_svelte           Create a new Svelte tool"
         puts "  command_validator     Create a new command validator for a target"
         puts ""
+        puts "Run 'cli generate GENERATOR --help' for detailed help on each generator."
+        puts ""
         puts "Options:"
         puts "  --ruby                Generate Ruby code (or set OPENC3_LANGUAGE=ruby)"
         puts "  --python              Generate Python code (or set OPENC3_LANGUAGE=python)"
@@ -53,6 +55,9 @@ module OpenC3
         puts "  cli generate target EXAMPLE --python"
         puts "  cli generate widget SuperdataWidget --ruby"
         puts "  cli generate conversion EXAMPLE STATUS --ruby"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/development/developing"
         exit(args[0].nil? ? 1 : 0)
       end
       unless GENERATORS.include?(args[0])
@@ -132,6 +137,9 @@ module OpenC3
         puts "Example:"
         puts "  cli generate plugin demo --ruby"
         puts "  Creates: openc3-cosmos-demo/"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/plugins"
         exit(args[1].nil? ? 1 : 0)
       end
       if args.length < 2 or args.length > 3
@@ -176,6 +184,9 @@ module OpenC3
         puts "  Creates: targets/EXAMPLE/"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/target"
         exit(args[1].nil? ? 1 : 0)
       end
       if args.length < 2 or args.length > 3
@@ -259,6 +270,9 @@ module OpenC3
         puts "  Creates: microservices/DATA_PROCESSOR/"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/plugins#microservices"
         exit(args[1].nil? ? 1 : 0)
       end
       if args.length < 2 or args.length > 3
@@ -320,6 +334,9 @@ module OpenC3
         puts "  Creates: src/SuperdataWidget.vue"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/guides/custom-widgets"
         exit(args[1].nil? ? 1 : 0)
       end
       if args.length < 2 or args.length > 3
@@ -394,6 +411,9 @@ module OpenC3
         puts "  Creates: tools/dataviewer/"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/guides/custom-tools"
         exit(args[1].nil? ? 1 : 0)
       end
       if args.length < 2 or args.length > 3
@@ -467,6 +487,9 @@ module OpenC3
         puts "  Creates: targets/EXAMPLE/lib/status_conversion.rb"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/telemetry#read_conversion"
         exit(args[1].nil? || args[2].nil? ? 1 : 0)
       end
       if args.length < 3 or args.length > 4
@@ -518,6 +541,9 @@ module OpenC3
         puts "  Creates: targets/EXAMPLE/lib/data_processor.rb"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/telemetry#processor"
         exit(args[1].nil? || args[2].nil? ? 1 : 0)
       end
       if args.length < 3 or args.length > 4
@@ -569,6 +595,9 @@ module OpenC3
         puts "  Creates: targets/EXAMPLE/lib/custom_limits_response.rb"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/telemetry#limits_response"
         exit(args[1].nil? || args[2].nil? ? 1 : 0)
       end
       if args.length < 3 or args.length > 4
@@ -620,6 +649,9 @@ module OpenC3
         puts "  Creates: targets/EXAMPLE/lib/range_command_validator.rb"
         puts ""
         puts "Note: Must be run from within an existing plugin directory"
+        puts ""
+        puts "Documentation:"
+        puts "  https://docs.openc3.com/docs/configuration/command#validator"
         exit(args[1].nil? || args[2].nil? ? 1 : 0)
       end
       if args.length < 3 or args.length > 4
