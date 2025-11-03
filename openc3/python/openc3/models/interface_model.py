@@ -27,6 +27,7 @@ from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_module, filename_to_class_name
 import copy
 
+
 class InterfaceModel(Model):
     INTERFACES_PRIMARY_KEY = "openc3_interfaces"
     ROUTERS_PRIMARY_KEY = "openc3_routers"
@@ -119,12 +120,12 @@ class InterfaceModel(Model):
         if not self.cmd_target_enabled:
             for target_name in self.cmd_target_names:
                 self.cmd_target_enabled[target_name] = True
-            self.cmd_target_enabled['UNKNOWN'] = True
+            self.cmd_target_enabled["UNKNOWN"] = True
         self.tlm_target_enabled = {} if tlm_target_enabled is None else tlm_target_enabled
         if not self.tlm_target_enabled:
             for target_name in self.tlm_target_names:
                 self.tlm_target_enabled[target_name] = True
-            self.tlm_target_enabled['UNKNOWN'] = True
+            self.tlm_target_enabled["UNKNOWN"] = True
         self.connect_on_startup = connect_on_startup
         self.auto_reconnect = auto_reconnect
         self.reconnect_delay = reconnect_delay
@@ -192,7 +193,7 @@ class InterfaceModel(Model):
             interface_or_router.add_protocol(klass, protocol[2:], protocol[0].upper())
         if self.log_stream:
             interface_or_router.stream_log_pair = StreamLogPair(interface_or_router.name, self.log_stream)
-            interface_or_router.start_raw_logging
+            interface_or_router.start_raw_logging()
         return interface_or_router
 
     def as_json(self):
@@ -260,7 +261,9 @@ class InterfaceModel(Model):
             microservice.target_names.remove(target_name)
         microservice.update()
 
-    def map_target(self, target_name, cmd_only=False, tlm_only=False, unmap_old=True, cmd_enabled=True, tlm_enabled=True):
+    def map_target(
+        self, target_name, cmd_only=False, tlm_only=False, unmap_old=True, cmd_enabled=True, tlm_enabled=True
+    ):
         if cmd_only and tlm_only:
             cmd_only = False
             tlm_only = False

@@ -37,6 +37,7 @@ fakeredis = "^2.31"
 pytest = "^8.3"
 ruff = "^0.14"
 pytest-profiling = "^1.8"
+pylint = "^4.0.2"
 
 [build-system]
 requires = ["poetry-core"]
