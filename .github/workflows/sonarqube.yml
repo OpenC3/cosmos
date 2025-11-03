@@ -33,7 +33,7 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           path: openc3/coverage
-          pattern: ruby-unit-tests-coverage-*
+          name: ruby-unit-tests-coverage-3.3
       - name: List ruby coverage files
         run: ls -laR openc3/coverage
       - name: SonarQube Scan
