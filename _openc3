@@ -307,16 +307,12 @@ _openc3_cli() {
             ;;
         list)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'scope: :_message "SCOPE (default: DEFAULT)"' \
-                    'options: :(--help -h)'
+                _message 'SCOPE (default: DEFAULT)'
             fi
             ;;
         unload)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'plugin: :_message "PLUGIN_NAME"' \
-                    'options: :(--help -h)'
+                _message 'PLUGIN_NAME'
             else
                 _message 'SCOPE (default: DEFAULT)'
             fi
@@ -349,27 +345,18 @@ _openc3_cli() {
                 case $gen_type in
                     conversion|processor|limits_response|command_validator)
                         # These require TARGET as first arg
-                        _alternative \
-                            'target: :_message -r "TARGET (required)"' \
-                            'options: :(--help -h)'
-                        return 0
+                        _message -r 'TARGET (required)'
                         ;;
                     plugin|target|microservice|widget|tool|tool_vue|tool_angular|tool_react|tool_svelte)
                         # These require NAME as first arg
-                        _alternative \
-                            'name: :_message -r "NAME (required)"' \
-                            'options: :(--help -h)'
-                        return 0
+                        _message -r 'NAME (required)'
                         ;;
                 esac
             elif (( CURRENT == 4 )); then
                 case $gen_type in
                     conversion|processor|limits_response|command_validator)
-                        # After TARGET, need NAME or --help
-                        _alternative \
-                            'name: :_message -r "NAME (required)"' \
-                            'options: :(--help -h)'
-                        return 0
+                        # After TARGET, need NAME
+                        _message -r 'NAME (required)'
                         ;;
                     *)
                         # After NAME, offer language flags
@@ -392,6 +379,7 @@ _openc3_cli() {
             ;;
         bridge)
             if (( CURRENT == 2 )); then
+                # Keep _alternative for files + options - this works correctly
                 _alternative \
                     'files:bridge file:_files' \
                     'options: :(--help -h)'
@@ -401,15 +389,14 @@ _openc3_cli() {
             ;;
         bridgegem)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'gem: :_message "GEM_NAME"' \
-                    'options: :(--help -h)'
+                _message 'GEM_NAME'
             else
                 _message 'variable=value'
             fi
             ;;
         bridgesetup)
             if (( CURRENT == 2 )); then
+                # Keep _alternative for files + options - this works correctly
                 _alternative \
                     'files:output file:_files' \
                     'options: :(--help -h)'
@@ -417,6 +404,7 @@ _openc3_cli() {
             ;;
         pkginstall|geminstall)
             if (( CURRENT == 2 )); then
+                # Keep _alternative for files + options - this works correctly
                 _alternative \
                     'gem-files:gem file:_files -g "*.gem"' \
                     'options: :(--help -h)'
@@ -426,9 +414,7 @@ _openc3_cli() {
             ;;
         pkguninstall|gemuninstall)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'package: :_message "PACKAGE_FILENAME"' \
-                    'options: :(--help -h)'
+                _message 'PACKAGE_FILENAME'
             else
                 _message 'SCOPE (default: DEFAULT)'
             fi
@@ -459,9 +445,7 @@ _openc3_cli() {
             elif (( CURRENT == 3 )); then
                 case $words[2] in
                     hget)
-                        _alternative \
-                            'hash: :_message "HASH"' \
-                            'options: :(--help -h)'
+                        _message 'HASH'
                         ;;
                     *)
                         _message 'REDIS_KEY or HASH_FIELD'
@@ -477,22 +461,19 @@ _openc3_cli() {
             ;;
         createqueue)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'queue: :_message "QUEUE_NAME"' \
-                    'options: :(--help -h)'
+                _message 'QUEUE_NAME'
             else
                 _message 'SCOPE'
             fi
             ;;
         destroyscope)
             if (( CURRENT == 2 )); then
-                _alternative \
-                    'scope: :_message "SCOPE_NAME"' \
-                    'options: :(--help -h)'
+                _message 'SCOPE_NAME'
             fi
             ;;
         runmigrations)
             if (( CURRENT == 2 )); then
+                # Keep _alternative for directories + options - this works correctly
                 _alternative \
                     'directories:directory:_directories' \
                     'options: :(--help -h)'

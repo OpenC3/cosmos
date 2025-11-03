@@ -4,6 +4,12 @@ setlocal ENABLEDELAYEDEXPANSION
 if "%1" == "" (
   GOTO usage
 )
+if "%1" == "--help" (
+  GOTO usage
+)
+if "%1" == "-h" (
+  GOTO usage
+)
 if "%1" == "cli" (
   REM tokens=* means process the full line
   REM findstr /V = print lines that don't match, /B beginning of line, /L literal search string, /C:# match #

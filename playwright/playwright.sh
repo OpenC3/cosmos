@@ -15,6 +15,11 @@ if [ "$#" -eq 0 ]; then
   usage $0
 fi
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  usage $0
+fi
+
 case $1 in
     install-playwright )
         # Attempt to clean up downloaded browser binaries

@@ -1,5 +1,30 @@
 #!/bin/bash
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  echo "Usage: openc3_build_ubi.sh"
+  echo ""
+  echo "Builds OpenC3 UBI (Universal Base Image) containers for enterprise deployments."
+  echo ""
+  echo "This script builds all OpenC3 services using Red Hat UBI base images,"
+  echo "suitable for air-gapped and government environments."
+  echo ""
+  echo "Environment variables required:"
+  echo "  OPENC3_UBI_REGISTRY      - UBI registry URL"
+  echo "  OPENC3_UBI_IMAGE         - UBI image name"
+  echo "  OPENC3_UBI_TAG           - UBI image tag"
+  echo "  OPENC3_REGISTRY          - Target registry for built images"
+  echo "  OPENC3_NAMESPACE         - Target namespace"
+  echo "  OPENC3_TAG               - Tag for built images"
+  echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
+  echo "  PYPI_URL                 - PyPI mirror URL (optional)"
+  echo "  NPM_URL                  - NPM registry URL (optional)"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message"
+  exit 0
+fi
+
 set -e
 
 if ! command -v docker &> /dev/null

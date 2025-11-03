@@ -61,6 +61,11 @@ if [ "$#" -eq 0 ]; then
   usage $0
 fi
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  usage $0
+fi
+
 check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     echo "WARNING: COSMOS should not be run as the root user, as permissions for Local Mode will be affected. Do not use sudo when running COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
@@ -81,14 +86,54 @@ case $1 in
     set +a
     ;;
   start )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 start"
+      echo ""
+      echo "Build and run OpenC3 containers."
+      echo ""
+      echo "This command:"
+      echo "  1. Builds all OpenC3 containers (equivalent to 'openc3.sh build')"
+      echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     openc3.sh build
     openc3.sh run
     ;;
   start-ubi )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 start-ubi"
+      echo ""
+      echo "Build and run OpenC3 UBI containers."
+      echo ""
+      echo "This command:"
+      echo "  1. Builds all OpenC3 UBI containers (equivalent to 'openc3.sh build-ubi')"
+      echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     openc3.sh build-ubi
     openc3.sh run-ubi
     ;;
   stop )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 stop"
+      echo ""
+      echo "Stop all OpenC3 containers gracefully."
+      echo ""
+      echo "This command:"
+      echo "  1. Stops operator, script-runner-api, and cmd-tlm-api containers"
+      echo "  2. Waits 5 seconds"
+      echo "  3. Runs docker compose down with 30 second timeout"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
@@ -96,6 +141,27 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
   cleanup )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 cleanup [local] [force]"
+      echo ""
+      echo "Remove all OpenC3 docker volumes and data."
+      echo ""
+      echo "WARNING: This is a destructive operation that removes ALL COSMOS data!"
+      echo ""
+      echo "Arguments:"
+      echo "  local    Also remove local plugin files in plugins/DEFAULT/"
+      echo "  force    Skip confirmation prompt"
+      echo ""
+      echo "Examples:"
+      echo "  $0 cleanup              # Remove volumes (with confirmation)"
+      echo "  $0 cleanup force        # Remove volumes (no confirmation)"
+      echo "  $0 cleanup local        # Remove volumes and local plugins"
+      echo "  $0 cleanup local force  # Remove volumes and local plugins (no confirmation)"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     # They can specify 'cleanup force' or 'cleanup local force'
     if [ "$2" == "force" ] || [ "$3" == "force" ]
     then
@@ -117,6 +183,22 @@ case $1 in
     fi
     ;;
   build )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 build"
+      echo ""
+      echo "Build all OpenC3 docker containers."
+      echo ""
+      echo "This command:"
+      echo "  1. Runs setup to download certificates"
+      echo "  2. Builds openc3-ruby base image"
+      echo "  3. Builds openc3-base image"
+      echo "  4. Builds openc3-node image"
+      echo "  5. Builds all remaining service containers"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
@@ -129,6 +211,17 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 build-ubi"
+      echo ""
+      echo "Build all OpenC3 UBI (Universal Base Image) containers."
+      echo ""
+      echo "This is used for enterprise deployments requiring Red Hat UBI base images."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     # Change to cosmos directory since scripts use relative paths
     cd "$(dirname -- "$0")"
     set -a
@@ -142,14 +235,45 @@ case $1 in
     set +a
     ;;
   run )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 run"
+      echo ""
+      echo "Run all OpenC3 containers in detached mode."
+      echo ""
+      echo "Containers will start in the background using docker compose up -d."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     check_root
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 run-ubi"
+      echo ""
+      echo "Run all OpenC3 UBI containers in detached mode."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     check_root
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 test [COMMAND] [OPTIONS]"
+      echo ""
+      echo "Test OpenC3. Run '$0 test --help' for available test commands."
+      echo ""
+      echo "This builds OpenC3 and runs the specified test suite."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
@@ -157,6 +281,17 @@ case $1 in
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   util )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 util [COMMAND] [OPTIONS]"
+      echo ""
+      echo "Various OpenC3 utility commands."
+      echo ""
+      echo "Run '$0 util' (without arguments) to see available utility commands."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     set -a
     . "$(dirname -- "$0")/.env"
     "$(find_script openc3_util.sh)" "${@:2}"

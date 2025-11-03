@@ -21,14 +21,43 @@ if [ "$#" -eq 0 ]; then
   usage $0
 fi
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  usage $0
+fi
+
 case $1 in
   rspec )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 rspec"
+      echo ""
+      echo "Run RSpec tests against Ruby code in the openc3 directory."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     cd openc3
     rspec
     cd -
     ;;
 
   playwright )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 playwright [COMMAND]"
+      echo ""
+      echo "Run Playwright end-to-end tests."
+      echo ""
+      echo "Commands:"
+      echo "  install-playwright    Install playwright and its dependencies"
+      echo "  build-plugin          Build the plugin for playwright tests"
+      echo "  run-chromium          Run playwright tests using Chrome"
+      echo "  reset-storage-state   Clear out cached data"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help            Show this help message"
+      exit 0
+    fi
     case $2 in
       install-playwright )
         cd playwright
@@ -66,6 +95,21 @@ case $1 in
     ;;
 
   hash )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 hash"
+      echo ""
+      echo "Run comprehensive Playwright tests with coverage."
+      echo ""
+      echo "This command:"
+      echo "  1. Starts OpenC3 containers"
+      echo "  2. Runs fixlinux script"
+      echo "  3. Executes pnpm test"
+      echo "  4. Generates coverage report"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright
     pnpm run fixlinux

@@ -44,4 +44,6 @@ module OpenC3
   autoload(:CmdResponseProtocol, 'openc3/interfaces/protocols/cmd_response_protocol.rb')
   autoload(:CrcProtocol, 'openc3/interfaces/protocols/crc_protocol.rb')
   autoload(:IgnorePacketProtocol, 'openc3/interfaces/protocols/ignore_packet_protocol.rb')
+
+  autoload(:SlipProtocol, 'openc3/interfaces/protocols/slip_protocol.rb')
 end
