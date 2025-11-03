@@ -97,8 +97,12 @@
               data-test="playback-time"
               :disabled="playbackPlaying"
             />
-            <v-tooltip :text="`Skip Backward ${playbackSkip} secs`" :open-delay="2000" location="top">
-              <template v-slot:activator="{ props }">
+            <v-tooltip
+              :text="`Skip Backward ${playbackSkip} secs`"
+              :open-delay="2000"
+              location="top"
+            >
+              <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   icon="mdi-skip-backward"
@@ -110,8 +114,12 @@
                 ></v-btn>
               </template>
             </v-tooltip>
-            <v-tooltip :text="`Step Backward ${playbackStep} secs`" :open-delay="2000" location="top">
-              <template v-slot:activator="{ props }">
+            <v-tooltip
+              :text="`Step Backward ${playbackStep} secs`"
+              :open-delay="2000"
+              location="top"
+            >
+              <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   icon="mdi-step-backward"
@@ -131,8 +139,12 @@
               style="margin-top: -5px"
               @click="playbackToggle"
             ></v-btn>
-            <v-tooltip :text="`Step Forward ${playbackStep} secs`" :open-delay="2000" location="top">
-              <template v-slot:activator="{ props }">
+            <v-tooltip
+              :text="`Step Forward ${playbackStep} secs`"
+              :open-delay="2000"
+              location="top"
+            >
+              <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   icon="mdi-step-forward"
@@ -144,8 +156,12 @@
                 ></v-btn>
               </template>
             </v-tooltip>
-            <v-tooltip :text="`Skip Forward ${playbackSkip} secs`" :open-delay="2000" location="top">
-              <template v-slot:activator="{ props }">
+            <v-tooltip
+              :text="`Skip Forward ${playbackSkip} secs`"
+              :open-delay="2000"
+              location="top"
+            >
+              <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   icon="mdi-skip-forward"
@@ -355,6 +371,12 @@ export default {
     },
   },
   watch: {
+    selectedTarget: function (newTarget, oldTarget) {
+      // When target changes, update screen to first screen of new target
+      if (newTarget && newTarget !== oldTarget && this.screens[newTarget]) {
+        this.selectedScreen = this.screens[newTarget][0]
+      }
+    },
     definitions: {
       handler: function () {
         this.saveDefaultConfig(this.currentConfig)
@@ -569,7 +591,15 @@ export default {
       return Api.get('/openc3-api/screen/' + target + '/' + screen, {
         headers: {
           Accept: 'text/plain',
+          // Plugins can be removed so 404 is possible which we want to ignore
+          'Ignore-Errors': '404',
         },
+      }).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error(
+          `Error loading screen ${screen} for target ${target}:`,
+          error,
+        )
       })
     },
     pushScreen(definition) {
