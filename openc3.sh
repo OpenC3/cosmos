@@ -9,6 +9,7 @@ then
     function docker() {
       podman $@
     }
+    export USING_PODMAN=1
   else
     echo "Neither docker nor podman found!!!"
     exit 1
@@ -25,10 +26,34 @@ find_script() {
   fi
 }
 
-export DOCKER_COMPOSE_COMMAND="docker compose"
-${DOCKER_COMPOSE_COMMAND} version &> /dev/null
-if [ "$?" -ne 0 ]; then
-  export DOCKER_COMPOSE_COMMAND="docker-compose"
+# Detect compose command (docker compose, docker-compose, podman compose, or podman-compose)
+if [ -n "$USING_PODMAN" ]; then
+  # Check for podman compose (new) or podman-compose (old)
+  export DOCKER_COMPOSE_COMMAND="podman compose"
+  ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
+  if [ "$?" -ne 0 ]; then
+    # Try podman-compose (old command)
+    export DOCKER_COMPOSE_COMMAND="podman-compose"
+    ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
+    if [ "$?" -ne 0 ]; then
+      echo "Error: podman found but neither 'podman compose' nor 'podman-compose' is available!"
+      echo "Please install podman-compose: https://github.com/containers/podman-compose"
+      exit 1
+    fi
+  fi
+else
+  # Using docker - check for 'docker compose' (new) or 'docker-compose' (old)
+  export DOCKER_COMPOSE_COMMAND="docker compose"
+  ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
+  if [ "$?" -ne 0 ]; then
+    export DOCKER_COMPOSE_COMMAND="docker-compose"
+    ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
+    if [ "$?" -ne 0 ]; then
+      echo "Error: docker found but neither 'docker compose' nor 'docker-compose' is available!"
+      echo "Please install Docker Compose: https://docs.docker.com/compose/install/"
+      exit 1
+    fi
+  fi
 fi
 
 docker info | grep -e "rootless$" -e "rootless: true"
@@ -288,7 +313,9 @@ case $1 in
     "$(find_script openc3_setup.sh)"
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
-    chmod -R +r "$(dirname -- "$0")"
+    # Make directory and files readable for Docker build context
+    # Use || true to continue even if chmod fails (e.g., SELinux, permission issues)
+    chmod -R +r "$(dirname -- "$0")" 2>/dev/null || echo "Warning: Could not set all files readable (this is usually harmless)"
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node

@@ -42,7 +42,9 @@ fi
 
 # Handle restrictive umasks - Built files need to be world readable
 umask 0022
-chmod -R +r .
+# Make directory and files readable for Docker build context
+# Use || true to continue even if chmod fails (e.g., SELinux, permission issues)
+chmod -R +r . 2>/dev/null || echo "Warning: Could not set all files readable (this is usually harmless)"
 
 cd openc3-ruby
 docker build \

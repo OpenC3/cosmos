@@ -1,6 +1,57 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 
+REM Detect Docker or Podman
+set DOCKER_CMD=docker
+set COMPOSE_CMD=docker compose
+
+REM Check if docker command exists
+where docker >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+  REM Docker not found, check for podman
+  where podman >nul 2>nul
+  if %ERRORLEVEL% NEQ 0 (
+    echo Error: Neither docker nor podman found!
+    echo Please install Docker Desktop or Podman: https://www.docker.com/
+    exit /b 1
+  )
+  set DOCKER_CMD=podman
+  set USING_PODMAN=1
+)
+
+REM Detect compose command
+if defined USING_PODMAN (
+  REM Check for podman compose (new) or podman-compose (old)
+  podman compose version >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    set COMPOSE_CMD=podman compose
+  ) else (
+    podman-compose version >nul 2>nul
+    if %ERRORLEVEL% EQU 0 (
+      set COMPOSE_CMD=podman-compose
+    ) else (
+      echo Error: podman found but neither 'podman compose' nor 'podman-compose' is available!
+      echo Please install podman-compose: https://github.com/containers/podman-compose
+      exit /b 1
+    )
+  )
+) else (
+  REM Check for docker compose (new) or docker-compose (old)
+  docker compose version >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    set COMPOSE_CMD=docker compose
+  ) else (
+    docker-compose version >nul 2>nul
+    if %ERRORLEVEL% EQU 0 (
+      set COMPOSE_CMD=docker-compose
+    ) else (
+      echo Error: docker found but neither 'docker compose' nor 'docker-compose' is available!
+      echo Please install Docker Compose: https://docs.docker.com/compose/install/
+      exit /b 1
+    )
+  )
+)
+
 if "%1" == "" (
   GOTO usage
 )
@@ -20,14 +71,14 @@ if "%1" == "cli" (
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3cli" with all parameters ignoring the first.
-  docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  %COMPOSE_CMD% -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "cliroot" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
-  docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  %COMPOSE_CMD% -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "start" (
@@ -57,16 +108,16 @@ GOTO usage
 
 :startup
   CALL openc3 build || exit /b
-  docker compose -f compose.yaml up -d
+  %COMPOSE_CMD% -f compose.yaml up -d
   @echo off
 GOTO :EOF
 
 :stop
-  docker compose stop openc3-operator
-  docker compose stop openc3-cosmos-script-runner-api
-  docker compose stop openc3-cosmos-cmd-tlm-api
+  %COMPOSE_CMD% stop openc3-operator
+  %COMPOSE_CMD% stop openc3-cosmos-script-runner-api
+  %COMPOSE_CMD% stop openc3-cosmos-cmd-tlm-api
   timeout /t 5 /nobreak
-  docker compose -f compose.yaml down -t 30
+  %COMPOSE_CMD% -f compose.yaml down -t 30
   @echo off
 GOTO :EOF
 
@@ -85,7 +136,7 @@ GOTO :EOF
 goto :try_cleanup
 
 :cleanup_y
-  docker compose -f compose.yaml down -t 30 -v
+  %COMPOSE_CMD% -f compose.yaml down -t 30 -v
 
   if "%2" == "local" (
     FOR /d %%a IN (%~dp0plugins\DEFAULT\*) DO RD /S /Q "%%a"
@@ -96,22 +147,22 @@ GOTO :EOF
 
 :build
   CALL scripts\windows\openc3_setup || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build || exit /b
+  %COMPOSE_CMD% -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
+  %COMPOSE_CMD% -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
+  %COMPOSE_CMD% -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+  %COMPOSE_CMD% -f compose.yaml -f compose-build.yaml build || exit /b
   @echo off
 GOTO :EOF
 
 :run
-  docker compose -f compose.yaml up -d
+  %COMPOSE_CMD% -f compose.yaml up -d
   @echo off
 GOTO :EOF
 
 :test
   REM Building OpenC3
   CALL scripts\windows\openc3_setup || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build
+  %COMPOSE_CMD% -f compose.yaml -f compose-build.yaml build
   set args=%*
   call set args=%%args:*%1=%%
   REM Running tests
