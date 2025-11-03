@@ -138,7 +138,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
   s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
   # simplecov_json_formatter formatter supports SonarQube
-  # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
+  s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
 
   s.post_install_message = "Thanks for installing OpenC3!\n"
   s.metadata['rubygems_mfa_required'] = 'true'
