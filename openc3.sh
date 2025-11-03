@@ -88,7 +88,7 @@ CLEANUP:
                           local  - Also remove local plugin files
                           force  - Skip confirmation prompt
 
-ENTERPRISE/AIRGAPPED:
+REDHAT:
   start-ubi             Build and run with Red Hat UBI images
   build-ubi             Build containers using UBI base images
   run-ubi               Run containers with UBI images
