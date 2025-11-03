@@ -61,13 +61,13 @@ case $1 in
     case $2 in
       install-playwright )
         cd playwright
-        ./playwright.sh install-playwright
+        ./playwright.sh install-playwright "${@:3}"
         cd -
         ;;
 
       build-plugin )
         cd playwright
-        ./playwright.sh build-plugin
+        ./playwright.sh build-plugin "${@:3}"
         cd -
         ;;
 
@@ -79,7 +79,7 @@ case $1 in
 
       reset-storage-state )
         cd playwright
-        ./playwright.sh reset-storage-state
+        ./playwright.sh reset-storage-state "${@:3}"
         cd -
         ;;
 

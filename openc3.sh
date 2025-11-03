@@ -45,15 +45,25 @@ fi
 set -e
 
 usage() {
-  echo "Usage: $1 [cli, start, stop, cleanup, build, run, test, util]" >&2
-  echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
-  echo "*  start: build and run" >&2
-  echo "*  stop: stop the containers (compose stop)" >&2
+  echo "Usage: $1 [COMMAND]" >&2
+  echo "" >&2
+  echo "Commands:" >&2
+  echo "*  cli: run a cli command as the default user" 1>&2
+  echo "       ('cli help' for CLI commands, 'cli --wrapper-help' for wrapper info)" 1>&2
+  echo "*  start: build and run OpenC3" >&2
+  echo "*  stop: stop the containers gracefully" >&2
   echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
-  echo "*  build: build the containers (compose build)" >&2
-  echo "*  run: run the containers (compose up)" >&2
-  echo "*  test: test openc3" >&2
-  echo "*  util: various helper commands" >&2
+  echo "*  build: build the OpenC3 containers" >&2
+  echo "*  run: run the OpenC3 containers" >&2
+  echo "*  test: run OpenC3 tests" >&2
+  echo "*  util: various utility commands" >&2
+  echo "" >&2
+  echo "UBI (Red Hat Universal Base Image) commands:" >&2
+  echo "*  start-ubi: build and run OpenC3 with UBI images" >&2
+  echo "*  build-ubi: build OpenC3 containers using UBI base images" >&2
+  echo "*  run-ubi: run OpenC3 containers with UBI images" >&2
+  echo "" >&2
+  echo "Run '$1 COMMAND --help' for detailed help on each command." >&2
   exit 1
 }
 
@@ -74,6 +84,36 @@ check_root() {
 
 case $1 in
   cli )
+    if [ "$2" == "--wrapper-help" ]; then
+      echo "Usage: $0 cli [COMMAND] [OPTIONS]"
+      echo ""
+      echo "Run OpenC3 CLI commands inside a Docker container as the default user."
+      echo ""
+      echo "What this wrapper does:"
+      echo "  - Starts a temporary Docker container (removed after use)"
+      echo "  - Mounts your current directory as /openc3/local inside the container"
+      echo "  - Runs the Ruby CLI tool (/openc3/bin/openc3cli) with your arguments"
+      echo "  - Uses interactive terminal mode (-it) for commands that need input"
+      echo ""
+      echo "Prerequisites:"
+      echo "  - Containers must be built first: $0 build"
+      echo "  - .env file must exist in the OpenC3 directory"
+      echo ""
+      echo "Common commands:"
+      echo "  $0 cli help                           Show CLI command help"
+      echo "  $0 cli validate plugin.gem            Validate a plugin"
+      echo "  $0 cli load plugin.gem                Load a plugin"
+      echo "  $0 cli generate plugin MyPlugin --ruby"
+      echo "                                        Generate a new plugin"
+      echo ""
+      echo "For detailed CLI command help, run: $0 cli help"
+      echo ""
+      echo "Note: Use 'cliroot' instead of 'cli' to run as root user."
+      echo ""
+      echo "Options:"
+      echo "  --wrapper-help    Show this wrapper help message"
+      exit 0
+    fi
     # Source the .env file to setup environment variables
     set -a
     . "$(dirname -- "$0")/.env"
@@ -216,7 +256,27 @@ case $1 in
       echo ""
       echo "Build all OpenC3 UBI (Universal Base Image) containers."
       echo ""
-      echo "This is used for enterprise deployments requiring Red Hat UBI base images."
+      echo "This is used for enterprise deployments requiring Red Hat UBI base images,"
+      echo "suitable for air-gapped and government environments."
+      echo ""
+      echo "Required environment variables (set in .env file):"
+      echo "  OPENC3_UBI_REGISTRY      UBI registry URL"
+      echo "  OPENC3_UBI_IMAGE         UBI image name"
+      echo "  OPENC3_UBI_TAG           UBI image tag"
+      echo "  OPENC3_REGISTRY          Target registry for built images"
+      echo "  OPENC3_NAMESPACE         Target namespace"
+      echo "  OPENC3_TAG               Tag for built images"
+      echo ""
+      echo "Optional environment variables:"
+      echo "  RUBYGEMS_URL             RubyGems mirror URL (for air-gapped)"
+      echo "  PYPI_URL                 PyPI mirror URL (for air-gapped)"
+      echo "  NPM_URL                  NPM registry URL (for air-gapped)"
+      echo ""
+      echo "This command:"
+      echo "  1. Sources .env file for configuration"
+      echo "  2. Copies CA certificates if available"
+      echo "  3. Runs openc3_setup.sh"
+      echo "  4. Builds all UBI-based containers"
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -242,6 +302,21 @@ case $1 in
       echo ""
       echo "Containers will start in the background using docker compose up -d."
       echo ""
+      echo "After starting, check status with:"
+      echo "  docker compose ps                   # Show running containers"
+      echo "  docker compose logs -f              # Follow all logs"
+      echo "  docker compose logs -f SERVICE      # Follow specific service logs"
+      echo ""
+      echo "Access OpenC3:"
+      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo ""
+      echo "Common services:"
+      echo "  openc3-operator                     Main orchestration service"
+      echo "  openc3-cosmos-cmd-tlm-api          Command/Telemetry API"
+      echo "  openc3-cosmos-script-runner-api    Script execution service"
+      echo "  openc3-redis                        Redis database"
+      echo "  openc3-minio                        Object storage"
+      echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
       exit 0
@@ -253,7 +328,28 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 run-ubi"
       echo ""
-      echo "Run all OpenC3 UBI containers in detached mode."
+      echo "Run all OpenC3 UBI (Universal Base Image) containers in detached mode."
+      echo ""
+      echo "This uses UBI-based container images and sets UBI-specific configurations:"
+      echo "  - Image suffix: -ubi"
+      echo "  - Redis volume: /home/data (for UBI compatibility)"
+      echo ""
+      echo "Containers will start in the background using docker compose up -d."
+      echo ""
+      echo "After starting, check status with:"
+      echo "  docker compose ps                   # Show running containers"
+      echo "  docker compose logs -f              # Follow all logs"
+      echo "  docker compose logs -f SERVICE      # Follow specific service logs"
+      echo ""
+      echo "Access OpenC3:"
+      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo ""
+      echo "Common services:"
+      echo "  openc3-operator                     Main orchestration service"
+      echo "  openc3-cosmos-cmd-tlm-api          Command/Telemetry API"
+      echo "  openc3-cosmos-script-runner-api    Script execution service"
+      echo "  openc3-redis                        Redis database"
+      echo "  openc3-minio                        Object storage"
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -263,17 +359,34 @@ case $1 in
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 test [COMMAND] [OPTIONS]"
+    # Check for help at any position
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
+      echo "Usage: $0 test COMMAND [OPTIONS]"
       echo ""
-      echo "Test OpenC3. Run '$0 test --help' for available test commands."
+      echo "Test OpenC3. This builds OpenC3 and runs the specified test suite."
       echo ""
-      echo "This builds OpenC3 and runs the specified test suite."
+      echo "Available commands:"
+      echo "  rspec                       Run RSpec tests against Ruby code"
+      echo "  playwright [SUBCOMMAND]     Run Playwright end-to-end tests"
+      echo "    install-playwright        Install playwright and dependencies"
+      echo "    build-plugin              Build the plugin for tests"
+      echo "    run-chromium              Run tests using Chrome"
+      echo "    reset-storage-state       Clear cached data"
+      echo "  hash                        Run comprehensive tests with coverage"
+      echo ""
+      echo "Run '$0 test COMMAND --help' for detailed help on each command."
       echo ""
       echo "Options:"
-      echo "  -h, --help    Show this help message"
+      echo "  -h, --help                  Show this help message"
       exit 0
     fi
+    # If subcommand has --help or -h, skip setup/build and pass through directly
+    for arg in "$@"; do
+      if [ "$arg" == "--help" ] || [ "$arg" == "-h" ]; then
+        "$(find_script openc3_test.sh)" "${@:2}"
+        exit 0
+      fi
+    done
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
@@ -281,15 +394,27 @@ case $1 in
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   util )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 util [COMMAND] [OPTIONS]"
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
+      echo "Usage: $0 util COMMAND [OPTIONS]"
       echo ""
       echo "Various OpenC3 utility commands."
       echo ""
-      echo "Run '$0 util' (without arguments) to see available utility commands."
+      echo "Available commands:"
+      echo "  encode STRING               Encode a string to base64"
+      echo "  hash STRING                 Hash a string using SHA-256"
+      echo "  save REPO NS TAG [SUFFIX]   Save docker images to tar files"
+      echo "  load [TAG] [SUFFIX]         Load docker images from tar files"
+      echo "  tag REPO1 REPO2 NS1 TAG1 [NS2] [TAG2] [SUFFIX]"
+      echo "                              Tag images from one repo to another"
+      echo "  push REPO NS TAG [SUFFIX]   Push images to docker repository"
+      echo "  clean                       Remove node_modules, coverage, etc"
+      echo "  hostsetup REPO NS TAG       Configure host for redis"
+      echo "  hostenter                   Shell into VM host"
+      echo ""
+      echo "Run '$0 util COMMAND --help' for detailed help on each command."
       echo ""
       echo "Options:"
-      echo "  -h, --help    Show this help message"
+      echo "  -h, --help                  Show this help message"
       exit 0
     fi
     set -a

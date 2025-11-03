@@ -11,6 +11,7 @@ _openc3_test() {
         test_commands=(
             'rspec:run tests against Ruby code'
             'playwright:run end-to-end tests'
+            'hash:run comprehensive tests with coverage'
         )
         _describe 'test commands' test_commands
         return
@@ -21,6 +22,9 @@ _openc3_test() {
     case $test_cmd in
         rspec)
             # rspec doesn't take additional arguments in this context
+            ;;
+        hash)
+            # hash doesn't take additional arguments in this context
             ;;
         playwright)
             if (( CURRENT == 2 )); then
