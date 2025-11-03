@@ -38,7 +38,7 @@ group :development, :test do
   gem 'simplecov-cobertura', '~> 3.0'
   gem 'rexml', '~> 3.4'
   # simplecov_json_formatter formatter supports SonarQube
-  # gem 'simplecov_json_formatter', '~> 0.1'
+  gem 'simplecov_json_formatter', '~> 0.1'
 end
 
 group :test do
