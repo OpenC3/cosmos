@@ -35,7 +35,7 @@ jobs:
           path: openc3/coverage
           pattern: ruby-unit-tests-coverage-*
       - name: List ruby coverage files
-        run: ls -la openc3/coverage
+        run: ls -laR openc3/coverage
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
