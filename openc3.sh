@@ -183,8 +183,8 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    openc3.sh build
-    openc3.sh run
+    "$0" build
+    "$0" run
     ;;
   start-ubi )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
@@ -200,8 +200,8 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    openc3.sh build-ubi
-    openc3.sh run-ubi
+    "$0" build-ubi
+    "$0" run-ubi
     ;;
   stop )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
