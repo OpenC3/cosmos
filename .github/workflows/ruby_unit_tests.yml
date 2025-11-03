@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ["3.3", "3.4"]
+        ruby-version: ["3.3"] # Temporarily limiting to one version of Ruby while running lots of actions
 
     steps:
       - uses: actions/checkout@v5

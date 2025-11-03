@@ -15,6 +15,9 @@ jobs:
   ruby-unit-tests:
     if: ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/ruby_unit_tests.yml
+  api-tests:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/api_tests.yml
   scan:
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -27,15 +30,18 @@ jobs:
       - name: Download artifacts from Python Unit Tests
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
+          name: python-unit-tests-coverage-3.11
           path: openc3/python/coverage
-          pattern: python-unit-tests-coverage-*
-      - name: Download artifacts from Ruby Unit Tests
+      - name: Download artifact from Ruby Unit Tests
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
-          path: openc3/coverage
           name: ruby-unit-tests-coverage-3.3
-      - name: List ruby coverage files
-        run: ls -laR openc3/coverage
+          path: openc3/coverage
+      - name: Download artifact from API Tests - Script Runner API Ruby
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: script-runner-api-ruby-3.3
+          path: openc3-cosmos-script-runner-api/coverage
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
