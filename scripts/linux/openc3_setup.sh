@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  echo "Usage: openc3_setup.sh"
+  echo ""
+  echo "Sets up OpenC3 dependencies and downloads necessary certificates."
+  echo ""
+  echo "This script:"
+  echo "  - Downloads cacert.pem from curl.se if not present"
+  echo "  - Copies cacert.pem to required service directories"
+  echo "  - Verifies docker is installed"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message"
+  exit 0
+fi
+
 set -e
 
 # Please download cacert.pem from https://curl.haxx.se/docs/caextract.html and place in this folder before running
