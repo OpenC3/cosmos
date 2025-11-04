@@ -19,7 +19,7 @@ jobs:
     if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/api_tests.yml
   playwright:
-    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/playwright.yml
   scan:
     if: false # TEMP
