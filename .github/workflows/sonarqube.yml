@@ -10,15 +10,19 @@ on:
 
 jobs:
   python-unit-tests:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/python_unit_tests.yml
   ruby-unit-tests:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/ruby_unit_tests.yml
   api-tests:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
     uses: ./.github/workflows/api_tests.yml
+  playwright:
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/playwright.yml
   scan:
+    if: false # TEMP
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     needs: [python-unit-tests, ruby-unit-tests, api-tests]

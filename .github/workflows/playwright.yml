@@ -65,11 +65,11 @@ jobs:
       - name: Generate coverage
         run: pnpm fixlinux; pnpm cobertura
         working-directory: playwright
-      - uses: codecov/codecov-action@v5
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v5
         with:
-          directory: playwright/coverage
-          flags: frontend # See codecov.yml
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: playwright-coverage
+          path: playwright/coverage/cobertura-coverage.xml
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v5
