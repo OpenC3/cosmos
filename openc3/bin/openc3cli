@@ -107,7 +107,7 @@ def xtce_converter(args)
   options = {}
   option_parser = OptionParser.new do |opts|
     opts.banner = "Usage: xtce_converter [options] --import input_xtce_filename --output output_dir\n"+
-      "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir --variables variables.txt"
+      "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir --variables variables.txt --xtce_1.2"
     opts.separator("")
     opts.on("-h", "--help", "Show this message") do
       puts opts
@@ -124,6 +124,9 @@ def xtce_converter(args)
     end
     opts.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
       options[:variables] = arg
+    end
+    opts.on("-x", "--xtce_1.2", "Optional flag to use xtce v1.2 conversion") do |arg|
+      options[:xtce_version] = arg
     end
   end
 
@@ -155,6 +158,12 @@ def xtce_converter(args)
       variables = JSON.parse(File.read(options[:variables]), allow_nan: true, create_additions: true) if options[:variables]
       puts "Installing #{File.basename(options[:plugin])}"
       plugin_hash = OpenC3::PluginModel.install_phase1(options[:plugin], existing_variables: variables, scope: 'DEFAULT', validate_only: true)
+      plugin_hash['variables']['xtce_output'] = options[:output]
+      if options[:xtce_version]
+        plugin_hash['variables']['xtce_convert_to_1_2'] = true
+      else
+        plugin_hash['variables']['xtce_convert_to_1_2'] = false
+      end
       plugin_hash['variables']['xtce_output'] = options[:output]
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: 'DEFAULT', validate_only: true,
         gem_file_path: options[:plugin])
