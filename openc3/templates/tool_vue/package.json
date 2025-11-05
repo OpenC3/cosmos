@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "6.9.2",
+  "version": "6.9.3-beta0",
   "private": true,
   "type": "module",
   "scripts": {
