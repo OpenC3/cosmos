@@ -141,13 +141,13 @@ jobs:
           packages-dir: openc3/python/dist
       - name: publish common npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
-        run: pnpm -F "@openc3/*-common" publish --access public
+        run: pnpm -F "@openc3/*-common" publish --no-git-checks --access public
         working-directory: openc3-cosmos-init/plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: publish common npm packages pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
-        run: pnpm -F "@openc3/*-common" publish --tag pre --access public
+        run: pnpm -F "@openc3/*-common" publish --no-git-checks --tag pre --access public
         working-directory: openc3-cosmos-init/plugins
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
