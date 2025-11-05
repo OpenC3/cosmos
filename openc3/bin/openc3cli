@@ -875,6 +875,22 @@ if not ARGV[0].nil? # argument(s) given
   case ARGV[0].downcase
 
   when 'irb'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli irb"
+      puts ""
+      puts "Start an interactive Ruby (IRB) session with COSMOS libraries loaded"
+      puts ""
+      puts "This provides access to all COSMOS classes and methods for interactive"
+      puts "debugging and exploration. Use 'exit' or Ctrl-D to quit the IRB session."
+      puts ""
+      puts "Example:"
+      puts "  cli irb"
+      puts "  > require 'openc3'"
+      puts "  > OpenC3::System.targets"
+      puts ""
+      puts "Note: For IRB-specific options, start IRB first then type 'help'"
+      exit 0
+    end
     ARGV.clear
     IRB.start
 
@@ -882,6 +898,29 @@ if not ARGV[0].nil? # argument(s) given
     cli_script(ARGV[1..-1])
 
   when 'rake'
+    # Check for --help first, before checking for Rakefile
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli rake [RAKE_OPTIONS] [TASKS...]"
+      puts ""
+      puts "Run rake tasks in the current directory"
+      puts ""
+      puts "This runs the standard Ruby rake tool with all COSMOS libraries available."
+      puts "A Rakefile must exist in the current directory."
+      puts ""
+      puts "Common rake options:"
+      puts "  -T, --tasks              List all available rake tasks with descriptions"
+      puts "  -D, --describe PATTERN   Describe tasks matching PATTERN"
+      puts "  -h, --help               Show rake's full help message"
+      puts ""
+      puts "Examples:"
+      puts "  cli rake -T              # List all available tasks"
+      puts "  cli rake build           # Run the 'build' task"
+      puts "  cli rake test            # Run tests"
+      puts ""
+      puts "Note: Must be run in a directory containing a Rakefile"
+      exit 0
+    end
+    # Now check for Rakefile existence
     if File.exist?('Rakefile')
       puts `rake #{ARGV[1..-1].join(' ')}`
     else
@@ -889,9 +928,70 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'validate'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli validate PLUGIN.gem [SCOPE] [VARIABLES.json]"
+      puts ""
+      puts "Validate a COSMOS plugin gem file"
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN.gem        Plugin gem file to validate (required)"
+      puts "  SCOPE             Scope for validation (optional, default: DEFAULT)"
+      puts "  VARIABLES.json    Variables JSON file (optional)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
 
   when 'load'
+    # Check for help flag or missing arguments
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage:"
+      puts "  cli load PLUGIN.gem"
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json"
+      puts "  cli load PLUGIN.gem SCOPE PLUGIN_HASH.json [force]"
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json SCOPE PLUGIN_HASH.json [force]"
+      puts ""
+      puts "Load a COSMOS plugin gem file"
+      puts ""
+      puts "Common Usage (Auto-detect):"
+      puts "  cli load PLUGIN.gem"
+      puts "    - Installs new plugin in DEFAULT scope"
+      puts "    - Automatically detects and upgrades if plugin already exists"
+      puts "    - Skips installation if same version already installed"
+      puts ""
+      puts "  cli load PLUGIN.gem --variables VARIABLES.json"
+      puts "    - Same as above, but provides variables for plugin configuration"
+      puts ""
+      puts "Advanced Usage (Manual Control):"
+      puts "  cli load PLUGIN.gem SCOPE PLUGIN_HASH.json [force]"
+      puts "    - Used by Admin UI for plugin create/edit/upgrade operations"
+      puts "    - Requires PLUGIN_HASH.json (output from install_phase1)"
+      puts "    - 'force' argument forces reinstall even if version unchanged"
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN.gem           Plugin gem file to load (required)"
+      puts "  SCOPE                Scope to install plugin in (default: DEFAULT)"
+      puts "  PLUGIN_HASH.json     Plugin hash JSON file from install_phase1 (optional)"
+      puts "  force                Force plugin installation even if no changes (optional)"
+      puts ""
+      puts "Options:"
+      puts "  --variables FILE     Variables JSON file for plugin installation"
+      puts "  -h, --help           Show this help message"
+      puts ""
+      puts "IMPORTANT LIMITATION:"
+      puts "  To specify SCOPE without PLUGIN_HASH.json, you must use the --variables"
+      puts "  option (even with an empty JSON file) to prevent argument misinterpretation."
+      puts ""
+      puts "Examples:"
+      puts "  cli load my-plugin-1.0.0.gem"
+      puts "  cli load my-plugin-1.0.0.gem --variables vars.json"
+      puts "  cli load my-plugin-1.0.0.gem DEFAULT plugin_hash.json"
+      puts "  cli load my-plugin-1.0.0.gem DEFAULT plugin_hash.json force"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
+
     # force is a boolean so if they pass 'force' it is true
     # See plugins_controller.rb install for usage
     variables_option = ARGV.find_index('--variables')
@@ -908,15 +1008,68 @@ if not ARGV[0].nil? # argument(s) given
     load_plugin(ARGV[1], scope: scope, plugin_hash_file: plugin_hash_file, force: force, variables_file: variables_file)
 
   when 'list'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli list [SCOPE]"
+      puts ""
+      puts "List all installed plugins in the specified scope"
+      puts ""
+      puts "Arguments:"
+      puts "  SCOPE             Scope to list plugins from (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     list_plugins(scope: ARGV[1])
 
   when 'unload'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli unload PLUGIN_NAME [SCOPE]"
+      puts ""
+      puts "Unload a COSMOS plugin"
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN_NAME       Name of the plugin to unload (required)"
+      puts "  SCOPE             Scope to unload from (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     unload_plugin(ARGV[1], scope: ARGV[2])
 
   when 'pkginstall', 'geminstall'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli pkginstall PACKAGE_NAME [SCOPE]"
+      puts "       cli geminstall GEM_NAME [SCOPE]"
+      puts ""
+      puts "Install a package/gem into a loaded plugin"
+      puts ""
+      puts "Arguments:"
+      puts "  PACKAGE_NAME      Name of the package to install (required)"
+      puts "  SCOPE             Scope for installation (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     cli_pkg_install(ARGV[1], scope: ARGV[2])
 
   when 'pkguninstall', 'gemuninstall'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli pkguninstall PACKAGE_NAME [SCOPE]"
+      puts "       cli gemuninstall GEM_NAME [SCOPE]"
+      puts ""
+      puts "Uninstall a package/gem from a loaded plugin"
+      puts ""
+      puts "Arguments:"
+      puts "  PACKAGE_NAME      Name of the package to uninstall (required)"
+      puts "  SCOPE             Scope for uninstallation (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     cli_pkg_uninstall(ARGV[1], scope: ARGV[2])
 
   when 'generate'
@@ -934,6 +1087,19 @@ if not ARGV[0].nil? # argument(s) given
     xtce_converter(ARGV[1..-1])
 
   when 'bridge'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli bridge [FILENAME] [PARAMS...]"
+      puts ""
+      puts "Run a COSMOS bridge from a bridge configuration file"
+      puts ""
+      puts "Arguments:"
+      puts "  FILENAME          Bridge config file (optional, default: bridge.txt)"
+      puts "  PARAMS            Additional parameters to pass to bridge"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     ENV['OPENC3_NO_STORE'] = '1'
     filename = ARGV[1]
     filename = 'bridge.txt' unless filename
@@ -942,6 +1108,19 @@ if not ARGV[0].nil? # argument(s) given
     run_bridge(filename, params)
 
   when 'bridgegem'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli bridgegem GEM_NAME [PARAMS...]"
+      puts ""
+      puts "Run a COSMOS bridge from a gem's bridge.txt file"
+      puts ""
+      puts "Arguments:"
+      puts "  GEM_NAME          Name of the gem containing bridge.txt (required)"
+      puts "  PARAMS            Additional parameters to pass to bridge"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     ENV['OPENC3_NO_STORE'] = '1'
     filename = nil
     gem_name = ARGV[1]
@@ -967,6 +1146,18 @@ if not ARGV[0].nil? # argument(s) given
     run_bridge(filename, params)
 
   when 'bridgesetup'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli bridgesetup [FILENAME]"
+      puts ""
+      puts "Generate a default bridge configuration file"
+      puts ""
+      puts "Arguments:"
+      puts "  FILENAME          Output filename (optional, default: bridge.txt)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     ENV['OPENC3_NO_STORE'] = '1'
     filename = ARGV[1]
     filename = 'bridge.txt' unless filename
@@ -978,10 +1169,36 @@ if not ARGV[0].nil? # argument(s) given
     print_usage()
 
   when 'redis'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli redis COMMAND [ARGS...]"
+      puts ""
+      puts "Interact with the Redis database"
+      puts ""
+      puts "Commands:"
+      puts "  keys              Get all Redis keys"
+      puts "  hget HASH KEY     Get a value from a Redis hash"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     case (ARGV[1])
     when 'keys'
       get_redis_keys()
     when 'hget'
+      if ARGV[2].nil? || ARGV[3].nil? || ARGV[2] == '--help' || ARGV[2] == '-h'
+        puts "Usage: cli redis hget HASH KEY"
+        puts ""
+        puts "Get a value from a Redis hash"
+        puts ""
+        puts "Arguments:"
+        puts "  HASH              Redis hash name (required)"
+        puts "  KEY               Key within the hash (required)"
+        puts ""
+        puts "Options:"
+        puts "  -h, --help        Show this help message"
+        exit(ARGV[2].nil? || ARGV[3].nil? ? 1 : 0)
+      end
       redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
       puts JSON.parse(redis.hget(ARGV[2], ARGV[3]), allow_nan: true, create_additions: true)
     else
@@ -990,6 +1207,16 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'removebase'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli removebase"
+      puts ""
+      puts "Remove non-enterprise tool base and admin plugins from all scopes"
+      puts "This is typically used to support enterprise upgrades"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     # Used to remove tool base to better support enterprise upgrade
     scopes = OpenC3::ScopeModel.all
     scopes.each do |scope_name, _scope|
@@ -1005,6 +1232,16 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'removeenterprise'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli removeenterprise"
+      puts ""
+      puts "Remove all enterprise plugins from all scopes"
+      puts "This is typically used to support downgrades"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     # Used to remove enterprise plugins to better support downgrade
     scopes = OpenC3::ScopeModel.all
     scopes.each do |scope_name, _scope|
@@ -1017,6 +1254,19 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'createqueue'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli createqueue QUEUE_NAME [SCOPE]"
+      puts ""
+      puts "Create a new queue in the specified scope"
+      puts ""
+      puts "Arguments:"
+      puts "  QUEUE_NAME        Name of the queue to create (required)"
+      puts "  SCOPE             Scope for the queue (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     queue = OpenC3::QueueModel.get(name: ARGV[1], scope: ARGV[2])
     unless queue
       queue = OpenC3::QueueModel.new(name: ARGV[1], state: 'RELEASE', scope: ARGV[2])
@@ -1024,13 +1274,43 @@ if not ARGV[0].nil? # argument(s) given
     end
 
   when 'destroyscope'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli destroyscope SCOPE_NAME"
+      puts ""
+      puts "Destroy a scope and all its associated data"
+      puts ""
+      puts "Arguments:"
+      puts "  SCOPE_NAME        Name of the scope to destroy (required)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
     scope = OpenC3::ScopeModel.get_model(name: ARGV[1])
     scope.destroy
 
   when 'localinit'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli localinit"
+      puts ""
+      puts "Initialize local mode configuration"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     OpenC3::LocalMode.local_init()
 
   when 'initbuckets'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli initbuckets"
+      puts ""
+      puts "Initialize all configured COSMOS buckets"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     client = OpenC3::Bucket.getClient()
     ENV.map do |key, value|
       if key.match(/^OPENC3_(.+)_BUCKET$/) && !value.empty?
@@ -1040,6 +1320,15 @@ if not ARGV[0].nil? # argument(s) given
     client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
 
   when 'runmigrations'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli runmigrations"
+      puts ""
+      puts "Run database migrations"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
     run_migrations(ARGV[1])
 
   else # Unknown task
