@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-tlmgrapher",
-  "version": "6.9.2-beta0",
+  "version": "6.9.2",
   "private": true,
   "type": "module",
   "scripts": {
