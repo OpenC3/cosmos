@@ -60,7 +60,7 @@
         </v-autocomplete>
       </v-col>
       <v-col
-        v-if="mode === 'cmd'"
+        v-if="mode === 'cmd' && showQueueSelect"
         :cols="colSize"
         class="tpic-select pr-4"
         data-test="select-queue"
@@ -248,6 +248,10 @@ export default {
     lockPacket: {
       type: Boolean,
       default: false,
+    },
+    showQueueSelect: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ['on-set', 'addItem'],

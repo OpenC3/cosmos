@@ -18,6 +18,7 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/queue_topic'
+require 'openc3/models/queue_model'
 require 'openc3/utilities/authentication'
 require 'openc3/api/api'
 
@@ -90,15 +91,22 @@ module OpenC3
       @queue_name = @name.split('__')[2]
 
       initial_state = 'HOLD'
-      (@config['options'] || []).each do |option|
-        case option[0].upcase
-        when 'QUEUE_STATE'
-          initial_state = option[1]
-        else
-          @logger.error("Unknown option passed to microservice #{@name}: #{option}")
+      # See if the queue already exists to get its state
+      queue = OpenC3::QueueModel.get(name: @queue_name, scope: @scope)
+      if queue
+        initial_state = queue['state']
+      else
+        (@config['options'] || []).each do |option|
+          case option[0].upcase
+          when 'QUEUE_STATE'
+            initial_state = option[1]
+          else
+            @logger.error("Unknown option passed to microservice #{@name}: #{option}")
+          end
         end
       end
 
+      @logger.info "Creating QueueMicroservice in scope #{@scope} for queue #{@queue_name} with initial state #{initial_state}"
       @processor = QueueProcessor.new(name: @queue_name, state: initial_state, logger: @logger, scope: @scope)
       @processor_thread = nil
       @read_topic = true
