@@ -42,11 +42,20 @@ else
   export OPENC3_GROUP_ID=0
 fi
 
+# Detect if this is a development (build) environment or runtime environment
+# by checking for compose-build.yaml
+if [ -f "$(dirname -- "$0")/compose-build.yaml" ]; then
+  export OPENC3_DEVEL=1
+else
+  export OPENC3_DEVEL=0
+fi
+
 set -e
 
 usage() {
-  cat >&2 << EOF
-OpenC3 - Command and Control System
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 - Command and Control System (Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
@@ -54,10 +63,39 @@ DESCRIPTION:
   provides a convenient interface for building, running, testing, and managing
   OpenC3 in Docker containers.
 
+  This is a DEVELOPMENT installation with source code and build capabilities.
+
 COMMON COMMANDS:
+EOF
+  else
+    cat >&2 << EOF
+OpenC3 - Command and Control System (Runtime-Only Installation)
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  OpenC3 is a command and control system for embedded systems. This script
+  provides a convenient interface for running, testing, and managing
+  OpenC3 in Docker containers.
+
+  This is a RUNTIME-ONLY installation using pre-built images.
+
+COMMON COMMANDS:
+EOF
+  fi
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
   start                 Build and run OpenC3 (equivalent to: build + run)
                         This is the typical command to get OpenC3 running.
 
+EOF
+  else
+    cat >&2 << EOF
+  run                   Start OpenC3 containers
+                        Access at: http://localhost:2900
+
+EOF
+  fi
+  cat >&2 << EOF
   stop                  Stop all running OpenC3 containers gracefully
                         Allows containers to shutdown cleanly.
 
@@ -71,6 +109,9 @@ COMMON COMMANDS:
   cliroot [COMMAND]     Run OpenC3 CLI commands as root user
                         Same as 'cli' but with root privileges
 
+EOF
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
 DEVELOPMENT COMMANDS:
   build                 Build all OpenC3 Docker containers from source
                         Required before first run or after code changes.
@@ -78,12 +119,24 @@ DEVELOPMENT COMMANDS:
   run                   Start OpenC3 containers in detached mode
                         Access at: http://localhost:2900
 
+EOF
+  fi
+  cat >&2 << EOF
   test [COMMAND]        Run test suites (rspec, playwright, hash)
                         Use '$1 test' to see available test commands.
 
   util [COMMAND]        Utility commands (encode, hash, save, load, etc.)
                         Use '$1 util' to see available utilities.
 
+EOF
+  if [ "$OPENC3_DEVEL" -eq 0 ]; then
+    cat >&2 << EOF
+  upgrade               Upgrade OpenC3 to latest version
+                        Downloads and installs latest release.
+
+EOF
+  fi
+  cat >&2 << EOF
 CLEANUP:
   cleanup [OPTIONS]     Remove Docker volumes and data
                         WARNING: This deletes all OpenC3 data!
@@ -92,8 +145,14 @@ CLEANUP:
                           force  - Skip confirmation prompt
 
 REDHAT:
+EOF
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
   start-ubi             Build and run with Red Hat UBI images
   build-ubi             Build containers using UBI base images
+EOF
+  fi
+  cat >&2 << EOF
   run-ubi               Run containers with UBI images
                         For air-gapped or government environments.
 
@@ -215,37 +274,67 @@ case $1 in
     ;;
   start )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 start"
-      echo ""
-      echo "Build and run OpenC3 containers."
-      echo ""
-      echo "This command:"
-      echo "  1. Builds all OpenC3 containers (equivalent to 'openc3.sh build')"
-      echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
-      echo ""
-      echo "Options:"
-      echo "  -h, --help    Show this help message"
+      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+        echo "Usage: $0 start"
+        echo ""
+        echo "Build and run OpenC3 containers."
+        echo ""
+        echo "This command:"
+        echo "  1. Builds all OpenC3 containers (equivalent to 'openc3.sh build')"
+        echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      else
+        echo "Usage: $0 start"
+        echo ""
+        echo "Run all OpenC3 containers in detached mode."
+        echo ""
+        echo "This is an alias for 'run' command."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      fi
       exit 0
     fi
-    "$0" build
-    "$0" run
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      "$0" build
+      "$0" run
+    else
+      "$0" run
+    fi
     ;;
   start-ubi )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 start-ubi"
-      echo ""
-      echo "Build and run OpenC3 UBI containers."
-      echo ""
-      echo "This command:"
-      echo "  1. Builds all OpenC3 UBI containers (equivalent to 'openc3.sh build-ubi')"
-      echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
-      echo ""
-      echo "Options:"
-      echo "  -h, --help    Show this help message"
+      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+        echo "Usage: $0 start-ubi"
+        echo ""
+        echo "Build and run OpenC3 UBI containers."
+        echo ""
+        echo "This command:"
+        echo "  1. Builds all OpenC3 UBI containers (equivalent to 'openc3.sh build-ubi')"
+        echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      else
+        echo "Usage: $0 start-ubi"
+        echo ""
+        echo "Run all OpenC3 UBI containers in detached mode."
+        echo ""
+        echo "This is an alias for 'run-ubi' command."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      fi
       exit 0
     fi
-    "$0" build-ubi
-    "$0" run-ubi
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      "$0" build-ubi
+      "$0" run-ubi
+    else
+      "$0" run-ubi
+    fi
     ;;
   stop )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
@@ -311,6 +400,11 @@ case $1 in
     fi
     ;;
   build )
+    if [ "$OPENC3_DEVEL" -eq 0 ]; then
+      echo "Error: 'build' command is only available in development environments"
+      echo "This appears to be a runtime-only installation."
+      exit 1
+    fi
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build"
       echo ""
@@ -339,6 +433,11 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
+    if [ "$OPENC3_DEVEL" -eq 0 ]; then
+      echo "Error: 'build-ubi' command is only available in development environments"
+      echo "This appears to be a runtime-only installation."
+      exit 1
+    fi
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build-ubi"
       echo ""
@@ -480,6 +579,14 @@ case $1 in
     "$(find_script openc3_setup.sh)"
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
+    ;;
+  upgrade )
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      echo "Error: 'upgrade' command is only available in runtime environments"
+      echo "This appears to be a development installation."
+      exit 1
+    fi
+    "$(find_script openc3_upgrade.sh)" "${@:2}"
     ;;
   util )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
