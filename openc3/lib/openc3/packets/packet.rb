@@ -1184,6 +1184,8 @@ module OpenC3
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['virtual'] = true if @virtual
+      config['subpacket'] = true if @subpacket
+      config['subpacketizer'] = @subpacketizer.class.to_s if @subpacketizer
       config['restricted'] = true if @restricted
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args

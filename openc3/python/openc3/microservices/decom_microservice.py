@@ -32,6 +32,7 @@ from openc3.utilities.thread_manager import ThreadManager
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
+    handle_get_tlm_buffer
 )
 from openc3.models.target_model import TargetModel
 from openc3.top_level import kill_thread
@@ -142,6 +143,9 @@ class DecomMicroservice(Microservice):
                         if msg_hash.get(b"build_cmd"):
                             handle_build_cmd(msg_hash[b"build_cmd"], msg_id, self.scope)
                             continue
+                        if msg_hash.get(b"get_tlm_buffer"):
+                            handle_get_tlm_buffer(msg_hash[b"get_tlm_buffer"], msg_id, self.scope)
+                            continue
                     else:
                         self.decom_packet(topic, msg_id, msg_hash, redis)
                         self.metric.set(name="decom_total", value=self.count, type="counter")
@@ -189,22 +193,22 @@ class DecomMicroservice(Microservice):
         # Break packet into subpackets (if necessary)
         # Subpackets are typically channelized data
         ################################################################################
-        subpackets = packet.subpacketize()
+        packet_and_subpackets = packet.subpacketize()
 
-        for subpacket in subpackets:
-            if subpacket.subpacket:
-                if subpacket.received_time is None:
-                    subpacket.received_time = packet.received_time
-                subpacket.stored = packet.stored
-                subpacket.extra = packet.extra
-                TargetModel.sync_tlm_packet_counts(subpacket, self.target_names, scope=self.scope)
+        for packet_or_subpacket in packet_and_subpackets:
+            if packet_or_subpacket.subpacket:
+                if packet_or_subpacket.received_time is None:
+                    packet_or_subpacket.received_time = packet.received_time
+                packet_or_subpacket.stored = packet.stored
+                packet_or_subpacket.extra = packet.extra
+                TargetModel.sync_tlm_packet_counts(packet_or_subpacket, self.target_names, scope=self.scope)
 
             #####################################################################################
             # Run Processors
             # This must be before the full decom so that processor derived values are available
             #####################################################################################
             try:
-                subpacket.process()  # Run processors
+                packet_or_subpacket.process()  # Run processors
             except Exception as error:
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
@@ -215,10 +219,10 @@ class DecomMicroservice(Microservice):
             # Process all the limits and call the limits_change_callback (as necessary)
             # This must be before the full decom so that limits states are available
             #############################################################################
-            subpacket.check_limits(System.limits_set())
+            packet_or_subpacket.check_limits(System.limits_set())
 
             # This is what actually decommutates the packet and updates the CVT
-            TelemetryDecomTopic.write_packet(subpacket, scope=self.scope)
+            TelemetryDecomTopic.write_packet(packet_or_subpacket, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
 

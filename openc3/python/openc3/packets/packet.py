@@ -1095,6 +1095,10 @@ class Packet(Structure):
             config["hidden"] = True
         if self.virtual:
             config["virtual"] = True
+        if self.subpacket:
+            config["subpacket"] = True
+        if self.subpacketizer:
+            config["subpacketizer"] = self.subpacketizer.__class__.__name__
         if self.restricted:
             config["restricted"] = True
         config["accessor"] = self.accessor.__class__.__name__

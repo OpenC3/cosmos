@@ -127,6 +127,10 @@ module OpenC3
                   handle_build_cmd(msg_hash['build_cmd'], msg_id)
                   next
                 end
+                if msg_hash.key?('get_tlm_buffer')
+                  handle_get_tlm_buffer(msg_hash['get_tlm_buffer'], msg_id)
+                  next
+                end
               else
                 decom_packet(topic, msg_id, msg_hash, redis)
                 @metric.set(name: 'decom_total', value: @count, type: 'counter')
@@ -176,14 +180,14 @@ module OpenC3
         # Break packet into subpackets (if necessary)
         # Subpackets are typically channelized data
         ################################################################################
-        subpackets = packet.subpacketize
+        packet_and_subpackets = packet.subpacketize
 
-        subpackets.each do |subpacket|
-          if subpacket.subpacket
-            subpacket.received_time = packet.received_time unless subpacket.received_time
-            subpacket.stored = packet.stored
-            subpacket.extra = packet.extra
-            TargetModel.sync_tlm_packet_counts(subpacket, @target_names, scope: @scope)
+        packet_and_subpackets.each do |packet_or_subpacket|
+          if packet_or_subpacket.subpacket
+            packet_or_subpacket.received_time = packet.received_time unless packet_or_subpacket.received_time
+            packet_or_subpacket.stored = packet.stored
+            packet_or_subpacket.extra = packet.extra
+            TargetModel.sync_tlm_packet_counts(packet_or_subpacket, @target_names, scope: @scope)
           end
 
           #####################################################################################
@@ -191,7 +195,7 @@ module OpenC3
           # This must be before the full decom so that processor derived values are available
           #####################################################################################
           begin
-            subpacket.process # Run processors
+            packet_or_subpacket.process # Run processors
           rescue Exception => e
             @error_count += 1
             @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
@@ -203,10 +207,10 @@ module OpenC3
           # Process all the limits and call the limits_change_callback (as necessary)
           # This must be before the full decom so that limits states are available
           #############################################################################
-          subpacket.check_limits(System.limits_set)
+          packet_or_subpacket.check_limits(System.limits_set)
 
           # This is what actually decommutates the packet and updates the CVT
-          TelemetryDecomTopic.write_packet(subpacket, scope: @scope)
+          TelemetryDecomTopic.write_packet(packet_or_subpacket, scope: @scope)
         end
 
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float

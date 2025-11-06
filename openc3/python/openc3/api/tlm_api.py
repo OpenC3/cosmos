@@ -228,15 +228,19 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
 # @param target_name [String] Name of the target
 # @param packet_name [String] Name of the packet
 # @return [Hash] telemetry hash with last telemetry buffer
-def get_tlm_buffer(*args, scope=OPENC3_SCOPE):
+def get_tlm_buffer(*args, scope=OPENC3_SCOPE, timeout=5):
     target_name, packet_name = _extract_target_packet_names("get_tlm_buffer", *args)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
-    TargetModel.packet(target_name, packet_name, scope=scope)
-    topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
-    msg_id, msg_hash = Topic.get_newest_message(topic)
-    if msg_id:
-        # Decode the keys for user convenience
+    model = TargetModel.packet(target_name, packet_name, scope=scope)
+    if model.get("subpacket"):
+        msg_hash = DecomInterfaceTopic.get_tlm_buffer(target_name, packet_name, timeout=timeout, scope=scope)
         return {k.decode(): v for (k, v) in msg_hash.items()}
+    else:
+        topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
+        msg_id, msg_hash = Topic.get_newest_message(topic)
+        if msg_id:
+            # Decode the keys for user convenience
+            return {k.decode(): v for (k, v) in msg_hash.items()}
     return None
 
 
