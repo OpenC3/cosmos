@@ -10,9 +10,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - "**"
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 jobs:
   openc3-clamav-scan:
