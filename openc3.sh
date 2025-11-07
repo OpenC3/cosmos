@@ -144,18 +144,18 @@ CLEANUP:
                           local  - Also remove local plugin files
                           force  - Skip confirmation prompt
 
-REDHAT:
 EOF
   if [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
+REDHAT:
   start-ubi             Build and run with Red Hat UBI images
   build-ubi             Build containers using UBI base images
-EOF
-  fi
-  cat >&2 << EOF
   run-ubi               Run containers with UBI images
                         For air-gapped or government environments.
 
+EOF
+  fi
+  cat >&2 << EOF
 GETTING STARTED:
   1. First time setup:     $1 start
   2. Access OpenC3:        http://localhost:2900
@@ -288,9 +288,9 @@ case $1 in
       else
         echo "Usage: $0 start"
         echo ""
-        echo "Run all OpenC3 containers in detached mode."
+        echo "Start OpenC3 containers."
         echo ""
-        echo "This is an alias for 'run' command."
+        echo "This is an alias for 'run' command in runtime-only installations."
         echo ""
         echo "Options:"
         echo "  -h, --help    Show this help message"

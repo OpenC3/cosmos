@@ -202,8 +202,8 @@ GOTO :EOF
   @echo   cliroot [COMMAND]     Run OpenC3 CLI commands as root user 1>&2
   @echo                         For operations requiring root privileges 1>&2
   @echo. 1>&2
-  @echo DEVELOPMENT COMMANDS: 1>&2
   if "%OPENC3_DEVEL%" == "1" (
+    @echo DEVELOPMENT COMMANDS: 1>&2
     @echo   build                 Build all OpenC3 Docker containers from source 1>&2
     @echo                         Required before first run or after code changes. 1>&2
     @echo. 1>&2
