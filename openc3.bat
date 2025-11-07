@@ -8,6 +8,23 @@ if exist "%~dp0compose-build.yaml" (
   set OPENC3_DEVEL=1
 )
 
+REM Detect if this is enterprise by checking for enterprise-specific services
+set OPENC3_ENTERPRISE=0
+if exist "%~dp0compose-build.yaml" (
+  findstr /C:"openc3-enterprise-gem" "%~dp0compose-build.yaml" >nul 2>&1
+  if !ERRORLEVEL! == 0 (
+    set OPENC3_ENTERPRISE=1
+  )
+)
+if !OPENC3_ENTERPRISE! == 0 (
+  if exist "%~dp0compose.yaml" (
+    findstr /C:"openc3-metrics" "%~dp0compose.yaml" >nul 2>&1
+    if !ERRORLEVEL! == 0 (
+      set OPENC3_ENTERPRISE=1
+    )
+  )
+)
+
 if "%1" == "" (
   GOTO usage
 )
@@ -27,14 +44,22 @@ if "%1" == "cli" (
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3cli" with all parameters ignoring the first.
-  docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  ) else (
+    docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  )
   GOTO :EOF
 )
 if "%1" == "cliroot" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
-  docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  ) else (
+    docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+  )
   GOTO :EOF
 )
 if "%1" == "start" (
@@ -51,6 +76,9 @@ if "%1" == "build" (
 )
 if "%1" == "run" (
   GOTO run
+)
+if "%1" == "dev" (
+  GOTO dev
 )
 if "%1" == "test" (
   GOTO test
@@ -79,6 +107,9 @@ GOTO :EOF
   docker compose stop openc3-operator
   docker compose stop openc3-cosmos-script-runner-api
   docker compose stop openc3-cosmos-cmd-tlm-api
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    docker compose stop openc3-metrics
+  )
   timeout /t 5 /nobreak
   docker compose -f compose.yaml down -t 30
   @echo off
@@ -115,15 +146,24 @@ GOTO :EOF
     exit /b 1
   )
   CALL scripts\windows\openc3_setup || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    docker compose -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
+  ) else (
+    docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
+    docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
+    docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+  )
   docker compose -f compose.yaml -f compose-build.yaml build || exit /b
   @echo off
 GOTO :EOF
 
 :run
   docker compose -f compose.yaml up -d
+  @echo off
+GOTO :EOF
+
+:dev
+  docker compose -f compose.yaml -f compose-dev.yaml up -d
   @echo off
 GOTO :EOF
 
@@ -160,9 +200,17 @@ GOTO :EOF
 
 :usage
   if "%OPENC3_DEVEL%" == "1" (
-    @echo OpenC3 - Command and Control System (Development Installation) 1>&2
+    if "%OPENC3_ENTERPRISE%" == "1" (
+      @echo OpenC3 - Command and Control System (Enterprise Development Installation) 1>&2
+    ) else (
+      @echo OpenC3 - Command and Control System (Development Installation) 1>&2
+    )
   ) else (
-    @echo OpenC3 - Command and Control System (Runtime-Only Installation) 1>&2
+    if "%OPENC3_ENTERPRISE%" == "1" (
+      @echo OpenC3 - Command and Control System (Enterprise Runtime-Only Installation) 1>&2
+    ) else (
+      @echo OpenC3 - Command and Control System (Runtime-Only Installation) 1>&2
+    )
   )
   @echo Usage: %0 COMMAND [OPTIONS] 1>&2
   @echo. 1>&2
@@ -172,12 +220,20 @@ GOTO :EOF
     @echo   provides a convenient interface for building, running, testing, and managing 1>&2
     @echo   OpenC3 in Docker containers. 1>&2
     @echo. 1>&2
-    @echo   This is a DEVELOPMENT installation with source code and build capabilities. 1>&2
+    if "%OPENC3_ENTERPRISE%" == "1" (
+      @echo   This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities. 1>&2
+    ) else (
+      @echo   This is a DEVELOPMENT installation with source code and build capabilities. 1>&2
+    )
   ) else (
     @echo   provides a convenient interface for running, testing, and managing 1>&2
     @echo   OpenC3 in Docker containers. 1>&2
     @echo. 1>&2
-    @echo   This is a RUNTIME-ONLY installation using pre-built images. 1>&2
+    if "%OPENC3_ENTERPRISE%" == "1" (
+      @echo   This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images. 1>&2
+    ) else (
+      @echo   This is a RUNTIME-ONLY installation using pre-built images. 1>&2
+    )
   )
   @echo. 1>&2
   @echo COMMON COMMANDS: 1>&2
@@ -209,6 +265,9 @@ GOTO :EOF
     @echo. 1>&2
     @echo   run                   Start OpenC3 containers in detached mode 1>&2
     @echo                         Access at: http://localhost:2900 1>&2
+    @echo. 1>&2
+    @echo   dev                   Start OpenC3 containers in development mode 1>&2
+    @echo                         Uses compose-dev.yaml for development. 1>&2
     @echo. 1>&2
   )
   @echo   test [COMMAND]        Run test suites (rspec, playwright) 1>&2
