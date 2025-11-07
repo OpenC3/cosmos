@@ -50,10 +50,33 @@ else
   export OPENC3_DEVEL=0
 fi
 
+# Detect if this is enterprise by checking for enterprise-specific services
+if [ -f "$(dirname -- "$0")/compose-build.yaml" ] && grep -q "openc3-enterprise-gem" "$(dirname -- "$0")/compose-build.yaml" 2>/dev/null; then
+  export OPENC3_ENTERPRISE=1
+elif [ -f "$(dirname -- "$0")/compose.yaml" ] && grep -q "openc3-metrics" "$(dirname -- "$0")/compose.yaml" 2>/dev/null; then
+  export OPENC3_ENTERPRISE=1
+else
+  export OPENC3_ENTERPRISE=0
+fi
+
 set -e
 
 usage() {
-  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+  if [ "$OPENC3_DEVEL" -eq 1 ] && [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 - Command and Control System (Enterprise Development Installation)
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  OpenC3 is a command and control system for embedded systems. This script
+  provides a convenient interface for building, running, testing, and managing
+  OpenC3 in Docker containers.
+
+  This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities.
+
+COMMON COMMANDS:
+EOF
+  elif [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
 OpenC3 - Command and Control System (Development Installation)
 Usage: $1 COMMAND [OPTIONS]
@@ -64,6 +87,20 @@ DESCRIPTION:
   OpenC3 in Docker containers.
 
   This is a DEVELOPMENT installation with source code and build capabilities.
+
+COMMON COMMANDS:
+EOF
+  elif [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 - Command and Control System (Enterprise Runtime-Only Installation)
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  OpenC3 is a command and control system for embedded systems. This script
+  provides a convenient interface for running, testing, and managing
+  OpenC3 in Docker containers.
+
+  This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images.
 
 COMMON COMMANDS:
 EOF
@@ -229,7 +266,11 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    fi
     set +a
     ;;
   cliroot )
@@ -269,7 +310,11 @@ case $1 in
     . "$(dirname -- "$0")/.env"
     # Same as cli but run as root user
     args=`echo $@ | { read _ args; echo $args; }`
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    fi
     set +a
     ;;
   start )
@@ -342,10 +387,17 @@ case $1 in
       echo ""
       echo "Stop all OpenC3 containers gracefully."
       echo ""
-      echo "This command:"
-      echo "  1. Stops operator, script-runner-api, and cmd-tlm-api containers"
-      echo "  2. Waits 5 seconds"
-      echo "  3. Runs docker compose down with 30 second timeout"
+      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+        echo "This command:"
+        echo "  1. Stops operator, script-runner-api, cmd-tlm-api, and metrics containers"
+        echo "  2. Waits 5 seconds"
+        echo "  3. Runs docker compose down with 30 second timeout"
+      else
+        echo "This command:"
+        echo "  1. Stops operator, script-runner-api, and cmd-tlm-api containers"
+        echo "  2. Waits 5 seconds"
+        echo "  3. Runs docker compose down with 30 second timeout"
+      fi
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -354,6 +406,9 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
+    fi
     sleep 5
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
@@ -410,12 +465,19 @@ case $1 in
       echo ""
       echo "Build all OpenC3 docker containers."
       echo ""
-      echo "This command:"
-      echo "  1. Runs setup to download certificates"
-      echo "  2. Builds openc3-ruby base image"
-      echo "  3. Builds openc3-base image"
-      echo "  4. Builds openc3-node image"
-      echo "  5. Builds all remaining service containers"
+      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+        echo "This command:"
+        echo "  1. Runs setup to download certificates"
+        echo "  2. Builds openc3-enterprise-gem image"
+        echo "  3. Builds all remaining service containers"
+      else
+        echo "This command:"
+        echo "  1. Runs setup to download certificates"
+        echo "  2. Builds openc3-ruby base image"
+        echo "  3. Builds openc3-base image"
+        echo "  4. Builds openc3-node image"
+        echo "  5. Builds all remaining service containers"
+      fi
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -427,9 +489,13 @@ case $1 in
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-enterprise-gem
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+    fi
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
