@@ -89,6 +89,7 @@
       :cmd-user="criticalCmdUser"
     />
 
+    <!-- This dialog is informational, should not be persistent -->
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
         <v-toolbar height="24">
@@ -118,7 +119,12 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="displaySendHazardous" max-width="600">
+    <v-dialog
+      v-model="displaySendHazardous"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelHazardousCmd"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -140,7 +146,12 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="displaySendRaw" max-width="600">
+    <v-dialog
+      v-model="displaySendRaw"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelRawCmd"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -219,9 +230,11 @@ export default {
       commandName: '',
       commandDescription: '',
       paramList: '',
+      queueName: null,
       lastTargetName: '',
       lastCommandName: '',
       lastParamList: '',
+      lastQueueName: null,
       ignoreRangeChecks: false,
       statesInHex: false,
       showIgnoredParams: false,
@@ -351,6 +364,16 @@ export default {
         if (command === '') {
           return
         }
+        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo") or cmd("...", queue="Foo"))
+        // Reset queue to null first
+        this.queueName = null
+        const queueMatch = command.match(/,\s*queue[:=]\s*"([^"]+)"/)
+        if (queueMatch) {
+          this.queueName = queueMatch[1]
+          console.log('Queue extracted from history:', this.queueName)
+          // Remove the queue parameter from the command string
+          command = command.replace(/,\s*queue[:=]\s*"[^"]+"/, '')
+        }
         // Remove the cmd("") wrapper
         let firstQuote = command.indexOf('"')
         let lastQuote = command.lastIndexOf('"')
@@ -448,6 +471,10 @@ export default {
             .catch((err) => {})
         }
       }
+      // Update queue selection if it changed
+      if (event.queueName !== undefined) {
+        this.queueName = event.queueName
+      }
     },
 
     updateScreenInfo() {
@@ -513,6 +540,7 @@ export default {
       this.lastTargetName = targetName
       this.lastCommandName = commandName
       this.lastParamList = paramList
+      this.lastQueueName = this.queueName
 
       this.sendDisabled = true
       let hazardous = false
@@ -537,6 +565,10 @@ export default {
             let kwparams = this.disableCommandValidation
               ? { validate: false }
               : {}
+            // Add queue parameter if a queue is selected
+            if (this.queueName) {
+              kwparams.queue = this.queueName
+            }
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
                 cmd = 'cmd_raw_no_range_check'
@@ -624,6 +656,10 @@ export default {
       let obs = ''
       let cmd = ''
       let kwparams = this.disableCommandValidation ? { validate: false } : {}
+      // Add queue parameter if a queue is selected
+      if (this.lastQueueName) {
+        kwparams.queue = this.lastQueueName
+      }
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
           cmd = 'cmd_raw_no_range_check'
@@ -739,13 +775,27 @@ export default {
             }
           }
         }
+        // Build the closing part with optional parameters
+        let closingParams = []
+        if (this.lastQueueName) {
+          const language = AceEditorUtils.getDefaultScriptingLanguage()
+          if (language === 'python') {
+            closingParams.push(`queue="${this.lastQueueName}"`)
+          } else {
+            closingParams.push(`queue: "${this.lastQueueName}"`)
+          }
+        }
         if (this.disableCommandValidation) {
           const language = AceEditorUtils.getDefaultScriptingLanguage()
           if (language === 'python') {
-            msg += '", validate=False)'
+            closingParams.push('validate=False')
           } else {
-            msg += '", validate: false)'
+            closingParams.push('validate: false')
           }
+        }
+
+        if (closingParams.length > 0) {
+          msg += '", ' + closingParams.join(', ') + ')'
         } else {
           msg += '")'
         }
@@ -882,10 +932,10 @@ export default {
     //   reader.readAsArrayBuffer(this.rawCmdFile)
     // },
 
-    // cancelRawCmd() {
-    //   this.displaySendRaw = false
-    //   this.status = 'Raw command not sent'
-    // },
+    cancelRawCmd() {
+      this.displaySendRaw = false
+      this.status = 'Raw command not sent'
+    },
   },
 }
 </script>

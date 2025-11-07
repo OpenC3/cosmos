@@ -24,7 +24,7 @@ gem 'prometheus-client', '~> 4.0'
 gem 'bootsnap', '>= 1.9.3', require: false
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
-gem 'rack-cors', '~> 2.0'
+gem 'rack-cors', '~> 3.0'
 
 # Use gem to get JSON logs
 gem "rails_semantic_logger", '~> 4.17'
@@ -53,5 +53,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '6.8.2.pre.beta0'
+  gem 'openc3', '6.9.3.pre.beta0'
 end

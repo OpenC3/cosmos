@@ -140,6 +140,7 @@
         is loaded.
       </div>
     </v-card>
+    <!-- Changes in this dialog are applied immediately, so persistent is not necessary -->
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-card>
         <v-toolbar height="24">
@@ -230,7 +231,7 @@ export default {
           sortable: true,
           minWidth: '100px',
           width: '200px',
-          maxWidth: '300px',
+          maxWidth: '410px', // Widest without overflow at 100% zoom
         },
         {
           title: 'Value',
@@ -595,4 +596,5 @@ export default {
   font-weight: bold;
   background-color: var(--color-background-base-default);
 }
+
 </style>

@@ -104,9 +104,7 @@
       <v-card-title class="d-flex align-center flex-shrink-0">
         Interface Connection Map: {{ selectedInterface?.name }}
         <v-spacer />
-        <v-btn icon @click="detailsDialog = false">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
+        <v-btn icon="mdi-close" variant="text" @click="detailsDialog = false" />
       </v-card-title>
       <v-card-text class="flex-grow-1 pa-4">
         <InterfaceFlowChart :interface-details="interfaceDetails" />

@@ -151,14 +151,19 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
@@ -197,8 +202,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -224,8 +234,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -253,8 +268,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -283,8 +303,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -410,8 +435,13 @@ module OpenC3
         expect(gem).to receive(:extract_files)
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         model = PluginModel.new(name: "TEST", scope: "DEFAULT")
         model.create

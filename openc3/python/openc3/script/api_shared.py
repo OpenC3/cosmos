@@ -17,6 +17,7 @@
 import sys
 import time
 from contextlib import contextmanager
+import traceback
 import openc3.script
 from .exceptions import CheckError
 from openc3.utilities.extract import (
@@ -95,8 +96,8 @@ def check_exception(method_name, *args, **kwargs):
         if orig_kwargs:
             method += f", {orig_kwargs}"
         method += ")"
-    except Exception as error:
-        print(f"CHECK: {method} raised {repr(error)}")
+    except Exception:
+        print(f"CHECK: {method} raised {traceback.format_exc()}")
     else:
         raise CheckError(f"{method} should have raised an exception but did not.")
 

@@ -165,7 +165,12 @@
         </template>
       </v-data-table>
     </v-card>
-    <v-dialog v-model="uploadPathDialog" max-width="600">
+    <v-dialog
+      v-model="uploadPathDialog"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelFileUpload"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -194,7 +199,7 @@
                 variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
-                @click="uploadPathDialog = false"
+                @click="cancelFileUpload"
               >
                 Cancel
               </v-btn>
@@ -215,7 +220,8 @@
     <v-dialog
       v-model="optionsDialog"
       max-width="300"
-      @keydown.esc="optionsDialog = false"
+      persistent
+      @keydown.esc="cancelChangeRefreshInterval"
     >
       <v-card>
         <v-toolbar height="24">
@@ -236,6 +242,22 @@
             />
           </div>
         </v-card-text>
+        <v-card-actions class="px-2">
+          <v-btn
+            data-test="options-close-btn"
+            variant="outlined"
+            @click="saveRefreshInterval"
+          >
+            Save
+          </v-btn>
+          <v-btn
+            data-test="options-close-btn"
+            variant="outlined"
+            @click="cancelChangeRefreshInterval"
+          >
+            Cancel
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
     <output-dialog
@@ -262,6 +284,10 @@ export default {
     OutputDialog,
   },
   data() {
+    const refreshIntervalKey = 'bucketExplorerRefreshInterval'
+    const refreshInterval =
+      Number.parseInt(localStorage.getItem(refreshIntervalKey)) || 60
+
     return {
       title: 'Bucket Explorer',
       search: '',
@@ -271,7 +297,8 @@ export default {
       volumes: [],
       uploadPathDialog: false,
       optionsDialog: false,
-      refreshInterval: 60,
+      refreshInterval,
+      refreshIntervalKey,
       updater: null,
       updating: false,
       path: '',
@@ -329,8 +356,9 @@ export default {
   },
   computed: {
     folderTotal() {
-      return formatBytesToString(this.files
-        .reduce((a, b) => a + (b.size ? b.size : 0), 0))
+      return formatBytesToString(
+        this.files.reduce((a, b) => a + (b.size ? b.size : 0), 0),
+      )
     },
     breadcrumbPath() {
       const parts = this.path.split('/')
@@ -346,9 +374,6 @@ export default {
       if (this.file === null) return
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true
-    },
-    refreshInterval() {
-      this.changeUpdater()
     },
   },
   created() {
@@ -418,6 +443,23 @@ export default {
         },
       })
       this.updateFiles()
+    },
+    saveRefreshInterval() {
+      if (this.refreshInterval) {
+        localStorage.setItem(this.refreshIntervalKey, this.refreshInterval)
+      } else {
+        // restore previous value
+        this.refreshInterval =
+          Number.parseInt(localStorage.getItem(this.refreshIntervalKey)) || 60
+      }
+      this.optionsDialog = false
+      this.changeUpdater()
+    },
+    cancelChangeRefreshInterval() {
+      // restore previous value
+      this.refreshInterval =
+        Number.parseInt(localStorage.getItem(this.refreshIntervalKey)) || 60
+      this.optionsDialog = false
     },
     changeUpdater() {
       this.clearUpdater()
@@ -566,6 +608,10 @@ export default {
         this.path = ''
       }
       this.updateFiles()
+    },
+    cancelFileUpload() {
+      this.file = null
+      this.uploadPathDialog = false
     },
     deleteFile(filename) {
       let root = this.root.toUpperCase()

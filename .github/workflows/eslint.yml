@@ -1,0 +1,424 @@
+name: eslint
+
+on:
+  pull_request:
+    branches-ignore:
+      - 'dependabot/**'
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - "openc3-cosmos-init/plugins/packages/**"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      plugins: ${{ steps.filter.outputs.plugins }}
+      demo: ${{ steps.filter.outputs.demo }}
+      admin: ${{ steps.filter.outputs.admin }}
+      bucketexplorer: ${{ steps.filter.outputs.bucketexplorer }}
+      cmdsender: ${{ steps.filter.outputs.cmdsender }}
+      cmdtlmserver: ${{ steps.filter.outputs.cmdtlmserver }}
+      dataextractor: ${{ steps.filter.outputs.dataextractor }}
+      dataviewer: ${{ steps.filter.outputs.dataviewer }}
+      handbooks: ${{ steps.filter.outputs.handbooks }}
+      iframe: ${{ steps.filter.outputs.iframe }}
+      limitsmonitor: ${{ steps.filter.outputs.limitsmonitor }}
+      packetviewer: ${{ steps.filter.outputs.packetviewer }}
+      scriptrunner: ${{ steps.filter.outputs.scriptrunner }}
+      tablemanager: ${{ steps.filter.outputs.tablemanager }}
+      tlmgrapher: ${{ steps.filter.outputs.tlmgrapher }}
+      tlmviewer: ${{ steps.filter.outputs.tlmviewer }}
+      jscommon: ${{ steps.filter.outputs.jscommon }}
+      toolbase: ${{ steps.filter.outputs.toolbase }}
+      vuecommon: ${{ steps.filter.outputs.vuecommon }}
+    steps:
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            plugins:
+              - 'openc3-cosmos-init/plugins/package.json'
+              - 'openc3-cosmos-init/plugins/pnpm-lock.yaml'
+            demo:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/**'
+            admin:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/**'
+            bucketexplorer:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/**'
+            cmdsender:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/**'
+            cmdtlmserver:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/**'
+            dataextractor:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/**'
+            dataviewer:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/**'
+            handbooks:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/**'
+            iframe:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe/**'
+            limitsmonitor:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor/**'
+            packetviewer:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer/**'
+            scriptrunner:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner/**'
+            tablemanager:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/**'
+            tlmgrapher:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/**'
+            tlmviewer:
+              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/**'
+            jscommon:
+              - 'openc3-cosmos-init/plugins/packages/openc3-js-common/**'
+            toolbase:
+              - 'openc3-cosmos-init/plugins/packages/openc3-tool-base/**'
+            vuecommon:
+              - 'openc3-cosmos-init/plugins/packages/openc3-vue-common/**'
+
+  demo:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.demo == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+
+  admin:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.admin == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
+
+  bucketexplorer:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.bucketexplorer == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
+
+  cmdsender:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdsender == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 1
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
+
+  cmdtlmserver:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdtlmserver == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 46
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
+
+  dataextractor:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataextractor == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
+
+  dataviewer:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
+
+  handbooks:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.handbooks == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 4
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
+
+  iframe:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.iframe == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
+
+  limitsmonitor:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.limitsmonitor == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 3
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
+
+  packetviewer:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.packetviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 3
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
+
+  scriptrunner:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.scriptrunner == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
+
+  tablemanager:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tablemanager == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 13
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
+
+  tlmgrapher:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmgrapher == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
+
+  tlmviewer:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 13
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
+
+  jscommon:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.jscommon == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 22
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
+
+  toolbase:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.toolbase == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-base
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 0
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-base
+
+  vuecommon:
+    needs: changes
+    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.vuecommon == 'true' || needs.changes.outputs.plugins == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
+      - name: Run ESLint
+        run: pnpm lint --max-warnings 352
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common

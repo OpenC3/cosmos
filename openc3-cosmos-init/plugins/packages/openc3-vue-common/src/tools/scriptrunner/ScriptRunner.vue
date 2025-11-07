@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <template v-if="!inline">
+  <div
+    v-if="!inline"
+    class="d-flex flex-column overflow-hidden"
+    :style="{
+      height: containerHeight,
+    }"
+  >
     <top-bar :menus="menus" :title="title" />
     <v-snackbar
       v-model="showAlert"
@@ -259,8 +265,12 @@
         </div>
       </v-card-text>
     </v-card>
-    <splitpanes horizontal style="height: 100%" @resize="calcHeight">
-      <pane class="editorbox" size="50">
+    <splitpanes
+      horizontal
+      class="flex-grow-1 overflow-hidden"
+      @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
+    >
+      <pane class="editorbox" :size="editorBoxSize">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -308,7 +318,7 @@
           </v-list>
         </v-menu>
       </pane>
-      <pane id="messages" ref="messagesDiv" class="mt-2">
+      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
         <div v-if="showDebug" id="debug" class="pa-0">
           <v-row no-gutters>
             <v-btn
@@ -341,10 +351,10 @@
         />
       </pane>
     </splitpanes>
-  </template>
+  </div>
 
   <div
-    v-if="inline"
+    v-else
     style="
       background-color: var(--color-background-base-default);
       margin: 0px;
@@ -526,7 +536,13 @@
     @status="promptDialogCallback"
   />
   <!-- Command Editor Dialog -->
-  <v-dialog v-model="commandEditor.show" max-width="1200" persistent scrollable>
+  <v-dialog
+    v-model="commandEditor.show"
+    max-width="1200"
+    persistent
+    scrollable
+    @keydown.esc="closeCommandDialog"
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <span>Insert Command</span>
@@ -542,8 +558,8 @@
             size="small"
             variant="text"
             color="error"
-            @click="commandEditor.dialogError = null"
             class="ml-2"
+            @click="commandEditor.dialogError = null"
           />
         </div>
         <command-editor
@@ -812,6 +828,7 @@ export default {
       criticalCmdString: null,
       criticalCmdUser: null,
       displayCriticalCmd: false,
+      editorBoxSize: 50,
     }
   },
   computed: {
@@ -857,7 +874,7 @@ export default {
               icon: 'mdi-file-plus',
               disabled: this.scriptId || this.readOnlyUser,
               command: () => {
-                this.newFile()
+                this.newFileWithConfirm()
               },
             },
             {
@@ -886,7 +903,7 @@ export default {
               icon: 'mdi-folder-open',
               disabled: this.scriptId,
               command: () => {
-                this.openFile()
+                this.openFileWithConfirm()
               },
             },
             {
@@ -1095,6 +1112,20 @@ export default {
         },
       ]
     },
+    containerHeight: function () {
+      // if openc3-tool-base/src/App.vue <v-main /> style is changed from using min-height to height, this may become unnecessary
+      const header = document.getElementById('openc3-app-toolbar')
+      const footer = document.getElementById('footer')
+      const main = document.getElementsByTagName('main')[0]
+      const mainDiv = main.children[0]
+      const mainDivStyles = getComputedStyle(mainDiv)
+      const headerHeight =
+        header.clientHeight +
+        footer.clientHeight +
+        Number.parseInt(mainDivStyles.paddingTop) +
+        Number.parseInt(mainDivStyles.paddingBottom)
+      return `calc(100vh - ${headerHeight}px)`
+    },
   },
   watch: {
     isLocked: function (val) {
@@ -1115,6 +1146,17 @@ export default {
           localStorage.removeItem('script_runner__filename')
         } else {
           localStorage['script_runner__filename'] = filename
+        }
+      }
+    },
+    readOnlyUser: function (val) {
+      if (this.editor) {
+        if (val) {
+          this.editor.setReadOnly(true)
+          this.editor.renderer.$cursorLayer.element.style.display = 'none'
+        } else {
+          this.editor.setReadOnly(false)
+          this.editor.renderer.$cursorLayer.element.style.display = null
         }
       }
     },
@@ -1241,10 +1283,6 @@ export default {
 
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
-
-    // Allow the charts to dynamically resize when the window resizes
-    window.addEventListener('resize', this.calcHeight)
-    this.calcHeight()
 
     this.cable = new Cable('/script-api/cable')
 
@@ -1374,31 +1412,6 @@ export default {
     },
     doResize() {
       this.editor.resize()
-      // nextTick allows the resize to work correctly
-      // when we remove the SuiteRunner chrome
-      this.$nextTick(() => {
-        this.calcHeight()
-      })
-    },
-    calcHeight() {
-      const editor = document.getElementsByClassName('editorbox')[0]
-      const h = Math.max(
-        document.documentElement.offsetHeight,
-        window.innerHeight || 0,
-      )
-      let editorHeight = 0
-      if (editor) {
-        editorHeight = editor.offsetHeight
-      }
-      let suitesHeight = 0
-      const suites = document.getElementsByClassName('suite-runner')[0]
-      if (suites) {
-        suitesHeight = suites.offsetHeight
-      }
-      let logMessages = document.getElementById('script-log-messages')
-      if (logMessages) {
-        logMessages.style.height = `${h - editorHeight - suitesHeight}px`
-      }
     },
     scriptDisconnect() {
       if (this.subscription) {
@@ -1487,6 +1500,8 @@ export default {
           }
         })
         .catch((error) => {
+          // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
+          // We should probably not allow the bottom sheet to blur the screen
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
@@ -1496,10 +1511,10 @@ export default {
         })
     },
     tryLoadSuites: function (response) {
-      if (response.data.suite_runner) {
+      if (response.data.suites) {
         this.startOrGoDisabled = true
         this.suiteRunner = true
-        this.suiteMap = JSON.parse(response.data.suite_runner)
+        this.suiteMap = JSON.parse(response.data.suites)
       }
       this.doResize()
     },
@@ -2309,6 +2324,24 @@ export default {
       this.showAlert = true
     },
     // ScriptRunner File menu actions
+    async confirmUnsavedChanges() {
+      if (this.fileModified === '*') {
+        return await this.$dialog.confirm(
+          'You have unsaved changes. Are you sure you want to continue?',
+          {
+            okText: 'Continue',
+            cancelText: 'Cancel',
+          }
+        )
+      }
+      return true
+    },
+    async newFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.newFile()
+      }
+    },
     newFile() {
       this.unlockFile()
       this.filename = NEW_FILENAME
@@ -2333,6 +2366,8 @@ export default {
       this.doResize()
     },
     async newRubyTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -2378,6 +2413,8 @@ end
       await this.saveFile('auto')
     },
     async newPythonTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`from openc3.script.suite import Suite, Group
 
@@ -2431,6 +2468,8 @@ class TestSuite(Suite):
         label: filename,
         icon: fileIcon(filename),
         command: async (event) => {
+          const confirmed = await this.confirmUnsavedChanges()
+          if (!confirmed) return
           this.filename = event.label
           await this.reloadFile()
         },
@@ -2450,6 +2489,12 @@ class TestSuite(Suite):
         if (localStorage['script_runner__filename'] === filename) {
           localStorage.removeItem('script_runner__filename')
         }
+      }
+    },
+    async openFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.openFile()
       }
     },
     openFile() {
@@ -2919,10 +2964,6 @@ hr {
 }
 </style>
 <style>
-.splitpanes {
-  height: 100%;
-}
-
 .splitpanes--horizontal > .splitpanes__splitter {
   min-height: 4px;
   position: relative;

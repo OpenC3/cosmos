@@ -17,14 +17,14 @@
     "format": "prettier -w ./"
   },
   "dependencies": {
-    "@playwright/test": "1.55.0",
+    "@playwright/test": "1.56.1",
     "date-fns": "4.1.0",
     "jszip": "^3.10.1",
     "nyc": "^17.1.0",
     "prettier": "^3.6.2"
   },
   "devDependencies": {
-    "@types/node": "^22.15.3"
+    "@types/node": "^24.10.0"
   },
   "nyc": {
     "excludeAfterRemap": false,

@@ -159,6 +159,7 @@
             <v-dialog
               v-model="item.edit"
               max-width="600"
+              persistent
               @keydown.esc="item.edit = false"
             >
               <v-card>
@@ -231,7 +232,8 @@
     <v-dialog
       v-model="editAll"
       max-width="600"
-      @keydown.esc="editAll = !editAll"
+      persistent
+      @keydown.esc="editAll = false"
     >
       <v-card>
         <v-toolbar height="24">
@@ -281,7 +283,7 @@
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn variant="outlined" @click="editAll = !editAll"> Cancel </v-btn>
+          <v-btn variant="outlined" @click="editAll = false"> Cancel </v-btn>
           <v-btn
             variant="flat"
             :disabled="!allItemValueType"
@@ -957,9 +959,9 @@ export default {
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
-                let hexString = ''
+                let hexString = '0x'
                 rawVal.forEach((val) => {
-                  hexString += val.toString(16)
+                  hexString += val.toString(16).padStart(2, '0').toUpperCase()
                 })
                 row[columnIndex] = hexString
               } else {

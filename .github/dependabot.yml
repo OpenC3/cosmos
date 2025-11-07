@@ -5,3 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "npm"
+    directories: # Location of package manifests
+      - "/openc3-cosmos-init/plugins/*"
+      - "/playwright/*"
+      - "/docs.openc3.com/*"
+    schedule:
+      interval: "weekly"

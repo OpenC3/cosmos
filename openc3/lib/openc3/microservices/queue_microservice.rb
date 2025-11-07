@@ -18,8 +18,9 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/queue_topic'
+require 'openc3/models/queue_model'
 require 'openc3/utilities/authentication'
-require 'openc3/script'
+require 'openc3/api/api'
 
 module OpenC3
   module Script
@@ -32,6 +33,8 @@ module OpenC3
 
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
+    include Api # Provides access to api methods
+
     attr_accessor :state
     attr_reader :name, :scope
 
@@ -41,23 +44,6 @@ module OpenC3
       @scope = scope
       @state = state
       @cancel_thread = false
-    end
-
-    def get_token(username)
-      if ENV['OPENC3_API_CLIENT'].nil?
-        ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
-        return OpenC3Authentication.new().token
-      else
-        # Check for offline access token
-        model = nil
-        model = OpenC3::OfflineAccessModel.get_model(name: username, scope: @scope) if username and username != ''
-        if model and model.offline_access_token
-          auth = OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-          return auth.get_token_from_refresh_token(model.offline_access_token)
-        else
-          return nil
-        end
-      end
     end
 
     def run
@@ -77,13 +63,11 @@ module OpenC3
           _queue_name, command_data, _timestamp = Store.bzpopmin("#{@scope}:#{@name}", timeout: 0.2)
           if command_data
             command = JSON.parse(command_data)
-            username = command['username']
-            token = get_token(username)
             # It's important to set queue: false here to avoid infinite recursion when
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
             # but we've overridden it to always return true and go straight to cmd_no_hazardous_check()
-            cmd(command['value'], queue: false, scope: @scope, token: token)
+            cmd(command['value'], queue: false, scope: @scope)
           end
         rescue StandardError => e
           @logger.error "QueueProcessor failed to process command from queue #{@name}\n#{e.message}"
@@ -107,15 +91,22 @@ module OpenC3
       @queue_name = @name.split('__')[2]
 
       initial_state = 'HOLD'
-      (@config['options'] || []).each do |option|
-        case option[0].upcase
-        when 'QUEUE_STATE'
-          initial_state = option[1]
-        else
-          @logger.error("Unknown option passed to microservice #{@name}: #{option}")
+      # See if the queue already exists to get its state
+      queue = OpenC3::QueueModel.get(name: @queue_name, scope: @scope)
+      if queue
+        initial_state = queue['state']
+      else
+        (@config['options'] || []).each do |option|
+          case option[0].upcase
+          when 'QUEUE_STATE'
+            initial_state = option[1]
+          else
+            @logger.error("Unknown option passed to microservice #{@name}: #{option}")
+          end
         end
       end
 
+      @logger.info "Creating QueueMicroservice in scope #{@scope} for queue #{@queue_name} with initial state #{initial_state}"
       @processor = QueueProcessor.new(name: @queue_name, state: initial_state, logger: @logger, scope: @scope)
       @processor_thread = nil
       @read_topic = true

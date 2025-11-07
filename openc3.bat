@@ -4,6 +4,12 @@ setlocal ENABLEDELAYEDEXPANSION
 if "%1" == "" (
   GOTO usage
 )
+if "%1" == "--help" (
+  GOTO usage
+)
+if "%1" == "-h" (
+  GOTO usage
+)
 if "%1" == "cli" (
   REM tokens=* means process the full line
   REM findstr /V = print lines that don't match, /B beginning of line, /L literal search string, /C:# match #
@@ -122,15 +128,61 @@ GOTO :EOF
 GOTO :EOF
 
 :usage
-  @echo Usage: %0 [cli, cliroot, start, stop, cleanup, build, run, test, util] 1>&2
-  @echo *  cli: run a cli command as the default user ('cli help' for more info) 1>&2
-  @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
-  @echo *  start: build and run 1>&2
-  @echo *  stop: stop the containers (compose stop) 1>&2
-  @echo *  cleanup [local] [force]: REMOVE volumes / data (compose down -v) 1>&2
-  @echo *  build: build the containers (compose build) 1>&2
-  @echo *  run: run the containers (compose up) 1>&2
-  @echo *  test: test openc3 1>&2
-  @echo *  util: various helper commands 1>&2
+  @echo OpenC3 - Command and Control System 1>&2
+  @echo Usage: %0 COMMAND [OPTIONS] 1>&2
+  @echo. 1>&2
+  @echo DESCRIPTION: 1>&2
+  @echo   OpenC3 is a command and control system for embedded systems. This script 1>&2
+  @echo   provides a convenient interface for building, running, testing, and managing 1>&2
+  @echo   OpenC3 in Docker containers. 1>&2
+  @echo. 1>&2
+  @echo COMMON COMMANDS: 1>&2
+  @echo   start                 Build and run OpenC3 (equivalent to: build + run) 1>&2
+  @echo                         This is the typical command to get OpenC3 running. 1>&2
+  @echo. 1>&2
+  @echo   stop                  Stop all running OpenC3 containers gracefully 1>&2
+  @echo                         Allows containers to shutdown cleanly. 1>&2
+  @echo. 1>&2
+  @echo   cli [COMMAND]         Run OpenC3 CLI commands in a container 1>&2
+  @echo                         Use 'cli help' for available commands 1>&2
+  @echo                         Examples: 1>&2
+  @echo                           %0 cli generate plugin MyPlugin 1>&2
+  @echo                           %0 cli validate myplugin.gem 1>&2
+  @echo. 1>&2
+  @echo   cliroot [COMMAND]     Run OpenC3 CLI commands as root user 1>&2
+  @echo                         For operations requiring root privileges 1>&2
+  @echo. 1>&2
+  @echo DEVELOPMENT COMMANDS: 1>&2
+  @echo   build                 Build all OpenC3 Docker containers from source 1>&2
+  @echo                         Required before first run or after code changes. 1>&2
+  @echo. 1>&2
+  @echo   run                   Start OpenC3 containers in detached mode 1>&2
+  @echo                         Access at: http://localhost:2900 1>&2
+  @echo. 1>&2
+  @echo   test [COMMAND]        Run test suites (rspec, playwright) 1>&2
+  @echo                         Use '%0 test' to see available test commands. 1>&2
+  @echo. 1>&2
+  @echo   util [COMMAND]        Utility commands (encode, hash, etc.) 1>&2
+  @echo                         Use '%0 util' to see available utilities. 1>&2
+  @echo. 1>&2
+  @echo CLEANUP: 1>&2
+  @echo   cleanup [OPTIONS]     Remove Docker volumes and data 1>&2
+  @echo                         WARNING: This deletes all OpenC3 data! 1>&2
+  @echo                         Options: 1>&2
+  @echo                           local  - Also remove local plugin files 1>&2
+  @echo                           force  - Skip confirmation prompt 1>&2
+  @echo. 1>&2
+  @echo GETTING STARTED: 1>&2
+  @echo   1. First time setup:     %0 start 1>&2
+  @echo   2. Access OpenC3:        http://localhost:2900 1>&2
+  @echo   3. Stop when done:       %0 stop 1>&2
+  @echo   4. Remove everything:    %0 cleanup 1>&2
+  @echo. 1>&2
+  @echo MORE INFORMATION: 1>&2
+  @echo   Documentation: https://docs.openc3.com 1>&2
+  @echo. 1>&2
+  @echo OPTIONS: 1>&2
+  @echo   -h, --help            Show this help message 1>&2
+  @echo. 1>&2
 
 @echo on

@@ -35,7 +35,7 @@ class TimelineController < ApplicationController
   def index
     return unless authorization('system')
     timelines = @model_class.all
-    ret = Array.new
+    ret = []
     timelines.each do |timeline, value|
       if params[:scope] == timeline.split('__')[0]
         ret << value

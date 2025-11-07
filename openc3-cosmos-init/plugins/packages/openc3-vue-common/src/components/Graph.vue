@@ -190,7 +190,7 @@
           />
         </v-row>
         <v-row class="my-3">
-          <v-textarea readonly rows="8" :value="error" />
+          <v-textarea readonly rows="8" :model-value="error" />
         </v-row>
         <v-row>
           <v-btn block @click="clearErrors"> Clear </v-btn>
@@ -204,7 +204,6 @@
       v-model="editGraphMenu"
       :target="[editGraphMenuX, editGraphMenuY]"
       absolute
-      offset-y
     >
       <v-list>
         <v-list-item @click="editGraph = true">
@@ -232,7 +231,6 @@
       v-model="itemMenu"
       :target="[itemMenuX, itemMenuY]"
       absolute
-      offset-y
     >
       <v-list nav density="compact">
         <v-list-subheader>
@@ -267,7 +265,6 @@
       v-model="legendMenu"
       :target="[legendMenuX, legendMenuY]"
       absolute
-      offset-y
     >
       <v-list>
         <v-list-item @click="moveLegend('top')">
@@ -1784,6 +1781,19 @@ export default {
           }
         }
       }
+
+      // Enforce pointsSaved limit - remove oldest data points if exceeded
+      // Add 300 point buffer to avoid removing points too often
+      if (
+        this.pointsSaved > 0 &&
+        this.data[0].length > this.pointsSaved + 300
+      ) {
+        const pointsToRemove = this.data[0].length - this.pointsSaved
+        for (let j = 0; j < this.data.length; j++) {
+          this.data[j].splice(0, pointsToRemove)
+        }
+      }
+
       // If we weren't passed a startTime notify grapher of our start
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000

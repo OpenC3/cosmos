@@ -19,15 +19,19 @@ jobs:
         with:
           token: ${{ secrets.QA_PAT }}
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+        with:
+          version: 10
 
       - name: Build docs
         run: ./build.sh
         working-directory: docs.openc3.com
 
-      - uses: stefanzweifel/git-auto-commit-action@v6
+      - uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: Automated Doc Build Change

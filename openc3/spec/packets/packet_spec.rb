@@ -1649,7 +1649,7 @@ module OpenC3
           end
         end
         expect(packet.sorted_items.length).to eql 204800
-        json_hash = Hash.new
+        json_hash = {}
         packet.sorted_items.each do |item|
           json_hash[item.name] = nil
         end
