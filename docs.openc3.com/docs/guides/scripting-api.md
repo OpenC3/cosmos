@@ -319,7 +319,7 @@ match value:
 
 ### get_target_file
 
-Return a file handle to a file in the target directory
+Return a file handle to a file in the target directory. Returns `None` (Python) or `nil` (Ruby) if the file is not found.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
