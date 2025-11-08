@@ -168,7 +168,7 @@ GOTO :EOF
 GOTO :EOF
 
 :test
-  REM Building OpenC3
+  REM Building COSMOS
   CALL scripts\windows\openc3_setup || exit /b
   docker compose -f compose.yaml -f compose-build.yaml build
   set args=%*
@@ -201,24 +201,24 @@ GOTO :EOF
 :usage
   if "%OPENC3_DEVEL%" == "1" (
     if "%OPENC3_ENTERPRISE%" == "1" (
-      @echo OpenC3 - Command and Control System (Enterprise Development Installation) 1>&2
+      @echo OpenC3 COSMOS - Command and Control System (Enterprise Development Installation) 1>&2
     ) else (
-      @echo OpenC3 - Command and Control System (Development Installation) 1>&2
+      @echo OpenC3 COSMOS - Command and Control System (Development Installation) 1>&2
     )
   ) else (
     if "%OPENC3_ENTERPRISE%" == "1" (
-      @echo OpenC3 - Command and Control System (Enterprise Runtime-Only Installation) 1>&2
+      @echo OpenC3 COSMOS - Command and Control System (Enterprise Runtime-Only Installation) 1>&2
     ) else (
-      @echo OpenC3 - Command and Control System (Runtime-Only Installation) 1>&2
+      @echo OpenC3 COSMOS - Command and Control System (Runtime-Only Installation) 1>&2
     )
   )
   @echo Usage: %0 COMMAND [OPTIONS] 1>&2
   @echo. 1>&2
   @echo DESCRIPTION: 1>&2
-  @echo   OpenC3 is a command and control system for embedded systems. This script 1>&2
+  @echo   COSMOS is a command and control system for embedded systems. This script 1>&2
   if "%OPENC3_DEVEL%" == "1" (
     @echo   provides a convenient interface for building, running, testing, and managing 1>&2
-    @echo   OpenC3 in Docker containers. 1>&2
+    @echo   COSMOS in Docker containers. 1>&2
     @echo. 1>&2
     if "%OPENC3_ENTERPRISE%" == "1" (
       @echo   This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities. 1>&2
@@ -227,7 +227,7 @@ GOTO :EOF
     )
   ) else (
     @echo   provides a convenient interface for running, testing, and managing 1>&2
-    @echo   OpenC3 in Docker containers. 1>&2
+    @echo   COSMOS in Docker containers. 1>&2
     @echo. 1>&2
     if "%OPENC3_ENTERPRISE%" == "1" (
       @echo   This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images. 1>&2
@@ -238,35 +238,35 @@ GOTO :EOF
   @echo. 1>&2
   @echo COMMON COMMANDS: 1>&2
   if "%OPENC3_DEVEL%" == "1" (
-    @echo   start                 Build and run OpenC3 (equivalent to: build + run) 1>&2
-    @echo                         This is the typical command to get OpenC3 running. 1>&2
+    @echo   start                 Build and run COSMOS (equivalent to: build + run) 1>&2
+    @echo                         This is the typical command to get COSMOS running. 1>&2
     @echo. 1>&2
   ) else (
-    @echo   run                   Start OpenC3 containers 1>&2
+    @echo   run                   Start COSMOS containers 1>&2
     @echo                         Access at: http://localhost:2900 1>&2
     @echo. 1>&2
   )
-  @echo   stop                  Stop all running OpenC3 containers gracefully 1>&2
+  @echo   stop                  Stop all running COSMOS containers gracefully 1>&2
   @echo                         Allows containers to shutdown cleanly. 1>&2
   @echo. 1>&2
-  @echo   cli [COMMAND]         Run OpenC3 CLI commands in a container 1>&2
+  @echo   cli [COMMAND]         Run COSMOS CLI commands in a container 1>&2
   @echo                         Use 'cli help' for available commands 1>&2
   @echo                         Examples: 1>&2
   @echo                           %0 cli generate plugin MyPlugin 1>&2
   @echo                           %0 cli validate myplugin.gem 1>&2
   @echo. 1>&2
-  @echo   cliroot [COMMAND]     Run OpenC3 CLI commands as root user 1>&2
+  @echo   cliroot [COMMAND]     Run COSMOS CLI commands as root user 1>&2
   @echo                         For operations requiring root privileges 1>&2
   @echo. 1>&2
   if "%OPENC3_DEVEL%" == "1" (
     @echo DEVELOPMENT COMMANDS: 1>&2
-    @echo   build                 Build all OpenC3 Docker containers from source 1>&2
+    @echo   build                 Build all COSMOS Docker containers from source 1>&2
     @echo                         Required before first run or after code changes. 1>&2
     @echo. 1>&2
-    @echo   run                   Start OpenC3 containers in detached mode 1>&2
+    @echo   run                   Start COSMOS containers in detached mode 1>&2
     @echo                         Access at: http://localhost:2900 1>&2
     @echo. 1>&2
-    @echo   dev                   Start OpenC3 containers in development mode 1>&2
+    @echo   dev                   Start COSMOS containers in development mode 1>&2
     @echo                         Uses compose-dev.yaml for development. 1>&2
     @echo. 1>&2
   )
@@ -277,20 +277,20 @@ GOTO :EOF
   @echo                         Use '%0 util' to see available utilities. 1>&2
   @echo. 1>&2
   if "%OPENC3_DEVEL%" == "0" (
-    @echo   upgrade               Upgrade OpenC3 to latest version 1>&2
+    @echo   upgrade               Upgrade COSMOS to latest version 1>&2
     @echo                         Downloads and installs latest release. 1>&2
     @echo. 1>&2
   )
   @echo CLEANUP: 1>&2
   @echo   cleanup [OPTIONS]     Remove Docker volumes and data 1>&2
-  @echo                         WARNING: This deletes all OpenC3 data! 1>&2
+  @echo                         WARNING: This deletes all COSMOS data! 1>&2
   @echo                         Options: 1>&2
   @echo                           local  - Also remove local plugin files 1>&2
   @echo                           force  - Skip confirmation prompt 1>&2
   @echo. 1>&2
   @echo GETTING STARTED: 1>&2
   @echo   1. First time setup:     %0 start 1>&2
-  @echo   2. Access OpenC3:        http://localhost:2900 1>&2
+  @echo   2. Access COSMOS:        http://localhost:2900 1>&2
   @echo   3. Stop when done:       %0 stop 1>&2
   @echo   4. Remove everything:    %0 cleanup 1>&2
   @echo. 1>&2

@@ -64,13 +64,13 @@ set -e
 usage() {
   if [ "$OPENC3_DEVEL" -eq 1 ] && [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 - Command and Control System (Enterprise Development Installation)
+OpenC3 COSMOS - Command and Control System (Enterprise Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  OpenC3 is a command and control system for embedded systems. This script
+  COSMOS is a command and control system for embedded systems. This script
   provides a convenient interface for building, running, testing, and managing
-  OpenC3 in Docker containers.
+  COSMOS in Docker containers.
 
   This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities.
 
@@ -78,13 +78,13 @@ COMMON COMMANDS:
 EOF
   elif [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 - Command and Control System (Development Installation)
+OpenC3 COSMOS - Command and Control System (Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  OpenC3 is a command and control system for embedded systems. This script
+  COSMOS is a command and control system for embedded systems. This script
   provides a convenient interface for building, running, testing, and managing
-  OpenC3 in Docker containers.
+  COSMOS in Docker containers.
 
   This is a DEVELOPMENT installation with source code and build capabilities.
 
@@ -92,13 +92,13 @@ COMMON COMMANDS:
 EOF
   elif [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 - Command and Control System (Enterprise Runtime-Only Installation)
+OpenC3 COSMOS - Command and Control System (Enterprise Runtime-Only Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  OpenC3 is a command and control system for embedded systems. This script
+  COSMOS is a command and control system for embedded systems. This script
   provides a convenient interface for running, testing, and managing
-  OpenC3 in Docker containers.
+  COSMOS in Docker containers.
 
   This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images.
 
@@ -106,13 +106,13 @@ COMMON COMMANDS:
 EOF
   else
     cat >&2 << EOF
-OpenC3 - Command and Control System (Runtime-Only Installation)
+OpenC3 COSMOS - Command and Control System (Runtime-Only Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  OpenC3 is a command and control system for embedded systems. This script
+  COSMOS is a command and control system for embedded systems. This script
   provides a convenient interface for running, testing, and managing
-  OpenC3 in Docker containers.
+  COSMOS in Docker containers.
 
   This is a RUNTIME-ONLY installation using pre-built images.
 
@@ -121,39 +121,39 @@ EOF
   fi
   if [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
-  start                 Build and run OpenC3 (equivalent to: build + run)
-                        This is the typical command to get OpenC3 running.
+  start                 Build and run COSMOS (equivalent to: build + run)
+                        This is the typical command to get COSMOS running.
 
 EOF
   else
     cat >&2 << EOF
-  run                   Start OpenC3 containers
+  run                   Start COSMOS containers
                         Access at: http://localhost:2900
 
 EOF
   fi
   cat >&2 << EOF
-  stop                  Stop all running OpenC3 containers gracefully
+  stop                  Stop all running COSMOS containers gracefully
                         Allows containers to shutdown cleanly.
 
-  cli [COMMAND]         Run OpenC3 CLI commands in a container
+  cli [COMMAND]         Run COSMOS CLI commands in a container
                         Use 'cli help' for available commands
                         Use 'cli --help' for Docker wrapper info
                         Examples:
                           $1 cli generate plugin MyPlugin
                           $1 cli validate myplugin.gem
 
-  cliroot [COMMAND]     Run OpenC3 CLI commands as root user
+  cliroot [COMMAND]     Run COSMOS CLI commands as root user
                         Same as 'cli' but with root privileges
 
 EOF
   if [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
 DEVELOPMENT COMMANDS:
-  build                 Build all OpenC3 Docker containers from source
+  build                 Build all COSMOS Docker containers from source
                         Required before first run or after code changes.
 
-  run                   Start OpenC3 containers in detached mode
+  run                   Start COSMOS containers in detached mode
                         Access at: http://localhost:2900
 
 EOF
@@ -168,7 +168,7 @@ EOF
 EOF
   if [ "$OPENC3_DEVEL" -eq 0 ]; then
     cat >&2 << EOF
-  upgrade               Upgrade OpenC3 to latest version
+  upgrade               Upgrade COSMOS to latest version
                         Downloads and installs latest release.
 
 EOF
@@ -176,7 +176,7 @@ EOF
   cat >&2 << EOF
 CLEANUP:
   cleanup [OPTIONS]     Remove Docker volumes and data
-                        WARNING: This deletes all OpenC3 data!
+                        WARNING: This deletes all COSMOS data!
                         Options:
                           local  - Also remove local plugin files
                           force  - Skip confirmation prompt
@@ -195,7 +195,7 @@ EOF
   cat >&2 << EOF
 GETTING STARTED:
   1. First time setup:     $1 start
-  2. Access OpenC3:        http://localhost:2900
+  2. Access COSMOS:        http://localhost:2900
   3. Stop when done:       $1 stop
   4. Remove everything:    $1 cleanup
 
@@ -230,7 +230,7 @@ case $1 in
     if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cli [COMMAND] [OPTIONS]"
       echo ""
-      echo "Run OpenC3 CLI commands inside a Docker container as the default user."
+      echo "Run COSMOS CLI commands inside a Docker container as the default user."
       echo ""
       echo "What this wrapper does:"
       echo "  - Starts a temporary Docker container (removed after use)"
@@ -240,7 +240,7 @@ case $1 in
       echo ""
       echo "Prerequisites:"
       echo "  - Containers must be built first: $0 build"
-      echo "  - .env file must exist in the OpenC3 directory"
+      echo "  - .env file must exist in the COSMOS directory"
       echo ""
       echo "Common commands:"
       echo "  $0 cli help                           Show CLI command help"
@@ -277,7 +277,7 @@ case $1 in
     if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cliroot [COMMAND] [OPTIONS]"
       echo ""
-      echo "Run OpenC3 CLI commands inside a Docker container as root user."
+      echo "Run COSMOS CLI commands inside a Docker container as root user."
       echo ""
       echo "This is the same as 'cli' but runs as root instead of the default user."
       echo "Use this when you need elevated privileges inside the container."
@@ -291,7 +291,7 @@ case $1 in
       echo ""
       echo "Prerequisites:"
       echo "  - Containers must be built first: $0 build"
-      echo "  - .env file must exist in the OpenC3 directory"
+      echo "  - .env file must exist in the COSMOS directory"
       echo ""
       echo "Common commands:"
       echo "  $0 cliroot help                       Show CLI command help"
@@ -322,10 +322,10 @@ case $1 in
       if [ "$OPENC3_DEVEL" -eq 1 ]; then
         echo "Usage: $0 start"
         echo ""
-        echo "Build and run OpenC3 containers."
+        echo "Build and run COSMOS containers."
         echo ""
         echo "This command:"
-        echo "  1. Builds all OpenC3 containers (equivalent to 'openc3.sh build')"
+        echo "  1. Builds all COSMOS containers (equivalent to 'openc3.sh build')"
         echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
         echo ""
         echo "Options:"
@@ -333,7 +333,7 @@ case $1 in
       else
         echo "Usage: $0 start"
         echo ""
-        echo "Start OpenC3 containers."
+        echo "Start COSMOS containers."
         echo ""
         echo "This is an alias for 'run' command in runtime-only installations."
         echo ""
@@ -354,10 +354,10 @@ case $1 in
       if [ "$OPENC3_DEVEL" -eq 1 ]; then
         echo "Usage: $0 start-ubi"
         echo ""
-        echo "Build and run OpenC3 UBI containers."
+        echo "Build and run COSMOS UBI containers."
         echo ""
         echo "This command:"
-        echo "  1. Builds all OpenC3 UBI containers (equivalent to 'openc3.sh build-ubi')"
+        echo "  1. Builds all COSMOS UBI containers (equivalent to 'openc3.sh build-ubi')"
         echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
         echo ""
         echo "Options:"
@@ -365,7 +365,7 @@ case $1 in
       else
         echo "Usage: $0 start-ubi"
         echo ""
-        echo "Run all OpenC3 UBI containers in detached mode."
+        echo "Run all COSMOS UBI containers in detached mode."
         echo ""
         echo "This is an alias for 'run-ubi' command."
         echo ""
@@ -385,7 +385,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 stop"
       echo ""
-      echo "Stop all OpenC3 containers gracefully."
+      echo "Stop all COSMOS containers gracefully."
       echo ""
       if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
         echo "This command:"
@@ -416,7 +416,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cleanup [local] [force]"
       echo ""
-      echo "Remove all OpenC3 docker volumes and data."
+      echo "Remove all COSMOS docker volumes and data."
       echo ""
       echo "WARNING: This is a destructive operation that removes ALL COSMOS data!"
       echo ""
@@ -463,7 +463,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build"
       echo ""
-      echo "Build all OpenC3 docker containers."
+      echo "Build all COSMOS docker containers."
       echo ""
       if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
         echo "This command:"
@@ -507,7 +507,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build-ubi"
       echo ""
-      echo "Build all OpenC3 UBI (Universal Base Image) containers."
+      echo "Build all COSMOS UBI (Universal Base Image) containers."
       echo ""
       echo "This is used for enterprise deployments requiring Red Hat UBI base images,"
       echo "suitable for air-gapped and government environments."
@@ -551,7 +551,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 run"
       echo ""
-      echo "Run all OpenC3 containers in detached mode."
+      echo "Run all COSMOS containers in detached mode."
       echo ""
       echo "Containers will start in the background using docker compose up -d."
       echo ""
@@ -560,8 +560,8 @@ case $1 in
       echo "  docker compose logs -f              # Follow all logs"
       echo "  docker compose logs -f SERVICE      # Follow specific service logs"
       echo ""
-      echo "Access OpenC3:"
-      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo "Access COSMOS:"
+      echo "  http://localhost:2900               # COSMOS web interface"
       echo ""
       echo "Common services:"
       echo "  openc3-operator                     Main orchestration service"
@@ -581,7 +581,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 run-ubi"
       echo ""
-      echo "Run all OpenC3 UBI (Universal Base Image) containers in detached mode."
+      echo "Run all COSMOS UBI (Universal Base Image) containers in detached mode."
       echo ""
       echo "This uses UBI-based container images and sets UBI-specific configurations:"
       echo "  - Image suffix: -ubi"
@@ -594,8 +594,8 @@ case $1 in
       echo "  docker compose logs -f              # Follow all logs"
       echo "  docker compose logs -f SERVICE      # Follow specific service logs"
       echo ""
-      echo "Access OpenC3:"
-      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo "Access COSMOS:"
+      echo "  http://localhost:2900               # COSMOS web interface"
       echo ""
       echo "Common services:"
       echo "  openc3-operator                     Main orchestration service"
@@ -616,7 +616,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
       echo "Usage: $0 test COMMAND [OPTIONS]"
       echo ""
-      echo "Test OpenC3. This builds OpenC3 and runs the specified test suite."
+      echo "Test COSMOS. This builds COSMOS and runs the specified test suite."
       echo ""
       echo "Available commands:"
       echo "  rspec                       Run RSpec tests against Ruby code"
@@ -658,7 +658,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
       echo "Usage: $0 util COMMAND [OPTIONS]"
       echo ""
-      echo "Various OpenC3 utility commands."
+      echo "Various COSMOS utility commands."
       echo ""
       echo "Available commands:"
       echo "  encode STRING               Encode a string to base64"
