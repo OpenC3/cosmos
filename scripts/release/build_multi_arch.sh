@@ -215,6 +215,7 @@ docker buildx build \
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
