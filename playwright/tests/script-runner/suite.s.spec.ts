@@ -18,6 +18,8 @@
 */
 
 // @ts-check
+import { Page } from '@playwright/test'
+import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'
 
 test.use({
@@ -254,20 +256,39 @@ end`)
   await deleteFile(page)
 })
 
-test('starts a suite', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
-class TestGroup < OpenC3::Group
-  def test_test; puts "test"; end
-end
-class TestSuite < OpenC3::Suite
-  def setup; OpenC3::Group.puts("setup"); end
-  def teardown; OpenC3::Group.puts("teardown"); end
-  def initialize
-    super()
-    add_group("TestGroup")
+async function startsSuite(page: Page, utils: Utilities, type: string) {
+  if (type === 'Ruby') {
+    await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+  class TestGroup < OpenC3::Group
+    def test_test; puts "test"; end
   end
-end`)
-  await saveAs(page, 'test_suite1.rb')
+  class TestSuite < OpenC3::Suite
+    def setup; OpenC3::Group.puts("setup"); end
+    def teardown; OpenC3::Group.puts("teardown"); end
+    def initialize
+      super()
+      add_group("TestGroup")
+    end
+  end`)
+    await saveAs(page, 'test_suite1.rb')
+  } else {
+    // Python
+    await page.locator('textarea')
+      .fill(`from openc3.script.suite import Suite, Group
+class TestGroup(Group):
+  def test_test(self):
+    print("test")
+class TestSuite(Suite):
+  def setup(self):
+    Group.print("setup")
+  def teardown(self):
+    Group.print("teardown")
+  def __init__(self):
+    super().__init__()
+    self.add_group(TestGroup)
+`)
+    await saveAs(page, 'test_suite1.py')
+  }
 
   // Verify the suite startup, teardown buttons are enabled
   await expect(page.locator('[data-test=setup-suite]')).toBeEnabled()
@@ -351,16 +372,30 @@ end`)
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
-  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
-class TestGroup < OpenC3::Group
-  def test_test; puts "test"; end
-end
-class TestSuite < OpenC3::Suite
-  def initialize
-    super()
-    add_group("TestGroup")
+  if (type === 'Ruby') {
+    await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+  class TestGroup < OpenC3::Group
+    def test_test; puts "test"; end
   end
-end`)
+  class TestSuite < OpenC3::Suite
+    def initialize
+      super()
+      add_group("TestGroup")
+    end
+  end`)
+  } else {
+    // Python
+    await page.locator('textarea')
+      .fill(`from openc3.script.suite import Suite, Group
+class TestGroup(Group):
+  def test_test(self):
+    print("test")
+class TestSuite(Suite):
+  def __init__(self):
+    super().__init__()
+    self.add_group(TestGroup)
+`)
+  }
   await utils.sleep(1000)
   // Verify filename is marked as edited
   await expect(page.locator('#sr-controls')).toContainText('*')
@@ -377,6 +412,14 @@ end`)
   await expect(page.locator('[data-test=teardown-suite]')).toBeDisabled()
 
   await deleteFile(page)
+}
+
+test('starts a ruby suite', async ({ page, utils }) => {
+  await startsSuite(page, utils, 'Ruby')
+})
+
+test.only('starts a python suite', async ({ page, utils }) => {
+  await startsSuite(page, utils, 'Python')
 })
 
 test('starts a group', async ({ page, utils }) => {

@@ -172,11 +172,11 @@ module OpenC3
     end
 
     def write(string)
-      @report << (Time.now.sys.formatted + ': ' + string)
+      @report << (Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S.%6NZ") + ': ' + string)
     end
 
     def puts(string)
-      @report << (Time.now.sys.formatted + ': ' + string)
+      @report << (Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S.%6NZ") + ': ' + string)
     end
 
     # def collect_metadata(parent = nil)

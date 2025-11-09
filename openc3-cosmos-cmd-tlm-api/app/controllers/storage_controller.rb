@@ -267,11 +267,11 @@ class StorageController < ApplicationController
         end
 
         if line_clean.include?("PASS") or line_clean.include?("SKIP") or line_clean.include?("FAIL")
-          date, time, _example = last_result.split(' ')
-          start_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
-          date, time, example = line_clean.split(' ')
-          suite_group, name, status = example.split(':')
-          stop_time = DateTime.parse("#{date} #{time}").to_time.to_f * 1000
+          date_time, _example = last_result.split('Z:')
+          start_time = DateTime.parse("#{date_time}Z").to_time.to_f * 1000
+          date_time, example = line_clean.split('Z:')
+          suite_group, name, status = example.strip.split(':')
+          stop_time = DateTime.parse("#{date_time}Z").to_time.to_f * 1000
           format_status = case status
           when 'PASS'
             'passed'
