@@ -26,7 +26,7 @@
     "sass": "1.93.3",
     "serve": "14.2.5",
     "vite": "6.4.1",
-    "vue": "3.5.22"
+    "vue": "3.5.24"
   },
   "peerDependencies": {
     "single-spa": "6.0.3",
