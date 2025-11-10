@@ -418,7 +418,7 @@ test('starts a ruby suite', async ({ page, utils }) => {
   await startsSuite(page, utils, 'Ruby')
 })
 
-test.only('starts a python suite', async ({ page, utils }) => {
+test('starts a python suite', async ({ page, utils }) => {
   await startsSuite(page, utils, 'Python')
 })
 
