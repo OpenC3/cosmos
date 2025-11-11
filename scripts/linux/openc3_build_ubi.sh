@@ -161,6 +161,7 @@ if [[ -z $TRAEFIK_CONFIG ]]; then
 fi
 # NOTE: Ensure OPENC3_TRAEFIK_RELEASE is on IronBank:
 # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
+# 3.5.4 is the latest 3.5.x version on IronBank as of Nov 11 2025
 cd openc3-traefik
 docker build \
   --network host \

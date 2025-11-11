@@ -12,11 +12,11 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.13.1",
+    "axios": "1.13.2",
     "date-fns": "4.1.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
-    "vuetify": "3.10.8"
+    "vuetify": "3.10.9"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.28.5",
@@ -26,7 +26,7 @@
     "sass": "1.93.3",
     "serve": "14.2.5",
     "vite": "6.4.1",
-    "vue": "3.5.22"
+    "vue": "3.5.24"
   },
   "peerDependencies": {
     "single-spa": "6.0.3",
