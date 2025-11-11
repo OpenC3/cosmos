@@ -9,12 +9,14 @@ ARG OPENC3_BASE_IMAGE=openc3-base
 ARG OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
+# Setup our node build image
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
 
+# Set work dir to start building the plugins
 WORKDIR /openc3/plugins/
-
 USER root
 
+# Copy in all the package.json files so we can pnpm install everything
 COPY ./plugins/*.json ./
 COPY ./plugins/*.yaml ./
 COPY ./plugins/packages/openc3-tool-base/*.json packages/openc3-tool-base/
@@ -37,13 +39,14 @@ COPY ./plugins/packages/openc3-vue-common/ packages/openc3-vue-common/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
 ARG NPM_URL=https://registry.npmjs.org
-RUN pnpm config set registry "$NPM_URL"
+RUN pnpm config set registry ${NPM_URL}
 RUN pnpm config set fetch-timeout 600000
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build @openc3/js-common and @openc3/vue-common
 RUN pnpm build:common
 
+# Copy in helper scripts for building
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh
 
@@ -128,8 +131,9 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "/ope
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
+# Switch back to openc3 user for copies
 USER ${USER_ID}:${GROUP_ID}
-
+# Copy in gems, pnpm lock files, and common code
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
@@ -140,9 +144,9 @@ COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plu
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-vue-common/ /openc3/plugins/packages/openc3-vue-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-lock.yaml /openc3/plugins/pnpm-lock.yaml
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-workspace.yaml /openc3/plugins/pnpm-workspace.yaml
+# Copy in other necessary code/config for the container
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
-
-COPY --from=minio-mc /bin/mc /bin/mc
-COPY ./script-runner.json /openc3/minio/script-runner.json
+COPY --from=minio-mc --chown=${IMAGE_USER}:${IMAGE_GROUP} /bin/mc /bin/mc
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./script-runner.json /openc3/minio/script-runner.json
 
 CMD [ "/openc3/init.sh" ]
