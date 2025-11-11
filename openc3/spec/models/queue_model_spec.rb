@@ -151,6 +151,81 @@ module OpenC3
         expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything, "id" => 1.0 },
           { "username" => "anonymous", "value" => command, "timestamp" => anything, "id" => 2.0 })
       end
+
+      it "queues command with target_name, cmd_name, and cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'test_user', scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "test_user",
+          "target_name" => "INST",
+          "cmd_name" => "COLLECT",
+          "cmd_params" => { "TYPE" => "NORMAL" },
+          "timestamp" => anything
+        })
+      end
+
+      it "queues command with target_name and cmd_name but no cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "ABORT", username: 'test_user', scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "test_user",
+          "target_name" => "INST",
+          "cmd_name" => "ABORT",
+          "cmd_params" => {},
+          "timestamp" => anything
+        })
+      end
+
+      it "raises error when neither command string nor target_name/cmd_name are provided" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+
+        expect {
+          QueueModel.queue_command("TEST", username: 'anonymous', scope: "DEFAULT")
+        }.to raise_error(QueueError, "Must provide either command string or target_name/cmd_name parameters")
+      end
+
+      it "logs error with target_name/cmd_name when queue is disabled (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
+        model.create
+
+        expect {
+          QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'anonymous', scope: "DEFAULT")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'INST COLLECT' not queued.")
+      end
+
+      it "handles binary data in cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        # Create a binary string parameter
+        binary_data = "\x00\x01\x02\xFF\xFE".b
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "UPLOAD", cmd_params: { "DATA" => binary_data }, username: 'test_user', scope: "DEFAULT")
+
+        # Verify the command was queued successfully with base64-encoded binary data
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["target_name"]).to eq("INST")
+        expect(commands[0]["cmd_name"]).to eq("UPLOAD")
+        expect(commands[0]["cmd_params"]).to be_a(Hash)
+        expect(commands[0]["cmd_params"]["DATA"]).to be_a(Hash)
+        expect(commands[0]["cmd_params"]["DATA"]["__base64__"]).to be true
+        expect(commands[0]["cmd_params"]["DATA"]["data"]).to eq([binary_data].pack('m0'))
+        # Verify it can be decoded back
+        decoded = commands[0]["cmd_params"]["DATA"]["data"].unpack('m0')[0]
+        expect(decoded).to eq(binary_data)
+      end
     end
 
     describe "initialize" do
@@ -272,6 +347,36 @@ module OpenC3
         expect {
           model.insert_command(1, command_data)
         }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'TGT CMD' not queued.")
+      end
+
+      it "handles binary data in cmd_params when inserting" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        # Create a binary string parameter
+        binary_data = "\x00\x01\x02\xFF\xFE".b
+        command_data = {
+          username: "test_user",
+          target_name: "INST",
+          cmd_name: "UPLOAD",
+          cmd_params: { "DATA" => binary_data },
+          timestamp: Time.now.to_nsec_from_epoch
+        }
+
+        model.insert_command(1, command_data)
+
+        # Verify the command was inserted successfully with base64-encoded binary data
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["target_name"]).to eq("INST")
+        expect(commands[0]["cmd_name"]).to eq("UPLOAD")
+        expect(commands[0]["cmd_params"]).to be_a(Hash)
+        expect(commands[0]["cmd_params"]["DATA"]).to be_a(Hash)
+        expect(commands[0]["cmd_params"]["DATA"]["__base64__"]).to be true
+        expect(commands[0]["cmd_params"]["DATA"]["data"]).to eq([binary_data].pack('m0'))
+        # Verify it can be decoded back
+        decoded = commands[0]["cmd_params"]["DATA"]["data"].unpack('m0')[0]
+        expect(decoded).to eq(binary_data)
       end
     end
 

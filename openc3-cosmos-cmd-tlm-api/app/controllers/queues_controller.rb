@@ -230,10 +230,38 @@ class QueuesController < ApplicationController
         hazardous = false
         token = get_token(username(), scope: params[:scope])
         begin
-          if hazardous
-            cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+          # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
+          if command_data['target_name'] && command_data['cmd_name']
+            # New format: use 3-parameter cmd() method
+            # Decode any base64-encoded binary parameters and convert to hex string
+            cmd_params = command_data['cmd_params'] || {}
+            decoded_params = {}
+            cmd_params.each do |key, value|
+              if value.is_a?(Hash) && value['__base64__']
+                # Decode base64-encoded binary data and convert to hex string format
+                binary_data = value['data'].unpack('m0')[0]
+                hex_string = '0x' + binary_data.unpack1('H*').upcase
+                decoded_params[key] = hex_string
+              else
+                decoded_params[key] = value
+              end
+            end
+            if hazardous
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], decoded_params, queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['target_name'], command_data['cmd_name'], decoded_params, queue: false, scope: params[:scope], token: token)
+            end
+          elsif command_data['value']
+            # Legacy format: use single string parameter
+            if hazardous
+              cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            end
           else
-            cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            log_error("Invalid command format in queue: #{command_data}")
+            render json: { status: 'error', message: "Invalid command format: missing required fields" }, status: 400
+            return
           end
         rescue HazardousError => e
           # Rescue hazardous error and retry with cmd_no_hazardous_check

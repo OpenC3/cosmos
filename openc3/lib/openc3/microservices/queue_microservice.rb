@@ -67,7 +67,30 @@ module OpenC3
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
             # but we've overridden it to always return true and go straight to cmd_no_hazardous_check()
-            cmd(command['value'], queue: false, scope: @scope)
+
+            # Support both new format (target_name, cmd_name, cmd_params) and legacy format (command string)
+            if command['target_name'] && command['cmd_name']
+              # New format: use 3-parameter cmd() method
+              # Decode any base64-encoded binary parameters and convert to hex string
+              cmd_params = command['cmd_params'] || {}
+              decoded_params = {}
+              cmd_params.each do |key, value|
+                if value.is_a?(Hash) && value['__base64__']
+                  # Decode base64-encoded binary data and convert to hex string format
+                  binary_data = value['data'].unpack('m0')[0]
+                  hex_string = '0x' + binary_data.unpack1('H*').upcase
+                  decoded_params[key] = hex_string
+                else
+                  decoded_params[key] = value
+                end
+              end
+              cmd(command['target_name'], command['cmd_name'], decoded_params, queue: false, scope: @scope)
+            elsif command['value']
+              # Legacy format: use single string parameter for backwards compatibility
+              cmd(command['value'], queue: false, scope: @scope)
+            else
+              @logger.error "QueueProcessor: Invalid command format, missing required fields"
+            end
           end
         rescue StandardError => e
           @logger.error "QueueProcessor failed to process command from queue #{@name}\n#{e.message}"

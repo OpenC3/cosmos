@@ -545,9 +545,14 @@ module OpenC3
         queue = ENV['OPENC3_DEFAULT_QUEUE']
       end
       if queue
-        # Pull the command out of the script string, e.g. cmd("INST ABORT")
-        queued = cmd_string.split('("')[1].split('")')[0]
-        QueueModel.queue_command(queue, command: queued, username: username, scope: scope)
+        puts "Queueing command to queue #{queue}: #{target_name} #{cmd_name} #{cmd_params}"
+        # Pass the command components separately for the queue microservice to use the 3-parameter cmd() method
+        QueueModel.queue_command(queue,
+          target_name: target_name,
+          cmd_name: cmd_name,
+          cmd_params: cmd_params,
+          username: username,
+          scope: scope)
       else
         CommandTopic.send_command(command, timeout: timeout, scope: scope)
       end

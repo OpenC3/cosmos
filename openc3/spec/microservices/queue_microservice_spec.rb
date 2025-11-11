@@ -91,6 +91,8 @@ module OpenC3
     describe '#process_queued_commands' do
       let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
+      let(:command3_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3', 'cmd_params' => { 'PARAM' => 3 } } }
+      let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4', 'cmd_params' => {} } }
 
       before do
         allow(processor).to receive(:cmd)
@@ -120,6 +122,83 @@ module OpenC3
           .with(command1['value'], queue: false, scope: scope)
         expect(processor).to have_received(:cmd)
           .with(command2['value'], queue: false, scope: scope)
+      end
+
+      it 'processes commands with new format (target_name, cmd_name, cmd_params)' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command3_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(2).times
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope)
+      end
+
+      it 'processes commands with new format without cmd_params' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command4_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(2).times
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope)
+      end
+
+      it 'processes mixed legacy and new format commands' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command1.to_json, 0]
+          when 2
+            ["#{scope}:QUEUE", command3_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(3).times
+        expect(processor).to have_received(:cmd)
+          .with(command1['value'], queue: false, scope: scope)
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope)
+      end
+
+      it 'logs error for invalid command format (missing required fields)' do
+        invalid_command = { 'username' => 'test_user' }
+        allow(Store).to receive(:bzpopmin) do
+          processor.state = 'HOLD' if processor.state == 'RELEASE'
+          ["#{scope}:QUEUE", invalid_command.to_json, 0]
+        end
+        expect(logger).to receive(:error).with(/QueueProcessor: Invalid command format, missing required fields/)
+
+        processor.process_queued_commands
+
+        expect(processor).not_to have_received(:cmd)
       end
 
       it 'stops processing when queue is empty' do
