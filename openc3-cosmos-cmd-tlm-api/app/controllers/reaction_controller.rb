@@ -38,7 +38,7 @@ class ReactionController < ApplicationController
     return unless authorization('system')
     begin
       triggers = @model_class.all(scope: params[:scope])
-      ret = Array.new
+      ret = []
       triggers.each do |_, trigger|
         ret << trigger
       end

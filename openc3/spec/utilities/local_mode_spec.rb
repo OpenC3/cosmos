@@ -566,7 +566,7 @@ module OpenC3
         setup_sync_test()
         Zip.continue_on_exists_proc = true
         zip_filename = "#{@tmp_dir}/test.zip"
-        zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+        zip = Zip::File.open(zip_filename, create: true)
         LocalMode.zip_target('INST', zip, scope: 'DEFAULT')
         zip.close
         expect(File.exist?(zip_filename)).to be true

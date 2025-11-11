@@ -194,7 +194,7 @@ class Interface:
                         break
                     if blank_test:
                         # This means the blank test returned something so we can log
-                        protocol.read_protocol_input_base('', None)
+                        protocol.read_protocol_input_base("", None)
                         protocol.read_protocol_output_base(data, extra)
                 if data == "STOP":
                     continue
@@ -523,40 +523,42 @@ class Interface:
 
     def details(self):
         result = self.as_json()
-        result['cmd_target_names'] = self.cmd_target_names
-        result['tlm_target_names'] = self.tlm_target_names
-        result['cmd_target_enabled'] = self.cmd_target_enabled
-        result['tlm_target_enabled'] = self.tlm_target_enabled
-        result['connect_on_startup'] = self.connect_on_startup
-        result['auto_reconnect'] = self.auto_reconnect
-        result['reconnect_delay'] = self.reconnect_delay
-        result['disable_disconnect'] = self.disable_disconnect
-        result['read_allowed'] = self.read_allowed
-        result['write_allowed'] = self.write_allowed
-        result['write_raw_allowed'] = self.write_raw_allowed
-        result['read_raw_data'] = self.read_raw_data
-        result['written_raw_data'] = self.written_raw_data
+        result["cmd_target_names"] = self.cmd_target_names
+        result["tlm_target_names"] = self.tlm_target_names
+        result["cmd_target_enabled"] = self.cmd_target_enabled
+        result["tlm_target_enabled"] = self.tlm_target_enabled
+        result["connect_on_startup"] = self.connect_on_startup
+        result["auto_reconnect"] = self.auto_reconnect
+        result["reconnect_delay"] = self.reconnect_delay
+        result["disable_disconnect"] = self.disable_disconnect
+        result["read_allowed"] = self.read_allowed
+        result["write_allowed"] = self.write_allowed
+        result["write_raw_allowed"] = self.write_raw_allowed
+        result["read_raw_data"] = self.read_raw_data
+        result["written_raw_data"] = self.written_raw_data
         if self.read_raw_data_time is not None:
-            result['read_raw_data_time'] = self.read_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result["read_raw_data_time"] = self.read_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
-            result['read_raw_data_time'] = None
+            result["read_raw_data_time"] = None
         if self.written_raw_data_time is not None:
-            result['written_raw_data_time'] = self.written_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result["written_raw_data_time"] = self.written_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
-            result['written_raw_data_time'] = None
+            result["written_raw_data_time"] = None
 
-        if self.stream_log_pair is not None and (self.stream_log_pair.write_log.logging_enabled or self.stream_log_pair.read_log.logging_enabled):
-            result['stream_log'] = True
+        if self.stream_log_pair is not None and (
+            self.stream_log_pair.write_log.logging_enabled or self.stream_log_pair.read_log.logging_enabled
+        ):
+            result["stream_log"] = True
         else:
-            result['stream_log'] = False
+            result["stream_log"] = False
 
-        result['options'] = self.options
-        result['read_protocols'] = []
+        result["options"] = self.options
+        result["read_protocols"] = []
         for read_protocol in self.read_protocols:
-            result['read_protocols'].append(read_protocol.read_details())
-        result['write_protocols'] = []
+            result["read_protocols"].append(read_protocol.read_details())
+        result["write_protocols"] = []
         for write_protocol in self.write_protocols:
-            result['write_protocols'].append(write_protocol.write_details())
+            result["write_protocols"].append(write_protocol.write_details())
 
         return result
 

@@ -30,13 +30,13 @@ if [ "${1:-default}" = "ubi" ]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z
   OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z
   OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z
 fi
 
@@ -204,6 +204,7 @@ if [ "${1:-default}" = "ubi" ]; then
 fi
 cd ../openc3-minio
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -214,6 +215,7 @@ docker buildx build \
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -301,9 +303,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [ "${1:-default}" = "ubi" ]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.5.3
+  OPENC3_TRAEFIK_RELEASE=v3.5.4
 else
-  OPENC3_TRAEFIK_RELEASE=v3.5.3
+  OPENC3_TRAEFIK_RELEASE=v3.5.4
 fi
 cd ../openc3-traefik
 docker buildx build \

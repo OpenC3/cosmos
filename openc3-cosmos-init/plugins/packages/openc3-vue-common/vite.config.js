@@ -8,15 +8,15 @@ export default defineConfig({
     cssCodeSplit: false,
     lib: {
       entry: {
-        'components': './src/components/index.js',
-        'icons': './src/icons/index.js',
-        'plugins': './src/plugins/index.js',
+        components: './src/components/index.js',
+        icons: './src/icons/index.js',
+        plugins: './src/plugins/index.js',
         'tools/admin': './src/tools/admin/index.js',
         'tools/base': './src/tools/base/index.js',
         'tools/calendar': './src/tools/calendar/index.js',
         'tools/scriptrunner': './src/tools/scriptrunner/index.js',
-        'util': './src/util/index.js',
-        'widgets': './src/widgets/index.js',
+        util: './src/util/index.js',
+        widgets: './src/widgets/index.js',
       },
       name: '@openc3/vue-common',
     },
@@ -34,7 +34,11 @@ export default defineConfig({
           'widgets/index.js, dynamic import will not move module into another chunk',
         ]
 
-        if (ignoredWarnings.some((ignoredWarning) => warning.message.includes(ignoredWarning))) {
+        if (
+          ignoredWarnings.some((ignoredWarning) =>
+            warning.message.includes(ignoredWarning),
+          )
+        ) {
           return
         }
         warn(warning)

@@ -56,6 +56,25 @@
         </v-autocomplete>
       </v-col>
       <v-col
+        v-if="mode === 'cmd' && showQueueSelect"
+        :cols="colSize"
+        class="tpic-select pr-4"
+        data-test="select-queue"
+      >
+        <v-autocomplete
+          v-model="selectedQueueName"
+          label="Select Queue"
+          hide-details
+          density="compact"
+          variant="outlined"
+          :disabled="autocompleteDisabled || queueNames.length === 1"
+          :items="queueNames"
+          item-title="label"
+          item-value="value"
+          @update:model-value="queueNameChanged"
+        />
+      </v-col>
+      <v-col
         v-if="chooseItem"
         :cols="colSize"
         class="tpic-select pr-4"
@@ -150,7 +169,7 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {
@@ -226,6 +245,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    showQueueSelect: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: ['on-set', 'addItem'],
   data() {
@@ -234,6 +257,10 @@ export default {
       selectedTargetName: this.initialTargetName?.toUpperCase(),
       packetNames: [],
       selectedPacketName: this.initialPacketName?.toUpperCase(),
+      queueNames: [
+        { label: 'None', value: null },
+      ],
+      selectedQueueName: null,
       itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
       valueTypes: ['CONVERTED', 'RAW'],
@@ -375,6 +402,22 @@ export default {
   created() {
     this.internalDisabled = true
     this.api = new OpenC3Api()
+
+    // Fetch queues if in command mode
+    if (this.mode === 'cmd') {
+      Api.get('/openc3-api/queues').then((response) => {
+        this.queueNames = [{ label: 'None', value: null }]
+        if (response.data && Array.isArray(response.data)) {
+          response.data.forEach((queue) => {
+            this.queueNames.push({ label: queue.name, value: queue.name })
+          })
+        }
+      }).catch((error) => {
+        console.error('Error fetching queues:', error)
+        // Keep default "None" option even if fetch fails
+      })
+    }
+
     this.api.get_target_names().then((result) => {
       this.targetNames = result.flatMap((target) => {
         // Ignore the UNKNOWN target as it doesn't make sense to select this
@@ -525,6 +568,7 @@ export default {
         valueType: this.selectedValueType,
         reduced: this.selectedReduced,
         reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
       })
       this.internalDisabled = false
     },
@@ -549,6 +593,19 @@ export default {
       if (value !== null) {
         this.updatePacketDetails(value)
       }
+    },
+
+    queueNameChanged: function (value) {
+      this.selectedQueueName = value
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
+      })
     },
 
     updatePacketDetails: function (value) {
@@ -586,6 +643,7 @@ export default {
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
+          queueName: this.selectedQueueName,
         })
       }
     },
@@ -604,6 +662,7 @@ export default {
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
+          queueName: this.selectedQueueName,
         })
       }
     },
@@ -616,6 +675,7 @@ export default {
         valueType: this.selectedValueType,
         reduced: this.selectedReduced,
         reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
       })
     },
 

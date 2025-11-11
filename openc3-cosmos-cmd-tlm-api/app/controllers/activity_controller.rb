@@ -345,7 +345,7 @@ class ActivityController < ApplicationController
       return
     end
 
-    ret = Array.new
+    ret = []
     input_activities.each do |input|
       next if input.is_a?(Hash) == false || input['start'].nil? || input['stop'].nil? || input['name'].nil?
 
@@ -412,7 +412,7 @@ class ActivityController < ApplicationController
       return
     end
 
-    ret = Array.new
+    ret = []
     input_activities.each do |input|
       next if input.is_a?(Hash) == false || input['id'].nil? || input['name'].nil? || input['uuid'].nil?
 

@@ -44,8 +44,8 @@ module OpenC3
       allow(entry).to receive(:name).and_return("INST")
       zip = double("zip_file")
       allow(zip).to receive(:each).and_yield(entry)
-      allow(zip).to receive(:extract) do |entry, path|
-        FileUtils.mkdir_p(path)
+      allow(zip).to receive(:extract) do |*args, **kwargs|
+        FileUtils.mkdir_p(File.join(kwargs[:destination_directory], args[0]))
       end
       allow(Zip::File).to receive(:open).and_yield(zip)
     end

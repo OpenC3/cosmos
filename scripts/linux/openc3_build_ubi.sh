@@ -1,5 +1,30 @@
 #!/bin/bash
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  echo "Usage: openc3_build_ubi.sh"
+  echo ""
+  echo "Builds OpenC3 UBI (Universal Base Image) containers for enterprise deployments."
+  echo ""
+  echo "This script builds all OpenC3 services using Red Hat UBI base images,"
+  echo "suitable for air-gapped and government environments."
+  echo ""
+  echo "Environment variables required:"
+  echo "  OPENC3_UBI_REGISTRY      - UBI registry URL"
+  echo "  OPENC3_UBI_IMAGE         - UBI image name"
+  echo "  OPENC3_UBI_TAG           - UBI image tag"
+  echo "  OPENC3_REGISTRY          - Target registry for built images"
+  echo "  OPENC3_NAMESPACE         - Target namespace"
+  echo "  OPENC3_TAG               - Tag for built images"
+  echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
+  echo "  PYPI_URL                 - PyPI mirror URL (optional)"
+  echo "  NPM_URL                  - NPM registry URL (optional)"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message"
+  exit 0
+fi
+
 set -e
 
 if ! command -v docker &> /dev/null
@@ -64,9 +89,10 @@ cd ..
 # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-09-07T16-13-09Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -140,7 +166,7 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.5.3 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.5.4 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .

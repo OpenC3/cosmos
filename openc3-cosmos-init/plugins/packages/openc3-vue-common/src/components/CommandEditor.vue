@@ -24,6 +24,7 @@
         :initial-packet-name="commandName"
         :disabled="sendDisabled"
         :button-text="showCommandButton ? 'Send' : null"
+        :show-queue-select="showQueueSelect"
         mode="cmd"
         @on-set="commandChanged($event)"
         @add-item="buildCmd($event)"
@@ -141,6 +142,10 @@ export default {
       default: false,
     },
     showCommandButton: {
+      type: Boolean,
+      default: true,
+    },
+    showQueueSelect: {
       type: Boolean,
       default: true,
     },

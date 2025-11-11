@@ -2,6 +2,164 @@
 
 # Zsh completion script for openc3.sh
 
+_openc3_test() {
+    local curcontext="$curcontext"
+
+    # First argument to test command
+    if (( CURRENT == 1 )); then
+        local -a test_commands
+        test_commands=(
+            'rspec:run tests against Ruby code'
+            'playwright:run end-to-end tests'
+            'hash:run comprehensive tests with coverage'
+        )
+        _describe 'test commands' test_commands
+        return
+    fi
+
+    # Subsequent arguments depend on the test subcommand
+    local test_cmd=$words[1]
+    case $test_cmd in
+        rspec)
+            # rspec doesn't take additional arguments in this context
+            ;;
+        hash)
+            # hash doesn't take additional arguments in this context
+            ;;
+        playwright)
+            if (( CURRENT == 2 )); then
+                local -a playwright_commands
+                playwright_commands=(
+                    'install-playwright:installs playwright and its dependencies'
+                    'build-plugin:builds the plugin to be used in the playwright tests'
+                    'run-chromium:runs the playwright tests against a locally running version of Cosmos using Chrome'
+                    'reset-storage-state:clear out cached data'
+                )
+                _describe 'playwright commands' playwright_commands
+            else
+                case $words[2] in
+                    run-chromium)
+                        # run-chromium can accept additional arguments
+                        _message 'additional playwright test arguments'
+                        ;;
+                    install-playwright|build-plugin|reset-storage-state)
+                        # These commands don't take arguments
+                        ;;
+                esac
+            fi
+            ;;
+    esac
+}
+
+_openc3_util() {
+    local curcontext="$curcontext"
+
+    # First argument to util command
+    if (( CURRENT == 1 )); then
+        local -a util_commands
+        util_commands=(
+            'encode:encode a string to base64'
+            'hash:hash a string using SHA-256'
+            'save:save images to a tar file'
+            'load:load images from a tar file'
+            'tag:tag images'
+            'push:push images'
+            'clean:remove node_modules, coverage, etc'
+            'hostsetup:configure host for redis'
+            'hostenter:sh into vm host'
+        )
+        _describe 'util commands' util_commands
+        return
+    fi
+
+    # Subsequent arguments depend on the util subcommand
+    local util_cmd=$words[1]
+    case $util_cmd in
+        encode|hash)
+            _message -r 'STRING'
+            return 0
+            ;;
+        save)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        load)
+            if (( CURRENT == 2 )); then
+                _message 'TAG (optional, default: latest)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        tag)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO1 (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'REPO2 (e.g., localhost:12345)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'NAMESPACE1 (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message -r 'TAG1 (e.g., latest)'
+                return 0
+            elif (( CURRENT == 6 )); then
+                _message 'NAMESPACE2 (optional, defaults to NAMESPACE1)'
+                return 0
+            elif (( CURRENT == 7 )); then
+                _message 'TAG2 (optional, defaults to TAG1)'
+                return 0
+            elif (( CURRENT == 8 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        push)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., localhost:12345)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            elif (( CURRENT == 5 )); then
+                _message 'SUFFIX (optional)'
+                return 0
+            fi
+            ;;
+        hostsetup)
+            if (( CURRENT == 2 )); then
+                _message -r 'REPO (e.g., docker.io)'
+                return 0
+            elif (( CURRENT == 3 )); then
+                _message -r 'NAMESPACE (e.g., openc3inc)'
+                return 0
+            elif (( CURRENT == 4 )); then
+                _message -r 'TAG (e.g., latest)'
+                return 0
+            fi
+            ;;
+        clean|hostenter)
+            # These commands don't take arguments
+            ;;
+    esac
+}
+
 _openc3_cli() {
     local curcontext="$curcontext"
 
@@ -73,7 +231,9 @@ _openc3_cli() {
             ;;
         validate)
             if (( CURRENT == 2 )); then
-                _files -g "*.gem"
+                _alternative \
+                    'gem-files:gem file:_files -g "*.gem"' \
+                    'options: :(--help -h)'
             elif (( CURRENT == 3 )); then
                 _message 'SCOPE (default: DEFAULT)'
             else
@@ -81,18 +241,78 @@ _openc3_cli() {
             fi
             ;;
         load)
+            # Usage: load PLUGIN.gem [SCOPE] [PLUGIN_HASH.json] [force]
+            #    or: load PLUGIN.gem --variables VARS.json [SCOPE] [PLUGIN_HASH.json] [force]
             if (( CURRENT == 2 )); then
-                _files -g "*.gem"
+                # First argument: must be a .gem file
+                _alternative \
+                    'gem-files:gem file:_files -g "*.gem"' \
+                    'gem-description: :_message -r "PLUGIN.gem (required)"'
             elif (( CURRENT == 3 )); then
-                _message 'SCOPE (default: DEFAULT)'
+                # Second argument: SCOPE or --variables
+                # Note: Can be a scope name (default: DEFAULT) or --variables flag
+                local -a scope_options
+                scope_options=(
+                    '--variables:use variables file (or type scope name like DEFAULT)'
+                )
+                _describe 'scope name or --variables' scope_options
             elif (( CURRENT == 4 )); then
-                _files -g "*.json"
-            else
-                _values 'options' '--variables[variables JSON file]' 'force[force install]'
+                # Third argument depends on second
+                if [[ "${words[3]}" == "--variables" ]]; then
+                    # After --variables, expect the variables JSON file
+                    _alternative \
+                        'json-files:variables file:_files -g "*.json"' \
+                        'json-description: :_message "variables JSON file"'
+                else
+                    # After SCOPE, expect plugin hash JSON file (optional)
+                    _alternative \
+                        'json-files:plugin hash file:_files -g "*.json"' \
+                        'json-description: :_message "plugin_hash JSON file (optional)"'
+                fi
+            elif (( CURRENT == 5 )); then
+                if [[ "${words[3]}" == "--variables" ]]; then
+                    # load gem --variables vars.json [SCOPE]
+                    _message 'SCOPE (default: DEFAULT) or force'
+                    return 0
+                else
+                    # load gem scope hash.json [force or --variables]
+                    _message 'force (optional) or --variables <file>'
+                    return 0
+                fi
+            elif (( CURRENT == 6 )); then
+                # Position 6 depends on what came before
+                if [[ "${words[3]}" == "--variables" ]]; then
+                    # load gem --variables vars.json scope [plugin_hash.json]
+                    _alternative \
+                        'json-files:plugin hash file:_files -g "*.json"' \
+                        'json-description: :_message "plugin_hash JSON file (optional)"'
+                elif [[ "${words[5]}" == "--variables" ]]; then
+                    # load gem scope --variables vars.json [plugin_hash.json or force]
+                    _alternative \
+                        'json-files:variables file:_files -g "*.json"' \
+                        'json-description: :_message "variables JSON file"'
+                elif [[ "${words[5]}" == "force" ]]; then
+                    # load gem scope hash.json force (nothing more needed)
+                    return 1
+                else
+                    # load gem scope hash.json [force]
+                    _message 'force (optional)'
+                    return 0
+                fi
+            elif (( CURRENT == 7 )); then
+                # Position 7 - final optional parameters
+                if [[ "${words[*]}" == *"--variables"* ]]; then
+                    if [[ "${words[*]}" != *"force"* ]]; then
+                        _message 'force (optional)'
+                        return 0
+                    fi
+                fi
             fi
             ;;
         list)
-            _message 'SCOPE (default: DEFAULT)'
+            if (( CURRENT == 2 )); then
+                _message 'SCOPE (default: DEFAULT)'
+            fi
             ;;
         unload)
             if (( CURRENT == 2 )); then
@@ -114,39 +334,39 @@ _openc3_cli() {
                     'conversion:generate a conversion (requires TARGET NAME)'
                     'processor:generate a processor (requires TARGET NAME)'
                     'limits_response:generate a limits response (requires TARGET NAME)'
+                    'command_validator:generate a command validator (requires TARGET NAME)'
                     'tool:generate a tool (requires "Tool Name")'
                     'tool_vue:generate a Vue tool (requires "Tool Name")'
                     'tool_angular:generate an Angular tool (requires "Tool Name")'
                     'tool_react:generate a React tool (requires "Tool Name")'
                     'tool_svelte:generate a Svelte tool (requires "Tool Name")'
+                    '--help:show help message'
+                    '-h:show help message'
                 )
                 _describe 'generate types' generate_types
             elif (( CURRENT == 3 )); then
                 # Different generators have different requirements
                 case $gen_type in
-                    conversion|processor|limits_response)
+                    conversion|processor|limits_response|command_validator)
                         # These require TARGET as first arg
                         _message -r 'TARGET (required)'
-                        return 0
                         ;;
                     plugin|target|microservice|widget|tool|tool_vue|tool_angular|tool_react|tool_svelte)
                         # These require NAME as first arg
                         _message -r 'NAME (required)'
-                        return 0
                         ;;
                 esac
             elif (( CURRENT == 4 )); then
                 case $gen_type in
-                    conversion|processor|limits_response)
+                    conversion|processor|limits_response|command_validator)
                         # After TARGET, need NAME
                         _message -r 'NAME (required)'
-                        return 0
                         ;;
                     *)
                         # After NAME, offer language flags
                         if [[ ! " ${words[*]} " =~ " --ruby " ]] && [[ ! " ${words[*]} " =~ " --python " ]]; then
                             local -a options
-                            options=('--ruby:generate Ruby code' '--python:generate Python code')
+                            options=('--ruby:generate Ruby code' '--python:generate Python code' '--help:show help message' '-h:show help message')
                             _describe 'language options (required)' options
                         fi
                         ;;
@@ -163,24 +383,35 @@ _openc3_cli() {
             ;;
         bridge)
             if (( CURRENT == 2 )); then
-                _files
+                # Keep _alternative for files + options - this works correctly
+                _alternative \
+                    'files:bridge file:_files' \
+                    'options: :(--help -h)'
             else
                 _message 'variable=value'
             fi
             ;;
         bridgegem)
             if (( CURRENT == 2 )); then
-                _message 'gem_name'
+                _message 'GEM_NAME'
             else
                 _message 'variable=value'
             fi
             ;;
         bridgesetup)
-            _files
+            if (( CURRENT == 2 )); then
+                # Keep _alternative for files + options - this works correctly
+                _alternative \
+                    'files:output file:_files' \
+                    'options: :(--help -h)'
+            fi
             ;;
         pkginstall|geminstall)
             if (( CURRENT == 2 )); then
-                _files -g "*.gem"
+                # Keep _alternative for files + options - this works correctly
+                _alternative \
+                    'gem-files:gem file:_files -g "*.gem"' \
+                    'options: :(--help -h)'
             else
                 _message 'SCOPE (default: DEFAULT)'
             fi
@@ -211,10 +442,25 @@ _openc3_cli() {
                 redis_commands=(
                     'keys:list all redis keys'
                     'hget:get hash value'
+                    '--help:show help message'
+                    '-h:show help message'
                 )
                 _describe 'redis commands' redis_commands
-            else
-                _message 'REDIS_KEY or HASH_FIELD'
+            elif (( CURRENT == 3 )); then
+                case $words[2] in
+                    hget)
+                        _message 'HASH'
+                        ;;
+                    *)
+                        _message 'REDIS_KEY or HASH_FIELD'
+                        ;;
+                esac
+            elif (( CURRENT == 4 )); then
+                case $words[2] in
+                    hget)
+                        _message 'KEY'
+                        ;;
+                esac
             fi
             ;;
         createqueue)
@@ -225,10 +471,17 @@ _openc3_cli() {
             fi
             ;;
         destroyscope)
-            _message 'SCOPE_NAME'
+            if (( CURRENT == 2 )); then
+                _message 'SCOPE_NAME'
+            fi
             ;;
         runmigrations)
-            _directories
+            if (( CURRENT == 2 )); then
+                # Keep _alternative for directories + options - this works correctly
+                _alternative \
+                    'directories:directory:_directories' \
+                    'options: :(--help -h)'
+            fi
             ;;
         rake)
             if (( CURRENT == 2 )); then
@@ -242,7 +495,14 @@ _openc3_cli() {
                 fi
             fi
             ;;
-        irb|help|removebase|removeenterprise|localinit|initbuckets|rubysloc)
+        removebase|removeenterprise|localinit|initbuckets)
+            if (( CURRENT == 2 )); then
+                local -a options
+                options=('--help:show help message' '-h:show help message')
+                _describe 'options' options
+            fi
+            ;;
+        irb|help|rubysloc)
             # These commands don't have specific completions
             ;;
     esac
@@ -261,6 +521,7 @@ _openc3() {
             local -a commands
             commands=(
                 'cli:run a cli command as the default user'
+                'cliroot:run a cli command as root user'
                 'start:build and run'
                 'stop:stop the containers'
                 'cleanup:REMOVE volumes / data'
@@ -281,10 +542,10 @@ _openc3() {
                         'local[also cleanup local plugin files]' \
                         'force[skip confirmation prompt]'
                     ;;
-                cli)
+                cli|cliroot)
                     # Adjust words array to make it relative to cli subcommand
                     local -a cli_words
-                    cli_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'cli'
+                    cli_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'cli'/'cliroot'
                     local cli_current=$((CURRENT - 2))
 
                     # Save original values
@@ -301,9 +562,45 @@ _openc3() {
                     words=("${save_words[@]}")
                     CURRENT=$save_current
                     ;;
-                util|test)
-                    # These accept variable arguments, provide file completion
-                    _files
+                util)
+                    # Adjust words array to make it relative to util subcommand
+                    local -a util_words
+                    util_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'util'
+                    local util_current=$((CURRENT - 2))
+
+                    # Save original values
+                    local save_words=("${words[@]}")
+                    local save_current=$CURRENT
+
+                    # Set context for util completion
+                    words=("${util_words[@]}")
+                    CURRENT=$util_current
+
+                    _openc3_util
+
+                    # Restore original values
+                    words=("${save_words[@]}")
+                    CURRENT=$save_current
+                    ;;
+                test)
+                    # Adjust words array to make it relative to test subcommand
+                    local -a test_words
+                    test_words=("${words[@]:2}")  # Remove 'openc3.sh' and 'test'
+                    local test_current=$((CURRENT - 2))
+
+                    # Save original values
+                    local save_words=("${words[@]}")
+                    local save_current=$CURRENT
+
+                    # Set context for test completion
+                    words=("${test_words[@]}")
+                    CURRENT=$test_current
+
+                    _openc3_test
+
+                    # Restore original values
+                    words=("${save_words[@]}")
+                    CURRENT=$save_current
                     ;;
                 start|stop|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments

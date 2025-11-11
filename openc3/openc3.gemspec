@@ -46,7 +46,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.9.2.pre.beta0'
+  s.version = '6.9.3.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -92,7 +92,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'redis',     '~> 5.0'
-  s.add_runtime_dependency 'rubyzip',   '~> 2.3'
+  s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
   # faraday includes faraday-net_http as the default adapter

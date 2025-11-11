@@ -67,7 +67,7 @@
             <v-tooltip
               :key="`${item.name}-${isPinned(item.name)}`"
               :open-delay="600"
-              bottom
+              location="bottom"
             >
               <template #activator="{ props }">
                 <v-icon
@@ -98,7 +98,7 @@
           />
         </template>
         <template #footer.prepend>
-          <v-tooltip right close-delay="2000">
+          <v-tooltip location="right" close-delay="2000">
             <template #activator="{ props }">
               <v-icon v-bind="props" class="info-tooltip">
                 mdi-information-variant-circle
@@ -172,7 +172,7 @@
       :config-key="configKey"
       @success="saveConfiguration"
     />
-    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute>
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"

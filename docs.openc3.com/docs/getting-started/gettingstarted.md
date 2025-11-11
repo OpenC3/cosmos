@@ -24,13 +24,17 @@ Welcome to the OpenC3 COSMOS system... Let's get started! This guide is a high l
 
 :::info Browser Version Issue
 
-When you try to load the page and it fails to load, check with the built-in web development tools / DevTools. We have seen some strange things with version of browsers. You can build to a version of browser if you need to by reading about the [browserslist](https://github.com/browserslist/browserslist). A typical failure results in:
+We support the "core browser set" from Baseline's "widely available" target out of the box. You can find the list of browsers included in this set [here](https://web-platform-dx.github.io/web-features/supported-browsers/).
+
+When you try to load the page and it fails to load, check with the built-in web development tools / DevTools for console errors. Out of date or bleeding edge browsers might have compatibility issues with the version of ECMAScript we build for. A typical failure results in an error such as:
 
 ```
-unexpected token ||=
+SyntaxError: Unexpected token '||='
 ```
 
-To fix this make sure your browsers is compliant with the current settings in the [.browserlistrc](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/openc3-tool-base/.browserslistrc) file. You can change this and rebuild the image. Note: This can cause build speeds to increase or decrease.
+Out of date browsers also commonly have silent failures with AnyCable (introduced in COSMOS 6.1.0), meaning that streaming data will never populate - such as in Telemetry Grapher.
+
+We strongly encourage using a supported browser for security reasons, but if you are seeing compatibility issues and you must use a browser that is not in the supported list, you can rebuild our Docker images to target your specific browser. To do this, add a `build.target` field for your browser's range to every `vite.config.js` file in the COSMOS repo. You can find the docs for Vite's `build.target` field [here](https://vite.dev/config/build-options.html#build-target). Note that this is not supported and you may run into other issues.
 
 :::
 

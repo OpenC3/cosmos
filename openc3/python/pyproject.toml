@@ -1,6 +1,6 @@
 [project]
 name = "openc3"
-version = "6.9.2-beta0"
+version = "6.9.3-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = [
   {name = "Support", email = "support@openc3.com"}
@@ -35,8 +35,9 @@ black = "^25.9"
 coverage = "^7.10"
 fakeredis = "^2.31"
 pytest = "^8.3"
-ruff = "^0.13"
+ruff = "^0.14"
 pytest-profiling = "^1.8"
+pylint = "^4.0.2"
 
 [build-system]
 requires = ["poetry-core"]
