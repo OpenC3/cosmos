@@ -42,64 +42,160 @@ else
   export OPENC3_GROUP_ID=0
 fi
 
+# Detect if this is a development (build) environment or runtime environment
+# by checking for compose-build.yaml
+if [ -f "$(dirname -- "$0")/compose-build.yaml" ]; then
+  export OPENC3_DEVEL=1
+else
+  export OPENC3_DEVEL=0
+fi
+
+# Detect if this is enterprise by checking for enterprise-specific services
+if [ -f "$(dirname -- "$0")/compose-build.yaml" ] && grep -q "openc3-enterprise-gem" "$(dirname -- "$0")/compose-build.yaml" 2>/dev/null; then
+  export OPENC3_ENTERPRISE=1
+elif [ -f "$(dirname -- "$0")/compose.yaml" ] && grep -q "openc3-metrics" "$(dirname -- "$0")/compose.yaml" 2>/dev/null; then
+  export OPENC3_ENTERPRISE=1
+else
+  export OPENC3_ENTERPRISE=0
+fi
+
 set -e
 
 usage() {
-  cat >&2 << EOF
-OpenC3 - Command and Control System
+  if [ "$OPENC3_DEVEL" -eq 1 ] && [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 COSMOS - Command and Control System (Enterprise Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  OpenC3 is a command and control system for embedded systems. This script
+  COSMOS is a command and control system for embedded systems. This script
   provides a convenient interface for building, running, testing, and managing
-  OpenC3 in Docker containers.
+  COSMOS in Docker containers.
+
+  This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities.
 
 COMMON COMMANDS:
-  start                 Build and run OpenC3 (equivalent to: build + run)
-                        This is the typical command to get OpenC3 running.
+EOF
+  elif [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 COSMOS - Command and Control System (Development Installation)
+Usage: $1 COMMAND [OPTIONS]
 
-  stop                  Stop all running OpenC3 containers gracefully
+DESCRIPTION:
+  COSMOS is a command and control system for embedded systems. This script
+  provides a convenient interface for building, running, testing, and managing
+  COSMOS in Docker containers.
+
+  This is a DEVELOPMENT installation with source code and build capabilities.
+
+COMMON COMMANDS:
+EOF
+  elif [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    cat >&2 << EOF
+OpenC3 COSMOS - Command and Control System (Enterprise Runtime-Only Installation)
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  COSMOS is a command and control system for embedded systems. This script
+  provides a convenient interface for running, testing, and managing
+  COSMOS in Docker containers.
+
+  This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images.
+
+COMMON COMMANDS:
+EOF
+  else
+    cat >&2 << EOF
+OpenC3 COSMOS - Command and Control System (Runtime-Only Installation)
+Usage: $1 COMMAND [OPTIONS]
+
+DESCRIPTION:
+  COSMOS is a command and control system for embedded systems. This script
+  provides a convenient interface for running, testing, and managing
+  COSMOS in Docker containers.
+
+  This is a RUNTIME-ONLY installation using pre-built images.
+
+COMMON COMMANDS:
+EOF
+  fi
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
+  start                 Build and run COSMOS (equivalent to: build + run)
+                        This is the typical command to get COSMOS running.
+
+EOF
+  else
+    cat >&2 << EOF
+  run                   Start COSMOS containers
+                        Access at: http://localhost:2900
+
+EOF
+  fi
+  cat >&2 << EOF
+  stop                  Stop all running COSMOS containers gracefully
                         Allows containers to shutdown cleanly.
 
-  cli [COMMAND]         Run OpenC3 CLI commands in a container
+  cli [COMMAND]         Run COSMOS CLI commands in a container
                         Use 'cli help' for available commands
                         Use 'cli --help' for Docker wrapper info
                         Examples:
                           $1 cli generate plugin MyPlugin
                           $1 cli validate myplugin.gem
 
-  cliroot [COMMAND]     Run OpenC3 CLI commands as root user
+  cliroot [COMMAND]     Run COSMOS CLI commands as root user
                         Same as 'cli' but with root privileges
 
+EOF
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
 DEVELOPMENT COMMANDS:
-  build                 Build all OpenC3 Docker containers from source
+  build                 Build all COSMOS Docker containers from source
                         Required before first run or after code changes.
 
-  run                   Start OpenC3 containers in detached mode
+  run                   Start COSMOS containers in detached mode
                         Access at: http://localhost:2900
 
+EOF
+  fi
+  cat >&2 << EOF
   test [COMMAND]        Run test suites (rspec, playwright, hash)
                         Use '$1 test' to see available test commands.
 
   util [COMMAND]        Utility commands (encode, hash, save, load, etc.)
                         Use '$1 util' to see available utilities.
 
+EOF
+  if [ "$OPENC3_DEVEL" -eq 0 ]; then
+    cat >&2 << EOF
+  upgrade               Upgrade COSMOS to latest version
+                        Downloads and installs latest release.
+
+EOF
+  fi
+  cat >&2 << EOF
 CLEANUP:
   cleanup [OPTIONS]     Remove Docker volumes and data
-                        WARNING: This deletes all OpenC3 data!
+                        WARNING: This deletes all COSMOS data!
                         Options:
                           local  - Also remove local plugin files
                           force  - Skip confirmation prompt
 
+EOF
+  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    cat >&2 << EOF
 REDHAT:
   start-ubi             Build and run with Red Hat UBI images
   build-ubi             Build containers using UBI base images
   run-ubi               Run containers with UBI images
                         For air-gapped or government environments.
 
+EOF
+  fi
+  cat >&2 << EOF
 GETTING STARTED:
   1. First time setup:     $1 start
-  2. Access OpenC3:        http://localhost:2900
+  2. Access COSMOS:        http://localhost:2900
   3. Stop when done:       $1 stop
   4. Remove everything:    $1 cleanup
 
@@ -134,7 +230,7 @@ case $1 in
     if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cli [COMMAND] [OPTIONS]"
       echo ""
-      echo "Run OpenC3 CLI commands inside a Docker container as the default user."
+      echo "Run COSMOS CLI commands inside a Docker container as the default user."
       echo ""
       echo "What this wrapper does:"
       echo "  - Starts a temporary Docker container (removed after use)"
@@ -144,7 +240,7 @@ case $1 in
       echo ""
       echo "Prerequisites:"
       echo "  - Containers must be built first: $0 build"
-      echo "  - .env file must exist in the OpenC3 directory"
+      echo "  - .env file must exist in the COSMOS directory"
       echo ""
       echo "Common commands:"
       echo "  $0 cli help                           Show CLI command help"
@@ -170,14 +266,18 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    fi
     set +a
     ;;
   cliroot )
     if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cliroot [COMMAND] [OPTIONS]"
       echo ""
-      echo "Run OpenC3 CLI commands inside a Docker container as root user."
+      echo "Run COSMOS CLI commands inside a Docker container as root user."
       echo ""
       echo "This is the same as 'cli' but runs as root instead of the default user."
       echo "Use this when you need elevated privileges inside the container."
@@ -191,7 +291,7 @@ case $1 in
       echo ""
       echo "Prerequisites:"
       echo "  - Containers must be built first: $0 build"
-      echo "  - .env file must exist in the OpenC3 directory"
+      echo "  - .env file must exist in the COSMOS directory"
       echo ""
       echo "Common commands:"
       echo "  $0 cliroot help                       Show CLI command help"
@@ -210,53 +310,94 @@ case $1 in
     . "$(dirname -- "$0")/.env"
     # Same as cli but run as root user
     args=`echo $@ | { read _ args; echo $args; }`
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
+    fi
     set +a
     ;;
   start )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 start"
-      echo ""
-      echo "Build and run OpenC3 containers."
-      echo ""
-      echo "This command:"
-      echo "  1. Builds all OpenC3 containers (equivalent to 'openc3.sh build')"
-      echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
-      echo ""
-      echo "Options:"
-      echo "  -h, --help    Show this help message"
+      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+        echo "Usage: $0 start"
+        echo ""
+        echo "Build and run COSMOS containers."
+        echo ""
+        echo "This command:"
+        echo "  1. Builds all COSMOS containers (equivalent to 'openc3.sh build')"
+        echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      else
+        echo "Usage: $0 start"
+        echo ""
+        echo "Start COSMOS containers."
+        echo ""
+        echo "This is an alias for 'run' command in runtime-only installations."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      fi
       exit 0
     fi
-    "$0" build
-    "$0" run
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      "$0" build
+      "$0" run
+    else
+      "$0" run
+    fi
     ;;
   start-ubi )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 start-ubi"
-      echo ""
-      echo "Build and run OpenC3 UBI containers."
-      echo ""
-      echo "This command:"
-      echo "  1. Builds all OpenC3 UBI containers (equivalent to 'openc3.sh build-ubi')"
-      echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
-      echo ""
-      echo "Options:"
-      echo "  -h, --help    Show this help message"
+      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+        echo "Usage: $0 start-ubi"
+        echo ""
+        echo "Build and run COSMOS UBI containers."
+        echo ""
+        echo "This command:"
+        echo "  1. Builds all COSMOS UBI containers (equivalent to 'openc3.sh build-ubi')"
+        echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      else
+        echo "Usage: $0 start-ubi"
+        echo ""
+        echo "Run all COSMOS UBI containers in detached mode."
+        echo ""
+        echo "This is an alias for 'run-ubi' command."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+      fi
       exit 0
     fi
-    "$0" build-ubi
-    "$0" run-ubi
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      "$0" build-ubi
+      "$0" run-ubi
+    else
+      "$0" run-ubi
+    fi
     ;;
   stop )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 stop"
       echo ""
-      echo "Stop all OpenC3 containers gracefully."
+      echo "Stop all COSMOS containers gracefully."
       echo ""
-      echo "This command:"
-      echo "  1. Stops operator, script-runner-api, and cmd-tlm-api containers"
-      echo "  2. Waits 5 seconds"
-      echo "  3. Runs docker compose down with 30 second timeout"
+      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+        echo "This command:"
+        echo "  1. Stops operator, script-runner-api, cmd-tlm-api, and metrics containers"
+        echo "  2. Waits 5 seconds"
+        echo "  3. Runs docker compose down with 30 second timeout"
+      else
+        echo "This command:"
+        echo "  1. Stops operator, script-runner-api, and cmd-tlm-api containers"
+        echo "  2. Waits 5 seconds"
+        echo "  3. Runs docker compose down with 30 second timeout"
+      fi
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -265,6 +406,9 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
+    fi
     sleep 5
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
@@ -272,7 +416,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 cleanup [local] [force]"
       echo ""
-      echo "Remove all OpenC3 docker volumes and data."
+      echo "Remove all COSMOS docker volumes and data."
       echo ""
       echo "WARNING: This is a destructive operation that removes ALL COSMOS data!"
       echo ""
@@ -311,17 +455,29 @@ case $1 in
     fi
     ;;
   build )
+    if [ "$OPENC3_DEVEL" -eq 0 ]; then
+      echo "Error: 'build' command is only available in development environments"
+      echo "This appears to be a runtime-only installation."
+      exit 1
+    fi
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build"
       echo ""
-      echo "Build all OpenC3 docker containers."
+      echo "Build all COSMOS docker containers."
       echo ""
-      echo "This command:"
-      echo "  1. Runs setup to download certificates"
-      echo "  2. Builds openc3-ruby base image"
-      echo "  3. Builds openc3-base image"
-      echo "  4. Builds openc3-node image"
-      echo "  5. Builds all remaining service containers"
+      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+        echo "This command:"
+        echo "  1. Runs setup to download certificates"
+        echo "  2. Builds openc3-enterprise-gem image"
+        echo "  3. Builds all remaining service containers"
+      else
+        echo "This command:"
+        echo "  1. Runs setup to download certificates"
+        echo "  2. Builds openc3-ruby base image"
+        echo "  3. Builds openc3-base image"
+        echo "  4. Builds openc3-node image"
+        echo "  5. Builds all remaining service containers"
+      fi
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -333,16 +489,25 @@ case $1 in
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-enterprise-gem
+    else
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+    fi
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
+    if [ "$OPENC3_DEVEL" -eq 0 ]; then
+      echo "Error: 'build-ubi' command is only available in development environments"
+      echo "This appears to be a runtime-only installation."
+      exit 1
+    fi
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 build-ubi"
       echo ""
-      echo "Build all OpenC3 UBI (Universal Base Image) containers."
+      echo "Build all COSMOS UBI (Universal Base Image) containers."
       echo ""
       echo "This is used for enterprise deployments requiring Red Hat UBI base images,"
       echo "suitable for air-gapped and government environments."
@@ -386,7 +551,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 run"
       echo ""
-      echo "Run all OpenC3 containers in detached mode."
+      echo "Run all COSMOS containers in detached mode."
       echo ""
       echo "Containers will start in the background using docker compose up -d."
       echo ""
@@ -395,8 +560,8 @@ case $1 in
       echo "  docker compose logs -f              # Follow all logs"
       echo "  docker compose logs -f SERVICE      # Follow specific service logs"
       echo ""
-      echo "Access OpenC3:"
-      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo "Access COSMOS:"
+      echo "  http://localhost:2900               # COSMOS web interface"
       echo ""
       echo "Common services:"
       echo "  openc3-operator                     Main orchestration service"
@@ -416,7 +581,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
       echo "Usage: $0 run-ubi"
       echo ""
-      echo "Run all OpenC3 UBI (Universal Base Image) containers in detached mode."
+      echo "Run all COSMOS UBI (Universal Base Image) containers in detached mode."
       echo ""
       echo "This uses UBI-based container images and sets UBI-specific configurations:"
       echo "  - Image suffix: -ubi"
@@ -429,8 +594,8 @@ case $1 in
       echo "  docker compose logs -f              # Follow all logs"
       echo "  docker compose logs -f SERVICE      # Follow specific service logs"
       echo ""
-      echo "Access OpenC3:"
-      echo "  http://localhost:2900               # OpenC3 web interface"
+      echo "Access COSMOS:"
+      echo "  http://localhost:2900               # COSMOS web interface"
       echo ""
       echo "Common services:"
       echo "  openc3-operator                     Main orchestration service"
@@ -451,7 +616,7 @@ case $1 in
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
       echo "Usage: $0 test COMMAND [OPTIONS]"
       echo ""
-      echo "Test OpenC3. This builds OpenC3 and runs the specified test suite."
+      echo "Test COSMOS. This builds COSMOS and runs the specified test suite."
       echo ""
       echo "Available commands:"
       echo "  rspec                       Run RSpec tests against Ruby code"
@@ -481,11 +646,19 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
+  upgrade )
+    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+      echo "Error: 'upgrade' command is only available in runtime environments"
+      echo "This appears to be a development installation."
+      exit 1
+    fi
+    "$(find_script openc3_upgrade.sh)" "${@:2}"
+    ;;
   util )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
       echo "Usage: $0 util COMMAND [OPTIONS]"
       echo ""
-      echo "Various OpenC3 utility commands."
+      echo "Various COSMOS utility commands."
       echo ""
       echo "Available commands:"
       echo "  encode STRING               Encode a string to base64"
