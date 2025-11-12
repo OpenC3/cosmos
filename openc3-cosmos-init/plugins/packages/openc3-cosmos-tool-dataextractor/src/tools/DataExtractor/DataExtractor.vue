@@ -382,7 +382,7 @@ export default {
       uniqueOnly: false,
       keyMap: {},
       modes: ['DECOM', 'REDUCED_MINUTE', 'REDUCED_HOUR', 'REDUCED_DAY'],
-      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
+      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED'],
       reducedTypes: ['SAMPLE', 'MIN', 'MAX', 'AVG', 'STDDEV'],
       editAll: false,
       allItemMode: 'DECOM',

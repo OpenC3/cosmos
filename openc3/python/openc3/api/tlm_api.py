@@ -38,7 +38,7 @@ WHITELIST.extend(
         "tlm",
         "tlm_raw",
         "tlm_formatted",
-        "tlm_with_units",
+        "tlm_with_units", # DEPRECATED
         "set_tlm",
         "inject_tlm",
         "override_tlm",
@@ -74,7 +74,7 @@ WHITELIST.extend(
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 # @return [Object] The telemetry value formatted as requested
 def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(args, "tlm", cache_timeout=cache_timeout, scope=scope)
@@ -90,8 +90,9 @@ def tlm_formatted(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
+# DEPRECATED
 def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    return tlm(*args, type="WITH_UNITS", cache_timeout=cache_timeout, scope=scope)
+    return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
 # Set a telemetry item in the current value table.
@@ -108,7 +109,7 @@ def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", cache_timeout=cache_timeout, scope=scope)
     authorize(
@@ -125,7 +126,7 @@ def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
 # @param target_name [String] Target name of the packet
 # @param packet_name [String] Packet name of the packet
 # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
     authorize(
         permission="tlm_set",
@@ -181,7 +182,7 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
 # @param args The args must either be a string followed by a value or
 #   three strings followed by a value (see the calling style in the
 #   description).
-# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
+# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
     authorize(
@@ -210,7 +211,7 @@ def get_overrides(scope=OPENC3_SCOPE):
 #
 # @param args The args must either be a string or three strings
 #   (see the calling style in the description).
-# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
+# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 #   Also takes :ALL which means to normalize all telemetry types
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
@@ -247,7 +248,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
         target_name (str) Name of the target
         packet_name (str) Name of the packet
         stale_time (int) Time in seconds from Time.now that packet will be marked stale
-        type (str) Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+        type (str) Types returned, :RAW, :CONVERTED (default), :FORMATTED
 
     Return:
         (List[String, Object, Symbol|None]) Returns an Array consisting of
@@ -307,17 +308,8 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
                 value_type = 'RAW'
 
             # Determine the best available value type based on item configuration
-            if value_type == 'WITH_UNITS':
-                if item_config.get('units'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'WITH_UNITS'])
-                elif item_config.get('format_string'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'FORMATTED'])
-                elif item_config.get('read_conversion') or item_config.get('states'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
-                else:
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
-            elif value_type == 'FORMATTED':
-                if item_config.get('format_string'):
+            if value_type == 'FORMATTED' or value_type == 'WITH_UNITS':
+                if item_config.get('format_string') or item_config.get('units'):
                     result_item = '__'.join([target_name, orig_packet_name, item_name, 'FORMATTED'])
                 elif item_config.get('read_conversion') or item_config.get('states'):
                     result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
@@ -630,10 +622,8 @@ def _validate_tlm_type(tlm_type):
             return ""
         case "CONVERTED":
             return "C"
-        case "FORMATTED":
+        case "FORMATTED" | "WITH_UNITS":
             return "F"
-        case "WITH_UNITS":
-            return "U"
     return None
 
 

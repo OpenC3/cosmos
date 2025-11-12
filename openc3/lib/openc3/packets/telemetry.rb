@@ -109,9 +109,10 @@ module OpenC3
       # @param item_name (see #packet_and_item)
       # @param value_type [Symbol] How to convert the item before returning.
       #   Must be one of {Packet::VALUE_TYPES}
-      # @return The value. :FORMATTED and :WITH_UNITS values are always returned
-      #   as Strings. :RAW values will match their data_type. :CONVERTED values
-      #   can be any type.
+      # @return The value
+      #   :FORMATTED values are always returned as Strings
+      #   :RAW values will match their data_type
+      #   :CONVERTED values can be any type
       def value(target_name, packet_name, item_name, value_type = :CONVERTED)
         packet, _ = packet_and_item(target_name, packet_name, item_name) # Handles LATEST
         return packet.read(item_name, value_type)

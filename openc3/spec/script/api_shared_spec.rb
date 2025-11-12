@@ -73,7 +73,7 @@ module OpenC3
           when :CONVERTED
             10
           when :FORMATTED
-            '10.000'
+            '10.000 C'
           when :WITH_UNITS
             '10.000 C'
           end
@@ -190,8 +190,8 @@ module OpenC3
         capture_io do |stdout|
           check_raw("INST HEALTH_STATUS TEMP1 == 1")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success/)
-          check_formatted("INST HEALTH_STATUS TEMP1 == '10.000'")
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == '10.000' success/)
+          check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 C'")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success/)
           check_with_units("INST HEALTH_STATUS TEMP1 == '10.000 C'")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success/)
         end

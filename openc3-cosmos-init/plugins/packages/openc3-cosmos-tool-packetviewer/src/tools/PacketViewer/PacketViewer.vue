@@ -198,7 +198,6 @@ import { ValueWidget } from '@openc3/vue-common/widgets'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
-  WITH_UNITS: 'Formatted Items with Units',
   FORMATTED: 'Formatted Items',
   CONVERTED: 'Converted Items',
   RAW: 'Raw Items',
@@ -240,7 +239,7 @@ export default {
       counter: 0,
       targetName: '',
       packetName: '',
-      valueType: 'WITH_UNITS',
+      valueType: 'FORMATTED',
       refreshInterval: 1000,
       staleLimit: 30,
       rows: [],
@@ -323,10 +322,6 @@ export default {
                 this.valueType = value
               },
               choices: [
-                {
-                  label: valueTypeToRadioGroup['WITH_UNITS'],
-                  value: 'WITH_UNITS',
-                },
                 {
                   label: valueTypeToRadioGroup['FORMATTED'],
                   value: 'FORMATTED',
@@ -617,7 +612,7 @@ export default {
       this.staleLimit = 30
       this.showIgnored = false
       this.derivedLast = false
-      this.valueType = 'WITH_UNITS'
+      this.valueType = 'FORMATTED'
       this.itemsPerPage = 20
       this.pinnedItems = []
     },
@@ -630,7 +625,7 @@ export default {
       this.menus[1].items[0].checked = this.showIgnored
       this.derivedLast = config.derivedLast || false
       this.menus[1].items[1].checked = this.derivedLast
-      this.valueType = config.valueType || 'WITH_UNITS'
+      this.valueType = config.valueType || 'FORMATTED'
       this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
       this.pinnedItems = config.pinnedItems || []

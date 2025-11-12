@@ -33,7 +33,7 @@ module OpenC3
     @@conn = nil
     @@conn_mutex = Mutex.new
 
-    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
+    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
     def self.build_json_from_packet(packet)
       packet.decom
     end
@@ -80,16 +80,13 @@ module OpenC3
     def self.set_item(target_name, packet_name, item_name, value, type:, queued: false, scope: $openc3_scope)
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: nil, scope: scope)
       case type
-      when :WITH_UNITS
-        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
       when :CONVERTED
         hash["#{item_name}__C"] = value
       when :RAW
         hash[item_name] = value
       when :ALL
-        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
         hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
         hash["#{item_name}__C"] = value
         hash[item_name] = value
@@ -143,9 +140,7 @@ module OpenC3
         # NOTE: Semicolon added as it appears invalid
         item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
         case value_type
-        when 'WITH_UNITS'
-          names << "\"T#{index}.#{item_name}__U\""
-        when 'FORMATTED'
+        when 'FORMATTED', 'WITH_UNITS'
           names << "\"T#{index}.#{item_name}__F\""
         when 'CONVERTED'
           names << "\"T#{index}.#{item_name}__C\""
@@ -318,9 +313,7 @@ module OpenC3
             item_name, value_type_key = key.split('__')
             item['item_name'] = item_name
             case value_type_key
-            when 'U'
-              item['value_type'] = 'WITH_UNITS'
-            when 'F'
+            when 'F', 'U'
               item['value_type'] = 'FORMATTED'
             when 'C'
               item['value_type'] = 'CONVERTED'
@@ -346,15 +339,12 @@ module OpenC3
         hash[item_name] = value
         hash["#{item_name}__C"] = value
         hash["#{item_name}__F"] = value.to_s
-        hash["#{item_name}__U"] = value.to_s
       when :RAW
         hash[item_name] = value
       when :CONVERTED
         hash["#{item_name}__C"] = value
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # Always a String
-      when :WITH_UNITS
-        hash["#{item_name}__U"] = value.to_s # Always a String
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
@@ -379,10 +369,8 @@ module OpenC3
         hash.delete(item_name)
       when :CONVERTED
         hash.delete("#{item_name}__C")
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash.delete("#{item_name}__F")
-      when :WITH_UNITS
-        hash.delete("#{item_name}__U")
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
@@ -424,10 +412,7 @@ module OpenC3
       override_key = item_name
       types = []
       case type
-      when :WITH_UNITS
-        types = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
-        override_key = "#{item_name}__U"
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         types = ["#{item_name}__F", "#{item_name}__C", item_name]
         override_key = "#{item_name}__F"
       when :CONVERTED
@@ -477,16 +462,14 @@ module OpenC3
       end
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-      # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+      # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value
       case value_type.to_s
       when 'RAW'
         keys = [item_name]
       when 'CONVERTED'
         keys = ["#{item_name}__C", item_name]
-      when 'FORMATTED'
+      when 'FORMATTED', 'WITH_UNITS'
         keys = ["#{item_name}__F", "#{item_name}__C", item_name]
-      when 'WITH_UNITS'
-        keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
       else
         raise "Unknown value type '#{value_type}'"
       end

@@ -451,12 +451,12 @@ module OpenC3
       it "complains about unknown value_type" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
-        expect { @p.read("ITEM", :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.read("ITEM", 'MINE', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.read_item(i, :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.read_item(i, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
+        expect { @p.read("ITEM", :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read("ITEM", 'MINE', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read_item(i, :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.read_item(i, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED or :FORMATTED")
         buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
-        expect { @p.read("ITEM", buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS/)
+        expect { @p.read("ITEM", buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED or :FORMATTED/)
       end
 
       it "reads the RAW value" do
@@ -607,7 +607,7 @@ module OpenC3
         i = @p.get_item("ITEM2")
         i.units = "V"
         i.read_conversion = GenericConversion.new("[1,2,3,4,5]")
-        expect(@p.read("ITEM2", :FORMATTED, "")).to eql ["1", "2", "3", "4", "5"]
+        expect(@p.read("ITEM2", :FORMATTED, "")).to eql ["1 V", "2 V", "3 V", "4 V", "5 V"]
         expect(@p.read("ITEM2", :WITH_UNITS, "")).to eql ["1 V", "2 V", "3 V", "4 V", "5 V"]
       end
 
@@ -657,8 +657,8 @@ module OpenC3
           i.states = { "TRUE" => 1, "FALSE" => 0 }
           i.units = "V"
           i.read_conversion = GenericConversion.new("3")
-          expect(@p.read("ITEM", :FORMATTED, "")).to eql "0x3"
-          expect(@p.read_item(i, :FORMATTED, "")).to eql "0x3"
+          expect(@p.read("ITEM", :FORMATTED, "")).to eql "0x3 V"
+          expect(@p.read_item(i, :FORMATTED, "")).to eql "0x3 V"
         end
 
         it "reads the WITH_UNITS value" do
@@ -683,12 +683,12 @@ module OpenC3
       it "complains about unknown value_type" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
-        expect { @p.write("ITEM", 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.write("ITEM", 0, 'MINE') }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.write_item(i, 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
-        expect { @p.write_item(i, 0, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
+        expect { @p.write("ITEM", 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write("ITEM", 0, 'MINE') }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write_item(i, 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED or :FORMATTED")
+        expect { @p.write_item(i, 0, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') }.to raise_error(ArgumentError, "Unknown value type 'ABCDEFGHIJ...', must be :RAW, :CONVERTED or :FORMATTED")
         buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
-        expect { @p.write("ITEM", 0x01020304, buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS/)
+        expect { @p.write("ITEM", 0x01020304, buf) }.to raise_error(ArgumentError, /Unknown value type '.*', must be :RAW, :CONVERTED or :FORMATTED/)
       end
 
       it "writes the RAW value" do
@@ -1687,8 +1687,7 @@ module OpenC3
         vals = p.decom
         expect(vals['TEST1']).to eql [1, 2]
         expect(vals['TEST1__C']).to eql [2, 4]
-        expect(vals['TEST1__F']).to eql ['0x2', '0x4']
-        expect(vals['TEST1__U']).to eql ['0x2 C', '0x4 C']
+        expect(vals['TEST1__F']).to eql ['0x2 C', '0x4 C']
       end
 
       it "creates decommutated block data" do
@@ -1726,15 +1725,10 @@ module OpenC3
         expect(vals['TEST3__C']).to eql 0x02030405
         expect(vals['TEST4__C']).to eql nil
 
-        expect(vals['TEST1__F']).to eql ['0x1', '0x2']
+        expect(vals['TEST1__F']).to eql ['0x1 C', '0x2 C']
         expect(vals['TEST2__F']).to eql nil
         expect(vals['TEST3__F']).to eql nil
         expect(vals['TEST4__F']).to eql nil
-
-        expect(vals['TEST1__U']).to eql ['0x1 C', '0x2 C']
-        expect(vals['TEST2__U']).to eql nil
-        expect(vals['TEST3__U']).to eql nil
-        expect(vals['TEST4__U']).to eql nil
 
         expect(vals['TEST3__L']).to eql :RED
 
@@ -1751,15 +1745,10 @@ module OpenC3
         expect(vals['TEST3__C']).to eql 52
         expect(vals['TEST4__C']).to eql nil
 
-        expect(vals['TEST1__F']).to eql ['0x1', '0x2']
+        expect(vals['TEST1__F']).to eql ['0x1 C', '0x2 C']
         expect(vals['TEST2__F']).to eql nil
         expect(vals['TEST3__F']).to eql nil
         expect(vals['TEST4__F']).to eql nil
-
-        expect(vals['TEST1__U']).to eql ['0x1 C', '0x2 C']
-        expect(vals['TEST2__U']).to eql nil
-        expect(vals['TEST3__U']).to eql nil
-        expect(vals['TEST4__U']).to eql nil
 
         expect(vals['TEST3__L']).to eql :RED
       end

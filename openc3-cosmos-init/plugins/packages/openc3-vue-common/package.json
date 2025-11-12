@@ -90,8 +90,8 @@
     "vuex": "4.1.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "5.2.3",
+    "@vitejs/plugin-vue": "6.0.1",
     "prettier": "3.6.2",
-    "vite": "6.4.1"
+    "vite": "7.2.1"
   }
 }

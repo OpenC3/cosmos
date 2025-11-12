@@ -114,7 +114,7 @@ module OpenC3
     attr_accessor :restricted
 
     # Valid format types
-    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
+    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Creates a new packet by initializing the attributes.
@@ -595,9 +595,10 @@ module OpenC3
     #   Must be one of {VALUE_TYPES}
     # @param buffer (see Structure#read_item)
     # @param given_raw Given raw value to optimize
-    # @return The value. :FORMATTED and :WITH_UNITS values are always returned
-    #   as Strings. :RAW values will match their data_type. :CONVERTED values
-    #   can be any type.
+    # @return The value
+    #   :FORMATTED values are always returned as Strings
+    #   :RAW values will match their data_type
+    #   :CONVERTED values can be any type
     def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
       if given_raw
         # Must clone this since value is returned
@@ -703,7 +704,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED or :FORMATTED"
       end
       return value
     end
@@ -773,7 +774,7 @@ module OpenC3
           value_type = value_type.simple_formatted unless value_type.is_printable?
           value_type += '...'
         end
-        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED or :FORMATTED"
       end
       if @read_conversion_cache
         synchronize() do
@@ -1287,8 +1288,7 @@ module OpenC3
       @sorted_items.each do |item|
         given_raw = json_hash[item.name]
         json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
-        json_hash["#{item.name}__U"] = read_item(item, :WITH_UNITS, @buffer, given_raw) if item.units
+        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
         limits_state = item.limits.state
         json_hash["#{item.name}__L"] = limits_state if limits_state
       end
@@ -1451,8 +1451,8 @@ module OpenC3
         else
           value = value.to_s
         end
+        value << ' ' << item.units if item.units
       end
-      value << ' ' << item.units if value_type == :WITH_UNITS and item.units
       value
     end
 
