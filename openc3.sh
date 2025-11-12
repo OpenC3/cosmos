@@ -253,14 +253,18 @@ case $1 in
       echo ""
       echo "Note: Use 'cliroot' instead of 'cli' to run as root user."
       echo ""
+      echo "Environment variables:"
+      echo "  ENV_FILE          Path to environment file (default: .env)"
+      echo ""
       echo "Options:"
       echo "  -h, --help        Show this help message"
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the .env file to setup environment variables
+    # Source the environment file to setup environment variables
+    # Use ENV_FILE if set, otherwise default to .env
     set -a
-    . "$(dirname -- "$0")/.env"
+    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
     # Start (and remove when done --rm) the openc3-cosmos-cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
@@ -300,14 +304,18 @@ case $1 in
       echo ""
       echo "For detailed CLI command help, run: $0 cliroot help"
       echo ""
+      echo "Environment variables:"
+      echo "  ENV_FILE          Path to environment file (default: .env)"
+      echo ""
       echo "Options:"
       echo "  -h, --help        Show this help message"
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the .env file to setup environment variables
+    # Source the environment file to setup environment variables
+    # Use ENV_FILE if set, otherwise default to .env
     set -a
-    . "$(dirname -- "$0")/.env"
+    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
     # Same as cli but run as root user
     args=`echo $@ | { read _ args; echo $args; }`
     if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
@@ -505,14 +513,18 @@ case $1 in
       exit 1
     fi
     if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      echo "Usage: $0 build-ubi"
+      echo "Usage: $0 build-ubi [IMAGE_NAME...]"
       echo ""
-      echo "Build all COSMOS UBI (Universal Base Image) containers."
+      echo "Build COSMOS UBI (Universal Base Image) containers."
       echo ""
       echo "This is used for enterprise deployments requiring Red Hat UBI base images,"
       echo "suitable for air-gapped and government environments."
       echo ""
-      echo "Required environment variables (set in .env file):"
+      echo "Arguments:"
+      echo "  IMAGE_NAME    One or more image names to build (optional)"
+      echo "                If no images are specified, all images will be built"
+      echo ""
+      echo "Required environment variables (set in env file):"
       echo "  OPENC3_UBI_REGISTRY      UBI registry URL"
       echo "  OPENC3_UBI_IMAGE         UBI image name"
       echo "  OPENC3_UBI_TAG           UBI image tag"
@@ -521,15 +533,21 @@ case $1 in
       echo "  OPENC3_TAG               Tag for built images"
       echo ""
       echo "Optional environment variables:"
+      echo "  ENV_FILE                 Path to environment file (default: .env)"
       echo "  RUBYGEMS_URL             RubyGems mirror URL (for air-gapped)"
       echo "  PYPI_URL                 PyPI mirror URL (for air-gapped)"
       echo "  NPM_URL                  NPM registry URL (for air-gapped)"
       echo ""
       echo "This command:"
-      echo "  1. Sources .env file for configuration"
+      echo "  1. Sources environment file for configuration"
       echo "  2. Copies CA certificates if available"
       echo "  3. Runs openc3_setup.sh"
-      echo "  4. Builds all UBI-based containers"
+      echo "  4. Builds UBI-based containers"
+      echo ""
+      echo "Examples:"
+      echo "  $0 build-ubi                              # Build all images"
+      echo "  $0 build-ubi openc3-ruby-ubi              # Build one image"
+      echo "  ENV_FILE=.env.prod $0 build-ubi           # Use different env file"
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -538,13 +556,14 @@ case $1 in
     # Change to cosmos directory since scripts use relative paths
     cd "$(dirname -- "$0")"
     set -a
-    . "$(dirname -- "$0")/.env"
+    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
     if test -f /etc/ssl/certs/ca-bundle.crt
     then
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
     fi
     "$(find_script openc3_setup.sh)"
-    "$(find_script openc3_build_ubi.sh)"
+    # Pass through any additional arguments (image names) to openc3_build_ubi.sh
+    "$(find_script openc3_build_ubi.sh)" "${@:2}"
     set +a
     ;;
   run )
@@ -674,12 +693,15 @@ case $1 in
       echo ""
       echo "Run '$0 util COMMAND --help' for detailed help on each command."
       echo ""
+      echo "Environment variables:"
+      echo "  ENV_FILE                    Path to environment file (default: .env)"
+      echo ""
       echo "Options:"
       echo "  -h, --help                  Show this help message"
       exit 0
     fi
     set -a
-    . "$(dirname -- "$0")/.env"
+    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
     "$(find_script openc3_util.sh)" "${@:2}"
     set +a
     ;;
