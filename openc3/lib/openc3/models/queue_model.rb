@@ -20,6 +20,7 @@ require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/logger'
+require 'openc3/io/json_rpc'
 
 module OpenC3
   class QueueError < StandardError; end
@@ -44,36 +45,6 @@ module OpenC3
     end
     # END NOTE
 
-    # Convert cmd_params hash to JSON-safe format
-    # Base64 encodes binary strings that can't be safely represented in UTF-8
-    # @param params [Hash] Hash of command parameters
-    # @return [Hash] Hash with binary strings converted to base64-encoded format
-    def self.convert_params_to_json_safe(params)
-      safe_params = {}
-      (params || {}).each do |key, value|
-        if value.is_a?(String)
-          # Try to convert to UTF-8. If it fails, it's binary data that needs base64 encoding
-          begin
-            utf8_value = value.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
-            # If the conversion changed the string, it contained invalid UTF-8, so base64 encode it
-            if utf8_value != value || !value.valid_encoding?
-              safe_params[key] = { '__base64__' => true, 'data' => [value].pack('m0') }
-            else
-              safe_params[key] = value
-            end
-          rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-            # Failed to convert - definitely binary, base64 encode it
-            safe_params[key] = { '__base64__' => true, 'data' => [value].pack('m0') }
-          end
-        elsif value.respond_to?(:as_json)
-          safe_params[key] = value.as_json
-        else
-          safe_params[key] = value
-        end
-      end
-      safe_params
-    end
-
     def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, username:, scope:)
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
@@ -92,7 +63,7 @@ module OpenC3
           # New format: store target_name, cmd_name, and cmd_params separately
           command_data[:target_name] = target_name
           command_data[:cmd_name] = cmd_name
-          command_data[:cmd_params] = convert_params_to_json_safe(cmd_params)
+          command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
         elsif command
           # Legacy format: store command string for backwards compatibility
           command_data[:value] = command
@@ -151,7 +122,12 @@ module OpenC3
 
     def insert_command(id, command_data)
       if @state == 'DISABLE'
-        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_data['value']}' not queued."
+        if command_data['value']
+          command_name = command_data['value']
+        else
+          command_name = "#{command_data['target_name']} #{command_data['cmd_name']}"
+        end
+        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_name}' not queued."
       end
 
       unless id
@@ -164,14 +140,10 @@ module OpenC3
       end
 
       # Convert cmd_params values to JSON-safe format if present
-      if command_data['cmd_params'] || command_data[:cmd_params]
-        safe_data = command_data.dup
-        params_key = command_data.key?('cmd_params') ? 'cmd_params' : :cmd_params
-        safe_data[params_key] = self.class.convert_params_to_json_safe(command_data[params_key])
-        Store.zadd("#{@scope}:#{@name}", id, safe_data.to_json)
-      else
-        Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
+      if command_data['cmd_params']
+        command_data['cmd_params'] = JSON.generate(command_data['cmd_params'].as_json, allow_nan: true)
       end
+      Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
 
@@ -218,7 +190,7 @@ module OpenC3
         else
           score = result[0][1]
           Store.zremrangebyscore("#{@scope}:#{@name}", score, score)
-          command_data = JSON.parse(result[0][0])
+          command_data = JSON.parse(result[0][0], allow_nan: true)
           command_data['id'] = score.to_f
           notify(kind: 'command')
           return command_data

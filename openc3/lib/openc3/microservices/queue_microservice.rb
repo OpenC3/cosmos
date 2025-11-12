@@ -71,20 +71,12 @@ module OpenC3
             # Support both new format (target_name, cmd_name, cmd_params) and legacy format (command string)
             if command['target_name'] && command['cmd_name']
               # New format: use 3-parameter cmd() method
-              # Decode any base64-encoded binary parameters and convert to hex string
-              cmd_params = command['cmd_params'] || {}
-              decoded_params = {}
-              cmd_params.each do |key, value|
-                if value.is_a?(Hash) && value['__base64__']
-                  # Decode base64-encoded binary data and convert to hex string format
-                  binary_data = value['data'].unpack('m0')[0]
-                  hex_string = '0x' + binary_data.unpack1('H*').upcase
-                  decoded_params[key] = hex_string
-                else
-                  decoded_params[key] = value
-                end
+              if command['cmd_params']
+                cmd_params = JSON.parse(command['cmd_params'], allow_nan: true, create_additions: true)
+              else
+                cmd_params = {}
               end
-              cmd(command['target_name'], command['cmd_name'], decoded_params, queue: false, scope: @scope)
+              cmd(command['target_name'], command['cmd_name'], cmd_params, queue: false, scope: @scope)
             elsif command['value']
               # Legacy format: use single string parameter for backwards compatibility
               cmd(command['value'], queue: false, scope: @scope)

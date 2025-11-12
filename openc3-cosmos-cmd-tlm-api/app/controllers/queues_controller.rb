@@ -233,23 +233,15 @@ class QueuesController < ApplicationController
           # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
           if command_data['target_name'] && command_data['cmd_name']
             # New format: use 3-parameter cmd() method
-            # Decode any base64-encoded binary parameters and convert to hex string
-            cmd_params = command_data['cmd_params'] || {}
-            decoded_params = {}
-            cmd_params.each do |key, value|
-              if value.is_a?(Hash) && value['__base64__']
-                # Decode base64-encoded binary data and convert to hex string format
-                binary_data = value['data'].unpack('m0')[0]
-                hex_string = '0x' + binary_data.unpack1('H*').upcase
-                decoded_params[key] = hex_string
-              else
-                decoded_params[key] = value
-              end
+            if command_data['cmd_params']
+              cmd_params = JSON.parse(command_data['cmd_params'], allow_nan: true, create_additions: true)
+            else
+              cmd_params = {}
             end
             if hazardous
-              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], decoded_params, queue: false, scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
             else
-              cmd(command_data['target_name'], command_data['cmd_name'], decoded_params, queue: false, scope: params[:scope], token: token)
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
             end
           elsif command_data['value']
             # Legacy format: use single string parameter

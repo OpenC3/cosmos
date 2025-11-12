@@ -545,7 +545,6 @@ module OpenC3
         queue = ENV['OPENC3_DEFAULT_QUEUE']
       end
       if queue
-        puts "Queueing command to queue #{queue}: #{target_name} #{cmd_name} #{cmd_params}"
         # Pass the command components separately for the queue microservice to use the 3-parameter cmd() method
         QueueModel.queue_command(queue,
           target_name: target_name,
