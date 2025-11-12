@@ -91,8 +91,8 @@ module OpenC3
     describe '#process_queued_commands' do
       let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
-      let(:command3_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3', 'cmd_params' => { 'PARAM' => 3 } } }
-      let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4', 'cmd_params' => {} } }
+      let(:command3_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3', 'cmd_params' => JSON.generate({ 'PARAM' => 3 }) } }
+      let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4' } }
 
       before do
         allow(processor).to receive(:cmd)

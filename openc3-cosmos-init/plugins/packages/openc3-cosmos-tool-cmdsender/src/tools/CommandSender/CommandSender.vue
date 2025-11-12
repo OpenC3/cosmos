@@ -370,13 +370,13 @@ export default {
         // Reset queue to null first
         this.queueName = null
         const queueMatch = command.match(
-          /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/,
+          /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
         )
         if (queueMatch) {
           this.queueName = queueMatch[1]
           // Remove the queue parameter from the command string
           command = command.replace(
-            /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/,
+            /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
             '',
           )
         }
