@@ -33,6 +33,7 @@ require 'openc3/models/queue_model'
 require 'openc3/models/scope_model'
 require 'openc3/models/tool_model'
 require 'openc3/packets/packet_config'
+require 'openc3/packets/parsers/xtce_v1_2_converter'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/cli_generator'
 require 'openc3/utilities/local_mode'
@@ -167,6 +168,7 @@ def xtce_converter(args)
       plugin_hash['variables']['xtce_output'] = options[:output]
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: 'DEFAULT', validate_only: true,
         gem_file_path: options[:plugin])
+      OpenC3::Xtcev1_2Converter.combine_output_xtce(options[:output])
       result = 0 # bash and Windows consider 0 success
     rescue => e
       puts "Error: #{e.message}"

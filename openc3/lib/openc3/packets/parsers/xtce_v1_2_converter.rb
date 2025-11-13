@@ -29,6 +29,8 @@ INVALID_CHARS = '[]./'
 REPLACEMENT_CHAR = '_'
 ALIAS_NAMESPACE = 'COSMOS'
 
+COMBINED_NAME = "COMBINED"
+
 module OpenC3
   class Xtcev1_2Converter
     attr_accessor :current_target_name
@@ -46,6 +48,59 @@ module OpenC3
       Xtcev1_2Converter.new(commands, telemetry, output_dir)
     end
 
+    def self.combine_output_xtce(output_dir)
+      combined_file_directory = File.join(output_dir, 'TARGETS_COMBINED', 'cmd_tlm')
+      begin
+        FileUtils.rm_rf(combined_file_directory)
+      rescue
+        # doesn't exist
+      end
+      file_pattern = File.join(output_dir, "**", "*.xtce")
+      xml_files = Dir.glob(file_pattern)
+      if xml_files.empty?
+          puts "No *.xtce files found to combine. Aborting xtce unification."
+      elsif xml_files.length == 1
+          puts "Output directory contains single target. Aborting xtce unification."
+      else
+        puts "Multiple targets found. Creating Unified XTCE representation."
+        FileUtils.mkdir_p(combined_file_directory)
+        file_basename = "combined"
+        xml_files.each do |file_path|
+          file_basename += "_#{File.basename(file_path, ".*")}"
+        end
+        full_file_name = File.join(combined_file_directory, file_basename.downcase + '.xtce')
+        begin
+          File.delete(full_file_name)
+        rescue
+          # Doesn't exist
+        end
+        xml_files.each do |file_path|
+          file_basename += File.basename(file_path, ".*")
+        end
+        root_builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+          xml['xtce'].SpaceSystem("xmlns:xtce" => "http://www.omg.org/spec/XTCE/20180204",
+                                  "xmlns:xsi" => "http://www.w3.org/2001/XMLSchema-instance",
+                                  "name" => "root",
+                                  "xsi:schemaLocation" => "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd")
+        end 
+        new_doc = root_builder.doc
+        new_root = new_doc.root
+        xml_files.each do |file_path|
+          source_doc = Nokogiri::XML(File.open(file_path))
+          target_root = source_doc.root
+          target_root.attributes.each do |name, attr|
+            unless name == "name"
+              attr.remove
+            end
+          end
+          new_root.add_child(target_root)
+        end
+        File.open(full_file_name, 'w') do |file|
+          file.puts new_doc.to_xml
+        end
+      end
+    end
+
     private
 
     def initialize(commands, telemetry, output_dir)
@@ -57,7 +112,6 @@ module OpenC3
       commands.each { |target_name, packets| targets << target_name }
       targets.uniq!
 
-      #TODO: handle one target and multiple combined into one .xtce
       targets.each do |target_name|
         next if target_name == 'UNKNOWN'
 
@@ -176,7 +230,7 @@ module OpenC3
                   end
                 end # ArgumentAssignmentList
               end
-            xml['xtce'].CommandContainer(:name => "#{target_name}_#{packet_name}_Commands") do
+            xml['xtce'].CommandContainer(:name => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
               process_entry_list(xml, packet, :COMMAND)
                 #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
               end # CommandContainer

@@ -311,7 +311,6 @@ module OpenC3
 
     def to_xtce(output_dir, is_converting_to_v1_2)
       if is_converting_to_v1_2
-        puts "Converting to xtce v1.2"
         Xtcev1_2Converter.convert(@commands, @telemetry, output_dir)
       else
         XtceConverter.convert(@commands, @telemetry, output_dir)
