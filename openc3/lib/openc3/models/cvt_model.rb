@@ -217,10 +217,10 @@ module OpenC3
         retry_count += 1
         if retry_count > 4
           # After the 5th retry just raise the error
-          raise "Error querying QuestDB: #{e.message}"
+          raise "Error querying TSDB: #{e.message}"
         end
-        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-        Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
+        Logger.warn("TSDB: Retrying due to error: #{e.message}")
+        Logger.warn("TSDB: Last query: #{query}") # Log the last query for debugging
         @@conn_mutex.synchronize do
           if @@conn and !@@conn.finished?
             @@conn.finish()
@@ -364,7 +364,6 @@ module OpenC3
         hash.delete(item_name)
         hash.delete("#{item_name}__C")
         hash.delete("#{item_name}__F")
-        hash.delete("#{item_name}__U")
       when :RAW
         hash.delete(item_name)
       when :CONVERTED

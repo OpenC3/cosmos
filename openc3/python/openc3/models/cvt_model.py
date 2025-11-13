@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 try:
     import psycopg
+
     PSYCOPG_AVAILABLE = True
 except ImportError:
     PSYCOPG_AVAILABLE = False
@@ -149,7 +150,7 @@ class CvtModel(Model):
 
     @classmethod
     def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None):
-        """Query historical telemetry data from QuestDB"""
+        """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")
 
@@ -170,7 +171,7 @@ class CvtModel(Model):
             # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
             table_name = target_name + "__" + packet_name
             for char in "?,'\"/:()+*%~":
-                table_name = table_name.replace(char, '_')
+                table_name = table_name.replace(char, "_")
             tables[table_name] = 1
 
             # Find the index of this table
@@ -180,11 +181,11 @@ class CvtModel(Model):
             # NOTE: Semicolon added as it appears invalid
             safe_item_name = item_name
             for char in "?.,'\\/:()+*%~;-":
-                safe_item_name = safe_item_name.replace(char, '_')
+                safe_item_name = safe_item_name.replace(char, "_")
 
             if value_type == 'FORMATTED' or value_type == 'WITH_UNITS':
                 names.append(f'"T{index}.{safe_item_name}__F"')
-            elif value_type == 'CONVERTED':
+            elif value_type == "CONVERTED":
                 names.append(f'"T{index}.{safe_item_name}__C"')
             else:
                 names.append(f'"T{index}.{safe_item_name}"')
@@ -211,11 +212,11 @@ class CvtModel(Model):
                 with cls._conn_mutex:
                     if cls._conn is None:
                         cls._conn = psycopg.connect(
-                            host=os.environ['OPENC3_TSDB_HOSTNAME'],
-                            port=os.environ['OPENC3_TSDB_QUERY_PORT'],
-                            user=os.environ['OPENC3_TSDB_USERNAME'],
-                            password=os.environ['OPENC3_TSDB_PASSWORD'],
-                            dbname='qdb'
+                            host=os.environ["OPENC3_TSDB_HOSTNAME"],
+                            port=os.environ["OPENC3_TSDB_QUERY_PORT"],
+                            user=os.environ["OPENC3_TSDB_USERNAME"],
+                            password=os.environ["OPENC3_TSDB_PASSWORD"],
+                            dbname="qdb",
                         )
 
                     with cls._conn.cursor(binary=True) as cursor:
@@ -236,7 +237,10 @@ class CvtModel(Model):
                                     if "__L" in col_name:
                                         # This is a limits column, add to previous item
                                         if col_index > 0:
-                                            data[row_index][col_index - 1] = [data[row_index][col_index - 1][0], col_value]
+                                            data[row_index][col_index - 1] = [
+                                                data[row_index][col_index - 1][0],
+                                                col_value,
+                                            ]
                                     elif col_name.startswith("__nil"):
                                         data[row_index].append([None, None])
                                         col_index += 1
@@ -254,9 +258,9 @@ class CvtModel(Model):
                 retry_count += 1
                 if retry_count > 4:
                     # After the 5th retry just raise the error
-                    raise RuntimeError(f"Error querying QuestDB: {str(e)}")
-                Logger.warn(f"QuestDB: Retrying due to error: {str(e)}")
-                Logger.warn(f"QuestDB: Last query: {query}")  # Log the last query for debugging
+                    raise RuntimeError(f"Error querying TSDB: {str(e)}")
+                Logger.warn(f"TSDB: Retrying due to error: {str(e)}")
+                Logger.warn(f"TSDB: Last query: {query}")  # Log the last query for debugging
                 with cls._conn_mutex:
                     if cls._conn:
                         cls._conn.close()
@@ -269,7 +273,15 @@ class CvtModel(Model):
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
     @classmethod
-    def get_tlm_values(cls, items: list, stale_time: int = 30, cache_timeout: float = 0.1, start_time: str = None, end_time: str = None, scope: str = OPENC3_SCOPE):
+    def get_tlm_values(
+        cls,
+        items: list,
+        stale_time: int = 30,
+        cache_timeout: float = 0.1,
+        start_time: str = None,
+        end_time: str = None,
+        scope: str = OPENC3_SCOPE,
+    ):
         now = time.time()
         results = []
         lookups = []

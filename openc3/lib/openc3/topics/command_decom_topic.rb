@@ -52,9 +52,6 @@ module OpenC3
           json = msg_hash['json_data']
           hash = JSON.parse(json, allow_nan: true, create_additions: true)
           # Start from the most complex down to the basic raw value
-          value = hash["#{param_name}__U"]
-          return value if value && type == :WITH_UNITS
-
           value = hash["#{param_name}__F"]
           return value if value && (type == :WITH_UNITS || type == :FORMATTED)
 

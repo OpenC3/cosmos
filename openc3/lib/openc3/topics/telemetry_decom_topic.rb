@@ -32,7 +32,7 @@ module OpenC3
         # everything base name is RAW (including DERIVED)
         # Request for FORMATTED, etc will look down until it finds something
         # If nothing - item does not exist - nil
-        # __ as separators ITEM1, ITEM1__C, ITEM1__F, ITEM1__U
+        # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
         json_hash = CvtModel.build_json_from_packet(packet)
         # Write to stream

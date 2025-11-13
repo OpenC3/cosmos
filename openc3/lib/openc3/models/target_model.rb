@@ -1097,7 +1097,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["python", "quest_microservice.py", microservice_name],
+        cmd: ["python", "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
         topics: topics,
         plugin: @plugin,

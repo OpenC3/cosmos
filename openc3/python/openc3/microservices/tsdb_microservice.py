@@ -28,10 +28,10 @@ from openc3.utilities.thread_manager import ThreadManager
 from openc3.microservices.microservice import Microservice
 from openc3.topics.topic import Topic
 from openc3.topics.config_topic import ConfigTopic
-from openc3.api.tlm_api import get_all_tlm_names
+from openc3.api.tlm_api import get_tlm, get_all_tlm_names
 
 
-class QuestMicroservice(Microservice):
+class TsdbMicroservice(Microservice):
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -112,6 +112,9 @@ class QuestMicroservice(Microservice):
             raise ConnectionError(f"Failed to connect to QuestDB: {e}")
 
     def create_table(self, target_name, packet_name):
+        packet = get_tlm(target_name, packet_name)
+        print(packet)
+
         orig_table_name = f"{target_name}__{packet_name}"
         # Remove invalid characters from the table name
         # This could potentially result in overlap (TGT?0 == TGT:0 == TGT_0)
@@ -124,22 +127,114 @@ class QuestMicroservice(Microservice):
                 f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
             )
 
+        # Build column definitions for all packet items
+        column_definitions = []
+
+        for item in packet["items"]:
+            # Sanitize item name the same way as in read_topics
+            item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
+
+            # Skip standard derived items as they're explicitly stored
+            if item_name in [
+                "PACKET_TIMESECONDS",
+                "RECEIVED_TIMESECONDS",
+                "PACKET_TIMEFORMATTED",
+                "RECEIVED_TIMEFORMATTED",
+                "RECEIVED_COUNT",
+            ]:
+                continue
+
+            # Skip DERIVED items since it's hard to know what type they are
+            # We'll line the Influx Line Protocol writer to handle these
+            if item["data_type"] == "DERIVED":
+                continue
+
+            if item.get("array_size"):
+                column_type = "array"
+                column_definitions.append(f'"{item_name}" {column_type}')
+            else:
+                # Determine the QuestDB column type based on item data type
+                # Default to VARCHAR for flexibility - QuestDB will allow type changes via ALTER
+                column_type = "VARCHAR"  # All caps so we can detect later
+
+                # We need to make sure to choose nullable types and choose types that
+                # can support the full range of the given type. This is tricky because
+                # QuestDB uses the minimum possible value in a given type as NULL.
+                # See https://questdb.com/docs/reference/sql/datatypes for more details.
+                if item["data_type"] in ["INT", "UINT"]:
+                    # Less than 32 bits can fit into a standard INT
+                    # Exactly 32 bits doesn't because it can't store -2,147,483,648
+                    # (INT min value) since that is NULL in QuestDB
+                    if item["bit_size"] < 32:
+                        column_type = "int"
+                    elif item["bit_size"] <= 64:
+                        column_type = "long"
+                    else:
+                        column_type = "varchar"  # Base64 encode larger integers
+                elif item["data_type"] == "FLOAT":
+                    if item["bit_size"] == 32:
+                        column_type = "float"
+                    else:
+                        column_type = "double"
+                elif item["data_type"] in ["STRING", "BLOCK"]:
+                    column_type = "varchar"
+
+                column_definitions.append(f'"{item_name}" {column_type}')
+
+                if item.get("states"):
+                    # States are stored as a converted string column
+                    column_definitions.append(f'"{item_name}__C" varchar')
+                elif item.get("read_conversion"):
+                    rc = item["read_conversion"]
+                    if rc.get("converted_type") == "FLOAT":
+                        if rc.get("converted_bit_size") == 32:
+                            column_definitions.append(f'"{item_name}__C" float')
+                        else:
+                            column_definitions.append(f'"{item_name}__C" double')
+                    elif rc.get("converted_type") in ["INT", "UINT"]:
+                        if rc.get("converted_bit_size") < 32:
+                            column_definitions.append(f'"{item_name}__C" int')
+                        elif rc.get("converted_bit_size") <= 64:
+                            column_definitions.append(f'"{item_name}__C" long')
+                        else:
+                            # Base64 encode larger bit values
+                            column_definitions.append(f'"{item_name}__C" varchar')
+                    else:
+                        column_definitions.append(f'"{item_name}__C" varchar')
+
+                if item.get("format_string") or item.get("units"):
+                    # States are stored as a converted string column
+                    column_definitions.append(f'"{item_name}__F" varchar')
+
+        # Build the complete CREATE TABLE statement
+        columns_sql = ",\n".join(column_definitions)
+
         try:
             # Open a cursor to perform database operations
             with self.query.cursor() as cur:
-                # Execute a command: this creates a new table
-                cur.execute(
-                    f"""
+                # Execute a command: this creates a new table with all packet items as columns
+                sql = f"""
                     CREATE TABLE IF NOT EXISTS "{table_name}" (
-                        timestamp TIMESTAMP,
+                        timestamp timestamp,
                         tag SYMBOL,
-                        PACKET_TIMESECONDS TIMESTAMP,
-                        RECEIVED_TIMESECONDS TIMESTAMP
+                        PACKET_TIMESECONDS timestamp,
+                        RECEIVED_TIMESECONDS timestamp,
+                        PACKET_TIMEFORMATTED varchar,
+                        RECEIVED_TIMEFORMATTED varchar,
+                        RECEIVED_COUNT LONG"""
+
+                # Add item columns if any were defined
+                if columns_sql:
+                    sql += f",\n{columns_sql}"
+
+                sql += """
                     ) TIMESTAMP(timestamp)
                         PARTITION BY DAY
                         DEDUP UPSERT KEYS (timestamp, tag)
                 """
-                )
+
+                self.logger.info(f"QuestDB: Creating table:\n{sql}")
+                cur.execute(sql)
         except psycopg.Error as error:
             self.logger.error(f"QuestDB: Error creating table {table_name}: {error}")
 
@@ -165,13 +260,6 @@ class QuestMicroservice(Microservice):
             elif kind == "deleted":
                 self.logger.info(f"Target {target_name} deleted")
                 self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
-
-    def _is_printable(self, value: str) -> bool:
-        """Check if a string contains only printable characters"""
-        try:
-            return all(c.isprintable() or c.isspace() for c in str(value))
-        except Exception:
-            return False
 
     def read_topics(self):
         """Read topics and write data to QuestDB"""
@@ -263,6 +351,7 @@ class QuestMicroservice(Microservice):
             self.ingest.flush()
 
         except IngressError as error:
+            self.logger.error(f"QuestDB: IngressError: {error}\n")
             # First see if it's a cast error we can fix
             if "cast error from protocol type" in str(error):
                 try:
@@ -294,8 +383,8 @@ class QuestMicroservice(Microservice):
                         self.connect_ingest()  # reconnect
                         # Retry write to QuestDB
                         self.ingest.row(table_name, columns=values, at=TimestampNanos(timestamp))
-                except psycopg.Error as error:
-                    self.logger.error(f"QuestDB: Error {alter}\n{error}")
+                except psycopg.Error as psy_error:
+                    self.logger.error(f"QuestDB: Error {alter}\n{psy_error}")
             else:
                 self.error = error
                 self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
@@ -315,6 +404,6 @@ class QuestMicroservice(Microservice):
 
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
-    QuestMicroservice.class_run()
+    TsdbMicroservice.class_run()
     ThreadManager.instance().shutdown()
     ThreadManager.instance().join()
