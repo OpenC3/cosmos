@@ -457,6 +457,8 @@ class PacketConfig:
             # Allow this packet to be received with less data than the defined length
             # without generating a warning.
             case "ALLOW_SHORT":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
                 self.current_packet.short_buffer_allowed = True
 
             # Mark the current command as hazardous
