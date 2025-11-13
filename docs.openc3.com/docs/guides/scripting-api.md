@@ -184,7 +184,6 @@ password = ask("Enter your password", false, true)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -209,7 +208,6 @@ ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -236,7 +234,6 @@ password = ask_string("Enter your password", false, true)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -267,7 +264,6 @@ combo_box("<Message>", "<selection text 1>", ...)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -300,7 +296,6 @@ end
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
