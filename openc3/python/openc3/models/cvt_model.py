@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -42,7 +42,7 @@ class CvtModel(Model):
     _conn = None
     _conn_mutex = threading.Lock()
 
-    VALUE_TYPES = { "RAW", "CONVERTED", "FORMATTED" }
+    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED"}
 
     @classmethod
     def build_json_from_packet(cls, packet):
@@ -183,7 +183,7 @@ class CvtModel(Model):
             for char in "?.,'\\/:()+*%~;-":
                 safe_item_name = safe_item_name.replace(char, "_")
 
-            if value_type == 'FORMATTED' or value_type == 'WITH_UNITS':
+            if value_type == "FORMATTED" or value_type == "WITH_UNITS":
                 names.append(f'"T{index}.{safe_item_name}__F"')
             elif value_type == "CONVERTED":
                 names.append(f'"T{index}.{safe_item_name}__C"')

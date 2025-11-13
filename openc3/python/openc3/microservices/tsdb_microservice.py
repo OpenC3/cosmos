@@ -113,7 +113,6 @@ class TsdbMicroservice(Microservice):
 
     def create_table(self, target_name, packet_name):
         packet = get_tlm(target_name, packet_name)
-        print(packet)
 
         orig_table_name = f"{target_name}__{packet_name}"
         # Remove invalid characters from the table name
@@ -134,7 +133,7 @@ class TsdbMicroservice(Microservice):
             # Sanitize item name the same way as in read_topics
             item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
 
-            # Skip standard derived items as they're explicitly stored
+            # Skip standard derived items as they're explicitly created
             if item_name in [
                 "PACKET_TIMESECONDS",
                 "RECEIVED_TIMESECONDS",
@@ -145,7 +144,7 @@ class TsdbMicroservice(Microservice):
                 continue
 
             # Skip DERIVED items since it's hard to know what type they are
-            # We'll line the Influx Line Protocol writer to handle these
+            # We'll let the Influx Line Protocol writer handle these
             if item["data_type"] == "DERIVED":
                 continue
 
@@ -167,6 +166,7 @@ class TsdbMicroservice(Microservice):
                     # (INT min value) since that is NULL in QuestDB
                     if item["bit_size"] < 32:
                         column_type = "int"
+                    # TODO: This won't work for a min 64 bit value because that is NULL
                     elif item["bit_size"] <= 64:
                         column_type = "long"
                     else:
@@ -194,6 +194,7 @@ class TsdbMicroservice(Microservice):
                     elif rc.get("converted_type") in ["INT", "UINT"]:
                         if rc.get("converted_bit_size") < 32:
                             column_definitions.append(f'"{item_name}__C" int')
+                        # TODO: This won't work for a min 64 bit value because that is NULL
                         elif rc.get("converted_bit_size") <= 64:
                             column_definitions.append(f'"{item_name}__C" long')
                         else:
@@ -351,7 +352,7 @@ class TsdbMicroservice(Microservice):
             self.ingest.flush()
 
         except IngressError as error:
-            self.logger.error(f"QuestDB: IngressError: {error}\n")
+            self.logger.warn(f"QuestDB: IngressError: {error}\n")
             # First see if it's a cast error we can fix
             if "cast error from protocol type" in str(error):
                 try:
