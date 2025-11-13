@@ -206,6 +206,7 @@ class PacketConfig:
                         | "APPEND_ARRAY_PARAMETER"
                         | "ALLOW_SHORT"
                         | "HAZARDOUS"
+                        | "RESTRICTED"
                         | "PROCESSOR"
                         | "META"
                         | "DISABLE_MESSAGES"
@@ -725,14 +726,13 @@ class PacketConfig:
                 parser.verify_num_parameters(2, 2, usage)
                 self.current_item.units_full = params[0]
                 self.current_item.units = params[1]
-            
+
             # Obfuscate the parameter in logs
             case "OBFUSCATE":
                 usage = "OBFUSCATE"
                 parser.verify_num_parameters(0, 0, usage)
                 self.current_item.obfuscate = True
                 self.current_packet.update_obfuscated_items_cache(self.current_item)
-
 
             # Update the description for the current telemetry item
             case "DESCRIPTION":
