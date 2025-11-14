@@ -67,7 +67,22 @@ module OpenC3
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
             # but we've overridden it to always return true and go straight to cmd_no_hazardous_check()
-            cmd(command['value'], queue: false, scope: @scope)
+
+            # Support both new format (target_name, cmd_name, cmd_params) and legacy format (command string)
+            if command['target_name'] && command['cmd_name']
+              # New format: use 3-parameter cmd() method
+              if command['cmd_params']
+                cmd_params = JSON.parse(command['cmd_params'], allow_nan: true, create_additions: true)
+              else
+                cmd_params = {}
+              end
+              cmd(command['target_name'], command['cmd_name'], cmd_params, queue: false, scope: @scope)
+            elsif command['value']
+              # Legacy format: use single string parameter for backwards compatibility
+              cmd(command['value'], queue: false, scope: @scope)
+            else
+              @logger.error "QueueProcessor: Invalid command format, missing required fields"
+            end
           end
         rescue StandardError => e
           @logger.error "QueueProcessor failed to process command from queue #{@name}\n#{e.message}"
