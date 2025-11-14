@@ -84,24 +84,55 @@ class TestPacketConfig(unittest.TestCase):
 
     # context "with all telemetry keywords" do
     #   before(:all) do
-    # top level keywords
+    # Top level keywords (don't require current packet or item)
     top_keywords = [
         "SELECT_COMMAND",
         "SELECT_TELEMETRY",
         "LIMITS_GROUP",
         "LIMITS_GROUP_ITEM",
     ]
-    # Keywords that require a current packet from TELEMETRY keyword
+    # Keywords that require a current TELEMETRY packet (telemetry-specific ITEM keywords)
     tlm_keywords = [
         "SELECT_ITEM",
+        "DELETE_ITEM",
         "ITEM",
         "ID_ITEM",
         "ARRAY_ITEM",
         "APPEND_ITEM",
         "APPEND_ID_ITEM",
         "APPEND_ARRAY_ITEM",
+        "ALLOW_SHORT",
         "PROCESSOR",
         "META",
+    ]
+    # Keywords that require a current COMMAND packet (command-specific PARAMETER keywords)
+    cmd_keywords = [
+        "SELECT_PARAMETER",
+        "DELETE_PARAMETER",
+        "PARAMETER",
+        "ID_PARAMETER",
+        "ARRAY_PARAMETER",
+        "APPEND_PARAMETER",
+        "APPEND_ID_PARAMETER",
+        "APPEND_ARRAY_PARAMETER",
+    ]
+    # Keywords that apply to both COMMAND and TELEMETRY packets
+    packet_keywords = [
+        "HAZARDOUS",
+        "RESTRICTED",
+        "DISABLE_MESSAGES",
+        "HIDDEN",
+        "DISABLED",
+        "VIRTUAL",
+        "ACCESSOR",
+        "VALIDATOR",
+        "TEMPLATE",
+        "TEMPLATE_FILE",
+        "RESPONSE",
+        "ERROR_RESPONSE",
+        "SCREEN",
+        "RELATED_ITEM",
+        "IGNORE_OVERLAP",
     ]
     # Keywords that require both a current packet and current item
     item_keywords = [
@@ -161,6 +192,11 @@ class TestPacketConfig(unittest.TestCase):
             tf.close()
 
         for keyword in TestPacketConfig.tlm_keywords:
+            # Skip keywords that don't require parameters or are tested elsewhere
+            ignore_tlm = ["PROCESSOR", "META", "ALLOW_SHORT"]
+            if keyword in ignore_tlm:
+                continue
+
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
             tf.write(keyword)
@@ -188,28 +224,24 @@ class TestPacketConfig(unittest.TestCase):
             tf.close()
 
     def test_builds_the_id_value_hash(self):
-        for keyword in TestPacketConfig.tlm_keywords:
-            if keyword == "PROCESSOR" or keyword == "META":
-                continue
-
-            tf = tempfile.NamedTemporaryFile(mode="w")
-            tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
-            tf.write('ID_ITEM myitem 0 8 UINT 13 "Test Item id=1"\n')
-            tf.write('APPEND_ID_ITEM myitem 8 UINT 114 "Test Item id=1"\n')
-            tf.write('COMMAND tgt1 pkt1 BIG_ENDIAN "Packet"\n')
-            tf.write('ID_PARAMETER myitem 0 8 UINT 12 12 12 "Test Item id=1"\n')
-            tf.write('APPEND_ID_PARAMETER myitem 8 UINT 115 115 115 "Test Item id=1"\n')
-            tf.seek(0)
-            self.pc.process_file(tf.name, "TGT1")
-            expected_tlm_hash = {}
-            expected_tlm_hash["TGT1"] = {}
-            expected_tlm_hash["TGT1"]["[13, 114]"] = self.pc.telemetry["TGT1"]["PKT1"]
-            expected_cmd_hash = {}
-            expected_cmd_hash["TGT1"] = {}
-            expected_cmd_hash["TGT1"]["[12, 115]"] = self.pc.commands["TGT1"]["PKT1"]
-            self.assertEqual(self.pc.tlm_id_value_hash, expected_tlm_hash)
-            self.assertEqual(self.pc.cmd_id_value_hash, expected_cmd_hash)
-            tf.close()
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
+        tf.write('ID_ITEM myitem 0 8 UINT 13 "Test Item id=1"\n')
+        tf.write('APPEND_ID_ITEM myitem 8 UINT 114 "Test Item id=1"\n')
+        tf.write('COMMAND tgt1 pkt1 BIG_ENDIAN "Packet"\n')
+        tf.write('ID_PARAMETER myitem 0 8 UINT 12 12 12 "Test Item id=1"\n')
+        tf.write('APPEND_ID_PARAMETER myitem 8 UINT 115 115 115 "Test Item id=1"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        expected_tlm_hash = {}
+        expected_tlm_hash["TGT1"] = {}
+        expected_tlm_hash["TGT1"]["[13, 114]"] = self.pc.telemetry["TGT1"]["PKT1"]
+        expected_cmd_hash = {}
+        expected_cmd_hash["TGT1"] = {}
+        expected_cmd_hash["TGT1"]["[12, 115]"] = self.pc.commands["TGT1"]["PKT1"]
+        self.assertEqual(self.pc.tlm_id_value_hash, expected_tlm_hash)
+        self.assertEqual(self.pc.cmd_id_value_hash, expected_cmd_hash)
+        tf.close()
 
     def test_complains_if_there_are_too_many_parameters(self):
         for keyword in TestPacketConfig.top_keywords:
@@ -250,6 +282,10 @@ class TestPacketConfig(unittest.TestCase):
                 case "SELECT_ITEM":
                     tf.write("ITEM myitem 0 8 UINT\n")
                     tf.write("SELECT_ITEM myitem extra\n")
+                case "DELETE_ITEM":
+                    tf.write("DELETE_ITEM myitem extra\n")
+                case "ALLOW_SHORT":
+                    tf.write("ALLOW_SHORT extra\n")
             tf.seek(0)
             with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
@@ -861,6 +897,17 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.commands["TGT1"]["PKT1"].hazardous_description,
             "Hazardous description",
         )
+        tf.close()
+
+    def test_marks_the_packet_as_restricted(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("RESTRICTED\n")
+        tf.write('COMMAND tgt2 pkt2 LITTLE_ENDIAN "Description"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "SYSTEM")
+        self.assertTrue(self.pc.commands["TGT2"]["PKT1"].restricted)
+        self.assertFalse(self.pc.commands["TGT2"]["PKT2"].restricted)
         tf.close()
 
     def test_complains_about_missing_conversion_file(self):
