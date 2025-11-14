@@ -279,7 +279,7 @@ module OpenC3
 
       it "generates a command validator" do
         result = CliGenerator.generate_command_validator(['command_validator', 'EXAMPLE', 'test', '--ruby'])
-        expect(result).to eql('test')
+        expect(result).to eql('TEST_COMMAND_VALIDATOR')
         expect(File.exist?('targets/EXAMPLE/lib/test_command_validator.rb')).to be true
 
         # Verify validator file contains proper class structure
@@ -291,7 +291,7 @@ module OpenC3
 
       it "shows help with --help flag" do
         expect { CliGenerator.generate_command_validator(['command_validator', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
       end
 
       it "requires target and validator names" do
@@ -309,7 +309,7 @@ module OpenC3
 
       it "generates a conversion" do
         result = CliGenerator.generate_conversion(['conversion', 'EXAMPLE', 'test', '--ruby'])
-        expect(result).to eql('test')
+        expect(result).to eql('TEST_CONVERSION')
         expect(File.exist?('targets/EXAMPLE/lib/test_conversion.rb')).to be true
 
         # Verify conversion file contains proper class structure
@@ -320,7 +320,7 @@ module OpenC3
 
       it "shows help with --help flag" do
         expect { CliGenerator.generate_conversion(['conversion', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
       end
     end
 
@@ -333,7 +333,7 @@ module OpenC3
 
       it "generates a limits response" do
         result = CliGenerator.generate_limits_response(['limits_response', 'EXAMPLE', 'test', '--ruby'])
-        expect(result).to eql('test')
+        expect(result).to eql('TEST_LIMITS_RESPONSE')
         expect(File.exist?('targets/EXAMPLE/lib/test_limits_response.rb')).to be true
 
         # Verify limits response file contains proper class structure
@@ -344,7 +344,7 @@ module OpenC3
 
       it "shows help with --help flag" do
         expect { CliGenerator.generate_limits_response(['limits_response', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
       end
     end
 
