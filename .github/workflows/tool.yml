@@ -50,24 +50,25 @@ jobs:
           cd openc3-cosmos-tool-vue-test
           # Generate Vue tool
           ../openc3.sh cli generate tool_vue 'Test Vue Tool' --ruby
-          # Verify tool structure created
-          test -d tools/testvuetool
-          test -f tools/testvuetool/package.json
-          test -f tools/testvuetool/vite.config.js
-          test -f tools/testvuetool/src/App.vue
+          # Verify tool structure created (files are at plugin root, not in tools/ subdirectory)
+          test -f package.json
+          test -f vite.config.js
+          test -f src/App.vue
+          test -d src/tools/testvuetool
+          test -f src/tools/testvuetool/testvuetool.vue
           # Verify tool was added to plugin.txt
           grep -q 'TOOL testvuetool "Test Vue Tool"' plugin.txt
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
-          grep -q '"build"' tools/testvuetool/package.json
-          grep -q '"serve"' tools/testvuetool/package.json
+          grep -q '"build"' package.json
+          grep -q '"serve"' package.json
           # Install dependencies and build
-          npm install --prefix tools/testvuetool
-          npm run build --prefix tools/testvuetool
-          # Verify build output (Vue builds to tools/testvuetool/ directory)
-          test -f tools/testvuetool/main.js
+          npm install
+          npm run build
+          # Verify build output (Vue builds to plugin root directory)
+          test -f main.js
           # Verify output is a SystemJS module
-          grep -q "System.register" tools/testvuetool/main.js
+          grep -q "System.register" main.js
           # Build plugin
           ../openc3.sh cli rake build VERSION=1.0.0
           ../openc3.sh cli validate openc3-cosmos-tool-vue-test-1.0.0.gem
@@ -83,23 +84,22 @@ jobs:
           cd openc3-cosmos-tool-angular-test
           # Generate Angular tool
           ../openc3.sh cli generate tool_angular 'Test Angular Tool' --ruby
-          # Verify tool structure created
-          test -d tools/testangulartool
-          test -f tools/testangulartool/package.json
-          test -f tools/testangulartool/angular.json
-          test -f tools/testangulartool/src/main.single-spa.ts
+          # Verify tool structure created (files are at plugin root)
+          test -f package.json
+          test -f angular.json
+          test -f src/main.single-spa.ts
           # Verify tool was added to plugin.txt
           grep -q 'TOOL testangulartool "Test Angular Tool"' plugin.txt
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
-          grep -q '"build"' tools/testangulartool/package.json
+          grep -q '"build"' package.json
           # Install dependencies and build
-          npm install --prefix tools/testangulartool
-          npm run build --prefix tools/testangulartool
-          # Verify build output (Angular builds to tools/testangulartool/)
-          test -f tools/testangulartool/main.js
+          npm install
+          npm run build
+          # Verify build output (Angular builds to plugin root)
+          test -f main.js
           # Verify output is a SystemJS module
-          grep -q "System.register" tools/testangulartool/main.js
+          grep -q "System.register" main.js
           # Build plugin
           ../openc3.sh cli rake build VERSION=1.0.0
           ../openc3.sh cli validate openc3-cosmos-tool-angular-test-1.0.0.gem
@@ -115,23 +115,22 @@ jobs:
           cd openc3-cosmos-tool-react-test
           # Generate React tool
           ../openc3.sh cli generate tool_react 'Test React Tool' --ruby
-          # Verify tool structure created
-          test -d tools/testreacttool
-          test -f tools/testreacttool/package.json
-          test -f tools/testreacttool/webpack.config.js
-          test -f tools/testreacttool/src/root.component.js
+          # Verify tool structure created (files are at plugin root)
+          test -f package.json
+          test -f webpack.config.js
+          test -f src/root.component.js
           # Verify tool was added to plugin.txt
           grep -q 'TOOL testreacttool "Test React Tool"' plugin.txt
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
-          grep -q '"build"' tools/testreacttool/package.json
+          grep -q '"build"' package.json
           # Install dependencies and build
-          npm install --prefix tools/testreacttool
-          npm run build --prefix tools/testreacttool
-          # Verify build output (React builds to tools/testreacttool/)
-          test -f tools/testreacttool/main.js
+          npm install
+          npm run build
+          # Verify build output (React builds to plugin root)
+          test -f main.js
           # Verify output is a SystemJS module
-          grep -q "System.register" tools/testreacttool/main.js
+          grep -q "System.register" main.js
           # Build plugin
           ../openc3.sh cli rake build VERSION=1.0.0
           ../openc3.sh cli validate openc3-cosmos-tool-react-test-1.0.0.gem
@@ -147,23 +146,22 @@ jobs:
           cd openc3-cosmos-tool-svelte-test
           # Generate Svelte tool
           ../openc3.sh cli generate tool_svelte 'Test Svelte Tool' --ruby
-          # Verify tool structure created
-          test -d tools/testsveltetool
-          test -f tools/testsveltetool/package.json
-          test -f tools/testsveltetool/rollup.config.js
-          test -f tools/testsveltetool/src/App.svelte
+          # Verify tool structure created (files are at plugin root)
+          test -f package.json
+          test -f rollup.config.js
+          test -f src/App.svelte
           # Verify tool was added to plugin.txt
           grep -q 'TOOL testsveltetool "Test Svelte Tool"' plugin.txt
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
-          grep -q '"build"' tools/testsveltetool/package.json
+          grep -q '"build"' package.json
           # Install dependencies and build
-          npm install --prefix tools/testsveltetool
-          npm run build --prefix tools/testsveltetool
-          # Verify build output (Svelte builds to tools/testsveltetool/)
-          test -f tools/testsveltetool/main.js
+          npm install
+          npm run build
+          # Verify build output (Svelte builds to plugin root)
+          test -f main.js
           # Verify output is a SystemJS module
-          grep -q "System.register" tools/testsveltetool/main.js
+          grep -q "System.register" main.js
           # Build plugin
           ../openc3.sh cli rake build VERSION=1.0.0
           ../openc3.sh cli validate openc3-cosmos-tool-svelte-test-1.0.0.gem
@@ -228,11 +226,11 @@ jobs:
           cd openc3-cosmos-tool-generic-test
           # Generate tool without specifying type (should default to Vue)
           ../openc3.sh cli generate tool 'Generic Tool' --ruby
-          # Verify tool structure (should be Vue.js)
-          test -d tools/generictool
-          test -f tools/generictool/package.json
+          # Verify tool structure (should be Vue.js, files at plugin root)
+          test -f package.json
+          test -f vite.config.js
           # Verify it's a Vue project by checking for Vue dependencies
-          grep -q "vue" tools/generictool/package.json
+          grep -q "vue" package.json
           cd ..
 
       - name: openc3.sh stop
