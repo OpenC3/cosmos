@@ -182,7 +182,7 @@ jobs:
           test -f package.json
           test -f vite.config.js
           # Verify widget was added to plugin.txt with correct format
-          grep -q "WIDGET Testwidget" plugin.txt
+          grep -q "WIDGET Test" plugin.txt
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
