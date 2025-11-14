@@ -32,6 +32,8 @@ module OpenC3
       @original_dir = Dir.pwd
       Dir.chdir(@temp_dir)
       ENV['OPENC3_LANGUAGE'] = 'ruby'
+      # Initialize the class variable that check_args normally sets
+      CliGenerator.class_variable_set(:@@language, 'rb')
     end
 
     after(:each) do
@@ -52,6 +54,7 @@ module OpenC3
       end
 
       it "generates a Python plugin" do
+        CliGenerator.class_variable_set(:@@language, 'py')
         result = CliGenerator.generate_plugin(['plugin', 'test-plugin', '--python'])
         expect(result).to eql('test-plugin')
         expect(File.exist?('openc3-cosmos-test-plugin')).to be true
@@ -60,6 +63,7 @@ module OpenC3
 
       it "uses OPENC3_LANGUAGE environment variable" do
         ENV['OPENC3_LANGUAGE'] = 'python'
+        CliGenerator.class_variable_set(:@@language, 'py')
         result = CliGenerator.generate_plugin(['plugin', 'test-plugin'])
         expect(result).to eql('test-plugin')
         expect(File.exist?('openc3-cosmos-test-plugin')).to be true
@@ -357,7 +361,7 @@ module OpenC3
 
       it "handles invalid command types" do
         expect { CliGenerator.generate(['invalid_command']) }
-          .to raise_error(NoMethodError)
+          .to raise_error(SystemExit)
       end
     end
   end
