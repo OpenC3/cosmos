@@ -27,6 +27,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
@@ -63,8 +67,8 @@ jobs:
           grep -q '"build"' package.json
           grep -q '"serve"' package.json
           # Install dependencies and build
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (Vue builds to tools/testvuetool/ directory)
           test -f tools/testvuetool/main.js
           # Verify output is a SystemJS module
@@ -94,8 +98,8 @@ jobs:
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           # Install dependencies and build
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (Angular builds to tools/testangulartool/)
           test -f tools/testangulartool/main.js
           # Verify output is a SystemJS module
@@ -125,8 +129,8 @@ jobs:
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           # Install dependencies and build
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (React builds to tools/testreacttool/)
           test -f tools/testreacttool/main.js
           # Verify output is a SystemJS module
@@ -156,8 +160,8 @@ jobs:
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           # Install dependencies and build
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (Svelte builds to tools/testsveltetool/)
           test -f tools/testsveltetool/main.js
           # Verify output is a SystemJS module
@@ -186,8 +190,8 @@ jobs:
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           # Install dependencies and build
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (widgets build to tools/widgets/TestWidget/)
           test -f tools/widgets/TestWidget/TestWidget.umd.min.js
           # Build plugin
@@ -230,8 +234,8 @@ jobs:
           # Verify it's a Vue project by checking for Vue dependencies
           grep -q "vue" package.json
           # Quick build test to verify it works
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
           # Verify build output (should be in tools/generictool/)
           test -f tools/generictool/main.js
           cd ..
