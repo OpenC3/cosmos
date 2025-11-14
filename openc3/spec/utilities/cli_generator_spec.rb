@@ -285,8 +285,8 @@ module OpenC3
         # Verify validator file contains proper class structure
         validator_content = File.read('targets/EXAMPLE/lib/test_command_validator.rb')
         expect(validator_content).to include('class TestCommandValidator')
-        expect(validator_content).to include('def pre_check_command')
-        expect(validator_content).to include('def post_check_command')
+        expect(validator_content).to include('def pre_check(command)')
+        expect(validator_content).to include('def post_check(command)')
       end
 
       it "shows help with --help flag" do
