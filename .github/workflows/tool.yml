@@ -1,0 +1,252 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Frontend Generator Tests
+
+# Only run on a push to main to avoid running for all the dependabot PRs
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  OPENC3_API_PASSWORD: password
+
+jobs:
+  frontend-generators:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: openc3.sh build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
+      - name: openc3.sh run
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          ! docker ps | grep openc3
+          ./openc3.sh run
+          sleep 10s
+          docker ps | grep openc3
+
+      # Test Vue.js tool generation and build
+      - name: Generate and build Vue.js tool
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin tool-vue-test --ruby
+          cd openc3-cosmos-tool-vue-test
+          # Generate Vue tool
+          ../openc3.sh cli generate tool_vue 'Test Vue Tool' --ruby
+          # Verify tool structure created
+          test -d tools/testvuetool
+          test -f tools/testvuetool/package.json
+          test -f tools/testvuetool/vite.config.js
+          test -f tools/testvuetool/src/App.vue
+          # Verify tool was added to plugin.txt
+          grep -q 'TOOL testvuetool "Test Vue Tool"' plugin.txt
+          grep -q 'INLINE_URL main.js' plugin.txt
+          # Verify package.json has required scripts
+          grep -q '"build"' tools/testvuetool/package.json
+          grep -q '"serve"' tools/testvuetool/package.json
+          # Install dependencies and build
+          npm install --prefix tools/testvuetool
+          npm run build --prefix tools/testvuetool
+          # Verify build output (Vue builds to tools/testvuetool/ directory)
+          test -f tools/testvuetool/main.js
+          # Verify output is a SystemJS module
+          grep -q "System.register" tools/testvuetool/main.js
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-tool-vue-test-1.0.0.gem
+          cd ..
+
+      # Test Angular tool generation and build
+      - name: Generate and build Angular tool
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin tool-angular-test --ruby
+          cd openc3-cosmos-tool-angular-test
+          # Generate Angular tool
+          ../openc3.sh cli generate tool_angular 'Test Angular Tool' --ruby
+          # Verify tool structure created
+          test -d tools/testangulartool
+          test -f tools/testangulartool/package.json
+          test -f tools/testangulartool/angular.json
+          test -f tools/testangulartool/src/main.single-spa.ts
+          # Verify tool was added to plugin.txt
+          grep -q 'TOOL testangulartool "Test Angular Tool"' plugin.txt
+          grep -q 'INLINE_URL main.js' plugin.txt
+          # Verify package.json has required scripts
+          grep -q '"build"' tools/testangulartool/package.json
+          # Install dependencies and build
+          npm install --prefix tools/testangulartool
+          npm run build --prefix tools/testangulartool
+          # Verify build output (Angular builds to tools/testangulartool/)
+          test -f tools/testangulartool/main.js
+          # Verify output is a SystemJS module
+          grep -q "System.register" tools/testangulartool/main.js
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-tool-angular-test-1.0.0.gem
+          cd ..
+
+      # Test React tool generation and build
+      - name: Generate and build React tool
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin tool-react-test --ruby
+          cd openc3-cosmos-tool-react-test
+          # Generate React tool
+          ../openc3.sh cli generate tool_react 'Test React Tool' --ruby
+          # Verify tool structure created
+          test -d tools/testreacttool
+          test -f tools/testreacttool/package.json
+          test -f tools/testreacttool/webpack.config.js
+          test -f tools/testreacttool/src/root.component.js
+          # Verify tool was added to plugin.txt
+          grep -q 'TOOL testreacttool "Test React Tool"' plugin.txt
+          grep -q 'INLINE_URL main.js' plugin.txt
+          # Verify package.json has required scripts
+          grep -q '"build"' tools/testreacttool/package.json
+          # Install dependencies and build
+          npm install --prefix tools/testreacttool
+          npm run build --prefix tools/testreacttool
+          # Verify build output (React builds to tools/testreacttool/)
+          test -f tools/testreacttool/main.js
+          # Verify output is a SystemJS module
+          grep -q "System.register" tools/testreacttool/main.js
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-tool-react-test-1.0.0.gem
+          cd ..
+
+      # Test Svelte tool generation and build
+      - name: Generate and build Svelte tool
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin tool-svelte-test --ruby
+          cd openc3-cosmos-tool-svelte-test
+          # Generate Svelte tool
+          ../openc3.sh cli generate tool_svelte 'Test Svelte Tool' --ruby
+          # Verify tool structure created
+          test -d tools/testsveltetool
+          test -f tools/testsveltetool/package.json
+          test -f tools/testsveltetool/rollup.config.js
+          test -f tools/testsveltetool/src/App.svelte
+          # Verify tool was added to plugin.txt
+          grep -q 'TOOL testsveltetool "Test Svelte Tool"' plugin.txt
+          grep -q 'INLINE_URL main.js' plugin.txt
+          # Verify package.json has required scripts
+          grep -q '"build"' tools/testsveltetool/package.json
+          # Install dependencies and build
+          npm install --prefix tools/testsveltetool
+          npm run build --prefix tools/testsveltetool
+          # Verify build output (Svelte builds to tools/testsveltetool/)
+          test -f tools/testsveltetool/main.js
+          # Verify output is a SystemJS module
+          grep -q "System.register" tools/testsveltetool/main.js
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-tool-svelte-test-1.0.0.gem
+          cd ..
+
+      # Test widget generator
+      - name: Generate and build widget
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin widget-test --ruby
+          cd openc3-cosmos-widget-test
+          # Generate widget
+          ../openc3.sh cli generate widget TestWidget --ruby
+          # Verify widget structure created in src/ directory
+          test -f src/TestWidget.vue
+          test -f package.json
+          test -f vite.config.js
+          # Verify widget was added to plugin.txt with correct format
+          grep -q "WIDGET Testwidget" plugin.txt
+          # Verify package.json has required scripts
+          grep -q '"build"' package.json
+          # Install dependencies and build
+          npm install
+          npm run build
+          # Verify build output (widgets build to main plugin directory)
+          test -f TestWidget.js
+          # Verify output is a SystemJS module
+          grep -q "System.register" TestWidget.js
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-widget-test-1.0.0.gem
+          cd ..
+
+      # Test command_validator generator
+      - name: Generate command validator
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin validator-test --ruby
+          cd openc3-cosmos-validator-test
+          # Generate target first (required for command_validator)
+          ../openc3.sh cli generate target EXAMPLE --ruby
+          # Generate command_validator
+          ../openc3.sh cli generate command_validator EXAMPLE test --ruby
+          # Verify command_validator file created
+          ls targets/EXAMPLE/lib | grep test_command_validator.rb
+          # Build plugin
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-validator-test-1.0.0.gem
+          cd ..
+
+      # Test generic tool command (should default to Vue)
+      - name: Test generic tool command
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # Generate plugin
+          ./openc3.sh cli generate plugin tool-generic-test --ruby
+          cd openc3-cosmos-tool-generic-test
+          # Generate tool without specifying type (should default to Vue)
+          ../openc3.sh cli generate tool 'Generic Tool' --ruby
+          # Verify tool structure (should be Vue.js)
+          test -d tools/generictool
+          test -f tools/generictool/package.json
+          # Verify it's a Vue project by checking for Vue dependencies
+          grep -q "vue" tools/generictool/package.json
+          cd ..
+
+      - name: openc3.sh stop
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          ./openc3.sh stop
+          sleep 20s
+          ! docker ps | grep openc3
+
+      - name: Cleanup volumes
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          docker volume ls | grep openc3
+          ./openc3.sh cleanup force
+          ! docker volume ls | grep openc3
