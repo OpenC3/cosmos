@@ -45,32 +45,32 @@ module OpenC3
     describe "generate_plugin" do
       it "generates a basic Ruby plugin" do
         result = CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
-        expect(result).to eql('test-plugin')
-        expect(File.exist?('openc3-cosmos-test-plugin')).to be true
-        expect(File.exist?('openc3-cosmos-test-plugin/plugin.txt')).to be true
-        expect(File.exist?('openc3-cosmos-test-plugin/plugin.gemspec')).to be true
-        expect(File.exist?('openc3-cosmos-test-plugin/Rakefile')).to be true
-        expect(File.exist?('openc3-cosmos-test-plugin/README.md')).to be true
+        expect(result).to eql('openc3-cosmos-test-plugin')
+        # generate_plugin changes into the plugin directory, so files are relative
+        expect(File.exist?('plugin.txt')).to be true
+        expect(File.exist?('openc3-cosmos-test-plugin.gemspec')).to be true
+        expect(File.exist?('Rakefile')).to be true
+        expect(File.exist?('README.md')).to be true
       end
 
       it "generates a Python plugin" do
         CliGenerator.class_variable_set(:@@language, 'py')
         result = CliGenerator.generate_plugin(['plugin', 'test-plugin', '--python'])
-        expect(result).to eql('test-plugin')
-        expect(File.exist?('openc3-cosmos-test-plugin')).to be true
-        expect(File.exist?('openc3-cosmos-test-plugin/plugin.txt')).to be true
+        expect(result).to eql('openc3-cosmos-test-plugin')
+        expect(File.exist?('plugin.txt')).to be true
       end
 
       it "uses OPENC3_LANGUAGE environment variable" do
         ENV['OPENC3_LANGUAGE'] = 'python'
         CliGenerator.class_variable_set(:@@language, 'py')
         result = CliGenerator.generate_plugin(['plugin', 'test-plugin'])
-        expect(result).to eql('test-plugin')
-        expect(File.exist?('openc3-cosmos-test-plugin')).to be true
+        expect(result).to eql('openc3-cosmos-test-plugin')
+        expect(File.exist?('plugin.txt')).to be true
       end
 
       it "prevents duplicate plugin generation" do
-        CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
+        result = CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
+        Dir.chdir(@temp_dir)  # Go back to temp dir since generate_plugin cd's into plugin dir
         expect { CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby']) }
           .to raise_error(SystemExit)
       end
@@ -88,8 +88,8 @@ module OpenC3
 
     describe "generate_target" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
-        Dir.chdir('openc3-cosmos-test-plugin')
       end
 
       it "generates a target" do
@@ -119,8 +119,8 @@ module OpenC3
 
     describe "generate_widget" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'widget-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-widget-test')
       end
 
       it "generates a widget with proper naming" do
@@ -164,8 +164,8 @@ module OpenC3
 
     describe "generate_tool_vue" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'tool-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-tool-test')
       end
 
       it "generates a Vue.js tool" do
@@ -201,8 +201,8 @@ module OpenC3
 
     describe "generate_tool (generic defaults to Vue)" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'tool-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-tool-test')
       end
 
       it "defaults to Vue.js when no type specified" do
@@ -215,8 +215,8 @@ module OpenC3
 
     describe "generate_tool_angular" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'tool-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-tool-test')
       end
 
       it "generates an Angular tool" do
@@ -234,8 +234,8 @@ module OpenC3
 
     describe "generate_tool_react" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'tool-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-tool-test')
       end
 
       it "generates a React tool" do
@@ -253,8 +253,8 @@ module OpenC3
 
     describe "generate_tool_svelte" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'tool-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-tool-test')
       end
 
       it "generates a Svelte tool" do
@@ -272,8 +272,8 @@ module OpenC3
 
     describe "generate_command_validator" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'validator-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-validator-test')
         CliGenerator.generate_target(['target', 'EXAMPLE', '--ruby'])
       end
 
@@ -302,8 +302,8 @@ module OpenC3
 
     describe "generate_conversion" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'conversion-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-conversion-test')
         CliGenerator.generate_target(['target', 'EXAMPLE', '--ruby'])
       end
 
@@ -326,8 +326,8 @@ module OpenC3
 
     describe "generate_limits_response" do
       before(:each) do
+        # generate_plugin already changes into the plugin directory
         CliGenerator.generate_plugin(['plugin', 'limits-test', '--ruby'])
-        Dir.chdir('openc3-cosmos-limits-test')
         CliGenerator.generate_target(['target', 'EXAMPLE', '--ruby'])
       end
 
