@@ -10,6 +10,11 @@ USER root
 
 ARG RUBYGEMS_URL=https://rubygems.org
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
+# Configure Bundler to mirror rubygems.org using the RUBYGEMS_URL environment variable
+# Bundler supports BUNDLE_MIRROR__<encoded_source> where : becomes ---, / becomes ___, . becomes __
+ENV BUNDLE_MIRROR__HTTPS---___RUBYGEMS__ORG=${RUBYGEMS_URL}
+# Disable bundler version check for air-gapped environments where exact version may not be available
+ENV BUNDLE_IGNORE_BUNDLER_VERSION_ERROR=true
 ARG PYPI_URL=https://pypi.org
 ENV PYPI_URL=${PYPI_URL}
 
@@ -68,6 +73,7 @@ RUN cd / \
     && rm -rf /usr/src/${TINI_DIR}
 RUN cd / \
     && gem update --system \
+    && gem install bundler:2.5.22 \
     && gem install rake \
     && gem install google-protobuf \
     && gem install grpc \

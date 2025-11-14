@@ -6,7 +6,7 @@ ARG OPENC3_IMAGE=openc3-base
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 
 WORKDIR /src/
-COPY Gemfile ./
+COPY Gemfile Gemfile.lock* ./
 
 USER root
 
