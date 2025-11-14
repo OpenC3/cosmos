@@ -66,8 +66,8 @@ jobs:
           # Verify package.json has required scripts
           grep -q '"build"' package.json
           grep -q '"serve"' package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (Vue builds to tools/testvuetool/ directory)
           test -f tools/testvuetool/main.js
@@ -96,8 +96,8 @@ jobs:
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
           grep -q '"build"' package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (Angular builds to tools/testangulartool/)
           test -f tools/testangulartool/main.js
@@ -126,8 +126,8 @@ jobs:
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
           grep -q '"build"' package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (React builds to tools/testreacttool/)
           test -f tools/testreacttool/main.js
@@ -156,8 +156,8 @@ jobs:
           grep -q 'INLINE_URL main.js' plugin.txt
           # Verify package.json has required scripts
           grep -q '"build"' package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (Svelte builds to tools/testsveltetool/)
           test -f tools/testsveltetool/main.js
@@ -185,8 +185,8 @@ jobs:
           grep -q "WIDGET Testwidget" plugin.txt
           # Verify package.json has required scripts
           grep -q '"build"' package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (widgets build to tools/widgets/TestWidget/)
           test -f tools/widgets/TestWidget/TestWidget.umd.min.js
@@ -228,8 +228,8 @@ jobs:
           test -f vite.config.js
           # Verify it's a Vue project by checking for Vue dependencies
           grep -q "vue" package.json
-          # Build plugin (use pnpm install without --frozen-lockfile for fresh plugins)
-          pnpm install
+          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
+          pnpm install --ignore-scripts
           rake build VERSION=1.0.0
           # Verify build output (should be in tools/generictool/)
           test -f tools/generictool/main.js
