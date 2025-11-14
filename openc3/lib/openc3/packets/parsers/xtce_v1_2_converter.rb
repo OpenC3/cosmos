@@ -48,7 +48,7 @@ module OpenC3
       Xtcev1_2Converter.new(commands, telemetry, output_dir)
     end
 
-    def self.combine_output_xtce(output_dir)
+    def self.combine_output_xtce(output_dir, root_target_name = nil)
       combined_file_directory = File.join(output_dir, 'TARGETS_COMBINED', 'cmd_tlm')
       begin
         FileUtils.rm_rf(combined_file_directory)
@@ -80,7 +80,7 @@ module OpenC3
         root_builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml['xtce'].SpaceSystem("xmlns:xtce" => "http://www.omg.org/spec/XTCE/20180204",
                                   "xmlns:xsi" => "http://www.w3.org/2001/XMLSchema-instance",
-                                  "name" => "root",
+                                  "name" => root_target_name ? root_target_name : "root",
                                   "xsi:schemaLocation" => "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd")
         end 
         new_doc = root_builder.doc
@@ -93,7 +93,16 @@ module OpenC3
               attr.remove
             end
           end
-          new_root.add_child(target_root)
+          if root_target_name == target_root["name"]
+            nodes_to_add_reversed = target_root.children.to_a.reverse
+            nodes_to_add_reversed.each do |child_node|
+              new_root.prepend_child(child_node)
+            end
+          else
+            new_root.add_child(target_root)
+          end
+          #else
+          #end
         end
         File.open(full_file_name, 'w') do |file|
           file.puts new_doc.to_xml
