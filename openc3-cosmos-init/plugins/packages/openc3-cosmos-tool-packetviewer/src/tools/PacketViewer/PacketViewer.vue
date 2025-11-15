@@ -28,6 +28,7 @@
         <target-packet-item-chooser
           :initial-target-name="$route.params.target"
           :initial-packet-name="$route.params.packet"
+          show-latest
           @on-set="packetChanged($event)"
         />
       </div>
@@ -252,6 +253,8 @@ export default {
       itemName: '',
       x: 0,
       y: 0,
+      latestAvailable: null,
+      latestItems: null,
     }
   },
   computed: {
@@ -503,36 +506,21 @@ export default {
       }
     },
     packetChanged(event) {
-      this.api
-        .get_target(event.targetName)
-        .then((target) => {
+      // Handle LATEST packet specially
+      if (event.packetName === 'LATEST') {
+        this.api.get_target(event.targetName).then((target) => {
           if (target) {
             this.ignoredItems = target.ignored_items
-
-            return this.api.get_packet_derived_items(
-              event.targetName,
-              event.packetName,
-            )
-          } else {
-            // Probably got here from an old config or URL params that point to something that no longer exists
-            // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
-            this.targetName = null
-            this.packetName = null
-            this.$router.push({
-              name: 'PackerViewer',
-              params: {},
-            })
-          }
-        })
-        .then((derived) => {
-          if (derived) {
-            this.derivedItems = derived
+            // For LATEST, we can't get specific packet derived items
+            this.derivedItems = []
 
             this.targetName = event.targetName
             this.packetName = event.packetName
+            const currentTarget = this.$route.params.target?.toUpperCase()
+            const currentPacket = this.$route.params.packet?.toUpperCase()
             if (
-              this.$route.params.target !== event.targetName ||
-              this.$route.params.packet !== event.packetName
+              currentTarget !== event.targetName ||
+              currentPacket !== event.packetName
             ) {
               this.saveDefaultConfig(this.currentConfig)
               this.$router.push({
@@ -544,8 +532,103 @@ export default {
               })
             }
             this.changeUpdater(true)
+          } else {
+            // Probably got here from an old config or URL params that point to something that no longer exists
+            this.targetName = null
+            this.packetName = null
+            this.$router.push({
+              name: 'PackerViewer',
+              params: {},
+            })
           }
         })
+      } else {
+        // Regular packet handling
+        this.api
+          .get_target(event.targetName)
+          .then((target) => {
+            if (target) {
+              this.ignoredItems = target.ignored_items
+
+              return this.api.get_packet_derived_items(
+                event.targetName,
+                event.packetName,
+              )
+            } else {
+              // Probably got here from an old config or URL params that point to something that no longer exists
+              // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
+              this.targetName = null
+              this.packetName = null
+              this.$router.push({
+                name: 'PackerViewer',
+                params: {},
+              })
+            }
+          })
+          .then((derived) => {
+            if (derived) {
+              this.derivedItems = derived
+
+              this.targetName = event.targetName
+              this.packetName = event.packetName
+              const currentTarget = this.$route.params.target?.toUpperCase()
+              const currentPacket = this.$route.params.packet?.toUpperCase()
+              if (
+                currentTarget !== event.targetName ||
+                currentPacket !== event.packetName
+              ) {
+                this.saveDefaultConfig(this.currentConfig)
+                this.$router.push({
+                  name: 'PackerViewer',
+                  params: {
+                    target: this.targetName,
+                    packet: this.packetName,
+                  },
+                })
+              }
+              this.changeUpdater(true)
+            }
+          })
+      }
+    },
+    latestGetTlmValues(values) {
+      if (values != null && values.length > 0) {
+        this.counter += 1
+        let derived = []
+        let other = []
+        this.latestItemNames.forEach((itemName, index) => {
+          if (!this.showIgnored && this.ignoredItems.includes(itemName)) {
+            return
+          }
+          const itemValue = values[index]
+          if (itemValue) {
+            if (this.derivedItems.includes(itemName)) {
+              derived.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: true,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
+              })
+            } else {
+              other.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: false,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
+              })
+            }
+          }
+        })
+        if (this.derivedLast) {
+          this.rows = other.concat(derived)
+        } else {
+          this.rows = derived.concat(other)
+        }
+      }
     },
     changeUpdater(clearExisting) {
       if (this.updater != null) {
@@ -554,62 +637,107 @@ export default {
       }
       if (clearExisting) {
         this.rows = []
+        this.latestAvailable = null
+        this.latestItems = null
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
           return // noop if target/packet aren't set
         }
-        this.api
-          .get_tlm_packet(
-            this.targetName,
-            this.packetName,
-            this.valueType,
-            this.staleLimit,
-          )
-          .then((data) => {
-            // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
-            if (data != null) {
-              this.counter += 1
-              let derived = []
-              let other = []
-              data.forEach((value) => {
-                if (!this.showIgnored && this.ignoredItems.includes(value[0])) {
-                  return
-                }
-                if (this.derivedItems.includes(value[0])) {
-                  derived.push({
-                    name: value[0],
-                    value: value[1],
-                    limitsState: value[2],
-                    derived: true,
-                    counter: this.counter,
-                    pinned: this.isPinned(value[0]),
-                  })
-                } else {
-                  other.push({
-                    name: value[0],
-                    value: value[1],
-                    limitsState: value[2],
-                    derived: false,
-                    counter: this.counter,
-                    pinned: this.isPinned(value[0]),
-                  })
-                }
+
+        // Handle LATEST packet using get_tlm_values
+        if (this.packetName === 'LATEST') {
+          if (this.latestAvailable) {
+            this.api
+              .get_tlm_values(this.latestAvailable, this.staleLimit)
+              .then((values) => {
+                this.latestGetTlmValues(values)
               })
-              if (this.derivedLast) {
-                this.rows = other.concat(derived)
-              } else {
-                this.rows = derived.concat(other)
+              .catch((error) => {
+                // eslint-disable-next-line
+                console.log(error)
+              })
+          } else {
+            this.api
+              .get_all_tlm_item_names(this.targetName)
+              .then((itemNames) => {
+                this.latestItemNames = itemNames
+                // Build items array in format TGT__LATEST__ITEM__TYPE
+                const items = itemNames.map(
+                  (item) =>
+                    `${this.targetName}__LATEST__${item}__${this.valueType}`,
+                )
+                return this.api.get_tlm_available(items)
+              })
+              .then((available) => {
+                this.latestAvailable = available
+                return this.api.get_tlm_values(available, this.staleLimit)
+              })
+              .then((values) => {
+                this.latestGetTlmValues(values)
+              })
+              .catch((error) => {
+                // eslint-disable-next-line
+                console.log(error)
+              })
+          }
+        } else {
+          // Regular packet handling using get_tlm_packet
+          this.api
+            .get_tlm_packet(
+              this.targetName,
+              this.packetName,
+              this.valueType,
+              this.staleLimit,
+            )
+            .then((data) => {
+              // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
+              if (data != null) {
+                this.counter += 1
+                let derived = []
+                let other = []
+                data.forEach((value) => {
+                  if (
+                    !this.showIgnored &&
+                    this.ignoredItems.includes(value[0])
+                  ) {
+                    return
+                  }
+                  if (this.derivedItems.includes(value[0])) {
+                    derived.push({
+                      name: value[0],
+                      value: value[1],
+                      limitsState: value[2],
+                      derived: true,
+                      counter: this.counter,
+                      pinned: this.isPinned(value[0]),
+                    })
+                  } else {
+                    other.push({
+                      name: value[0],
+                      value: value[1],
+                      limitsState: value[2],
+                      derived: false,
+                      counter: this.counter,
+                      pinned: this.isPinned(value[0]),
+                    })
+                  }
+                })
+                if (this.derivedLast) {
+                  this.rows = other.concat(derived)
+                } else {
+                  this.rows = derived.concat(other)
+                }
               }
-            }
-          })
-          // Catch errors but just log to the console
-          // We don't clear the updater because errors can happen on upgrade
-          // and we want to continue updating once the new plugin comes online
-          .catch((error) => {
-            // eslint-disable-next-line
-            console.log(error)
-          })
+            })
+            // Catch errors but just log to the console
+            // We don't clear the updater because errors can happen on upgrade
+            // and we want to continue updating once the new plugin comes online
+            .catch((error) => {
+              // eslint-disable-next-line
+              console.log(error)
+            })
+        }
       }, this.refreshInterval)
     },
     resetConfig: function () {

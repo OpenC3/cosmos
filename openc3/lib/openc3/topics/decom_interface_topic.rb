@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class DecomInterfaceTopic < Topic
@@ -57,6 +58,36 @@ module OpenC3
       data['type'] = type
       Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
           { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.get_tlm_buffer(target_name, packet_name, timeout: 5, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['packet_name'] = packet_name.to_s.upcase
+      # DecomMicroservice is listening to the DECOMINTERFACE topic and has
+      # the most recent decommed packets including subpackets
+      ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
+      Topic.update_topic_offsets([ack_topic])
+      decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
+          { 'get_tlm_buffer' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == decom_id
+            if msg_hash["result"] == "SUCCESS"
+              msg_hash["stored"] = ConfigParser.handle_true_false(msg_hash["stored"])
+              extra = msg_hash["extra"]
+              if extra and extra.length > 0
+                msg_hash["extra"] = JSON.parse(extra, allow_nan: true, create_additions: true)
+              end
+              return msg_hash
+            else
+              raise msg_hash["message"]
+            end
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for ack. Does target '#{target_name}' exist?"
     end
   end
 end

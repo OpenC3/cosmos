@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -113,6 +113,12 @@ module OpenC3
     # @return [Boolean] If this packet is marked as restricted use
     attr_accessor :restricted
 
+    # @return [Boolean] If this packet is marked as a subpacket
+    attr_accessor :subpacket
+
+    # @return [Subpacketizer] Subpacketizer class (optional)
+    attr_accessor :subpacketizer
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -156,7 +162,9 @@ module OpenC3
         @virtual = false
         @restricted = false
         @validator = nil
-        @obfuscated_items = []
+        @subpacket = false
+        @subpacketizer = nil
+        @obfuscated_items = nil
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -1087,6 +1095,9 @@ module OpenC3
       else
         config << "COMMAND #{@target_name.to_s.quote_if_necessary} #{@packet_name.to_s.quote_if_necessary} #{@default_endianness} \"#{@description}\"\n"
       end
+      if @subpacketizer
+        config << "  SUBPACKETIZER #{@subpacketizer.class} #{@subpacketizer.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
+      end
       if @accessor.class.to_s != 'OpenC3::BinaryAccessor'
         config << "  ACCESSOR #{@accessor.class} #{@accessor.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
@@ -1106,6 +1117,9 @@ module OpenC3
         config << "  DISABLED\n"
       elsif @hidden
         config << "  HIDDEN\n"
+      end
+      if @subpacket
+        config << "  SUBPACKET\n"
       end
       if @restricted
         config << "  RESTRICTED\n"
@@ -1170,6 +1184,8 @@ module OpenC3
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['virtual'] = true if @virtual
+      config['subpacket'] = true if @subpacket
+      config['subpacketizer'] = @subpacketizer.class.to_s if @subpacketizer
       config['restricted'] = true if @restricted
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
@@ -1218,60 +1234,6 @@ module OpenC3
       config
     end
 
-    def self.from_json(hash)
-      endianness = hash['endianness'] ? hash['endianness'].intern : nil # Convert to symbol
-      packet = Packet.new(hash['target_name'], hash['packet_name'], endianness, hash['description'])
-      packet.short_buffer_allowed = hash['short_buffer_allowed']
-      packet.hazardous = hash['hazardous']
-      packet.hazardous_description = hash['hazardous_description']
-      packet.messages_disabled = hash['messages_disabled']
-      packet.disabled = hash['disabled']
-      packet.hidden = hash['hidden']
-      packet.virtual = hash['virtual']
-      packet.restricted = hash['restricted']
-      if hash['accessor']
-        begin
-          accessor = OpenC3::const_get(hash['accessor'])
-          if hash['accessor_args'] and hash['accessor_args'].length > 0
-            packet.accessor = accessor.new(packet, *hash['accessor_args'])
-          else
-            packet.accessor = accessor.new(packet)
-          end
-        rescue => e
-          Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{e}"
-        end
-      end
-      if hash['validator']
-        begin
-          validator = OpenC3::const_get(hash['validator'])
-          packet.validator = validator.new(packet)
-        rescue => e
-          Logger.instance.error "#{packet.target_name} #{packet.packet_name} validator of #{hash['validator']} could not be found due to #{e}"
-        end
-      end
-      packet.template = Base64.decode64(hash['template']) if hash['template']
-      packet.meta = hash['meta']
-      # Can't convert processors
-      hash['items'].each do |item|
-        packet.define(PacketItem.from_json(item))
-      end
-      if hash['response']
-        packet.response = hash['response']
-      end
-      if hash['error_response']
-        packet.error_response = hash['error_response']
-      end
-      if hash['screen']
-        packet.screen = hash['screen']
-      end
-      if hash['related_items']
-        packet.related_items = hash['related_items']
-      end
-      packet.ignore_overlap = hash['ignore_overlap']
-
-      packet
-    end
-
     def decom
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
@@ -1303,6 +1265,14 @@ module OpenC3
 
       @processors.each do |_processor_name, processor|
         processor.call(self, buffer)
+      end
+    end
+
+    def subpacketize
+      if @subpacketizer
+        return @subpacketizer.call(self)
+      else
+        return [self]
       end
     end
 

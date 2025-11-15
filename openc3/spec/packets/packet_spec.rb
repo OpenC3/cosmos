@@ -1658,22 +1658,6 @@ module OpenC3
       end
     end
 
-    describe "self.from_json" do
-      it "creates a Packet from a hash" do
-        p = Packet.new("tgt", "pkt")
-        p.template = "\x00\x01\x02\x03"
-        p.append_item("test1", 8, :UINT)
-        p.accessor = OpenC3::XmlAccessor.new(p)
-        packet = Packet.from_json(p.as_json())
-        expect(packet.target_name).to eql p.target_name
-        expect(packet.packet_name).to eql p.packet_name
-        expect(packet.accessor.class).to eql OpenC3::XmlAccessor
-        item = packet.sorted_items[0]
-        expect(item.name).to eql "TEST1"
-        expect(packet.template).to eql "\x00\x01\x02\x03"
-      end
-    end
-
     describe "decom" do
       it "creates decommutated array data" do
         p = Packet.new("tgt", "pkt")
@@ -1940,6 +1924,59 @@ module OpenC3
         p.obfuscate
 
         expect(p.buffer).to eql "\x01\x02\x03\x04\x00"
+      end
+    end
+
+    describe "subpacketize" do
+      it "returns array with single packet when no subpacketizer" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("item1", 8, :UINT)
+        p.buffer = "\x01"
+        result = p.subpacketize
+        expect(result).to be_a(Array)
+        expect(result.length).to eql 1
+        expect(result[0]).to eql p
+      end
+
+      it "calls subpacketizer when present" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("item1", 8, :UINT)
+        p.buffer = "\x01"
+
+        subpacketizer = double("subpacketizer")
+        expect(subpacketizer).to receive(:call).with(p).and_return([p, p.clone])
+        p.subpacketizer = subpacketizer
+
+        result = p.subpacketize
+        expect(result).to be_a(Array)
+        expect(result.length).to eql 2
+      end
+    end
+
+    describe "subpacket attribute" do
+      it "initializes to false" do
+        p = Packet.new("tgt", "pkt")
+        expect(p.subpacket).to eql false
+      end
+
+      it "can be set to true" do
+        p = Packet.new("tgt", "pkt")
+        p.subpacket = true
+        expect(p.subpacket).to eql true
+      end
+    end
+
+    describe "subpacketizer attribute" do
+      it "initializes to nil" do
+        p = Packet.new("tgt", "pkt")
+        expect(p.subpacketizer).to eql nil
+      end
+
+      it "can be set to a subpacketizer object" do
+        p = Packet.new("tgt", "pkt")
+        subpacketizer = double("subpacketizer")
+        p.subpacketizer = subpacketizer
+        expect(p.subpacketizer).to eql subpacketizer
       end
     end
   end

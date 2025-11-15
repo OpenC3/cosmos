@@ -24,6 +24,7 @@ class TemplateAccessor(Accessor):
         self.left_char = left_char
         self.right_char = right_char
         self.configured = False
+        self.args = [left_char, right_char]
 
     def configure(self):
         if self.configured:
