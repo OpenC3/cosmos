@@ -29,6 +29,7 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
 from openc3.utilities.thread_manager import ThreadManager
+from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
@@ -197,11 +198,7 @@ class DecomMicroservice(Microservice):
 
         for packet_or_subpacket in packet_and_subpackets:
             if packet_or_subpacket.subpacket:
-                if packet_or_subpacket.received_time is None:
-                    packet_or_subpacket.received_time = packet.received_time
-                packet_or_subpacket.stored = packet.stored
-                packet_or_subpacket.extra = packet.extra
-                TargetModel.sync_tlm_packet_counts(packet_or_subpacket, self.target_names, scope=self.scope)
+                packet_or_subpacket = self.handle_subpacket(packet, packet_or_subpacket)
 
             #####################################################################################
             # Run Processors
@@ -225,6 +222,60 @@ class DecomMicroservice(Microservice):
             TelemetryDecomTopic.write_packet(packet_or_subpacket, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
+
+    def handle_subpacket(self, packet, subpacket):
+        # Subpacket received time always = packet.received_time
+        # Use packet_time appropriately if another timestamp is needed
+        subpacket.received_time = packet.received_time
+        subpacket.stored = packet.stored
+        subpacket.extra = packet.extra
+
+        if subpacket.stored:
+            # Stored telemetry does not update the current value table
+            identified_subpacket = System.telemetry.identify_and_define_packet(subpacket, self.target_names, subpackets=True)
+        else:
+            # Identify and update subpacket
+            if subpacket.identified():
+                try:
+                    # Preidentifed subpacket - place it into the current value table
+                    identified_subpacket = System.telemetry.update(subpacket.target_name, subpacket.packet_name, subpacket.buffer)
+                except RuntimeError:
+                    # Subpacket identified but we don't know about it
+                    # Clear packet_name and target_name and try to identify
+                    self.logger.warn(
+                        f"{self.name}: Received unknown identified subpacket: {subpacket.target_name} {subpacket.packet_name}"
+                    )
+                    subpacket.target_name = None
+                    subpacket.packet_name = None
+                    identified_subpacket = System.telemetry.identify_and_set_buffer(
+                        subpacket.buffer, self.target_names, subpackets=True
+                    )
+            else:
+                # Subpacket needs to be identified
+                identified_subpacket = System.telemetry.identify_and_set_buffer(
+                    subpacket.buffer, self.target_names, subpackets=True
+                )
+
+        if identified_subpacket:
+            identified_subpacket.received_time = subpacket.received_time
+            identified_subpacket.stored = subpacket.stored
+            identified_subpacket.extra = subpacket.extra
+            subpacket = identified_subpacket
+        else:
+            unknown_subpacket = System.telemetry.update("UNKNOWN", "UNKNOWN", subpacket.buffer)
+            unknown_subpacket.received_time = subpacket.received_time
+            unknown_subpacket.stored = subpacket.stored
+            unknown_subpacket.extra = subpacket.extra
+            subpacket = unknown_subpacket
+            num_bytes_to_print = min(InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(subpacket.buffer))
+            data = subpacket.buffer_no_copy()[0:(num_bytes_to_print)]
+            prefix = "".join([format(x, "02x") for x in data])
+            self.logger.warn(
+                f"{self.name} {subpacket.target_name} packet length: {len(subpacket.buffer)} starting with: {prefix}"
+            )
+
+        TargetModel.sync_tlm_packet_counts(subpacket, self.target_names, scope=self.scope)
+        return subpacket
 
     # Called when an item in any packet changes limits states.
     #

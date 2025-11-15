@@ -83,10 +83,11 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "extra": packet.extra,
-            "stored": packet.stored,
+            "stored": str(packet.stored),
             "buffer": json.dumps(packet.buffer_no_copy(), cls=JsonEncoder)
         }
+        if packet.extra:
+            msg_hash["extra"] = json.dumps(packet.extra)
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the source to return
     except RuntimeError:

@@ -24,6 +24,7 @@ require 'time'
 require 'thread'
 require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
+require 'openc3/microservices/interface_microservice'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/topics/limits_event_topic'
 
@@ -184,10 +185,7 @@ module OpenC3
 
         packet_and_subpackets.each do |packet_or_subpacket|
           if packet_or_subpacket.subpacket
-            packet_or_subpacket.received_time = packet.received_time unless packet_or_subpacket.received_time
-            packet_or_subpacket.stored = packet.stored
-            packet_or_subpacket.extra = packet.extra
-            TargetModel.sync_tlm_packet_counts(packet_or_subpacket, @target_names, scope: @scope)
+            packet_or_subpacket = handle_subpacket(packet, packet_or_subpacket)
           end
 
           #####################################################################################
@@ -216,6 +214,61 @@ module OpenC3
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end
+    end
+
+    def handle_subpacket(packet, subpacket)
+      # Subpacket received time always = packet.received_time
+      # Use packet_time appropriately if another timestamp is needed
+      subpacket.received_time = packet.received_time
+      subpacket.stored = packet.stored
+      subpacket.extra = packet.extra
+
+      if subpacket.stored
+        # Stored telemetry does not update the current value table
+        identified_subpacket = System.telemetry.identify_and_define_packet(subpacket, @target_names, subpackets: true)
+      else
+        # Identify and update subpacket
+        if subpacket.identified?
+          begin
+            # Preidentifed subpacket - place it into the current value table
+            identified_subpacket = System.telemetry.update!(subpacket.target_name,
+                                                            subpacket.packet_name,
+                                                            subpacket.buffer)
+          rescue RuntimeError
+            # Subpacket identified but we don't know about it
+            # Clear packet_name and target_name and try to identify
+            @logger.warn "#{@name}: Received unknown identified subpacket: #{subpacket.target_name} #{subpacket.packet_name}"
+            subpacket.target_name = nil
+            subpacket.packet_name = nil
+            identified_subpacket = System.telemetry.identify!(subpacket.buffer,
+                                                              @target_names, subpackets: true)
+          end
+        else
+          # Packet needs to be identified
+          identified_subpacket = System.telemetry.identify!(subpacket.buffer,
+                                                            @target_names, subpackets: true)
+        end
+      end
+
+      if identified_subpacket
+        identified_subpacket.received_time = subpacket.received_time
+        identified_subpacket.stored = subpacket.stored
+        identified_subpacket.extra = subpacket.extra
+        subpacket = identified_subpacket
+      else
+        unknown_subpacket = System.telemetry.update!('UNKNOWN', 'UNKNOWN', subpacket.buffer)
+        unknown_subpacket.received_time = subpacket.received_time
+        unknown_subpacket.stored = subpacket.stored
+        unknown_subpacket.extra = subpacket.extra
+        subpacket = unknown_subpacket
+        num_bytes_to_print = [InterfaceMicroservice::UNKNOWN_BYTES_TO_PRINT, subpacket.length].min
+        data = subpacket.buffer(false)[0..(num_bytes_to_print - 1)]
+        prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()
+        @logger.warn "#{@name} #{subpacket.target_name} packet length: #{subpacket.length} starting with: #{prefix}"
+      end
+
+      TargetModel.sync_tlm_packet_counts(subpacket, @target_names, scope: @scope)
+      return subpacket
     end
 
     # Called when an item in any packet changes limits states.

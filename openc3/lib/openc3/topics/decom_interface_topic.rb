@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class DecomInterfaceTopic < Topic
@@ -74,6 +75,11 @@ module OpenC3
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == decom_id
             if msg_hash["result"] == "SUCCESS"
+              msg_hash["stored"] = ConfigParser.handle_true_false(msg_hash["stored"])
+              extra = msg_hash["extra"]
+              if extra and extra.length > 0
+                msg_hash["extra"] = JSON.parse(extra, allow_nan: true, create_additions: true)
+              end
               return msg_hash
             else
               raise msg_hash["message"]

@@ -19,7 +19,7 @@ import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonEncoder, JsonDecoder
-
+from openc3.config.config_parser import ConfigParser
 
 class DecomInterfaceTopic(Topic):
     @classmethod
@@ -96,6 +96,10 @@ class DecomInterfaceTopic(Topic):
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
                         msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
+                        msg_hash["stored"] = ConfigParser.handle_true_false(msg_hash["stored"])
+                        extra = msg_hash.get("extra")
+                        if extra is not None:
+                            msg_hash["extra"] = json.loads(extra)
                         return msg_hash
                     else:
                         raise RuntimeError(msg_hash[b"message"])
