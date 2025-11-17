@@ -92,7 +92,7 @@ class Commands:
     #
     # @param (see #identify_tlm!)
     # @return (see #identify_tlm!)
-    def identify(self, packet_data, target_names=None):
+    def identify(self, packet_data, target_names=None, subpackets=False):
         identified_packet = None
 
         if target_names is None:
@@ -107,20 +107,41 @@ class Commands:
                 # No commands for this target
                 continue
 
-            target = self.system.targets.get(target_name)
-            if target and target.cmd_unique_id_mode:
+            if (not subpackets and self.cmd_unique_id_mode(target_name)) or (
+                subpackets and self.cmd_subpacket_unique_id_mode(target_name)
+            ):
                 # Iterate through the packets and see if any represent the buffer
                 for _, packet in target_packets.items():
-                    if packet.identify(packet_data):
+                    if subpackets:
+                        if not packet.subpacket:
+                            continue
+                    else:
+                        if packet.subpacket:
+                            continue
+                    if packet.identify(packet_data):  # Handles virtual
                         identified_packet = packet
                         break
             else:
                 # Do a lookup to quickly identify the packet
-                if len(target_packets) > 0:
-                    packet = next(iter(target_packets.values()))
+                packet = None
+                for _, target_packet in target_packets.items():
+                    if target_packet.virtual:
+                        continue
+                    if subpackets:
+                        if not target_packet.subpacket:
+                            continue
+                    else:
+                        if target_packet.subpacket:
+                            continue
+                    packet = target_packet
+                    break
+                if packet:
                     key = packet.read_id_values(packet_data)
-                    id_values = self.config.cmd_id_value_hash[target_name]
-                    identified_packet = id_values.get(str(key))
+                    if subpackets:
+                        id_values = self.config.cmd_subpacket_id_value_hash[target_name]
+                    else:
+                        id_values = self.config.cmd_id_value_hash[target_name]
+                    identified_packet = id_values.get(repr(key))
                     if identified_packet is None:
                         identified_packet = id_values.get("CATCHALL")
 
@@ -247,6 +268,12 @@ class Commands:
 
     def dynamic_add_packet(self, packet, affect_ids=False):
         self.config.dynamic_add_packet(packet, "COMMAND", affect_ids=affect_ids)
+
+    def cmd_unique_id_mode(self, target_name):
+        return self.config.cmd_unique_id_mode.get(target_name.upper())
+
+    def cmd_subpacket_unique_id_mode(self, target_name):
+        return self.config.cmd_subpacket_unique_id_mode.get(target_name.upper())
 
     def _set_parameters(self, command, params, range_checking):
         given_item_names = []

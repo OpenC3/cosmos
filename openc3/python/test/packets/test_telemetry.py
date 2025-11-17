@@ -270,3 +270,108 @@ class TestTelemetry(unittest.TestCase):
 
     def test_all_returns_all_packets(self):
         self.assertEqual(list(self.tlm.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])
+
+    def test_identify_with_subpackets_false_excludes_subpackets(self):
+        # Create config with normal packet and subpacket
+        import tempfile
+        from openc3.packets.packet_config import PacketConfig
+
+        pc = PacketConfig()
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 10\n")
+        tf.seek(0)
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Create telemetry with this config
+        from openc3.packets.telemetry import Telemetry
+        from openc3.system.system import System
+
+        tlm = Telemetry(pc, System)
+
+        # Packet with ID 1 should identify as PKT1, not SUB1
+        packet_data = b"\x01"
+        identified = tlm.identify(packet_data, ["TGT1"], subpackets=False)
+        self.assertIsNotNone(identified)
+        self.assertEqual(identified.packet_name, "PKT1")
+
+    def test_identify_with_subpackets_true_only_identifies_subpackets(self):
+        # Create config with normal packet and subpacket
+        import tempfile
+        from openc3.packets.packet_config import PacketConfig
+
+        pc = PacketConfig()
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 10\n")
+        tf.seek(0)
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Create telemetry with this config
+        from openc3.packets.telemetry import Telemetry
+        from openc3.system.system import System
+
+        tlm = Telemetry(pc, System)
+
+        # Packet with ID 10 should identify as SUB1
+        packet_data = b"\x0A"
+        identified = tlm.identify(packet_data, ["TGT1"], subpackets=True)
+        self.assertIsNotNone(identified)
+        self.assertEqual(identified.packet_name, "SUB1")
+
+        # Packet with ID 1 should NOT be identified when looking for subpackets
+        packet_data = b"\x01"
+        identified = tlm.identify(packet_data, ["TGT1"], subpackets=True)
+        self.assertIsNone(identified)
+
+    def test_tlm_unique_id_mode_returns_mode_for_target(self):
+        import tempfile
+        from openc3.packets.packet_config import PacketConfig
+
+        pc = PacketConfig()
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two packets with same ID but different layouts triggers unique_id_mode
+        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("TELEMETRY TGT1 PKT2 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 16 UINT 1\n")
+        tf.seek(0)
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.telemetry import Telemetry
+        from openc3.system.system import System
+
+        tlm = Telemetry(pc, System)
+        self.assertTrue(tlm.tlm_unique_id_mode("TGT1"))
+
+    def test_tlm_subpacket_unique_id_mode_returns_mode_for_target(self):
+        import tempfile
+        from openc3.packets.packet_config import PacketConfig
+
+        pc = PacketConfig()
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two subpackets with same ID but different layouts triggers subpacket unique_id_mode
+        tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("TELEMETRY TGT1 SUB2 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_ITEM ITEM1 16 UINT 1\n")
+        tf.seek(0)
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.telemetry import Telemetry
+        from openc3.system.system import System
+
+        tlm = Telemetry(pc, System)
+        self.assertTrue(tlm.tlm_subpacket_unique_id_mode("TGT1"))
