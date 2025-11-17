@@ -89,13 +89,18 @@ class PacketConfig:
     # self.param process_target_name [String] The target name. Pass None when parsing
     #   an xtce file to automatically determine the target name.
     def process_file(self, filename, process_target_name):
-        # TODO: Handle .xtce files
-        # if File.extname(filename).downcase == ".xtce"
-        #   XtceParser.process(self.commands, self.telemetry, self.warnings, filename, process_target_name)
-        #   return
+        # Handle .xtce files
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext == ".xtce":
+            raise NotImplementedError(
+                f"XTCE file parsing is not yet implemented in Python. "
+                f"File: {filename}\n"
+                f"Please use OpenC3 .txt format or convert from XTCE using external tools."
+            )
 
         # Partial files are included into another file and thus aren't directly processed
-        if os.path.basename(filename)[0] == "_":  # Partials start with underscore
+        # Partials start with underscore
+        if os.path.basename(filename)[0] == "_":
             return
 
         self.converted_type = None
@@ -103,7 +108,10 @@ class PacketConfig:
         self.proc_text = ""
         self.building_generic_conversion = False
 
-        process_target_name = process_target_name.upper()
+        if process_target_name:
+            process_target_name = process_target_name.upper()
+        else:
+            raise ValueError("process_target_name is required (XTCE parsing not yet implemented)")
         parser = ConfigParser("https://docs.openc3.com/docs")
         setattr(parser, "target_name", process_target_name)
         for keyword, params in parser.parse_file(filename):
@@ -112,6 +120,8 @@ class PacketConfig:
                     # Complete a generic conversion
                     case "GENERIC_READ_CONVERSION_END" | "GENERIC_WRITE_CONVERSION_END":
                         parser.verify_num_parameters(0, 0, keyword)
+                        if not self.current_item:
+                            raise parser.error(f"{keyword} requires a current item")
                         if "READ" in keyword:
                             self.current_item.read_conversion = GenericConversion(
                                 self.proc_text,
@@ -127,7 +137,8 @@ class PacketConfig:
                         self.building_generic_conversion = False
                     # Add the current config.line to the conversion being built
                     case _:
-                        self.proc_text += parser.line + "\n"
+                        if parser.line:
+                            self.proc_text += parser.line + "\n"
 
             else:  # not building generic conversion
                 match keyword:
@@ -279,57 +290,97 @@ class PacketConfig:
         # Complete the last defined packet
         self.finish_packet()
 
-    # TODO: Used in xtce conversion
-    # # Convert the PacketConfig back to OpenC3 configuration files for each target
-    # def to_config(output_dir)
-    #   FileUtils.mkdir_p(output_dir)
+    def to_config(self, output_dir):
+        """Export packet configurations to text files
 
-    #   self.telemetry.each do |target_name, packets|
-    #     next if target_name == 'UNKNOWN'
+        Args:
+            output_dir (str): Directory to write configuration files to
+        """
+        os.makedirs(output_dir, exist_ok=True)
 
-    #     FileUtils.mkdir_p(File.join(output_dir, target_name, 'cmd_tlm'))
-    #     filename = File.join(output_dir, target_name, 'cmd_tlm', target_name.downcase + '_tlm.txt')
-    #     begin
-    #       File.delete(filename)
-    #     rescue
-    #       # Doesn't exist
+        # Export telemetry packets
+        for target_name, packets in self.telemetry.items():
+            if target_name == "UNKNOWN":
+                continue
 
-    #     packets.each do |packet_name, packet|
-    #       File.open(filename, 'a') do |file|
-    #         file.puts packet.to_config(:TELEMETRY)
-    #         file.puts ""
+            target_cmd_tlm_dir = os.path.join(output_dir, target_name, "cmd_tlm")
+            os.makedirs(target_cmd_tlm_dir, exist_ok=True)
+            filename = os.path.join(target_cmd_tlm_dir, f"{target_name.lower()}_tlm.txt")
 
-    #   self.commands.each do |target_name, packets|
-    #     next if target_name == 'UNKNOWN'
+            # Remove existing file if it exists
+            if os.path.exists(filename):
+                os.remove(filename)
 
-    #     FileUtils.mkdir_p(File.join(output_dir, target_name, 'cmd_tlm'))
-    #     filename = File.join(output_dir, target_name, 'cmd_tlm', target_name.downcase + '_cmd.txt')
-    #     begin
-    #       File.delete(filename)
-    #     rescue
-    #       # Doesn't exist
+            # Write all telemetry packets for this target
+            for packet_name, packet in packets.items():
+                with open(filename, "a") as f:
+                    f.write(packet.to_config("TELEMETRY"))
+                    f.write("\n")
 
-    #     packets.each do |packet_name, packet|
-    #       File.open(filename, 'a') do |file|
-    #         file.puts packet.to_config(:COMMAND)
-    #         file.puts ""
+        # Export command packets
+        for target_name, packets in self.commands.items():
+            if target_name == "UNKNOWN":
+                continue
 
-    #   # Put limits groups into SYSTEM target
-    #   if len(self.limits_groups) > 0
-    #     FileUtils.mkdir_p(File.join(output_dir, 'SYSTEM', 'cmd_tlm'))
-    #     filename = File.join(output_dir, 'SYSTEM', 'cmd_tlm', 'limits_groups.txt')
-    #     File.open(filename, 'w') do |file|
-    #       self.limits_groups.each do |limits_group_name, limits_group_items|
-    #         file.puts "LIMITS_GROUP {limits_group_name.quote_if_necessary}"
-    #         limits_group_items.each do |target_name, packet_name, item_name|
-    #           file.puts "  LIMITS_GROUP_ITEM {target_name.quote_if_necessary} {packet_name.quote_if_necessary} {item_name.quote_if_necessary}"
+            target_cmd_tlm_dir = os.path.join(output_dir, target_name, "cmd_tlm")
+            os.makedirs(target_cmd_tlm_dir, exist_ok=True)
+            filename = os.path.join(target_cmd_tlm_dir, f"{target_name.lower()}_cmd.txt")
 
-    #         file.puts ""
+            # Remove existing file if it exists
+            if os.path.exists(filename):
+                os.remove(filename)
 
-    #  # def to_config
+            # Write all command packets for this target
+            for packet_name, packet in packets.items():
+                with open(filename, "a") as f:
+                    f.write(packet.to_config("COMMAND"))
+                    f.write("\n")
 
-    # def to_xtce(output_dir)
-    #   XtceConverter.convert(self.commands, self.telemetry, output_dir)
+        # Export limits groups if any exist
+        if len(self.limits_groups) > 0:
+            system_cmd_tlm_dir = os.path.join(output_dir, "SYSTEM", "cmd_tlm")
+            os.makedirs(system_cmd_tlm_dir, exist_ok=True)
+            filename = os.path.join(system_cmd_tlm_dir, "limits_groups.txt")
+
+            with open(filename, "w") as f:
+                for limits_group_name, limits_group_items in self.limits_groups.items():
+                    # Quote if necessary (contains spaces or special chars)
+                    group_name = (
+                        f'"{limits_group_name}"'
+                        if " " in limits_group_name or any(c in limits_group_name for c in ["\\", '"'])
+                        else limits_group_name
+                    )
+                    f.write(f"LIMITS_GROUP {group_name}\n")
+
+                    for target_name, packet_name, item_name in limits_group_items:
+                        # Quote each component if necessary
+                        target = (
+                            f'"{target_name}"'
+                            if " " in target_name or any(c in target_name for c in ["\\", '"'])
+                            else target_name
+                        )
+                        packet = (
+                            f'"{packet_name}"'
+                            if " " in packet_name or any(c in packet_name for c in ["\\", '"'])
+                            else packet_name
+                        )
+                        item = (
+                            f'"{item_name}"'
+                            if " " in item_name or any(c in item_name for c in ["\\", '"'])
+                            else item_name
+                        )
+                        f.write(f"  LIMITS_GROUP_ITEM {target} {packet} {item}\n")
+                    f.write("\n")
+
+    def to_xtce(self, output_dir):
+        """Export packet configurations to XTCE format
+
+        Args:
+            output_dir (str): Directory to write XTCE files to
+        """
+        from openc3.packets.parsers.xtce_converter import XtceConverter
+
+        XtceConverter.convert(self.commands, self.telemetry, output_dir)
 
     # Add current packet into hash if it exists
     def finish_packet(self):
@@ -487,6 +538,9 @@ class PacketConfig:
         self.current_limits_group = None
 
     def process_current_packet(self, parser, keyword, params):
+        if not self.current_packet:
+            raise RuntimeError(f"process_current_packet() called for {keyword} without a current packet")
+
         match keyword:
             # Select or delete an item in the current packet
             case "SELECT_PARAMETER" | "SELECT_ITEM" | "DELETE_PARAMETER" | "DELETE_ITEM":
@@ -504,8 +558,9 @@ class PacketConfig:
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
                 except Exception:  # Rescue the default exception to provide a nicer error message
+                    cmd_or_tlm_str = self.current_cmd_or_tlm.lower() if self.current_cmd_or_tlm else "unknown"
                     raise parser.error(
-                        f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
+                        f"{params[0]} not found in {cmd_or_tlm_str} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
                         usage,
                     )
 
@@ -531,23 +586,31 @@ class PacketConfig:
             case "ALLOW_SHORT":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.short_buffer_allowed = True
 
             # Mark the current command as hazardous
             case "HAZARDOUS":
                 usage = "HAZARDOUS <HAZARDOUS DESCRIPTION (Optional)>"
                 parser.verify_num_parameters(0, 1, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.hazardous = True
                 if len(params) == 1:
                     self.current_packet.hazardous_description = params[0]
 
             # Define a processor class that will be called once case a packet is received
             case "PROCESSOR":
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 ProcessorParser.parse(parser, self.current_packet, self.current_cmd_or_tlm)
 
             case "DISABLE_MESSAGES":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.messages_disabled = True
 
             # Store user defined metadata for the packet or a packet item
@@ -566,22 +629,30 @@ class PacketConfig:
                     self.current_item.meta[params[0].upper()] = meta_values
                 else:
                     # Packet META
+                    if not self.current_packet:
+                        raise parser.error(f"{keyword} requires a current packet or item")
                     self.current_packet.meta[params[0].upper()] = meta_values
 
             case "HIDDEN":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.hidden = True
 
             case "DISABLED":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
 
             case "VIRTUAL":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
                 self.current_packet.virtual = True
@@ -589,11 +660,15 @@ class PacketConfig:
             case "SUBPACKET":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.subpacket = True
 
             case "RESTRICTED":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.restricted = True
 
             case "ACCESSOR" | "VALIDATOR" | "SUBPACKETIZER":
@@ -617,6 +692,9 @@ class PacketConfig:
                             klass = get_class_from_module(f"openc3.subpacketizers.{filename}", params[0])
                     except ModuleNotFoundError:
                         raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}")
+
+                if not klass:
+                    raise parser.error(f"Failed to load class for {keyword}")
 
                 keyword_attr = keyword.lower()
                 if len(params) > 1:
@@ -677,6 +755,11 @@ class PacketConfig:
                 self.current_packet.ignore_overlap = True
 
     def process_current_item(self, parser, keyword, params):
+        if not self.current_item:
+            raise RuntimeError(f"process_current_item() called for {keyword} without a current item")
+        if not self.current_packet:
+            raise RuntimeError(f"process_current_item() called for {keyword} without a current packet")
+
         match keyword:
             # Add a state to the current telemety item
             case "STATE":
@@ -901,6 +984,8 @@ class PacketConfig:
     # Finish updating packet item
     def finish_item(self):
         if self.current_item:
+            if not self.current_packet:
+                raise RuntimeError("Cannot finish item without a current packet")
             self.current_packet.set_item(self.current_item)
             if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
                 target_latest_data = self.latest_data[self.current_packet.target_name]

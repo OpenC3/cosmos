@@ -18,6 +18,7 @@ import os
 import sys
 import re
 import traceback
+from typing import Any, Generator, Optional, Union
 from openc3.utilities.extract import remove_quotes
 
 
@@ -45,54 +46,58 @@ class ConfigParser:
         # self.param url [String] URL which should point to usage information. By
         #   default this gets constructed to point to the generic configuration
         #   Guide on the OpenC3 Wiki.
-        def __init__(self, config_parser, message="Configuration Error", usage="", url=""):
+        def __init__(
+            self, config_parser: "ConfigParser", message: str = "Configuration Error", usage: str = "", url: str = ""
+        ) -> None:
             super().__init__(message)
-            self.keyword = config_parser.keyword
-            self.parameters = config_parser.parameters
-            self.filename = config_parser.filename
-            self.line = config_parser.line
-            self.line_number = config_parser.line_number
-            self.usage = usage
-            self.url = url
+            self.keyword: Optional[str] = config_parser.keyword
+            self.parameters: Optional[list[str]] = config_parser.parameters
+            self.filename: Optional[str] = config_parser.filename
+            self.line: Optional[str] = config_parser.line
+            self.line_number: Optional[int] = config_parser.line_number
+            self.usage: str = usage
+            self.url: str = url
 
     # self.param url [String] The url to link to in error messages
-    def __init__(self, url="https://docs.openc3.com/docs"):
-        self.url = url
-        self.keyword = None
-        self.parameters = None
-        self.filename = None
-        self.line = None
-        self.line_number = None
+    def __init__(self, url: str = "https://docs.openc3.com/docs") -> None:
+        self.url: str = url
+        self.keyword: Optional[str] = None
+        self.parameters: Optional[list[str]] = None
+        self.filename: Optional[str] = None
+        self.line: Optional[str] = None
+        self.line_number: Optional[int] = None
 
     # self.param message [String] The string to set the Exception message to
     # self.param usage [String] The usage message
     # self.param url [String] Where to get help about this error
     # self.return [Error] The constructed error
-    def error(self, message, usage="", url=None):
+    def error(self, message: str, usage: str = "", url: Optional[str] = None) -> "ConfigParser.Error":
         if not url:
             url = self.url
         return self.Error(self, message, usage, url)
 
     # Can be called during parsing to read a referenced file
-    def read_file(self, filename):
+    def read_file(self, filename: str) -> bytes:
         # Assume the file is there. If not we raise a pretty obvious error
         if os.path.abspath(filename) == filename:  # absolute path
             path = filename
         else:  # relative to the current @filename
+            if not self.filename:
+                raise ValueError(f"Cannot resolve relative path '{filename}' - no current file context")
             path = os.path.join(os.path.dirname(self.filename), filename)
-        data = ""
+        data: bytes = b""
         with open(path, "rb") as file:
             data = file.read()
         return data
 
     def parse_file(
         self,
-        filename,
-        yield_non_keyword_lines=False,
-        remove_quotes_arg=True,
-        run_erb=True,
-        variables={}
-    ):
+        filename: str,
+        yield_non_keyword_lines: bool = False,
+        remove_quotes_arg: bool = True,
+        run_erb: bool = True,
+        variables: dict[str, Any] = {},
+    ) -> Generator[tuple[Optional[str], list[str]], None, None]:
         """Parse a file and call the callback for each line
 
         Args:
@@ -103,7 +108,7 @@ class ConfigParser:
             variables (dict, optional): No effect in Python
 
         Returns:
-            None
+            Generator yielding (keyword, parameters) tuples
         """
         if filename and not os.path.exists(filename):
             raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
@@ -119,18 +124,23 @@ class ConfigParser:
                 ConfigParser.PARSING_REGEX,
             )
 
-    def verify_num_parameters(self, min_num_params, max_num_params, usage=""):
+    def verify_num_parameters(self, min_num_params: int, max_num_params: Optional[int], usage: str = "") -> None:
         """
         Verifies the parameters in the ConfigParser have the specified number of arguments
 
         Args:
             min_num_params (int): The minimum number of parameters
-            max_num_params (int): The maximum number of parameters
+            max_num_params (int): The maximum number of parameters (None for unlimited)
             usage (str): Usage description to display in error message
 
         Raises:
             Error: Insufficient/Excessive parameters for keyword
         """
+        if not self.parameters:
+            if min_num_params > 0:
+                raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
+            return
+
         # This syntax works with 0 because each doesn't return any values
         # for a backwards range
         for index in range(1, min_num_params + 1):
@@ -142,13 +152,16 @@ class ConfigParser:
         if max_num_params is not None and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
-    def verify_parameter_naming(self, index, usage=""):
+    def verify_parameter_naming(self, index: int, usage: str = "") -> None:
         """
         Verifies that the parameter does not contain reserved characters
 
         Args:
-            index (int): The index of the parameter to be verified
+            index (int): The index of the parameter to be verified (1-based)
+            usage (str): Usage description to display in error message
         """
+        if not self.parameters or index < 1 or index > len(self.parameters):
+            raise ConfigParser.Error(self, f"Parameter {index} does not exist for {self.keyword}.", usage, self.url)
         param = self.parameters[index - 1]
         if param[-1] == "_":
             raise ConfigParser.Error(
@@ -204,7 +217,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [None|Object]
     @classmethod
-    def handle_none(cls, value):
+    def handle_none(cls, value: Any) -> Optional[Any]:
         if isinstance(value, str):
             match value.upper():
                 case "" | "NIL" | "NONE" | "NULL":
@@ -218,7 +231,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [True|False|Object]
     @classmethod
-    def handle_true_false(cls, value):
+    def handle_true_false(cls, value: Any) -> Union[bool, Any]:
         if isinstance(value, str):
             match value.upper():
                 case "TRUE":
@@ -233,7 +246,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [True|False|None|Object]
     @classmethod
-    def handle_true_false_none(cls, value):
+    def handle_true_false_none(cls, value: Any) -> Optional[Union[bool, Any]]:
         if isinstance(value, str):
             match value.upper():
                 case "TRUE":
@@ -255,7 +268,9 @@ class ConfigParser:
     # self.param value [Object] Can be anything
     # self.return [Numeric] The converted value. Either a Fixnum or Float.
     @classmethod
-    def handle_defined_constants(cls, value, data_type=None, bit_size=None):
+    def handle_defined_constants(
+        cls, value: Any, data_type: Optional[str] = None, bit_size: Optional[int] = None
+    ) -> Union[int, float, Any]:
         if isinstance(value, str):
             match value.upper():
                 case "MIN" | "MAX":
@@ -306,14 +321,14 @@ class ConfigParser:
         return value
 
     @classmethod
-    def calculate_range_value(cls, type, data_type, bit_size):
+    def calculate_range_value(cls, type: str, data_type: Optional[str], bit_size: Optional[int]) -> Union[int, float]:
         """
         Calculate the min or max value for a given data type and bit size
 
         Args:
+            type: MIN or MAX
             data_type: Data type (INT, UINT, etc.)
             bit_size: Size in bits
-            type: MIN or MAX
 
         Returns:
             Min or max value
@@ -322,43 +337,46 @@ class ConfigParser:
 
         match data_type:
             case "INT":
-                if type == "MIN":
-                    value = -(2 ** (bit_size - 1))
-                else:  # 'MAX'
-                    value = 2 ** (bit_size - 1) - 1
+                if (bs := bit_size) is None:
+                    raise ValueError("bit_size is required for INT type")
+                value = -(2 ** (bs - 1)) if type == "MIN" else 2 ** (bs - 1) - 1
 
             case "UINT":
                 # Default is 0 for 'MIN'
                 if type == "MAX":
-                    value = 2**bit_size - 1
+                    if (bs := bit_size) is None:
+                        raise ValueError("bit_size is required for UINT type")
+                    value = 2**bs - 1
 
             case "FLOAT":
-                match bit_size:
+                if (bs := bit_size) is None:
+                    raise ValueError("bit_size is required for FLOAT type")
+
+                match bs:
                     case 32:
-                        value = 3.402823e38
-                        if type == "MIN":
-                            value *= -1
+                        value = 3.402823e38 if type == "MAX" else -3.402823e38
                     case 64:
-                        value = sys.float_info.max
-                        if type == "MIN":
-                            value *= -1
+                        value = sys.float_info.max if type == "MAX" else -sys.float_info.max
                     case _:
-                        raise ValueError(f"Invalid bit size {bit_size} for FLOAT type.")
+                        raise ValueError(f"Invalid bit size {bs} for FLOAT type.")
 
             case _:
                 raise TypeError(f"Invalid data type {data_type} when calculating range.")
 
         return value
 
-    def parse_errors(self, errors):
+    def parse_errors(self, errors: list[Exception]) -> None:
         if len(errors) == 0:
             return
         message = ""
         for error in errors:
-            if issubclass(error, ConfigParser.Error):
-                message += f"\n{os.path.basename(error.filename)}:{error.line_number}: {error.line}"
+            if isinstance(error, ConfigParser.Error):
+                filename = os.path.basename(error.filename) if error.filename else "unknown"
+                line_num = error.line_number if error.line_number else 0
+                line_text = error.line if error.line else ""
+                message += f"\n{filename}:{line_num}: {line_text}"
                 message += f"\nError: {traceback.format_exc()}"
-                if not error.usage:
+                if error.usage:
                     message += f"\nUsage: {error.usage}"
             else:
                 message += f"\n{traceback.format_exc()}"
@@ -366,13 +384,18 @@ class ConfigParser:
         raise ConfigParser.Error(self, message)
 
     # Iterates over each line of the io object and yields the keyword and parameters
-    def parse_loop(self, io, yield_non_keyword_lines, remove_quotes_arg, size, rx):
+    def parse_loop(
+        self, io: Any, yield_non_keyword_lines: bool, remove_quotes_arg: bool, size: int, rx: str
+    ) -> Generator[tuple[Optional[str], list[str]], None, None]:
         string_concat = False
         self.line_number = 0
         self.keyword = None
         self.parameters = []
         self.line = ""
         errors = []
+
+        # Type checker hint: line_buffer is guaranteed to be str within this method
+        line_buffer: str = self.line
 
         while line := io.readline():
             self.line_number += 1
@@ -396,19 +419,22 @@ class ConfigParser:
                     # Trim off the concat character plus any spaces, e.g. "line" \
                     trim = line[0:-1].strip()
                     # Now trim off the last quote so it will flow into the next line
-                    self.line += trim[0:-1]
+                    line_buffer += trim[0:-1]
                     if newline:
-                        self.line += "\n"
+                        line_buffer += "\n"
                     string_concat = True
                     continue
                 case "&":  # Line continuation
-                    self.line += line[0:-1]
+                    line_buffer += line[0:-1]
                     continue
                 case _:
-                    self.line += line
+                    line_buffer += line
             string_concat = False
 
-            data = re.compile(rx, re.X).findall(self.line)
+            # Update self.line for external access
+            self.line = line_buffer
+
+            data = re.compile(rx, re.X).findall(line_buffer)
             first_item = ""
             if len(data) > 0:
                 first_item += data[0]
@@ -427,6 +453,7 @@ class ConfigParser:
                     except Exception as error:
                         errors.append(error)
                 self.line = ""
+                line_buffer = ""
                 continue
 
             length = len(data)
@@ -452,6 +479,7 @@ class ConfigParser:
             except Exception as error:
                 errors.append(error)
             self.line = ""
+            line_buffer = ""
 
         self.parse_errors(errors)
         return None

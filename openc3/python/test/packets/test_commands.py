@@ -27,8 +27,7 @@ from openc3.packets.packet_config import PacketConfig
 class TestCommands(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
-        # setup_system()
-        System.instance_obj = None
+        setup_system()
 
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write("# This is a comment\n")
