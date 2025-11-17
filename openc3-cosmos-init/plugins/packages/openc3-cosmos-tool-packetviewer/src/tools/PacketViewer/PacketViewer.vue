@@ -57,10 +57,14 @@
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
+        :loading="loading > 0"
         multi-sort
         :items-per-page-options="[10, 20, 50, 100, -1]"
         density="compact"
       >
+        <template #loading>
+          <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
+        </template>
         <template #item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip
@@ -215,6 +219,7 @@ export default {
   mixins: [Config],
   data() {
     return {
+      loading: 0,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -503,6 +508,13 @@ export default {
       }
     },
     packetChanged(event) {
+      if (
+        this.targetName === event.targetName &&
+        this.packetName === event.packetName
+      ) {
+        return // No change
+      }
+      this.loading++
       this.api
         .get_target(event.targetName)
         .then((target) => {
@@ -546,6 +558,9 @@ export default {
             this.changeUpdater(true)
           }
         })
+        .finally(() => {
+          this.loading--
+        })
     },
     changeUpdater(clearExisting) {
       if (this.updater != null) {
@@ -554,6 +569,9 @@ export default {
       }
       if (clearExisting) {
         this.rows = []
+      }
+      if (!this.rows.length) {
+        this.loading++
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
@@ -596,6 +614,9 @@ export default {
                   })
                 }
               })
+              if (!this.rows.length) {
+                this.loading--
+              }
               if (this.derivedLast) {
                 this.rows = other.concat(derived)
               } else {
