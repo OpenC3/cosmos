@@ -287,7 +287,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
       - name: Run ESLint
-        run: pnpm lint --max-warnings 3
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
 
   scriptrunner:
