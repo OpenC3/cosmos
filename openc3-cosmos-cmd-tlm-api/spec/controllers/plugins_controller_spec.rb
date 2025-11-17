@@ -165,6 +165,24 @@ RSpec.describe PluginsController, type: :controller do
       expect(json["message"]).to eq("Installation failed")
     end
 
+    it "returns bad request when gem file is empty" do
+      allow(OpenC3::PluginModel).to receive(:install_phase1).and_raise(OpenC3::EmptyGemFileError.new("Gem file is empty: test-plugin.gem"))
+
+      post :create, params: { plugin: @upload_file, scope: "DEFAULT" }
+      expect(response).to have_http_status(:bad_request)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+      expect(json["message"]).to eq("Gem file is empty: test-plugin.gem")
+    end
+
+    it "raises EmptyGemFileError when gem file is empty" do
+      Tempfile.create(["empty-plugin", ".gem"]) do |tf|
+        expect {
+          OpenC3::PluginModel.install_phase1(tf.path, scope: "DEFAULT")
+        }.to raise_error(OpenC3::EmptyGemFileError, /Gem file is empty/)
+      end
+    end
+
     it "cleans up temporary directory on success" do
       allow(OpenC3::PluginModel).to receive(:install_phase1).and_return({})
       expect(FileUtils).to receive(:remove_entry_secure).with("/tmp/test", true)
