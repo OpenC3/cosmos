@@ -92,6 +92,17 @@ class ScriptAutocompleteController < ApplicationController
         OpenC3::TargetModel.packets(target_name, type: type.upcase.intern, scope: scope).each do |packet|
           packet_to_autocomplete_hashes(autocomplete_data, packet, target_info, type)
         end
+        if type.upcase.intern == :TLM
+          items = OpenC3::TargetModel.all_item_names(target_name, type: :TLM, scope: scope)
+          items.each do |item|
+            autocomplete_data <<
+              {
+                :caption => "#{target_name} LATEST #{item}",
+                :snippet => "#{target_name} LATEST #{item}",
+                :meta => 'telemetry',
+              }
+          end
+        end
       end
       autocomplete_data.sort_by { |packet| packet[:caption] }
     end

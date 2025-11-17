@@ -459,12 +459,12 @@ export default class OpenC3Api {
       10000, // 10s timeout ... should never be this long
     )
     if (data && data.length > 0) {
-      let len = data[0].length
+      let len = data.length
       let converted = null
       for (let i = 0; i < len; i++) {
-        converted = this.decode_openc3_type(data[0][i])
+        converted = this.decode_openc3_type(data[i][0])
         if (converted !== null) {
-          data[0][i] = converted
+          data[i][0] = converted
         }
       }
     }

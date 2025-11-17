@@ -221,15 +221,21 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
     # @return [Hash] telemetry hash with last telemetry buffer
-    def get_tlm_buffer(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
+    def get_tlm_buffer(*args, manual: false, scope: $openc3_scope, token: $openc3_token, timeout: 5)
       target_name, packet_name = _extract_target_packet_names('get_tlm_buffer', *args)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
-      TargetModel.packet(target_name, packet_name, scope: scope)
-      topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-      msg_id, msg_hash = Topic.get_newest_message(topic)
-      if msg_id
+      model = TargetModel.packet(target_name, packet_name, scope: scope)
+      if model["subpacket"]
+        msg_hash = DecomInterfaceTopic.get_tlm_buffer(target_name, packet_name, timeout: timeout, scope: scope)
         msg_hash['buffer'] = msg_hash['buffer'].b
         return msg_hash
+      else
+        topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
+        msg_id, msg_hash = Topic.get_newest_message(topic)
+        if msg_id
+          msg_hash['buffer'] = msg_hash['buffer'].b
+          return msg_hash
+        end
       end
       return nil
     end
@@ -437,8 +443,11 @@ module OpenC3
     # @param packet_name [String] Name of the packet
     # @param item_name [String] Name of the packet
     # @return [Hash] Telemetry packet item hash
-    def get_item(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
+    def get_item(*args, manual: false, scope: $openc3_scope, token: $openc3_token, cache_timeout: nil)
       target_name, packet_name, item_name = _extract_target_packet_item_names('get_item', *args)
+      if packet_name == 'LATEST'
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      end
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end

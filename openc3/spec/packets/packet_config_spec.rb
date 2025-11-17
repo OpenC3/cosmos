@@ -26,6 +26,20 @@ require 'openc3/packets/packet_config'
 require 'tempfile'
 
 module OpenC3
+  # Test subpacketizer class for unit tests
+  class TestSubpacketizer
+    attr_reader :args
+
+    def initialize(packet, *args)
+      @packet = packet
+      @args = args
+    end
+
+    def call(packet)
+      [packet]
+    end
+  end
+
   describe PacketConfig do
     describe "process_file" do
       before(:all) do
@@ -1222,6 +1236,95 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.warnings).to be_empty
+          tf.unlink
+        end
+      end
+
+      context "with SUBPACKET" do
+        it "marks packet as subpacket" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].subpacket).to be true
+          tf.unlink
+        end
+
+        it "builds subpacket ID hash for telemetry" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Normal Packet"'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub1 LITTLE_ENDIAN "Subpacket 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub2 LITTLE_ENDIAN "Subpacket 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1]])
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"].keys).to contain_exactly([10], [20])
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"][[10]].packet_name).to eql("SUB1")
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"][[20]].packet_name).to eql("SUB2")
+          tf.unlink
+        end
+
+        it "builds subpacket ID hash for commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Normal Command"'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
+          tf.puts 'COMMAND tgt1 sub1 LITTLE_ENDIAN "Subcommand 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 10 10 10 "Item1"'
+          tf.puts 'COMMAND tgt1 sub2 LITTLE_ENDIAN "Subcommand 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 20 20 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[1]])
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"].keys).to contain_exactly([10], [20])
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"][[10]].packet_name).to eql("SUB1")
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"][[20]].packet_name).to eql("SUB2")
+          tf.unlink
+        end
+
+        it "detects unique_id_mode for subpackets" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub1 LITTLE_ENDIAN "Subpacket 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub2 LITTLE_ENDIAN "Subpacket 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 16 UINT 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_subpacket_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+      end
+
+      context "with SUBPACKETIZER" do
+        it "sets subpacketizer on telemetry packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKETIZER TestSubpacketizer'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].subpacketizer).to_not be_nil
+          tf.unlink
+        end
+
+        it "sets subpacketizer on command packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKETIZER TestSubpacketizer'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].subpacketizer).to_not be_nil
           tf.unlink
         end
       end
