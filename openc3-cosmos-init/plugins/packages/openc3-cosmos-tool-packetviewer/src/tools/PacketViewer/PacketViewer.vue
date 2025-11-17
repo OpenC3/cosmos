@@ -21,18 +21,30 @@
 -->
 
 <template>
-  <div>
+  <div
+    :style="{ height: containerHeight }"
+    class="d-flex flex-column overflow-hidden"
+  >
     <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <div style="padding: 10px">
-        <target-packet-item-chooser
-          :initial-target-name="$route.params.target"
-          :initial-packet-name="$route.params.packet"
-          @on-set="packetChanged($event)"
-        />
-      </div>
+    <v-expansion-panels v-model="panel" class="mb-1">
+      <v-expansion-panel>
+        <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <target-packet-item-chooser
+            class="pa-4"
+            :initial-target-name="$route.params.target"
+            :initial-packet-name="$route.params.packet"
+            @on-set="packetChanged($event)"
+          />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+    <v-card
+      class="d-flex flex-column flex-shrink-1"
+      style="overflow: hidden !important"
+    >
       <v-card-title class="d-flex align-center justify-content-space-between">
-        Items
+        Items {{ rows.length ? `(${rows.length})` : '' }}
         <v-spacer />
         <v-text-field
           v-model="search"
@@ -47,8 +59,8 @@
           data-test="search"
         />
       </v-card-title>
-      <v-data-table
-        v-model:items-per-page="itemsPerPage"
+      <v-data-table-virtual
+        class="overflow-hidden"
         :search="search"
         :headers="headers"
         :header-props="{
@@ -59,7 +71,7 @@
         :sort-by="sortBy"
         :loading="loading > 0"
         multi-sort
-        :items-per-page-options="[10, 20, 50, 100, -1]"
+        fixed-header
         density="compact"
       >
         <template #loading>
@@ -120,7 +132,7 @@
           </v-tooltip>
           <v-spacer />
         </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
@@ -199,6 +211,8 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
+import { useContainerHeight } from '@openc3/vue-common/composables'
+import { useTemplateRef } from 'vue'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
@@ -217,8 +231,14 @@ export default {
     SaveConfigDialog,
   },
   mixins: [Config],
+  setup() {
+    const containerHeight = useContainerHeight()
+
+    return { containerHeight }
+  },
   data() {
     return {
+      panel: 0,
       loading: 0,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
