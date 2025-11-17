@@ -28,6 +28,10 @@
       "import": "./dist/components.js",
       "require": "./dist/components.cjs"
     },
+    "./composables": {
+      "import": "./dist/composables.js",
+      "require": "./dist/composables.cjs"
+    },
     "./icons": {
       "import": "./dist/icons.js",
       "require": "./dist/icons.cjs"
