@@ -13,7 +13,7 @@
     "@openc3/vue-common": "workspace:*"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "1.14.1",
+    "@rushstack/eslint-patch": "1.15.0",
     "@vitejs/plugin-vue": "5.2.3",
     "prettier": "3.6.2",
     "sass": "1.93.3",
