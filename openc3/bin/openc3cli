@@ -109,7 +109,7 @@ def xtce_converter(args)
   option_parser = OptionParser.new do |opts|
     opts.banner = "Usage: xtce_converter [options] --import input_xtce_filename --output output_dir\n"+
       "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir "+ 
-      "              --variables variables.txt --xtce_1.2 --root_target root_target_name"
+      "              --variables variables.txt --root_target root_target_name"
     opts.separator("")
     opts.on("-h", "--help", "Show this message") do
       puts opts
@@ -126,9 +126,6 @@ def xtce_converter(args)
     end
     opts.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
       options[:variables] = arg
-    end
-    opts.on("-x", "--xtce_1.2", "Optional flag to use xtce v1.2 conversion") do |arg|
-      options[:xtce_version] = arg
     end
     opts.on("-r ROOT_TARGET", "--root_target ROOT_TARGET", "Optional flag to set which target is at the root of an XTCE document. If not specified, each target will be placed under a generic 'root' spacesystem") do |arg|
       options[:root_target_name] = arg
