@@ -101,8 +101,6 @@ module OpenC3
           else
             new_root.add_child(target_root)
           end
-          #else
-          #end
         end
         File.open(full_file_name, 'w') do |file|
           file.puts new_doc.to_xml
