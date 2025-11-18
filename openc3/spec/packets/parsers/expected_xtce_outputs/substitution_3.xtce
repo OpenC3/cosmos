@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xtce:SpaceSystem xmlns:xtce="http://www.omg.org/spec/XTCE/20180204"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TGT1"
+  xsi:schemaLocation="http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd">
+  <xtce:TelemetryMetaData>
+    <xtce:ParameterTypeSet>
+      <xtce:IntegerParameterType name="TLM_OPCODE_Type" shortDescription="Opcode" signed="false">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
+      </xtce:IntegerParameterType>
+      <xtce:EnumeratedParameterType name="UNSIGNED_0__Type" shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedParameterType>
+      <xtce:EnumeratedParameterType name="UNSIGNED_1__Type" shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedParameterType>
+      <xtce:EnumeratedParameterType name="UNSIGNED_2__Type" shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedParameterType>
+    </xtce:ParameterTypeSet>
+    <xtce:ParameterSet>
+      <xtce:Parameter name="TLM_OPCODE" parameterTypeRef="TLM_OPCODE_Type"/>
+      <xtce:Parameter name="UNSIGNED_0_" parameterTypeRef="UNSIGNED_0__Type">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[0]"/>
+        </xtce:AliasSet>
+      </xtce:Parameter>
+      <xtce:Parameter name="UNSIGNED_1_" parameterTypeRef="UNSIGNED_1__Type">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[1]"/>
+        </xtce:AliasSet>
+      </xtce:Parameter>
+      <xtce:Parameter name="UNSIGNED_2_" parameterTypeRef="UNSIGNED_2__Type">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[2]"/>
+        </xtce:AliasSet>
+      </xtce:Parameter>
+    </xtce:ParameterSet>
+    <xtce:ContainerSet>
+      <xtce:SequenceContainer name="TLMPKT" shortDescription="Telemetry">
+        <xtce:EntryList>
+          <xtce:ParameterRefEntry parameterRef="TLM_OPCODE"/>
+          <xtce:ParameterRefEntry parameterRef="UNSIGNED_0_"/>
+          <xtce:ParameterRefEntry parameterRef="UNSIGNED_1_"/>
+          <xtce:ParameterRefEntry parameterRef="UNSIGNED_2_"/>
+        </xtce:EntryList>
+        <xtce:BaseContainer containerRef="TLMPKT">
+          <xtce:RestrictionCriteria>
+            <xtce:ComparisonList>
+              <xtce:Comparison parameterRef="TLM_OPCODE" value="1"/>
+            </xtce:ComparisonList>
+          </xtce:RestrictionCriteria>
+        </xtce:BaseContainer>
+      </xtce:SequenceContainer>
+    </xtce:ContainerSet>
+  </xtce:TelemetryMetaData>
+  <xtce:CommandMetaData>
+    <xtce:ParameterTypeSet>
+      <xtce:IntegerParameterType name="CMD_OPCODE_Type" initialValue="0" shortDescription="Opcode"
+        signed="false">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"
+          byteOrder="leastSignificantByteFirst"/>
+        <xtce:ValidRange minInclusive="0" maxInclusive="0"/>
+      </xtce:IntegerParameterType>
+    </xtce:ParameterTypeSet>
+    <xtce:ParameterSet>
+      <xtce:Parameter name="CMD_OPCODE" parameterTypeRef="CMD_OPCODE_Type"/>
+    </xtce:ParameterSet>
+    <xtce:ArgumentTypeSet>
+      <xtce:EnumeratedArgumentType name="UNSIGNED_0__Type" initialValue="TRUE"
+        shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"
+          byteOrder="leastSignificantByteFirst"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedArgumentType>
+      <xtce:EnumeratedArgumentType name="UNSIGNED_1__Type" initialValue="TRUE"
+        shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"
+          byteOrder="leastSignificantByteFirst"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedArgumentType>
+      <xtce:EnumeratedArgumentType name="UNSIGNED_2__Type" initialValue="TRUE"
+        shortDescription="Unsigned">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"
+          byteOrder="leastSignificantByteFirst"/>
+        <xtce:EnumerationList>
+          <xtce:Enumeration value="0" label="FALSE"/>
+          <xtce:Enumeration value="1" label="TRUE"/>
+        </xtce:EnumerationList>
+      </xtce:EnumeratedArgumentType>
+    </xtce:ArgumentTypeSet>
+    <xtce:MetaCommandSet>
+      <xtce:MetaCommand name="CMDPKT" shortDescription="Command">
+        <xtce:ArgumentList>
+          <xtce:Argument name="UNSIGNED_0_" argumentTypeRef="UNSIGNED_0__Type">
+            <xtce:AliasSet>
+              <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[0]"/>
+            </xtce:AliasSet>
+          </xtce:Argument>
+          <xtce:Argument name="UNSIGNED_1_" argumentTypeRef="UNSIGNED_1__Type">
+            <xtce:AliasSet>
+              <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[1]"/>
+            </xtce:AliasSet>
+          </xtce:Argument>
+          <xtce:Argument name="UNSIGNED_2_" argumentTypeRef="UNSIGNED_2__Type">
+            <xtce:AliasSet>
+              <xtce:Alias nameSpace="COSMOS" alias="UNSIGNED[2]"/>
+            </xtce:AliasSet>
+          </xtce:Argument>
+        </xtce:ArgumentList>
+        <xtce:CommandContainer name="CMDPKT_Commands">
+          <xtce:EntryList>
+            <xtce:ParameterRefEntry parameterRef="CMD_OPCODE"/>
+            <xtce:ArgumentRefEntry argumentRef="UNSIGNED_0_"/>
+            <xtce:ArgumentRefEntry argumentRef="UNSIGNED_1_"/>
+            <xtce:ArgumentRefEntry argumentRef="UNSIGNED_2_"/>
+          </xtce:EntryList>
+          <xtce:BaseContainer containerRef="CMDPKT_Commands">
+            <xtce:RestrictionCriteria>
+              <xtce:ComparisonList>
+                <xtce:Comparison parameterRef="CMD_OPCODE" value="0"/>
+              </xtce:ComparisonList>
+            </xtce:RestrictionCriteria>
+          </xtce:BaseContainer>
+        </xtce:CommandContainer>
+      </xtce:MetaCommand>
+    </xtce:MetaCommandSet>
+  </xtce:CommandMetaData>
+</xtce:SpaceSystem>

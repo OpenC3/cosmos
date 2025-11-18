@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xtce:SpaceSystem xmlns:xtce="http://www.omg.org/spec/XTCE/20180204" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TGT1" xsi:schemaLocation="http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd">
+  <xtce:TelemetryMetaData>
+    <xtce:ParameterTypeSet>
+      <xtce:IntegerParameterType name="TLM_OPCODE_Type" shortDescription="Opcode" signed="false">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
+      </xtce:IntegerParameterType>
+    </xtce:ParameterTypeSet>
+    <xtce:ParameterSet>
+      <xtce:Parameter name="TLM_OPCODE" parameterTypeRef="TLM_OPCODE_Type"/>
+    </xtce:ParameterSet>
+    <xtce:ContainerSet>
+      <xtce:SequenceContainer name="SUBSYSTEM_TLMPKT" shortDescription="Telemetry">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="SUBSYSTEM/TLMPKT" />
+        </xtce:AliasSet>
+        <xtce:EntryList>
+          <xtce:ParameterRefEntry parameterRef="TLM_OPCODE"/>
+        </xtce:EntryList>
+        <xtce:BaseContainer containerRef="SUBSYSTEM_TLMPKT">
+          <xtce:RestrictionCriteria>
+            <xtce:ComparisonList>
+              <xtce:Comparison parameterRef="TLM_OPCODE" value="1"/>
+            </xtce:ComparisonList>
+          </xtce:RestrictionCriteria>
+        </xtce:BaseContainer>
+      </xtce:SequenceContainer>
+    </xtce:ContainerSet>
+  </xtce:TelemetryMetaData>
+  <xtce:CommandMetaData>
+    <xtce:ParameterTypeSet>
+      <xtce:IntegerParameterType name="CMD_OPCODE_Type" initialValue="0" shortDescription="Opcode" signed="false">
+        <xtce:UnitSet/>
+        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" byteOrder="leastSignificantByteFirst"/>
+        <xtce:ValidRange minInclusive="0" maxInclusive="0"/>
+      </xtce:IntegerParameterType>
+    </xtce:ParameterTypeSet>
+    <xtce:ParameterSet>
+      <xtce:Parameter name="CMD_OPCODE" parameterTypeRef="CMD_OPCODE_Type"/>
+    </xtce:ParameterSet>
+    <xtce:MetaCommandSet>
+      <xtce:MetaCommand name="SUBSYSTEM_CMDPKT" shortDescription="Command">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="SUBSYSTEM/CMDPKT" />
+        </xtce:AliasSet>
+        <xtce:CommandContainer name="SUBSYSTEM_CMDPKT_Commands">
+          <xtce:EntryList>
+            <xtce:ParameterRefEntry parameterRef="CMD_OPCODE"/>
+          </xtce:EntryList>
+          <xtce:BaseContainer containerRef="SUBSYSTEM_CMDPKT_Commands">
+            <xtce:RestrictionCriteria>
+              <xtce:ComparisonList>
+                <xtce:Comparison parameterRef="CMD_OPCODE" value="0"/>
+              </xtce:ComparisonList>
+            </xtce:RestrictionCriteria>
+          </xtce:BaseContainer>
+        </xtce:CommandContainer>
+      </xtce:MetaCommand>
+    </xtce:MetaCommandSet>
+  </xtce:CommandMetaData>
+</xtce:SpaceSystem>
