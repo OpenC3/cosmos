@@ -21,19 +21,31 @@
 -->
 
 <template>
-  <div>
+  <div
+    :style="{ height: containerHeight }"
+    class="d-flex flex-column overflow-hidden"
+  >
     <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <div style="padding: 10px">
-        <target-packet-item-chooser
-          :initial-target-name="$route.params.target"
-          :initial-packet-name="$route.params.packet"
-          show-latest
-          @on-set="packetChanged($event)"
-        />
-      </div>
+    <v-expansion-panels v-model="panel" class="mb-1">
+      <v-expansion-panel>
+        <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <target-packet-item-chooser
+            class="pa-4"
+            :initial-target-name="$route.params.target"
+            :initial-packet-name="$route.params.packet"
+            show-latest
+            @on-set="packetChanged($event)"
+          />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+    <v-card
+      class="d-flex flex-column flex-shrink-1"
+      style="overflow: hidden !important"
+    >
       <v-card-title class="d-flex align-center justify-content-space-between">
-        Items
+        Items {{ rows.length ? `(${rows.length})` : '' }}
         <v-spacer />
         <v-text-field
           v-model="search"
@@ -48,8 +60,8 @@
           data-test="search"
         />
       </v-card-title>
-      <v-data-table
-        v-model:items-per-page="itemsPerPage"
+      <v-data-table-virtual
+        class="overflow-hidden"
         :search="search"
         :headers="headers"
         :header-props="{
@@ -58,10 +70,14 @@
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
+        :loading="loading > 0"
         multi-sort
-        :items-per-page-options="[10, 20, 50, 100, -1]"
+        fixed-header
         density="compact"
       >
+        <template #loading>
+          <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
+        </template>
         <template #item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip
@@ -117,7 +133,7 @@
           </v-tooltip>
           <v-spacer />
         </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
@@ -196,6 +212,8 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
+import { useContainerHeight } from '@openc3/vue-common/composables'
+import { useTemplateRef } from 'vue'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
@@ -214,8 +232,15 @@ export default {
     SaveConfigDialog,
   },
   mixins: [Config],
+  setup() {
+    const containerHeight = useContainerHeight()
+
+    return { containerHeight }
+  },
   data() {
     return {
+      panel: 0,
+      loading: 0,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -428,7 +453,7 @@ export default {
       })
     },
   },
-  created() {
+  async created() {
     this.api = new OpenC3Api()
     this.api
       .get_setting('time_zone')
@@ -452,7 +477,7 @@ export default {
       // If we're passed in the route then manually call packetChanged to update
       if (this.$route.params.target && this.$route.params.packet) {
         // Initial position of chooser should be correct so call packetChanged for it
-        this.packetChanged({
+        await this.packetChanged({
           targetName: this.$route.params.target.toUpperCase(),
           packetName: this.$route.params.packet.toUpperCase(),
         })
@@ -505,90 +530,61 @@ export default {
         return false
       }
     },
-    packetChanged(event) {
-      // Handle LATEST packet specially
-      if (event.packetName === 'LATEST') {
-        this.api.get_target(event.targetName).then((target) => {
-          if (target) {
-            this.ignoredItems = target.ignored_items
+    async packetChanged(event) {
+      if (
+        this.targetName === event.targetName &&
+        this.packetName === event.packetName
+      ) {
+        return // No change
+      }
+      try {
+        this.loading++
+        const target = await this.api.get_target(event.targetName)
+        if (target) {
+          this.ignoredItems = target.ignored_items
+          this.targetName = event.targetName
+          this.packetName = event.packetName
+          const currentTarget = this.$route.params.target?.toUpperCase()
+          const currentPacket = this.$route.params.packet?.toUpperCase()
+          if (event.packetName === 'LATEST') {
             // For LATEST, we can't get specific packet derived items
             this.derivedItems = []
-
-            this.targetName = event.targetName
-            this.packetName = event.packetName
-            const currentTarget = this.$route.params.target?.toUpperCase()
-            const currentPacket = this.$route.params.packet?.toUpperCase()
-            if (
-              currentTarget !== event.targetName ||
-              currentPacket !== event.packetName
-            ) {
-              this.saveDefaultConfig(this.currentConfig)
-              this.$router.push({
-                name: 'PackerViewer',
-                params: {
-                  target: this.targetName,
-                  packet: this.packetName,
-                },
-              })
-            }
-            this.changeUpdater(true)
           } else {
-            // Probably got here from an old config or URL params that point to something that no longer exists
-            this.targetName = null
-            this.packetName = null
-            this.$router.push({
-              name: 'PackerViewer',
-              params: {},
-            })
-          }
-        })
-      } else {
-        // Regular packet handling
-        this.api
-          .get_target(event.targetName)
-          .then((target) => {
-            if (target) {
-              this.ignoredItems = target.ignored_items
-
-              return this.api.get_packet_derived_items(
-                event.targetName,
-                event.packetName,
-              )
-            } else {
-              // Probably got here from an old config or URL params that point to something that no longer exists
-              // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
-              this.targetName = null
-              this.packetName = null
-              this.$router.push({
-                name: 'PackerViewer',
-                params: {},
-              })
-            }
-          })
-          .then((derived) => {
+            // Regular packet handling
+            const derived = await this.api.get_packet_derived_items(
+              event.targetName,
+              event.packetName,
+            )
             if (derived) {
               this.derivedItems = derived
-
-              this.targetName = event.targetName
-              this.packetName = event.packetName
-              const currentTarget = this.$route.params.target?.toUpperCase()
-              const currentPacket = this.$route.params.packet?.toUpperCase()
-              if (
-                currentTarget !== event.targetName ||
-                currentPacket !== event.packetName
-              ) {
-                this.saveDefaultConfig(this.currentConfig)
-                this.$router.push({
-                  name: 'PackerViewer',
-                  params: {
-                    target: this.targetName,
-                    packet: this.packetName,
-                  },
-                })
-              }
-              this.changeUpdater(true)
             }
+          }
+          if (
+            currentTarget !== event.targetName ||
+            currentPacket !== event.packetName
+          ) {
+            this.saveDefaultConfig(this.currentConfig)
+            this.$router.push({
+              name: 'PackerViewer',
+              params: {
+                target: this.targetName,
+                packet: this.packetName,
+              },
+            })
+          }
+          this.changeUpdater(true)
+        } else {
+          // Probably got here from an old config or URL params that point to something that no longer exists
+          // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
+          this.targetName = null
+          this.packetName = null
+          this.$router.push({
+            name: 'PackerViewer',
+            params: {},
           })
+        }
+      } finally {
+        this.loading--
       }
     },
     latestGetTlmValues(values) {
@@ -640,6 +636,9 @@ export default {
         this.latestAvailable = null
         this.latestItems = null
       }
+      if (!this.rows.length) {
+        this.loading++
+      }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
           return // noop if target/packet aren't set
@@ -651,10 +650,13 @@ export default {
             this.api
               .get_tlm_values(this.latestAvailable, this.staleLimit)
               .then((values) => {
+                if (!this.rows.length) {
+                  this.loading--
+                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
-                // eslint-disable-next-line
+                // eslint-disable-next-line no-console
                 console.log(error)
               })
           } else {
@@ -674,10 +676,13 @@ export default {
                 return this.api.get_tlm_values(available, this.staleLimit)
               })
               .then((values) => {
+                if (!this.rows.length) {
+                  this.loading--
+                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
-                // eslint-disable-next-line
+                // eslint-disable-next-line no-console
                 console.log(error)
               })
           }
@@ -723,6 +728,9 @@ export default {
                     })
                   }
                 })
+                if (!this.rows.length) {
+                  this.loading--
+                }
                 if (this.derivedLast) {
                   this.rows = other.concat(derived)
                 } else {
@@ -734,7 +742,7 @@ export default {
             // We don't clear the updater because errors can happen on upgrade
             // and we want to continue updating once the new plugin comes online
             .catch((error) => {
-              // eslint-disable-next-line
+              // eslint-disable-next-line no-console
               console.log(error)
             })
         }

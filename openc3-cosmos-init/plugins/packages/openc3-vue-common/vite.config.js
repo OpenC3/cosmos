@@ -9,6 +9,7 @@ export default defineConfig({
     lib: {
       entry: {
         components: './src/components/index.js',
+        composables : './src/composables/index.js',
         icons: './src/icons/index.js',
         plugins: './src/plugins/index.js',
         'tools/admin': './src/tools/admin/index.js',
