@@ -643,7 +643,7 @@ module OpenC3
         system = System.new([@name], temp_dir)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
-          system.packet_config.to_xtce(variables["xtce_output"], variables["xtce_convert_to_1_2"])
+          system.packet_config.to_xtce(variables["xtce_output"])
         end
         unless validate_only
           build_target_archive(temp_dir, target_folder)

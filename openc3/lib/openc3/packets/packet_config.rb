@@ -31,7 +31,6 @@ require 'openc3/packets/parsers/format_string_parser'
 require 'openc3/packets/parsers/processor_parser'
 require 'openc3/packets/parsers/xtce_parser'
 require 'openc3/packets/parsers/xtce_converter'
-require 'openc3/packets/parsers/xtce_v1_2_converter'
 require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
@@ -309,12 +308,8 @@ module OpenC3
       end
     end # def to_config
 
-    def to_xtce(output_dir, is_converting_to_v1_2 = false)
-      if is_converting_to_v1_2
-        Xtcev1_2Converter.convert(@commands, @telemetry, output_dir)
-      else
-        XtceConverter.convert(@commands, @telemetry, output_dir)
-      end
+    def to_xtce(output_dir)
+      XtceConverter.convert(@commands, @telemetry, output_dir)
     end
 
     # Add current packet into hash if it exists
