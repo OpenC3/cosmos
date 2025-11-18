@@ -309,7 +309,7 @@ module OpenC3
       end
     end # def to_config
 
-    def to_xtce(output_dir, is_converting_to_v1_2)
+    def to_xtce(output_dir, is_converting_to_v1_2 = false)
       if is_converting_to_v1_2
         Xtcev1_2Converter.convert(@commands, @telemetry, output_dir)
       else

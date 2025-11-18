@@ -107,6 +107,7 @@ module OpenC3
         File.open(full_file_name, 'w') do |file|
           file.puts new_doc.to_xml
         end
+        full_file_name
       end
     end
 
@@ -188,7 +189,7 @@ module OpenC3
                   end
                 end
                 process_entry_list(xml, packet, :TELEMETRY)
-                xml['xtce'].BaseContainer(:containerRef => (packet_name)) do
+                xml['xtce'].BaseContainer(:containerRef => (packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))) do
                   if packet.id_items && packet.id_items.length > 0
                     xml['xtce'].RestrictionCriteria do
                       xml['xtce'].ComparisonList do
@@ -210,9 +211,26 @@ module OpenC3
       return unless commands[target_name]
 
       xml['xtce'].CommandMetaData do
-        xml['xtce'].ArgumentTypeSet do
-          get_unique(commands[target_name]).each do |arg_name, arg|
-            to_xtce_type(arg, 'Argument', xml)
+        unique_id_items = get_unique_id_items(commands[target_name])
+        # Create Parameters for any ID item so it can be used in a comparison.
+        #TODO: fix it so it doesn't overlap with the tlm id parameter
+        xml['xtce'].ParameterTypeSet do
+          unique_id_items.each do |item_name, item|
+            to_xtce_type(item, 'Parameter', xml)
+          end
+        end
+        xml['xtce'].ParameterSet do
+          unique_id_items.each do |item_name, item|
+            to_xtce_item(item, 'Parameter', xml)
+          end
+        end
+        unique_command_args_without_ids = get_unique_without_ids(commands[target_name])
+        if unique_command_args_without_ids.size > 0
+          xml['xtce'].ArgumentTypeSet do
+            unique_command_args_without_ids.each do |arg_name, arg|
+              next if unique_id_items.key?(arg_name)
+              to_xtce_type(arg, 'Argument', xml)
+            end
           end
         end
         xml['xtce'].MetaCommandSet do
@@ -223,28 +241,34 @@ module OpenC3
               if packet_name.count(INVALID_CHARS) > 0
                 xml['xtce'].AliasSet do
                   xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => packet_name)
-                end
-              end
-              xml['xtce'].ArgumentList do
-                packet.sorted_items.each do |item|
-                  #TODO: support derived
-                  next if item.data_type == :DERIVED
-                  to_xtce_item(item, 'Argument', xml)
-                end
-              end # ArgumentList
-              if packet.id_items && packet.id_items.length > 0
-                xml['xtce'].ArgumentAssignmentList do
-                  packet.id_items.each do |item|
-                    xml['xtce'].ArgumentAssignment(:argumentName => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR), :argumentValue => item.id_value)
+                end # AliasSet
+              end # If packet contains invalid chars
+              #TODO: remove Argument list if only derived or only id
+              argument_list_sorted_items = get_sorted_items_without_id_or_derived(packet.sorted_items)
+              if argument_list_sorted_items.size > 0
+                xml['xtce'].ArgumentList do
+                  argument_list_sorted_items.each do |item|
+                    to_xtce_item(item, 'Argument', xml)
                   end
-                end # ArgumentAssignmentList
-              end
-            xml['xtce'].CommandContainer(:name => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
-              process_entry_list(xml, packet, :COMMAND)
-                #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
-              end # CommandContainer
-            end # Actual MetaCommand
-          end # commands.each
+                end # ArgumentList
+              end # If Aguments List is greater than 0
+              xml['xtce'].CommandContainer(:name => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
+                process_entry_list(xml, packet, :COMMAND)
+                  #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
+                if packet.id_items && packet.id_items.length > 0
+                  packet.id_items.each do |item|
+                    xml['xtce'].BaseContainer(:containerRef => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
+                      xml['xtce'].RestrictionCriteria do
+                        xml['xtce'].ComparisonList do
+                          xml['xtce'].Comparison(:parameterRef => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR),:value => item.id_value)
+                        end
+                      end # Restriction Criteria
+                    end # Base Container
+                  end # for each packet ID item
+                end # If id items
+              end # Command Container
+            end # MetaCommand
+          end # each command packet
         end # MetaCommandSet
       end # CommandMetaData
     end
@@ -253,6 +277,57 @@ module OpenC3
       unique = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
+          next if item.data_type == :DERIVED
+          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
+          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+        end
+      end
+      unique.each do |item_name, unique_items|
+        if unique_items.length <= 1
+          unique[item_name] = unique_items[0]
+          next
+        end
+        # TODO: need to make sure all the items in the array are exactly the same
+        unique[item_name] = unique_items[0]
+      end
+      unique
+    end
+
+    def get_unique_without_ids(items)
+      unique = {}
+      items.each do |packet_name, packet|
+        packet.sorted_items.each do |item|
+          next if item.data_type == :DERIVED
+          next if item.id_value
+          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
+          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+        end
+      end
+      unique.each do |item_name, unique_items|
+        if unique_items.length <= 1
+          unique[item_name] = unique_items[0]
+          next
+        end
+        # TODO: need to make sure all the items in the array are exactly the same
+        unique[item_name] = unique_items[0]
+      end
+      unique
+    end
+
+    def get_sorted_items_without_id_or_derived(items)
+      sorted_items = []
+      items.each do |item|
+        next if item.data_type == :DERIVED
+        next if item.id_value 
+        sorted_items.push(item)
+      end
+      sorted_items
+    end
+
+    def get_unique_id_items(items)
+      unique = {}
+      items.each do |packet_name, packet|
+        packet.id_items.each do |item|
           next if item.data_type == :DERIVED
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
@@ -284,10 +359,11 @@ module OpenC3
         packet.sorted_items.each do |item|
           next if item.data_type == :DERIVED
           # TODO: Handle nonunique item names
+          temp_type = item.id_value ? "Parameter" : type
           if item.array_size
-            reference_symbol = "#{type.downcase}Ref".to_sym
+            reference_symbol = "#{temp_type.downcase}Ref".to_sym
             # Requiring parameterRef for argument arrays appears to be a defect in the schema
-            xml['xtce'].public_send("Array#{type}RefEntry".intern, reference_symbol => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
+            xml['xtce'].public_send("Array#{temp_type}RefEntry".intern, reference_symbol => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
               set_fixed_value(xml, item) if !packed
               xml['xtce'].DimensionList do
                 xml['xtce'].Dimension do
@@ -302,9 +378,9 @@ module OpenC3
             end
           else
             if packed
-              xml['xtce'].public_send("#{type}RefEntry".intern, "#{type.downcase}Ref".intern => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
+              xml['xtce'].public_send("#{temp_type}RefEntry".intern, "#{temp_type.downcase}Ref".intern => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
             else
-              xml['xtce'].public_send("#{type}RefEntry".intern, "#{type.downcase}Ref".intern => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
+              xml['xtce'].public_send("#{temp_type}RefEntry".intern, "#{temp_type.downcase}Ref".intern => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
                 set_fixed_value(xml, item)
               end
             end
@@ -444,8 +520,12 @@ module OpenC3
           to_xtce_limits(item, xml)
           # TODO just don't do the default max and min
           if item.range and item.range.last < 18446744073709551615
-            xml['xtce'].ValidRangeSet do
+            if param_or_arg == "Parameter"
               xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
+            else
+              xml['xtce'].ValidRangeSet do
+                xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
+              end
             end
           end
         end # Type
@@ -477,9 +557,13 @@ module OpenC3
         end
         to_xtce_limits(item, xml)
         if item.range and item.range.last < 18446744073709551615
-          xml['xtce'].ValidRangeSet do
-              xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-          end        
+          if param_or_arg == "Parameter"
+            xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
+          else
+            xml['xtce'].ValidRangeSet do
+                xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
+            end        
+          end
         end
       end
     end
@@ -490,7 +574,8 @@ module OpenC3
       attrs[:characterWidth] = 8 if string_or_binary == 'String'
       if item.default && !item.array_size
         unless item.default.is_printable?
-          attrs[:initialValue] = '0x' + item.default.simple_formatted
+          #attrs[:initialValue] = '0x' + item.default.simple_formatted
+          attrs[:initialValue] = item.default.simple_formatted
         else
           if string_or_binary == 'String'
             attrs[:initialValue] = item.default.inspect
@@ -514,9 +599,7 @@ module OpenC3
                   xml['xtce'].FixedValue(DYNAMIC_STRING_LEN)
                 end # if statement
               end # </Fixed>
-              if item.bit_size == 0
-                xml['xtce'].TerminationChar("00")
-              end
+              xml['xtce'].TerminationChar("00")
             end # </SizeInBits>
           end # </StringDataEncoding>
         else

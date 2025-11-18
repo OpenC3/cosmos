@@ -127,6 +127,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'flog', '~> 4.6'
+  s.add_development_dependency 'equivalent-xml', '~> 0.6.0'
   s.add_development_dependency 'listen', '~> 3.7'
   s.add_development_dependency 'mock_redis', '~> 0.47'
   s.add_development_dependency 'reek', '~> 6.0'
