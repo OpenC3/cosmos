@@ -9,6 +9,7 @@ gem 'rails', '~> 7.2.0'
 
 # Use anycable instead of actioncable
 gem "anycable-rails", "~> 1.5"
+gem "anycable", "~> 1.5"
 
 # The following gems are installed in the OpenC3 base container openc3-base
 # which this Dockerfile depends on: puma, redis, nokogiri
@@ -32,19 +33,23 @@ gem "rails_semantic_logger", '~> 4.17'
 # For downloading files to the server (e.g. plugin install from the app store)
 gem 'down', '~> 5.4', '>= 5.4.2'
 
-group :development, :test do
-  # Call 'byebug' anywhere in the code to stop execution and get a debugger console
-  gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
-  gem 'rspec-rails', '~> 7.0'
-  gem 'simplecov', '~> 0.22'
-  gem 'simplecov-cobertura', '~> 3.0'
-  gem 'rexml', '~> 3.4'
-  # simplecov_json_formatter formatter supports SonarQube
-  # gem 'simplecov_json_formatter', '~> 0.1'
-end
+# Only define development/test gems if not in production build
+# Set SKIP_DEV_GEMS=1 in Dockerfile to exclude these groups entirely
+unless ENV['SKIP_DEV_GEMS']
+  group :development, :test do
+    # Call 'byebug' anywhere in the code to stop execution and get a debugger console
+    gem 'byebug', platforms: [:mri, :windows]
+    gem 'rspec-rails', '~> 7.0'
+    gem 'simplecov', '~> 0.22'
+    gem 'simplecov-cobertura', '~> 3.0'
+    gem 'rexml', '~> 3.4'
+    # simplecov_json_formatter formatter supports SonarQube
+    # gem 'simplecov_json_formatter', '~> 0.1'
+  end
 
-group :test do
-  gem 'mock_redis', '~> 0.47'
+  group :test do
+    gem 'mock_redis', '~> 0.47'
+  end
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

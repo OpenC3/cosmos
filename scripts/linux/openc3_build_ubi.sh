@@ -144,58 +144,6 @@ record_build() {
   BUILD_TIMES+=("$duration")
 }
 
-# Helper function to prepare Ruby services for air-gapped builds
-# This generates a Gemfile.lock without development/test gems to avoid
-# dependency resolution failures in air-gapped environments
-prepare_ruby_service() {
-  local service_dir="$1"
-  local abs_service_dir="${SCRIPT_DIR}/${service_dir}"
-  echo "  Preparing Gemfile.lock for air-gapped build..."
-
-  # Check if Gemfile exists
-  if [ ! -f "$abs_service_dir/Gemfile" ]; then
-    echo "  No Gemfile found, skipping preparation"
-    return 0
-  fi
-
-  # Generate Gemfile.lock without dev/test gems
-  # Set bundler version to match what's installed in openc3-ruby-ubi
-  (cd "$abs_service_dir" && \
-   bundle config set --local without 'development test' && \
-   bundle lock --conservative --bundler=2.5.22 2>/dev/null || bundle lock --bundler=2.5.22) && \
-  echo "  Generated Gemfile.lock without development/test gems"
-
-  # Temporarily modify .dockerignore to include Gemfile.lock
-  if [ -f "$abs_service_dir/.dockerignore" ]; then
-    if grep -q "^Gemfile\.lock$" "$abs_service_dir/.dockerignore"; then
-      cp "$abs_service_dir/.dockerignore" "$abs_service_dir/.dockerignore.bak"
-      sed -i.tmp '/^Gemfile\.lock$/d' "$abs_service_dir/.dockerignore" && rm -f "$abs_service_dir/.dockerignore.tmp"
-      echo "  Modified .dockerignore to include Gemfile.lock in build"
-    fi
-  fi
-}
-
-# Cleanup function for Ruby service preparation
-cleanup_ruby_service() {
-  local service_dir="$1"
-  local abs_service_dir="${SCRIPT_DIR}/${service_dir}"
-
-  # Restore .dockerignore if we backed it up
-  if [ -f "$abs_service_dir/.dockerignore.bak" ]; then
-    mv "$abs_service_dir/.dockerignore.bak" "$abs_service_dir/.dockerignore"
-    echo "  Restored .dockerignore"
-  fi
-
-  # Remove generated Gemfile.lock
-  if [ -f "$abs_service_dir/Gemfile.lock" ]; then
-    rm -f "$abs_service_dir/Gemfile.lock"
-    echo "  Removed generated Gemfile.lock"
-  fi
-
-  # Clean up bundle config
-  (cd "$abs_service_dir" && bundle config unset without 2>/dev/null || true)
-}
-
 if should_build "openc3-ruby-ubi"; then
   echo "Building openc3-ruby-ubi..."
   START_TIME=$SECONDS
@@ -220,12 +168,6 @@ fi
 if should_build "openc3-base-ubi"; then
   echo "Building openc3-base-ubi..."
   START_TIME=$SECONDS
-
-  # Prepare Gemfile.lock for air-gapped build
-  prepare_ruby_service "openc3"
-
-  # Set trap to ensure cleanup even on error
-  trap "cleanup_ruby_service 'openc3'" EXIT
 
   cd openc3
   docker build \
@@ -329,12 +271,6 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   echo "Building openc3-cosmos-cmd-tlm-api-ubi..."
   START_TIME=$SECONDS
 
-  # Prepare Gemfile.lock for air-gapped build
-  prepare_ruby_service "openc3-cosmos-cmd-tlm-api"
-
-  # Set trap to ensure cleanup even on error
-  trap "cleanup_ruby_service 'openc3-cosmos-cmd-tlm-api'" EXIT
-
   cd openc3-cosmos-cmd-tlm-api
   docker build \
     -f Dockerfile-ubi \
@@ -360,12 +296,6 @@ fi
 if should_build "openc3-cosmos-script-runner-api-ubi"; then
   echo "Building openc3-cosmos-script-runner-api-ubi..."
   START_TIME=$SECONDS
-
-  # Prepare Gemfile.lock for air-gapped build
-  prepare_ruby_service "openc3-cosmos-script-runner-api"
-
-  # Set trap to ensure cleanup even on error
-  trap "cleanup_ruby_service 'openc3-cosmos-script-runner-api'" EXIT
 
   cd openc3-cosmos-script-runner-api
   docker build \
