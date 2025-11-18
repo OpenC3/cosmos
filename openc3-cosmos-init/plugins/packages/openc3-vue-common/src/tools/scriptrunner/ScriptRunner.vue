@@ -604,6 +604,7 @@ import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import { useContainerHeight } from '@/composables/useContainerHeight'
 import {
   AceEditorModes,
   AceEditorUtils,
@@ -686,6 +687,11 @@ export default {
     },
   },
   emits: ['alert', 'script-id'],
+  setup() {
+    const containerHeight = useContainerHeight()
+
+    return { containerHeight }
+  },
   data() {
     return {
       title: 'Script Runner',
@@ -1111,20 +1117,6 @@ export default {
           ],
         },
       ]
-    },
-    containerHeight: function () {
-      // if openc3-tool-base/src/App.vue <v-main /> style is changed from using min-height to height, this may become unnecessary
-      const header = document.getElementById('openc3-app-toolbar')
-      const footer = document.getElementById('footer')
-      const main = document.getElementsByTagName('main')[0]
-      const mainDiv = main.children[0]
-      const mainDivStyles = getComputedStyle(mainDiv)
-      const headerHeight =
-        header.clientHeight +
-        footer.clientHeight +
-        Number.parseInt(mainDivStyles.paddingTop) +
-        Number.parseInt(mainDivStyles.paddingBottom)
-      return `calc(100vh - ${headerHeight}px)`
     },
   },
   watch: {
