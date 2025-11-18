@@ -2,7 +2,7 @@
 <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/spec/XTCE/20180204" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TGT1" xsi:schemaLocation="http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd">
   <xtce:TelemetryMetaData>
     <xtce:ParameterTypeSet>
-      <xtce:IntegerParameterType name="TLM_OPCODE_Type" shortDescription="Opcode" signed="false">
+      <xtce:IntegerParameterType name="OPCODE_Type" shortDescription="Opcode" signed="false">
         <xtce:UnitSet/>
         <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>
       </xtce:IntegerParameterType>
@@ -83,7 +83,7 @@
       </xtce:IntegerParameterType>
     </xtce:ParameterTypeSet>
     <xtce:ParameterSet>
-      <xtce:Parameter name="TLM_OPCODE" parameterTypeRef="TLM_OPCODE_Type"/>
+      <xtce:Parameter name="OPCODE" parameterTypeRef="OPCODE_Type"/>
       <xtce:Parameter name="UNSIGNED" parameterTypeRef="UNSIGNED_Type"/>
       <xtce:Parameter name="SIGNED" parameterTypeRef="SIGNED_Type"/>
       <xtce:Parameter name="ARRAY" parameterTypeRef="ARRAY_ArrayType"/>
@@ -96,7 +96,7 @@
     <xtce:ContainerSet>
       <xtce:SequenceContainer name="TLMPKT" shortDescription="Telemetry">
         <xtce:EntryList>
-          <xtce:ParameterRefEntry parameterRef="TLM_OPCODE">
+          <xtce:ParameterRefEntry parameterRef="OPCODE">
             <xtce:LocationInContainerInBits referenceLocation="containerStart">
               <xtce:FixedValue>0</xtce:FixedValue>
             </xtce:LocationInContainerInBits>
@@ -155,7 +155,7 @@
         <xtce:BaseContainer containerRef="TLMPKT">
           <xtce:RestrictionCriteria>
             <xtce:ComparisonList>
-              <xtce:Comparison parameterRef="TLM_OPCODE" value="1"/>
+              <xtce:Comparison parameterRef="OPCODE" value="1"/>
             </xtce:ComparisonList>
           </xtce:RestrictionCriteria>
         </xtce:BaseContainer>
@@ -171,7 +171,11 @@
       </xtce:IntegerParameterType>
     </xtce:ParameterTypeSet>
     <xtce:ParameterSet>
-      <xtce:Parameter name="CMD_OPCODE" parameterTypeRef="CMD_OPCODE_Type"/>
+      <xtce:Parameter name="CMD_OPCODE" parameterTypeRef="CMD_OPCODE_Type">
+        <xtce:AliasSet>
+          <xtce:Alias nameSpace="COSMOS" alias="OPCODE" />
+        </xtce:AliasSet>
+      </xtce:Parameter>
     </xtce:ParameterSet>
     <xtce:ArgumentTypeSet>
       <xtce:EnumeratedArgumentType name="CMD_UNSIGNED_Type" initialValue="TRUE" shortDescription="Unsigned">
