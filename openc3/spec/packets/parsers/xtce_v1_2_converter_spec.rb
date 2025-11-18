@@ -39,10 +39,10 @@ module OpenC3
         @pc = PacketConfig.new
       end
 
-      it "converts simple tlm and cmd" do
+      it "converts simple tlm/cmd and handles two ID_parameters with the same name" do
         tf = Tempfile.new('unittest')
         cmd = "COMMAND TGT1 CMDPKT LITTLE_ENDIAN \"Command\"\n"\
-              "  ID_PARAMETER CMD_OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
+              "  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
               "  PARAMETER CMD_UNSIGNED 16 16 UINT 0 65535 1 \"Unsigned\"\n"\
               "    STATE FALSE 0\n"\
               "    STATE TRUE 1\n"\
@@ -57,7 +57,7 @@ module OpenC3
               "  PARAMETER CMD_BLOCK 848 32 BLOCK 0xBEEF \"Block\"\n"
         tf.puts cmd
         tlm1 = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
-               "  ID_ITEM TLM_OPCODE 0 8 UINT 1 \"Opcode\"\n"\
+               "  ID_ITEM OPCODE 0 8 UINT 1 \"Opcode\"\n"\
                "  ITEM UNSIGNED 8 8 UINT \"Unsigned\"\n"\
                "    STATE FALSE 0\n"\
                "    STATE TRUE 1\n"\
@@ -84,6 +84,8 @@ module OpenC3
         expect(xtce_doc).to be_equivalent_to(expected_result_xml)
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")
+        expected_txt_path = File.join(File.dirname(__FILE__), "expected.xtce")
+        result_txt_path = File.join(File.dirname(__FILE__), "result.xtce")
       end
 
       it "Substitutes '/' for '_' in names" do
@@ -307,3 +309,9 @@ module OpenC3
 end
 
 # TODO: remove later
+        #File.open(result_txt_path, "w") do |file|
+        #  file.puts xtce_doc.to_xml
+        #end
+        #File.open(expected_txt_path, "w") do |file|
+        #  file.puts expected_result_xml.to_xml
+        #end
