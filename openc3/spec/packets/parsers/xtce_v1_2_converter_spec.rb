@@ -79,7 +79,7 @@ module OpenC3
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
-        expected_output_file_path = File.join(File.dirname(__FILE__),"expected_xtce_outputs", "first_test.xtce")
+        expected_output_file_path = File.join(File.dirname(__FILE__),"expected_xtce_outputs", "simple_conversion.xtce")
         expected_result_xml = Nokogiri::XML(File.open(expected_output_file_path))
         expect(xtce_doc).to be_equivalent_to(expected_result_xml)
         tf.unlink
@@ -285,6 +285,22 @@ module OpenC3
         expected_result_xml = Nokogiri::XML(File.open(expected_result_path))
         expect(result_xml).to be_equivalent_to(expected_result_xml)
         FileUtils.rm_rf combination_result_dir 
+      end
+
+      it "doesnt perfom combination where only one xtce file exists" do
+        combination_dir = File.join(File.dirname(__FILE__),"expected_xtce_outputs", "combine_targets", "target_1")
+        combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
+        output_path = Xtcev1_2Converter.combine_output_xtce(combination_dir)
+        expect(output_path).to be nil
+        expect(File.directory?(combination_result_dir)).to be false
+      end
+
+      it "doesnt perfom combination where no xtce file exists" do
+        combination_dir = File.join(File.dirname(__FILE__),"expected_xtce_outputs", "combine_targets", "empty_folder")
+        combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
+        output_path = Xtcev1_2Converter.combine_output_xtce(combination_dir)
+        expect(output_path).to be nil
+        expect(File.directory?(combination_result_dir)).to be false
       end
     end
   end
