@@ -270,6 +270,7 @@ module OpenC3
           variables['scope'] = scope
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
+
             current_model = nil
             parser.parse_file(plugin_txt_path, false, true, true, variables) do |keyword, params|
               case keyword
