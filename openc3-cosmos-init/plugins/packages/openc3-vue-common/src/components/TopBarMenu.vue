@@ -1,5 +1,5 @@
 <template>
-  <v-menu v-model="menuOpen">
+  <v-menu v-model="menuOpen" :close-on-content-click="false">
     <template #activator="{ props }">
       <v-btn
         v-bind="props"
@@ -82,7 +82,12 @@
           :key="j + '-list'"
           :disabled="option.disabled"
           :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-          @click="option.command(option)"
+          @click="
+            () => {
+              option.command(option)
+              if (!option.checkbox) closeMenu()
+            }
+          "
         >
           <template v-if="option.icon" #prepend>
             <v-icon :icon="option.icon" :disabled="option.disabled"></v-icon>
@@ -111,11 +116,25 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
 defineProps({
   menu: { type: Object, required: true },
   title: { type: String, required: true },
 })
 const emits = defineEmits(['submenu-click'])
+
+const menuOpen = ref(false)
+
+/**
+ * Close the menu programmatically.
+ *
+ * Allows setting close-on-content-click to false for the main menu to prevent closing when clicking a submenu, but
+ * still close when clicking other menu item types
+ */
+function closeMenu() {
+  menuOpen.value = false
+}
 
 /**
  * Convert the string to a standard data-test format
