@@ -160,6 +160,7 @@ module OpenC3
 
     def create_telemetry(xml, telemetry, target_name)
       # Gather and make unique all the packet items
+      return unless telemetry[target_name]
 
       unique_items = telemetry[target_name] ? get_unique(telemetry[target_name]) : {}
 
