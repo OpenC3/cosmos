@@ -101,6 +101,9 @@ class PluginsController < ModelController
           result = OpenC3::PluginModel.install_phase1(gem_file_path, store_id: params[:store_id], scope: scope)
         end
         render json: result
+      rescue OpenC3::EmptyGemFileError => error
+        render json: { status: 'error', message: error.message }, status: 400
+        logger.error(error.formatted)
       rescue Exception => error
         render json: { status: 'error', message: error.message }, status: 500
         logger.error(error.formatted)
