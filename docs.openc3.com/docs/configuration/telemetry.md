@@ -518,6 +518,16 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
 
+### SUBPACKETIZER
+<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+
+Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Subpacketizer Class Name | The name of the Subpacketizer class | True |
+| Argument | Additional argument passed to the Subpacketizer class constructor | False |
+
 ### TEMPLATE
 <div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
 
@@ -542,6 +552,12 @@ Packet items which overlap normally generate a warning unless each individual it
 <div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
 
 Used for packet definitions that can be used as structures for items with a given packet.
+
+
+### SUBPACKET
+<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+
+Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 
 
 ## SELECT_TELEMETRY
