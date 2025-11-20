@@ -28,6 +28,8 @@ module OpenC3
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
     IGNORED_APIS.concat(%w(package_install package_uninstall package_status package_download))
     IGNORED_APIS.concat(%w(plugin_install_phase1 plugin_install_phase2 plugin_update_phase1 plugin_uninstall plugin_status))
+    # APIs that are documented but intentionally not in standard source locations
+    EXTRA_DOCS_ALLOWED = %w(download_file)
 
     def parse_file(filename, methods)
       File.open(filename) do |file|
@@ -134,7 +136,7 @@ module OpenC3
     end
 
     it "should not have extra documentation" do
-      extra = @documented - @ruby_api.keys - @python_api.keys
+      extra = @documented - @ruby_api.keys - @python_api.keys - EXTRA_DOCS_ALLOWED
       expect(extra).to be_empty, "Documented in scripting-api.md but not in source: #{extra}"
     end
 
