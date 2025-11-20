@@ -30,7 +30,7 @@ REPLACEMENT_CHAR = '_'
 ALIAS_NAMESPACE = 'COSMOS'
 
 COMBINED_NAME = "COMBINED"
-MAX_64_BIT_INT = 18446744073709551615
+MAX_64_BIT_INT = 18446744073709551614
 
 module OpenC3
   class XtceConverter
@@ -220,16 +220,18 @@ module OpenC3
       xml['xtce'].CommandMetaData do
         unique_id_items = get_unique_id_items(commands[target_name])
         # Create Parameters for any ID item so it can be used in a comparison.
-        xml['xtce'].ParameterTypeSet do
-          unique_id_items.each do |item_name, item|
-            prefix = unique_tlm_params.include?(item_name) ? "CMD_" : ""
-            to_xtce_type(item, 'Parameter', xml, prefix: prefix)
+        if unique_id_items.size > 0
+          xml['xtce'].ParameterTypeSet do
+            unique_id_items.each do |item_name, item|
+              prefix = unique_tlm_params.include?(item_name) ? "CMD_" : ""
+              to_xtce_type(item, 'Parameter', xml, prefix: prefix)
+            end
           end
-        end
-        xml['xtce'].ParameterSet do
-          unique_id_items.each do |item_name, item|
-            prefix = unique_tlm_params.include?(item_name) ? "CMD_" : ""
-            to_xtce_item(item, 'Parameter', xml, prefix: prefix)
+          xml['xtce'].ParameterSet do
+            unique_id_items.each do |item_name, item|
+              prefix = unique_tlm_params.include?(item_name) ? "CMD_" : ""
+              to_xtce_item(item, 'Parameter', xml, prefix: prefix)
+            end
           end
         end
         unique_command_args_without_ids = get_unique_without_ids(commands[target_name])
@@ -483,6 +485,13 @@ module OpenC3
         encoding = 'unsigned'
       end
       if item.states
+        # Invert hash so we can get the initial value. If not found remove the initial value.
+        inverted_enum_states = item.states.invert
+        if inverted_enum_states.include?(item.default)
+          attrs[:initialValue] = inverted_enum_states[item.default]
+        else
+          attrs.delete(:initialValue)
+        end
         xml['xtce'].public_send('Enumerated' + param_or_arg + 'Type', attrs) do
           to_xtce_units(item, xml)
           if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
@@ -509,7 +518,7 @@ module OpenC3
         xml['xtce'].public_send(type_string, attrs) do
           to_xtce_units(item, xml)
           if (item.read_conversion and item.read_conversion.class == PolynomialConversion) or (item.write_conversion and item.write_conversion.class == PolynomialConversion)
-            if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
+            if item.endianness == :LITTLE_ENDIAN and item.bit_size >= 8
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding, :byteOrder => "leastSignificantByteFirst") do
                 to_xtce_conversion(item, xml)
               end
@@ -519,7 +528,7 @@ module OpenC3
               end
             end
           else
-            if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
+            if item.endianness == :LITTLE_ENDIAN and item.bit_size >= 8
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding, :byteOrder => "leastSignificantByteFirst")
             else
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding)
@@ -546,7 +555,7 @@ module OpenC3
       xml['xtce'].public_send('Float' + param_or_arg + 'Type', attrs) do
         to_xtce_units(item, xml)
         if (item.read_conversion and item.read_conversion.class == PolynomialConversion) or (item.write_conversion and item.write_conversion.class == PolynomialConversion)
-          if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
+          if item.endianness == :LITTLE_ENDIAN and item.bit_size >= 8
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985', :byteOrder => "leastSignificantByteFirst") do
             to_xtce_conversion(item, xml)
           end
@@ -556,7 +565,7 @@ module OpenC3
             end
           end
         else
-          if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
+          if item.endianness == :LITTLE_ENDIAN and item.bit_size >= 8
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985', :byteOrder => "leastSignificantByteFirst")
           else
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985')
