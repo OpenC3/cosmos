@@ -783,12 +783,10 @@ module OpenC3
         @pc.to_xtce(spec_install)
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
-        #xtce_doc = Nokogiri::XML(File.open(xml_path))
         combination_dir = File.join(spec_install)
         combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
         output_path = XtceConverter.combine_output_xtce(combination_dir, "TGT2")
         result_xml = Nokogiri::XML(File.open(output_path))
-
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
         expect(result_xml).to be_equivalent_to(expected_output)
         expected_tf.unlink
