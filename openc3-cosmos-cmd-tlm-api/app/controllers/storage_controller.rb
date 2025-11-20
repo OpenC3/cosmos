@@ -125,7 +125,7 @@ class StorageController < ApplicationController
       object_id = sanitize_path(params[:object_id])
 
       filename = if storage_type == :volume
-        "/#{storage_name}/#{object_id}"
+        sanitize_path("/#{storage_name}/#{object_id}")
       else
         tmp_dir = Dir.mktmpdir
         temp_path = File.join(tmp_dir, object_id)
