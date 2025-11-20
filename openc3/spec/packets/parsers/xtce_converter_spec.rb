@@ -114,7 +114,7 @@ module OpenC3
       tf.puts "      </xtce:Parameter>"
       tf.puts "    </xtce:ParameterSet>"
       tf.puts "    <xtce:ArgumentTypeSet>"
-      tf.puts "      <xtce:EnumeratedArgumentType name=\"CMD_0__ATTRIBUTES_BOOL_Type\" initialValue=\"TRUE\" shortDescription=\"Unsigned\">"
+      tf.puts "      <xtce:EnumeratedArgumentType name=\"CMDPKT_CMD_0__ATTRIBUTES_BOOL_Type\" initialValue=\"TRUE\" shortDescription=\"Unsigned\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\" byteOrder=\"leastSignificantByteFirst\"/>"
       tf.puts "        <xtce:EnumerationList>"
@@ -126,7 +126,7 @@ module OpenC3
       tf.puts "    <xtce:MetaCommandSet>"
       tf.puts "      <xtce:MetaCommand name=\"CMDPKT\" shortDescription=\"Command\">"
       tf.puts "        <xtce:ArgumentList>"
-      tf.puts "          <xtce:Argument name=\"CMD_0__ATTRIBUTES_BOOL\" argumentTypeRef=\"CMD_0__ATTRIBUTES_BOOL_Type\">"
+      tf.puts "          <xtce:Argument name=\"CMD_0__ATTRIBUTES_BOOL\" argumentTypeRef=\"CMDPKT_CMD_0__ATTRIBUTES_BOOL_Type\" initialValue=\"TRUE\">"
       tf.puts "            <xtce:AliasSet>"
       tf.puts "              <xtce:Alias nameSpace=\"COSMOS\" alias=\"CMD[0].ATTRIBUTES/BOOL\"/>"
       tf.puts "            </xtce:AliasSet>"
@@ -426,7 +426,7 @@ module OpenC3
       tf.puts "      </xtce:Parameter>"
       tf.puts "    </xtce:ParameterSet>"
       tf.puts "    <xtce:ArgumentTypeSet>"
-      tf.puts "      <xtce:EnumeratedArgumentType name=\"CMD_UNSIGNED_Type\" initialValue=\"TRUE\" shortDescription=\"Unsigned\">"
+      tf.puts "      <xtce:EnumeratedArgumentType name=\"CMD_PKT_CMD_UNSIGNED_Type\" initialValue=\"TRUE\" shortDescription=\"Unsigned\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\" byteOrder=\"leastSignificantByteFirst\"/>"
       tf.puts "        <xtce:EnumerationList>"
@@ -434,7 +434,7 @@ module OpenC3
       tf.puts "          <xtce:Enumeration value=\"1\" label=\"TRUE\"/>"
       tf.puts "        </xtce:EnumerationList>"
       tf.puts "      </xtce:EnumeratedArgumentType>"
-      tf.puts "      <xtce:IntegerArgumentType name=\"CMD_SIGNED_Type\" initialValue=\"0\" shortDescription=\"Signed\" signed=\"true\">"
+      tf.puts "      <xtce:IntegerArgumentType name=\"CMD_PKT_CMD_SIGNED_Type\" initialValue=\"0\" shortDescription=\"Signed\" signed=\"true\">"
       tf.puts "        <xtce:UnitSet>"
       tf.puts "          <xtce:Unit description=\"Kilos\">K</xtce:Unit>"
       tf.puts "        </xtce:UnitSet>"
@@ -443,11 +443,11 @@ module OpenC3
       tf.puts "          <xtce:ValidRange minInclusive=\"-100\" maxInclusive=\"100\"/>"
       tf.puts "        </xtce:ValidRangeSet>"
       tf.puts "      </xtce:IntegerArgumentType>"
-      tf.puts "      <xtce:FloatArgumentType name=\"CMD_ARRAY_Type\" sizeInBits=\"64\" shortDescription=\"Array of 10 64bit floats\">"
+      tf.puts "      <xtce:FloatArgumentType name=\"CMD_PKT_CMD_ARRAY_Type\" sizeInBits=\"64\" shortDescription=\"Array of 10 64bit floats\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:FloatDataEncoding sizeInBits=\"64\" encoding=\"IEEE754_1985\" byteOrder=\"leastSignificantByteFirst\"/>"
       tf.puts "      </xtce:FloatArgumentType>"
-      tf.puts "      <xtce:ArrayArgumentType name=\"CMD_ARRAY_ArrayType\" shortDescription=\"Array of 10 64bit floats\" arrayTypeRef=\"CMD_ARRAY_Type\">"
+      tf.puts "      <xtce:ArrayArgumentType name=\"CMD_PKT_CMD_ARRAY_ArrayType\" shortDescription=\"Array of 10 64bit floats\" arrayTypeRef=\"CMD_PKT_CMD_ARRAY_Type\">"
       tf.puts "        <xtce:DimensionList>"
       tf.puts "          <xtce:Dimension>"
       tf.puts "            <xtce:StartingIndex>"
@@ -459,7 +459,7 @@ module OpenC3
       tf.puts "          </xtce:Dimension>"
       tf.puts "        </xtce:DimensionList>"
       tf.puts "      </xtce:ArrayArgumentType>"
-      tf.puts "      <xtce:FloatArgumentType name=\"CMD_FLOAT_Type\" sizeInBits=\"32\" initialValue=\"10.0\" shortDescription=\"Float\">"
+      tf.puts "      <xtce:FloatArgumentType name=\"CMD_PKT_CMD_FLOAT_Type\" sizeInBits=\"32\" initialValue=\"10.0\" shortDescription=\"Float\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:FloatDataEncoding sizeInBits=\"32\" encoding=\"IEEE754_1985\" byteOrder=\"leastSignificantByteFirst\">"
       tf.puts "          <xtce:DefaultCalibrator>"
@@ -471,11 +471,11 @@ module OpenC3
       tf.puts "          </xtce:DefaultCalibrator>"
       tf.puts "        </xtce:FloatDataEncoding>"
       tf.puts "      </xtce:FloatArgumentType>"
-      tf.puts "      <xtce:FloatArgumentType name=\"CMD_DOUBLE_Type\" sizeInBits=\"64\" initialValue=\"0.0\" shortDescription=\"Double\">"
+      tf.puts "      <xtce:FloatArgumentType name=\"CMD_PKT_CMD_DOUBLE_Type\" sizeInBits=\"64\" initialValue=\"0.0\" shortDescription=\"Double\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:FloatDataEncoding sizeInBits=\"64\" encoding=\"IEEE754_1985\" byteOrder=\"leastSignificantByteFirst\"/>"
       tf.puts "      </xtce:FloatArgumentType>"
-      tf.puts "      <xtce:StringArgumentType name=\"CMD_STRING_Type\" characterWidth=\"8\" initialValue=\"&quot;DEAD&quot;\" shortDescription=\"String\">"
+      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING_Type\" characterWidth=\"8\" initialValue=\"&quot;DEAD&quot;\" shortDescription=\"String\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:StringDataEncoding encoding=\"UTF-8\">"
       tf.puts "          <xtce:SizeInBits>"
@@ -486,7 +486,7 @@ module OpenC3
       tf.puts "          </xtce:SizeInBits>"
       tf.puts "        </xtce:StringDataEncoding>"
       tf.puts "      </xtce:StringArgumentType>"
-      tf.puts "      <xtce:StringArgumentType name=\"CMD_STRING2_Type\" characterWidth=\"8\" initialValue=\"DEAD\" shortDescription=\"Binary\">"
+      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING2_Type\" characterWidth=\"8\" initialValue=\"DEAD\" shortDescription=\"Binary\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:StringDataEncoding encoding=\"UTF-8\">"
       tf.puts "          <xtce:SizeInBits>"
@@ -497,7 +497,7 @@ module OpenC3
       tf.puts "          </xtce:SizeInBits>"
       tf.puts "        </xtce:StringDataEncoding>"
       tf.puts "      </xtce:StringArgumentType>"
-      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_BLOCK_Type\" initialValue=\"BEEF\" shortDescription=\"Block\">"
+      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\" shortDescription=\"Block\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:BinaryDataEncoding>"
       tf.puts "          <xtce:SizeInBits>"
@@ -512,14 +512,14 @@ module OpenC3
       tf.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"CMD/PKT\"/>"
       tf.puts "        </xtce:AliasSet>"
       tf.puts "        <xtce:ArgumentList>"
-      tf.puts "          <xtce:Argument name=\"CMD_UNSIGNED\" argumentTypeRef=\"CMD_UNSIGNED_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_SIGNED\" argumentTypeRef=\"CMD_SIGNED_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_ARRAY\" argumentTypeRef=\"CMD_ARRAY_ArrayType\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_FLOAT\" argumentTypeRef=\"CMD_FLOAT_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_DOUBLE\" argumentTypeRef=\"CMD_DOUBLE_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_STRING_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_STRING2_Type\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_BLOCK_Type\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_UNSIGNED\" argumentTypeRef=\"CMD_PKT_CMD_UNSIGNED_Type\" initialValue=\"TRUE\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_SIGNED\" argumentTypeRef=\"CMD_PKT_CMD_SIGNED_Type\" initialValue=\"0\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_ARRAY\" argumentTypeRef=\"CMD_PKT_CMD_ARRAY_ArrayType\" initialValue=\"\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_FLOAT\" argumentTypeRef=\"CMD_PKT_CMD_FLOAT_Type\" initialValue=\"10.0\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_DOUBLE\" argumentTypeRef=\"CMD_PKT_CMD_DOUBLE_Type\" initialValue=\"0.0\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_PKT_CMD_STRING_Type\" initialValue=\"&quot;DEAD&quot;\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_PKT_CMD_STRING2_Type\" initialValue=\"DEAD\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\"/>"
       tf.puts "        </xtce:ArgumentList>"
       tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_Commands\">"
       tf.puts "          <xtce:EntryList>"
@@ -669,8 +669,6 @@ module OpenC3
         tf_tgt1.puts cmd
         tf_tgt1.close
         @pc.process_file(tf_tgt1.path, "TGT1")
-        spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
         tf_tgt2 = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT2 TLMPKT BIG_ENDIAN \"TLMPKT Description\"\n"\
                "  ID_ITEM TLM.OPCODE 0 8 UINT 0 \"TLM_OPCODE Description\"\n"
@@ -717,8 +715,6 @@ module OpenC3
         tf_tgt1.puts cmd
         tf_tgt1.close
         @pc.process_file(tf_tgt1.path, "TGT1")
-        spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
         tf_tgt2 = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT2 TLMPKT BIG_ENDIAN \"TLMPKT Description\"\n"\
                "  ID_ITEM TLM.OPCODE 0 8 UINT 0 \"TLM_OPCODE Description\"\n"
@@ -765,8 +761,6 @@ module OpenC3
         tf_tgt1.puts cmd
         tf_tgt1.close
         @pc.process_file(tf_tgt1.path, "TGT1")
-        spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
         tf_tgt2 = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT2 TLMPKT BIG_ENDIAN \"TLMPKT Description\"\n"\
                "  ID_ITEM TLM.OPCODE 0 8 UINT 0 \"TLM_OPCODE Description\"\n"

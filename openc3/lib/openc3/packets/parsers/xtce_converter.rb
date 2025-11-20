@@ -59,9 +59,9 @@ module OpenC3
       file_pattern = File.join(output_dir, "**", "*.xtce")
       xml_files = Dir.glob(file_pattern)
       if xml_files.empty?
-          puts "No *.xtce files found to combine. Aborting xtce unification."
+          puts "No *.xtce files found to combine."
       elsif xml_files.length == 1
-          puts "Output directory contains single target. Aborting xtce unification."
+          puts "Only one *.xtce file found. No need to unify."
       else
         puts "Multiple targets found. Creating Unified XTCE representation."
         FileUtils.mkdir_p(combined_file_directory)
@@ -234,12 +234,15 @@ module OpenC3
             end
           end
         end
-        unique_command_args_without_ids = get_unique_without_ids(commands[target_name])
-        if unique_command_args_without_ids.size > 0
-          xml['xtce'].ArgumentTypeSet do
-            unique_command_args_without_ids.each do |arg_name, arg|
-              next if unique_id_items.key?(arg_name)
-              to_xtce_type(arg, 'Argument', xml)
+        #unique_command_args_without_ids = get_unique_without_ids(commands[target_name])
+        #if unique_command_args_without_ids.size > 0
+        xml['xtce'].ArgumentTypeSet do
+          commands[target_name].each do |packet_name, packet|
+            packet.items.each do |arg_name, arg|
+              #TODO: handle derived types
+              next if arg.data_type == :DERIVED
+              next if unique_id_items.key?(arg_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
+              to_xtce_type(arg, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
             end
           end
         end
@@ -255,9 +258,24 @@ module OpenC3
               end # If packet contains invalid chars
               argument_list_sorted_items = get_sorted_non_id_items(packet.sorted_items)
               if argument_list_sorted_items.size > 0
+                #xml['xtce'].BaseMetaCommand(:metaCommandRef => packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
+                #  xml['xtce'].ArgumentAssignmentList do
+                #    argument_list_sorted_items.each do |item|
+                #      initial_value = case item.data_type
+                #      when :INT, :UINT, :FLOAT
+                #        get_numerical_item_initial_value(item)
+                #      when :STRING, :BLOCK
+                #        get_string_or_block_initial_value(item, item.data_type)
+                #      when :DERIVED
+                #        next
+                #      end
+                #      xml['xtce'].ArgumentAssignment(:argumentName => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR), :argumentValue => "#{initial_value}")
+                #    end
+                #  end
+                #end # BaseMetaCommand
                 xml['xtce'].ArgumentList do
                   argument_list_sorted_items.each do |item|
-                    to_xtce_item(item, 'Argument', xml)
+                    to_xtce_item(item, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
                   end
                 end # ArgumentList
               end # If Aguments List is greater than 0
@@ -281,6 +299,41 @@ module OpenC3
           end # each command packet
         end # MetaCommandSet
       end # CommandMetaData
+    end
+
+    def get_numerical_item_initial_value(item)
+      initial_value = nil
+      if item.states && item.default && !item.array_size
+        # Invert hash so we can get the initial value. If not found remove the initial value.
+        inverted_enum_states = item.states.invert
+        if inverted_enum_states.include?(item.default)
+          initial_value = inverted_enum_states[item.default]
+        end
+      elsif item.default && !item.array_size
+        initial_value = item.default
+      end
+      if initial_value == "1970-01-01T00:00:00Z"
+      initial_value = 0
+      end
+      initial_value
+    end
+
+    def get_string_or_block_initial_value(item, string_or_binary)
+      initial_value = nil
+      if item.default && !item.array_size
+        unless item.default.is_printable?
+          #attrs[:initialValue] = '0x' + item.default.simple_formatted
+          initial_value = item.default.simple_formatted
+        else
+          if string_or_binary == :STRING
+            initial_value = item.default.inspect
+          else
+            # TODO: verify hexBinary is just two hex values nothing else 
+            initial_value = item.default.inspect.unpack('H*').first
+          end         
+        end
+      end
+      initial_value
     end
 
     def get_unique(items)
@@ -345,11 +398,11 @@ module OpenC3
       end
       unique.each do |item_name, unique_items|
         if unique_items.length <= 1
-          unique[item_name] = unique_items[0]
+          unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
           next
         end
         # TODO: need to make sure all the items in the array are exactly the same
-        unique[item_name] = unique_items[0]
+        unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
       end
       unique
     end
@@ -430,9 +483,9 @@ module OpenC3
       if item.array_size
         # The above will have created the type for the array entries.   Now we create the type for the actual array.
 
-        attrs = { :name => (item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_ArrayType') }
+        attrs = { :name => (prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_ArrayType') }
         attrs[:shortDescription] = item.description if item.description
-        attrs[:arrayTypeRef] = (item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_Type')
+        attrs[:arrayTypeRef] = (prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_Type')
         xml['xtce'].public_send('Array' + param_or_arg + 'Type', attrs) do
           xml['xtce'].DimensionList do
             xml['xtce'].Dimension do
@@ -628,26 +681,35 @@ module OpenC3
     end
 
     def to_xtce_item(item, param_or_arg, xml, prefix: "")
-      if item.name.count(INVALID_CHARS) > 0 || !prefix.empty?
-        replaced_item_name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
-        if item.array_size
-          xml['xtce'].public_send(param_or_arg, :name => replaced_item_name, "#{param_or_arg.downcase}TypeRef" => replaced_item_name + '_ArrayType') do
-            xml['xtce'].AliasSet do
-              xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
-            end
-          end
-        else
-          xml['xtce'].public_send(param_or_arg, :name => replaced_item_name, "#{param_or_arg.downcase}TypeRef" => replaced_item_name + '_Type') do
-            xml['xtce'].AliasSet do
-              xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
-            end
-          end
-        end
+      replaced_item_name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+      if item.array_size
+        type_suffix = "_ArrayType"
       else
-        if item.array_size
-          xml['xtce'].public_send(param_or_arg, :name => item.name, "#{param_or_arg.downcase}TypeRef" => item.name + '_ArrayType')
-        else
-          xml['xtce'].public_send(param_or_arg, :name => item.name, "#{param_or_arg.downcase}TypeRef" => item.name + '_Type')
+        type_suffix = "_Type"
+      end
+      attrs = {:name => replaced_item_name, "#{param_or_arg.downcase}TypeRef" => replaced_item_name + type_suffix}
+      needs_alias = item.name.count(INVALID_CHARS) > 0 || !prefix.empty?
+      if param_or_arg.downcase == "argument" 
+        # Set the name to just be the item name since ArgumentsTypes
+        # will use the packet name as a prefix but not in the actual argument name. 
+        # Maintains the individual type between arguments with a shared name.
+        needs_alias = item.name.count(INVALID_CHARS) > 0
+        attrs[:name] = item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+        initial_value = case item.data_type
+        when :INT, :UINT, :FLOAT
+          get_numerical_item_initial_value(item)
+        when :STRING, :BLOCK
+          get_string_or_block_initial_value(item, item.data_type)
+        when :DERIVED
+          nil
+        end
+        attrs[:initialValue] = initial_value
+      end
+      xml['xtce'].public_send(param_or_arg, attrs) do
+        if needs_alias
+          xml['xtce'].AliasSet do
+            xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
+          end
         end
       end
     end
