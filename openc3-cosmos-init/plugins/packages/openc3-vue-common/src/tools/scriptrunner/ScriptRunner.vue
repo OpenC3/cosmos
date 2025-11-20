@@ -202,7 +202,7 @@
             <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
 
             <v-spacer />
-            <div v-if="startOrGoButton === 'Start'">
+            <div v-if="startGoRetryButton === 'Start' || startGoRetryButton === 'Retry'">
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -229,7 +229,7 @@
               <v-btn
                 class="mx-1"
                 color="primary"
-                text="Start"
+                :text="startGoRetryButton"
                 data-test="start-button"
                 :disabled="startOrGoDisabled || !executeUser"
                 :hidden="suiteRunner"
@@ -389,11 +389,11 @@
               background-color: var(--color-background-surface-default);
             "
           >
-            <div v-if="startOrGoButton === 'Start'">
+            <div v-if="startGoRetryButton === 'Start' || startGoRetryButton === 'Retry'">
               <v-btn
                 class="mx-1"
                 color="primary"
-                text="Start"
+                :text="startGoRetryButton"
                 data-test="start-button"
                 :disabled="startOrGoDisabled || !executeUser"
                 :hidden="suiteRunner"
@@ -720,7 +720,7 @@ export default {
       alertText: '',
       state: null,
       scriptId: null,
-      startOrGoButton: START,
+      startGoRetryButton: START,  // Values: Start, Go, Retry
       startOrGoDisabled: false,
       envDisabled: false,
       pauseOrRetryButton: PAUSE,
@@ -1638,7 +1638,7 @@ export default {
         })
     },
     suiteRunnerButton(event) {
-      if (this.startOrGoButton === START) {
+      if (this.startGoRetryButton === START || this.startGoRetryButton === RETRY) {
         this.start(event, 'suiteRunner')
       } else {
         this.go(event, 'suiteRunner')
@@ -1722,7 +1722,7 @@ export default {
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
       this.state = 'Connecting...'
-      this.startOrGoButton = GO
+      this.startGoRetryButton = GO
       this.editor.setReadOnly(true)
     },
     scriptStart(id) {
@@ -1744,7 +1744,6 @@ export default {
         })
     },
     async scriptComplete() {
-      this.fatal = false
       this.scriptId = null // No current scriptId
       sessionStorage.removeItem('script_runner__script_id')
       this.currentFilename = null // No current file running
@@ -1755,8 +1754,8 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
+      // If the script crashed, leave it crashed. Otherwise, set to stopped.
+      this.state = this.state === 'crashed' ? 'crashed' : 'stopped'
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -1768,7 +1767,7 @@ export default {
 
       // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
-      this.startOrGoButton = START
+      this.startGoRetryButton = this.state === 'crashed' ? RETRY : START
       this.pauseOrRetryButton = PAUSE
       // Disable start if suiteRunner
       this.startOrGoDisabled = this.suiteRunner
@@ -1847,15 +1846,7 @@ export default {
       }
     },
     stop() {
-      // We previously encountered a fatal error so remove the marker
-      // and cleanup by calling scriptComplete() because the script
-      // is already stopped in the backend
-      if (this.fatal) {
-        this.removeAllMarkers()
-        this.scriptComplete()
-      } else {
-        Api.post(`/script-api/running-script/${this.scriptId}/stop`)
-      }
+      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
@@ -1930,8 +1921,11 @@ export default {
           this.editor.gotoLine(data.line_no)
           this.files[data.filename].lineNo = data.line_no
           break
+        // Crashed means execution has stopped on the backend, and no more messages will be received
         case 'crashed':
-          this.fatal = true
+          this.removeAllMarkers()
+          this.scriptComplete()
+          break
         // Deliberate fall through (no break)
         case 'error':
           this.pauseOrRetryButton = RETRY
@@ -1940,14 +1934,9 @@ export default {
         case 'waiting':
         case 'paused':
           this.handleWaiting()
-          if (this.state == 'fatal') {
-            this.startOrGoDisabled = true
-            this.pauseOrRetryDisabled = true
-          } else {
-            this.startOrGoDisabled = false
-            this.pauseOrRetryDisabled = false
-          }
+          this.startOrGoDisabled = false
           this.stopDisabled = false
+          this.pauseOrRetryDisabled = false
           let existing = Object.keys(markers).filter(
             (key) => markers[key].clazz === `${this.state}Marker`,
           )
@@ -2016,11 +2005,8 @@ export default {
             this.results.show = true
             break
           case 'complete':
-            // Don't complete on fatal because we just sit there on the fatal line
-            if (!this.fatal) {
-              this.removeAllMarkers()
-              this.scriptComplete()
-            }
+            this.removeAllMarkers()
+            this.scriptComplete()
             break
           case 'step':
             this.showDebug = true
