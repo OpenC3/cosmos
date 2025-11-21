@@ -556,25 +556,29 @@ end
 unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   Cosmos = OpenC3
   ENV['COSMOS_SCOPE'] = ENV['OPENC3_SCOPE']
-  module CosmosCompatibility
-    def require(*args)
-      filename = args[0]
-      if filename.is_a?(String) && filename.start_with?("cosmos/")
-        filename = filename.sub(/^cosmos\//, "openc3/")
-        args[0] = filename
+
+  # Don't apply the compatibility layer in test environments to avoid conflicts with RSpec
+  unless defined?(RSpec) || ENV['RAILS_ENV'] == 'test' || ENV['RACK_ENV'] == 'test'
+    module CosmosCompatibility
+      def require(*args)
+        filename = args[0]
+        if filename.is_a?(String) && filename.start_with?("cosmos/")
+          filename = filename.sub(/^cosmos\//, "openc3/")
+          args[0] = filename
+        end
+        super(*args)
       end
-      super(*args)
-    end
-    def load(*args)
-      filename = args[0]
-      if filename.is_a?(String) && filename.start_with?("cosmos/")
-        filename = filename.sub(/^cosmos\//, "openc3/")
-        args[0] = filename
+      def load(*args)
+        filename = args[0]
+        if filename.is_a?(String) && filename.start_with?("cosmos/")
+          filename = filename.sub(/^cosmos\//, "openc3/")
+          args[0] = filename
+        end
+        super(*args)
       end
-      super(*args)
     end
-  end
-  class Object
-    include CosmosCompatibility
+    class Object
+      include CosmosCompatibility
+    end
   end
 end
