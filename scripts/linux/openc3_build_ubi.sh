@@ -83,6 +83,7 @@ else
   echo "Building specified images: ${IMAGES_TO_BUILD[@]}"
 fi
 
+# Detect container runtime
 if ! command -v docker &> /dev/null
 then
   if command -v podman &> /dev/null
@@ -90,23 +91,42 @@ then
     function docker() {
       podman $@
     }
-
-    # Check if logged into Podman registry
-    if ! podman login --get-login "$OPENC3_UBI_REGISTRY" &> /dev/null; then
-      echo "Not logged into Podman registry: $OPENC3_UBI_REGISTRY"
-      echo "Please login to continue..."
-      if ! podman login "$OPENC3_UBI_REGISTRY"; then
-        echo "Failed to login to registry!"
-        exit 1
-      fi
-    else
-      echo "Already logged into registry: $OPENC3_UBI_REGISTRY"
-    fi
   else
     echo "Neither docker nor podman found!!!"
     exit 1
   fi
 fi
+
+# Function to check and perform registry login
+check_registry_login() {
+  if [ -z "$OPENC3_UBI_REGISTRY" ]; then
+    echo "Warning: OPENC3_UBI_REGISTRY not set, skipping registry login check"
+    return 0
+  fi
+
+  echo "Logging into registry: $OPENC3_UBI_REGISTRY"
+
+  # Attempt login with credentials if provided, otherwise prompt
+  if [ -n "$OPENC3_UBI_USERNAME" ] && [ -n "$OPENC3_UBI_PASSWORD" ]; then
+    echo "Using provided credentials for login..."
+    if echo "$OPENC3_UBI_PASSWORD" | docker login "$OPENC3_UBI_REGISTRY" --username "$OPENC3_UBI_USERNAME" --password-stdin; then
+      echo "Successfully authenticated with registry: $OPENC3_UBI_REGISTRY"
+    else
+      echo "Failed to login with provided credentials!"
+      exit 1
+    fi
+  else
+    echo "No credentials provided (OPENC3_UBI_USERNAME/OPENC3_UBI_PASSWORD)"
+    echo "Attempting interactive login..."
+    if ! docker login "$OPENC3_UBI_REGISTRY"; then
+      echo "Failed to login to registry!"
+      exit 1
+    fi
+  fi
+}
+
+# Perform registry login check
+check_registry_login
 
 # Handle restrictive umasks - Built files need to be world readable
 umask 0022
@@ -170,6 +190,8 @@ if should_build "openc3-base-ubi"; then
   START_TIME=$SECONDS
 
   cd openc3
+  # Clean up any .bundle directory to avoid corrupted config files
+  rm -rf .bundle
   docker build \
     -f Dockerfile-ubi \
     --network host \
@@ -181,10 +203,6 @@ if should_build "openc3-base-ubi"; then
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}" \
     .
   cd ..
-
-  # Cleanup after successful build
-  trap - EXIT
-  cleanup_ruby_service "openc3"
 
   DURATION=$((SECONDS - START_TIME))
   echo "✓ openc3-base-ubi completed in $(format_duration $DURATION)"
@@ -272,6 +290,8 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   START_TIME=$SECONDS
 
   cd openc3-cosmos-cmd-tlm-api
+  # Clean up any .bundle directory to avoid corrupted config files
+  rm -rf .bundle
   docker build \
     -f Dockerfile-ubi \
     --network host \
@@ -284,10 +304,6 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
     .
   cd ..
 
-  # Cleanup after successful build
-  trap - EXIT
-  cleanup_ruby_service "openc3-cosmos-cmd-tlm-api"
-
   DURATION=$((SECONDS - START_TIME))
   echo "✓ openc3-cosmos-cmd-tlm-api-ubi completed in $(format_duration $DURATION)"
   record_build "openc3-cosmos-cmd-tlm-api-ubi" "$DURATION"
@@ -298,6 +314,8 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
   START_TIME=$SECONDS
 
   cd openc3-cosmos-script-runner-api
+  # Clean up any .bundle directory to avoid corrupted config files
+  rm -rf .bundle
   docker build \
     -f Dockerfile-ubi \
     --network host \
@@ -309,10 +327,6 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}" \
     .
   cd ..
-
-  # Cleanup after successful build
-  trap - EXIT
-  cleanup_ruby_service "openc3-cosmos-script-runner-api"
 
   DURATION=$((SECONDS - START_TIME))
   echo "✓ openc3-cosmos-script-runner-api-ubi completed in $(format_duration $DURATION)"
@@ -389,7 +403,7 @@ if should_build "openc3-cosmos-init-ubi"; then
   record_build "openc3-cosmos-init-ubi" "$DURATION"
 fi
 
-podman image prune -f
+docker image prune -f
 
 # Generate final build report
 echo ""

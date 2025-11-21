@@ -12,7 +12,8 @@ ARG RUBYGEMS_URL=https://rubygems.org
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 # Configure Bundler to mirror rubygems.org using the RUBYGEMS_URL environment variable
 # Bundler supports BUNDLE_MIRROR__<encoded_source> where : becomes ---, / becomes ___, . becomes __
-ENV BUNDLE_MIRROR__HTTPS---___RUBYGEMS__ORG=${RUBYGEMS_URL}
+# Only set the mirror if RUBYGEMS_URL is different from the default to avoid bundler config issues
+# ENV BUNDLE_MIRROR__HTTPS---___RUBYGEMS__ORG=${RUBYGEMS_URL}
 # Disable bundler version check for air-gapped environments where exact version may not be available
 ENV BUNDLE_IGNORE_BUNDLER_VERSION_ERROR=true
 ARG PYPI_URL=https://pypi.org
