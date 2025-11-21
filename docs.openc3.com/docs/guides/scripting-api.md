@@ -312,6 +312,83 @@ match value:
 </TabItem>
 </Tabs>
 
+### open_file_dialog
+
+### open_files_dialog
+
+The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+
+Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+open_file_dialog("<Title>", "<Message>", filter: "<filter>")
+open_files_dialog("<Title>", "<Message>", filter: "<filter>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+open_file_dialog("<Title>", "<Message>", filter="<filter>")
+open_files_dialog("<Title>", "<Message>", filter="<filter>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title     | The title to put on the dialog. Required.                                                                                                                                                                                          |
+| Message   | The message to display in the dialog box. Optional parameter.                                                                                                                                                                      |
+| filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+file = open_file_dialog("Open a single file", "Choose something interesting", filter: ".txt")
+puts file # Ruby File object
+puts file.read
+file.delete
+
+files = open_files_dialog("Open multiple files") # message is optional
+puts files # Array of File objects (even if you select only one)
+files.each do |file|
+  puts file
+  puts file.read
+  file.delete
+end
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
+print(file)
+print(file.read())
+file.close()
+
+files = open_files_dialog("Open multiple files") # message is optional
+print(files) # Array of File objects (even if you select only one)
+for file in files:
+    print(file)
+    print(file.read())
+    file.close()
+```
+
+</TabItem>
+</Tabs>
+
+## File Manipulation
+
+These methods provide capability to interact with files in the target directory.
+
 ### get_target_file
 
 Return a file handle to a file in the target directory
@@ -470,20 +547,15 @@ delete_target_file("INST/delete_me.txt")
 </TabItem>
 </Tabs>
 
-### open_file_dialog
+### download_file
 
-### open_files_dialog
-
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
-
-Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
+Prompts the user to download a file from the OpenC3 system to their local machine.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-open_file_dialog("<Title>", "<Message>", filter: "<filter>")
-open_files_dialog("<Title>", "<Message>", filter: "<filter>")
+download_file("<File Path>")
 ```
 
 </TabItem>
@@ -491,35 +563,21 @@ open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 <TabItem value="python" label="Python Syntax">
 
 ```python
-open_file_dialog("<Title>", "<Message>", filter="<filter>")
-open_files_dialog("<Title>", "<Message>", filter="<filter>")
+download_file("<File Path>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                                                                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Title     | The title to put on the dialog. Required.                                                                                                                                                                                          |
-| Message   | The message to display in the dialog box. Optional parameter.                                                                                                                                                                      |
-| filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
+| Parameter | Description                                                                 |
+| --------- | --------------------------------------------------------------------------- |
+| File Path | File Path to the file to download within the OpenC3 system.                 |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-file = open_file_dialog("Open a single file", "Choose something interesting", filter: ".txt")
-puts file # Ruby File object
-puts file.read
-file.delete
-
-files = open_files_dialog("Open multiple files") # message is optional
-puts files # Array of File objects (even if you select only one)
-files.each do |file|
-  puts file
-  puts file.read
-  file.delete
-end
+download_file("targets/INST/procedures/my_data.csv")
 ```
 
 </TabItem>
@@ -527,17 +585,7 @@ end
 <TabItem value="python" label="Python Example">
 
 ```python
-file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
-print(file)
-print(file.read())
-file.close()
-
-files = open_files_dialog("Open multiple files") # message is optional
-print(files) # Array of File objects (even if you select only one)
-for file in files:
-    print(file)
-    print(file.read())
-    file.close()
+download_file("targets/INST/procedures/my_data.csv")
 ```
 
 </TabItem>

@@ -106,7 +106,7 @@
         </div>
       </div>
     </div>
-    <v-card>
+    <v-card class="flex-shrink-0">
       <v-card-text>
         <suite-runner
           v-if="suiteRunner"

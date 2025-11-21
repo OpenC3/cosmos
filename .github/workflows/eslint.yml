@@ -420,5 +420,5 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
       - name: Run ESLint
-        run: pnpm lint --max-warnings 352
+        run: pnpm lint --max-warnings 331
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common

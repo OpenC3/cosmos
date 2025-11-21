@@ -28,128 +28,25 @@
       </v-col>
     </v-row>
     <v-row dense class="flex-nowrap">
-      <v-menu ref="topmenu" v-for="(menu, i) in menus" :key="i">
-        <template v-slot:activator="{ props }">
-          <v-btn
-            v-bind="props"
-            variant="outlined"
-            class="mx-1 menu-button"
-            :text="menu.label"
-            :data-test="formatDT(`${title} ${menu.label}`)"
-          >
-            <template v-slot:append>
-              <v-icon class="menu-button-icon"> mdi-menu-down </v-icon>
-            </template>
-          </v-btn>
-        </template>
-        <v-list>
-          <template v-for="(option, j) in menu.items">
-            <v-divider v-if="option.divider" :key="j + '-divider'" />
-            <div
-              v-else-if="option.subMenu && option.subMenu.length > 0"
-              :key="j + '-submenu'"
-            >
-              <v-menu open-on-hover location="right" :key="j">
-                <template v-slot:activator="{ props }">
-                  <v-list-item
-                    v-bind="props"
-                    :disabled="option.disabled"
-                    :key="j"
-                  >
-                    <template v-slot:prepend v-if="option.icon">
-                      <v-icon :disabled="option.disabled">
-                        {{ option.icon }}
-                      </v-icon>
-                    </template>
-                    <v-list-item-title
-                      v-if="!option.radio && !option.checkbox"
-                      :style="
-                        'cursor: pointer;' +
-                        (option.disabled ? 'opacity: 0.2' : '')
-                      "
-                      >{{ option.label }}
-                    </v-list-item-title>
-                    <template v-slot:append>
-                      <v-icon> mdi-chevron-right </v-icon>
-                    </template>
-                  </v-list-item>
-                </template>
-                <v-list>
-                  <v-list-item
-                    v-for="(submenu, k) in option.subMenu"
-                    :key="k"
-                    :prepend-icon="submenu.icon"
-                    @click="subMenuClick(submenu)"
-                  >
-                    <v-list-item-title>{{ submenu.label }}</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-            <v-radio-group
-              v-else-if="option.radioGroup"
-              :model-value="option.value"
-              @update:model-value="option.command"
-              :key="j + '-radio-group'"
-              hide-details
-              density="compact"
-              class="ma-0 pa-0"
-            >
-              <v-list-item
-                v-for="(choice, k) in option.choices"
-                :key="k + '-choice'"
-              >
-                <v-list-item-action class="list-action">
-                  <v-radio
-                    color="secondary"
-                    :label="choice.label"
-                    :value="choice.value"
-                    density="compact"
-                    hide-details
-                  />
-                </v-list-item-action>
-              </v-list-item>
-            </v-radio-group>
-            <v-list-item
-              v-else
-              @click="option.command(option)"
-              :disabled="option.disabled"
-              :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-              :key="j + '-list'"
-            >
-              <template v-slot:prepend v-if="option.icon">
-                <v-icon
-                  :icon="option.icon"
-                  :disabled="option.disabled"
-                ></v-icon>
-              </template>
-              <v-list-item-action class="list-action" v-if="option.checkbox">
-                <v-checkbox
-                  v-model="option.checked"
-                  :label="option.label"
-                  color="secondary"
-                  density="compact"
-                  hide-details
-                />
-              </v-list-item-action>
-              <v-list-item-title
-                v-if="!option.radio && !option.checkbox"
-                :style="
-                  'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
-                "
-              >
-                {{ option.label }}
-              </v-list-item-title>
-            </v-list-item>
-          </template>
-        </v-list>
-      </v-menu>
+      <TopBarMenu
+        v-for="(menu, i) in menus"
+        :key="i + '-top-menu'"
+        :ref="'topmenu'"
+        :menu="menu"
+        :title="title"
+        @submenu-click="subMenuClick"
+      />
     </v-row>
   </teleport>
 </template>
 
 <script>
+import TopBarMenu from './TopBarMenu.vue'
+
 export default {
+  components: {
+    TopBarMenu,
+  },
   props: {
     menus: {
       type: Array,
@@ -163,10 +60,6 @@ export default {
     },
   },
   methods: {
-    // Convert the string to a standard data-test format
-    formatDT: function (string) {
-      return string.replaceAll(' ', '-').toLowerCase()
-    },
     subMenuClick(submenu) {
       submenu.command(submenu)
       this.$refs.topmenu[0].isActive = false
