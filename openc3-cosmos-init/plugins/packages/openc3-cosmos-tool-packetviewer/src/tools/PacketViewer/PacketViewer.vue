@@ -70,7 +70,7 @@
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
-        :loading="loading > 0"
+        :loading="loading"
         multi-sort
         fixed-header
         density="compact"
@@ -240,7 +240,8 @@ export default {
   data() {
     return {
       panel: 0,
-      loading: 0,
+      loadingPacketItems: false,
+      loadingTlmData: false,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -418,6 +419,9 @@ export default {
       }
       return options
     },
+    loading: function () {
+      return this.loadingPacketItems || this.loadingTlmData
+    },
   },
   watch: {
     showIgnored: function () {
@@ -538,7 +542,7 @@ export default {
         return // No change
       }
       try {
-        this.loading++
+        this.loadingPacketItems = true
         const target = await this.api.get_target(event.targetName)
         if (target) {
           this.ignoredItems = target.ignored_items
@@ -584,7 +588,7 @@ export default {
           })
         }
       } finally {
-        this.loading--
+        this.loadingPacketItems = false
       }
     },
     latestGetTlmValues(values) {
@@ -637,10 +641,11 @@ export default {
         this.latestItems = null
       }
       if (!this.rows.length) {
-        this.loading++
+        this.loadingTlmData = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
+          this.loadingTlmData = false
           return // noop if target/packet aren't set
         }
 
@@ -650,9 +655,6 @@ export default {
             this.api
               .get_tlm_values(this.latestAvailable, this.staleLimit)
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -676,9 +678,6 @@ export default {
                 return this.api.get_tlm_values(available, this.staleLimit)
               })
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -728,9 +727,6 @@ export default {
                     })
                   }
                 })
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 if (this.derivedLast) {
                   this.rows = other.concat(derived)
                 } else {
@@ -746,6 +742,7 @@ export default {
               console.log(error)
             })
         }
+        this.loadingTlmData = false
       }, this.refreshInterval)
     },
     resetConfig: function () {
