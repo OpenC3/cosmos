@@ -559,18 +559,18 @@ unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   module CosmosCompatibility
     def require(*args)
       filename = args[0]
-      if filename[0..6] == "cosmos/"
-        filename[0..6] = "openc3/"
+      if filename.is_a?(String) && filename.start_with?("cosmos/")
+        filename = filename.sub(/^cosmos\//, "openc3/")
+        args[0] = filename
       end
-      args[0] = filename
       super(*args)
     end
     def load(*args)
       filename = args[0]
-      if filename[0..6] == "cosmos/"
-        filename[0..6] = "openc3/"
+      if filename.is_a?(String) && filename.start_with?("cosmos/")
+        filename = filename.sub(/^cosmos\//, "openc3/")
+        args[0] = filename
       end
-      args[0] = filename
       super(*args)
     end
   end
