@@ -556,25 +556,50 @@ end
 unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   Cosmos = OpenC3
   ENV['COSMOS_SCOPE'] = ENV['OPENC3_SCOPE']
-  module CosmosCompatibility
-    def require(*args)
-      filename = args[0]
-      if filename[0..6] == "cosmos/"
-        filename[0..6] = "openc3/"
+
+  # Don't apply the compatibility layer in test environments to avoid conflicts with RSpec
+  unless defined?(RSpec) || ENV['RAILS_ENV'] == 'test' || ENV['RACK_ENV'] == 'test'
+    module CosmosCompatibility
+      # Validates the filename after cosmos->openc3 transformation
+      def safe_openc3_path?(filename)
+        return false unless filename.is_a?(String)
+        # Only validate paths that start with "openc3/" (transformed from "cosmos/")
+        return true unless filename.start_with?("openc3/")
+        # Disallow any ".." or "." path traversal
+        return false if filename.include?("..") || filename.include?("./") || filename.include?("/.") || filename.include?("\\") || filename.include?("//")
+        # Disallow absolute paths (Unix and Windows)
+        return false if filename.start_with?("/") || filename =~ /^[a-zA-Z]:[\\\/]/
+        # Disallow special characters (allow word chars, dash, slash, dot)
+        return false unless filename =~ /\A[\w\-\/\.]+\z/
+        true
       end
-      args[0] = filename
-      super(*args)
-    end
-    def load(*args)
-      filename = args[0]
-      if filename[0..6] == "cosmos/"
-        filename[0..6] = "openc3/"
+
+      def require(*args)
+        filename = args[0]
+        if filename.is_a?(String) && filename.start_with?("cosmos/")
+          filename = filename.sub(/^cosmos\//, "openc3/")
+          unless safe_openc3_path?(filename)
+            raise ArgumentError, "Unsafe path in require after cosmos->openc3 transformation: #{filename.inspect}"
+          end
+          args[0] = filename
+        end
+        super(*args)
       end
-      args[0] = filename
-      super(*args)
+
+      def load(*args)
+        filename = args[0]
+        if filename.is_a?(String) && filename.start_with?("cosmos/")
+          filename = filename.sub(/^cosmos\//, "openc3/")
+          unless safe_openc3_path?(filename)
+            raise ArgumentError, "Unsafe path in load after cosmos->openc3 transformation: #{filename.inspect}"
+          end
+          args[0] = filename
+        end
+        super(*args)
+      end
     end
-  end
-  class Object
-    include CosmosCompatibility
+    class Object
+      include CosmosCompatibility
+    end
   end
 end

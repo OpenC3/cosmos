@@ -8,6 +8,7 @@ Gemfile.lock
 coverage/
 spec/
 test/
+.bundle/
 # Keep the directories but no contents
 log/*
 tmp/*
