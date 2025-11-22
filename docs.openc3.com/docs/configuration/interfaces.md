@@ -666,7 +666,18 @@ For a full example, please see the [openc3-cosmos-proto-target](https://github.c
 
 ## Custom Interfaces
 
-Interfaces have the following methods that must be implemented:
+Custom interfaces should be created in the `lib/` folder of your plugin and then referenced in `plugin.txt` simply by the file name, no pathing necessary.
+```ruby
+# my_custom_interface.py
+from openc3.interfaces.interface import Interface
+class MyCustomInterface(Interface):
+  ... your code here ...
+
+# plugin.txt
+INTERFACE MY_INTEFACE_NAME my_custom_interface.py arg1 arg2 arg3
+```
+
+All interfaces must be subclasses of the `Cosmos::Interface` class or one of its subclasses. Interfaces have the following methods that must be implemented:
 
 1. **connect** - Open the socket or port or somehow establish the connection to the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
 1. **connected?** - Return true or false depending on the connection state. Note: This method should return immediately.
@@ -683,5 +694,5 @@ Interfaces also have the following methods that exist and have default implement
 1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
 
 :::warning Naming Conventions
-When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
+When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described above. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
 :::

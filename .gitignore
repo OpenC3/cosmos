@@ -1,3 +1,6 @@
+mm/
+cosmos/
+output/
 *.o
 *.def
 *.so

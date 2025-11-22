@@ -26,9 +26,9 @@ The plugin generator creates the scaffolding for a new COSMOS Plugin. It require
 
 ```bash
 % openc3.sh cli generate plugin
-Usage: cli generate plugin <NAME>
+Usage: cli generate plugin <NAME> (--ruby or --python)
 
-% openc3.sh cli generate plugin GSE
+% openc3.sh cli generate plugin GSE --python
 Plugin openc3-cosmos-gse successfully generated!
 ```
 

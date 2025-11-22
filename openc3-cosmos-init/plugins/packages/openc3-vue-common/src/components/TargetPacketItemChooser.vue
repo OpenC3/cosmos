@@ -209,6 +209,10 @@ export default {
       type: String,
       default: '',
     },
+    initialValueType: {
+      type: String,
+      default: 'CONVERTED',
+    },
     selectTypes: {
       type: Boolean,
       default: false,
@@ -264,7 +268,7 @@ export default {
       itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
       valueTypes: ['CONVERTED', 'RAW'],
-      selectedValueType: 'CONVERTED',
+      selectedValueType: this.initialValueType.toUpperCase(),
       reductionModes: [
         // Map NONE to DECOM for clarity
         { title: 'NONE', value: 'DECOM' },
@@ -378,6 +382,11 @@ export default {
         this.selectedItemName = val.toUpperCase()
       }
     },
+    initialValueType: function (val) {
+      if (val) {
+        this.selectedValueType = val.toUpperCase()
+      }
+    },
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
@@ -405,17 +414,19 @@ export default {
 
     // Fetch queues if in command mode
     if (this.mode === 'cmd') {
-      Api.get('/openc3-api/queues').then((response) => {
-        this.queueNames = [{ label: 'None', value: null }]
-        if (response.data && Array.isArray(response.data)) {
-          response.data.forEach((queue) => {
-            this.queueNames.push({ label: queue.name, value: queue.name })
-          })
-        }
-      }).catch((error) => {
-        console.error('Error fetching queues:', error)
-        // Keep default "None" option even if fetch fails
-      })
+      Api.get('/openc3-api/queues')
+        .then((response) => {
+          this.queueNames = [{ label: 'None', value: null }]
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach((queue) => {
+              this.queueNames.push({ label: queue.name, value: queue.name })
+            })
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching queues:', error)
+          // Keep default "None" option even if fetch fails
+        })
     }
 
     this.api.get_target_names().then((result) => {
