@@ -15,17 +15,27 @@ To use the dynamic update capability in your own code you need to call the `Targ
 
 Here is the method signature:
 
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Method">
+
 ```ruby
 def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
 ```
 
+</TabItem>
+<TabItem value="python" label="Python Method">
+
 ```python
-def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt")
+def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
 ```
+
+</TabItem>
+</Tabs>
 
 Here is an example of using this method:
 
-Ruby:
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
 
 ```ruby
 # Create a new packet
@@ -40,7 +50,8 @@ target_model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
 target_model.dynamic_update([packet])
 ```
 
-Python:
+</TabItem>
+<TabItem value="python" label="Python Example">
 
 ```python
 # Create a new packet
@@ -54,6 +65,9 @@ target_model = TargetModel.get_model(name='INST', scope='DEFAULT')
 # Update the target model with the new packet
 target_model.dynamic_update([packet])
 ```
+
+</TabItem>
+</Tabs>
 
 When this method is called several things happen:
 

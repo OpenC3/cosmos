@@ -173,6 +173,19 @@ ACCESSOR:
       description: The name of the accessor class
       values: .+
   since: 5.0.10
+SUBPACKETIZER:
+  summary: Defines a class used to break up the packet into subpackets before decom
+  description: Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+  parameters:
+    - name: Subpacketizer Class Name
+      required: true
+      description: The name of the Subpacketizer class
+      values: .+
+    - name: Argument
+      required: false
+      description: Additional argument passed to the Subpacketizer class constructor
+      values: .+
+  since: 6.10.0
 TEMPLATE:
   summary: Defines a template string used to pull telemetry values from a string buffer
   parameters:
@@ -198,3 +211,7 @@ VIRTUAL:
   summary: Marks this packet as virtual and not participating in identification
   description: Used for packet definitions that can be used as structures for items with a given packet.
   since: 5.18.0
+SUBPACKET:
+  summary: Marks this packet as as a subpacket which will exclude it from Interface level identification
+  description: Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
+  since: 6.10.0

@@ -87,8 +87,8 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet with its data set to the given
     #   packet_data buffer. Returns nil if no packet could be identified.
-    def identify_and_set_buffer(self, packet_data, target_names=None):
-        identified_packet = self.identify(packet_data, target_names)
+    def identify_and_set_buffer(self, packet_data, target_names=None, subpackets=False):
+        identified_packet = self.identify(packet_data, target_names, subpackets=subpackets)
         if identified_packet:
             identified_packet.buffer = packet_data
         return identified_packet
@@ -100,7 +100,7 @@ class Telemetry:
     # @param target_names [Array<String>] List of target names to limit the search. The
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
-    def identify(self, packet_data, target_names=None):
+    def identify(self, packet_data, target_names=None, subpackets=False):
         if target_names is None:
             target_names = self.target_names()
 
@@ -114,18 +114,39 @@ class Telemetry:
                 # No telemetry for this target
                 continue
 
-            target = self.system.targets.get(target_name)
-            if target and target.tlm_unique_id_mode:
+            if (not subpackets and self.tlm_unique_id_mode(target_name)) or (
+                subpackets and self.tlm_subpacket_unique_id_mode(target_name)
+            ):
                 # Iterate through the packets and see if any represent the buffer
                 for _, packet in target_packets.items():
-                    if packet.identify(packet_data):
+                    if subpackets:
+                        if not packet.subpacket:
+                            continue
+                    else:
+                        if packet.subpacket:
+                            continue
+                    if packet.identify(packet_data):  # Handles virtual
                         return packet
             else:
                 # Do a hash lookup to quickly identify the packet
-                if len(target_packets) > 0:
-                    packet = next(iter(target_packets.values()))
+                packet = None
+                for _, target_packet in target_packets.items():
+                    if target_packet.virtual:
+                        continue
+                    if subpackets:
+                        if not target_packet.subpacket:
+                            continue
+                    else:
+                        if target_packet.subpacket:
+                            continue
+                    packet = target_packet
+                    break
+                if packet:
                     key = packet.read_id_values(packet_data)
-                    id_values = self.config.tlm_id_value_hash[target_name]
+                    if subpackets:
+                        id_values = self.config.tlm_subpacket_id_value_hash[target_name]
+                    else:
+                        id_values = self.config.tlm_id_value_hash[target_name]
                     identified_packet = id_values.get(repr(key))
                     if identified_packet is None:
                         identified_packet = id_values.get("CATCHALL")
@@ -134,9 +155,9 @@ class Telemetry:
 
         return None
 
-    def identify_and_define_packet(self, packet, target_names=None):
+    def identify_and_define_packet(self, packet, target_names=None, subpackets=False):
         if not packet.identified():
-            identified_packet = self.identify(packet.buffer_no_copy(), target_names)
+            identified_packet = self.identify(packet.buffer_no_copy(), target_names, subpackets=subpackets)
             if not identified_packet:
                 return None
 
@@ -198,3 +219,9 @@ class Telemetry:
 
     def dynamic_add_packet(self, packet, affect_ids=False):
         self.config.dynamic_add_packet(packet, "TELEMETRY", affect_ids=affect_ids)
+
+    def tlm_unique_id_mode(self, target_name):
+        return self.config.tlm_unique_id_mode.get(target_name.upper())
+
+    def tlm_subpacket_unique_id_mode(self, target_name):
+        return self.config.tlm_subpacket_unique_id_mode.get(target_name.upper())

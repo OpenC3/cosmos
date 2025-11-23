@@ -53,10 +53,6 @@
           item-value="value"
           @update:model-value="packetNameChanged"
         >
-          <template v-if="includeLatestPacketInDropdown" #prepend-item>
-            <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
-            <v-divider />
-          </template>
         </v-autocomplete>
       </v-col>
       <v-col
@@ -296,6 +292,11 @@ export default {
         value: 'UNKNOWN',
         description: 'UNKNOWN',
       },
+      LATEST: {
+        label: 'LATEST',
+        value: 'LATEST',
+        description: 'Latest values from all packets',
+      }, // Constant to indicate latest values from all packets
     }
   },
   computed: {
@@ -483,11 +484,20 @@ export default {
         if (this.allowAll) {
           this.packetNames.unshift(this.ALL)
         }
+        if (this.includeLatestPacketInDropdown) {
+          this.packetNames.unshift(this.LATEST)
+        }
         if (!this.selectedPacketName) {
           if (this.packetNames.length === 0) {
             this.selectedPacketName = null
           } else {
             this.selectedPacketName = this.packetNames[0].value
+            if (
+              this.selectedPacketName === 'LATEST' &&
+              this.packetNames.length > 1
+            ) {
+              this.selectedPacketName = this.packetNames[1].value
+            }
           }
         }
         this.updatePacketDetails(this.selectedPacketName)
@@ -605,6 +615,8 @@ export default {
       } else if (value === 'LATEST') {
         this.itemsDisabled = false
         this.selectedPacketName = 'LATEST'
+        this.description = 'Latest values from all packets'
+        this.hazardous = false
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {

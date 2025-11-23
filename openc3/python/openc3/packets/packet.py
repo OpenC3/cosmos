@@ -42,9 +42,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     simple_formatted,
     quote_if_necessary,
-    class_name_to_filename,
 )
-from openc3.top_level import get_class_from_module
 
 
 class Packet(Structure):
@@ -102,7 +100,9 @@ class Packet(Structure):
         self.ignore_overlap = False
         self.virtual = False
         self.restricted = False
+        self.subpacket = False
         self.validator = None
+        self.subpacketizer = None
         self.obfuscated_items = []
         self.obfuscated_items_hash = {}
 
@@ -1010,10 +1010,15 @@ class Packet(Structure):
             config += f'TELEMETRY {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
+        if self.subpacketizer:
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.subpacketizer.args])
+            config += f"  SUBPACKETIZER {self.subpacketizer.__class__.__name__} {args_str}\n"
         if self.accessor.__class__.__name__ != "BinaryAccessor":
-            config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.accessor.args])
+            config += f"  ACCESSOR {self.accessor.__class__.__name__} {args_str}\n"
         if self.validator:
-            config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
+            args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
+            config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
         # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
         if self.template:
             config += f"  TEMPLATE '{self.template}'\n"
@@ -1029,6 +1034,8 @@ class Packet(Structure):
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
+        if self.subpacket:
+            config += "  SUBPACKET\n"
         if self.restricted:
             config += "  RESTRICTED\n"
 
@@ -1088,6 +1095,10 @@ class Packet(Structure):
             config["hidden"] = True
         if self.virtual:
             config["virtual"] = True
+        if self.subpacket:
+            config["subpacket"] = True
+        if self.subpacketizer:
+            config["subpacketizer"] = self.subpacketizer.__class__.__name__
         if self.restricted:
             config["restricted"] = True
         config["accessor"] = self.accessor.__class__.__name__
@@ -1133,59 +1144,6 @@ class Packet(Structure):
             config["obfuscated_items"] = []
 
         return config
-
-    @classmethod
-    def from_json(cls, hash):
-        endianness = hash.get("endianness")
-        packet = Packet(hash["target_name"], hash["packet_name"], endianness, hash["description"])
-        packet.short_buffer_allowed = hash.get("short_buffer_allowed")
-        packet.hazardous = hash.get("hazardous")
-        packet.hazardous_description = hash.get("hazardous_description")
-        packet.messages_disabled = hash.get("messages_disabled")
-        packet.disabled = hash.get("disabled")
-        packet.hidden = hash.get("hidden")
-        packet.virtual = hash.get("virtual")
-        packet.restricted = hash.get("restricted")
-        if "accessor" in hash:
-            try:
-                filename = class_name_to_filename(hash["accessor"])
-                accessor = get_class_from_module(f"openc3.accessors.{filename}", hash["accessor"])
-                if hash.get("accessor_args") and len(hash["accessor_args"]) > 0:
-                    packet.accessor = accessor(packet, *hash["accessor_args"])
-                else:
-                    packet.accessor = accessor(packet)
-            except RuntimeError:
-                Logger.error(
-                    f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {traceback.format_exc()}"
-                )
-        if "validator" in hash:
-            try:
-                filename = class_name_to_filename(hash["validator"])
-                validator = get_class_from_module(filename, hash["validator"])
-                packet.validator = validator(packet)
-            except RuntimeError:
-                Logger.error(
-                    f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {traceback.format_exc()}"
-                )
-        if "template" in hash:
-            packet.template = base64.b64decode(hash["template"])
-        packet.meta = hash.get("meta")
-        # Can't convert processors
-        for item in hash["items"]:
-            packet.define(PacketItem.from_json(item))
-
-        if "response" in hash:
-            packet.response = hash["response"]
-        if "error_response" in hash:
-            packet.error_response = hash["error_response"]
-        if "screen" in hash:
-            packet.screen = hash["screen"]
-        if "related_items" in hash:
-            packet.related_items = hash["related_items"]
-        if "ignore_overlap" in hash:
-            packet.ignore_overlap = hash["ignore_overlap"]
-
-        return packet
 
     def decom(self):
         # Read all the RAW at once because this could be optimized by the accessor
@@ -1370,3 +1328,14 @@ class Packet(Structure):
             except Exception as e:
                 Logger.error(f"{item.name} obfuscation failed with error: {repr(e)}")
                 continue
+
+    def subpacketize(self):
+        """Break packet into subpackets using subpacketizer if defined.
+
+        Returns:
+            list: List of packet objects (subpackets or [self] if no subpacketizer)
+        """
+        if self.subpacketizer:
+            return self.subpacketizer.call(self)
+        else:
+            return [self]

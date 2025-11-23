@@ -554,23 +554,7 @@ module OpenC3
         target = System.targets[target_name]
         target.interface = @interface
       end
-      @interface.tlm_target_names.each do |target_name|
-        # Initialize the target's packet counters based on the Topic stream
-        # Prevents packet count resetting to 0 when interface restarts
-        begin
-          System.telemetry.packets(target_name).each do |packet_name, packet|
-            topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-            msg_id, msg_hash = Topic.get_newest_message(topic)
-            if msg_id
-              packet.received_count = msg_hash['received_count'].to_i
-            else
-              packet.received_count = 0
-            end
-          end
-        rescue
-          # Handle targets without telemetry
-        end
-      end
+      TargetModel.init_tlm_packet_counts(@interface.tlm_target_names, scope: @scope)
       if @interface.connect_on_startup
         @interface.state = 'ATTEMPTING'
       else
@@ -583,9 +567,6 @@ module OpenC3
       end
 
       @queued = false
-      @sync_packet_count_data = {}
-      @sync_packet_count_time = nil
-      @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
       @interface.options.each do |option_name, option_values|
         if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
@@ -594,7 +575,7 @@ module OpenC3
           StoreQueued.instance.set_update_interval(update_interval)
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
-          @sync_packet_count_delay_seconds = option_values[0].to_f
+          TargetModel.sync_packet_count_delay_seconds = option_values[0].to_f
         end
       end
 
@@ -777,7 +758,7 @@ module OpenC3
 
       # Write to stream
       if @interface.tlm_target_enabled[packet.target_name]
-        sync_tlm_packet_counts(packet)
+        TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
         TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
       end
     end
@@ -911,59 +892,6 @@ module OpenC3
 
     def graceful_kill
       # Just to avoid warning
-    end
-
-    def sync_tlm_packet_counts(packet)
-      if @sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
-        # Perfect but slow method
-        packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
-      else
-        # Eventually consistent method
-        # Only sync every period (default 1 second) to avoid hammering Redis
-        # This is a trade off between speed and accuracy
-        # The packet count is eventually consistent
-        @sync_packet_count_data[packet.target_name] ||= {}
-        @sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
-        @sync_packet_count_data[packet.target_name][packet.packet_name] += 1
-
-        # Ensures counters change between syncs
-        packet.received_count += 1
-
-        # Check if we need to sync the packet counts
-        if @sync_packet_count_time.nil? or (Time.now - @sync_packet_count_time) > @sync_packet_count_delay_seconds
-          @sync_packet_count_time = Time.now
-
-          inc_count = 0
-          # Use pipeline to make this one transaction
-          result = Store.redis_pool.pipelined do
-            # Increment global counters for packets received
-            @sync_packet_count_data.each do |target_name, packet_data|
-              packet_data.each do |packet_name, count|
-                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope: @scope)
-                inc_count += 1
-              end
-            end
-            @sync_packet_count_data = {}
-
-            # Get all the packet counts with the global counters
-            @interface.tlm_target_names.each do |target_name|
-              TargetModel.get_all_telemetry_counts(target_name, scope: @scope)
-            end
-            TargetModel.get_all_telemetry_counts('UNKNOWN', scope: @scope)
-          end
-          @interface.tlm_target_names.each do |target_name|
-            result[inc_count].each do |packet_name, count|
-              update_packet = System.telemetry.packet(target_name, packet_name)
-              update_packet.received_count = count.to_i
-            end
-            inc_count += 1
-          end
-          result[inc_count].each do |packet_name, count|
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-            update_packet.received_count = count.to_i
-          end
-        end
-      end
     end
   end
 end

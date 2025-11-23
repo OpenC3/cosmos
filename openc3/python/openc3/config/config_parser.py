@@ -207,7 +207,7 @@ class ConfigParser:
     def handle_none(cls, value):
         if isinstance(value, str):
             match value.upper():
-                case "" | "NONE" | "NULL":
+                case "" | "NIL" | "NONE" | "NULL":
                     return None
 
         return value

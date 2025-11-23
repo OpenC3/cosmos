@@ -19,6 +19,6 @@
     "sass": "1.93.3",
     "vite": "6.4.1",
     "vite-plugin-style-inject": "0.0.1",
-    "vue": "3.5.22"
+    "vue": "3.5.24"
   }
 }

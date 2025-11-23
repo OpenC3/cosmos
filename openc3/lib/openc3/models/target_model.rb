@@ -54,6 +54,9 @@ module OpenC3
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     @@item_map_cache = {}
+    @@sync_packet_count_data = {}
+    @@sync_packet_count_time = nil
+    @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
 
     attr_accessor :folder_name
     attr_accessor :requires
@@ -61,8 +64,6 @@ module OpenC3
     attr_accessor :ignored_items
     attr_accessor :limits_groups
     attr_accessor :cmd_tlm_files
-    attr_accessor :cmd_unique_id_mode
-    attr_accessor :tlm_unique_id_mode
     attr_accessor :id
     attr_accessor :cmd_buffer_depth
     attr_accessor :cmd_log_cycle_time
@@ -351,8 +352,6 @@ module OpenC3
       ignored_items: [],
       limits_groups: [],
       cmd_tlm_files: [],
-      cmd_unique_id_mode: false,
-      tlm_unique_id_mode: false,
       id: nil,
       updated_at: nil,
       plugin: nil,
@@ -402,8 +401,6 @@ module OpenC3
       @ignored_items = ignored_items
       @limits_groups = limits_groups
       @cmd_tlm_files = cmd_tlm_files
-      @cmd_unique_id_mode = cmd_unique_id_mode
-      @tlm_unique_id_mode = tlm_unique_id_mode
       @id = id
       @cmd_buffer_depth = cmd_buffer_depth
       @cmd_log_cycle_time = cmd_log_cycle_time
@@ -442,8 +439,6 @@ module OpenC3
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
         'cmd_tlm_files' => @cmd_tlm_files,
-        'cmd_unique_id_mode' => @cmd_unique_id_mode,
-        'tlm_unique_id_mode' => @tlm_unique_id_mode,
         'id' => @id,
         'updated_at' => @updated_at,
         'plugin' => @plugin,
@@ -790,8 +785,6 @@ module OpenC3
       @ignored_parameters = target.ignored_parameters
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
-      @cmd_unique_id_mode = target.cmd_unique_id_mode
-      @tlm_unique_id_mode = target.tlm_unique_id_mode
       @limits_groups = system.limits.groups.keys
       update()
     end
@@ -1363,6 +1356,81 @@ module OpenC3
         end
       end
       return counts
+    end
+
+    def self.sync_packet_count_delay_seconds=(value)
+      @@sync_packet_count_delay_seconds = value
+    end
+
+    def self.init_tlm_packet_counts(tlm_target_names, scope:)
+      @@sync_packet_count_time = Time.now
+
+      # Get all the packet counts with the global counters
+      tlm_target_names.each do |target_name|
+        get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
+          update_packet = System.telemetry.packet(target_name, packet_name)
+          update_packet.received_count = count.to_i
+        end
+      end
+      get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
+        update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+        update_packet.received_count = count.to_i
+      end
+    end
+
+    def self.sync_tlm_packet_counts(packet, tlm_target_names, scope:)
+      if @@sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
+        # Perfect but slow method
+        packet.received_count = increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: scope)
+      else
+        # Eventually consistent method
+        # Only sync every period (default 1 second) to avoid hammering Redis
+        # This is a trade off between speed and accuracy
+        # The packet count is eventually consistent
+        @@sync_packet_count_data[packet.target_name] ||= {}
+        @@sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
+        @@sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+
+        # Ensures counters change between syncs
+        update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
+        update_packet.received_count += 1
+        packet.received_count = update_packet.received_count
+
+        # Check if we need to sync the packet counts
+        if @@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds
+          @@sync_packet_count_time = Time.now
+
+          inc_count = 0
+          # Use pipeline to make this one transaction
+          result = Store.redis_pool.pipelined do
+            # Increment global counters for packets received
+            @@sync_packet_count_data.each do |target_name, packet_data|
+              packet_data.each do |packet_name, count|
+                increment_telemetry_count(target_name, packet_name, count, scope: scope)
+                inc_count += 1
+              end
+            end
+            @@sync_packet_count_data = {}
+
+            # Get all the packet counts with the global counters
+            tlm_target_names.each do |target_name|
+              get_all_telemetry_counts(target_name, scope: scope)
+            end
+            get_all_telemetry_counts('UNKNOWN', scope: scope)
+          end
+          tlm_target_names.each do |target_name|
+            result[inc_count].each do |packet_name, count|
+              update_packet = System.telemetry.packet(target_name, packet_name)
+              update_packet.received_count = count.to_i
+            end
+            inc_count += 1
+          end
+          result[inc_count].each do |packet_name, count|
+            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+            update_packet.received_count = count.to_i
+          end
+        end
+      end
     end
 
     def self.increment_command_count(target_name, packet_name, count, scope:)

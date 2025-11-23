@@ -25,7 +25,8 @@ begin
 
   desc 'Run all specs with basic output'
   RSpec::Core::RakeTask.new do |t|
-    t.pattern = ['spec/*_spec.rb']
+    # Use ** to recursively find specs in all subdirectories (spec/utilities/, spec/models/, etc.)
+    t.pattern = ['spec/**/*_spec.rb']
     t.rspec_opts = '-f d --warnings'
   end
 rescue LoadError

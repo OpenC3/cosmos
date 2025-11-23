@@ -34,6 +34,3 @@ class CommandValidator:
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
         return [True, None]
-
-    def args(self):
-        return self.args
