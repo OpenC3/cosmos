@@ -636,11 +636,17 @@ export default {
         this.latestAvailable = null
         this.latestItems = null
       }
+      let loadingFirstTlm = false
       if (!this.rows.length) {
         this.loading++
+        loadingFirstTlm = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
+          if (loadingFirstTlm) {
+            loadingFirstTlm = false
+            this.loading--
+          }
           return // noop if target/packet aren't set
         }
 
@@ -650,9 +656,6 @@ export default {
             this.api
               .get_tlm_values(this.latestAvailable, this.staleLimit)
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -676,9 +679,6 @@ export default {
                 return this.api.get_tlm_values(available, this.staleLimit)
               })
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -728,9 +728,6 @@ export default {
                     })
                   }
                 })
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 if (this.derivedLast) {
                   this.rows = other.concat(derived)
                 } else {
@@ -745,6 +742,10 @@ export default {
               // eslint-disable-next-line no-console
               console.log(error)
             })
+        }
+        if (loadingFirstTlm) {
+          loadingFirstTlm = false
+          this.loading--
         }
       }, this.refreshInterval)
     },

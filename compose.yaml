@@ -185,7 +185,9 @@ services:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
-    # ports:
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
     #   - "127.0.0.1:7779:7779" # Open port for the demo router
     #   - "127.0.0.1:8081:8081/udp" # Open a udp port
     depends_on:

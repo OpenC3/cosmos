@@ -469,14 +469,22 @@ module OpenC3
 
     describe "get_tlm_buffer" do
       it "returns a telemetry packet buffer" do
+        time = Time.now
         buffer = "\x01\x02\x03\x04"
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.buffer = buffer
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-        output = @api.get_tlm_buffer("INST", "Health_Status")
-        expect(output["buffer"][0..3]).to eq buffer
-        output = @api.get_tlm_buffer("INST Health_Status")
-        expect(output["buffer"][0..3]).to eq buffer
+        [
+          @api.get_tlm_buffer("INST", "Health_Status"),
+          @api.get_tlm_buffer("INST Health_Status")
+        ].each do |output|
+          expect(output["buffer"][0..3]).to eq buffer
+          expect(output["target_name"]).to eq "INST"
+          expect(output["packet_name"]).to eq "HEALTH_STATUS"
+          expect(output["time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["received_time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["stored"]).to eq "false"
+        end
       end
     end
 

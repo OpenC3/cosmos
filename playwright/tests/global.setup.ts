@@ -57,7 +57,7 @@ setup('global setup', async ({ page }) => {
       }
     }
     if (await page.getByText('Enter the password').isVisible()) {
-      await page.getByLabel('Password').fill('password')
+      await page.getByLabel('Password').fill('cosmosadmin')
       await page.locator('button:has-text("Login")').click()
     } else {
       await page.getByLabel('New Password').fill('password')

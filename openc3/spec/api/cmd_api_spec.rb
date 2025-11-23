@@ -355,16 +355,33 @@ module OpenC3
       end
 
       it "returns a command packet buffer" do
+        time = Time.now
         @api.cmd("INST ABORT")
-        output = @api.get_cmd_buffer("inst", "Abort")
-        expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
-        output = @api.get_cmd_buffer("inst   Abort")
-        expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
+        [
+          @api.get_cmd_buffer("inst", "Abort"),
+          @api.get_cmd_buffer("inst   Abort")
+        ].each do |output|
+          expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
+          expect(output["target_name"]).to eq "INST"
+          expect(output["packet_name"]).to eq "ABORT"
+          expect(output["time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["received_time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["received_count"].to_i).to eq 1
+          expect(output["stored"]).to eq "false"
+        end
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        output = @api.get_cmd_buffer("INST", "COLLECT")
-        expect(output["buffer"][6..7].unpack("n")[0]).to eq 1
-        output = @api.get_cmd_buffer("INST COLLECT")
-        expect(output["buffer"][6..7].unpack("n")[0]).to eq 1
+        [
+          @api.get_cmd_buffer("INST", "COLLECT"),
+          @api.get_cmd_buffer("INST COLLECT")
+        ].each do |output|
+          expect(output["buffer"][6..7].unpack("n")[0]).to eq 1
+          expect(output["target_name"]).to eq "INST"
+          expect(output["packet_name"]).to eq "COLLECT"
+          expect(output["time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["received_time"].to_i / 1_000_000_000).to be_within(1).of(time.to_i)
+          expect(output["received_count"].to_i).to eq 1
+          expect(output["stored"]).to eq "false"
+        end
       end
     end
 
