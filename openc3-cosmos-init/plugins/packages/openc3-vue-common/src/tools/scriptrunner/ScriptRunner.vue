@@ -1468,6 +1468,7 @@ export default {
         .then((response) => {
           if (response.data) {
             let state = response.data.state
+            // Check for all the completed states, see is_complete in script_status_model
             if (
               state !== 'completed' &&
               state !== 'completed_errors' &&
@@ -1744,7 +1745,6 @@ export default {
         })
     },
     async scriptComplete() {
-      this.fatal = false
       this.scriptId = null // No current scriptId
       sessionStorage.removeItem('script_runner__script_id')
       this.currentFilename = null // No current file running
@@ -1755,8 +1755,10 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
+      if (this.state === 'completed_errors') {
+        // Displaying 'Completed_errors' is not very user friendly
+        this.state = 'completed'
+      }
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -1847,15 +1849,7 @@ export default {
       }
     },
     stop() {
-      // We previously encountered a fatal error so remove the marker
-      // and cleanup by calling scriptComplete() because the script
-      // is already stopped in the backend
-      if (this.fatal) {
-        this.removeAllMarkers()
-        this.scriptComplete()
-      } else {
-        Api.post(`/script-api/running-script/${this.scriptId}/stop`)
-      }
+      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
@@ -1914,6 +1908,8 @@ export default {
       this.state = data.state
       const markers = this.editor.session.getMarkers()
       switch (this.state) {
+        // Handle all the script states, see script_status_model for details
+        // spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
         case 'running':
           this.handleWaiting()
           this.startOrGoDisabled = false
@@ -1930,23 +1926,17 @@ export default {
           this.editor.gotoLine(data.line_no)
           this.files[data.filename].lineNo = data.line_no
           break
-        case 'crashed':
-          this.fatal = true
-        // Deliberate fall through (no break)
         case 'error':
           this.pauseOrRetryButton = RETRY
         // Deliberate fall through (no break)
-        case 'breakpoint':
-        case 'waiting':
+        case 'spawning': // wait for script to be spawned
+        case 'init': // wait for script to initialize
         case 'paused':
+        case 'waiting':
+        case 'breakpoint':
           this.handleWaiting()
-          if (this.state == 'fatal') {
-            this.startOrGoDisabled = true
-            this.pauseOrRetryDisabled = true
-          } else {
-            this.startOrGoDisabled = false
-            this.pauseOrRetryDisabled = false
-          }
+          this.startOrGoDisabled = false
+          this.pauseOrRetryDisabled = false
           this.stopDisabled = false
           let existing = Object.keys(markers).filter(
             (key) => markers[key].clazz === `${this.state}Marker`,
@@ -1966,6 +1956,15 @@ export default {
             }
           }
           break
+        case 'completed':
+        case 'completed_errors':
+        case 'stopped':
+        case 'crashed':
+        case 'killed':
+          this.removeAllMarkers()
+          this.scriptComplete()
+          break
+
         default:
           break
       }
@@ -2016,11 +2015,8 @@ export default {
             this.results.show = true
             break
           case 'complete':
-            // Don't complete on fatal because we just sit there on the fatal line
-            if (!this.fatal) {
-              this.removeAllMarkers()
-              this.scriptComplete()
-            }
+            this.removeAllMarkers()
+            this.scriptComplete()
             break
           case 'step':
             this.showDebug = true
@@ -2323,7 +2319,7 @@ export default {
           {
             okText: 'Continue',
             cancelText: 'Cancel',
-          }
+          },
         )
       }
       return true
@@ -2995,12 +2991,6 @@ hr {
 .errorMarker {
   position: absolute;
   background: rgba(255, 0, 119, 0.5);
-  z-index: 20;
-}
-
-.fatalMarker {
-  position: absolute;
-  background: rgba(255, 0, 0, 0.5);
   z-index: 20;
 }
 
