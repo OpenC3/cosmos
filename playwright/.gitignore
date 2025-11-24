@@ -5,3 +5,5 @@ coverage
 .nyc_output
 # Ignore all the storageState.json files
 *State.json
+# generated plugin for playwright tests
+openc3-cosmos-pw-test/
