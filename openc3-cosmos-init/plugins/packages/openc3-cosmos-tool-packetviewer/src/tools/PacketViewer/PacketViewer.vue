@@ -70,7 +70,7 @@
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
-        :loading="loading"
+        :loading="loading > 0"
         multi-sort
         fixed-header
         density="compact"
@@ -240,8 +240,7 @@ export default {
   data() {
     return {
       panel: 0,
-      loadingPacketItems: false,
-      loadingTlmData: false,
+      loading: 0,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -419,9 +418,6 @@ export default {
       }
       return options
     },
-    loading: function () {
-      return this.loadingPacketItems || this.loadingTlmData
-    },
   },
   watch: {
     showIgnored: function () {
@@ -542,7 +538,7 @@ export default {
         return // No change
       }
       try {
-        this.loadingPacketItems = true
+        this.loading++
         const target = await this.api.get_target(event.targetName)
         if (target) {
           this.ignoredItems = target.ignored_items
@@ -588,7 +584,7 @@ export default {
           })
         }
       } finally {
-        this.loadingPacketItems = false
+        this.loading--
       }
     },
     latestGetTlmValues(values) {
@@ -640,12 +636,17 @@ export default {
         this.latestAvailable = null
         this.latestItems = null
       }
+      let loadingFirstTlm = false
       if (!this.rows.length) {
-        this.loadingTlmData = true
+        this.loading++
+        loadingFirstTlm = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
-          this.loadingTlmData = false
+          if (loadingFirstTlm) {
+            loadingFirstTlm = false
+            this.loading--
+          }
           return // noop if target/packet aren't set
         }
 
@@ -742,7 +743,10 @@ export default {
               console.log(error)
             })
         }
-        this.loadingTlmData = false
+        if (loadingFirstTlm) {
+          loadingFirstTlm = false
+          this.loading--
+        }
       }, this.refreshInterval)
     },
     resetConfig: function () {
