@@ -1,13 +1,12 @@
 name: Check Spelling
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - "**"
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 jobs:
   spelling:

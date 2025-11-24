@@ -1,18 +1,19 @@
 name: eslint
 
 on:
-  pull_request:
-    branches-ignore:
-      - 'dependabot/**'
-    types:
-      - opened
-      - reopened
-      - synchronize
-    paths:
-      - "openc3-cosmos-init/plugins/packages/**"
+  # pull_request:
+  #   branches:
+  #     - "**"
+  #   types:
+  #     - opened
+  #     - reopened
+  #     - synchronize
+  #   paths:
+  #     - "openc3-cosmos-init/plugins/packages/**"
 
 jobs:
   changes:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read

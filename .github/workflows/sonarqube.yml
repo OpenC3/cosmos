@@ -1,0 +1,57 @@
+name: SonarQube Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  python-unit-tests:
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/python_unit_tests.yml
+  ruby-unit-tests:
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/ruby_unit_tests.yml
+  api-tests:
+    if: false # TEMP -- ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/api_tests.yml
+  playwright:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    uses: ./.github/workflows/playwright.yml
+  scan:
+    if: false # TEMP
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    needs: [python-unit-tests, ruby-unit-tests, api-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # all history for all branches and tags
+      - name: Download artifacts from Python Unit Tests
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: python-unit-tests-coverage-3.11
+          path: openc3/python/coverage
+      - name: Download artifact from Ruby Unit Tests
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ruby-unit-tests-coverage-3.3
+          path: openc3/coverage
+      - name: Download artifact from API Tests - Script Runner API Ruby
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: script-runner-api-ruby-3.3
+          path: openc3-cosmos-script-runner-api/coverage
+      - name: Download artifact from API Tests - CMD-TLM API
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: cmd-tlm-api-3.3
+          path: openc3-cosmos-cmd-tlm-api/coverage
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

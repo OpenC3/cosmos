@@ -5,14 +5,13 @@
 
 name: Trivy Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - "**"
+  # pull_request:
+  #   branches:
+  #     - "**"
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
