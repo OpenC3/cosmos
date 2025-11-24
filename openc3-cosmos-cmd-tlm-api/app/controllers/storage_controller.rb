@@ -119,38 +119,73 @@ class StorageController < ApplicationController
   def download_file
     return unless authorization('system')
     tmp_dir = nil
-    if params[:volume]
-      volume = ENV[params[:volume]] # Get the actual volume name
-      raise "Unknown volume #{params[:volume]}" unless volume
-      filename = "/#{volume}/#{params[:object_id]}"
-      filename = sanitize_path(filename)
-    elsif params[:bucket]
-      tmp_dir = Dir.mktmpdir
-      bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-      raise "Unknown bucket #{params[:bucket]}" unless bucket_name
-      path = sanitize_path(params[:object_id])
-      filename = File.join(tmp_dir, path)
-      # Ensure dir structure exists, get_object fails if not
-      FileUtils.mkdir_p(File.dirname(filename))
-      OpenC3::Bucket.getClient().get_object(bucket: bucket_name, key: path, path: filename)
-    else
-      raise "No volume or bucket given"
-    end
-    file = File.read(filename, mode: 'rb')
-    FileUtils.rm_rf(tmp_dir) if tmp_dir
 
-    # Check if CTRF conversion is requested
-    if params[:format] == 'ctrf'
-      file_content = file.force_encoding('UTF-8')
-      ctrf_data = convert_to_ctrf(file_content)
-      render json: { filename: "#{File.basename(params[:object_id], '.*')}.ctrf.json", contents: Base64.encode64(ctrf_data.to_json) }
-    else
-      render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+    begin
+      storage_type, storage_name = validate_storage_source
+      object_id = sanitize_path(params[:object_id])
+
+      filename = if storage_type == :volume
+        sanitize_path("/#{storage_name}/#{object_id}")
+      else
+        tmp_dir = Dir.mktmpdir
+        temp_path = File.join(tmp_dir, object_id)
+        FileUtils.mkdir_p(File.dirname(temp_path))
+        OpenC3::Bucket.getClient().get_object(bucket: storage_name, key: object_id, path: temp_path)
+        temp_path
+      end
+
+      file = File.read(filename, mode: 'rb')
+
+      # Check if CTRF conversion is requested
+      if params[:format] == 'ctrf'
+        file_content = file.force_encoding('UTF-8')
+        ctrf_data = convert_to_ctrf(file_content)
+        render json: { filename: "#{File.basename(params[:object_id], '.*')}.ctrf.json", contents: Base64.encode64(ctrf_data.to_json) }
+      else
+        render json: { filename: params[:object_id], contents: Base64.encode64(file) }
+      end
+    rescue Exception => e
+      log_error(e)
+      OpenC3::Logger.error("Download failed: #{e.message}", user: username())
+      render json: { status: 'error', message: e.message }, status: 500
+    ensure
+      FileUtils.rm_rf(tmp_dir) if tmp_dir
     end
-  rescue Exception => e
-    log_error(e)
-    OpenC3::Logger.error("Download failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+  end
+
+  def download_multiple_files
+    return unless authorization('system')
+    tmp_dir = Dir.mktmpdir
+    zip_path = File.join(tmp_dir, 'download.zip')
+
+    begin
+      files = params[:files] || []
+      raise "No files specified" if files.empty?
+
+      path = sanitize_path(params[:path] || '')
+      storage_type, storage_name = validate_storage_source
+
+      # Create zip file with files from storage
+      Zip::File.open(zip_path, create: true) do |zipfile|
+        if storage_type == :volume
+          add_volume_files_to_zip(zipfile, storage_name, path, files)
+        else
+          add_bucket_files_to_zip(zipfile, storage_name, path, files, tmp_dir)
+        end
+      end
+
+      # Read the zip file and encode it
+      zip_data = File.read(zip_path, mode: 'rb')
+      zip_filename = "download_#{Time.now.strftime('%Y%m%d_%H%M%S')}.zip"
+
+      render json: { filename: zip_filename, contents: Base64.encode64(zip_data) }
+    rescue Exception => e
+      log_error(e)
+      OpenC3::Logger.error("Multiple file download failed: #{e.message}", user: username())
+      render json: { status: 'error', message: e.message }, status: 500
+    ensure
+      FileUtils.rm_rf(tmp_dir) if tmp_dir
+    end
   end
 
   def get_download_presigned_request
@@ -408,6 +443,52 @@ class StorageController < ApplicationController
       return true
     else
       return false
+    end
+  end
+
+  # Validates and returns storage source information
+  # @return [Array<Symbol, String>] Storage type (:volume or :bucket) and storage name
+  def validate_storage_source
+    if params[:volume]
+      volume = ENV[params[:volume]]
+      raise "Unknown volume #{params[:volume]}" unless volume
+      [:volume, volume]
+    elsif params[:bucket]
+      bucket = ENV[params[:bucket]]
+      raise "Unknown bucket #{params[:bucket]}" unless bucket
+      [:bucket, bucket]
+    else
+      raise "No volume or bucket given"
+    end
+  end
+
+  # Adds files from a volume to the zip archive
+  def add_volume_files_to_zip(zipfile, volume_name, path, files)
+    volume_path = "/#{volume_name}"
+    files.each do |filename|
+      file_path = "#{volume_path}/#{path}#{filename}"
+      file_path = sanitize_path(file_path)
+      if File.exist?(file_path)
+        zipfile.add(filename, file_path)
+      else
+        OpenC3::Logger.warn("File not found: #{file_path}", user: username())
+      end
+    end
+  end
+
+  # Adds files from a bucket to the zip archive
+  def add_bucket_files_to_zip(zipfile, bucket_name, path, files, tmp_dir)
+    bucket = OpenC3::Bucket.getClient()
+    files.each do |filename|
+      key = "#{path}#{filename}"
+      key = sanitize_path(key)
+      temp_file = File.join(tmp_dir, filename)
+      begin
+        bucket.get_object(bucket: bucket_name, key: key, path: temp_file)
+        zipfile.add(filename, temp_file)
+      rescue => e
+        OpenC3::Logger.warn("Failed to download #{key}: #{e.message}", user: username())
+      end
     end
   end
 end

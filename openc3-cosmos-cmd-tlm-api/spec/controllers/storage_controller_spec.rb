@@ -531,6 +531,115 @@ RSpec.describe StorageController, type: :controller do
     end
   end
 
+  describe "POST download_multiple_files" do
+    let(:tmp_dir) { "/tmp/test_dir" }
+    let(:zip_path) { "#{tmp_dir}/download.zip" }
+    let(:zip_data) { "zip file contents" }
+    let(:encoded_zip) { Base64.encode64(zip_data) }
+    let(:zipfile) { instance_double(Zip::File) }
+
+    before(:each) do
+      allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
+      allow(FileUtils).to receive(:rm_rf)
+      allow(File).to receive(:read).and_call_original
+      allow(File).to receive(:read).with(zip_path, mode: 'rb').and_return(zip_data)
+      allow(Base64).to receive(:encode64).with(zip_data).and_return(encoded_zip)
+      allow(Zip::File).to receive(:open).with(zip_path, create: true).and_yield(zipfile)
+      allow(zipfile).to receive(:add)
+    end
+
+    shared_examples "successful download" do |storage_type|
+      it "downloads multiple files from a #{storage_type}" do
+        post :download_multiple_files, params: params.merge(scope: "DEFAULT")
+
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["filename"]).to match(/download_\d{8}_\d{6}\.zip/)
+        expect(result["contents"]).to eq(encoded_zip)
+      end
+    end
+
+    context "with bucket" do
+      let(:bucket_client) { instance_double(OpenC3::Bucket) }
+      let(:params) { { bucket: "OPENC3_CONFIG_BUCKET", path: "test/", files: ["file1.txt", "file2.txt"] } }
+
+      before do
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:get_object)
+      end
+
+      include_examples "successful download", "bucket"
+
+      it "handles empty path" do
+        post :download_multiple_files, params: { bucket: "OPENC3_CONFIG_BUCKET", files: ["file1.txt"], scope: "DEFAULT" }
+        expect(response).to have_http_status(:ok)
+        expect(bucket_client).to have_received(:get_object).with(hash_including(key: "file1.txt"))
+      end
+    end
+
+    context "with volume" do
+      let(:params) { { volume: "OPENC3_DATA_VOLUME", path: "test/", files: ["file1.txt", "file2.txt"] } }
+
+      before { allow(File).to receive(:exist?).and_return(true) }
+
+      include_examples "successful download", "volume"
+    end
+
+    context "error handling" do
+      it "returns errors for invalid input" do
+        test_cases = [
+          { params: { bucket: "OPENC3_CONFIG_BUCKET", path: "test/", files: [] }, message: "No files specified" },
+          { params: { bucket: "OPENC3_CONFIG_BUCKET", path: "test/" }, message: "No files specified" },
+          { params: { path: "test/", files: ["file1.txt"] }, message: "No volume or bucket given" }
+        ]
+
+        test_cases.each do |test_case|
+          post :download_multiple_files, params: test_case[:params].merge(scope: "DEFAULT")
+          expect(response).to have_http_status(:internal_server_error)
+          expect(JSON.parse(response.body)["message"]).to eq(test_case[:message])
+        end
+      end
+
+      it "returns errors for unknown storage" do
+        [
+          { bucket: "OPENC3_UNKNOWN_BUCKET", message: "Unknown bucket OPENC3_UNKNOWN_BUCKET" },
+          { volume: "OPENC3_UNKNOWN_VOLUME", message: "Unknown volume OPENC3_UNKNOWN_VOLUME" }
+        ].each do |test_case|
+          storage_key = test_case.keys.first
+          allow(ENV).to receive(:[]).with(test_case[storage_key]).and_return(nil)
+
+          post :download_multiple_files, params: test_case.merge(path: "test/", files: ["file1.txt"], scope: "DEFAULT")
+          expect(response).to have_http_status(:internal_server_error)
+          expect(JSON.parse(response.body)["message"]).to eq(test_case[:message])
+        end
+      end
+
+      it "handles general errors and cleans up" do
+        allow(Zip::File).to receive(:open).and_raise(StandardError.new("Zip error"))
+
+        post :download_multiple_files, params: { bucket: "OPENC3_CONFIG_BUCKET", path: "test/", files: ["file1.txt"], scope: "DEFAULT" }
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)["message"]).to eq("Zip error")
+        expect(FileUtils).to have_received(:rm_rf).with(tmp_dir)
+      end
+    end
+
+    it "requires authorization" do
+      post :download_multiple_files, params: { bucket: "OPENC3_CONFIG_BUCKET", path: "test/", files: ["file1.txt"] }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "generates timestamped zip filenames" do
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(instance_double(OpenC3::Bucket, get_object: nil))
+      allow(Time).to receive(:now).and_return(Time.new(2025, 11, 20, 15, 30, 45))
+
+      post :download_multiple_files, params: { bucket: "OPENC3_CONFIG_BUCKET", path: "test/", files: ["file1.txt"], scope: "DEFAULT" }
+
+      expect(JSON.parse(response.body)["filename"]).to eq("download_20251120_153045.zip")
+    end
+  end
+
   describe "DELETE delete" do
     it "deletes a bucket item with admin authorization" do
       ENV["OPENC3_LOCAL_MODE"] = nil

@@ -27,6 +27,14 @@ Click the Upload icon to bring up a file browser to select a file to upload into
 
 Click the Download icon to download any of the individual files from any bucket and path.
 
+### Download Multiple Files
+
+You can download multiple files at once by selecting them using the checkboxes that appear next to each file. Use the checkbox in the table header to select or deselect all files at once. Once files are selected, a "Download X Selected" button will appear to the left of the search box. Clicking this button will download all selected files as a single zip archive with a timestamped filename (e.g., `download_20251120_153045.zip`).
+
+:::tip
+File selections are automatically cleared when navigating to a different folder, making it easy to start fresh in each directory.
+:::
+
 ### Delete
 
 Click the Trash icon to delete an individual file. Note that in [COSMOS Enterprise](https://openc3.com/enterprise) you can only delete files in the config/DEFAULT/targets_modified folder unless you're an Admin.
