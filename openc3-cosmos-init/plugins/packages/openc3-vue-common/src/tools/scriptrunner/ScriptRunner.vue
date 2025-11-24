@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -185,7 +185,7 @@
               v-model="stateTimer"
               label="Script State"
               data-test="state"
-              class="shrink ml-2 script-state"
+              :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
               style="max-width: 120px"
               density="compact"
               variant="outlined"
@@ -842,7 +842,29 @@ export default {
       if (this.state === 'waiting' || this.state === 'paused') {
         return `${this.state} ${this.waitingTime}s`
       }
+      // Map completed_errors to completed for display
+      // it will be colored via the stateColorClass
+      if (this.state === 'completed_errors') {
+        return 'completed'
+      }
       return this.state
+    },
+    stateColorClass: function () {
+      // All possible states: spawning, init, running, paused, waiting, breakpoint,
+      // error, crashed, stopped, completed, completed_errors, killed
+      if (
+        this.state === 'error' ||
+        this.state === 'crashed' ||
+        this.state === 'killed'
+      ) {
+        return 'script-state-red'
+      } else if (this.state === 'completed_errors') {
+        return 'script-state-orange'
+      } else if (this.state === 'completed') {
+        return 'script-state-green'
+      } else {
+        return ''
+      }
     },
     // This is the list of files shown in the select dropdown
     fileList: function () {
@@ -1755,10 +1777,6 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      if (this.state === 'completed_errors') {
-        // Displaying 'Completed_errors' is not very user friendly
-        this.state = 'completed'
-      }
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -2949,6 +2967,20 @@ hr {
 
 .script-state :deep(input) {
   text-transform: capitalize;
+}
+
+/* Taken from the various status-symbol-color-fill classes
+   on https://www.astrouxds.com/design-tokens/component/ */
+.script-state-red :deep(input) {
+  color: #ff3838 !important;
+}
+
+.script-state-orange :deep(input) {
+  color: #ffb302 !important;
+}
+
+.script-state-green :deep(input) {
+  color: #56f000 !important;
 }
 </style>
 <style>
