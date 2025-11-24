@@ -551,7 +551,7 @@ module OpenC3
   end
 end
 
-# The following code makes most older COSMOS 5 plugins still work with OpenC3
+# The following code makes most older COSMOS plugins still work with OpenC3
 # New plugins should only use openc3 paths and module OpenC3
 unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   Cosmos = OpenC3
