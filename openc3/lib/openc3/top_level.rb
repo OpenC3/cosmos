@@ -26,7 +26,6 @@ require 'digest'
 require 'open3'
 require 'openc3/core_ext'
 require 'openc3/version'
-require 'openc3/utilities/logger'
 require 'socket'
 require 'pathname'
 
@@ -106,6 +105,8 @@ module OpenC3
       $: << path
     end
   end
+
+  require 'openc3/utilities/logger'
 
   # Creates a marshal file by serializing the given obj
   #

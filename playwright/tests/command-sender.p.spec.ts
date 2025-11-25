@@ -625,9 +625,12 @@ test('disable parameter conversions', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 02 00',
   )
@@ -668,9 +671,12 @@ test('disable parameter conversions', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 01 00',
   )
@@ -679,10 +685,10 @@ test('disable parameter conversions', async ({ page, utils }) => {
 test('disables command validation', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
-  
+
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Disable Command Validation').click()
-  
+
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'") sent',
