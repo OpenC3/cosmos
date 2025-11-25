@@ -105,7 +105,7 @@ puts "two"`)
   )
   // Go
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   // Verify we were able to change the 'x' variable
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'x:67890',
@@ -133,7 +133,7 @@ test('retries failed checks', async ({ page, utils }) => {
   ).toHaveCount(2)
   await expect(page.locator('[data-test=state] input')).toHaveValue('error')
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 test('displays the call stack', async ({ page, utils }) => {
@@ -190,9 +190,12 @@ test('displays disconnect icon', async ({ page, utils }) => {
       'cmd("INST SETPARAMS with VALUE1 0, VALUE2 1, VALUE3 2, VALUE4 1, VALUE5 0")',
     )
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
@@ -219,9 +222,12 @@ puts "disconnect:#{val}"`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     "CHECK: INST PARAMS VALUE1 == 'BAD' failed",
   )
@@ -252,9 +258,12 @@ puts "e"`)
     },
   )
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=start-button]')).toBeVisible()
 
   // Disable the breakpoint
@@ -266,9 +275,12 @@ puts "e"`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 })
 
 test('remembers breakpoints and clears all', async ({ page, utils }) => {
@@ -327,9 +339,12 @@ test('can delete all temp files', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
@@ -348,9 +363,12 @@ test('can delete all temp files', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
