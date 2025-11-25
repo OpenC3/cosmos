@@ -313,6 +313,8 @@ class PacketConfig:
 
             # Write all telemetry packets for this target
             for packet_name, packet in packets.items():
+                if '../' in filename or '..\\' in filename:
+                    raise Exception('Invalid file path')
                 with open(filename, "a") as f:
                     f.write(packet.to_config("TELEMETRY"))
                     f.write("\n")
