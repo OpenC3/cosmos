@@ -29,7 +29,7 @@ REM Set display name based on enterprise flag
 if "%OPENC3_ENTERPRISE%" == "1" (
   set COSMOS_NAME=COSMOS Enterprise
 ) else (
-  set COSMOS_NAME=COSMOS
+  set COSMOS_NAME=COSMOS Core
 )
 
 if "%1" == "" (

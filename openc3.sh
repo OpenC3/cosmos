@@ -63,7 +63,7 @@ fi
 if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
   export COSMOS_NAME="COSMOS Enterprise"
 else
-  export COSMOS_NAME="COSMOS"
+  export COSMOS_NAME="COSMOS Core"
 fi
 
 set -e
