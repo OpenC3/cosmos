@@ -59,6 +59,12 @@ class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
   NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
   def as_json(_options = nil)
+    # If string is ASCII-8BIT (binary) and has non-ASCII bytes (> 127), encode as binary
+    # This handles data from hex_to_byte_string and other binary sources
+    if self.encoding == Encoding::ASCII_8BIT && self.bytes.any? { |b| b > 127 }
+      return self.to_json_raw_object
+    end
+
     as_utf8 = self.dup.force_encoding('UTF-8')
     if as_utf8.valid_encoding?
       if as_utf8 =~ NON_UTF8_PRINTABLE
