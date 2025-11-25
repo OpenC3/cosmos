@@ -240,7 +240,8 @@ export default {
   data() {
     return {
       panel: 0,
-      loading: 0,
+      loadingPacket: false,
+      loadingTlmData: false,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -283,6 +284,9 @@ export default {
     }
   },
   computed: {
+    loading: function () {
+      return this.loadingPacket || this.loadingTlmData
+    },
     menus: function () {
       return [
         {
@@ -538,7 +542,7 @@ export default {
         return // No change
       }
       try {
-        this.loading++
+        this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
         if (target) {
           this.ignoredItems = target.ignored_items
@@ -584,7 +588,7 @@ export default {
           })
         }
       } finally {
-        this.loading--
+        this.loadingPacket = false
       }
     },
     latestGetTlmValues(values) {
@@ -638,14 +642,14 @@ export default {
       }
       let loadingFirstTlm = false
       if (!this.rows.length) {
-        this.loading++
+        this.loadingTlmData = true
         loadingFirstTlm = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
           if (loadingFirstTlm) {
             loadingFirstTlm = false
-            this.loading--
+            this.loadingTlmData = false
           }
           return // noop if target/packet aren't set
         }
@@ -745,7 +749,7 @@ export default {
         }
         if (loadingFirstTlm) {
           loadingFirstTlm = false
-          this.loading--
+          this.loadingTlmData = false
         }
       }, this.refreshInterval)
     },
