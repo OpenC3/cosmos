@@ -313,8 +313,9 @@ class PacketConfig:
 
             # Write all telemetry packets for this target
             for packet_name, packet in packets.items():
-                if '../' in filename or '..\\' in filename:
-                    raise Exception('Invalid file path')
+                if "../" in filename or "..\\" in filename:
+                    raise ValueError(f"Path traversal detected in filename: {filename}")
+
                 with open(filename, "a") as f:
                     f.write(packet.to_config("TELEMETRY"))
                     f.write("\n")
@@ -343,8 +344,10 @@ class PacketConfig:
             system_cmd_tlm_dir = os.path.join(output_dir, "SYSTEM", "cmd_tlm")
             os.makedirs(system_cmd_tlm_dir, exist_ok=True)
             filename = os.path.join(system_cmd_tlm_dir, "limits_groups.txt")
-            if '../' in filename or '..\' in filename:
-                raise Exception('Invalid file path')
+
+            if "../" in filename or "..\\" in filename:
+                raise ValueError(f"Path traversal detected in filename: {filename}")
+
             with open(filename, "w") as f:
                 for limits_group_name, limits_group_items in self.limits_groups.items():
                     # Quote if necessary (contains spaces or special chars)
