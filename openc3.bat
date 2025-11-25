@@ -25,6 +25,13 @@ if !OPENC3_ENTERPRISE! == 0 (
   )
 )
 
+REM Set display name based on enterprise flag
+if "%OPENC3_ENTERPRISE%" == "1" (
+  set COSMOS_NAME=COSMOS Enterprise
+) else (
+  set COSMOS_NAME=COSMOS
+)
+
 if "%1" == "" (
   GOTO usage
 )
@@ -40,10 +47,12 @@ if "%1" == "cli" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
-  REM Start (and remove when done --rm) the openc3-cosmos-cmd-tlm-api container with the current working directory
+  REM Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3cli" with all parameters ignoring the first.
+  REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
+  REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
     docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
@@ -55,6 +64,8 @@ if "%1" == "cliroot" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
+  REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
+  REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
     docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
@@ -124,7 +135,7 @@ GOTO :EOF
   )
 
 :try_cleanup
-  set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
+  set /P c=Are you sure? Cleanup removes ALL docker volumes and all %COSMOS_NAME% data! [Y/N]?
   if /I "!c!" EQU "Y" goto :cleanup_y
   if /I "!c!" EQU "N" goto :EOF
 goto :try_cleanup
@@ -215,10 +226,10 @@ GOTO :EOF
   @echo Usage: %0 COMMAND [OPTIONS] 1>&2
   @echo. 1>&2
   @echo DESCRIPTION: 1>&2
-  @echo   COSMOS is a command and control system for embedded systems. This script 1>&2
+  @echo   %COSMOS_NAME% is a command and control system for embedded systems. This script 1>&2
   if "%OPENC3_DEVEL%" == "1" (
     @echo   provides a convenient interface for building, running, testing, and managing 1>&2
-    @echo   COSMOS in Docker containers. 1>&2
+    @echo   %COSMOS_NAME% in Docker containers. 1>&2
     @echo. 1>&2
     if "%OPENC3_ENTERPRISE%" == "1" (
       @echo   This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities. 1>&2
@@ -227,7 +238,7 @@ GOTO :EOF
     )
   ) else (
     @echo   provides a convenient interface for running, testing, and managing 1>&2
-    @echo   COSMOS in Docker containers. 1>&2
+    @echo   %COSMOS_NAME% in Docker containers. 1>&2
     @echo. 1>&2
     if "%OPENC3_ENTERPRISE%" == "1" (
       @echo   This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images. 1>&2
@@ -238,35 +249,35 @@ GOTO :EOF
   @echo. 1>&2
   @echo COMMON COMMANDS: 1>&2
   if "%OPENC3_DEVEL%" == "1" (
-    @echo   start                 Build and run COSMOS (equivalent to: build + run) 1>&2
-    @echo                         This is the typical command to get COSMOS running. 1>&2
+    @echo   start                 Build and run %COSMOS_NAME% (equivalent to: build + run) 1>&2
+    @echo                         This is the typical command to get %COSMOS_NAME% running. 1>&2
     @echo. 1>&2
   ) else (
-    @echo   run                   Start COSMOS containers 1>&2
+    @echo   run                   Start %COSMOS_NAME% containers 1>&2
     @echo                         Access at: http://localhost:2900 1>&2
     @echo. 1>&2
   )
-  @echo   stop                  Stop all running COSMOS containers gracefully 1>&2
+  @echo   stop                  Stop all running %COSMOS_NAME% containers gracefully 1>&2
   @echo                         Allows containers to shutdown cleanly. 1>&2
   @echo. 1>&2
-  @echo   cli [COMMAND]         Run COSMOS CLI commands in a container 1>&2
+  @echo   cli [COMMAND]         Run %COSMOS_NAME% CLI commands in a container 1>&2
   @echo                         Use 'cli help' for available commands 1>&2
   @echo                         Examples: 1>&2
   @echo                           %0 cli generate plugin MyPlugin 1>&2
   @echo                           %0 cli validate myplugin.gem 1>&2
   @echo. 1>&2
-  @echo   cliroot [COMMAND]     Run COSMOS CLI commands as root user 1>&2
+  @echo   cliroot [COMMAND]     Run %COSMOS_NAME% CLI commands as root user 1>&2
   @echo                         For operations requiring root privileges 1>&2
   @echo. 1>&2
   if "%OPENC3_DEVEL%" == "1" (
     @echo DEVELOPMENT COMMANDS: 1>&2
-    @echo   build                 Build all COSMOS Docker containers from source 1>&2
+    @echo   build                 Build all %COSMOS_NAME% Docker containers from source 1>&2
     @echo                         Required before first run or after code changes. 1>&2
     @echo. 1>&2
-    @echo   run                   Start COSMOS containers in detached mode 1>&2
+    @echo   run                   Start %COSMOS_NAME% containers in detached mode 1>&2
     @echo                         Access at: http://localhost:2900 1>&2
     @echo. 1>&2
-    @echo   dev                   Start COSMOS containers in development mode 1>&2
+    @echo   dev                   Start %COSMOS_NAME% containers in development mode 1>&2
     @echo                         Uses compose-dev.yaml for development. 1>&2
     @echo. 1>&2
   )
@@ -277,20 +288,20 @@ GOTO :EOF
   @echo                         Use '%0 util' to see available utilities. 1>&2
   @echo. 1>&2
   if "%OPENC3_DEVEL%" == "0" (
-    @echo   upgrade               Upgrade COSMOS to latest version 1>&2
+    @echo   upgrade               Upgrade %COSMOS_NAME% to latest version 1>&2
     @echo                         Downloads and installs latest release. 1>&2
     @echo. 1>&2
   )
   @echo CLEANUP: 1>&2
   @echo   cleanup [OPTIONS]     Remove Docker volumes and data 1>&2
-  @echo                         WARNING: This deletes all COSMOS data! 1>&2
+  @echo                         WARNING: This deletes all %COSMOS_NAME% data! 1>&2
   @echo                         Options: 1>&2
   @echo                           local  - Also remove local plugin files 1>&2
   @echo                           force  - Skip confirmation prompt 1>&2
   @echo. 1>&2
   @echo GETTING STARTED: 1>&2
   @echo   1. First time setup:     %0 start 1>&2
-  @echo   2. Access COSMOS:        http://localhost:2900 1>&2
+  @echo   2. Access %COSMOS_NAME%:        http://localhost:2900 1>&2
   @echo   3. Stop when done:       %0 stop 1>&2
   @echo   4. Remove everything:    %0 cleanup 1>&2
   @echo. 1>&2
