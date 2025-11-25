@@ -71,13 +71,13 @@ set -e
 usage() {
   if [ "$OPENC3_DEVEL" -eq 1 ] && [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 COSMOS - Command and Control System (Enterprise Development Installation)
+OpenC3 $COSMOS_NAME - Command and Control System (Enterprise Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  COSMOS is a command and control system for embedded systems. This script
+  $COSMOS_NAME is a command and control system for embedded systems. This script
   provides a convenient interface for building, running, testing, and managing
-  COSMOS in Docker containers.
+  $COSMOS_NAME in Docker containers.
 
   This is an ENTERPRISE DEVELOPMENT installation with source code and build capabilities.
 
@@ -85,13 +85,13 @@ COMMON COMMANDS:
 EOF
   elif [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 COSMOS - Command and Control System (Development Installation)
+OpenC3 $COSMOS_NAME - Command and Control System (Development Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  COSMOS is a command and control system for embedded systems. This script
+  $COSMOS_NAME is a command and control system for embedded systems. This script
   provides a convenient interface for building, running, testing, and managing
-  COSMOS in Docker containers.
+  $COSMOS_NAME in Docker containers.
 
   This is a DEVELOPMENT installation with source code and build capabilities.
 
@@ -99,13 +99,13 @@ COMMON COMMANDS:
 EOF
   elif [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
     cat >&2 << EOF
-OpenC3 COSMOS - Command and Control System (Enterprise Runtime-Only Installation)
+OpenC3 $COSMOS_NAME - Command and Control System (Enterprise Runtime-Only Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  COSMOS is a command and control system for embedded systems. This script
+  $COSMOS_NAME is a command and control system for embedded systems. This script
   provides a convenient interface for running, testing, and managing
-  COSMOS in Docker containers.
+  $COSMOS_NAME in Docker containers.
 
   This is an ENTERPRISE RUNTIME-ONLY installation using pre-built images.
 
@@ -113,13 +113,13 @@ COMMON COMMANDS:
 EOF
   else
     cat >&2 << EOF
-OpenC3 COSMOS - Command and Control System (Runtime-Only Installation)
+OpenC3 $COSMOS_NAME - Command and Control System (Runtime-Only Installation)
 Usage: $1 COMMAND [OPTIONS]
 
 DESCRIPTION:
-  COSMOS is a command and control system for embedded systems. This script
+  $COSMOS_NAME is a command and control system for embedded systems. This script
   provides a convenient interface for running, testing, and managing
-  COSMOS in Docker containers.
+  $COSMOS_NAME in Docker containers.
 
   This is a RUNTIME-ONLY installation using pre-built images.
 
@@ -128,39 +128,39 @@ EOF
   fi
   if [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
-  start                 Build and run COSMOS (equivalent to: build + run)
-                        This is the typical command to get COSMOS running.
+  start                 Build and run $COSMOS_NAME (equivalent to: build + run)
+                        This is the typical command to get $COSMOS_NAME running.
 
 EOF
   else
     cat >&2 << EOF
-  run                   Start COSMOS containers
+  run                   Start $COSMOS_NAME containers
                         Access at: http://localhost:2900
 
 EOF
   fi
   cat >&2 << EOF
-  stop                  Stop all running COSMOS containers gracefully
+  stop                  Stop all running $COSMOS_NAME containers gracefully
                         Allows containers to shutdown cleanly.
 
-  cli [COMMAND]         Run COSMOS CLI commands in a container
+  cli [COMMAND]         Run $COSMOS_NAME CLI commands in a container
                         Use 'cli help' for available commands
                         Use 'cli --help' for Docker wrapper info
                         Examples:
                           $1 cli generate plugin MyPlugin
                           $1 cli validate myplugin.gem
 
-  cliroot [COMMAND]     Run COSMOS CLI commands as root user
+  cliroot [COMMAND]     Run $COSMOS_NAME CLI commands as root user
                         Same as 'cli' but with root privileges
 
 EOF
   if [ "$OPENC3_DEVEL" -eq 1 ]; then
     cat >&2 << EOF
 DEVELOPMENT COMMANDS:
-  build                 Build all COSMOS Docker containers from source
+  build                 Build all $COSMOS_NAME Docker containers from source
                         Required before first run or after code changes.
 
-  run                   Start COSMOS containers in detached mode
+  run                   Start $COSMOS_NAME containers in detached mode
                         Access at: http://localhost:2900
 
 EOF
@@ -175,7 +175,7 @@ EOF
 EOF
   if [ "$OPENC3_DEVEL" -eq 0 ]; then
     cat >&2 << EOF
-  upgrade               Upgrade COSMOS to latest version
+  upgrade               Upgrade $COSMOS_NAME to latest version
                         Downloads and installs latest release.
 
 EOF
@@ -183,7 +183,7 @@ EOF
   cat >&2 << EOF
 CLEANUP:
   cleanup [OPTIONS]     Remove Docker volumes and data
-                        WARNING: This deletes all COSMOS data!
+                        WARNING: This deletes all $COSMOS_NAME data!
                         Options:
                           local  - Also remove local plugin files
                           force  - Skip confirmation prompt
@@ -276,8 +276,6 @@ case $1 in
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
-    # Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
-    # (enterprise or non-enterprise) based on environment variables.
     # Shift off the first argument (script name) to get CLI args
     shift
     if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
