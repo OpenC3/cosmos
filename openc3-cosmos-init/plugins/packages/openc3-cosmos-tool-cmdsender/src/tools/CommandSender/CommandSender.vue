@@ -373,7 +373,11 @@ export default {
           /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
         )
         if (queueMatch) {
-          this.queueName = queueMatch[1]
+          if (queueMatch[1]) {
+            this.queueName = queueMatch[1]
+          } else {
+            this.queueName = false
+          }
           // Remove the queue parameter from the command string
           command = command.replace(
             /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
@@ -590,7 +594,7 @@ export default {
               kwparams.validate = false
             }
             // Add queue parameter if a queue is selected
-            if (this.queueName) {
+            if (this.queueName !== null) {
               kwparams.queue = this.queueName
             }
             if (this.cmdRaw) {
@@ -686,7 +690,7 @@ export default {
         kwparams.validate = false
       }
       // Add queue parameter if a queue is selected
-      if (this.lastQueueName) {
+      if (this.lastQueueName !== null) {
         kwparams.queue = this.lastQueueName
       }
       if (this.cmdRaw) {
@@ -806,12 +810,20 @@ export default {
         }
         // Build the closing part with optional parameters
         let closingParams = []
-        if (this.lastQueueName) {
+        if (this.lastQueueName !== null) {
           const language = AceEditorUtils.getDefaultScriptingLanguage()
           if (language === 'python') {
-            closingParams.push(`queue="${this.lastQueueName}"`)
+            if (this.lastQueueName === false) {
+              closingParams.push('queue=False')
+            } else {
+              closingParams.push(`queue="${this.lastQueueName}"`)
+            }
           } else {
-            closingParams.push(`queue: "${this.lastQueueName}"`)
+            if (this.lastQueueName === false) {
+              closingParams.push('queue: false')
+            } else {
+              closingParams.push(`queue: "${this.lastQueueName}"`)
+            }
           }
         }
         if (this.disableCommandValidation || this.validateParameter !== null) {
