@@ -240,7 +240,8 @@ export default {
   data() {
     return {
       panel: 0,
-      loading: 0,
+      loadingPacket: false,
+      loadingTlmData: false,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -283,6 +284,9 @@ export default {
     }
   },
   computed: {
+    loading: function () {
+      return this.loadingPacket || this.loadingTlmData
+    },
     menus: function () {
       return [
         {
@@ -538,7 +542,7 @@ export default {
         return // No change
       }
       try {
-        this.loading++
+        this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
         if (target) {
           this.ignoredItems = target.ignored_items
@@ -584,7 +588,7 @@ export default {
           })
         }
       } finally {
-        this.loading--
+        this.loadingPacket = false
       }
     },
     latestGetTlmValues(values) {
@@ -636,11 +640,17 @@ export default {
         this.latestAvailable = null
         this.latestItems = null
       }
+      let loadingFirstTlm = false
       if (!this.rows.length) {
-        this.loading++
+        this.loadingTlmData = true
+        loadingFirstTlm = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
+          if (loadingFirstTlm) {
+            loadingFirstTlm = false
+            this.loadingTlmData = false
+          }
           return // noop if target/packet aren't set
         }
 
@@ -650,9 +660,6 @@ export default {
             this.api
               .get_tlm_values(this.latestAvailable, this.staleLimit)
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -676,9 +683,6 @@ export default {
                 return this.api.get_tlm_values(available, this.staleLimit)
               })
               .then((values) => {
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 this.latestGetTlmValues(values)
               })
               .catch((error) => {
@@ -728,9 +732,6 @@ export default {
                     })
                   }
                 })
-                if (!this.rows.length) {
-                  this.loading--
-                }
                 if (this.derivedLast) {
                   this.rows = other.concat(derived)
                 } else {
@@ -745,6 +746,10 @@ export default {
               // eslint-disable-next-line no-console
               console.log(error)
             })
+        }
+        if (loadingFirstTlm) {
+          loadingFirstTlm = false
+          this.loadingTlmData = false
         }
       }, this.refreshInterval)
     },
