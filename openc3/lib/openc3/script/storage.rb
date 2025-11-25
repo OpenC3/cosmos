@@ -120,7 +120,8 @@ module OpenC3
             part = "targets"
             redo
           else
-            raise e
+            # Return nil instead of raising when file not found
+            return nil
           end
         end
         break

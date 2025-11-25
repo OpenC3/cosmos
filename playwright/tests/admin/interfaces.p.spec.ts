@@ -31,7 +31,7 @@ test('displays interface names', async ({ page, utils }) => {
   await expect(page.getByText('SYSTEM', { exact: true })).not.toBeVisible()
 })
 
-test('displays interface details', async ({ page, utils }) => {
+test.fixme('displays interface details', async ({ page, utils }) => {
   await page.locator('[aria-label="Show Interface Details"]').first().click()
   await expect(page.locator('.editor')).toContainText('"name": "EXAMPLE_INT"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {

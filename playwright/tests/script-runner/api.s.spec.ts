@@ -71,7 +71,8 @@ file = get_target_file("INST/test.txt")
 puts file.read
 file.delete
 delete_target_file("INST/test.txt")
-get_target_file("INST/test.txt") # Causes error
+file = get_target_file("INST/test.txt")
+puts file.read # Causes error because file is nil
 file = get_target_file("INST/screens/web.txt")
 web = file.read
 web += 'LABEL "TEST"'

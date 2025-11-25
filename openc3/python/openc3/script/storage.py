@@ -120,12 +120,12 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
                     file.seek(0)  # Rewind so the file is ready to read
                     return file
             return _get_storage_file(f"{part}/{path}", scope=scope)
-        except Exception as error:
+        except Exception:
             if part == "targets_modified":
                 part = "targets"
                 # redo
             else:
-                raise error
+                return None
 
 
 # These are helper methods ... should not be used directly
