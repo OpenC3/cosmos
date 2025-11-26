@@ -17,6 +17,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import os
 import tempfile
 import unittest
 from unittest.mock import *
@@ -52,6 +53,17 @@ class TestPacketConfig(unittest.TestCase):
         with self.assertRaisesRegex(ConfigParser.Error, "Unknown keyword 'BLAH'"):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
+
+    def test_raises_not_implemented_for_xtce_files(self):
+        """Test that XTCE files raise NotImplementedError"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".xtce", delete=False)
+        tf.write('<?xml version="1.0" encoding="UTF-8"?>')
+        tf.close()
+
+        with self.assertRaisesRegex(NotImplementedError, "XTCE file parsing is not yet implemented"):
+            self.pc.process_file(tf.name, "SYSTEM")
+
+        os.unlink(tf.name)
 
     def test_creates_unknown_cmd_tlm_packets(self):
         # Only one target called "UNKNOWN"
@@ -1435,3 +1447,218 @@ class TestPacketConfig(unittest.TestCase):
         # Subpacket should be in subpacket hash
         self.assertIn(repr([1]), self.pc.tlm_subpacket_id_value_hash["TGT1"])
         tf.close()
+
+    def test_to_config_exports_telemetry_packets(self):
+        """Test that to_config exports telemetry packets to files"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test Packet"\n')
+        tf.write('  APPEND_ITEM ITEM1 16 UINT "Item 1"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify telemetry file was created
+            tlm_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt")
+            self.assertTrue(os.path.exists(tlm_file))
+
+            # Verify file contains the packet definition
+            with open(tlm_file, "r") as f:
+                content = f.read()
+                self.assertIn("TELEMETRY", content)
+                self.assertIn("TGT1", content)
+                self.assertIn("PKT1", content)
+
+    def test_to_config_exports_command_packets(self):
+        """Test that to_config exports command packets to files"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('COMMAND TGT1 CMD1 LITTLE_ENDIAN "Test Command"\n')
+        tf.write('  APPEND_PARAMETER PARAM1 16 UINT 0 10 5 "Parameter 1"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify command file was created
+            cmd_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_cmd.txt")
+            self.assertTrue(os.path.exists(cmd_file))
+
+            # Verify file contains the packet definition
+            with open(cmd_file, "r") as f:
+                content = f.read()
+                self.assertIn("COMMAND", content)
+                self.assertIn("TGT1", content)
+                self.assertIn("CMD1", content)
+
+    def test_to_config_exports_limits_groups(self):
+        """Test that to_config exports limits groups"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("LIMITS_GROUP GROUP1\n")
+        tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+        tf.write("LIMITS_GROUP GROUP2\n")
+        tf.write("  LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "SYSTEM")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify limits groups file was created
+            limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
+            self.assertTrue(os.path.exists(limits_file))
+
+            # Verify file contains the limits groups
+            with open(limits_file, "r") as f:
+                content = f.read()
+                self.assertIn("LIMITS_GROUP GROUP1", content)
+                self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
+                self.assertIn("LIMITS_GROUP GROUP2", content)
+                self.assertIn("LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2", content)
+
+    def test_to_config_skips_unknown_target(self):
+        """Test that to_config skips UNKNOWN target"""
+        # PacketConfig always creates UNKNOWN target/packets by default
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify UNKNOWN directory was not created
+            unknown_dir = os.path.join(output_dir, "UNKNOWN")
+            self.assertFalse(os.path.exists(unknown_dir))
+
+    def test_to_config_quotes_names_with_spaces(self):
+        """Test that to_config quotes names with spaces"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('LIMITS_GROUP "GROUP WITH SPACES"\n')
+        tf.write('  LIMITS_GROUP_ITEM "TARGET NAME" "PACKET NAME" "ITEM NAME"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "SYSTEM")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify limits groups file contains quoted names
+            limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
+            with open(limits_file, "r") as f:
+                content = f.read()
+                self.assertIn('"GROUP WITH SPACES"', content)
+                self.assertIn('"TARGET NAME"', content)
+                self.assertIn('"PACKET NAME"', content)
+                self.assertIn('"ITEM NAME"', content)
+
+    def test_to_config_replaces_existing_files(self):
+        """Test that to_config replaces existing files"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write('  APPEND_ITEM ITEM1 8 UINT "Item"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            # Create existing file with different content
+            tlm_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt")
+            os.makedirs(os.path.dirname(tlm_file), exist_ok=True)
+            with open(tlm_file, "w") as f:
+                f.write("OLD CONTENT\n")
+
+            # Export should replace the file
+            self.pc.to_config(output_dir)
+
+            # Verify new content
+            with open(tlm_file, "r") as f:
+                content = f.read()
+                self.assertNotIn("OLD CONTENT", content)
+                self.assertIn("TELEMETRY", content)
+
+    def test_to_config_creates_output_directory(self):
+        """Test that to_config creates the output directory if it doesn't exist"""
+        with tempfile.TemporaryDirectory() as base_dir:
+            output_dir = os.path.join(base_dir, "new_output_dir")
+            self.assertFalse(os.path.exists(output_dir))
+
+            # Should create the directory
+            self.pc.to_config(output_dir)
+            self.assertTrue(os.path.exists(output_dir))
+
+    def test_to_xtce_exports_to_xtce_format(self):
+        """Test that to_xtce exports packets to XTCE format"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write('  APPEND_ITEM ITEM1 8 UINT "Item"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_xtce(output_dir)
+
+            # Verify XTCE file was created
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assertTrue(os.path.exists(xtce_file))
+
+            # Verify it's valid XML
+            from lxml import etree
+
+            tree = etree.parse(xtce_file)
+            root = tree.getroot()
+            self.assertIsNotNone(root)
+
+    def test_packet_keywords_require_current_packet(self):
+        """Test that packet-level keywords raise errors when used outside packet definitions"""
+        keywords_to_test = [
+            "HIDDEN",
+            "DISABLED",
+            "VIRTUAL",
+            "SUBPACKET",
+            "RESTRICTED",
+            "ALLOW_SHORT",
+            "HAZARDOUS",
+            "DISABLE_MESSAGES",
+            "META TEST_META",
+        ]
+
+        for keyword in keywords_to_test:
+            tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+            tf.write(f"{keyword}\n")
+            tf.close()
+            with self.assertRaises(Exception) as context:
+                self.pc.process_file(tf.name, "TGT1")
+            self.assertIn("No current packet for", str(context.exception))
+            os.unlink(tf.name)
+
+        # Verify these keywords work correctly INSIDE a packet definition
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write("  HIDDEN\n")
+        tf.write("  DISABLED\n")
+        tf.write("  VIRTUAL\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  RESTRICTED\n")
+        tf.write("  ALLOW_SHORT\n")
+        tf.write("  HAZARDOUS\n")
+        tf.write("  DISABLE_MESSAGES\n")
+        tf.write("  META TEST_META test_value\n")
+        tf.close()
+        # Should not raise an error
+        self.pc.process_file(tf.name, "TGT1")
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+        self.assertTrue(packet.hidden)
+        self.assertTrue(packet.disabled)
+        self.assertTrue(packet.virtual)
+        self.assertTrue(packet.subpacket)
+        self.assertTrue(packet.restricted)
+        self.assertTrue(packet.short_buffer_allowed)
+        self.assertTrue(packet.hazardous)
+        self.assertTrue(packet.messages_disabled)
+        self.assertEqual(packet.meta["TEST_META"], ["test_value"])
+        os.unlink(tf.name)

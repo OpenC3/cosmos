@@ -73,7 +73,7 @@ def setup_system(targets=None):
     file_path = os.path.realpath(__file__)
     target_config_dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
     System.instance_obj = None
-    System(targets, target_config_dir)
+    System.instance(targets, target_config_dir)
 
     # Initialize the packets in Redis
     for target_name in targets:
@@ -133,8 +133,11 @@ def mock_redis(self):
 
 
 import zlib
+
+
 class BucketMock:
     instance = None
+
     def __init__(self):
         self.objs = {}
 
@@ -146,7 +149,7 @@ class BucketMock:
         return cls.instance
 
     def put_object(self, *args, **kwargs):
-        data = ''
+        data = ""
         try:
             data = kwargs["body"].read()
         except AttributeError:
