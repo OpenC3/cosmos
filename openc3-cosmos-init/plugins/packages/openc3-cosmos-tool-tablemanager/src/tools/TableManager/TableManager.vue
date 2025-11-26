@@ -226,6 +226,11 @@
       v-model="fileOpen"
       type="open"
       api-url="/openc3-api/tables"
+      :custom-help-text="
+        fileNew
+          ? 'Select a definition file (.txt) to generate a new binary table file using the default values. If you select a binary file (.bin), it will open the existing file instead. Use the search box to filter results.'
+          : null
+      "
       @file="setFile($event)"
       @error="setError($event)"
     />
@@ -301,7 +306,7 @@ export default {
           label: 'File',
           items: [
             {
-              label: 'New File',
+              label: 'New Binary from Definition',
               icon: 'mdi-file-plus',
               command: () => {
                 this.newFile()
@@ -439,7 +444,7 @@ export default {
       // They opened a definition file so create a new binary
       if (file.name.includes('.txt')) {
         if (this.fileNew) {
-          this.buildNewBinary(file.name)
+          this.checkAndBuildNewBinary(file.name)
           this.fileNew = false
         } else {
           this.getDefinition(file.name)
@@ -730,6 +735,39 @@ export default {
               body: `Error loading due to ${error.response.statusText}. Status: ${error.response.status}`,
             })
           }
+        })
+    },
+    // If "New File" is selected on a definition file, 
+    // check to see if the binary exists before overwriting.
+    checkAndBuildNewBinary: function (definitionFilename) {
+      const binaryFilename = definitionFilename
+        .replace('/config/', '/bin/')
+        .replace('_def.txt', '.bin')
+
+      Api.get(`/openc3-api/tables/${binaryFilename}`, {
+        headers: {
+          Accept: 'application/json',
+          'Ignore-Errors': '404',
+        },
+      })
+        .then((response) => {
+          this.$dialog
+            .confirm(
+              `Binary file ${binaryFilename} already exists. Do you want to overwrite it?`,
+              {
+                okText: 'Overwrite',
+                cancelText: 'Cancel',
+              },
+            )
+            .then(() => {
+              this.buildNewBinary(definitionFilename)
+            })
+            .catch(() => {
+              // User canceled, do nothing
+            })
+        })
+        .catch((error) => {
+          this.buildNewBinary(definitionFilename)
         })
     },
     buildNewBinary: function (filename) {

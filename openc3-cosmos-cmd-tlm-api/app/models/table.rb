@@ -84,7 +84,6 @@ class Table < OpenC3::TargetFile
       report.filename = binary_filename.sub('.bin', '.csv')
     end
     report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
-    create(scope, report.filename, report.contents)
     return report
   end
 

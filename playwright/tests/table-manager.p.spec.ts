@@ -45,7 +45,7 @@ async function openFile(page, utils, filename) {
 //
 test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=New').click()
+  await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'mcconfigurationtable_def.txt')
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   await expect(page.locator('.v-tab')).toHaveCount(1)
@@ -57,10 +57,48 @@ test('creates a single binary file', async ({ page, utils }) => {
   )
 })
 
+test('shows confirmation dialog when binary exists', async ({ page, utils }) => {
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=New Binary from Definition').click()
+  await openFile(page, utils, 'configtables_def.txt')
+  await utils.sleep(1000)
+
+  await expect(page.locator('text=already exists')).toBeVisible()
+  await expect(page.locator('text=Binary file')).toBeVisible()
+  await expect(page.locator('text=INST/tables/bin/ConfigTables.bin')).toBeVisible()
+  await expect(page.locator('text=Do you want to overwrite it?')).toBeVisible()
+
+  await page.locator('button:has-text("Cancel")').click()
+  await utils.sleep(500)
+  await expect(page.locator('text=already exists')).not.toBeVisible()
+
+  await expect(page.locator('id=openc3-tool')).not.toContainText('MC_CONFIGURATION')
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=New Binary from Definition').click()
+  await openFile(page, utils, 'configtables_def.txt')
+  await utils.sleep(1000)
+  await expect(page.locator('text=already exists')).toBeVisible()
+  await page.locator('button:has-text("Overwrite")').click()
+
+  await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
+  await expect(page.locator('id=openc3-tool')).toContainText('TLM_MONITORING')
+  await expect(page.locator('id=openc3-tool')).toContainText('PPS_SELECTION')
+  await expect(page.locator('.v-tab')).toHaveCount(3)
+  expect(
+    await page.locator('[data-test=definition-filename] input').inputValue(),
+  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  expect(await page.locator('[data-test=filename] input').inputValue()).toMatch(
+    'INST/tables/bin/ConfigTables.bin',
+  )
+})
+
 test('edits a binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=New').click() // Create new since we're editing
+  await page.locator('text=New Binary from Definition').click() // Create new since we're editing
   await openFile(page, utils, 'configtables_def.txt')
+  await utils.sleep(1000)
+  await page.locator('button:has-text("Overwrite")').click()
   await expect(page.getByText('MC_CONFIGURATION')).toBeVisible()
   await expect(page.getByText('TLM_MONITORING')).toBeVisible()
   await expect(page.getByText('PPS_SELECTION')).toBeVisible()
