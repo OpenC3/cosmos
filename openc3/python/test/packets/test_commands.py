@@ -476,3 +476,104 @@ class TestCommands(unittest.TestCase):
             self.cmd.format(pkt, []),
             'cmd("TGT2 PKT7 with ITEM1 0, ITEM2 0, ITEM3 *****")',
         )
+
+    def test_identify_with_subpackets_false_excludes_subpackets(self):
+        # Create config with normal command and subpacket
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 1 1 1\n")
+        tf.write("COMMAND TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 10 10 10\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Create commands with this config
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+
+        # Packet with ID 1 should identify as PKT1, not SUB1
+        packet_data = b"\x01"
+        identified = cmd.identify(packet_data, ["TGT1"], subpackets=False)
+        self.assertIsNotNone(identified)
+        self.assertEqual(identified.packet_name, "PKT1")
+
+    def test_identify_with_subpackets_true_only_identifies_subpackets(self):
+        # Create config with normal command and subpacket
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 1 1 1\n")
+        tf.write("COMMAND TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 10 10 10\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        # Create commands with this config
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+
+        # Packet with ID 10 should identify as SUB1
+        packet_data = b"\x0A"
+        identified = cmd.identify(packet_data, ["TGT1"], subpackets=True)
+        self.assertIsNotNone(identified)
+        self.assertEqual(identified.packet_name, "SUB1")
+
+        # Packet with ID 1 should NOT be identified when looking for subpackets
+        packet_data = b"\x01"
+        identified = cmd.identify(packet_data, ["TGT1"], subpackets=True)
+        self.assertIsNone(identified)
+
+    def test_cmd_unique_id_mode_returns_mode_for_target(self):
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two packets with same ID but different layouts triggers unique_id_mode
+        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 1 1 1\n")
+        tf.write("COMMAND TGT1 PKT2 BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 16 UINT 1 1 1\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+        self.assertTrue(cmd.cmd_unique_id_mode("TGT1"))
+
+    def test_cmd_subpacket_unique_id_mode_returns_mode_for_target(self):
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Two subpackets with same ID but different layouts triggers subpacket unique_id_mode
+        tf.write("COMMAND TGT1 SUB1 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 8 UINT 1 1 1\n")
+        tf.write("COMMAND TGT1 SUB2 BIG_ENDIAN\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM1 16 UINT 1 1 1\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+        self.assertTrue(cmd.cmd_subpacket_unique_id_mode("TGT1"))

@@ -32,6 +32,7 @@
         </v-btn>
         <input
           ref="fileInput"
+          accept=".gem"
           style="display: none"
           type="file"
           @change="fileChange"

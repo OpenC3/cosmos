@@ -41,6 +41,8 @@ require 'tempfile'
 require 'fileutils'
 
 module OpenC3
+  class EmptyGemFileError < StandardError; end
+
   # Represents a OpenC3 plugin that can consist of targets, interfaces, routers
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
@@ -87,6 +89,10 @@ module OpenC3
       tf = nil
       begin
         if File.exist?(gem_file_path)
+          if File.zero?(gem_file_path)
+            raise EmptyGemFileError, "Gem file is empty: #{gem_file_path}"
+          end
+
           # Load gem to internal gem server
           OpenC3::GemModel.put(gem_file_path, gem_install: false, scope: scope) unless validate_only
         else
@@ -209,7 +215,7 @@ module OpenC3
         # Handle python dependencies (pyproject.toml or requirements.txt)
         pyproject_path = File.join(gem_path, 'pyproject.toml')
         requirements_path = File.join(gem_path, 'requirements.txt')
-        
+
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           begin
             pypi_url = get_setting('pypi_url', scope: scope)

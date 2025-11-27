@@ -20,6 +20,7 @@ require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/logger'
+require 'openc3/io/json_rpc'
 
 module OpenC3
   class QueueError < StandardError; end
@@ -44,7 +45,7 @@ module OpenC3
     end
     # END NOTE
 
-    def self.queue_command(name, command:, username:, scope:)
+    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, username:, scope:)
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
@@ -55,10 +56,26 @@ module OpenC3
         else
           id = result[0][1].to_f + 1
         end
-        Store.zadd("#{scope}:#{name}", id, { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }.to_json)
+
+        # Build command data with support for both formats
+        command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
+        if target_name && cmd_name
+          # New format: store target_name, cmd_name, and cmd_params separately
+          command_data[:target_name] = target_name
+          command_data[:cmd_name] = cmd_name
+          command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
+        elsif command
+          # Legacy format: store command string for backwards compatibility
+          command_data[:value] = command
+        else
+          raise QueueError, "Must provide either command string or target_name/cmd_name parameters"
+        end
+
+        Store.zadd("#{scope}:#{name}", id, command_data.to_json)
         model.notify(kind: 'command')
       else
-        raise QueueError, "Queue '#{name}' is disabled. Command '#{command}' not queued."
+        error_msg = command || "#{target_name} #{cmd_name}"
+        raise QueueError, "Queue '#{name}' is disabled. Command '#{error_msg}' not queued."
       end
     end
 
@@ -105,7 +122,12 @@ module OpenC3
 
     def insert_command(id, command_data)
       if @state == 'DISABLE'
-        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_data['value']}' not queued."
+        if command_data['value']
+          command_name = command_data['value']
+        else
+          command_name = "#{command_data['target_name']} #{command_data['cmd_name']}"
+        end
+        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_name}' not queued."
       end
 
       unless id
@@ -115,6 +137,11 @@ module OpenC3
         else
           id = result[0][1].to_f + 1
         end
+      end
+
+      # Convert cmd_params values to JSON-safe format if present
+      if command_data['cmd_params']
+        command_data['cmd_params'] = JSON.generate(command_data['cmd_params'].as_json, allow_nan: true)
       end
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
@@ -163,7 +190,7 @@ module OpenC3
         else
           score = result[0][1]
           Store.zremrangebyscore("#{@scope}:#{@name}", score, score)
-          command_data = JSON.parse(result[0][0])
+          command_data = JSON.parse(result[0][0], allow_nan: true)
           command_data['id'] = score.to_f
           notify(kind: 'command')
           return command_data

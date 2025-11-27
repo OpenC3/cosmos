@@ -22,6 +22,7 @@
 
 import json
 import time
+import threading
 from typing import Any
 from openc3.environment import OPENC3_SCOPE
 from openc3.topics.topic import Topic
@@ -31,6 +32,7 @@ from openc3.utilities.json import JsonEncoder
 from openc3.utilities.store import Store, openc3_redis_cluster
 from openc3.utilities.logger import Logger
 from openc3.utilities.bucket import Bucket
+from openc3.system.system import System
 from openc3.environment import OPENC3_CONFIG_BUCKET
 
 
@@ -46,6 +48,9 @@ class TargetModel(Model):
     VALID_TYPES = {"CMD", "TLM"}
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     item_map_cache = {}
+    sync_packet_count_data = {}
+    sync_packet_count_time = None
+    sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -276,6 +281,76 @@ class TargetModel(Model):
         return counts
 
     @classmethod
+    def init_tlm_packet_counts(cls, tlm_target_names, scope):
+        cls.sync_packet_count_time = time.time()
+
+        # Get all the packet counts with the global counters
+        for target_name in tlm_target_names:
+            for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
+                update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                update_packet.received_count = int(count)
+        for packet_name, count in TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope).items():
+            update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+            update_packet.received_count = int(count)
+
+    @classmethod
+    def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
+        if cls.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
+            # Perfect but slow method
+            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
+        else:
+            # Eventually consistent method
+            # Only sync every period (default 1 second) to avoid hammering Redis
+            # This is a trade off between speed and accuracy
+            # The packet count is eventually consistent
+            if cls.sync_packet_count_data.get(packet.target_name) is None:
+                cls.sync_packet_count_data[packet.target_name] = {}
+            if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
+                cls.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
+            cls.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+
+            # Ensures counters change between syncs
+            update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
+            update_packet.received_count += 1
+            packet.received_count = update_packet.received_count
+
+            # Check if we need to sync the packet counts
+            if cls.sync_packet_count_time is None or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds:
+                cls.sync_packet_count_time = time.time()
+
+                result = []
+                inc_count = 0
+                # Use pipeline to make this one transaction
+                with Store.instance().redis_pool.get() as redis:
+                    pipeline = redis.pipeline(transaction=False)
+                    thread_id = threading.get_native_id()
+                    Store.instance().redis_pool.pipelines[thread_id] = pipeline
+                    try:
+                        # Increment global counters for packets received
+                        for target_name, packet_data in cls.sync_packet_count_data.items():
+                            for packet_name, count in packet_data.items():
+                                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
+                                inc_count += 1
+                        cls.sync_packet_count_data = {}
+
+                        # Get all the packet counts with the global counters
+                        for target_name in tlm_target_names:
+                            TargetModel.get_all_telemetry_counts(target_name, scope=scope)
+                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope)
+
+                        result = pipeline.execute()
+                    finally:
+                        Store.instance().redis_pool.pipelines[thread_id] = None
+                for target_name in tlm_target_names:
+                    for packet_name, count in result[inc_count].items():
+                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                        update_packet.received_count = int(count)
+                    inc_count += 1
+                for packet_name, count in result[inc_count].items():
+                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+                    update_packet.received_count = int(count)
+
+    @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
         result = Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
         if isinstance(result, (bytes, bytearray)):
@@ -347,8 +422,6 @@ class TargetModel(Model):
         ignored_items=[],
         limits_groups=[],
         cmd_tlm_files=[],
-        cmd_unique_id_mode=False,
-        tlm_unique_id_mode=False,
         id=None,
         updated_at=None,
         plugin=None,

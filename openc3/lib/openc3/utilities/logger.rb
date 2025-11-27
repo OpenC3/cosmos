@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3'
 require 'openc3/core_ext/class'
 require 'openc3/core_ext/time'
 require 'openc3/utilities/store_queued'
@@ -27,6 +28,7 @@ require 'socket'
 require 'logger'
 require 'time'
 require 'json'
+require 'openc3/utilities/env_helper'
 
 module OpenC3
   # Supports different levels of logging and only writes if the level
@@ -201,19 +203,14 @@ module OpenC3
       @@mutex.synchronize do
         data = build_log_data(log_level, message, user: user, type: type, url: url, other: other, &block)
         if @stdout
-          case log_level
-          when WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL
-            if ENV['OPENC3_LOG_STDERR']
-              $stderr.puts data.as_json().to_json(allow_nan: true)
-              $stderr.flush
-            else
-              $stdout.puts data.as_json().to_json(allow_nan: true)
-              $stdout.flush
-            end
+          # send warning, error, and fatal to stderr if OPENC3_LOG_STDERR env var is set to 1 or true
+          if [WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL].include?(log_level) && EnvHelper.enabled?('OPENC3_LOG_STDERR')
+            io = $stderr
           else
-            $stdout.puts data.as_json().to_json(allow_nan: true)
-            $stdout.flush
+            io = $stdout
           end
+          io.puts data.as_json().to_json(allow_nan: true)
+          io.flush
         end
         unless @no_store
           if scope

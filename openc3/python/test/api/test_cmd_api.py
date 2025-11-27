@@ -779,7 +779,7 @@ class BuildCommand(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.01)
+        time.sleep(0.1)  # Increased from 0.01 to 0.1 to allow microservice to fully initialize
 
     def tearDown(self):
         self.dm.shutdown()
