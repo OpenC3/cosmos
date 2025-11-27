@@ -542,7 +542,11 @@ export default {
         text += '\nVERTICAL\n'
         await this.api.get_tlm(targetName, packetName).then((packet) => {
           packet.items.forEach((item) => {
-            text += `  LABELVALUE ${targetName} ${packetName} ${item.name}\n`
+            // Bracket characters need to be escaped with double brackets
+            // This is to distinguish them from individual array items
+            // See LabelvalueWidget.vue, VWidget.js, and GraphWidget.js
+            const name = item.name.replace(/\[/g, '[[').replace(/\]/g, ']]')
+            text += `  LABELVALUE ${targetName} ${packetName} ${name}\n`
           })
           text += 'END\n'
         })
