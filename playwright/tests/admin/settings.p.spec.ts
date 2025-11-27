@@ -200,9 +200,12 @@ test('changes scripting settings', async ({ page, utils }) => {
   await expect(editorContent).toContain('# Test vim mode')
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   let filename = await page.locator('[data-test=filename] input').inputValue()
   await expect(filename).toContain('.rb') // Should be Ruby
 
@@ -245,9 +248,8 @@ test('changes scripting settings', async ({ page, utils }) => {
   await expect(editorContent).toContain('# Test normal mode')
 
   await page.locator('[data-test=start-button]').click()
-  // TODO: This is weird that it could be either stopped or completed
   await expect(page.locator('[data-test=state] input')).toHaveValue(
-    /stopped|completed/,
+    'completed',
     {
       timeout: 20000,
     },

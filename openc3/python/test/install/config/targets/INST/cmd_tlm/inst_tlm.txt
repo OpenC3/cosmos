@@ -65,6 +65,12 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status from the instrument"
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
+  APPEND_ITEM BRACKET[0] 8 UINT "Regular item with brackets in the name"
+  APPEND_ITEM 1BIT 1 UINT "1 bit"
+  APPEND_ITEM 63BITS 63 UINT "63 bits"
+  APPEND_ITEM 64BITS 64 UINT "64 bits"
+  ITEM DERIVED_GENERIC 0 0 DERIVED "High-water mark for TEMP1"
+    READ_CONVERSION openc3/conversions/generic_conversion.py 0
   # ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   #   READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER # Deliberately leave off type and bit size
   # ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"

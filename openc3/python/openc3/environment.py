@@ -61,6 +61,45 @@ _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
 _openc3_redis_cluster = "OPENC3_REDIS_CLUSTER"
 
+def get_env_bool(key: str, default: bool = False) -> bool:
+    """
+    Helper function to read boolean values from environment variables.
+
+    Treats the following values (case-insensitive) as True:
+    - 'true'
+    - '1'
+    - 'yes'
+    - 'on'
+
+    All other values (including empty string, 'false', '0', etc.) are treated as False.
+    If the environment variable is not set, returns the default value.
+
+    Args:
+        key: The environment variable name to read
+        default: The default value to return if the environment variable is not set
+
+    Returns:
+        bool: True if the environment variable is set to a truthy value, False otherwise
+
+    Examples:
+        >>> os.environ['DEBUG'] = 'true'
+        >>> get_env_bool('DEBUG')
+        True
+        >>> get_env_bool('MISSING_VAR', default=True)
+        True
+        >>> os.environ['FLAG'] = '1'
+        >>> get_env_bool('FLAG')
+        True
+        >>> os.environ['FLAG'] = 'false'
+        >>> get_env_bool('FLAG')
+        False
+    """
+    value = os.environ.get(key)
+    if value is None:
+        return default
+    return value.lower() in ('true', '1', 'yes', 'on')
+
+
 OPENC3_API_SCHEMA = os.environ.get(_openc3_api_schema, "http")
 OPENC3_API_HOSTNAME = os.environ.get(_openc3_api_hostname, "openc3-cosmos-cmd-tlm-api")
 try:
@@ -109,7 +148,7 @@ OPENC3_TOOLS_BUCKET = os.environ.get(_openc3_tools_bucket)
 OPENC3_LOCAL_MODE = os.environ.get(_openc3_local_mode)
 OPENC3_LOCAL_MODE_PATH = os.environ.get(_openc3_local_mode_path)
 OPENC3_NO_BUCKET_POLICY = os.environ.get(_openc3_no_bucket_policy)
-OPENC3_LOG_STDERR = os.environ.get(_openc3_log_stderr)
+OPENC3_LOG_STDERR = get_env_bool(_openc3_log_stderr)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password)

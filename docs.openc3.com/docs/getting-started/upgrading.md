@@ -125,6 +125,37 @@ Downgrades are not necessarily supported. When upgrading COSMOS we need to upgra
 In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _might_ be able to be downgraded and major releases (X.y.z) are NOT able to be downgraded.
 :::
 
+## Upgrading from COSMOS Core to COSMOS Enterprise
+
+Going from COSMOS Core (open source) to COSMOS Enterprise (OpenC3 customer) is a straight forward process that will preserve all your data collected by COSMOS Core.
+
+:::info Coming Soon
+This process is being simplified in an upcoming release and will be integrated into the `openc3.sh upgrade` command.
+:::
+
+If you currently are using the `cosmos-project` repo to run COSMOS then you should separately clone the `cosmos-enterprise-project` repo at the same release tag and simply copy over the various files.
+
+The process should loook something like this:
+
+1. Clone the `cosmos-enterprise-project` and checkout the equivalent tag. You'll need to ensure you have your Personally Access Token set to clone the repo. See the project [README](https://github.com/OpenC3/cosmos-enterprise-project) for help.
+
+   `git clone https://github.com/OpenC3/cosmos-enterprise-project.git`
+   `git checkout v6.9.2`
+
+2. From your current `cosmos-project` directory, stop the current COSMOS application
+
+   `openc3.sh stop`
+
+3. Copy the project files from the Enterprise project to your current project
+
+   `cp -r cosmos-enterprise-project/* .`
+
+4. Start the new Enterprise application
+
+   `openc3.sh run`
+
+5. Test and verify functionality and commit your changes.
+
 ## Migrating From COSMOS 5 to COSMOS 6
 
 :::info Developers Only

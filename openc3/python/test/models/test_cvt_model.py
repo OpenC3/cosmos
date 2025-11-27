@@ -24,6 +24,7 @@ from openc3.packets.packet import Packet
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.utilities.store import Store
 
+
 class TestCvtModel(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
@@ -36,7 +37,6 @@ class TestCvtModel(unittest.TestCase):
         json_hash["TEMP1"] = 1
         json_hash["TEMP1__C"] = 2
         json_hash["TEMP1__F"] = "2.00 C"
-        json_hash["TEMP1__U"] = "2.00 C"
         json_hash["TEMP1__L"] = "GREEN"
         if rxtime is None:
             rxtime = time.time()
@@ -601,7 +601,7 @@ class TestCvtModel(unittest.TestCase):
         model.create()
         names = TargetModel.names(scope="DEFAULT")
         self.assertIn("INST", names)
-        Store.set(f"DEFAULT__INST__item_to_packet_map", json.dumps({"PACKET_ID": ["PACKET1"]}))
-        Store.hset(f"DEFAULT__tlm__INST", "PACKET1", json.dumps({"PACKET_TIMESECONDS": None}))
+        Store.set("DEFAULT__INST__item_to_packet_map", json.dumps({"PACKET_ID": ["PACKET1"]}))
+        Store.hset("DEFAULT__tlm__INST", "PACKET1", json.dumps({"PACKET_TIMESECONDS": None}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope="DEFAULT")
         self.assertNotEqual(packet_name, None)

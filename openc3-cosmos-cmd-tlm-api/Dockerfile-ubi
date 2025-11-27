@@ -10,6 +10,7 @@ COPY Gemfile ./
 
 USER root
 
+ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test' \
   && bundle install --quiet \
   && rm -rf /usr/lib/ruby/gems/*/cache/* \

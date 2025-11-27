@@ -231,6 +231,7 @@ export default {
       commandDescription: '',
       paramList: '',
       queueName: null,
+      validateParameter: null,
       lastTargetName: '',
       lastCommandName: '',
       lastParamList: '',
@@ -364,16 +365,39 @@ export default {
         if (command === '') {
           return
         }
-        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo") or cmd("...", queue="Foo"))
+        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo") or cmd("...", queue = "Foo")
+        // or cmd("...", queue: false) or cmd("...", queue=False)
         // Reset queue to null first
         this.queueName = null
-        const queueMatch = command.match(/,\s*queue[:=]\s*"([^"]+)"/)
+        const queueMatch = command.match(
+          /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
+        )
         if (queueMatch) {
-          this.queueName = queueMatch[1]
-          console.log('Queue extracted from history:', this.queueName)
+          if (queueMatch[1]) {
+            this.queueName = queueMatch[1]
+          } else {
+            this.queueName = false
+          }
           // Remove the queue parameter from the command string
-          command = command.replace(/,\s*queue[:=]\s*"[^"]+"/, '')
+          command = command.replace(
+            /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
+            '',
+          )
         }
+        // Parse validate parameter if present (e.g., cmd("...", validate: false) or cmd("...", validate=True)
+        this.validateParameter = null
+        const validateMatch = command.match(
+          /,\s*validate(?::|\s*=)\s*(false|true)/i,
+        )
+        if (validateMatch) {
+          this.validateParameter = validateMatch[1]
+          // Remove the validate parameter from the command string
+          command = command.replace(
+            /,\s*validate(?::|\s*=)\s*(false|true)/i,
+            '',
+          )
+        }
+
         // Remove the cmd("") wrapper
         let firstQuote = command.indexOf('"')
         let lastQuote = command.lastIndexOf('"')
@@ -562,11 +586,15 @@ export default {
             this.displaySendHazardous = true
           } else {
             let obs
-            let kwparams = this.disableCommandValidation
-              ? { validate: false }
-              : {}
+            let kwparams = {}
+            if (this.validateParameter !== null) {
+              kwparams.validate =
+                this.validateParameter.toLowerCase() === 'true'
+            } else if (this.disableCommandValidation) {
+              kwparams.validate = false
+            }
             // Add queue parameter if a queue is selected
-            if (this.queueName) {
+            if (this.queueName !== null) {
               kwparams.queue = this.queueName
             }
             if (this.cmdRaw) {
@@ -655,9 +683,14 @@ export default {
       this.displaySendHazardous = false
       let obs = ''
       let cmd = ''
-      let kwparams = this.disableCommandValidation ? { validate: false } : {}
+      let kwparams = {}
+      if (this.validateParameter !== null) {
+        kwparams.validate = this.validateParameter.toLowerCase() === 'true'
+      } else if (this.disableCommandValidation) {
+        kwparams.validate = false
+      }
       // Add queue parameter if a queue is selected
-      if (this.lastQueueName) {
+      if (this.lastQueueName !== null) {
         kwparams.queue = this.lastQueueName
       }
       if (this.cmdRaw) {
@@ -777,20 +810,36 @@ export default {
         }
         // Build the closing part with optional parameters
         let closingParams = []
-        if (this.lastQueueName) {
+        if (this.lastQueueName !== null) {
           const language = AceEditorUtils.getDefaultScriptingLanguage()
           if (language === 'python') {
-            closingParams.push(`queue="${this.lastQueueName}"`)
+            if (this.lastQueueName === false) {
+              closingParams.push('queue=False')
+            } else {
+              closingParams.push(`queue="${this.lastQueueName}"`)
+            }
           } else {
-            closingParams.push(`queue: "${this.lastQueueName}"`)
+            if (this.lastQueueName === false) {
+              closingParams.push('queue: false')
+            } else {
+              closingParams.push(`queue: "${this.lastQueueName}"`)
+            }
           }
         }
-        if (this.disableCommandValidation) {
+        if (this.disableCommandValidation || this.validateParameter !== null) {
           const language = AceEditorUtils.getDefaultScriptingLanguage()
-          if (language === 'python') {
-            closingParams.push('validate=False')
+          if (this.validateParameter !== null) {
+            if (language === 'python') {
+              closingParams.push(`validate=${this.validateParameter}`)
+            } else {
+              closingParams.push(`validate: ${this.validateParameter}`)
+            }
           } else {
-            closingParams.push('validate: false')
+            if (language === 'python') {
+              closingParams.push('validate=False')
+            } else {
+              closingParams.push('validate: false')
+            }
           }
         }
 
