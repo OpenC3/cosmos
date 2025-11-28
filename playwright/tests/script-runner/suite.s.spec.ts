@@ -481,6 +481,7 @@ end`)
   )
 
   // Rewrite the script but remove setup and teardown
+  await utils.sleep(500)
   await page.locator('.ace_content').click()
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+A')
