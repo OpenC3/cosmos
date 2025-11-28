@@ -242,7 +242,8 @@ module OpenC3
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
               'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER'
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER',\
+              'STRUCTURE', 'APPEND_STRUCTURE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -486,7 +487,7 @@ module OpenC3
       # Start a new telemetry item in the current packet
       when 'ITEM', 'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER',\
           'APPEND_ITEM', 'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER',\
-          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER'
+          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER', 'STRUCTURE', 'APPEND_STRUCTURE'
         start_item(parser)
 
       # Allow this packet to be received with less data than the defined length
@@ -834,7 +835,7 @@ module OpenC3
 
     def start_item(parser)
       finish_item()
-      @current_item = PacketItemParser.parse(parser, @current_packet, @current_cmd_or_tlm, @warnings)
+      @current_item = PacketItemParser.parse(parser, self, @current_packet, @current_cmd_or_tlm, @warnings)
     end
 
     # Finish updating packet item

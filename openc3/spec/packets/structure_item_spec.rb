@@ -232,19 +232,5 @@ module OpenC3
         expect(hash["overflow"]).to eql :ERROR
       end
     end
-
-    describe "self.from_json" do
-      it "creates StructureItem from hash" do
-        item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
-        new_item = StructureItem.from_json(item.as_json())
-        expect(new_item.name).to eql item.name
-        expect(new_item.bit_offset).to eql item.bit_offset
-        expect(new_item.bit_size).to eql item.bit_size
-        expect(new_item.data_type).to eql item.data_type
-        expect(new_item.endianness).to eql item.endianness
-        expect(new_item.array_size).to eql item.array_size
-        expect(new_item.overflow).to eql item.overflow
-      end
-    end
   end
 end

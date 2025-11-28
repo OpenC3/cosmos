@@ -417,7 +417,8 @@ class Structure:
         item_array = []
         with self.synchronize_allow_reads(top):
             for item in self.sorted_items:
-                item_array.append([item.name, self.read_item(item, value_type, buffer)])
+                if not item.hidden:
+                    item_array.append([item.name, self.read_item(item, value_type, buffer)])
         return item_array
 
     # Create a string that shows the name and value of each item in the structure
@@ -435,7 +436,7 @@ class Structure:
         string = ""
         with self.synchronize_allow_reads(True):
             for item in self.sorted_items:
-                if ignored and item.name in ignored:
+                if item.hidden or (ignored and item.name in ignored):
                     continue
 
                 if (item.data_type != "BLOCK") or (
@@ -569,6 +570,9 @@ class Structure:
     def recalculate_bit_offsets(self):
         adjustment = 0
         for item in self.sorted_items:
+            # Parented items rely on the parent
+            if item.parent_item is not None:
+                continue
             # Anything with a negative bit offset should be left alone
             if item.original_bit_offset >= 0:
                 item.bit_offset = item.original_bit_offset + adjustment

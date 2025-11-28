@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -62,7 +62,10 @@ class StructureItem:
         self.original_array_size = array_size
         self.overflow = overflow
         self.overlap = False
-        self.variable_bit_size = False
+        self.variable_bit_size = None
+        self.hidden = False
+        self.parent_item = None
+        self.structure = None
         self.create_index = StructureItem.create_index
         StructureItem.create_index += 1
         self.structure_item_constructed = True
@@ -267,36 +270,26 @@ class StructureItem:
         StructureItem.create_index += 1
         return item
 
-    @classmethod
-    def from_json(cls, structure):
-        # Convert strings to symbols
-        endianness = structure.get("endianness")
-        data_type = structure.get("data_type")
-        array_size = structure.get("array_size")
-        overflow = structure.get("overflow")
-        si = StructureItem(
-            structure["name"],
-            structure["bit_offset"],
-            structure["bit_size"],
-            data_type,
-            endianness,
-            array_size,
-            overflow,
-        )
-        si.key = structure.get("key", structure["name"])
-        return si
-
     def as_json(self):
-        structure = {}
-        structure["name"] = self.name
-        structure["key"] = self.key
-        structure["bit_offset"] = self.original_bit_offset
-        structure["bit_size"] = self.original_bit_size
-        structure["data_type"] = self.data_type
-        structure["endianness"] = self.endianness
-        structure["array_size"] = self.original_array_size
-        structure["overflow"] = self.overflow
-        return structure
+        result = {}
+        result["name"] = self.name
+        result["key"] = self.key
+        result["bit_offset"] = self.original_bit_offset
+        result["bit_size"] = self.original_bit_size
+        result["data_type"] = self.data_type
+        result["endianness"] = self.endianness
+        result["array_size"] = self.original_array_size
+        result["overflow"] = self.overflow
+        result["overlap"] = self.overlap
+        result["create_index"] = self.create_index
+        result["hidden"] = self.hidden
+        if self.variable_bit_size is not None:
+            result["variable_bit_size"] = self.variable_bit_size
+        if self.parent_item is not None:
+            result["parent_item"] = self.parent_item.as_json()
+        if self.structure is not None:
+            result["structure"] = self.structure.as_json()
+        return result
 
     def little_endian_bit_field(self):
         if self.endianness != "LITTLE_ENDIAN":

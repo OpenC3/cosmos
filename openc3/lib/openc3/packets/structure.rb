@@ -436,7 +436,11 @@ module OpenC3
     def read_all(value_type = :RAW, buffer = @buffer, top = true)
       item_array = []
       synchronize_allow_reads(top) do
-        @sorted_items.each { |item| item_array << [item.name, read_item(item, value_type, buffer)] }
+        @sorted_items.each do |item|
+          unless item.hidden
+            item_array << [item.name, read_item(item, value_type, buffer)]
+          end
+        end
       end
       return item_array
     end
@@ -454,7 +458,7 @@ module OpenC3
       string = ''
       synchronize_allow_reads(true) do
         @sorted_items.each do |item|
-          next if ignored && ignored.include?(item.name)
+          next if item.hidden || (ignored && ignored.include?(item.name))
 
           if (item.data_type != :BLOCK) ||
              (item.data_type == :BLOCK and value_type != :RAW and
@@ -631,6 +635,8 @@ module OpenC3
     def recalculate_bit_offsets
       adjustment = 0
       @sorted_items.each do |item|
+        # Parented items rely on the parent
+        next if item.parent_item
         # Anything with a negative bit offset should be left alone
         if item.original_bit_offset >= 0
           item.bit_offset = item.original_bit_offset + adjustment
