@@ -63,6 +63,7 @@ COMMAND <%= target_name %> ARYCMD BIG_ENDIAN "Command with array parameter"
   PARAMETER    CRC            -8   8  UINT MIN MAX 0 "CRC"
 
 COMMAND <%= target_name %> SLRPNLDEPLOY BIG_ENDIAN "Deploy solar array panels"
+  RESTRICTED
   VALIDATOR inst_cmd_validator.rb
   <%= render "_ccsds_cmd.txt", locals: {id: 8} %>
   RELATED_ITEM <%= target_name %> MECH SLRPNL1
@@ -72,6 +73,7 @@ COMMAND <%= target_name %> SLRPNLDEPLOY BIG_ENDIAN "Deploy solar array panels"
   RELATED_ITEM <%= target_name %> MECH SLRPNL5
 
 COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
+  RESTRICTED
   VALIDATOR inst_cmd_validator.rb
   <%= render "_ccsds_cmd.txt", locals: {id: 9} %>
   RELATED_ITEM <%= target_name %> MECH SLRPNL1

@@ -32,6 +32,26 @@ module OpenC3
         bytes = "\xf0\x28\x8c\x28" # Invalid 4 Octet Sequence
         expect(bytes.as_json).to eql({"json_class" => "String", "raw" => bytes.unpack("C*")})
       end
+
+      it "encodes binary data with high bytes as json_class format" do
+        # Test binary string with bytes > 127 (even if valid UTF-8)
+        # This simulates data from hex_to_byte_string like 0xDEAD
+        bytes = "\xDE\xAD\xBE\xEF".b
+        result = bytes.as_json
+        expect(result).to eql({"json_class" => "String", "raw" => [222, 173, 190, 239]})
+
+        # Verify round-trip encoding/decoding
+        json_str = JSON.generate(result, allow_nan: true)
+        decoded = JSON.parse(json_str, allow_nan: true, create_additions: true)
+        expect(decoded).to eq(bytes)
+        expect(decoded.encoding).to eq(Encoding::ASCII_8BIT)
+      end
+
+      it "does not encode plain ASCII strings even if ASCII-8BIT encoding" do
+        # Plain ASCII text should not be encoded as binary even if marked ASCII-8BIT
+        bytes = "NORMAL".force_encoding(Encoding::ASCII_8BIT)
+        expect(bytes.as_json).to eql("NORMAL")
+      end
     end
   end
 end

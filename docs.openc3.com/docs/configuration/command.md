@@ -575,6 +575,16 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Accessor Class Name | The name of the accessor class | True |
 | Argument | Additional argument passed to the accessor class constructor | False |
 
+### SUBPACKETIZER
+<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+
+Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Subpacketizer Class Name | The name of the Subpacketizer class | True |
+| Argument | Additional argument passed to the Subpacketizer class constructor | False |
+
 ### TEMPLATE
 <div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
 
@@ -636,6 +646,12 @@ Used for packet definitions that can be used as structures for items with a give
 <div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
 
 Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+
+
+### SUBPACKET
+<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+
+Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 
 
 ### VALIDATOR
