@@ -248,31 +248,33 @@ module OpenC3
 
       # Recalculate the overall defined length of the structure
       update_needed = false
-      if item.bit_offset >= 0
-        if item.bit_size > 0
-          if item.array_size
-            if item.array_size >= 0
-              item_defined_length_bits = item.bit_offset + item.array_size
+      if not item.parent_item
+        if item.bit_offset >= 0
+          if item.bit_size > 0
+            if item.array_size
+              if item.array_size >= 0
+                item_defined_length_bits = item.bit_offset + item.array_size
+              else
+                item_defined_length_bits = item.bit_offset
+              end
             else
-              item_defined_length_bits = item.bit_offset
+              item_defined_length_bits = item.bit_offset + item.bit_size
+            end
+            if item_defined_length_bits > @pos_bit_size
+              @pos_bit_size = item_defined_length_bits
+              update_needed = true
             end
           else
-            item_defined_length_bits = item.bit_offset + item.bit_size
-          end
-          if item_defined_length_bits > @pos_bit_size
-            @pos_bit_size = item_defined_length_bits
-            update_needed = true
+            if item.bit_offset > @pos_bit_size
+              @pos_bit_size = item.bit_offset
+              update_needed = true
+            end
           end
         else
-          if item.bit_offset > @pos_bit_size
-            @pos_bit_size = item.bit_offset
+          if item.bit_offset.abs > @neg_bit_size
+            @neg_bit_size = item.bit_offset.abs
             update_needed = true
           end
-        end
-      else
-        if item.bit_offset.abs > @neg_bit_size
-          @neg_bit_size = item.bit_offset.abs
-          update_needed = true
         end
       end
       if update_needed
@@ -349,7 +351,7 @@ module OpenC3
           elsif item.variable_bit_size['length_value_bit_offset'] > 0
             minimum_data_bits = item.variable_bit_size['length_value_bit_offset'] * item.variable_bit_size['length_bits_per_count']
           end
-          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset
+          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset and not item.parent_item
             @defined_length_bits += minimum_data_bits
           end
         end

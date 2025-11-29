@@ -536,7 +536,11 @@ module OpenC3
       when 'HIDDEN'
         usage = "#{keyword}"
         parser.verify_num_parameters(0, 0, usage)
-        @current_packet.hidden = true
+        if @current_item
+          @current_item.hidden = true
+        else
+          @current_packet.hidden = true
+        end
 
       when 'DISABLED'
         usage = "#{keyword}"
@@ -792,10 +796,6 @@ module OpenC3
 
       # Update the default value for the current command parameter
       when 'DEFAULT_VALUE'
-        if @current_cmd_or_tlm == TELEMETRY
-          raise parser.error("#{keyword} only applies to command parameters")
-        end
-
         usage = "DEFAULT_VALUE <DEFAULT VALUE>"
         parser.verify_num_parameters(1, 1, usage)
         if (@current_item.data_type == :STRING) ||

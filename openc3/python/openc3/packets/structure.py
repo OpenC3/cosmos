@@ -213,28 +213,29 @@ class Structure:
 
         # Recalculate the overall defined length of the structure
         update_needed = False
-        if item.bit_offset >= 0:
-            if item.bit_size > 0:
-                if item.array_size is not None:
-                    if item.array_size >= 0:
-                        item_defined_length_bits = item.bit_offset + item.array_size
+        if item.parent_item is None:
+            if item.bit_offset >= 0:
+                if item.bit_size > 0:
+                    if item.array_size is not None:
+                        if item.array_size >= 0:
+                            item_defined_length_bits = item.bit_offset + item.array_size
+                        else:
+                            item_defined_length_bits = item.bit_offset
                     else:
-                        item_defined_length_bits = item.bit_offset
-                else:
-                    item_defined_length_bits = item.bit_offset + item.bit_size
+                        item_defined_length_bits = item.bit_offset + item.bit_size
 
-                if item_defined_length_bits > self.pos_bit_size:
-                    self.pos_bit_size = item_defined_length_bits
+                    if item_defined_length_bits > self.pos_bit_size:
+                        self.pos_bit_size = item_defined_length_bits
+                        update_needed = True
+
+                elif item.bit_offset > self.pos_bit_size:
+                    self.pos_bit_size = item.bit_offset
                     update_needed = True
 
-            elif item.bit_offset > self.pos_bit_size:
-                self.pos_bit_size = item.bit_offset
-                update_needed = True
-
-        else:
-            if abs(item.bit_offset) > self.neg_bit_size:
-                self.neg_bit_size = abs(item.bit_offset)
-                update_needed = True
+            else:
+                if abs(item.bit_offset) > self.neg_bit_size:
+                    self.neg_bit_size = abs(item.bit_offset)
+                    update_needed = True
 
         if update_needed:
             self.defined_length_bits = self.pos_bit_size + self.neg_bit_size
@@ -326,7 +327,7 @@ class Structure:
                         item.variable_bit_size["length_value_bit_offset"]
                         * item.variable_bit_size["length_bits_per_count"]
                     )
-                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset:
+                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset and item.parent_item is None:
                     self.defined_length_bits += minimum_data_bits
         else:
             raise ValueError(f"Unknown item: {item.name} - Ensure item name is uppercase")

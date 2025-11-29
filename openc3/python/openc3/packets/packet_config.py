@@ -576,7 +576,10 @@ class PacketConfig:
             case "HIDDEN":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
-                self.current_packet.hidden = True
+                if self.current_item:
+                    self.current_item.hidden = True
+                else:
+                    self.current_packet.hidden = True
 
             case "DISABLED":
                 usage = keyword
@@ -856,9 +859,6 @@ class PacketConfig:
 
             # Update the default value for the current command parameter
             case "DEFAULT_VALUE":
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
-                    raise parser.error(f"{keyword} only applies to command parameters")
-
                 usage = "DEFAULT_VALUE <DEFAULT VALUE>"
                 parser.verify_num_parameters(1, 1, usage)
                 if (self.current_item.data_type == "STRING") or (self.current_item.data_type == "BLOCK"):

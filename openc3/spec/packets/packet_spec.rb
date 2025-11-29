@@ -2034,15 +2034,11 @@ module OpenC3
 
         packet = Packet.new
         item = packet.append_item("JSON_LENGTH", 32, :UINT)
-        item.default = 33
-        item = packet.append_item("JSON", 264, :BLOCK)
-        item.default = ""
+        item = packet.append_item("JSON", 0, :BLOCK)
         item.variable_bit_size = {'length_item_name' => "JSON_LENGTH", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
         packet.structurize_item(item, json_struct)
         item = packet.append_item("CBOR_LENGTH", 32, :UINT)
-        item.default = 33
-        item = packet.append_item("CBOR", 264, :BLOCK)
-        item.default = ""
+        item = packet.append_item("CBOR", 0, :BLOCK)
         item.variable_bit_size = {'length_item_name' => "CBOR_LENGTH", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
         packet.structurize_item(item, cbor_struct)
 
