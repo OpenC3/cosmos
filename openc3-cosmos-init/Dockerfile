@@ -4,11 +4,7 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
-# Update in openc3_build_ubi.sh when changing the release version
-# and build_multi_arch.sh
-ARG OPENC3_MC_RELEASE=RELEASE.2025-08-13T08-35-41Z
 
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
 # Setup our node build image
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
 
@@ -146,7 +142,7 @@ COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plu
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-workspace.yaml /openc3/plugins/pnpm-workspace.yaml
 # Copy in other necessary code/config for the container
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
-COPY --from=minio-mc --chown=${IMAGE_USER}:${IMAGE_GROUP} /bin/mc /bin/mc
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./mc /bin/mc
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./script-runner.json /openc3/minio/script-runner.json
 
 CMD [ "/openc3/init.sh" ]

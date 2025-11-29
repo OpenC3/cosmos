@@ -21,10 +21,10 @@
     "date-fns": "4.1.0",
     "jszip": "^3.10.1",
     "nyc": "^17.1.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.7.1"
   },
   "devDependencies": {
-    "@types/node": "^24.10.0"
+    "@types/node": "^24.10.1"
   },
   "nyc": {
     "excludeAfterRemap": false,
