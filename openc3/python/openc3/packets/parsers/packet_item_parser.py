@@ -74,7 +74,7 @@ class PacketItemParser:
                 item = PacketItem(
                     item_name,
                     self._get_bit_offset(),
-                    self._get_bit_size(),
+                    self._get_bit_size(True),
                     'BLOCK',
                     'BIG_ENDIAN',
                     None,
@@ -126,10 +126,16 @@ class PacketItemParser:
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 
-    def _get_bit_size(self):
+    def _get_bit_size(self, check_structure=False):
         index = 1 if self._append() else 2
         try:
-            return int(self.parser.parameters[index], 0)
+            bit_size = self.parser.parameters[index]
+            if not check_structure or str(bit_size).upper() != 'DEFINED':
+                return int(bit_size, 0)
+            else:
+                structure = self._lookup_packet(self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name())
+                return structure.defined_length_bits
+
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 

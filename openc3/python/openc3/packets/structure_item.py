@@ -278,11 +278,12 @@ class StructureItem:
         result["bit_size"] = self.original_bit_size
         result["data_type"] = self.data_type
         result["endianness"] = self.endianness
-        result["array_size"] = self.original_array_size
         result["overflow"] = self.overflow
         result["overlap"] = self.overlap
         result["create_index"] = self.create_index
         result["hidden"] = self.hidden
+        if self.original_array_size is not None:
+            result["array_size"] = self.original_array_size
         if self.variable_bit_size is not None:
             result["variable_bit_size"] = self.variable_bit_size
         if self.parent_item is not None:

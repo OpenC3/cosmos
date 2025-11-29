@@ -77,7 +77,7 @@ module OpenC3
       if @parser.keyword.include?("STRUCTURE")
         item = PacketItem.new(item_name,
                               get_bit_offset(),
-                              get_bit_size(),
+                              get_bit_size(true),
                               :BLOCK,
                               :BIG_ENDIAN,
                               nil,
@@ -127,9 +127,15 @@ module OpenC3
       raise @parser.error(e, @usage)
     end
 
-    def get_bit_size
+    def get_bit_size(check_structure = false)
       index = append? ? 1 : 2
-      Integer(@parser.parameters[index])
+      bit_size = @parser.parameters[index]
+      if not check_structure or bit_size.to_s.upcase != 'DEFINED'
+        return Integer(bit_size)
+      else
+        structure = lookup_packet(get_cmd_or_tlm(), get_target_name(), get_packet_name())
+        return structure.defined_length_bits
+      end
     rescue => e
       raise @parser.error(e, @usage)
     end

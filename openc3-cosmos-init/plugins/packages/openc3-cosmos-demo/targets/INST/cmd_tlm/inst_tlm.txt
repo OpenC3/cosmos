@@ -265,7 +265,23 @@ TELEMETRY <%= target_name %> HTMLTLM BIG_ENDIAN "HTML Accessor Telemetry"
     KEY "/html/body/p/text()"
 
 TELEMETRY <%= target_name %> HYBRIDTLM BIG_ENDIAN "Hybrid Accessor Telemetry"
-  <%= render "_ccsds_tlm.txt", locals: {apid: 13} %>
+  APPEND_ITEM CCSDSVER      3 UINT   "CCSDS packet version number (See CCSDS 133.0-B-1)"
+  APPEND_ITEM CCSDSTYPE     1 UINT   "CCSDS packet type (command or telemetry)"
+    STATE TLM 0
+    STATE CMD 1
+  APPEND_ITEM CCSDSSHF      1 UINT   "CCSDS secondary header flag"
+    STATE FALSE 0
+    STATE TRUE 1
+  APPEND_ID_ITEM CCSDSAPID 11 UINT 14 "CCSDS application process id"
+  APPEND_ITEM CCSDSSEQFLAGS 2 UINT   "CCSDS sequence flags"
+    STATE FIRST 1
+    STATE CONT 0
+    STATE LAST 2
+    STATE NOGROUP 3
+  APPEND_ITEM CCSDSSEQCNT  14 UINT   "CCSDS packet sequence count"
+    OVERFLOW TRUNCATE
+  APPEND_ITEM CCSDSLENGTH  16 UINT   "CCSDS packet data length"
+  APPEND_ITEM PKTID 16 UINT
   APPEND_ITEM JSON_LENGTH 32 UINT
   APPEND_STRUCTURE JSON 0 CMD <%= target_name %> JSONSTRUCT
     VARIABLE_BIT_SIZE JSON_LENGTH

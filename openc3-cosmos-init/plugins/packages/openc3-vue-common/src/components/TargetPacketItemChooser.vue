@@ -535,7 +535,13 @@ export default {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
-            this.itemNames = packet.items.map((item) => {
+            let items = []
+            packet.items.forEach((item) => {
+              if (!item['hidden']) {
+                items.push(item)
+              }
+            })
+            this.itemNames = items.map((item) => {
               let label = item.name
               if (item.data_type == 'DERIVED') {
                 label += ' *'
@@ -711,14 +717,16 @@ export default {
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {
-              this.$emit('addItem', {
-                targetName: this.selectedTargetName,
-                packetName: packetName.value,
-                itemName: item['name'],
-                valueType: this.selectedValueType,
-                reduced: this.selectedReduced,
-                reducedType: this.selectedReducedType,
-              })
+              if (!item['hidden']) {
+                this.$emit('addItem', {
+                  targetName: this.selectedTargetName,
+                  packetName: packetName.value,
+                  itemName: item['name'],
+                  valueType: this.selectedValueType,
+                  reduced: this.selectedReduced,
+                  reducedType: this.selectedReducedType,
+                })
+              }
             })
           },
         )

@@ -264,7 +264,11 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     t = _validate_tlm_type(type)
     if t is None:
         raise TypeError(f"Unknown type '{type}' for {target_name} {packet_name}")
-    cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in packet["items"]]
+    cvt_items = []
+    for item in packet["items"]:
+        if not item.get("hidden", False):
+            cvt_items.append(item)
+    cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in cvt_items]
     # This returns an array of arrays containing the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)

@@ -328,11 +328,13 @@ module OpenC3
       hash['bit_size'] = self.original_bit_size
       hash['data_type'] = self.data_type
       hash['endianness'] = self.endianness
-      hash['array_size'] = self.original_array_size
       hash['overflow'] = self.overflow
       hash['overlap'] = self.overlap
       hash['create_index'] = self.create_index
       hash['hidden'] = self.hidden
+      if self.original_array_size
+        hash['array_size'] = self.original_array_size
+      end
       if @variable_bit_size
         hash['variable_bit_size'] = @variable_bit_size
       end
