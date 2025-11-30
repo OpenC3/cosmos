@@ -326,9 +326,9 @@ module OpenC3
       hash['key'] = self.key
       hash['bit_offset'] = self.original_bit_offset
       hash['bit_size'] = self.original_bit_size
-      hash['data_type'] = self.data_type
-      hash['endianness'] = self.endianness
-      hash['overflow'] = self.overflow
+      hash['data_type'] = self.data_type.to_s
+      hash['endianness'] = self.endianness.to_s
+      hash['overflow'] = self.overflow.to_s
       hash['overlap'] = self.overlap
       hash['create_index'] = self.create_index
       hash['hidden'] = self.hidden

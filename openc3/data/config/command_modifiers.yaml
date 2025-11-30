@@ -96,6 +96,68 @@ APPEND_ARRAY_PARAMETER:
       values: .*
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
   example: APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
+STRUCTURE:
+  modifiers:
+    <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
+  summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  parameters:
+    - name: Name
+      required: true
+      description: Name of the parameter. Must be unique within the command.
+      values: .*
+    - name: Bit Offset
+      required: true
+      description: Bit offset into the command packet of the Most Significant Bit of this parameter.
+        May be negative to indicate an offset from the end of the packet.
+        Always use a bit offset of 0 for derived parameters.
+      values: '[-]?\d+'
+    - name: Bit Size
+      required: true
+      description: Bit size of this parameter. Zero or Negative values may be used
+        to indicate that a string fills the packet up to the offset from the end of
+        the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
+        this is a derived parameter and the Data Type must be set to 'DERIVED'.
+      values: \d+
+    - name: Commmand or telemetry
+      required: true
+      description: Whether the structure packet is a command or telemetry packet
+      values: <%= %w(CMD COMMAND TLM TELEMETRY) %>
+    - name: Target Name
+      required: true
+      description: Target Name of the structure packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of the structure packet
+      values: .+
+APPEND_STRUCTURE:
+  modifiers:
+    <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
+  summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  parameters:
+    - name: Name
+      required: true
+      description: Name of the parameter. Must be unique within the command.
+      values: .*
+    - name: Bit Size
+      required: true
+      description: Bit size of this parameter. Zero or Negative values may be used
+        to indicate that a string fills the packet up to the offset from the end of
+        the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
+        this is a derived parameter and the Data Type must be set to 'DERIVED'.
+      values: \d+
+    - name: Commmand or telemetry
+      required: true
+      description: Whether the structure packet is a command or telemetry packet
+      values: <%= %w(CMD COMMAND TLM TELEMETRY) %>
+    - name: Target Name
+      required: true
+      description: Target Name of the structure packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of the structure packet
+      values: .+
 SELECT_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>

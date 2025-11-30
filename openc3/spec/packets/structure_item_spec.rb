@@ -220,16 +220,18 @@ module OpenC3
       it "creates a Hash" do
         item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
         hash = item.as_json()
-        expect(hash.keys.length).to eql 8
-        expect(hash.keys).to include('name', 'bit_offset', 'bit_size', 'data_type', 'endianness', 'array_size', 'overflow')
+        expect(hash.keys.length).to eql 11
+        expect(hash.keys).to include('name', 'key', 'bit_offset', 'bit_size', 'data_type', 'endianness', 'array_size', 'overflow', 'hidden', 'create_index', 'overlap')
         expect(hash["name"]).to eql "TEST"
         expect(hash["key"]).to eql "test"
         expect(hash["bit_offset"]).to eql 0
         expect(hash["bit_size"]).to eql 8
-        expect(hash["data_type"]).to eql :UINT
-        expect(hash["endianness"]).to eql :BIG_ENDIAN
+        expect(hash["data_type"]).to eql 'UINT'
+        expect(hash["endianness"]).to eql 'BIG_ENDIAN'
         expect(hash["array_size"]).to eql 16
-        expect(hash["overflow"]).to eql :ERROR
+        expect(hash["overflow"]).to eql 'ERROR'
+        expect(hash["hidden"]).to eql false
+        expect(hash["overlap"]).to eql false
       end
     end
   end

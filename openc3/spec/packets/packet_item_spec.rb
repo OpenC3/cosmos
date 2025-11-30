@@ -433,6 +433,7 @@ module OpenC3
         @pi.format_string = "%5.1f"
         @pi.id_value = 10
         @pi.array_size = 64
+        @pi.original_array_size = 64
         @pi.states = { "TRUE" => 1, "FALSE" => 0 }
         @pi.read_conversion = GenericConversion.new("value / 2")
         @pi.write_conversion = GenericConversion.new("value * 2")
