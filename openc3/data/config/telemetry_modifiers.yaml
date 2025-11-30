@@ -108,7 +108,7 @@ STRUCTURE:
         the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
         this is a derived parameter and the Data Type must be set to 'DERIVED'.
       values: \d+
-    - name: Commmand or telemetry
+    - name: Command or telemetry
       required: true
       description: Whether the structure packet is a command or telemetry packet
       values: <%= %w(CMD COMMAND TLM TELEMETRY) %>
@@ -136,7 +136,7 @@ APPEND_STRUCTURE:
         the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
         this is a derived parameter and the Data Type must be set to 'DERIVED'.
       values: \d+
-    - name: Commmand or telemetry
+    - name: Command or telemetry
       required: true
       description: Whether the structure packet is a command or telemetry packet
       values: <%= %w(CMD COMMAND TLM TELEMETRY) %>

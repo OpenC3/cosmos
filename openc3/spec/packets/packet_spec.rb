@@ -1956,7 +1956,7 @@ module OpenC3
     describe "subpacket attribute" do
       it "initializes to false" do
         p = Packet.new("tgt", "pkt")
-        expect(p.subpacket).to be_nil
+        expect(p.subpacket).to eql false
       end
 
       it "can be set to true" do

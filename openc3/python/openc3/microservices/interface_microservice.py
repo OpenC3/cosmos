@@ -246,7 +246,7 @@ class InterfaceCmdHandlerThread:
                             f"{self.interface.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
                         )
                 except Exception as e:
-                    self.logger.error(f"{self.interface.name}: target_control: {"".join(traceback.format_exception(e))}")
+                    self.logger.error(f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}")
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"interface_details"):
@@ -533,7 +533,7 @@ class RouterTlmHandlerThread:
                             )
                         result = "SUCCESS"
                     except Exception as e:
-                        self.logger.error(f"{self.router.name}: target_control: {"".join(traceback.format_exception(e))}")
+                        self.logger.error(f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}")
                         result = str(e)
                 elif msg_hash.get(b"router_details"):
                     result = json.dumps(self.router.details(), cls=JsonEncoder)
@@ -834,7 +834,7 @@ class InterfaceMicroservice(Microservice):
         if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
             pass  # Do not write an exception file for these extremely common cases
         else:
-            self.logger.error(f"{self.interface.name}: {"".join(traceback.format_exception(connect_error))}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
             if str(connect_error) not in self.connection_failed_messages:
                 # OpenC3.write_exception_file(connect_error)
                 self.connection_failed_messages.append(str(connect_error))
@@ -851,7 +851,7 @@ class InterfaceMicroservice(Microservice):
             #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
             #     # Do not write an exception file for these extremely common cases
             #   else _:
-            self.logger.error(f"{self.interface.name}: {"".join(traceback.format_exception(error))}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
             if str(error) not in self.connection_lost_messages:
                 # OpenC3.write_exception_file(err)
                 self.connection_lost_messages.append(str(error))
