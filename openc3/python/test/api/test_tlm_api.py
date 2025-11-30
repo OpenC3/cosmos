@@ -46,7 +46,7 @@ class TestTlmApi(unittest.TestCase):
             if self.process:
                 try:
                     result = orig_xread(*args)
-                except RuntimeError:
+                except Exception:
                     pass
 
             # # Create a slight delay to simulate the blocking call

@@ -102,7 +102,7 @@ class StreamLog(LogWriter):
                 self.prepare_write(time_nsec_since_epoch, len(data))
                 if self.file:
                     self.write_entry(time_nsec_since_epoch, data)
-        except RuntimeError:
+        except Exception:
             Logger.error(f"Error writing {self.filename} : {traceback.format_exc()}")
             # OpenC3.handle_critical_exception(err)
 

@@ -226,7 +226,7 @@ module OpenC3
     # (see PacketConfig#start_item)
     def start_item(parser)
       finish_item
-      @current_item = TableItemParser.parse(parser, @current_packet, @warnings)
+      @current_item = TableItemParser.parse(parser, self, @current_packet, @warnings)
     end
 
     # If the table is ROW_COLUMN all currently defined items are

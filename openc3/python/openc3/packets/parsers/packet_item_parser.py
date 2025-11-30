@@ -19,7 +19,6 @@ from openc3.config.config_parser import ConfigParser
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import hex_to_byte_string, convert_to_value
 
-
 class PacketItemParser:
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
@@ -35,15 +34,16 @@ class PacketItemParser:
     # self.param cmd_or_tlm [String] Whether this is a command or telemetry packet
     # self.param warnings [Array<String>] Array of warning strings from PacketConfig
     @classmethod
-    def parse(cls, parser, packet, cmd_or_tlm, warnings):
-        parser = PacketItemParser(parser, warnings)
+    def parse(cls, parser, packet_config, packet, cmd_or_tlm, warnings):
+        parser = PacketItemParser(parser, packet_config, warnings)
         parser.verify_parameters(cmd_or_tlm)
         return parser.create_packet_item(packet, cmd_or_tlm)
 
     # self.param parser [ConfigParser] Configuration parser
     # self.param warnings [Array<String>] Array of warning strings from PacketConfig
-    def __init__(self, parser, warnings):
+    def __init__(self, parser, packet_config, warnings):
         self.parser = parser
+        self.packet_config = packet_config
         self.warnings = warnings
         self.usage = self._get_usage()
 
@@ -56,8 +56,11 @@ class PacketItemParser:
         # The usage is formatted with brackets <XXX> around each option so
         # count the number of open brackets to determine the number of options
         max_options = self.usage.count("<")
-        # The last two options (description and endianness) are optional
-        self.parser.verify_num_parameters(max_options - 2, max_options, self.usage)
+        if "STRUCTURE" in self.parser.keyword:
+            self.parser.verify_num_parameters(max_options, max_options, self.usage)
+        else:
+            # The last two options (description and endianness) are optional
+            self.parser.verify_num_parameters(max_options - 2, max_options, self.usage)
         self.parser.verify_parameter_naming(1)  # Item name is the 1st parameter
 
     def create_packet_item(self, packet, cmd_or_tlm):
@@ -67,25 +70,39 @@ class PacketItemParser:
                 msg = f"{packet.target_name} {packet.packet_name} {item_name} redefined."
                 Logger.warn(msg)
                 self.warnings.append(msg)
-            item = PacketItem(
-                item_name,
-                self._get_bit_offset(),
-                self._get_bit_size(),
-                self._get_data_type(),
-                self._get_endianness(packet),
-                self._get_array_size(),
-                "ERROR",
-            )  # overflow
-            if cmd_or_tlm == PacketItemParser.COMMAND:
-                item.minimum = self._get_minimum()
-                item.maximum = self._get_maximum()
-                item.default = self._get_default()
-            item.id_value = self._get_id_value(item)
-            item.description = self._get_description()
+            if "STRUCTURE" in self.parser.keyword:
+                item = PacketItem(
+                    item_name,
+                    self._get_bit_offset(),
+                    self._get_bit_size(True),
+                    'BLOCK',
+                    'BIG_ENDIAN',
+                    None,
+                    "ERROR", # overflow
+                )
+            else:
+                item = PacketItem(
+                    item_name,
+                    self._get_bit_offset(),
+                    self._get_bit_size(),
+                    self._get_data_type(),
+                    self._get_endianness(packet),
+                    self._get_array_size(),
+                    "ERROR", # overflow
+                )
+                if cmd_or_tlm == PacketItemParser.COMMAND:
+                    item.minimum = self._get_minimum()
+                    item.maximum = self._get_maximum()
+                    item.default = self._get_default()
+                item.id_value = self._get_id_value(item)
+                item.description = self._get_description()
             if self._append():
                 item = packet.append(item)
             else:
                 item = packet.define(item)
+            if "STRUCTURE" in self.parser.keyword:
+                structure = self._lookup_packet(self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name())
+                packet.structurize_item(item, structure)
             return item
         except Exception as error:
             raise self.parser.error(error, self.usage)
@@ -109,10 +126,16 @@ class PacketItemParser:
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 
-    def _get_bit_size(self):
+    def _get_bit_size(self, check_structure=False):
         index = 1 if self._append() else 2
         try:
-            return int(self.parser.parameters[index], 0)
+            bit_size = self.parser.parameters[index]
+            if not check_structure or str(bit_size).upper() != 'DEFINED':
+                return int(bit_size, 0)
+            else:
+                structure = self._lookup_packet(self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name())
+                return structure.defined_length_bits
+
         except ValueError as error:
             raise self.parser.error(error, self.usage)
 
@@ -185,6 +208,27 @@ class PacketItemParser:
             self._get_bit_size(),
         )
 
+    def _get_cmd_or_tlm(self):
+        index = 2 if self._append() else 3
+        cmd_or_tlm = str(self.parser.parameters[index])
+        if cmd_or_tlm not in ["CMD", "TLM", "COMMAND", "TELEMETRY"]:
+            raise TypeError(f"Unknown type: {cmd_or_tlm}")
+        return cmd_or_tlm
+
+    def _get_target_name(self):
+        index = 3 if self._append() else 4
+        return str(self.parser.parameters[index]).upper()
+
+    def _get_packet_name(self):
+        index = 4 if self._append() else 5
+        return str(self.parser.parameters[index]).upper()
+
+    def _lookup_packet(self, cmd_or_tlm, target_name, packet_name):
+        if cmd_or_tlm == 'CMD' or cmd_or_tlm == 'COMMAND':
+            return self.packet_config.commands[target_name][packet_name]
+        else:
+            return self.packet_config.telemetry[target_name][packet_name]
+
     def _convert_string_value(self, index):
         # If the default value is 0x<data> (no quotes), it is treated as
         # binary data. Otherwise, the default value is considered to be a string.
@@ -249,11 +293,14 @@ class PacketItemParser:
         if "APPEND" not in keyword:
             usage += "<BIT OFFSET> "
         usage += self._bit_size_usage()
-        usage += self._type_usage()
-        if "ARRAY" in keyword:
-            usage += "<TOTAL ARRAY BIT SIZE> "
-        usage += self._id_usage()
-        usage += "<DESCRIPTION (Optional)> <ENDIANNESS (Optional)>"
+        if "STRUCTURE" not in self.parser.keyword:
+            usage += self._type_usage()
+            if "ARRAY" in keyword:
+                usage += "<TOTAL ARRAY BIT SIZE> "
+            usage += self._id_usage()
+            usage += "<DESCRIPTION (Optional)> <ENDIANNESS (Optional)>"
+        else:
+            usage += "<CMD or TLM> <Target Name> <Packet Name>"
         return usage
 
     def _bit_size_usage(self):

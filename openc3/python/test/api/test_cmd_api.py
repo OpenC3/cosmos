@@ -57,7 +57,7 @@ class TestCmdApi(unittest.TestCase):
             if self.process:
                 try:
                     result = orig_xread(*args)
-                except RuntimeError:
+                except Exception:
                     pass
 
             # Create a slight delay to simulate the blocking call
@@ -248,7 +248,7 @@ class TestCmdApi(unittest.TestCase):
                     func("INST COLLECT with TYPE 0, DURATION 1000")
                 else:
                     func("INST COLLECT with TYPE NORMAL, DURATION 1000")
-            except RuntimeError:
+            except Exception:
                 self.fail(f"{name} raised RuntimeError unexpectedly!")
 
     def test_cmd_warns_about_hazardous_parameters(self):

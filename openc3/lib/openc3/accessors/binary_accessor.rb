@@ -137,8 +137,16 @@ module OpenC3
 
     def read_item(item, buffer)
       return nil if item.data_type == :DERIVED
-      handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
-      self.class.read_item(item, buffer)
+      if item.parent_item
+        handle_read_variable_bit_size(item.parent_item, buffer) if item.parent_item.variable_bit_size
+        # Structure is used to read items with parent, not accessor
+        structure_buffer = read_item(item.parent_item, buffer)
+        structure = item.parent_item.structure
+        structure.read(item.key, :RAW, structure_buffer)
+      else
+        handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
+        self.class.read_item(item, buffer)
+      end
     end
 
     def handle_write_variable_bit_size(item, value, buffer)
@@ -270,8 +278,17 @@ module OpenC3
 
     def write_item(item, value, buffer)
       return nil if item.data_type == :DERIVED
-      handle_write_variable_bit_size(item, value, buffer) if item.variable_bit_size
-      self.class.write_item(item, value, buffer)
+      if item.parent_item
+        # Structure is used to write items with parent, not accessor
+        structure_buffer = read_item(item.parent_item, buffer)
+        structure = item.parent_item.structure
+        structure.write(item.key, value, :RAW, structure_buffer)
+        handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer) if item.parent_item.variable_bit_size
+        self.class.write_item(item.parent_item, structure_buffer, buffer)
+      else
+        handle_write_variable_bit_size(item, value, buffer) if item.variable_bit_size
+        self.class.write_item(item, value, buffer)
+      end
     end
 
     # Note: do not use directly - use instance read_item

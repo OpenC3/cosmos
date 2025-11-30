@@ -248,31 +248,33 @@ module OpenC3
 
       # Recalculate the overall defined length of the structure
       update_needed = false
-      if item.bit_offset >= 0
-        if item.bit_size > 0
-          if item.array_size
-            if item.array_size >= 0
-              item_defined_length_bits = item.bit_offset + item.array_size
+      if not item.parent_item
+        if item.bit_offset >= 0
+          if item.bit_size > 0
+            if item.array_size
+              if item.array_size >= 0
+                item_defined_length_bits = item.bit_offset + item.array_size
+              else
+                item_defined_length_bits = item.bit_offset
+              end
             else
-              item_defined_length_bits = item.bit_offset
+              item_defined_length_bits = item.bit_offset + item.bit_size
+            end
+            if item_defined_length_bits > @pos_bit_size
+              @pos_bit_size = item_defined_length_bits
+              update_needed = true
             end
           else
-            item_defined_length_bits = item.bit_offset + item.bit_size
-          end
-          if item_defined_length_bits > @pos_bit_size
-            @pos_bit_size = item_defined_length_bits
-            update_needed = true
+            if item.bit_offset > @pos_bit_size
+              @pos_bit_size = item.bit_offset
+              update_needed = true
+            end
           end
         else
-          if item.bit_offset > @pos_bit_size
-            @pos_bit_size = item.bit_offset
+          if item.bit_offset.abs > @neg_bit_size
+            @neg_bit_size = item.bit_offset.abs
             update_needed = true
           end
-        end
-      else
-        if item.bit_offset.abs > @neg_bit_size
-          @neg_bit_size = item.bit_offset.abs
-          update_needed = true
         end
       end
       if update_needed
@@ -349,7 +351,7 @@ module OpenC3
           elsif item.variable_bit_size['length_value_bit_offset'] > 0
             minimum_data_bits = item.variable_bit_size['length_value_bit_offset'] * item.variable_bit_size['length_bits_per_count']
           end
-          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset
+          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset and not item.parent_item
             @defined_length_bits += minimum_data_bits
           end
         end
@@ -436,7 +438,11 @@ module OpenC3
     def read_all(value_type = :RAW, buffer = @buffer, top = true)
       item_array = []
       synchronize_allow_reads(top) do
-        @sorted_items.each { |item| item_array << [item.name, read_item(item, value_type, buffer)] }
+        @sorted_items.each do |item|
+          unless item.hidden
+            item_array << [item.name, read_item(item, value_type, buffer)]
+          end
+        end
       end
       return item_array
     end
@@ -454,7 +460,7 @@ module OpenC3
       string = ''
       synchronize_allow_reads(true) do
         @sorted_items.each do |item|
-          next if ignored && ignored.include?(item.name)
+          next if item.hidden || (ignored && ignored.include?(item.name))
 
           if (item.data_type != :BLOCK) ||
              (item.data_type == :BLOCK and value_type != :RAW and
@@ -631,6 +637,8 @@ module OpenC3
     def recalculate_bit_offsets
       adjustment = 0
       @sorted_items.each do |item|
+        # Parented items rely on the parent
+        next if item.parent_item
         # Anything with a negative bit offset should be left alone
         if item.original_bit_offset >= 0
           item.bit_offset = item.original_bit_offset + adjustment

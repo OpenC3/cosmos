@@ -275,7 +275,7 @@ get_all_commands = get_all_cmds
 def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE, manual=False):
     try:
         packets = get_all_cmds(target_name, scope=scope, manual=manual)
-    except RuntimeError:
+    except Exception:
         packets = []
     names = []
     for packet in packets:

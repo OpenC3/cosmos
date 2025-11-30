@@ -1,4 +1,4 @@
-# Changle language and edit plugin.txt to test either language
+# Change language and edit plugin.txt to test either language
 LANGUAGE ruby
 
 IGNORE_PARAMETER ID_ITEM

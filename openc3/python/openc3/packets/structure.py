@@ -213,28 +213,29 @@ class Structure:
 
         # Recalculate the overall defined length of the structure
         update_needed = False
-        if item.bit_offset >= 0:
-            if item.bit_size > 0:
-                if item.array_size is not None:
-                    if item.array_size >= 0:
-                        item_defined_length_bits = item.bit_offset + item.array_size
+        if item.parent_item is None:
+            if item.bit_offset >= 0:
+                if item.bit_size > 0:
+                    if item.array_size is not None:
+                        if item.array_size >= 0:
+                            item_defined_length_bits = item.bit_offset + item.array_size
+                        else:
+                            item_defined_length_bits = item.bit_offset
                     else:
-                        item_defined_length_bits = item.bit_offset
-                else:
-                    item_defined_length_bits = item.bit_offset + item.bit_size
+                        item_defined_length_bits = item.bit_offset + item.bit_size
 
-                if item_defined_length_bits > self.pos_bit_size:
-                    self.pos_bit_size = item_defined_length_bits
+                    if item_defined_length_bits > self.pos_bit_size:
+                        self.pos_bit_size = item_defined_length_bits
+                        update_needed = True
+
+                elif item.bit_offset > self.pos_bit_size:
+                    self.pos_bit_size = item.bit_offset
                     update_needed = True
 
-            elif item.bit_offset > self.pos_bit_size:
-                self.pos_bit_size = item.bit_offset
-                update_needed = True
-
-        else:
-            if abs(item.bit_offset) > self.neg_bit_size:
-                self.neg_bit_size = abs(item.bit_offset)
-                update_needed = True
+            else:
+                if abs(item.bit_offset) > self.neg_bit_size:
+                    self.neg_bit_size = abs(item.bit_offset)
+                    update_needed = True
 
         if update_needed:
             self.defined_length_bits = self.pos_bit_size + self.neg_bit_size
@@ -326,7 +327,7 @@ class Structure:
                         item.variable_bit_size["length_value_bit_offset"]
                         * item.variable_bit_size["length_bits_per_count"]
                     )
-                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset:
+                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset and item.parent_item is None:
                     self.defined_length_bits += minimum_data_bits
         else:
             raise ValueError(f"Unknown item: {item.name} - Ensure item name is uppercase")
@@ -417,7 +418,8 @@ class Structure:
         item_array = []
         with self.synchronize_allow_reads(top):
             for item in self.sorted_items:
-                item_array.append([item.name, self.read_item(item, value_type, buffer)])
+                if not item.hidden:
+                    item_array.append([item.name, self.read_item(item, value_type, buffer)])
         return item_array
 
     # Create a string that shows the name and value of each item in the structure
@@ -435,7 +437,7 @@ class Structure:
         string = ""
         with self.synchronize_allow_reads(True):
             for item in self.sorted_items:
-                if ignored and item.name in ignored:
+                if item.hidden or (ignored and item.name in ignored):
                     continue
 
                 if (item.data_type != "BLOCK") or (
@@ -569,6 +571,9 @@ class Structure:
     def recalculate_bit_offsets(self):
         adjustment = 0
         for item in self.sorted_items:
+            # Parented items rely on the parent
+            if item.parent_item is not None:
+                continue
             # Anything with a negative bit offset should be left alone
             if item.original_bit_offset >= 0:
                 item.bit_offset = item.original_bit_offset + adjustment

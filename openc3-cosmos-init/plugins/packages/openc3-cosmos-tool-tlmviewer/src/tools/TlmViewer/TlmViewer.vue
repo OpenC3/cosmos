@@ -542,7 +542,9 @@ export default {
         text += '\nVERTICAL\n'
         await this.api.get_tlm(targetName, packetName).then((packet) => {
           packet.items.forEach((item) => {
-            text += `  LABELVALUE ${targetName} ${packetName} ${item.name}\n`
+            if (!item.hidden) {
+              text += `  LABELVALUE ${targetName} ${packetName} ${item.name}\n`
+            }
           })
           text += 'END\n'
         })

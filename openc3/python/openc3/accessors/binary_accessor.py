@@ -127,9 +127,17 @@ class BinaryAccessor(Accessor):
     def read_item(self, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        if item.variable_bit_size:
-            self.handle_read_variable_bit_size(item, buffer)
-        return BinaryAccessor.class_read_item(item, buffer)
+        if item.parent_item is not None:
+            if item.parent_item.variable_bit_size:
+                self.handle_read_variable_bit_size(item.parent_item, buffer)
+            # Structure is used to read items with parent, not accessor
+            structure_buffer = self.read_item(item.parent_item, buffer)
+            structure = item.parent_item.structure
+            return structure.read(item.key, 'RAW', structure_buffer)
+        else:
+            if item.variable_bit_size:
+                self.handle_read_variable_bit_size(item, buffer)
+            return BinaryAccessor.class_read_item(item, buffer)
 
     # Note: do not use directly - use instance read_item
     @classmethod
@@ -279,9 +287,18 @@ class BinaryAccessor(Accessor):
     def write_item(self, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        if item.variable_bit_size:
-            self.handle_write_variable_bit_size(item, value, buffer)
-        BinaryAccessor.class_write_item(item, value, buffer)
+        if item.parent_item is not None:
+            # Structure is used to write items with parent, not accessor
+            structure_buffer = self.read_item(item.parent_item, buffer)
+            structure = item.parent_item.structure
+            structure.write(item.key, value, 'RAW', structure_buffer)
+            if item.parent_item.variable_bit_size:
+                self.handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer)
+            BinaryAccessor.class_write_item(item.parent_item, structure_buffer, buffer)
+        else:
+            if item.variable_bit_size:
+                self.handle_write_variable_bit_size(item, value, buffer)
+            BinaryAccessor.class_write_item(item, value, buffer)
 
     # Note: do not use directly - use instance write_item
     @classmethod

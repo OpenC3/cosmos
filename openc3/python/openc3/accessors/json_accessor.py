@@ -52,7 +52,7 @@ class JsonAccessor(Accessor):
 
         if isinstance(buffer, bytearray):
             # buffer[0:] syntax so we copy into the buffer
-            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
+            buffer[0:] = bytearray(json.dumps(decoded, separators=(',', ':')), encoding="utf-8")
 
     @classmethod
     def class_read_items(cls, items, buffer):
@@ -70,7 +70,7 @@ class JsonAccessor(Accessor):
         super().class_write_items(items, values, decoded)
         if isinstance(buffer, bytearray):
             # buffer[0:] syntax so we copy into the buffer
-            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
+            buffer[0:] = bytearray(json.dumps(decoded, separators=(',', ':')), encoding="utf-8")
 
     def enforce_encoding(self):
         return None

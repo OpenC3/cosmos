@@ -249,7 +249,7 @@ class TcpipServerInterface(StreamInterface):
         self.write_queue.put(packet.clone())
         try:
             self.write_condition_variable.notify_all()
-        except RuntimeError as error:
+        except Exception as error:
             if "cannot notify on un-acquired lock" in traceback.format_exc():
                 pass
             else:
@@ -266,7 +266,7 @@ class TcpipServerInterface(StreamInterface):
         self.write_raw_queue.put(data)
         try:
             self.write_raw_condition_variable.notify_all()
-        except RuntimeError as error:
+        except Exception as error:
             if "cannot notify on un-acquired lock" in traceback.format_exc():
                 return data
             else:

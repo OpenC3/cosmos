@@ -264,7 +264,11 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     t = _validate_tlm_type(type)
     if t is None:
         raise TypeError(f"Unknown type '{type}' for {target_name} {packet_name}")
-    cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in packet["items"]]
+    cvt_items = []
+    for item in packet["items"]:
+        if not item.get("hidden", False):
+            cvt_items.append(item)
+    cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in cvt_items]
     # This returns an array of arrays containing the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)
@@ -340,7 +344,7 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
                 result_item += '__LIMITS'
 
             results.append(result_item)
-        except RuntimeError:
+        except Exception:
             results.append(None)
 
     return results
@@ -407,7 +411,7 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
     """
     try:
         packets = get_all_tlm(target_name, scope=scope)
-    except RuntimeError:
+    except Exception:
         packets = []
     names = []
     for packet in packets:
@@ -430,7 +434,7 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
     authorize(permission="tlm", target_name=target_name, scope=scope)
     try:
         items = TargetModel.all_item_names(target_name, scope=scope)
-    except RuntimeError:
+    except Exception:
         items = []
     return items
 

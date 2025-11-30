@@ -239,7 +239,7 @@ class DecomMicroservice(Microservice):
                 try:
                     # Preidentifed subpacket - place it into the current value table
                     identified_subpacket = System.telemetry.update(subpacket.target_name, subpacket.packet_name, subpacket.buffer)
-                except RuntimeError:
+                except Exception:
                     # Subpacket identified but we don't know about it
                     # Clear packet_name and target_name and try to identify
                     self.logger.warn(

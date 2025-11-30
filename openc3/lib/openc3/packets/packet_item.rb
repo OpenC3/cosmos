@@ -323,37 +323,6 @@ module OpenC3
     end
     alias dup clone
 
-    def to_hash
-      hash = super()
-      hash['format_string'] = self.format_string
-      if self.read_conversion
-        hash['read_conversion'] = self.read_conversion.to_s
-      else
-        hash['read_conversion'] = nil
-      end
-      if self.write_conversion
-        hash['write_conversion'] = self.write_conversion.to_s
-      else
-        hash['write_conversion'] = nil
-      end
-      hash['id_value'] = self.id_value
-      hash['states'] = self.states
-      hash['description'] = self.description
-      hash['units_full'] = self.units_full
-      hash['units'] = self.units
-      hash['default'] = self.default
-      hash['range'] = self.range
-      hash['required'] = self.required
-      hash['hazardous'] = self.hazardous
-      hash['messages_disabled'] = self.messages_disabled
-      hash['state_colors'] = self.state_colors
-      hash['limits'] = self.limits.to_hash
-      hash['meta'] = nil
-      hash['meta'] = @meta if @meta
-      hash['obfuscate'] = self.obfuscate
-      hash
-    end
-
     def calculate_range
       first = range.first
       last = range.last
@@ -453,12 +422,7 @@ module OpenC3
     end
 
     def as_json(*a)
-      config = {}
-      config['name'] = self.name
-      config['bit_offset'] = self.bit_offset
-      config['bit_size'] = self.bit_size
-      config['data_type'] = self.data_type.to_s
-      config['array_size'] = self.array_size if self.array_size
+      config = super(*a)
       config['description'] = self.description
       config['id_value'] = self.id_value.as_json(*a) if self.id_value
       if @default
@@ -468,14 +432,12 @@ module OpenC3
         config['minimum'] = self.range.first.as_json(*a)
         config['maximum'] = self.range.last.as_json(*a)
       end
-      config['endianness'] = self.endianness.to_s
       config['required'] = self.required
       config['format_string'] = self.format_string if self.format_string
       if self.units
         config['units'] = self.units
         config['units_full'] = self.units_full
       end
-      config['overflow'] = self.overflow.to_s
       if @states
         states = {}
         config['states'] = states
@@ -518,72 +480,8 @@ module OpenC3
       end
 
       config['meta'] = @meta if @meta
-      config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
       config['obfuscate'] = self.obfuscate
       config
-    end
-
-    def self.from_json(hash)
-      # Convert strings to symbols
-      endianness = hash['endianness'] ? hash['endianness'].intern : nil
-      data_type = hash['data_type'] ? hash['data_type'].intern : nil
-      overflow = hash['overflow'] ? hash['overflow'].intern : nil
-      item = PacketItem.new(hash['name'], hash['bit_offset'], hash['bit_size'],
-        data_type, endianness, hash['array_size'], overflow)
-      item.description = hash['description']
-      item.id_value = hash['id_value']
-      item.default = hash['default']
-      item.range = (hash['minimum']..hash['maximum']) if hash['minimum'] && hash['maximum']
-      item.required = hash['required']
-      item.format_string = hash['format_string']
-      item.units = hash['units']
-      item.units_full = hash['units_full']
-      if hash['states']
-        item.states = {}
-        item.hazardous = {}
-        item.messages_disabled = {}
-        item.state_colors = {}
-        hash['states'].each do |state_name, state|
-          item.states[state_name] = state['value']
-          item.hazardous[state_name] = state['hazardous']
-          item.messages_disabled[state_name] = state['messages_disabled']
-          item.state_colors[state_name] = state['color'].to_sym if state['color']
-        end
-      end
-      # Recreate OpenC3 built-in conversions
-      if hash['read_conversion']
-        begin
-          item.read_conversion = OpenC3::const_get(hash['read_conversion']['class']).new(*hash['read_conversion']['params'])
-        rescue => error
-          Logger.instance.error "#{item.name} read_conversion of #{hash['read_conversion']} could not be instantiated due to #{error}"
-        end
-      end
-      if hash['write_conversion']
-        begin
-          item.write_conversion = OpenC3::const_get(hash['write_conversion']['class']).new(*hash['write_conversion']['params'])
-        rescue => error
-          Logger.instance.error "#{item.name} write_conversion of #{hash['write_conversion']} could not be instantiated due to #{error}"
-        end
-      end
-
-      item.limits = PacketItemLimits.new
-      if hash['limits']
-        # Delete the keys so the only ones left are limits sets
-        persistence_setting = hash['limits'].delete('persistence_setting')
-        item.limits.persistence_setting = persistence_setting if persistence_setting
-        hash['limits'].delete('response') # Can't round trip response
-        item.limits.enabled = true if hash['limits'].delete('enabled')
-        values = {}
-        hash['limits'].each do |set, items|
-          values[set.to_sym] = [items['red_low'], items['yellow_low'], items['yellow_high'], items['red_high']]
-          values[set.to_sym].concat([items['green_low'], items['green_high']]) if items['green_low'] && items['green_high']
-        end
-        item.limits.values = values if values.length > 0
-      end
-      item.meta = hash['meta']
-      item.obfuscate = hash['obfuscate']
-      item.variable_bit_size = hash['variable_bit_size']
-      item
     end
 
     protected

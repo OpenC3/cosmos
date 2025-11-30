@@ -64,7 +64,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
         }
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
-    except RuntimeError:
+    except Exception:
         msg_hash = {"id": msg_id, "result": "ERROR", "message": traceback.format_exc()}
     Topic.write_topic(ack_topic, msg_hash)
 
@@ -90,7 +90,7 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
             msg_hash["extra"] = json.dumps(packet.extra)
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the source to return
-    except RuntimeError:
+    except Exception:
         msg_hash = {
             "id": msg_id,
             "result": 'ERROR',

@@ -219,7 +219,7 @@ class Interface:
                 if not packet:
                     Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
                 return packet
-        except RuntimeError as error:
+        except Exception as error:
             Logger.error(f"{self.name}: Error reading from interface")
             self.disconnect()
             raise error
@@ -298,7 +298,7 @@ class Interface:
         except WriteRejectError as error:
             Logger.error(f"{self.name}: Write rejected by interface {traceback.format_exc()}")
             raise error
-        except RuntimeError as error:
+        except Exception as error:
             Logger.error(f"{self.name}: Error writing to interface")
             self.disconnect()
             raise error

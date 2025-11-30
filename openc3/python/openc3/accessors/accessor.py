@@ -23,10 +23,23 @@ class Accessor:
         self.args = []
 
     def read_item(self, item, buffer):
-        return self.__class__.class_read_item(item, buffer)
+        if item.parent_item is not None:
+            # Structure is used to read items with parent, not accessor
+            structure_buffer = self.read_item(item.parent_item, buffer)
+            structure = item.parent_item.structure
+            return structure.read(item.key, 'RAW', structure_buffer)
+        else:
+            return self.__class__.class_read_item(item, buffer)
 
     def write_item(self, item, value, buffer):
-        return self.__class__.class_write_item(item, value, buffer)
+        if item.parent_item is not None:
+            # Structure is used to write items with parent, not accessor
+            structure_buffer = self.read_item(item.parent_item, buffer)
+            structure = item.parent_item.structure
+            structure.write(item.key, value, 'RAW', structure_buffer)
+            return self.__class__.class_write_item(item.parent_item, structure_buffer, buffer)
+        else:
+            return self.__class__.class_write_item(item, value, buffer)
 
     def read_items(self, items, buffer):
         result = {}

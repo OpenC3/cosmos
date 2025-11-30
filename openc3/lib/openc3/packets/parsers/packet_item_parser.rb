@@ -33,16 +33,17 @@ module OpenC3
     # @param packet [Packet] The packet the item should be added to
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
     # @param warnings [Array<String>] Array of warning strings from PacketConfig
-    def self.parse(parser, packet, cmd_or_tlm, warnings)
-      parser = PacketItemParser.new(parser, warnings)
+    def self.parse(parser, packet_config, packet, cmd_or_tlm, warnings)
+      parser = PacketItemParser.new(parser, packet_config, warnings)
       parser.verify_parameters(cmd_or_tlm)
       parser.create_packet_item(packet, cmd_or_tlm)
     end
 
     # @param parser [ConfigParser] Configuration parser
     # @param warnings [Array<String>] Array of warning strings from PacketConfig
-    def initialize(parser, warnings)
+    def initialize(parser, packet_config, warnings)
       @parser = parser
+      @packet_config = packet_config
       @warnings = warnings
       @usage = get_usage()
     end
@@ -57,8 +58,12 @@ module OpenC3
       # The usage is formatted with brackets <XXX> around each option so
       # count the number of open brackets to determine the number of options
       max_options = @usage.count("<")
-      # The last two options (description and endianness) are optional
-      @parser.verify_num_parameters(max_options - 2, max_options, @usage)
+      if @parser.keyword.include?('STRUCTURE')
+        @parser.verify_num_parameters(max_options, max_options, @usage)
+      else
+        # The last two options (description and endianness) are optional
+        @parser.verify_num_parameters(max_options - 2, max_options, @usage)
+      end
       @parser.verify_parameter_naming(1) # Item name is the 1st parameter
     end
 
@@ -69,23 +74,37 @@ module OpenC3
         Logger.instance.warn msg
         @warnings << msg
       end
-      item = PacketItem.new(item_name,
-                            get_bit_offset(),
-                            get_bit_size(),
-                            get_data_type(),
-                            get_endianness(packet),
-                            get_array_size(),
-                            :ERROR) # overflow
-      if cmd_or_tlm == PacketConfig::COMMAND
-        item.range = get_range()
-        item.default = get_default()
+      if @parser.keyword.include?("STRUCTURE")
+        item = PacketItem.new(item_name,
+                              get_bit_offset(),
+                              get_bit_size(true),
+                              :BLOCK,
+                              :BIG_ENDIAN,
+                              nil,
+                              :ERROR) # overflow
+      else
+        item = PacketItem.new(item_name,
+                              get_bit_offset(),
+                              get_bit_size(),
+                              get_data_type(),
+                              get_endianness(packet),
+                              get_array_size(),
+                              :ERROR) # overflow
+        if cmd_or_tlm == PacketConfig::COMMAND
+          item.range = get_range()
+          item.default = get_default()
+        end
+        item.id_value = get_id_value(item)
+        item.description = get_description()
       end
-      item.id_value = get_id_value(item)
-      item.description = get_description()
       if append?
         item = packet.append(item)
       else
         item = packet.define(item)
+      end
+      if @parser.keyword.include?("STRUCTURE")
+        structure = lookup_packet(get_cmd_or_tlm(), get_target_name(), get_packet_name())
+        packet.structurize_item(item, structure)
       end
       item
     end
@@ -108,9 +127,15 @@ module OpenC3
       raise @parser.error(e, @usage)
     end
 
-    def get_bit_size
+    def get_bit_size(check_structure = false)
       index = append? ? 1 : 2
-      Integer(@parser.parameters[index])
+      bit_size = @parser.parameters[index]
+      if not check_structure or bit_size.to_s.upcase != 'DEFINED'
+        return Integer(bit_size)
+      else
+        structure = lookup_packet(get_cmd_or_tlm(), get_target_name(), get_packet_name())
+        return structure.defined_length_bits
+      end
     rescue => e
       raise @parser.error(e, @usage)
     end
@@ -163,6 +188,31 @@ module OpenC3
         @parser.parameters[index + 1].convert_to_value, get_data_type(), get_bit_size()
       )
       min..max
+    end
+
+    def get_cmd_or_tlm
+      index = append? ? 2 : 3
+      cmd_or_tlm = @parser.parameters[index].to_s.upcase.intern
+      raise ArgumentError, "Unknown type: #{cmd_or_tlm}" unless %i(CMD TLM COMMAND TELEMETRY).include?(cmd_or_tlm)
+      cmd_or_tlm
+    end
+
+    def get_target_name
+      index = append? ? 3 : 4
+      @parser.parameters[index].to_s.upcase
+    end
+
+    def get_packet_name
+      index = append? ? 4 : 5
+      @parser.parameters[index].to_s.upcase
+    end
+
+    def lookup_packet(cmd_or_tlm, target_name, packet_name)
+      if cmd_or_tlm == :CMD or cmd_or_tlm == :COMMAND
+        return @packet_config.commands[target_name][packet_name]
+      else
+        return @packet_config.telemetry[target_name][packet_name]
+      end
     end
 
     def convert_string_value(index)
@@ -229,10 +279,14 @@ module OpenC3
       usage = "#{@parser.keyword} <ITEM NAME> "
       usage << "<BIT OFFSET> " unless @parser.keyword.include?("APPEND")
       usage << bit_size_usage()
-      usage << type_usage()
-      usage << "<TOTAL ARRAY BIT SIZE> " if @parser.keyword.include?("ARRAY")
-      usage << id_usage()
-      usage << "<DESCRIPTION (Optional)> <ENDIANNESS (Optional)>"
+      if not @parser.keyword.include?("STRUCTURE")
+        usage << type_usage()
+        usage << "<TOTAL ARRAY BIT SIZE> " if @parser.keyword.include?("ARRAY")
+        usage << id_usage()
+        usage << "<DESCRIPTION (Optional)> <ENDIANNESS (Optional)>"
+      else
+        usage << "<CMD or TLM> <Target Name> <Packet Name>"
+      end
       usage
     end
 

@@ -46,7 +46,7 @@ class ObjectReadConversion(Conversion):
             # Always searches commands first
             try:
                 return System.commands.packet(self.target_name, self.packet_name)
-            except RuntimeError:
+            except Exception:
                 return System.telemetry.packet(self.target_name, self.packet_name)
 
     # Perform the conversion on the value.

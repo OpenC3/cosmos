@@ -110,7 +110,7 @@ class Telemetry:
             target_packets = None
             try:
                 target_packets = self.packets(target_name)
-            except RuntimeError:
+            except Exception:
                 # No telemetry for this target
                 continue
 
@@ -171,7 +171,7 @@ class Telemetry:
         if not packet.defined():
             try:
                 identified_packet = self.packet(packet.target_name, packet.packet_name)
-            except RuntimeError:
+            except Exception:
                 return None
             identified_packet = identified_packet.clone()
             identified_packet.buffer = packet.buffer

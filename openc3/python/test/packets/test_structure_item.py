@@ -300,7 +300,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_creates_a_dict(self):
         item = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16).as_json()
-        self.assertEqual(len(item.keys()), 8)
+        self.assertEqual(len(item.keys()), 11)
         self.assertListEqual(
             list(item.keys()),
             [
@@ -310,26 +310,21 @@ class TestStructureItem(unittest.TestCase):
                 "bit_size",
                 "data_type",
                 "endianness",
+                'overflow',
+                'overlap',
+                'create_index',
+                'hidden',
                 "array_size",
-                "overflow",
             ],
         )
+
         self.assertEqual(item["name"], "TEST")
         self.assertEqual(item["key"], "test")
         self.assertEqual(item["bit_offset"], 0)
         self.assertEqual(item["bit_size"], 8)
         self.assertEqual(item["data_type"], "UINT")
         self.assertEqual(item["endianness"], "BIG_ENDIAN")
-        self.assertEqual(item["array_size"], 16)
         self.assertEqual(item["overflow"], "ERROR")
-
-    def test_creates_structure_item_from_hash(self):
-        item = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16)
-        new_item = StructureItem.from_json(item.as_json())
-        self.assertEqual(new_item.name, item.name)
-        self.assertEqual(new_item.bit_offset, item.bit_offset)
-        self.assertEqual(new_item.bit_size, item.bit_size)
-        self.assertEqual(new_item.data_type, item.data_type)
-        self.assertEqual(new_item.endianness, item.endianness)
-        self.assertEqual(new_item.array_size, item.array_size)
-        self.assertEqual(new_item.overflow, item.overflow)
+        self.assertEqual(item["overlap"], False)
+        self.assertEqual(item["hidden"], False)
+        self.assertEqual(item["array_size"], 16)

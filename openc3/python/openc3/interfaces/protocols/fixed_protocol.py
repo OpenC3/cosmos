@@ -86,7 +86,7 @@ class FixedProtocol(BurstProtocol):
                 else:
                     target_packets = System.commands.packets(target_name)
                     unique_id_mode = System.commands.cmd_unique_id_mode(target_name)
-            except RuntimeError as error:
+            except Exception as error:
                 if "does not exist" in traceback.format_exc():
                     # No commands/telemetry for this target
                     continue

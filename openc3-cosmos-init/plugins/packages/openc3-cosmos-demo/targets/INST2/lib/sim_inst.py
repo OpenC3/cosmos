@@ -157,6 +157,11 @@ class SimInst(SimulatedTarget):
         self.set_rate("PARAMS.PKT", 100)
         self.set_rate("IMAGE", 100)
         self.set_rate("MECH", 10)
+        self.set_rate('JSONTLM', 500)
+        self.set_rate('CBORTLM', 500)
+        self.set_rate('XMLTLM', 500)
+        self.set_rate('HTMLTLM', 500)
+        self.set_rate('HYBRIDTLM', 500)
 
     def tick_period_seconds(self):
         return 0.1  # Override this method to optimize
@@ -169,6 +174,11 @@ class SimInst(SimulatedTarget):
 
         hs_packet = self.tlm_packets["HEALTH_STATUS"]
         params_packet = self.tlm_packets["PARAMS.PKT"]
+        json_packet = self.tlm_packets["JSONTLM"]
+        cbor_packet = self.tlm_packets["CBORTLM"]
+        xml_packet = self.tlm_packets["XMLTLM"]
+        html_packet = self.tlm_packets["HTMLTLM"]
+        hybrid_packet = self.tlm_packets["HYBRIDTLM"]
 
         match name:
             case "COLLECT":
@@ -220,6 +230,16 @@ class SimInst(SimulatedTarget):
             case "HIDDEN":
                 # Deliberately do not increment cmd_acpt_cnt
                 self.tlm_packets["HIDDEN"].count = packet.read("count")
+            case "JSONCMD":
+                json_packet.buffer = packet.buffer
+            case "CBORCMD":
+                cbor_packet.buffer = packet.buffer
+            case "XMLCMD":
+                xml_packet.buffer = packet.buffer
+            case "HTMLCMD":
+                html_packet.buffer = packet.buffer
+            case "HYBRIDCMD":
+                hybrid_packet.buffer = packet.buffer
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False

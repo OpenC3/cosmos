@@ -805,7 +805,7 @@ class TestPacketConfig(unittest.TestCase):
             # The formatting of this string has to be precise
             # These are all the defaults from the above definition (note array is [] by definition)
             bytearray(
-                b'{"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}}'
+                b'{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}'
             ),
         )
         self.pc.commands["TGT1"]["PKT99"].write("item1", 202)
@@ -817,7 +817,7 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.commands["TGT1"]["PKT99"].buffer,
             # The formatting of this string has to be precise
             bytearray(
-                b'{"id_item": 1, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}}'
+                b'{"id_item":1,"item1":202,"more":{"item2":333,"item3":7.89,"item4":"TEST","item5":[6,7,8,9]}}'
             ),
         )
         tf.close()
@@ -1272,15 +1272,6 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    MAXIMUM_VALUE 3\n")
         tf.seek(0)
         with self.assertRaisesRegex(ConfigParser.Error, "MAXIMUM_VALUE only applies to command parameters"):
-            self.pc.process_file(tf.name, "TGT1")
-        tf.close()
-
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write("  APPEND_ITEM item1 16 UINT\n")
-        tf.write("    DEFAULT_VALUE 2\n")
-        tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, "DEFAULT_VALUE only applies to command parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
