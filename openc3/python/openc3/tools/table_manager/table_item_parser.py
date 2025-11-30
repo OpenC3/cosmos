@@ -26,7 +26,7 @@ class TableItemParser(PacketItemParser):
     """
 
     @classmethod
-    def parse(cls, parser, table, warnings):
+    def parse(cls, parser, table_config, table, warnings):
         """
         Create a new TableItemParser and parse the packet item
 
@@ -38,7 +38,7 @@ class TableItemParser(PacketItemParser):
         Returns:
             The created TableItem
         """
-        parser = cls(parser, warnings)
+        parser = cls(parser, table_config, warnings)
         parser.verify_parameters(PacketConfig.COMMAND)
         return parser.create_table_item(table)
 

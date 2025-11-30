@@ -494,6 +494,7 @@ class TestPacketItem(unittest.TestCase):
     def test_converts_to_a_hash(self):
         self.pi.format_string = "%5.1f"
         self.pi.id_value = 10
+        self.pi.original_array_size = 64
         self.pi.array_size = 64
         self.pi.states = {"TRUE": 1, "FALSE": 0}
         self.pi.read_conversion = Conversion()
