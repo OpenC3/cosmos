@@ -1328,6 +1328,99 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM2"), "NO")
         tf.close()
 
+    def test_supports_hex_values_in_min_max_default(self):
+        """Test that MINIMUM_VALUE, MAXIMUM_VALUE, and DEFAULT_VALUE support hexadecimal notation"""
+        # Test basic hex values with lowercase 0x
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 16 UINT 0 65535 0\n")
+            tf.write("  MINIMUM_VALUE 0x10\n")
+            tf.write("  MAXIMUM_VALUE 0xff\n")
+            tf.write("  DEFAULT_VALUE 0x80\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x10)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x80)
+
+        # Test uppercase 0X notation
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 32 UINT 0 4294967295 0\n")
+            tf.write("  MINIMUM_VALUE 0X100\n")
+            tf.write("  MAXIMUM_VALUE 0XFFFF\n")
+            tf.write("  DEFAULT_VALUE 0X1000\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x100)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFFFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x1000)
+
+        # Test mixed case hex digits
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 32 UINT 0 4294967295 0\n")
+            tf.write("  MINIMUM_VALUE 0xAbC\n")
+            tf.write("  MAXIMUM_VALUE 0xDeAdBeEf\n")
+            tf.write("  DEFAULT_VALUE 0xCaFeBaBe\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0xABC)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xDEADBEEF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0xCAFEBABE)
+
+        # Test hex with SELECT_PARAMETER
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 8 UINT 0 255 0\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        # Override with hex values
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("SELECT_COMMAND tgt1 pkt1\n")
+            tf.write("SELECT_PARAMETER item1\n")
+            tf.write("  MINIMUM_VALUE 0x01\n")
+            tf.write("  MAXIMUM_VALUE 0xFE\n")
+            tf.write("  DEFAULT_VALUE 0x7F\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x01)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFE)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x7F)
+
+        # Test single digit hex
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 8 UINT 0 255 0\n")
+            tf.write("  MINIMUM_VALUE 0x0\n")
+            tf.write("  MAXIMUM_VALUE 0xF\n")
+            tf.write("  DEFAULT_VALUE 0xA\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x0)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0xA)
+
+        # Test hex values with INT type (signed)
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 16 INT -32768 32767 0\n")
+            tf.write("  MINIMUM_VALUE 0x10\n")
+            tf.write("  MAXIMUM_VALUE 0x7FFF\n")
+            tf.write("  DEFAULT_VALUE 0x100\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x10)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0x7FFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x100)
+
     def test_allows_appending_derived_items(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
