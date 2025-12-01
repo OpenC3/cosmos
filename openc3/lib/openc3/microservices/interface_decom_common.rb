@@ -76,5 +76,37 @@ module OpenC3
       end
       Topic.write_topic(ack_topic, msg_hash)
     end
+
+    def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id)
+      get_tlm_buffer_hash = JSON.parse(get_tlm_buffer_json, allow_nan: true, create_additions: true)
+      target_name = get_tlm_buffer_hash['target_name']
+      packet_name = get_tlm_buffer_hash['packet_name']
+      ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
+      begin
+        packet = System.telemetry.packet(target_name, packet_name)
+        msg_hash = {
+          id: msg_id,
+          result: 'SUCCESS',
+          time: packet.packet_time.to_nsec_from_epoch,
+          received_time: packet.received_time.to_nsec_from_epoch,
+          target_name: packet.target_name,
+          packet_name: packet.packet_name,
+          received_count: packet.received_count,
+          stored: packet.stored.to_s,
+          buffer: packet.buffer(false)
+        }
+        msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
+
+      # If there is an error due to parameter out of range, etc, we rescue it so we can
+      # write the ACKCMD}TARGET topic and allow the source to return
+      rescue => error
+        msg_hash = {
+          id: msg_id,
+          result: 'ERROR',
+          message: error.message
+        }
+      end
+      Topic.write_topic(ack_topic, msg_hash)
+    end
   end
 end

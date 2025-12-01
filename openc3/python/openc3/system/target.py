@@ -41,8 +41,6 @@ class Target:
         self.routers = []
         self.cmd_cnt = 0
         self.tlm_cnt = 0
-        self.cmd_unique_id_mode = False
-        self.tlm_unique_id_mode = False
         self.dir: Optional[str] = None
         self.id: Optional[str] = None
         self.filename: Optional[str] = None
@@ -91,15 +89,9 @@ class Target:
                         raise parser.error(f"{filename} not found")
                     self.cmd_tlm_files.append(filename)
 
-                case "CMD_UNIQUE_ID_MODE":
-                    usage = keyword
-                    parser.verify_num_parameters(0, 0, usage)
-                    self.cmd_unique_id_mode = True
-
-                case "TLM_UNIQUE_ID_MODE":
-                    usage = keyword
-                    parser.verify_num_parameters(0, 0, usage)
-                    self.tlm_unique_id_mode = True
+                case "CMD_UNIQUE_ID_MODE" | "TLM_UNIQUE_ID_MODE":
+                    # Deprecated - Now autodetected
+                    pass
 
                 case _:
                     # blank lines will have a None keyword and should not raise an exception
@@ -114,10 +106,6 @@ class Target:
             "cmd_tlm_files": self.cmd_tlm_files,
             "id": self.id,
         }
-        if self.cmd_unique_id_mode:
-            config["cmd_unique_id_mode"] = True
-        if self.tlm_unique_id_mode:
-            config["tlm_unique_id_mode"] = True
         return config
 
     def get_target_dir(self, path: os.PathLike[str], gem_path: Optional[str]):

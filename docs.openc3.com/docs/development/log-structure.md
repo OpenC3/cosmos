@@ -5,16 +5,13 @@ sidebar_custom_props:
   myEmoji: 🪵
 ---
 
-Updated: 8-21-2023 to the format as of OpenC3 COSMOS 5.11.0
-
 ## Packet Log File Format
 
-Packet logs in OpenC3 COSMOS 5 are used to store raw binary packets as received from various targets, as
-well as decommutated packets stored as JSON structures.
+Packet logs in OpenC3 COSMOS 5 & 6 are used to store raw binary packets as received from various targets, as well as decommutated packets stored as JSON structures.
 
 ### File Header
 
-COSMOS 5 Packet log files start with the 8-character sequence "COSMOS5\_". This can be used to identify the type of file independent of filename and differentiate them from newer and older versions.
+COSMOS packet log files start with the 8-character sequence "COSMOS5\_". This can be used to identify the type of file independent of filename and differentiate them from newer and older versions.
 
 ### Entry Types
 

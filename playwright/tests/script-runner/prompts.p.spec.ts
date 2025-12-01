@@ -40,7 +40,7 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command')
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: Send',
   )
@@ -62,9 +62,12 @@ cmd_no_checks("INST CLEAR")`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 })
 
 test('errors for out of range command parameters', async ({ page, utils }) => {
@@ -76,7 +79,7 @@ test('errors for out of range command parameters', async ({ page, utils }) => {
     timeout: 20000,
   })
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '11 not in valid range',
   )
@@ -96,9 +99,12 @@ cmd_no_checks("INST COLLECT with DURATION 11, TYPE 'NORMAL'")`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 })
 
 test('ask accepts default, password, and required', async ({ page, utils }) => {
@@ -160,7 +166,7 @@ puts value`)
   )
   // Once we restart we should see it since we print it
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'abc123!',
   )
@@ -192,7 +198,7 @@ puts "string:#{value} #{value.class}"`)
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'string:5.5 String',
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 test('opens a dialog with buttons for message_box, vertical_message_box', async ({
@@ -220,7 +226,7 @@ puts value`)
   await page.locator('[data-test=go-button]').click()
   await page.locator('.v-dialog >> button:has-text("TWO")').click()
   await page.locator('.v-dialog >> button:has-text("FOUR")').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText('TWO')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'FOUR',
@@ -253,7 +259,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   )
   await page.locator('div[role="listbox"] >> text=def456').click()
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: def456',
   )
@@ -280,7 +286,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Continue?')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText('Ok')
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 test('opens a file dialog', async ({ page, utils }) => {
@@ -314,7 +320,7 @@ file.delete`)
   ])
   await fileChooser.setFiles('package.json')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'File(s): ["package.json"]',
   )

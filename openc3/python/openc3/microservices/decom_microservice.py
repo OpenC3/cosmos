@@ -29,10 +29,13 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
 from openc3.utilities.thread_manager import ThreadManager
+from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
+    handle_get_tlm_buffer
 )
+from openc3.models.target_model import TargetModel
 from openc3.top_level import kill_thread
 from datetime import datetime, timezone
 
@@ -141,6 +144,9 @@ class DecomMicroservice(Microservice):
                         if msg_hash.get(b"build_cmd"):
                             handle_build_cmd(msg_hash[b"build_cmd"], msg_id, self.scope)
                             continue
+                        if msg_hash.get(b"get_tlm_buffer"):
+                            handle_get_tlm_buffer(msg_hash[b"get_tlm_buffer"], msg_id, self.scope)
+                            continue
                     else:
                         self.decom_packet(topic, msg_id, msg_hash, redis)
                         self.metric.set(name="decom_total", value=self.count, type="counter")
@@ -168,9 +174,12 @@ class DecomMicroservice(Microservice):
         )
 
         start = time.time()
+
+        #######################################
+        # Build packet object from topic data
+        #######################################
         target_name = msg_hash[b"target_name"].decode()
         packet_name = msg_hash[b"packet_name"].decode()
-
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
         # Note: Packet time will be recalculated as part of decom so not setting
@@ -180,24 +189,93 @@ class DecomMicroservice(Microservice):
         if extra is not None:
             packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
-        # Processors are user code points which must be rescued
-        # so the TelemetryDecomTopic can write the packet
-        try:
-            packet.process()  # Run processors
-        except Exception as error:
-            self.error_count += 1
-            self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
-            self.error = error
-            self.logger.error(f"Processor error:\n{traceback.format_exc()}")
-        # Process all the limits and call the limits_change_callback (as necessary)
-        # check_limits also can call user code in the limits response
-        # but that is rescued separately in the limits_change_callback
-        packet.check_limits(System.limits_set())
 
-        # This is what updates the CVT
-        TelemetryDecomTopic.write_packet(packet, scope=self.scope)
+        ################################################################################
+        # Break packet into subpackets (if necessary)
+        # Subpackets are typically channelized data
+        ################################################################################
+        packet_and_subpackets = packet.subpacketize()
+
+        for packet_or_subpacket in packet_and_subpackets:
+            if packet_or_subpacket.subpacket:
+                packet_or_subpacket = self.handle_subpacket(packet, packet_or_subpacket)
+
+            #####################################################################################
+            # Run Processors
+            # This must be before the full decom so that processor derived values are available
+            #####################################################################################
+            try:
+                packet_or_subpacket.process()  # Run processors
+            except Exception as error:
+                self.error_count += 1
+                self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
+                self.error = error
+                self.logger.error(f"Processor error:\n{traceback.format_exc()}")
+
+            #############################################################################
+            # Process all the limits and call the limits_change_callback (as necessary)
+            # This must be before the full decom so that limits states are available
+            #############################################################################
+            packet_or_subpacket.check_limits(System.limits_set())
+
+            # This is what actually decommutates the packet and updates the CVT
+            TelemetryDecomTopic.write_packet(packet_or_subpacket, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
+
+    def handle_subpacket(self, packet, subpacket):
+        # Subpacket received time always = packet.received_time
+        # Use packet_time appropriately if another timestamp is needed
+        subpacket.received_time = packet.received_time
+        subpacket.stored = packet.stored
+        subpacket.extra = packet.extra
+
+        if subpacket.stored:
+            # Stored telemetry does not update the current value table
+            identified_subpacket = System.telemetry.identify_and_define_packet(subpacket, self.target_names, subpackets=True)
+        else:
+            # Identify and update subpacket
+            if subpacket.identified():
+                try:
+                    # Preidentifed subpacket - place it into the current value table
+                    identified_subpacket = System.telemetry.update(subpacket.target_name, subpacket.packet_name, subpacket.buffer)
+                except RuntimeError:
+                    # Subpacket identified but we don't know about it
+                    # Clear packet_name and target_name and try to identify
+                    self.logger.warn(
+                        f"{self.name}: Received unknown identified subpacket: {subpacket.target_name} {subpacket.packet_name}"
+                    )
+                    subpacket.target_name = None
+                    subpacket.packet_name = None
+                    identified_subpacket = System.telemetry.identify_and_set_buffer(
+                        subpacket.buffer, self.target_names, subpackets=True
+                    )
+            else:
+                # Subpacket needs to be identified
+                identified_subpacket = System.telemetry.identify_and_set_buffer(
+                    subpacket.buffer, self.target_names, subpackets=True
+                )
+
+        if identified_subpacket:
+            identified_subpacket.received_time = subpacket.received_time
+            identified_subpacket.stored = subpacket.stored
+            identified_subpacket.extra = subpacket.extra
+            subpacket = identified_subpacket
+        else:
+            unknown_subpacket = System.telemetry.update("UNKNOWN", "UNKNOWN", subpacket.buffer)
+            unknown_subpacket.received_time = subpacket.received_time
+            unknown_subpacket.stored = subpacket.stored
+            unknown_subpacket.extra = subpacket.extra
+            subpacket = unknown_subpacket
+            num_bytes_to_print = min(InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(subpacket.buffer))
+            data = subpacket.buffer_no_copy()[0:(num_bytes_to_print)]
+            prefix = "".join([format(x, "02x") for x in data])
+            self.logger.warn(
+                f"{self.name} {subpacket.target_name} packet length: {len(subpacket.buffer)} starting with: {prefix}"
+            )
+
+        TargetModel.sync_tlm_packet_counts(subpacket, self.target_names, scope=self.scope)
+        return subpacket
 
     # Called when an item in any packet changes limits states.
     #

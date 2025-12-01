@@ -202,7 +202,7 @@ class Logger(metaclass=LoggerMeta):
                 other=other,
             )
 
-    def build_log_data(self, log_level, message, user=None, type=None, url=None, other=None):
+    def build_log_data(self, log_level: str, message: str | None, user=None, type=None, url=None, other=None):
         now_time = datetime.now(timezone.utc)
         data = {
             "time": int(now_time.timestamp() * 1000000000),
@@ -228,21 +228,16 @@ class Logger(metaclass=LoggerMeta):
             data = data | other
         return data
 
-    def log_message(self, log_level, message, scope, user, type, url, other=None):
+    def log_message(self, log_level: str, message: str | None, scope, user, type, url, other=None):
         with self.instance_mutex:
             data = self.build_log_data(log_level, message, user, type, url, other)
             if self.stdout:
-                match log_level:
-                    case "WARN" | "ERROR" | "FATAL":
-                        if OPENC3_LOG_STDERR:
-                            print(json.dumps(data), file=sys.stderr)
-                            sys.stderr.flush()
-                        else:
-                            print(json.dumps(data), file=sys.stdout)
-                            sys.stdout.flush()
-                    case _:
-                        print(json.dumps(data), file=sys.stdout)
-                        sys.stdout.flush()
+                if (log_level in ['WARN', 'ERROR', 'FATAL']) and OPENC3_LOG_STDERR:
+                    io = sys.stderr
+                else:
+                    io = sys.stdout
+                print(json.dumps(data), file=io)
+                io.flush()
             if self.no_store is False:
                 if scope is not None:
                     EphemeralStoreQueued.write_topic(f"{scope}__openc3_log_messages", data)
