@@ -321,7 +321,7 @@ class InterfaceCmdHandlerThread:
                         cmd_type = "RESTRICTED"
                     model = CriticalCmdModel(
                         name=str(uuid.uuid1()),
-                        type=cmd_type,
+                        cmd_type=cmd_type,
                         interface_name=self.interface.name,
                         username=msg_hash[b"username"].decode(),
                         cmd_hash=msg_hash,
@@ -623,7 +623,7 @@ class InterfaceMicroservice(Microservice):
                 update_interval = float(option_values[0])
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
                 StoreQueued.instance().set_update_interval(update_interval)
-            if option_name.upper() == 'SYNC_PACKET_COUNT_DELAY_SECONDS':
+            if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
 
         if self.interface_or_router == "INTERFACE":
@@ -941,6 +941,7 @@ class InterfaceMicroservice(Microservice):
 
     def graceful_kill(self):
         pass  # Just to avoid warning
+
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     InterfaceMicroservice.class_run()
