@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -64,7 +64,7 @@
           <v-row>
             <v-btn
               type="submit"
-              @click.prevent="() => verifyPassword()"
+              @click.prevent="() => verify()"
               size="large"
               color="success"
               :disabled="!formValid"
@@ -140,7 +140,7 @@ export default {
   },
   mounted: function () {
     if (localStorage.openc3Token) {
-      this.verifyPassword(localStorage.openc3Token, true)
+      this.verify(localStorage.openc3Token, true)
     }
   },
   methods: {
@@ -159,13 +159,11 @@ export default {
         window.location = '/'
       }
     },
-    verifyPassword: function (token, noAlert) {
-      token ||= this.password
+    verify: function (token, noAlert) {
+      const tokenOrPassword = token ? { token } : { password: this.password }
       this.showAlert = false
       Api.post('/openc3-api/auth/verify', {
-        data: {
-          token,
-        },
+        data: tokenOrPassword,
         ...this.options,
       })
         .then((response) => {
@@ -185,8 +183,8 @@ export default {
       this.showAlert = false
       Api.post('/openc3-api/auth/set', {
         data: {
-          old_token: this.oldPassword,
-          token: this.password,
+          old_password: this.oldPassword,
+          password: this.password,
         },
         ...this.options,
       })

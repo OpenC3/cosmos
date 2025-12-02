@@ -16,7 +16,7 @@ This document provides the information necessary for external applications to in
 The HTTP Authorization request header contains the credentials to authenticate a user agent with a server, usually, but not necessarily, after the server has responded with a 401 Unauthorized status and the WWW-Authenticate header.
 
 ```
-Authorization: <token/password>
+Authorization: <token>
 ```
 
 ## JSON-RPC 2.0
@@ -117,5 +117,8 @@ If developing an interface for the JSON API from another language, the best way 
 You can also try sending these raw commands from the terminal with a program like `curl`:
 
 ```bash
-curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"FORMATTED","scope":"DEFAULT"}}' http://localhost:2900/openc3-api/api  -H "Authorization: password"
+curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"WITH_UNITS","scope":"DEFAULT"}}' \
+-H "Content-Type: application/json" \
+-H "Authorization: <token>" \
+http://localhost:2900/openc3-api/api
 ```

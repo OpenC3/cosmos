@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -34,11 +34,15 @@ module OpenC3
 
       it "self.set" do
         expect{ AuthModel.set('token1token1', 'token2token2', 'OPENC3__TOKEN') }.to \
-          raise_error(/old_token incorrect/)
+          raise_error(/old_password incorrect/)
       end
 
       it "self.verify" do
         expect(AuthModel.verify('tokenly')).to eq(false)
+        expect(AuthModel.verify('openc3service')).to eq(true)
+        expect(AuthModel.verify_no_service('openc3service')).to eq(false)
+        expect(AuthModel.verify_password('password')).to eq(true)
+        expect(AuthModel.verify_password('badpassword')).to eq(false)
       end
     end
   end

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@ class AuthController < ApplicationController
 
   def verify
     begin
-      if OpenC3::AuthModel.verify_no_service(params[:token])
+      if OpenC3::AuthModel.verify(params[:token]) or OpenC3::AuthModel.verify_password(params[:password]) 
         render :plain => OpenC3::AuthModel.generate_session()
       else
         head :unauthorized
@@ -47,7 +47,7 @@ class AuthController < ApplicationController
   def set
     begin
       # Set throws an exception if it fails for any reason
-      OpenC3::AuthModel.set(params[:token], params[:old_token])
+      OpenC3::AuthModel.set(params[:password], params[:old_password])
       OpenC3::Logger.info("Password changed", user: username())
       render :plain => OpenC3::AuthModel.generate_session()
     rescue StandardError => e
