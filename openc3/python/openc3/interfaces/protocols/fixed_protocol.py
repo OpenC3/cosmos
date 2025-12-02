@@ -19,6 +19,7 @@ import traceback
 from openc3.system.system import System
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
+from openc3.utilities.extract import convert_to_value
 
 
 # Delineates packets by identifying them and then
@@ -45,7 +46,7 @@ class FixedProtocol(BurstProtocol):
         allow_empty_data=None,
     ):
         super().__init__(discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data)
-        self.min_id_size = int(min_id_size)
+        self.min_id_size = int(convert_to_value(min_id_size))
         self.telemetry = telemetry
         self.unknown_raise = ConfigParser.handle_true_false(unknown_raise)
         self.received_time = None
@@ -158,14 +159,14 @@ class FixedProtocol(BurstProtocol):
 
     def write_details(self):
         result = super().write_details()
-        result['min_id_size'] = self.min_id_size
-        result['telemetry'] = self.telemetry
-        result['unknown_raise'] = self.unknown_raise
+        result["min_id_size"] = self.min_id_size
+        result["telemetry"] = self.telemetry
+        result["unknown_raise"] = self.unknown_raise
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['min_id_size'] = self.min_id_size
-        result['telemetry'] = self.telemetry
-        result['unknown_raise'] = self.unknown_raise
+        result["min_id_size"] = self.min_id_size
+        result["telemetry"] = self.telemetry
+        result["unknown_raise"] = self.unknown_raise
         return result

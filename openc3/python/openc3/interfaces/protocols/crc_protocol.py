@@ -19,6 +19,7 @@ from openc3.interfaces.protocols.protocol import Protocol
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.utilities.logger import Logger
 from openc3.utilities.crc import Crc8, Crc16, Crc32, Crc64
+from openc3.utilities.extract import convert_to_value
 
 
 # Creates a CRC on write and verifies a CRC on read
@@ -72,7 +73,7 @@ class CrcProtocol(Protocol):
                 raise ValueError("Invalid endianness '{endianness}'. Must be BIG_ENDIAN or LITTLE_ENDIAN.")
 
         try:
-            self.bit_offset = int(bit_offset)
+            self.bit_offset = int(convert_to_value(bit_offset))
         except TypeError:
             raise ValueError(f"Invalid bit offset of {bit_offset}. Must be a number.")
         if self.bit_offset % 8 != 0:
@@ -113,7 +114,7 @@ class CrcProtocol(Protocol):
                         args.append(reflect)
 
         try:
-            self.bit_size = int(bit_size)
+            self.bit_size = int(convert_to_value(bit_size))
         except TypeError:
             raise ValueError(f"Invalid bit size of {bit_size}. Must be a number.")
         endianness = "<"  # LITTLE_ENDIAN
@@ -199,17 +200,17 @@ class CrcProtocol(Protocol):
 
     def write_details(self):
         result = super().write_details()
-        result['write_item_name'] = self.write_item_name
-        result['endianness'] = self.endianness
-        result['bit_offset'] = self.bit_offset
-        result['bit_size'] = self.bit_size
+        result["write_item_name"] = self.write_item_name
+        result["endianness"] = self.endianness
+        result["bit_offset"] = self.bit_offset
+        result["bit_size"] = self.bit_size
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['strip_crc'] = self.strip_crc
-        result['bad_strategy'] = self.bad_strategy
-        result['endianness'] = self.endianness
-        result['bit_offset'] = self.bit_offset
-        result['bit_size'] = self.bit_size
+        result["strip_crc"] = self.strip_crc
+        result["bad_strategy"] = self.bad_strategy
+        result["endianness"] = self.endianness
+        result["bit_offset"] = self.bit_offset
+        result["bit_size"] = self.bit_size
         return result

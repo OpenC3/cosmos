@@ -65,10 +65,10 @@ class TestTerminatedProtocol(unittest.TestCase):
                         return b"\x01\x02"
                     case 1:
                         MultiTerminatedStream.index += 1
-                        return b"\xAB"
+                        return b"\xab"
                     case 2:
                         MultiTerminatedStream.index += 1
-                        return b"\xCD"
+                        return b"\xcd"
 
         self.interface.stream = MultiTerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", True], "READ_WRITE")
@@ -78,7 +78,7 @@ class TestTerminatedProtocol(unittest.TestCase):
     def test_strip_handles_empty_packets(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", True], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xAB\xCD\x01\x02\xAB\xCD"
+        TestTerminatedProtocol.buffer = b"\xab\xcd\x01\x02\xab\xcd"
         packet = self.interface.read()
         self.assertEqual(len(packet.buffer), 0)
         packet = self.interface.read()
@@ -87,53 +87,53 @@ class TestTerminatedProtocol(unittest.TestCase):
     def test_strip_handles_no_sync_pattern(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", True], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x00\x01\x02")
 
     def test_strip_handles_a_sync_pattern_inside_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", True, 0, "DEAD"], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xDE\xAD\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\xde\xad\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\xDE\xAD\x00\x01\x02")
+        self.assertEqual(packet.buffer, b"\xde\xad\x00\x01\x02")
 
     def test_strip_handles_a_sync_pattern_outside_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", True, 2, "DEAD"], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xDE\xAD\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\xde\xad\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x00\x01\x02")
 
     def test_keep_handles_empty_packets(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", False], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xAB\xCD\x01\x02\xAB\xCD"
+        TestTerminatedProtocol.buffer = b"\xab\xcd\x01\x02\xab\xcd"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\xAB\xCD")
+        self.assertEqual(packet.buffer, b"\xab\xcd")
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\x01\x02\xAB\xCD")
+        self.assertEqual(packet.buffer, b"\x01\x02\xab\xcd")
 
     def test_keep_handles_no_sync_pattern(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", False], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\x00\x01\x02\xAB\xCD")
+        self.assertEqual(packet.buffer, b"\x00\x01\x02\xab\xcd")
 
     def test_keep_handles_a_sync_pattern_inside_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", False, 0, "DEAD"], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xDE\xAD\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\xde\xad\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\xDE\xAD\x00\x01\x02\xAB\xCD")
+        self.assertEqual(packet.buffer, b"\xde\xad\x00\x01\x02\xab\xcd")
 
     def test_keep_handles_a_sync_pattern_outside_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["", "0xABCD", False, 2, "DEAD"], "READ_WRITE")
-        TestTerminatedProtocol.buffer = b"\xDE\xAD\x00\x01\x02\xAB\xCD\x44\x02\x03"
+        TestTerminatedProtocol.buffer = b"\xde\xad\x00\x01\x02\xab\xcd\x44\x02\x03"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\x00\x01\x02\xAB\xCD")
+        self.assertEqual(packet.buffer, b"\x00\x01\x02\xab\xcd")
 
     def test_appends_termination_characters_to_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
@@ -141,13 +141,13 @@ class TestTerminatedProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestTerminatedProtocol.buffer, b"\x00\x01\x02\x03\xCD\xEF")
+        self.assertEqual(TestTerminatedProtocol.buffer, b"\x00\x01\x02\x03\xcd\xef")
 
     def test_complains_if_the_packet_buffer_contains_the_termination_characters(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
         self.interface.add_protocol(TerminatedProtocol, ["0xCDEF", ""], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xCD\xEF\x03"
+        pkt.buffer = b"\x00\xcd\xef\x03"
         with self.assertRaisesRegex(RuntimeError, "Packet contains termination characters!"):
             self.interface.write(pkt)
 
@@ -157,7 +157,7 @@ class TestTerminatedProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestTerminatedProtocol.buffer, b"\xDE\xAD\x02\x03\xCD\xEF")
+        self.assertEqual(TestTerminatedProtocol.buffer, b"\xde\xad\x02\x03\xcd\xef")
 
     def test_handles_writing_the_sync_field_outside_the_packet(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()
@@ -165,14 +165,10 @@ class TestTerminatedProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestTerminatedProtocol.buffer, b"\xDE\xAD\x00\x01\x02\x03\xCD\xEF")
+        self.assertEqual(TestTerminatedProtocol.buffer, b"\xde\xad\x00\x01\x02\x03\xcd\xef")
 
     def test_write_details_returns_correct_information(self):
-        self.interface.add_protocol(
-            TerminatedProtocol,
-            ["0xCDEF", "0xABCD", True, 2, "DEAD", False],
-            "READ_WRITE"
-        )
+        self.interface.add_protocol(TerminatedProtocol, ["0xCDEF", "0xABCD", True, 2, "DEAD", False], "READ_WRITE")
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
 
@@ -192,11 +188,7 @@ class TestTerminatedProtocol(unittest.TestCase):
         self.assertEqual(details["write_termination_characters"], "bytearray(b'\\xcd\\xef')")
 
     def test_read_details_returns_correct_information(self):
-        self.interface.add_protocol(
-            TerminatedProtocol,
-            ["0xCDEF", "0xABCD", False, 1, "BEEF", True],
-            "READ_WRITE"
-        )
+        self.interface.add_protocol(TerminatedProtocol, ["0xCDEF", "0xABCD", False, 1, "BEEF", True], "READ_WRITE")
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
 

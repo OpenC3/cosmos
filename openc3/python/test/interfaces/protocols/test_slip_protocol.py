@@ -83,16 +83,16 @@ class TestSlipProtocol(unittest.TestCase):
             ["0xC0", "False", "True", "False", "0xC0", "0xDB", "0xDC", "0xDD"],
             "READ_WRITE",
         )
-        self.assertEqual(protocol.start_char, b"\xC0")
+        self.assertEqual(protocol.start_char, b"\xc0")
         self.assertEqual(protocol.read_strip_characters, False)
         self.assertEqual(protocol.read_enable_escaping, True)
         self.assertEqual(protocol.write_enable_escaping, False)
-        self.assertEqual(protocol.end_char, b"\xC0")
-        self.assertEqual(protocol.esc_char, b"\xDB")
-        self.assertEqual(protocol.esc_end_char, b"\xDC")
-        self.assertEqual(protocol.esc_esc_char, b"\xDD")
-        self.assertEqual(protocol.replace_end, b"\xDB\xDC")
-        self.assertEqual(protocol.replace_esc, b"\xDB\xDD")
+        self.assertEqual(protocol.end_char, b"\xc0")
+        self.assertEqual(protocol.esc_char, b"\xdb")
+        self.assertEqual(protocol.esc_end_char, b"\xdc")
+        self.assertEqual(protocol.esc_esc_char, b"\xdd")
+        self.assertEqual(protocol.replace_end, b"\xdb\xdc")
+        self.assertEqual(protocol.replace_esc, b"\xdb\xdd")
 
     def test_handles_multiple_reads(self):
         class TerminatedSlipStream(TestSlipProtocol.SlipStream):
@@ -103,7 +103,7 @@ class TestSlipProtocol(unittest.TestCase):
                         return b"\x01\x02"
                     case 1:
                         TestSlipProtocol.index += 1
-                        return b"\xC0"
+                        return b"\xc0"
 
         TestSlipProtocol.index = 0
         self.interface.stream = TerminatedSlipStream()
@@ -117,22 +117,22 @@ class TestSlipProtocol(unittest.TestCase):
                 match TestSlipProtocol.index:
                     case 0:
                         TestSlipProtocol.index += 1
-                        return b"\xC0"
+                        return b"\xc0"
                     case 1:
                         TestSlipProtocol.index += 1
                         return b"\x01\x02"
                     case 2:
                         TestSlipProtocol.index += 1
-                        return b"\xC0"
+                        return b"\xc0"
                     case 3:
                         TestSlipProtocol.index += 1
-                        return b"\xC0\x03\x04"
+                        return b"\xc0\x03\x04"
                     case 4:
                         TestSlipProtocol.index += 1
                         return b"\x01\x02"
                     case 5:
                         TestSlipProtocol.index += 1
-                        return b"\xC0"
+                        return b"\xc0"
 
         TestSlipProtocol.index = 0
         self.interface.stream = MultiTerminatedSlipStream()
@@ -145,7 +145,7 @@ class TestSlipProtocol(unittest.TestCase):
     def test_handles_empty_packets(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\xC0\x01\x02\xC0"
+        TestSlipProtocol.buffer = b"\xc0\x01\x02\xc0"
         packet = self.interface.read()
         self.assertEqual(len(packet.buffer), 0)
         packet = self.interface.read()
@@ -154,37 +154,37 @@ class TestSlipProtocol(unittest.TestCase):
     def test_handles_no_start_char_pattern(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\x00\x01\x02\xC0\x44\x02\x03"
+        TestSlipProtocol.buffer = b"\x00\x01\x02\xc0\x44\x02\x03"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x00\x01\x02")
 
     def test_handles_a_start_char_inside_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, ["0xC0", False], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\xC0\x00\x01\x02\xC0\x44\x02\x03"
+        TestSlipProtocol.buffer = b"\xc0\x00\x01\x02\xc0\x44\x02\x03"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\xC0\x00\x01\x02\xC0")
+        self.assertEqual(packet.buffer, b"\xc0\x00\x01\x02\xc0")
 
     def test_handles_bad_data_before_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, ["0xC0", False], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\x00\x01\x02\xC0\x44\x02\x03\xC0"
+        TestSlipProtocol.buffer = b"\x00\x01\x02\xc0\x44\x02\x03\xc0"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\xC0\x44\x02\x03\xC0")
+        self.assertEqual(packet.buffer, b"\xc0\x44\x02\x03\xc0")
 
     def test_handles_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
+        TestSlipProtocol.buffer = b"\x00\xdb\xdc\x44\xdb\xdd\x02\xdb\xdc\x03\xdb\xdd\xc0"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\x00\xC0\x44\xDB\x02\xC0\x03\xDB")
+        self.assertEqual(packet.buffer, b"\x00\xc0\x44\xdb\x02\xc0\x03\xdb")
 
     def test_leaves_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [None, True, False], "READ_WRITE")
-        TestSlipProtocol.buffer = b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
+        TestSlipProtocol.buffer = b"\x00\xdb\xdc\x44\xdb\xdd\x02\xdb\xdc\x03\xdb\xdd\xc0"
         packet = self.interface.read()
-        self.assertEqual(packet.buffer, b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD")
+        self.assertEqual(packet.buffer, b"\x00\xdb\xdc\x44\xdb\xdd\x02\xdb\xdc\x03\xdb\xdd")
 
     def test_appends_end_char_to_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
@@ -192,7 +192,7 @@ class TestSlipProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\x01\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\x01\x02\x03\xc0")
 
     def test_appends_a_different_end_char_to_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
@@ -200,7 +200,7 @@ class TestSlipProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\x01\x02\x03\xEE")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\x01\x02\x03\xee")
 
     def test_appends_start_char_and_end_char_to_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
@@ -208,39 +208,39 @@ class TestSlipProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\xC0\x00\x01\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\xc0\x00\x01\x02\x03\xc0")
 
     def test_handles_writing_the_end_char_inside_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xC0\x02\x03"
+        pkt.buffer = b"\x00\xc0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xDB\xDC\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xdb\xdc\x02\x03\xc0")
 
     def test_handles_writing_the_esc_char_inside_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xDB\x02\x03"
+        pkt.buffer = b"\x00\xdb\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xDB\xDD\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xdb\xdd\x02\x03\xc0")
 
     def test_handles_writing_the_end_char_and_the_esc_char_inside_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xC0\xDB\xDB\xC0\x02\x03"
+        pkt.buffer = b"\x00\xc0\xdb\xdb\xc0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xDB\xDC\xDB\xDD\xDB\xDD\xDB\xDC\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xdb\xdc\xdb\xdd\xdb\xdd\xdb\xdc\x02\x03\xc0")
 
     def test_handles_not_writing_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [None, True, True, False], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xC0\xDB\xDB\xC0\x02\x03"
+        pkt.buffer = b"\x00\xc0\xdb\xdb\xc0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xC0\xDB\xDB\xC0\x02\x03\xC0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xc0\xdb\xdb\xc0\x02\x03\xc0")
 
     def test_handles_different_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
@@ -250,15 +250,13 @@ class TestSlipProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         pkt = Packet("tgt", "pkt")
-        pkt.buffer = b"\x00\xE0\xE1\xE1\xE0\x02\x03"
+        pkt.buffer = b"\x00\xe0\xe1\xe1\xe0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xE1\xE2\xE1\xE3\xE1\xE3\xE1\xE2\x02\x03\xE0")
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xe1\xe2\xe1\xe3\xe1\xe3\xe1\xe2\x02\x03\xe0")
 
     def test_write_details_returns_correct_information(self):
         self.interface.add_protocol(
-            SlipProtocol,
-            ["0xC0", "True", "False", "True", "0xD0", "0xDB", "0xDC", "0xDD"],
-            "READ_WRITE"
+            SlipProtocol, ["0xC0", "True", "False", "True", "0xD0", "0xDB", "0xDC", "0xDD"], "READ_WRITE"
         )
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
@@ -289,11 +287,7 @@ class TestSlipProtocol(unittest.TestCase):
         self.assertEqual(details["write_enable_escaping"], True)
 
     def test_read_details_returns_correct_information(self):
-        self.interface.add_protocol(
-            SlipProtocol,
-            [None, "False", "True"],
-            "READ_WRITE"
-        )
+        self.interface.add_protocol(SlipProtocol, [None, "False", "True"], "READ_WRITE")
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
 
