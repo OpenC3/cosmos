@@ -287,3 +287,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertIn("max_length", details)
         self.assertEqual(details["max_length"], 2048)
         self.assertIn("reduction_state", details)
+
+    def test_accepts_hex_string_for_max_length(self):
+        self.interface.add_protocol(PreidentifiedProtocol, [None, "0x400"], "READ_WRITE")
+        self.assertEqual(self.interface.read_protocols[0].max_length, 1024)
