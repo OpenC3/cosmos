@@ -55,7 +55,7 @@ class TestBurstProtocol(unittest.TestCase):
         self.interface.add_protocol(BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
         self.assertEqual(self.interface.read_protocols[0].discard_leading_bytes, 1)
-        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xde\xad\xbe\xef")
         self.assertTrue(self.interface.read_protocols[0].fill_fields)
 
     def test_connect_clears_the_data(self):
@@ -92,7 +92,7 @@ class TestBurstProtocol(unittest.TestCase):
 
     # The sync pattern is NOT part of the data
     def test_discards_the_entire_sync_pattern(self):
-        TestBurstProtocol.data = b"\x12\x34\x56\x78\x9A\xBC"
+        TestBurstProtocol.data = b"\x12\x34\x56\x78\x9a\xbc"
         self.interface.stream = TestBurstProtocol.StreamStub()
         self.interface.add_protocol(BurstProtocol, [2, "0x1234"], "READ_WRITE")
         pkt = self.interface.read()
@@ -101,7 +101,7 @@ class TestBurstProtocol(unittest.TestCase):
 
     # The sync pattern is partially part of the data
     def test_discards_part_of_the_sync_pattern(self):
-        TestBurstProtocol.data = b"\x12\x34\x56\x78\x9A\xBC"
+        TestBurstProtocol.data = b"\x12\x34\x56\x78\x9a\xbc"
         self.interface.stream = TestBurstProtocol.StreamStub()
         self.interface.add_protocol(BurstProtocol, [1, "0x123456"], "READ_WRITE")
         pkt = self.interface.read()
@@ -284,3 +284,18 @@ class TestBurstProtocol(unittest.TestCase):
         self.assertEqual(details["sync_pattern"], "bytearray(b'\\x124')")
         self.assertIn("fill_fields", details)
         self.assertEqual(details["fill_fields"], False)
+
+    def test_accepts_hex_string_for_discard_leading_bytes(self):
+        self.interface.stream = TestBurstProtocol.StreamStub()
+        self.interface.add_protocol(BurstProtocol, ["0x2"], "READ_WRITE")
+        pkt = self.interface.read()
+        self.assertEqual(pkt.length(), 2)
+        self.assertIn("03 04", formatted(pkt.buffer))
+
+    def test_accepts_hex_string_for_discard_leading_bytes_multi_byte(self):
+        TestBurstProtocol.data = b"\x01\x02\x03\x04\x05\x06"
+        self.interface.stream = TestBurstProtocol.StreamStub()
+        self.interface.add_protocol(BurstProtocol, ["0x04"], "READ_WRITE")
+        pkt = self.interface.read()
+        self.assertEqual(pkt.length(), 2)
+        self.assertIn("05 06", formatted(pkt.buffer))
