@@ -70,6 +70,7 @@ export default {
       dataItem: this.item,
       stateValue: null,
       checkValue: false,
+      isMounted: false,
     }
   },
   created() {
@@ -79,6 +80,9 @@ export default {
     if (this.isCheckbox) {
       this.checkValue = this.stateValue === 1
     }
+  },
+  mounted() {
+    this.isMounted = true
   },
   computed: {
     isCheckbox: function () {
@@ -104,6 +108,7 @@ export default {
   },
   watch: {
     checkValue: function () {
+      if (!this.isMounted) return
       if (this.checkValue) {
         this.$emit('change', 'CHECKED')
       } else {
@@ -111,6 +116,7 @@ export default {
       }
     },
     stateValue: function () {
+      if (!this.isMounted) return
       // Lookup the state key that corresponds to the value
       let state = Object.keys(this.dataItem.states).find(
         (key) => this.dataItem.states[key] === this.stateValue,
