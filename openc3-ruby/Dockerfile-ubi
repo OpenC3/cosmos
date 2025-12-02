@@ -45,11 +45,13 @@ ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
 RUN rm /etc/yum.repos.d/*
 COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 
+# ruby - https://www.ruby-lang.org/en/downloads/releases/
+# tini - https://github.com/krallin/tini
 RUN microdnf update -y \
     && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
     && mkdir -p /usr/src \
-    && tar -xzf /tmp/ruby-3.3.7.tar.gz -C /usr/src/ \
-    && rm -f /tmp/ruby-3.3.7.tar.gz \
+    && tar -xzf /tmp/ruby-3.4.7.tar.gz -C /usr/src/ \
+    && rm -f /tmp/ruby-3.4.7.tar.gz \
     && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
     && cd /usr/src/${RUBY_DIR} \
     && ./configure --disable-install-doc --enable-shared \
@@ -90,14 +92,14 @@ RUN cd / \
     && pip3 install poetry-plugin-export
 
 # rbspy - https://github.com/rbspy/rbspy
-COPY rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
+COPY rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz
 RUN cd /opt \
-  && tar -xzf rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz \
+  && tar -xzf rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz \
   && cp rbspy-x86_64-unknown-linux-gnu /usr/local/bin/rbspy \
   && chmod +x /usr/local/bin/rbspy \
   && cd /opt \
   && rm rbspy-x86_64-unknown-linux-gnu \
-  && rm rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
+  && rm rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz
 
 # htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
