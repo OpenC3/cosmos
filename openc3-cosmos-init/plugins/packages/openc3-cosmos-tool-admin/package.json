@@ -14,7 +14,7 @@
     "@openc3/ace-diff": "3.1.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "ace-builds": "1.43.4",
+    "ace-builds": "1.43.5",
     "single-spa-vue": "3.0.1"
   },
   "devDependencies": {

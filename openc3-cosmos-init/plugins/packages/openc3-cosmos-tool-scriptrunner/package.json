@@ -13,7 +13,7 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "ace-builds": "1.43.4",
+    "ace-builds": "1.43.5",
     "axios": "1.13.2",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
