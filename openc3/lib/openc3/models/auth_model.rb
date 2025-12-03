@@ -43,12 +43,17 @@ module OpenC3
     end
 
     def self.verify(token)
-      # Handle a service password - Generally only used by ScriptRunner
+      return true if verify_service_password(token)
+      return verify_no_service(token)
+    end
+
+    def self.verify_service_password(password)
+      # Handle a service password - Generally only used by ScriptRunner and CmdQueues
       # TODO: Replace this with temporary service tokens
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
-      return true if service_password and service_password == token
+      return true if service_password and service_password == password
 
-      return verify_no_service(token)
+      return false
     end
 
     def self.verify_no_service(token)

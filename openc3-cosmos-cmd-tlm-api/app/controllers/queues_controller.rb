@@ -311,7 +311,7 @@ class QueuesController < ApplicationController
   def get_token(username, scope:)
     if ENV['OPENC3_API_CLIENT'].nil?
       ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
-      return OpenC3::OpenC3Authentication.new().token
+      return OpenC3::OpenC3Authentication.new(service: true).token
     else
       # Check for offline access token
       model = nil
