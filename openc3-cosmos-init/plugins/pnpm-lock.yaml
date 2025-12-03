@@ -76,8 +76,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.43.4
-        version: 1.43.4
+        specifier: 1.43.5
+        version: 1.43.5
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -159,8 +159,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.43.4
-        version: 1.43.4
+        specifier: 1.43.5
+        version: 1.43.5
       axios:
         specifier: 1.13.2
         version: 1.13.2
@@ -548,8 +548,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.43.4
-        version: 1.43.4
+        specifier: 1.43.5
+        version: 1.43.5
       axios:
         specifier: 1.13.2
         version: 1.13.2
@@ -698,8 +698,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.43.4
-        version: 1.43.4
+        specifier: 1.43.5
+        version: 1.43.5
       axios:
         specifier: 1.13.2
         version: 1.13.2
@@ -863,8 +863,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-js-common
       ace-builds:
-        specifier: 1.43.4
-        version: 1.43.4
+        specifier: 1.43.5
+        version: 1.43.5
       axios:
         specifier: 1.13.2
         version: 1.13.2
@@ -1598,8 +1598,8 @@ packages:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  ace-builds@1.43.4:
-    resolution: {integrity: sha512-8hAxVfo2ImICd69BWlZwZlxe9rxDGDjuUhh+WeWgGDvfBCE+r3lkynkQvIovDz4jcMi8O7bsEaFygaDT+h9sBA==}
+  ace-builds@1.43.5:
+    resolution: {integrity: sha512-iH5FLBKdB7SVn9GR37UgA/tpQS8OTWIxWAuq3Ofaw+Qbc69FfPXsXd9jeW7KRG2xKpKMqBDnu0tHBrCWY5QI7A==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -3351,7 +3351,7 @@ snapshots:
 
   abbrev@2.0.0: {}
 
-  ace-builds@1.43.4: {}
+  ace-builds@1.43.5: {}
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
