@@ -1209,12 +1209,9 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.append_item("test2", 16, "UINT")
         i3 = p.define_item("test3", 0, 0, "DERIVED")
         i3.read_conversion = GenericConversion("packet.read('TEST1')")
-        print(p.items.keys())
-        # expect(p.items.keys).to eql %w(TEST1 TEST2 TEST3)
+        self.assertEqual(list(p.items.keys()), ["TEST1", "TEST2", "TEST3"])
         p.clear_all_non_derived_items()
-        # expect(p.items.keys).to eql %w(TEST3)
-        print(p.items.keys())
-
+        self.assertEqual(list(p.items.keys()), ["TEST3"])
 
 class PacketLimits(unittest.TestCase):
     def test_enables_limits_on_each_packet_item(self):
@@ -2097,23 +2094,19 @@ class PacketObfuscation(unittest.TestCase):
 
         packet = Packet()
         item = packet.append_item("JSON_LENGTH", 32, 'UINT')
-        item.default = 33
-        item = packet.append_item("JSON", 264, 'BLOCK')
+        item.default = 0
+        item = packet.append_item("JSON", 0, 'BLOCK')
         item.default = ""
         item.variable_bit_size = {'length_item_name': "JSON_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
         packet.structurize_item(item, json_struct)
         item = packet.append_item("CBOR_LENGTH", 32, 'UINT')
-        item.default = 33
-        item = packet.append_item("CBOR", 264, 'BLOCK')
+        item.default = 0
+        item = packet.append_item("CBOR", 0, 'BLOCK')
         item.default = ""
         item.variable_bit_size = {'length_item_name': "CBOR_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
         packet.structurize_item(item, cbor_struct)
 
         packet.restore_defaults()
-        print(len(json_template))
-        print(packet.read("JSON_LENGTH"))
-        print(repr(packet.read("JSON")))
-        print(len(packet.read("JSON")))
         self.assertEqual(packet.read("JSON_LENGTH"), len(json_template))
         self.assertEqual(packet.read("JSON.ITEM0"), 1)
         self.assertEqual(packet.read("JSON.ITEM1"), 101)
