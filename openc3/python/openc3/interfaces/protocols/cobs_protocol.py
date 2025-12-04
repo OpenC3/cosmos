@@ -79,7 +79,7 @@ class CobsProtocol(TerminatedProtocol):
             try:
                 index = data.index(b"\x00")
                 if index > 253:
-                    result_data += b"\xFF"
+                    result_data += b"\xff"
                     result_data += data[0:254]
                     data = data[254:]
                     need_insert = False
@@ -91,7 +91,7 @@ class CobsProtocol(TerminatedProtocol):
                     need_insert = True
             except ValueError:  # index not found
                 if len(data) >= 254:
-                    result_data += b"\xFF"
+                    result_data += b"\xff"
                     result_data += data[0:254]
                     data = data[254:]
                     need_insert = False

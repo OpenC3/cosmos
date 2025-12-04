@@ -16,17 +16,17 @@
     "date-fns": "4.1.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
-    "vuetify": "3.10.9"
+    "vuetify": "3.11.0"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.28.5",
-    "@types/systemjs": "6.15.3",
+    "@types/systemjs": "6.15.4",
     "@vitejs/plugin-vue": "5.2.3",
-    "prettier": "3.6.2",
-    "sass": "1.94.0",
+    "prettier": "3.7.3",
+    "sass": "1.94.2",
     "serve": "14.2.5",
     "vite": "6.4.1",
-    "vue": "3.5.24"
+    "vue": "3.5.25"
   },
   "peerDependencies": {
     "single-spa": "6.0.3",

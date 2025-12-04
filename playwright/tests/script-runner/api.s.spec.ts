@@ -244,16 +244,16 @@ async function testMetadataApis(page, utils, filename) {
 test('test ruby metadata apis', async ({ page, utils }) => {
   await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>1',
+    '"setkey" => 1',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>2',
+    '"setkey" => 2',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"updatekey"=>3',
+    '"updatekey" => 3',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"inputkey_metadata.rb"=>"inputvalue"',
+    '"inputkey_metadata.rb" => "inputvalue"',
   )
 })
 

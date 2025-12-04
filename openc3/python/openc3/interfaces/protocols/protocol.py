@@ -19,6 +19,7 @@ from openc3.api import *
 from openc3.config.config_parser import ConfigParser
 from datetime import datetime
 
+
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
@@ -34,13 +35,13 @@ class Protocol:
 
     def reset(self):
         self.read_data_input_time = None
-        self.read_data_input = b''
+        self.read_data_input = b""
         self.read_data_output_time = None
-        self.read_data_output = b''
+        self.read_data_output = b""
         self.write_data_input_time = None
-        self.write_data_input = b''
+        self.write_data_input = b""
         self.write_data_output_time = None
-        self.write_data_output = b''
+        self.write_data_output = b""
         self.extra = None
 
     def connect_reset(self):
@@ -50,7 +51,7 @@ class Protocol:
         self.reset()
 
     # Called to provide insight into the protocol read_data for the input data
-    def read_protocol_input_base(self, data, _extra = None):
+    def read_protocol_input_base(self, data, _extra=None):
         if self.interface is not None:
             if self.interface.save_raw_data is not None:
                 self.read_data_input_time = datetime.now(timezone.utc)
@@ -60,7 +61,7 @@ class Protocol:
             #     self.interface.stream_log_pair.read_log.write(data)
 
     # Called to provide insight into the protocol read_data for the output data
-    def read_protocol_output_base(self, data, _extra = None):
+    def read_protocol_output_base(self, data, _extra=None):
         if self.interface is not None:
             if self.interface.save_raw_data is not None:
                 self.read_data_output_time = datetime.now(timezone.utc)
@@ -70,7 +71,7 @@ class Protocol:
             #     self.interface.stream_log_pair.read_log.write(data)
 
     # Called to provide insight into the protocol write_data for the input data
-    def write_protocol_input_base(self, data, _extra = None):
+    def write_protocol_input_base(self, data, _extra=None):
         if self.interface is not None:
             if self.interface.save_raw_data is not None:
                 self.write_data_input_time = datetime.now(timezone.utc)
@@ -80,7 +81,7 @@ class Protocol:
             #     self.interface.stream_log_pair.write_log.write(data)
 
     # Called to provide insight into the protocol write_data for the output data
-    def write_protocol_output_base(self, data, _extra = None):
+    def write_protocol_output_base(self, data, _extra=None):
         if self.interface is not None:
             if self.interface.save_raw_data is not None:
                 self.write_data_output_time = datetime.now(timezone.utc)
@@ -118,29 +119,29 @@ class Protocol:
         return False
 
     def write_details(self):
-        result = { "name": self.__class__.__name__ }
+        result = {"name": self.__class__.__name__}
         if self.write_data_input_time:
-            result['write_data_input_time'] = self.write_data_input_time.strftime(self.DATETIME_FORMAT)
+            result["write_data_input_time"] = self.write_data_input_time.strftime(self.DATETIME_FORMAT)
         else:
-            result['write_data_input_time'] = None
-        result['write_data_input'] = self.write_data_input
+            result["write_data_input_time"] = None
+        result["write_data_input"] = self.write_data_input
         if self.write_data_output_time:
-            result['write_data_output_time'] = self.write_data_output_time.strftime(self.DATETIME_FORMAT)
+            result["write_data_output_time"] = self.write_data_output_time.strftime(self.DATETIME_FORMAT)
         else:
-            result['write_data_output_time'] = None
-        result['write_data_output'] = self.write_data_output
+            result["write_data_output_time"] = None
+        result["write_data_output"] = self.write_data_output
         return result
 
     def read_details(self):
-        result = { "name": self.__class__.__name__ }
+        result = {"name": self.__class__.__name__}
         if self.read_data_input_time:
-            result['read_data_input_time'] = self.read_data_input_time.strftime(self.DATETIME_FORMAT)
+            result["read_data_input_time"] = self.read_data_input_time.strftime(self.DATETIME_FORMAT)
         else:
-            result['read_data_input_time'] = None
-        result['read_data_input'] = self.read_data_input
+            result["read_data_input_time"] = None
+        result["read_data_input"] = self.read_data_input
         if self.read_data_output_time:
-            result['read_data_output_time'] = self.read_data_output_time.strftime(self.DATETIME_FORMAT)
+            result["read_data_output_time"] = self.read_data_output_time.strftime(self.DATETIME_FORMAT)
         else:
-            result['read_data_output_time'] = None
-        result['read_data_output'] = self.read_data_output
+            result["read_data_output_time"] = None
+        result["read_data_output"] = self.read_data_output
         return result

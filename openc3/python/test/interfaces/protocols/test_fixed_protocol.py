@@ -59,7 +59,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(self.interface.read_protocols[0].data, b"")
         self.assertEqual(self.interface.read_protocols[0].min_id_size, 2)
         self.assertEqual(self.interface.read_protocols[0].discard_leading_bytes, 1)
-        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xde\xad\xbe\xef")
         self.assertFalse(self.interface.read_protocols[0].telemetry)
         self.assertTrue(self.interface.read_protocols[0].fill_fields)
 
@@ -154,7 +154,7 @@ class TestFixedProtocol(unittest.TestCase):
 
             def read(self):
                 # Prepend a matching sync pattern to test the discard
-                return b"\x1A\xCF\xFC\x1D\x55\x55" + buffer
+                return b"\x1a\xcf\xfc\x1d\x55\x55" + buffer
 
         # Require 8 bytes, discard 6 leading bytes, use 0x1ACFFC1D sync, telemetry = False (command)
         self.interface.add_protocol(FixedProtocol, [8, 6, "0x1ACFFC1D", False], "READ_WRITE")
@@ -283,7 +283,7 @@ class TestFixedProtocol(unittest.TestCase):
         # Test subpacket SUB1 (ID=10) - should not be identified
         class MockStream2:
             def __init__(self):
-                self.data = b"\x0A\x06"
+                self.data = b"\x0a\x06"
                 self.index = 0
 
             def read(self, count=None):
@@ -313,3 +313,7 @@ class TestFixedProtocol(unittest.TestCase):
         packet = interface.read()
         self.assertIsNone(packet.target_name)
         self.assertIsNone(packet.packet_name)
+
+    def test_accepts_hex_string_for_min_id_size(self):
+        self.interface.add_protocol(FixedProtocol, ["0x4"], "READ_WRITE")
+        self.assertEqual(self.interface.read_protocols[0].min_id_size, 4)

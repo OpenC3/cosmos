@@ -114,16 +114,16 @@ class CmdResponseProtocol(Protocol):
 
     def write_details(self):
         result = super().write_details()
-        result['response_timeout'] = self.response_timeout
-        result['response_polling_period'] = self.response_polling_period
-        result['raise_exceptions'] = self.raise_exceptions
-        result['response_packet'] = self.response_packet
+        result["response_timeout"] = self.response_timeout
+        result["response_polling_period"] = self.response_polling_period
+        result["raise_exceptions"] = self.raise_exceptions
+        result["response_packet"] = self.response_packet
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['response_timeout'] = self.response_timeout
-        result['response_polling_period'] = self.response_polling_period
-        result['raise_exceptions'] = self.raise_exceptions
-        result['response_packet'] = self.response_packet
+        result["response_timeout"] = self.response_timeout
+        result["response_polling_period"] = self.response_polling_period
+        result["raise_exceptions"] = self.raise_exceptions
+        result["response_packet"] = self.response_packet
         return result

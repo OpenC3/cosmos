@@ -372,6 +372,17 @@ class TestSuite(Suite):
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
+
+  await page.locator('.ace_content').click()
+  if (process.platform === 'darwin') {
+    await page.keyboard.press('Meta+A')
+  } else {
+    await page.keyboard.press('Control+A')
+  }
+  await utils.sleep(1000)
+  await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
+
   if (type === 'Ruby') {
     await page.locator('textarea').fill(`require "openc3/script/suite.rb"
   class TestGroup < OpenC3::Group
@@ -481,6 +492,7 @@ end`)
   )
 
   // Rewrite the script but remove setup and teardown
+  await utils.sleep(500)
   await page.locator('.ace_content').click()
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+A')
@@ -490,6 +502,17 @@ end`)
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
+
+  await page.locator('.ace_content').click()
+  if (process.platform === 'darwin') {
+    await page.keyboard.press('Meta+A')
+  } else {
+    await page.keyboard.press('Control+A')
+  }
+  await utils.sleep(1000)
+  await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
+
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup1 < OpenC3::Group
   def test_test1; puts "test"; end

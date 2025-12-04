@@ -47,12 +47,12 @@ class IgnorePacketProtocol(Protocol):
 
     def write_details(self):
         result = super().write_details()
-        result['target_name'] = self.target_name
-        result['packet_name'] = self.packet_name
+        result["target_name"] = self.target_name
+        result["packet_name"] = self.packet_name
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['target_name'] = self.target_name
-        result['packet_name'] = self.packet_name
+        result["target_name"] = self.target_name
+        result["packet_name"] = self.packet_name
         return result
