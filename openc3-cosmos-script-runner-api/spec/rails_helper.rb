@@ -20,6 +20,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/script/script'
+module OpenC3
+  module Script
+    def self.included(base)
+      # Empty to override all the fancy stuff in script.rb
+    end
+  end
+end
+include OpenC3::Script
+
 # This file is copied to spec/ when you run 'rails generate rspec:install'
 require 'spec_helper'
 ENV['CI'] ||= 'true'
