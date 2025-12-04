@@ -69,7 +69,7 @@ RUN cd / \
     && make install \
     && rm -rf /usr/src/${TINI_DIR}
 RUN cd / \
-    && gem update --system \
+    && gem update --system 3.7.2 \
     && gem install rake \
     && gem install google-protobuf \
     && gem install grpc \
