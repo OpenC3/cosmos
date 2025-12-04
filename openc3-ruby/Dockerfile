@@ -79,7 +79,7 @@ RUN apk update \
   # Ruby 3.2+ no longer bundles libyaml so explicitly include
   yaml-dev \
   zeromq-dev \
-  && gem update --system \
+  && gem update --system 3.7.2 \
   && gem install rake \
   && gem install google-protobuf \
   && gem install grpc \
