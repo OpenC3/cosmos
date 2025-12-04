@@ -24,6 +24,7 @@ from openc3.packets.packet import Packet
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.utilities.store import Store
 
+
 class TestCvtModel(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
@@ -36,7 +37,6 @@ class TestCvtModel(unittest.TestCase):
         json_hash["TEMP1"] = 1
         json_hash["TEMP1__C"] = 2
         json_hash["TEMP1__F"] = "2.00 C"
-        json_hash["TEMP1__U"] = "2.00 C"
         json_hash["TEMP1__L"] = "GREEN"
         if rxtime is None:
             rxtime = time.time()

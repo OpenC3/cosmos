@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -104,13 +104,6 @@ module OpenC3
         when :MAX
           value = @json_hash["#{name}__X"]
         end
-        if value
-          value = value[array_index] if array_index
-          return value
-        end
-      end
-      if value_type == :WITH_UNITS
-        value = @json_hash["#{name}__U"]
         if value
           value = value[array_index] if array_index
           return value

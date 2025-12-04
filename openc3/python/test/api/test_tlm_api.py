@@ -22,7 +22,8 @@ from datetime import datetime, timezone, timedelta
 import unittest
 import threading
 from unittest.mock import *
-from test.test_helper import *
+import re
+from test.test_helper import mock_redis, setup_system, System
 from openc3.api.tlm_api import *
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
