@@ -75,7 +75,7 @@ class TemplateAccessor(Accessor):
             for i, value in enumerate(values):
                 item_key = self.item_keys[i]
                 if item_key == item.key:
-                    return Accessor.convert_to_type(value, item)
+                    return self.__class__.convert_to_type(value, item)
 
         raise RuntimeError(f"Response does not include key {item.key}: {buffer}")
 
@@ -101,7 +101,7 @@ class TemplateAccessor(Accessor):
                     continue
                 try:
                     index = self.item_keys.index(item.key)
-                    result[item.name] = Accessor.convert_to_type(values[index], item)
+                    result[item.name] = self.__class__.convert_to_type(values[index], item)
                 except ValueError:
                     raise RuntimeError(f"Unknown item with key {item.key} requested")
 

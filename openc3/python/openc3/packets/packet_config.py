@@ -47,6 +47,7 @@ from openc3.top_level import get_class_from_module
 class PacketConfig:
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
+    KNOWN_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
 
     def __init__(self):
         self.name = None
@@ -763,13 +764,7 @@ class PacketConfig:
                 self.converted_bit_size = None
                 if len(params) == 2:
                     self.converted_type = params[0].upper()
-                    if self.converted_type not in [
-                        "INT",
-                        "UINT",
-                        "FLOAT",
-                        "STRING",
-                        "BLOCK",
-                    ]:
+                    if self.converted_type not in self.KNOWN_DATA_TYPES:
                         raise parser.error(f"Invalid converted_type: {self.converted_type}.")
                     self.converted_bit_size = int(params[1])
                 if self.converted_type is None or self.converted_bit_size is None:

@@ -20,7 +20,7 @@ from openc3.packets.structure_item import StructureItem
 from openc3.packets.packet_item_limits import PacketItemLimits
 from openc3.utilities.string import quote_if_necessary, simple_formatted
 from openc3.conversions.conversion import Conversion
-
+from openc3.config.config_parser import ConfigParser
 
 class PacketItem(StructureItem):
     # The allowable state colors
@@ -186,7 +186,7 @@ class PacketItem(StructureItem):
             self.__units = None
 
     def check_default_and_range_data_types(self):
-        if self.default and not self.write_conversion:
+        if self.default is not None and self.write_conversion is None:
             if self.array_size is not None:
                 if not isinstance(self.default, list):
                     raise TypeError(
@@ -228,6 +228,15 @@ class PacketItem(StructureItem):
                             raise TypeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )
+                    case "ARRAY":
+                        if not isinstance(self.default, list):
+                            raise TypeError(f"{self.name}: default must be a list but is a {self.default.__class__.__name__}")
+                    case "OBJECT":
+                        if not isinstance(self.default, dict):
+                            raise TypeError(f"{self.name}: default must be a dict but is a {self.default.__class__.__name__}")
+                    case "BOOL":
+                        if not isinstance(self.default, bool):
+                            raise TypeError(f"{self.name}: default must be a bool but is a {self.default.__class__.__name__}")
 
     @property
     def hazardous(self):
@@ -500,7 +509,16 @@ class PacketItem(StructureItem):
                     return int(value)
                 case "FLOAT":
                     return float(value)
-                case "STRING" | "BLOCK":
+                case "STRING":
+                    return value
+                case "BLOCK":
+                    if isinstance(value, str):
+                        return bytearray(value.encode())
+                    else:
+                        return bytearray(value)
+                case "BOOL":
+                    return ConfigParser.handle_true_false(value)
+                case _:
                     return value
         except ValueError:
             raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}")

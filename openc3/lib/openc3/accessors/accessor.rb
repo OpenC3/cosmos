@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'json'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class Accessor
@@ -121,8 +122,16 @@ module OpenC3
     def self.convert_to_type(value, item)
       return value if value.nil?
       case item.data_type
-      when :OBJECT, :ARRAY
-        # Do nothing for complex object types
+      when :ANY
+        begin
+          value = JSON.parse(value) if value.is_a? String
+        rescue Exception
+          # Just leave value as is
+        end
+      when :BOOL
+        value = ConfigParser.handle_true_false(value) if value.is_a? String
+      when :OBJECT, :ARRAY, :BOOL, :ANY
+        value = JSON.parse(value) if value.is_a? String
       when :STRING, :BLOCK
         if item.array_size
           value = JSON.parse(value) if value.is_a? String

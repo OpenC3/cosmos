@@ -1320,6 +1320,9 @@ class Packet(Structure):
 
             try:
                 current_value = self.read(item.name, "RAW")
+                if isinstance(current_value, dict):
+                    obfuscated_value = {}
+
                 if isinstance(current_value, list):
                     # For arrays, create a new array of zeros with the same size
                     if item.data_type in ["INT", "UINT"]:
@@ -1328,6 +1331,8 @@ class Packet(Structure):
                         obfuscated_value = [0.0] * len(current_value)
                     elif item.data_type in ["STRING", "BLOCK"]:
                         obfuscated_value = ["\x00" * len(val) if val else None for val in current_value]
+                    elif item.data_type in ["BOOL", "ARRAY", "OBJECT", "ANY"]:
+                        obfuscated_value = []
                     else:
                         obfuscated_value = [0] * len(current_value)
 
@@ -1342,6 +1347,8 @@ class Packet(Structure):
                         obfuscated_value = 0.0
                     elif item.data_type == "BLOCK":
                         obfuscated_value = "\x00" * len(current_value)
+                    elif item.data_type == "BOOL":
+                        obfuscated_value = False
                     else:
                         obfuscated_value = 0
 

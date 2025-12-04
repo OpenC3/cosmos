@@ -340,6 +340,66 @@ class TestPacketItem(unittest.TestCase):
         pi.default = ""
         pi.check_default_and_range_data_types()
 
+    def test_complains_about_bool_default_not_matching_data_type(self):
+        pi = PacketItem("test", 0, 0, "BOOL", "BIG_ENDIAN", None)
+        pi.default = "true"
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a bool but is a str"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "BOOL", "BIG_ENDIAN", None)
+        pi.default = 1
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a bool but is a int"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "BOOL", "BIG_ENDIAN", None)
+        pi.default = True
+        pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "BOOL", "BIG_ENDIAN", None)
+        pi.default = False
+        pi.check_default_and_range_data_types()
+
+    def test_complains_about_array_default_not_matching_data_type(self):
+        pi = PacketItem("test", 0, 0, "ARRAY", "BIG_ENDIAN", None)
+        pi.default = "[]"
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a list but is a str"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "ARRAY", "BIG_ENDIAN", None)
+        pi.default = {}
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a list but is a dict"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "ARRAY", "BIG_ENDIAN", None)
+        pi.default = []
+        pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "ARRAY", "BIG_ENDIAN", None)
+        pi.default = [1, 2, 3]
+        pi.check_default_and_range_data_types()
+
+    def test_complains_about_object_default_not_matching_data_type(self):
+        pi = PacketItem("test", 0, 0, "OBJECT", "BIG_ENDIAN", None)
+        pi.default = "{}"
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a dict but is a str"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "OBJECT", "BIG_ENDIAN", None)
+        pi.default = []
+        with self.assertRaisesRegex(
+            TypeError, "TEST: default must be a dict but is a list"
+        ):
+            pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "OBJECT", "BIG_ENDIAN", None)
+        pi.default = {}
+        pi.check_default_and_range_data_types()
+        pi = PacketItem("test", 0, 0, "OBJECT", "BIG_ENDIAN", None)
+        pi.default = {"key": "value"}
+        pi.check_default_and_range_data_types()
+
     def test_complains_about_range_not_matching_data_type(self):
         pi = PacketItem("test", 0, 32, "UINT", "BIG_ENDIAN", None)
         pi.default = 5

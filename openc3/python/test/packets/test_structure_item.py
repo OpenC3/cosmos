@@ -96,7 +96,7 @@ class TestStructureItem(unittest.TestCase):
     def test_complains_about_bad_data_type(self):
         self.assertRaisesRegex(
             ValueError,
-            "TEST: unknown data_type: UNKNOWN - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'",
+            "TEST: unknown data_type: UNKNOWN - Must be INT, UINT, FLOAT, STRING, BLOCK, BOOL, OBJECT, ARRAY, ANY, DERIVED",
             StructureItem,
             "TEST",
             0,

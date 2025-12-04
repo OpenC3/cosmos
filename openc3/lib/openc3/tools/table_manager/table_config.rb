@@ -266,6 +266,14 @@ module OpenC3
               item.default = @defaults[index].to_f
             when :STRING, :BLOCK
               item.default = @defaults[index]
+            when :BOOL
+              item.default = ConfigParser.handle_true_false(@defaults[index])
+            when :ARRAY, :OBJECT, :ANY
+              begin
+                item.default = JSON.parse(@defaults[index], allow_nan: true)
+              rescue Exception
+                item.default = @defaults[index]
+              end
             end
           end
         end
