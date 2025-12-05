@@ -210,7 +210,6 @@ module OpenC3
           end
         end
         has_packet_time = unique_items.include?(PACKET_TIME_STRING)
-        puts "HAS PACKET_TIME: #{has_packet_time}"
 
         xml['xtce'].ParameterSet do
           unique_items.each do |item_name, item|
