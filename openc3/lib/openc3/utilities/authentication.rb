@@ -32,26 +32,10 @@ module OpenC3
 
   # OpenC3 COSMOS Core authentication code
   class OpenC3Authentication
-    def initialize(service: false)
-      env_key = if service
-        'OPENC3_SERVICE_PASSWORD'
-      else
-        'OPENC3_API_PASSWORD'
-      end
-      password = ENV[env_key]
-      if password.nil?
-        raise OpenC3AuthenticationError, "Authentication requires environment variable #{env_key}"
-      end
-
-      password_is_correct = if service
-        OpenC3::AuthModel.verify_service_password(password)
-      else
-        OpenC3::AuthModel.verify_password(password)
-      end
-      if password_is_correct
-        @token = OpenC3::AuthModel.generate_session()
-      else
-        raise OpenC3AuthenticationError, "Password is invalid"
+    def initialize()
+      @token = ENV['OPENC3_API_PASSWORD']
+      if @token.nil?
+        raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
       end
     end
 

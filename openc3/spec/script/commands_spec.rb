@@ -22,7 +22,7 @@
 
 require 'spec_helper'
 require 'openc3'
-require 'openc3/script/script'
+require 'openc3/script'
 load 'openc3/script/script.rb' # load to prevent prompt_for_hazardous overrides
 require 'openc3/api/api'
 require 'openc3/models/target_model'
@@ -30,15 +30,6 @@ require 'openc3/microservices/interface_microservice'
 require 'openc3/microservices/decom_microservice'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
-
-module OpenC3
-  module Script
-    def self.included(base)
-      # Empty to override all the fancy stuff in script.rb
-    end
-  end
-end
-include OpenC3::Script
 
 module OpenC3
   describe Script do

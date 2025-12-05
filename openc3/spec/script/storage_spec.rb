@@ -18,19 +18,10 @@
 
 require 'spec_helper'
 require 'openc3'
-require 'openc3/script/script'
+require 'openc3/script'
 require 'openc3/script/storage'
 require 'openc3/api/api'
 require 'tempfile'
-
-module OpenC3
-  module Script
-    def self.included(base)
-      # Empty to override all the fancy stuff in script.rb
-    end
-  end
-end
-include OpenC3::Script
 
 module OpenC3
   describe Script do

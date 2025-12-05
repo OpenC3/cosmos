@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,24 +36,19 @@ module OpenC3
     @@session_cache = nil
     @@session_cache_time = nil
 
-    MIN_PASSWORD_LENGTH = 8
+    MIN_TOKEN_LENGTH = 8
 
     def self.set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
     end
 
     def self.verify(token)
-      return true if verify_service_password(token)
-      return verify_no_service(token)
-    end
-
-    def self.verify_service_password(password)
-      # Handle a service password - Generally only used by ScriptRunner and CmdQueues
+      # Handle a service password - Generally only used by ScriptRunner
       # TODO: Replace this with temporary service tokens
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
-      return true if service_password and service_password == password
+      return true if service_password and service_password == token
 
-      return false
+      return verify_no_service(token)
     end
 
     def self.verify_no_service(token)
@@ -69,29 +64,23 @@ module OpenC3
       @@session_cache_time = time
       return true if @@session_cache[token]
 
-      return false
-    end
-
-    def self.verify_password(password)
-      return false if password.nil? or password.empty?
-
       # Check Direct password
       @@token_cache = Store.get(PRIMARY_KEY)
-      @@token_cache_time = Time.now
-      return true if @@token_cache == hash(password)
+      @@token_cache_time = time
+      return true if @@token_cache == token_hash
 
       return false
     end
 
-    def self.set(password, old_password, key = PRIMARY_KEY)
-      raise "password must not be nil or empty" if password.nil? or password.empty?
-      raise "password must be at least 8 characters" if password.length < MIN_PASSWORD_LENGTH
+    def self.set(token, old_token, key = PRIMARY_KEY)
+      raise "token must not be nil or empty" if token.nil? or token.empty?
+      raise "token must be at least 8 characters" if token.length < MIN_TOKEN_LENGTH
 
       if set?(key)
-        raise "old_password must not be nil or empty" if old_password.nil? or old_password.empty?
-        raise "old_password incorrect" unless verify_password(old_password)
+        raise "old_token must not be nil or empty" if old_token.nil? or old_token.empty?
+        raise "old_token incorrect" unless verify(old_token)
       end
-      Store.set(key, hash(password))
+      Store.set(key, hash(token))
     end
 
     def self.generate_session
@@ -106,8 +95,8 @@ module OpenC3
       @@sessions_cache_time = nil
     end
 
-    def self.hash(plaintext)
-      Digest::SHA2.hexdigest plaintext
+    def self.hash(token)
+      Digest::SHA2.hexdigest token
     end
   end
 end

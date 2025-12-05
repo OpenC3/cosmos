@@ -21,17 +21,8 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
-require 'openc3/script/script'
+require 'openc3/script'
 require 'tempfile'
-
-module OpenC3
-  module Script
-    def self.included(base)
-      # Empty to override all the fancy stuff in script.rb
-    end
-  end
-end
-include OpenC3::Script
 
 module OpenC3
   describe Extract do
@@ -39,10 +30,6 @@ module OpenC3
       setup_system()
       @packet = Packet.new("INST", "ASCIICMD")
       @packet.append_item('STRING', 2048, :STRING)
-    end
-
-    before(:each) do
-      mock_redis()
     end
 
     describe "extract_string_kwargs_to_args" do

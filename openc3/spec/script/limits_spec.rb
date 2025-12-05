@@ -22,22 +22,12 @@
 
 require 'spec_helper'
 require 'openc3'
-require 'openc3/script/script'
+require 'openc3/script'
 require 'tempfile'
-
-module OpenC3
-  module Script
-    def self.included(base)
-      # Empty to override all the fancy stuff in script.rb
-    end
-  end
-end
-include OpenC3::Script
 
 module OpenC3
   describe Script do
     before(:each) do
-      mock_redis()
       @proxy = double("ServerProxy")
       # Mock the server proxy to determine if it's received methods
       allow(ServerProxy).to receive(:new).and_return(@proxy)

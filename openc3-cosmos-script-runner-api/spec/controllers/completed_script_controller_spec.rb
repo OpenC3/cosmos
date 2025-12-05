@@ -25,7 +25,6 @@ require 'rails_helper'
 RSpec.describe CompletedScriptController, :type => :controller do
   describe "GET index" do
     before(:each) do
-      mock_redis()
       # Simply stub out ScriptStatusModel to return an empty JSON structure
       allow(OpenC3::ScriptStatusModel).to receive(:all).and_return([])
       allow(OpenC3::ScriptStatusModel).to receive(:count).and_return(0)

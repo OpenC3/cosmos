@@ -21,10 +21,6 @@ require "openc3/utilities/authentication"
 
 module OpenC3
   describe OpenC3Authentication do
-    before(:each) do
-      mock_redis()
-    end
-
     describe "initialize" do
       it "raises an error if OPENC3_API_PASSWORD is not set" do
         old_password = ENV['OPENC3_API_PASSWORD']
@@ -34,9 +30,17 @@ module OpenC3
       end
 
       it "initializes with OPENC3_API_PASSWORD" do
-        ENV['OPENC3_API_PASSWORD'] = 'password'
+        ENV['OPENC3_API_PASSWORD'] = 'test_password'
         auth = OpenC3Authentication.new
-        expect(auth.token).not_to be_nil # it should be some random string (session token)
+        expect(auth.token).to eq('test_password')
+      end
+    end
+
+    describe "token" do
+      it "returns the token from environment" do
+        ENV['OPENC3_API_PASSWORD'] = 'my_token'
+        auth = OpenC3Authentication.new
+        expect(auth.token).to eq('my_token')
       end
     end
   end
