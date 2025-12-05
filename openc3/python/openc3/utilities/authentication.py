@@ -34,12 +34,23 @@ class OpenC3AuthenticationRetryableError(OpenC3AuthenticationError):
 # OpenC3 COSMOS Core authentication code
 class OpenC3Authentication:
     def __init__(self):
-        self._token = OPENC3_API_PASSWORD
-        if not self._token:
+        password = OPENC3_API_PASSWORD
+        if not password:
             raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
+        response = Session().post(self._generate_auth_url(), json={"token": password}, headers={"Content-Type": "application/json"})
+        self._token = response.text
+        if not self._token:
+            raise OpenC3AuthenticationError("Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD")
 
     def token(self, include_bearer=True):
         return self._token
+
+    def _generate_auth_url(self):
+        schema = OPENC3_API_SCHEMA or "http"
+        hostname = OPENC3_API_HOSTNAME or ("127.0.0.1" if OPENC3_DEVEL else "openc3-cosmos-cmd-tlm-api")
+        port = OPENC3_API_PORT or "2901"
+        port = int(port)
+        return f"{schema}://{hostname}:{port}/openc3-api/auth/verify"
 
 
 # OpenC3 enterprise Keycloak authentication code

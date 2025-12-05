@@ -33,9 +33,14 @@ module OpenC3
   # OpenC3 COSMOS Core authentication code
   class OpenC3Authentication
     def initialize()
-      @token = ENV['OPENC3_API_PASSWORD']
-      if @token.nil?
+      password = ENV['OPENC3_API_PASSWORD']
+      if password.nil?
         raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
+      end
+      response = Faraday.new.post(_generate_auth_url, '{"token": "' + password + '"}', {'Content-Type' => 'application/json'})
+      @token = response.body
+      if @token.nil?
+        raise OpenC3AuthenticationError, "Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD"
       end
     end
 
@@ -43,6 +48,15 @@ module OpenC3
     def token(include_bearer: true)
       @token
     end
+
+    def _generate_auth_url
+      schema = ENV['OPENC3_API_SCHEMA'] || 'http'
+      hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
+      port = ENV['OPENC3_API_PORT'] || '2901'
+      port = port.to_i
+      return "#{schema}://#{hostname}:#{port}/openc3-api/auth/verify"
+    end
+
   end
 
   # OpenC3 enterprise Keycloak authentication code
