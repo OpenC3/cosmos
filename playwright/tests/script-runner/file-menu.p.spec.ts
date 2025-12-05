@@ -28,10 +28,13 @@ test.use({
 test('clears the editor on File->New', async ({ page, utils }) => {
   // Have to fill on an editable area like the textarea
   await page.locator('textarea').fill('this is a test')
-  // But can't check on the textarea because it has an input
+  await utils.sleep(1000)
   await expect(page.locator('.editor')).toContainText('this is a test')
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=New File').click()
+  // Confirmation dialog
+  await page.locator('text=You have unsaved changes').click()
+  await page.locator('button:has-text("Continue")').click()
   await expect(page.locator('.editor')).not.toContainText('this is a test')
 })
 

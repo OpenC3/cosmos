@@ -249,7 +249,7 @@ export default {
                   if (
                     !parameter.hidden &&
                     (!this.ignoredParams.includes(parameter.name) ||
-                    this.showIgnoredParams)
+                      this.showIgnoredParams)
                   ) {
                     let val = parameter.default
                     if (

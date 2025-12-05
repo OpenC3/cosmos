@@ -47,7 +47,8 @@ from openc3.top_level import get_class_from_module
 class PacketConfig:
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
-    KNOWN_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
+    # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
+    CONVERTED_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
 
     def __init__(self):
         self.name = None
@@ -702,9 +703,13 @@ class PacketConfig:
                         elif keyword == "SUBPACKETIZER":
                             klass = get_class_from_module(f"openc3.subpacketizers.{filename}", params[0])
                         else:
-                            raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}")
+                            raise parser.error(
+                                f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
+                            )
                     except ModuleNotFoundError:
-                        raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}")
+                        raise parser.error(
+                            f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
+                        )
 
                 if not klass:
                     raise parser.error(f"Failed to load class for {keyword}")
@@ -851,7 +856,7 @@ class PacketConfig:
                 self.converted_bit_size = None
                 if len(params) == 2:
                     self.converted_type = params[0].upper()
-                    if self.converted_type not in self.KNOWN_DATA_TYPES:
+                    if self.converted_type not in self.CONVERTED_DATA_TYPES:
                         raise parser.error(f"Invalid converted_type: {self.converted_type}.")
                     self.converted_bit_size = int(params[1])
                 if self.converted_type is None or self.converted_bit_size is None:
@@ -983,7 +988,9 @@ class PacketConfig:
 
     def start_item(self, parser):
         self.finish_item()
-        self.current_item = PacketItemParser.parse(parser, self, self.current_packet, self.current_cmd_or_tlm, self.warnings)
+        self.current_item = PacketItemParser.parse(
+            parser, self, self.current_packet, self.current_cmd_or_tlm, self.warnings
+        )
 
     # Finish updating packet item
     def finish_item(self):

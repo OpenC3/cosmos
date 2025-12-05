@@ -257,9 +257,7 @@ export default {
       selectedTargetName: this.initialTargetName?.toUpperCase(),
       packetNames: [],
       selectedPacketName: this.initialPacketName?.toUpperCase(),
-      queueNames: [
-        { label: 'None', value: null },
-      ],
+      queueNames: [{ label: 'None', value: null }],
       selectedQueueName: null,
       itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
@@ -405,17 +403,20 @@ export default {
 
     // Fetch queues if in command mode
     if (this.mode === 'cmd') {
-      Api.get('/openc3-api/queues').then((response) => {
-        this.queueNames = [{ label: 'None', value: null }]
-        if (response.data && Array.isArray(response.data)) {
-          response.data.forEach((queue) => {
-            this.queueNames.push({ label: queue.name, value: queue.name })
-          })
-        }
-      }).catch((error) => {
-        console.error('Error fetching queues:', error)
-        // Keep default "None" option even if fetch fails
-      })
+      Api.get('/openc3-api/queues')
+        .then((response) => {
+          this.queueNames = [{ label: 'None', value: null }]
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach((queue) => {
+              this.queueNames.push({ label: queue.name, value: queue.name })
+            })
+          }
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching queues:', error)
+          // Keep default "None" option even if fetch fails
+        })
     }
 
     this.api.get_target_names().then((result) => {

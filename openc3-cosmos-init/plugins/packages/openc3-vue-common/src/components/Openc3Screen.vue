@@ -899,6 +899,7 @@ export default {
         values.length != this.screenItems.length ||
         values.length != this.actualScreenItems.length
       ) {
+        // eslint-disable-next-line no-console
         console.log(
           `get_tlm_values mismatch: data.length: ${values.length}, screenItems.length: ${this.screenItems.length}, actualScreenItems.length: ${this.actualScreenItems.length}`,
           JSON.stringify(values),
@@ -924,6 +925,7 @@ export default {
             // This must be the same or we're going to have problems
             // because the data comes back in an ordered array
             if (this.screenItems.length != data.length) {
+              // eslint-disable-next-line no-console
               console.log(
                 'Error getting tlm available',
                 this.screenItems,

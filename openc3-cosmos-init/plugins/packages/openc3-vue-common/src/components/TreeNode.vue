@@ -27,7 +27,7 @@
     location="top"
     :style="`position: fixed; left: ${globalTooltip.x}px; top: ${globalTooltip.y}px; pointer-events: none;`"
   />
-  
+
   <div class="tree-node">
     <div v-if="showNode" class="node-content" @click="handleClick(node)">
       <div class="content-wrapper">
@@ -59,7 +59,7 @@
           {{ 'mdi-file-document' }}
         </v-icon>
         <span
-          class="title"
+          class="text-h6"
           :tabindex="node.children ? -1 : 0"
           @keyup.enter="handleClick(node)"
           @mouseenter="showGlobalTooltip($event, node.title)"
@@ -151,17 +151,17 @@ const globalTooltip = ref({
   show: false,
   text: '',
   x: 0,
-  y: 0
+  y: 0,
 })
 
 const showGlobalTooltip = (event, text) => {
   // Only show tooltip if text is long enough to potentially overflow
   if (!text || text.length <= 50) return
-  
+
   const rect = event.target.getBoundingClientRect()
   const centerX = rect.left
   const centerY = rect.top
-  
+
   globalTooltip.value.text = text
   globalTooltip.value.x = centerX
   globalTooltip.value.y = centerY - 40
