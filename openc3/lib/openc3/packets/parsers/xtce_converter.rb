@@ -31,6 +31,8 @@ ALIAS_NAMESPACE = 'COSMOS'
 
 COMBINED_NAME = "COMBINED"
 MAX_64_BIT_INT = 18446744073709551614
+COSMOS_NATIVE_DERIVED_ITEMS = ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_TIMESECONDS', 'RECEIVED_TIMEFORMATTED', 'RECEIVED_COUNT']
+PACKET_TIME_STRING = "PACKET_TIME"
 
 module OpenC3
   class XtceConverter
@@ -150,12 +152,49 @@ module OpenC3
               unique_tlm_params = {}
             end
             create_commands(xml, commands, target_name, unique_tlm_params)
+            create_algorithms(xml, telemetry, target_name)
           end # SpaceSystem
         end # builder
         File.open(filename, 'w') do |file|
           file.puts builder.to_xml
         end
       end
+    end
+
+    def create_algorithms(xml, telemetry, target_name)
+      return unless telemetry[target_name]
+      derived = {}
+      telemetry[target_name].each do |packet_name, packet|
+        packet.sorted_items.each do |item|
+          next if item.data_type != :DERIVED
+          next if COSMOS_NATIVE_DERIVED_ITEMS.include?(item.name)
+          next if item.name == PACKET_TIME_STRING
+          derived[packet_name] = item
+        end
+      end
+      return unless derived.length > 0
+      algorithm_xml = Nokogiri::XML::Builder.new do |alg_xml| 
+        alg_xml.AlgorithmSet do
+          derived.each do |packet_name, item|
+            alg_xml.CustomAlgorithm("name" => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_" \
+                                    "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_#{item.read_conversion.class.name}") do
+              alg_xml.ExternalAlgorithmSet do
+                alg_xml.ExternalAlgorithm("implementationName" => "TODO", "algorithmLocation" => "TODO")
+              end
+              alg_xml.InputSet do
+                alg_xml.InputParameterInstanceRef( :parameterRef => "TODO", :instance => "0", :useCalibratedValue => "TODO")
+              end
+              alg_xml.OutputSet do
+                alg_xml.OutputParameterRef( :parameterRef => "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}")
+              end
+              alg_xml.TriggerSet( :name => "triggerSet") do
+                alg_xml.OnParameterUpdateTrigger( :parameterRef => "TODO")
+              end
+            end
+          end
+        end
+      end
+      xml['xtce'].comment "TODO \n#{algorithm_xml.to_xml(save_with: Nokogiri::XML::Node::SaveOptions::NO_DECLARATION | Nokogiri::XML::Node::SaveOptions::FORMAT)}\n"
     end
 
     def create_telemetry(xml, telemetry, target_name)
@@ -170,10 +209,12 @@ module OpenC3
             to_xtce_type(item, 'Parameter', xml)
           end
         end
+        has_packet_time = unique_items.include?(PACKET_TIME_STRING)
+        puts "HAS PACKET_TIME: #{has_packet_time}"
 
         xml['xtce'].ParameterSet do
           unique_items.each do |item_name, item|
-            to_xtce_item(item, 'Parameter', xml)
+            to_xtce_item(item, 'Parameter', xml, has_packet_time: has_packet_time)
           end
         end
 
@@ -258,21 +299,6 @@ module OpenC3
               end # If packet contains invalid chars
               argument_list_sorted_items = get_sorted_non_id_items(packet.sorted_items)
               if argument_list_sorted_items.size > 0
-                #xml['xtce'].BaseMetaCommand(:metaCommandRef => packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
-                #  xml['xtce'].ArgumentAssignmentList do
-                #    argument_list_sorted_items.each do |item|
-                #      initial_value = case item.data_type
-                #      when :INT, :UINT, :FLOAT
-                #        get_numerical_item_initial_value(item)
-                #      when :STRING, :BLOCK
-                #        get_string_or_block_initial_value(item, item.data_type)
-                #      when :DERIVED
-                #        next
-                #      end
-                #      xml['xtce'].ArgumentAssignment(:argumentName => item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR), :argumentValue => "#{initial_value}")
-                #    end
-                #  end
-                #end # BaseMetaCommand
                 xml['xtce'].ArgumentList do
                   argument_list_sorted_items.each do |item|
                     to_xtce_item(item, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
@@ -340,7 +366,7 @@ module OpenC3
       unique = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
-          next if item.data_type == :DERIVED
+          #next if item.data_type == :DERIVED
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
         end
@@ -476,7 +502,9 @@ module OpenC3
       when :BLOCK
         to_xtce_string(item, param_or_arg, xml, 'Binary', prefix: prefix)
       when :DERIVED
-        raise "DERIVED data type not supported in XTCE"
+        if !COSMOS_NATIVE_DERIVED_ITEMS.include?(item.name)
+          to_xtce_derived(item, param_or_arg, xml, prefix: prefix)
+        end
       end
 
       # Handle arrays
@@ -680,7 +708,22 @@ module OpenC3
       end
     end
 
-    def to_xtce_item(item, param_or_arg, xml, prefix: "")
+    def to_xtce_derived(item, param_or_arg, xml, prefix: "")
+      if item.name == PACKET_TIME_STRING
+        xml << "\n<!--TODO: \n" \
+               "\t<xtce:AbsoluteTime#{param_or_arg}Type name=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Type\">\n" \
+               "\t\t<TODO/>\n" \
+               "\t</xtce:AbsoluteTime#{param_or_arg}Type>"
+               "-->\n"
+      else
+        description_string = item.description ? "shortDescription=\"#{item.description}\"" : ""
+        xml << "\n<!--TODO: \n" \
+               "\t<xtce:TODO#{param_or_arg}Type name=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Type\" #{description_string} />\n" \
+               "-->\n"
+      end
+    end
+
+    def to_xtce_item(item, param_or_arg, xml, prefix: "", has_packet_time: false)
       replaced_item_name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
       if item.array_size
         type_suffix = "_ArrayType"
@@ -705,10 +748,32 @@ module OpenC3
         end
         attrs[:initialValue] = initial_value
       end
-      xml['xtce'].public_send(param_or_arg, attrs) do
+      if item.data_type == :DERIVED
+        if COSMOS_NATIVE_DERIVED_ITEMS.include?(item.name)
+          return
+        end
+        parameter_comment = "\n<!-- TODO: \n" \
+                 "\t<xtce:#{param_or_arg} name=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}\" #{param_or_arg.downcase}TypeRef=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Type\">\n" \
+                 "\t\t<xtce:ParameterProperties dataSource=\"derived\"/>\n"
+
         if needs_alias
-          xml['xtce'].AliasSet do
-            xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
+          parameter_comment += "\t\t<xtce:AliasSet>\n" \
+                 "\t\t\t<xtce:Alias nameSpace=\"COSMOS\" alias=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}\"/>\n" \
+                 "\t\t</xtce:AliasSet>\n"
+        end
+        parameter_comment += "\t</xtce:#{param_or_arg}>\n-->\n"
+        xml << parameter_comment
+      else
+        xml['xtce'].public_send(param_or_arg, attrs) do
+          if needs_alias
+            xml['xtce'].AliasSet do
+              xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
+            end
+          end
+          if has_packet_time
+            xml['xtce'].ParameterProperties do
+              xml['xtce'].TimeAssociation(:parameterRef => PACKET_TIME_STRING)
+            end
           end
         end
       end
