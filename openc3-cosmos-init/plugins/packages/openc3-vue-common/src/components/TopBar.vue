@@ -59,14 +59,14 @@ export default {
       default: '',
     },
   },
+  mounted() {
+    document.title = this.title
+  },
   methods: {
     subMenuClick(submenu) {
       submenu.command(submenu)
       this.$refs.topmenu[0].isActive = false
     },
-  },
-  mounted() {
-    document.title = this.title
   },
 }
 </script>
