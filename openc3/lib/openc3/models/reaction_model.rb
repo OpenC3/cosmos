@@ -183,20 +183,17 @@ module OpenC3
     end
 
     def verify_triggers
-      trigger_models = []
+      if @triggers.empty?
+        raise ReactionInputError.new "reaction must contain at least one valid trigger: #{@triggers}"
+      end
+
       @triggers.each do | trigger |
         model = TriggerModel.get(name: trigger['name'], group: trigger['group'], scope: @scope)
         if model.nil?
           raise ReactionInputError.new "failed to find trigger: #{trigger}"
         end
-        trigger_models << model
-      end
-      if trigger_models.empty?
-        raise ReactionInputError.new "reaction must contain at least one valid trigger: #{@triggers}"
-      end
-      trigger_models.each do | trigger_model |
-        trigger_model.update_dependents(dependent: @name)
-        trigger_model.update()
+        model.update_dependents(dependent: @name)
+        model.update()
       end
     end
 
@@ -211,6 +208,25 @@ module OpenC3
     end
 
     def update
+      old_reaction = ReactionModel.get(name: @name, scope: @scope)
+
+      if old_reaction
+        # Find triggers that are being removed (in old but not in new)
+        old_trigger_keys = old_reaction.triggers.map { |t| "#{t['group']}:#{t['name']}" }
+        new_trigger_keys = @triggers.map { |t| "#{t['group']}:#{t['name']}" }
+        removed_trigger_keys = old_trigger_keys - new_trigger_keys
+
+        # Remove this reaction from old triggers' dependents
+        removed_trigger_keys.each do |trigger_key|
+          group, name = trigger_key.split(':', 2)
+          trigger_model = TriggerModel.get(name: name, group: group, scope: @scope)
+          if trigger_model
+            trigger_model.update_dependents(dependent: @name, remove: true)
+            trigger_model.update()
+          end
+        end
+      end
+
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))

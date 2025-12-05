@@ -17,6 +17,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import os
 import tempfile
 import unittest
 from unittest.mock import *
@@ -52,6 +53,17 @@ class TestPacketConfig(unittest.TestCase):
         with self.assertRaisesRegex(ConfigParser.Error, "Unknown keyword 'BLAH'"):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
+
+    def test_raises_not_implemented_for_xtce_files(self):
+        """Test that XTCE files raise NotImplementedError"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".xtce", delete=False)
+        tf.write('<?xml version="1.0" encoding="UTF-8"?>')
+        tf.close()
+
+        with self.assertRaisesRegex(NotImplementedError, "XTCE file parsing is not yet implemented"):
+            self.pc.process_file(tf.name, "SYSTEM")
+
+        os.unlink(tf.name)
 
     def test_creates_unknown_cmd_tlm_packets(self):
         # Only one target called "UNKNOWN"
@@ -1307,122 +1319,419 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM2"), "NO")
         tf.close()
 
+    def test_supports_hex_values_in_min_max_default(self):
+        """Test that MINIMUM_VALUE, MAXIMUM_VALUE, and DEFAULT_VALUE support hexadecimal notation"""
+        # Test basic hex values with lowercase 0x
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 16 UINT 0 65535 0\n")
+            tf.write("  MINIMUM_VALUE 0x10\n")
+            tf.write("  MAXIMUM_VALUE 0xff\n")
+            tf.write("  DEFAULT_VALUE 0x80\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x10)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x80)
+
+        # Test uppercase 0X notation
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 32 UINT 0 4294967295 0\n")
+            tf.write("  MINIMUM_VALUE 0X100\n")
+            tf.write("  MAXIMUM_VALUE 0XFFFF\n")
+            tf.write("  DEFAULT_VALUE 0X1000\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x100)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFFFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x1000)
+
+        # Test mixed case hex digits
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 32 UINT 0 4294967295 0\n")
+            tf.write("  MINIMUM_VALUE 0xAbC\n")
+            tf.write("  MAXIMUM_VALUE 0xDeAdBeEf\n")
+            tf.write("  DEFAULT_VALUE 0xCaFeBaBe\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0xABC)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xDEADBEEF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0xCAFEBABE)
+
+        # Test hex with SELECT_PARAMETER
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 8 UINT 0 255 0\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        # Override with hex values
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("SELECT_COMMAND tgt1 pkt1\n")
+            tf.write("SELECT_PARAMETER item1\n")
+            tf.write("  MINIMUM_VALUE 0x01\n")
+            tf.write("  MAXIMUM_VALUE 0xFE\n")
+            tf.write("  DEFAULT_VALUE 0x7F\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x01)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xFE)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x7F)
+
+        # Test single digit hex
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 8 UINT 0 255 0\n")
+            tf.write("  MINIMUM_VALUE 0x0\n")
+            tf.write("  MAXIMUM_VALUE 0xF\n")
+            tf.write("  DEFAULT_VALUE 0xA\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x0)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0xF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0xA)
+
+        # Test hex values with INT type (signed)
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_PARAMETER item1 16 INT -32768 32767 0\n")
+            tf.write("  MINIMUM_VALUE 0x10\n")
+            tf.write("  MAXIMUM_VALUE 0x7FFF\n")
+            tf.write("  DEFAULT_VALUE 0x100\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].minimum, 0x10)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].maximum, 0x7FFF)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0x100)
+
     def test_allows_appending_derived_items(self):
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write("  APPEND_ITEM item1 0 DERIVED\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type, "DERIVED")
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  APPEND_ITEM item1 0 DERIVED\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type, "DERIVED")
 
     def test_detects_overlapping_items_without_IGNORE_OVERLAP(self):
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write("  ITEM item1 0 8 UINT\n")
-        tf.write("  ITEM item2 4 4 UINT\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        self.assertIn(
-            "Bit definition overlap at bit offset 4 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-            self.pc.warnings,
-        )
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.write("  ITEM item2 4 4 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertIn(
+                "Bit definition overlap at bit offset 4 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+                self.pc.warnings,
+            )
 
     def test_ignores_overlapping_items_with_IGNORE_OVERLAP(self):
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write("  IGNORE_OVERLAP\n")
-        tf.write("  ITEM item1 0 8 UINT\n")
-        tf.write("  ITEM item2 4 4 UINT\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(len(self.pc.warnings), 0)
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write("  IGNORE_OVERLAP\n")
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.write("  ITEM item2 4 4 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(len(self.pc.warnings), 0)
 
     def test_hex_states(self):
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
-        tf.write("  ITEM item1 0 8 UINT\n")
-        tf.write("    STATE ZERO 0x00\n")
-        tf.write("    STATE ONE 0x01\n")
-        tf.write("    STATE TWO 0x02\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        item = self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1")
-        self.assertEqual(item.states, {"ZERO": 0x00, "ONE": 0x01, "TWO": 0x02})
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"\n')
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.write("    STATE ZERO 0x00\n")
+            tf.write("    STATE ONE 0x01\n")
+            tf.write("    STATE TWO 0x02\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            item = self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1")
+            self.assertEqual(item.states, {"ZERO": 0x00, "ONE": 0x01, "TWO": 0x02})
 
     def test_processes_subpacket_keyword(self):
-        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
-        tf.write("  SUBPACKET\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        packet = self.pc.telemetry["TGT1"]["PKT1"]
-        self.assertTrue(packet.subpacket)
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            packet = self.pc.telemetry["TGT1"]["PKT1"]
+            self.assertTrue(packet.subpacket)
 
     def test_processes_subpacketizer_keyword(self):
         # Directly set the subpacketizer on a packet to test it works
-        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
-        tf.seek(0)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+            tf.seek(0)
 
-        self.pc.process_file(tf.name, "TGT1")
-        packet = self.pc.telemetry["TGT1"]["PKT1"]
+            self.pc.process_file(tf.name, "TGT1")
+            packet = self.pc.telemetry["TGT1"]["PKT1"]
 
-        # Manually set subpacketizer to test the attribute works
-        packet.subpacketizer = DummySubpacketizer(packet, "arg1", "arg2")
+            # Manually set subpacketizer to test the attribute works
+            packet.subpacketizer = DummySubpacketizer(packet, "arg1", "arg2")
 
-        self.assertIsNotNone(packet.subpacketizer)
-        self.assertIsInstance(packet.subpacketizer, DummySubpacketizer)
-        self.assertEqual(packet.subpacketizer.args, ["arg1", "arg2"])
-        tf.close()
+            self.assertIsNotNone(packet.subpacketizer)
+            self.assertIsInstance(packet.subpacketizer, DummySubpacketizer)
+            self.assertEqual(packet.subpacketizer.args, ["arg1", "arg2"])
 
     def test_unique_id_mode_autodetection_for_commands(self):
-        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        # Two packets with same ID but different field layouts - should trigger unique_id_mode
-        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_PARAMETER PARAM1 8 UINT 1 1 1\n")
-        tf.write("  APPEND_PARAMETER PARAM2 8 UINT 0 0 0\n")
-        tf.write("COMMAND TGT1 PKT2 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_PARAMETER PARAM1 16 UINT 1 1 1\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        self.assertTrue(self.pc.cmd_unique_id_mode.get("TGT1"))
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            # Two packets with same ID but different field layouts - should trigger unique_id_mode
+            tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_PARAMETER PARAM1 8 UINT 1 1 1\n")
+            tf.write("  APPEND_PARAMETER PARAM2 8 UINT 0 0 0\n")
+            tf.write("COMMAND TGT1 PKT2 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_PARAMETER PARAM1 16 UINT 1 1 1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertTrue(self.pc.cmd_unique_id_mode.get("TGT1"))
 
     def test_unique_id_mode_autodetection_for_telemetry(self):
-        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        # Two packets with same ID but different field layouts - should trigger unique_id_mode
-        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
-        tf.write("  APPEND_ITEM ITEM2 8 UINT\n")
-        tf.write("TELEMETRY TGT1 PKT2 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 16 UINT 1\n")
-        tf.seek(0)
-        self.pc.process_file(tf.name, "TGT1")
-        self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
-        tf.close()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            # Two packets with same ID but different field layouts - should trigger unique_id_mode
+            tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+            tf.write("  APPEND_ITEM ITEM2 8 UINT\n")
+            tf.write("TELEMETRY TGT1 PKT2 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 16 UINT 1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
 
     def test_subpacket_id_value_hash_separation(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            # Create a normal packet and a subpacket with the same ID
+            tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+            tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            # Both should be in separate hashes
+            self.assertIn("TGT1", self.pc.tlm_id_value_hash)
+            self.assertIn("TGT1", self.pc.tlm_subpacket_id_value_hash)
+            # Normal packet should be in main hash
+            self.assertIn(repr([1]), self.pc.tlm_id_value_hash["TGT1"])
+            # Subpacket should be in subpacket hash
+            self.assertIn(repr([1]), self.pc.tlm_subpacket_id_value_hash["TGT1"])
+
+    def test_to_config_exports_telemetry_packets(self):
+        """Test that to_config exports telemetry packets to files"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test Packet"\n')
+            tf.write('  APPEND_ITEM ITEM1 16 UINT "Item 1"\n')
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify telemetry file was created
+            tlm_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt")
+            self.assertTrue(os.path.exists(tlm_file))
+
+            # Verify file contains the packet definition
+            with open(tlm_file, "r") as f:
+                content = f.read()
+                self.assertIn("TELEMETRY", content)
+                self.assertIn("TGT1", content)
+                self.assertIn("PKT1", content)
+
+    def test_to_config_exports_command_packets(self):
+        """Test that to_config exports command packets to files"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write('COMMAND TGT1 CMD1 LITTLE_ENDIAN "Test Command"\n')
+            tf.write('  APPEND_PARAMETER PARAM1 16 UINT 0 10 5 "Parameter 1"\n')
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify command file was created
+            cmd_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_cmd.txt")
+            self.assertTrue(os.path.exists(cmd_file))
+
+            # Verify file contains the packet definition
+            with open(cmd_file, "r") as f:
+                content = f.read()
+                self.assertIn("COMMAND", content)
+                self.assertIn("TGT1", content)
+                self.assertIn("CMD1", content)
+
+    def test_to_config_exports_limits_groups(self):
+        """Test that to_config exports limits groups"""
         tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        # Create a normal packet and a subpacket with the same ID
-        tf.write("TELEMETRY TGT1 PKT1 BIG_ENDIAN\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
-        tf.write("TELEMETRY TGT1 SUB1 BIG_ENDIAN\n")
-        tf.write("  SUBPACKET\n")
-        tf.write("  APPEND_ID_ITEM ITEM1 8 UINT 1\n")
+        tf.write("LIMITS_GROUP GROUP1\n")
+        tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+        tf.write("LIMITS_GROUP GROUP2\n")
+        tf.write("  LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "SYSTEM")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify limits groups file was created
+            limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
+            self.assertTrue(os.path.exists(limits_file))
+
+            # Verify file contains the limits groups
+            with open(limits_file, "r") as f:
+                content = f.read()
+                self.assertIn("LIMITS_GROUP GROUP1", content)
+                self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
+                self.assertIn("LIMITS_GROUP GROUP2", content)
+                self.assertIn("LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2", content)
+
+    def test_to_config_skips_unknown_target(self):
+        """Test that to_config skips UNKNOWN target"""
+        # PacketConfig always creates UNKNOWN target/packets by default
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify UNKNOWN directory was not created
+            unknown_dir = os.path.join(output_dir, "UNKNOWN")
+            self.assertFalse(os.path.exists(unknown_dir))
+
+    def test_to_config_quotes_names_with_spaces(self):
+        """Test that to_config quotes names with spaces"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('LIMITS_GROUP "GROUP WITH SPACES"\n')
+        tf.write('  LIMITS_GROUP_ITEM "TARGET NAME" "PACKET NAME" "ITEM NAME"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "SYSTEM")
+        tf.close()
+
+        # Export to a temporary directory
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+
+            # Verify limits groups file contains quoted names
+            limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
+            with open(limits_file, "r") as f:
+                content = f.read()
+                self.assertIn('"GROUP WITH SPACES"', content)
+                self.assertIn('"TARGET NAME"', content)
+                self.assertIn('"PACKET NAME"', content)
+                self.assertIn('"ITEM NAME"', content)
+
+    def test_to_config_replaces_existing_files(self):
+        """Test that to_config replaces existing files"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write('  APPEND_ITEM ITEM1 8 UINT "Item"\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        # Both should be in separate hashes
-        self.assertIn("TGT1", self.pc.tlm_id_value_hash)
-        self.assertIn("TGT1", self.pc.tlm_subpacket_id_value_hash)
-        # Normal packet should be in main hash
-        self.assertIn(repr([1]), self.pc.tlm_id_value_hash["TGT1"])
-        # Subpacket should be in subpacket hash
-        self.assertIn(repr([1]), self.pc.tlm_subpacket_id_value_hash["TGT1"])
         tf.close()
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            # Create existing file with different content
+            tlm_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt")
+            os.makedirs(os.path.dirname(tlm_file), exist_ok=True)
+            with open(tlm_file, "w") as f:
+                f.write("OLD CONTENT\n")
+
+            # Export should replace the file
+            self.pc.to_config(output_dir)
+
+            # Verify new content
+            with open(tlm_file, "r") as f:
+                content = f.read()
+                self.assertNotIn("OLD CONTENT", content)
+                self.assertIn("TELEMETRY", content)
+
+    def test_to_config_creates_output_directory(self):
+        """Test that to_config creates the output directory if it doesn't exist"""
+        with tempfile.TemporaryDirectory() as base_dir:
+            output_dir = os.path.join(base_dir, "new_output_dir")
+            self.assertFalse(os.path.exists(output_dir))
+
+            # Should create the directory
+            self.pc.to_config(output_dir)
+            self.assertTrue(os.path.exists(output_dir))
+
+    def test_to_xtce_exports_to_xtce_format(self):
+        """Test that to_xtce exports packets to XTCE format"""
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write('  APPEND_ITEM ITEM1 8 UINT "Item"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_xtce(output_dir)
+
+            # Verify XTCE file was created
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assertTrue(os.path.exists(xtce_file))
+
+            # Verify it's valid XML
+            from lxml import etree
+
+            tree = etree.parse(xtce_file)
+            root = tree.getroot()
+            self.assertIsNotNone(root)
+
+    def test_packet_keywords_require_current_packet(self):
+        """Test that packet-level keywords raise errors when used outside packet definitions"""
+        keywords_to_test = [
+            "HIDDEN",
+            "DISABLED",
+            "VIRTUAL",
+            "SUBPACKET",
+            "RESTRICTED",
+            "ALLOW_SHORT",
+            "HAZARDOUS",
+            "DISABLE_MESSAGES",
+            "META TEST_META",
+        ]
+
+        for keyword in keywords_to_test:
+            tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+            tf.write(f"{keyword}\n")
+            tf.close()
+            with self.assertRaises(Exception) as context:
+                self.pc.process_file(tf.name, "TGT1")
+            self.assertIn("No current packet for", str(context.exception))
+            os.unlink(tf.name)
+
+        # Verify these keywords work correctly INSIDE a packet definition
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 PKT1 LITTLE_ENDIAN "Test"\n')
+        tf.write("  HIDDEN\n")
+        tf.write("  DISABLED\n")
+        tf.write("  VIRTUAL\n")
+        tf.write("  SUBPACKET\n")
+        tf.write("  RESTRICTED\n")
+        tf.write("  ALLOW_SHORT\n")
+        tf.write("  HAZARDOUS\n")
+        tf.write("  DISABLE_MESSAGES\n")
+        tf.write("  META TEST_META test_value\n")
+        tf.close()
+        # Should not raise an error
+        self.pc.process_file(tf.name, "TGT1")
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+        self.assertTrue(packet.hidden)
+        self.assertTrue(packet.disabled)
+        self.assertTrue(packet.virtual)
+        self.assertTrue(packet.subpacket)
+        self.assertTrue(packet.restricted)
+        self.assertTrue(packet.short_buffer_allowed)
+        self.assertTrue(packet.hazardous)
+        self.assertTrue(packet.messages_disabled)
+        self.assertEqual(packet.meta["TEST_META"], ["test_value"])
+        os.unlink(tf.name)

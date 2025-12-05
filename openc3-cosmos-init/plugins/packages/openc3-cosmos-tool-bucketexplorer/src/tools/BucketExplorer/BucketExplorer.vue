@@ -97,7 +97,14 @@
         hover
         @click:row.stop="fileClick"
       >
-        <template v-slot:item.data-table-select="{ item, internalItem, isSelected, toggleSelect }">
+        <template
+          #item.data-table-select="{
+            item,
+            internalItem,
+            isSelected,
+            toggleSelect,
+          }"
+        >
           <v-checkbox-btn
             v-if="item.icon === 'mdi-file'"
             :model-value="isSelected(internalItem)"

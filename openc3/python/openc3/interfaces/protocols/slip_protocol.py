@@ -142,21 +142,21 @@ class SlipProtocol(TerminatedProtocol):
 
     def write_details(self):
         result = super().write_details()
-        result['start_char'] = repr(self.start_char)
-        result['end_char'] = repr(self.end_char)
-        result['esc_char'] = repr(self.esc_char)
-        result['esc_end_char'] = repr(self.esc_end_char)
-        result['esc_esc_char'] = repr(self.esc_esc_char)
-        result['write_enable_escaping'] = self.write_enable_escaping
+        result["start_char"] = repr(self.start_char)
+        result["end_char"] = repr(self.end_char)
+        result["esc_char"] = repr(self.esc_char)
+        result["esc_end_char"] = repr(self.esc_end_char)
+        result["esc_esc_char"] = repr(self.esc_esc_char)
+        result["write_enable_escaping"] = self.write_enable_escaping
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['start_char'] = repr(self.start_char)
-        result['end_char'] = repr(self.end_char)
-        result['esc_char'] = repr(self.esc_char)
-        result['esc_end_char'] = repr(self.esc_end_char)
-        result['esc_esc_char'] = repr(self.esc_esc_char)
-        result['read_strip_characters'] = self.read_strip_characters
-        result['read_enable_escaping'] = self.read_enable_escaping
+        result["start_char"] = repr(self.start_char)
+        result["end_char"] = repr(self.end_char)
+        result["esc_char"] = repr(self.esc_char)
+        result["esc_end_char"] = repr(self.esc_end_char)
+        result["esc_esc_char"] = repr(self.esc_esc_char)
+        result["read_strip_characters"] = self.read_strip_characters
+        result["read_enable_escaping"] = self.read_enable_escaping
         return result
