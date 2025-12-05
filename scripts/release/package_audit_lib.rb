@@ -324,23 +324,15 @@ def check_alpine(client)
   end
 end
 
-def check_minio(client, containers, mc_version, minio_version, go_version)
-  puts "Checking minio against Minio version: #{minio_version}, MC version: #{mc_version}, Go version: #{go_version}"
+def check_minio(client, containers, minio_version, go_version)
+  puts "Checking minio against Minio version: #{minio_version}, Go version: #{go_version}"
   resp = client.get('https://api.github.com/repos/minio/minio/tags').body
   tags = JSON.parse(resp)
   minio_versions = []
   tags.each do |entry|
     minio_versions << entry['name']
   end
-  resp = client.get('https://api.github.com/repos/minio/mc/tags').body
-  tags = JSON.parse(resp)
-  mc_versions = []
-  tags.each do |entry|
-    mc_versions << entry['name']
-  end
-
-  check_minio_mc(minio_versions, minio_version, 'Minio')
-  check_minio_mc(mc_versions, mc_version, 'MC')
+  check_minio_version(minio_versions, minio_version, 'Minio')
 
   resp = client.get("https://registry.hub.docker.com/v2/repositories/library/golang/tags?name=alpine#{ENV['ALPINE_VERSION']}&page_size=1024").body
   images = JSON.parse(resp)['results']
@@ -354,7 +346,7 @@ def check_minio(client, containers, mc_version, minio_version, go_version)
   validate_versions(versions, go_version, 'Go')
 end
 
-def check_minio_mc(versions, requested_version, name)
+def check_minio_version(versions, requested_version, name)
   if versions.include?(requested_version)
     split_version = requested_version.split('.')
     minio_time = DateTime.parse(split_version[1])
@@ -374,19 +366,13 @@ def check_minio_mc(versions, requested_version, name)
   end
 end
 
-def check_build_files(mc_version, minio_version, traefik_version)
+def check_build_files(minio_version, traefik_version)
   File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
     file.each do |line|
       if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
         parts = line.split('=')
         if parts[1].strip != minio_version
           puts "WARN: Update build_multi_arch.rb to match Minio Dockerfile: #{minio_version}, Current value: #{parts[1].strip}"
-        end
-      end
-      if line.include?('OPENC3_MC_RELEASE=RELEASE')
-        parts = line.split('=')
-        if parts[1].strip != mc_version
-          puts "WARN: Update build_multi_arch.rb to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{parts[1].strip}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')
@@ -404,13 +390,6 @@ def check_build_files(mc_version, minio_version, traefik_version)
         version = parts[1].strip[0..-2].strip # Removing trailing \
         if version != minio_version
           puts "WARN: Update openc3_build_ubi.rb to match Minio Dockerfile: #{minio_version}, Current value: #{version}"
-        end
-      end
-      if line.include?('OPENC3_MC_RELEASE=RELEASE')
-        parts = line.split('=')
-        version = parts[1].strip[0..-2].strip # Removing trailing \
-        if version != mc_version
-          puts "WARN: Update openc3_build_ubi.sh to match openc3-cosmos-init Dockerfile MC version: #{mc_version}, Current value: #{version}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')
@@ -549,6 +528,8 @@ def check_tool_base(path, base_pkgs)
           outfile = "public/js/#{package}.global-#{latest}.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
+          old_base_filename = existing.replace('vue.global.prod', 'vue.global').replace('.min.js', '.js')
+          FileUtils.rm old_base_filename
           outfile = "public/js/#{package}.global.prod-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)

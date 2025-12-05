@@ -1193,6 +1193,106 @@ module OpenC3
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM2")).to eql "NO"
           tf.unlink
         end
+
+        it "supports hex values in min max default" do
+          # Test basic hex values with lowercase 0x
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 16 UINT 0 65535 0'
+          tf.puts '  MINIMUM_VALUE 0x10'
+          tf.puts '  MAXIMUM_VALUE 0xff'
+          tf.puts '  DEFAULT_VALUE 0x80'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x10
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x80
+          tf.unlink
+
+          # Test uppercase 0X notation
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 32 UINT 0 4294967295 0'
+          tf.puts '  MINIMUM_VALUE 0X100'
+          tf.puts '  MAXIMUM_VALUE 0XFFFF'
+          tf.puts '  DEFAULT_VALUE 0X1000'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x100
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFFFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x1000
+          tf.unlink
+
+          # Test mixed case hex digits
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 32 UINT 0 4294967295 0'
+          tf.puts '  MINIMUM_VALUE 0xAbC'
+          tf.puts '  MAXIMUM_VALUE 0xDeAdBeEf'
+          tf.puts '  DEFAULT_VALUE 0xCaFeBaBe'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0xABC
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xDEADBEEF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0xCAFEBABE
+          tf.unlink
+
+          # Test hex with SELECT_PARAMETER
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 8 UINT 0 255 0'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          tf.unlink
+
+          # Override with hex values
+          tf = Tempfile.new('unittest')
+          tf.puts 'SELECT_COMMAND tgt1 pkt1'
+          tf.puts 'SELECT_PARAMETER item1'
+          tf.puts '  MINIMUM_VALUE 0x01'
+          tf.puts '  MAXIMUM_VALUE 0xFE'
+          tf.puts '  DEFAULT_VALUE 0x7F'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x01
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFE
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x7F
+          tf.unlink
+
+          # Test single digit hex
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 8 UINT 0 255 0'
+          tf.puts '  MINIMUM_VALUE 0x0'
+          tf.puts '  MAXIMUM_VALUE 0xF'
+          tf.puts '  DEFAULT_VALUE 0xA'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x0
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0xA
+          tf.unlink
+
+          # Test hex values with INT type (signed)
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 16 INT -32768 32767 0'
+          tf.puts '  MINIMUM_VALUE 0x10'
+          tf.puts '  MAXIMUM_VALUE 0x7FFF'
+          tf.puts '  DEFAULT_VALUE 0x100'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x10
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0x7FFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x100
+          tf.unlink
+        end
       end
 
       context "with APPEND" do

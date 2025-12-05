@@ -47,6 +47,23 @@
       <v-card-title class="d-flex align-center justify-content-space-between">
         Items {{ rows.length ? `(${rows.length})` : '' }}
         <v-spacer />
+        <v-tooltip location="right" close-delay="2000">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" class="mr-2">
+              mdi-information-variant-circle
+            </v-icon>
+          </template>
+          <span>
+            Name with * indicates
+            <a
+              href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+              target="_blank"
+              >DERIVED</a
+            >&nbsp;item<br />
+            Right click name to pin item<br />
+            Right click value for details / graph
+          </span>
+        </v-tooltip>
         <v-text-field
           v-model="search"
           label="Search"
@@ -112,26 +129,6 @@
             :settings="[['WIDTH', '100%']]"
             :screen-time-zone="timeZone"
           />
-        </template>
-        <template #footer.prepend>
-          <v-tooltip location="right" close-delay="2000">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" class="info-tooltip">
-                mdi-information-variant-circle
-              </v-icon>
-            </template>
-            <span>
-              Name with * indicates
-              <a
-                href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
-                target="_blank"
-                >DERIVED</a
-              >&nbsp;item<br />
-              Right click name to pin item<br />
-              Right click value for details / graph
-            </span>
-          </v-tooltip>
-          <v-spacer />
         </template>
       </v-data-table-virtual>
     </v-card>
@@ -813,9 +810,5 @@ a {
 
 .pin-item {
   float: left;
-}
-
-.info-tooltip {
-  margin-left: 10px;
 }
 </style>

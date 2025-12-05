@@ -20,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Set up Ruby 3.3
+      - name: Set up Ruby 3.4
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
       - name: openc3.sh build

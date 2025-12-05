@@ -8,8 +8,8 @@ assignees: ""
 
 First check out our main documentation site at [https://openc3.com](https://openc3.com).
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What is the use case or problem this feature would solve?**
+Explain why you think this feature should be added to COSMOS. This could be a problem you have with the way things work now, a use case that isn't currently covered, etc. (Ex. I'm always frustrated when ...)
 
 **Describe the solution you'd like**
 A clear and concise description of what you want to happen. Describing how the feature would work in the context of the OpenC3 Demo configuration is helpful.

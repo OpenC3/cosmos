@@ -72,9 +72,7 @@ class TestTemplateProtocol(unittest.TestCase):
 
     def test_unblocks_writes_waiting_for_responses(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE"
-        )
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
         packet = Packet("TGT", "CMD")
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
         packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT'"
@@ -95,7 +93,7 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
         start = time.time()
         self.interface.connect()
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
         data = self.interface.read()
         self.assertAlmostEqual(time.time() - start, 0.01, places=1)
         self.assertEqual(data.buffer, b"\x31\x30")
@@ -128,7 +126,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.restore_defaults()
         self.interface.write(packet)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
     def test_logs_an_error_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -230,7 +228,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
 
         def do_read(self):
             time.sleep(0.001)
@@ -240,7 +238,7 @@ class TestTemplateProtocol(unittest.TestCase):
         thread.start()
         self.interface.write(packet)
         time.sleep(0.003)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
@@ -278,7 +276,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
 
         def do_read(self):
             time.sleep(0.001)
@@ -288,7 +286,7 @@ class TestTemplateProtocol(unittest.TestCase):
         thread.start()
         self.interface.write(packet)
         time.sleep(0.003)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("PKT_ID"), (1))  # Result ID set to the defined value)
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
 
@@ -333,7 +331,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.write("PKTID", 20)
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
 
         def do_read(self):
             time.sleep(0.001)
@@ -344,7 +342,7 @@ class TestTemplateProtocol(unittest.TestCase):
 
         self.interface.write(packet)
         time.sleep(0.003)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("APID"), (10))  # ID item set to the defined value)
         self.assertEqual(self.read_result.read("PKTID"), (20))  # ID item set to the defined value)
 
@@ -379,7 +377,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.get_item("RSP_PACKET").default = "READ_VOLTAGE"
         packet.restore_defaults()
         self.interface.connect()
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
 
         def do_read(self):
             time.sleep(0.001)
@@ -395,7 +393,7 @@ class TestTemplateProtocol(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xab\xcd")
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
     def test_handles_responses_with_more_values_than_the_template(self, mock_system):
@@ -428,7 +426,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.get_item("RSP_PACKET").default = "READ_VOLTAGE"
         packet.restore_defaults()
         self.interface.connect()
-        TestTemplateProtocol.read_buffer = b"\x31\x30\x3B\x31\x31\xAB\xCD"  # ASCII is '10;11'
+        TestTemplateProtocol.read_buffer = b"\x31\x30\x3b\x31\x31\xab\xcd"  # ASCII is '10;11'
 
         def do_read(self):
             time.sleep(0.001)
@@ -445,7 +443,7 @@ class TestTemplateProtocol(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xab\xcd")
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
     def test_ignores_response_lines(self, mock_system):
@@ -475,7 +473,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = b"\x31\x30\x0A\x31\x32\x0A"  # ASCII: 30:'0', 31:'1', etc
+        TestTemplateProtocol.read_buffer = b"\x31\x30\x0a\x31\x32\x0a"  # ASCII: 30:'0', 31:'1', etc
 
         def do_read(self):
             time.sleep(0.001)
@@ -484,7 +482,7 @@ class TestTemplateProtocol(unittest.TestCase):
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xAD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xad")
         self.assertEqual(self.read_result.read("VOLTAGE"), 12)
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
@@ -511,7 +509,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = b"\x4F\x70\x65\x0A\x6E\x43\x33\x0A"  # ASCII
+        TestTemplateProtocol.read_buffer = b"\x4f\x70\x65\x0a\x6e\x43\x33\x0a"  # ASCII
 
         def do_read(self):
             time.sleep(0.001)
@@ -521,21 +519,19 @@ class TestTemplateProtocol(unittest.TestCase):
         thread.start()
 
         self.interface.write(packet)
-        self.assertEqual(TestTemplateProtocol.write_buffer, b"GO\xAD")
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"GO\xad")
         self.assertEqual(self.read_result.read("STRING"), "OpenC3")
 
     def test_write_details_returns_correct_information(self):
         self.interface.add_protocol(
-            TemplateProtocol,
-            ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False],
-            "READ_WRITE"
+            TemplateProtocol, ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False], "READ_WRITE"
         )
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "TemplateProtocol")
@@ -543,7 +539,7 @@ class TestTemplateProtocol(unittest.TestCase):
         self.assertIn("write_data_input", details)
         self.assertIn("write_data_output_time", details)
         self.assertIn("write_data_output", details)
-        
+
         # Check template protocol specific fields
         self.assertIn("response_template", details)
         self.assertIn("response_packet", details)
@@ -563,16 +559,14 @@ class TestTemplateProtocol(unittest.TestCase):
 
     def test_read_details_returns_correct_information(self):
         self.interface.add_protocol(
-            TemplateProtocol,
-            ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False],
-            "READ_WRITE"
+            TemplateProtocol, ["0xABCD", "0xDCBA", 2, None, 1, True, 0, None, False, 0.5, 0.1, False], "READ_WRITE"
         )
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "TemplateProtocol")
@@ -580,7 +574,33 @@ class TestTemplateProtocol(unittest.TestCase):
         self.assertIn("read_data_input", details)
         self.assertIn("read_data_output_time", details)
         self.assertIn("read_data_output", details)
-        
+
         # Check template protocol specific fields (same as write_details for this protocol)
         self.assertIn("response_template", details)
         self.assertIn("response_packet", details)
+
+    def test_accepts_hex_string_for_ignore_lines(self):
+        self.interface.add_protocol(
+            TemplateProtocol,
+            [
+                "0xABCD",  # write termination
+                "0xABCD",  # read termination
+                "0x2",  # ignore_lines as hex string (2 in decimal)
+            ],
+            "READ_WRITE",
+        )
+        self.assertEqual(self.interface.read_protocols[0].ignore_lines, 2)
+
+    def test_accepts_hex_string_for_response_lines(self):
+        self.interface.add_protocol(
+            TemplateProtocol,
+            [
+                "0xABCD",  # write termination
+                "0xABCD",  # read termination
+                0,  # ignore_lines
+                None,  # initial_read_delay
+                "0x3",  # response_lines as hex string (3 in decimal)
+            ],
+            "READ_WRITE",
+        )
+        self.assertEqual(self.interface.read_protocols[0].response_lines, 3)
