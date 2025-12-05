@@ -658,7 +658,7 @@ module OpenC3
       tf.puts "    <xtce:ParameterSet>"
       tf.puts "<!-- TODO: "
       tf.puts "	<xtce:Parameter name=\"PACKET_TIME\" parameterTypeRef=\"PACKET_TIME_Type\">"
-      tf.puts "		<ParameterProperties dataSource=\"derived\"/>"
+      tf.puts "		<xtce:ParameterProperties dataSource=\"derived\"/>"
       tf.puts "	</xtce:Parameter>"
       tf.puts "-->"
       tf.puts "<xtce:Parameter name=\"ID\" parameterTypeRef=\"ID_Type\"><xtce:ParameterProperties><xtce:TimeAssociation parameterRef=\"PACKET_TIME\"/></xtce:ParameterProperties></xtce:Parameter></xtce:ParameterSet>"
