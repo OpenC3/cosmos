@@ -168,7 +168,7 @@ class InterfaceCmdHandlerThread:
                             f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope=self.scope
                         )
                         self.interface.write_raw(msg_hash[b"raw"])
-                    except RuntimeError:
+                    except Exception:
                         self.logger.error(f"{self.interface.name}: write_raw: {traceback.format_exc()}")
                         return traceback.format_exc()
                     return "SUCCESS"
@@ -189,7 +189,7 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError:
+                except Exception:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {traceback.format_exc()}")
                     return traceback.format_exc()
                 return "SUCCESS"
@@ -207,7 +207,7 @@ class InterfaceCmdHandlerThread:
                         index=params["index"],
                     )
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError:
+                except Exception:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{traceback.format_exc()}")
                     return traceback.format_exc()
                 return "SUCCESS"
@@ -246,7 +246,7 @@ class InterfaceCmdHandlerThread:
                             f"{self.interface.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
                         )
                 except Exception as e:
-                    self.logger.error(f"{self.interface.name}: target_control: {repr(e)}")
+                    self.logger.error(f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}")
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"interface_details"):
@@ -387,7 +387,7 @@ class InterfaceCmdHandlerThread:
                     return f"Interface not connected: {self.interface.name}"
             except WriteRejectError:
                 return traceback.format_exc()
-        except RuntimeError:
+        except Exception:
             self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
             return traceback.format_exc()
 
@@ -489,7 +489,7 @@ class RouterTlmHandlerThread:
                         )
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                         result = "SUCCESS"
-                    except RuntimeError as error:
+                    except Exception as error:
                         self.logger.error(f"{self.router.name}: router_cmd: {traceback.format_exc()}")
                         result = str(error)
                 elif msg_hash.get(b"protocol_cmd"):
@@ -505,7 +505,7 @@ class RouterTlmHandlerThread:
                             index=params["index"],
                         )
                         result = "SUCCESS"
-                    except RuntimeError as error:
+                    except Exception as error:
                         self.logger.error(f"{self.router.name}: protocol_cmd: {traceback.format_exc()}")
                         result = str(error)
                 elif msg_hash.get(b"target_control"):
@@ -533,7 +533,7 @@ class RouterTlmHandlerThread:
                             )
                         result = "SUCCESS"
                     except Exception as e:
-                        self.logger.error(f"{self.router.name}: target_control: {repr(e)}")
+                        self.logger.error(f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}")
                         result = str(e)
                 elif msg_hash.get(b"router_details"):
                     result = json.dumps(self.router.details(), cls=JsonEncoder)
@@ -560,7 +560,7 @@ class RouterTlmHandlerThread:
                             self.router.write(packet)
                             RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
                             result = "SUCCESS"
-                        except RuntimeError:
+                        except Exception:
                             self.logger.error(f"{self.router.name}: {traceback.format_exc()}")
                             result = traceback.format_exc()
                     else:
@@ -709,7 +709,7 @@ class InterfaceMicroservice(Microservice):
                                 # We need to make sure connect is not called after stop() has been called
                                 if not self.cancel_thread:
                                     self.connect()
-                        except (RuntimeError, OSError) as error:
+                        except Exception as error:
                             self.handle_connection_failed(self.interface.connection_string(), error)
                             if self.cancel_thread:
                                 break
@@ -739,7 +739,7 @@ class InterfaceMicroservice(Microservice):
                                     self.handle_connection_lost()
                                     if self.cancel_thread:
                                         break
-                            except RuntimeError as error:
+                            except Exception as error:
                                 self.handle_connection_lost(error)
                                 if self.cancel_thread:
                                     break
@@ -747,7 +747,7 @@ class InterfaceMicroservice(Microservice):
                             self.interface_thread_sleeper.sleep(1)
                             if not self.interface.connected():
                                 self.handle_connection_lost()
-        except RuntimeError as error:
+        except Exception as error:
             if not isinstance(error, SystemExit):  # or signal exception
                 self.logger.error(f"{self.interface.name}: Packet reading thread died: {traceback.format_exc()}")
                 # handle_fatal_exception(error)
@@ -773,7 +773,7 @@ class InterfaceMicroservice(Microservice):
                 try:
                     # Preidentifed packet - place it into the current value table
                     identified_packet = System.telemetry.update(packet.target_name, packet.packet_name, packet.buffer)
-                except RuntimeError:
+                except Exception:
                     # Packet identified but we don't know about it
                     # Clear packet_name and target_name and try to identify
                     self.logger.warn(
@@ -831,10 +831,10 @@ class InterfaceMicroservice(Microservice):
         # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
         #   # Do not write an exception file for these extremely common cases
         # else _:
-        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
             pass  # Do not write an exception file for these extremely common cases
         else:
-            self.logger.error(f"{self.interface.name}: {str(connect_error)}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
             if str(connect_error) not in self.connection_failed_messages:
                 # OpenC3.write_exception_file(connect_error)
                 self.connection_failed_messages.append(str(connect_error))
@@ -851,7 +851,7 @@ class InterfaceMicroservice(Microservice):
             #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
             #     # Do not write an exception file for these extremely common cases
             #   else _:
-            self.logger.error(f"{self.interface.name}: {str(error)}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
             if str(error) not in self.connection_lost_messages:
                 # OpenC3.write_exception_file(err)
                 self.connection_lost_messages.append(str(error))
@@ -865,10 +865,10 @@ class InterfaceMicroservice(Microservice):
         try:
             self.interface.connect()
             self.interface.post_connect()
-        except RuntimeError as error:
+        except Exception as error:
             try:
                 self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect
-            except RuntimeError:
+            except Exception:
                 pass  # We want to report any connect errors, not disconnect in this case
             raise error
 
@@ -890,7 +890,7 @@ class InterfaceMicroservice(Microservice):
             try:
                 if self.interface.connected():
                     self.interface.disconnect()
-            except RuntimeError:
+            except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
 
         # If the interface is set to auto_reconnect then delay so the thread

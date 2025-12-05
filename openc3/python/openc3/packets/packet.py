@@ -508,6 +508,23 @@ class Packet(Structure):
         item = super().append_item(name, bit_size, data_type, array_size, endianness, overflow)
         return self.packet_define_item(item, format_string, read_conversion, write_conversion, id_value)
 
+    # @param item [StructureItem] item to make a parent item for a structure
+    # @param structure [Structure] structure to associate with the parent item
+    def structurize_item(self, item, structure):
+        item.structure = structure
+        item.hidden = True
+        for sorted_item in structure.sorted_items:
+            if sorted_item.name in self.RESERVED_ITEM_NAMES:
+                continue
+            cloned_item = sorted_item.clone()
+            cloned_item.key = cloned_item.name
+            cloned_item.name = f"{item.name}.{cloned_item.name}"
+            cloned_item.parent_item = item
+            cloned_item.bit_offset = item.bit_offset
+            if sorted_item.bit_size <= 0:
+                cloned_item.bit_size = item.bit_size
+            self.define(cloned_item)
+
     # (see Structure#get_item)
     def get_item(self, name):
         try:
@@ -789,7 +806,12 @@ class Packet(Structure):
         for item in self.sorted_items:
             if item.name in Packet.RESERVED_ITEM_NAMES:
                 continue
-            if item.default is not None:
+
+            if item.structure is not None:
+                if not (skip_item_names and item.name in upcase_skip_item_names):
+                    item.structure.restore_defaults(skip_item_names=skip_item_names, use_template=use_template)
+                    self.write_item(item, item.structure.buffer, "RAW", buffer)
+            elif item.default is not None and item.parent_item is None:
                 if not (skip_item_names and item.name in upcase_skip_item_names):
                     self.write_item(item, item.default, "CONVERTED", buffer)
 

@@ -256,7 +256,7 @@ class TableConfig(PacketConfig):
             parser: Configuration parser
         """
         self.finish_item()
-        self.current_item = TableItemParser.parse(parser, self.current_packet, self.warnings)
+        self.current_item = TableItemParser.parse(parser, self, self.current_packet, self.warnings)
 
     def finish_packet(self):
         """

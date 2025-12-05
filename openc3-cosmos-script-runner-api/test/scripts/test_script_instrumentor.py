@@ -218,10 +218,10 @@ try: # Initial try
   i = 1
   try: # Nested try
     i = 2
-  except RuntimeError:
+  except Exception:
     i = 3
   raise RuntimeError("BAD") # Handled by them
-except RuntimeError:
+except Exception:
   i = 5 # This handler should execute
 raise RuntimeError("Error2") # Handled by us
 """

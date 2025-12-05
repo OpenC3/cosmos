@@ -176,3 +176,8 @@ LIMITS_RESPONSE:
       description: Variable length number of options that will be passed to the
         class constructor
       values: .+
+HIDDEN:
+  summary: Hides this item from all the OpenC3 tools
+  description: This item will not appear in PacketViewer or Item Choosers.
+    It also hides this item from appearing in the Script Runner popup helper
+    when writing scripts. The item will also not be included in decom data.

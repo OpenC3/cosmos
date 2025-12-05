@@ -247,8 +247,9 @@ export default {
                 command.items.forEach((parameter) => {
                   if (this.reservedItemNames.includes(parameter.name)) return
                   if (
-                    !this.ignoredParams.includes(parameter.name) ||
-                    this.showIgnoredParams
+                    !parameter.hidden &&
+                    (!this.ignoredParams.includes(parameter.name) ||
+                      this.showIgnoredParams)
                   ) {
                     let val = parameter.default
                     if (

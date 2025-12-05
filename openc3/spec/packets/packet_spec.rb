@@ -1979,5 +1979,108 @@ module OpenC3
         expect(p.subpacketizer).to eql subpacketizer
       end
     end
+
+    describe "structurize_item" do
+      it "can structurize items" do
+        json_struct = Packet.new
+        json_struct.accessor = JsonAccessor.new(json_struct)
+        json_struct.virtual = true
+        json_template = '{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}'
+        json_struct.template = json_template
+        item = json_struct.append_item("ITEM0", 32, :INT)
+        item.default = 1
+        item.key = "$.id_item"
+        item = json_struct.append_item("ITEM1", 16, :UINT)
+        item.default = 101
+        item.key = "$.item1"
+        item = json_struct.append_item("ITEM2", 16, :UINT)
+        item.default = 12
+        item.key = "$.more.item2"
+        item = json_struct.append_item("ITEM3", 64, :FLOAT)
+        item.default = 3.14
+        item.key = "$.more.item3"
+        item = json_struct.append_item("ITEM4", 128, :STRING)
+        item.default = "Example"
+        item.key = "$.more.item4"
+        item = json_struct.append_item("ITEM5", 8, :UINT)
+        item.array_size = 0
+        item.default = []
+        item.key = "$.more.item5"
+
+        cbor_struct = Packet.new
+        cbor_struct.accessor = CborAccessor.new(cbor_struct)
+        cbor_struct.virtual = true
+        cbor_template = {"id_item":2, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[] } }.to_cbor
+        cbor_struct.template = cbor_template
+        item = cbor_struct.append_item("ITEM0", 32, :INT)
+        item.default = 2
+        item.key = "$.id_item"
+        item = cbor_struct.append_item("ITEM1", 16, :UINT)
+        item.default = 101
+        item.key = "$.item1"
+        item = cbor_struct.append_item("ITEM2", 16, :UINT)
+        item.default = 12
+        item.key = "$.more.item2"
+        item = cbor_struct.append_item("ITEM3", 64, :FLOAT)
+        item.default = 3.14
+        item.key = "$.more.item3"
+        item = cbor_struct.append_item("ITEM4", 128, :STRING)
+        item.default = "Example"
+        item.key = "$.more.item4"
+        item = cbor_struct.append_item("ITEM5", 8, :UINT)
+        item.array_size = 0
+        item.default = []
+        item.key = "$.more.item5"
+
+        packet = Packet.new
+        item = packet.append_item("JSON_LENGTH", 32, :UINT)
+        item = packet.append_item("JSON", 0, :BLOCK)
+        item.variable_bit_size = {'length_item_name' => "JSON_LENGTH", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        packet.structurize_item(item, json_struct)
+        item = packet.append_item("CBOR_LENGTH", 32, :UINT)
+        item = packet.append_item("CBOR", 0, :BLOCK)
+        item.variable_bit_size = {'length_item_name' => "CBOR_LENGTH", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        packet.structurize_item(item, cbor_struct)
+
+        packet.restore_defaults
+        expect(packet.read("JSON_LENGTH")).to eq json_template.length
+        expect(packet.read("JSON.ITEM0")).to eql 1
+        expect(packet.read("JSON.ITEM1")).to eql 101
+        expect(packet.read("JSON.ITEM2")).to eql 12
+        expect(packet.read("JSON.ITEM3")).to be_within(0.01).of(3.14)
+        expect(packet.read("JSON.ITEM4")).to eql "Example"
+        expect(packet.read("JSON.ITEM5")).to eql []
+        expect(packet.read("CBOR_LENGTH")).to eq cbor_template.length
+        expect(packet.read("CBOR.ITEM0")).to eql 2
+        expect(packet.read("CBOR.ITEM1")).to eql 101
+        expect(packet.read("CBOR.ITEM2")).to eql 12
+        expect(packet.read("CBOR.ITEM3")).to be_within(0.01).of(3.14)
+        expect(packet.read("CBOR.ITEM4")).to eql "Example"
+        expect(packet.read("CBOR.ITEM5")).to eql []
+
+        packet.write("JSON.ITEM2", 202)
+        expect(packet.read("JSON.ITEM2")).to eql 202
+        expect(packet.read("JSON_LENGTH")).to eql (json_template.length + 1)
+        packet.write("CBOR.ITEM2", 202)
+        expect(packet.read("CBOR.ITEM2")).to eql 202
+        expect(packet.read("CBOR_LENGTH")).to eq (cbor_template.length + 1)
+
+        packet.restore_defaults
+        expect(packet.read("JSON_LENGTH")).to eq json_template.length
+        expect(packet.read("JSON.ITEM0")).to eql 1
+        expect(packet.read("JSON.ITEM1")).to eql 101
+        expect(packet.read("JSON.ITEM2")).to eql 12
+        expect(packet.read("JSON.ITEM3")).to be_within(0.01).of(3.14)
+        expect(packet.read("JSON.ITEM4")).to eql "Example"
+        expect(packet.read("JSON.ITEM5")).to eql []
+        expect(packet.read("CBOR_LENGTH")).to eq cbor_template.length
+        expect(packet.read("CBOR.ITEM0")).to eql 2
+        expect(packet.read("CBOR.ITEM1")).to eql 101
+        expect(packet.read("CBOR.ITEM2")).to eql 12
+        expect(packet.read("CBOR.ITEM3")).to be_within(0.01).of(3.14)
+        expect(packet.read("CBOR.ITEM4")).to eql "Example"
+        expect(packet.read("CBOR.ITEM5")).to eql []
+      end
+    end
   end
 end

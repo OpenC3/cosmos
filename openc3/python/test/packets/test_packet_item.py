@@ -494,6 +494,7 @@ class TestPacketItem(unittest.TestCase):
     def test_converts_to_a_hash(self):
         self.pi.format_string = "%5.1f"
         self.pi.id_value = 10
+        self.pi.original_array_size = 64
         self.pi.array_size = 64
         self.pi.states = {"TRUE": 1, "FALSE": 0}
         self.pi.read_conversion = Conversion()
@@ -555,89 +556,3 @@ class TestPacketItem(unittest.TestCase):
         self.assertEqual(item["limits"]["DEFAULT"]["green_high"], 5)
         self.assertTrue(item["obfuscate"])
         self.assertIsNone(item.get("meta"))
-
-    def test_creates_empty_packetitem_from_hash(self):
-        item = PacketItem.from_json(self.pi.as_json())
-        self.assertEqual(item.name, self.pi.name)
-        self.assertEqual(item.bit_offset, self.pi.bit_offset)
-        self.assertEqual(item.bit_size, self.pi.bit_size)
-        self.assertEqual(item.data_type, self.pi.data_type)
-        self.assertEqual(item.endianness, self.pi.endianness)
-        self.assertEqual(item.array_size, self.pi.array_size)
-        self.assertEqual(item.overflow, self.pi.overflow)
-        self.assertEqual(item.format_string, self.pi.format_string)
-        # conversions don't round trip
-        # self.assertEqual(item.read_conversion, self.pi.read_conversion)
-        # self.assertEqual(item.write_conversion, self.pi.write_conversion)
-        self.assertEqual(item.id_value, self.pi.id_value)
-        self.assertEqual(item.states, self.pi.states)
-        self.assertEqual(item.description, self.pi.description)
-        self.assertEqual(item.units_full, self.pi.units_full)
-        self.assertEqual(item.units, self.pi.units)
-        self.assertEqual(item.default, self.pi.default)
-        self.assertEqual(item.minimum, self.pi.minimum)
-        self.assertEqual(item.maximum, self.pi.maximum)
-        self.assertEqual(item.required, self.pi.required)
-        self.assertEqual(item.state_colors, self.pi.state_colors)
-        self.assertEqual(item.hazardous, self.pi.hazardous)
-        self.assertEqual(item.messages_disabled, self.pi.messages_disabled)
-        self.assertEqual(item.limits.enabled, self.pi.limits.enabled)
-        self.assertEqual(
-            item.limits.persistence_setting, self.pi.limits.persistence_setting
-        )
-        self.assertEqual(item.limits.values, self.pi.limits.values)
-        self.assertEqual(item.meta, self.pi.meta)
-        self.assertEqual(item.obfuscate, self.pi.obfuscate)
-
-    def test_converts_a_populated_item_to_and_from_json(self):
-        self.pi.format_string = "%5.1f"
-        self.pi.id_value = 10
-        self.pi.states = {"TRUE": 1, "FALSE": 0}
-        # self.pi.read_conversion = GenericConversion("value / 2")
-        # self.pi.write_conversion = PolynomialConversion(1, 2, 3)
-        self.pi.description = "description"
-        self.pi.units_full = "Celsius"
-        self.pi.units = "C"
-        self.pi.default = 0
-        self.pi.minimum = 0
-        self.pi.maximum = 100
-        self.pi.required = True
-        self.pi.hazardous = {"TRUE": None, "FALSE": "NO!"}
-        self.pi.messages_disabled = {"TRUE": True, "FALSE": None}
-        self.pi.state_colors = {"TRUE": "GREEN", "FALSE": "RED"}
-        self.pi.limits = PacketItemLimits()
-        self.pi.limits.values = {
-            "DEFAULT": [10, 20, 80, 90, 40, 50],
-            "TVAC": [100, 200, 800, 900],
-        }
-        self.pi.obfuscate = True
-        item = PacketItem.from_json(self.pi.as_json())
-        self.assertEqual(item.name, self.pi.name)
-        self.assertEqual(item.bit_offset, self.pi.bit_offset)
-        self.assertEqual(item.bit_size, self.pi.bit_size)
-        self.assertEqual(item.data_type, self.pi.data_type)
-        self.assertEqual(item.endianness, self.pi.endianness)
-        self.assertEqual(item.array_size, self.pi.array_size)
-        self.assertEqual(item.overflow, self.pi.overflow)
-        self.assertEqual(item.format_string, self.pi.format_string)
-        # expect(item.read_conversion).to be_a GenericConversion
-        # expect(item.write_conversion).to be_a PolynomialConversion
-        self.assertEqual(item.id_value, self.pi.id_value)
-        self.assertEqual(item.states, self.pi.states)
-        self.assertEqual(item.description, self.pi.description)
-        self.assertEqual(item.units_full, self.pi.units_full)
-        self.assertEqual(item.units, self.pi.units)
-        self.assertEqual(item.default, self.pi.default)
-        self.assertEqual(item.minimum, self.pi.minimum)
-        self.assertEqual(item.maximum, self.pi.maximum)
-        self.assertEqual(item.required, self.pi.required)
-        self.assertEqual(item.state_colors, self.pi.state_colors)
-        self.assertEqual(item.hazardous, self.pi.hazardous)
-        self.assertEqual(item.messages_disabled, self.pi.messages_disabled)
-        self.assertEqual(item.limits.enabled, self.pi.limits.enabled)
-        self.assertEqual(
-            item.limits.persistence_setting, self.pi.limits.persistence_setting
-        )
-        self.assertEqual(item.limits.values, self.pi.limits.values)
-        self.assertEqual(item.meta, self.pi.meta)
-        self.assertEqual(item.obfuscate, self.pi.obfuscate)

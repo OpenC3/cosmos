@@ -30,8 +30,8 @@ module OpenC3
     # @param parser [ConfigParser] Configuration parser
     # @param table [Table] Table all parsed items should be added to
     # # @param warnings [Array<String>] Array of warning strings from PacketConfig
-    def self.parse(parser, table, warnings)
-      parser = TableItemParser.new(parser, warnings)
+    def self.parse(parser, table_config, table, warnings)
+      parser = TableItemParser.new(parser, table_config, warnings)
       parser.verify_parameters(PacketConfig::COMMAND)
       parser.create_table_item(table)
     end

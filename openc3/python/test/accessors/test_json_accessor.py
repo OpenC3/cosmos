@@ -76,7 +76,7 @@ class TestJsonAccessor(unittest.TestCase):
             p.buffer,
             # The formatting of this string has to be precise
             bytearray(
-                b'{"id_item": 1, "item1": 5, "more": {"item2": 888, "item3": 1.23, "item4": "JSON", "item5": [1, 2, 3, 4]}}'
+                b'{"id_item":1,"item1":5,"more":{"item2":888,"item3":1.23,"item4":"JSON","item5":[1,2,3,4]}}'
             ),
         )
 
@@ -98,7 +98,7 @@ class TestJsonAccessor(unittest.TestCase):
         item = self.Json("item", "$.params[0]", "STRING", None)
         JsonAccessor.class_write_item(item, "TARGET", data)
         self.assertEqual(JsonAccessor.class_read_item(item, data), "TARGET")
-        self.assertEqual(data, bytearray(b'{"params": ["TARGET"]}'))
+        self.assertEqual(data, bytearray(b'{"params":["TARGET"]}'))
 
     def test_should_handle_various_keys(self):
         item = self.Json("item", "$.packet.item1", "INT", None)

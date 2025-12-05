@@ -107,7 +107,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         def my_read():
             try:
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except RuntimeError:
+            except Exception:
                 pass
 
         thread = threading.Thread(target=my_read)
@@ -144,7 +144,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         def my_read():
             try:
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except RuntimeError:
+            except Exception:
                 pass
 
         thread = threading.Thread(target=my_read)
@@ -174,7 +174,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         def my_read2():
             try:
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except RuntimeError:
+            except Exception:
                 pass
 
         thread = threading.Thread(target=my_read2)
@@ -256,7 +256,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         def my_read():
             try:
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except RuntimeError:
+            except Exception:
                 pass
 
         thread = threading.Thread(target=my_read)
