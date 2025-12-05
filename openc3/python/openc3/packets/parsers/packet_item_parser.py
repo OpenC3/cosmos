@@ -202,7 +202,6 @@ class PacketItemParser:
             return None
 
         index = 4 if self._append() else 5
-        print(self.parser.parameters)
         value = self.parser.parameters[index]
         if str(value).upper() == "NIL" or str(value).upper() == "NONE":
             return None

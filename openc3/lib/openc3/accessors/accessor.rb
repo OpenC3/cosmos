@@ -130,7 +130,7 @@ module OpenC3
         end
       when :BOOL
         value = ConfigParser.handle_true_false(value) if value.is_a? String
-      when :OBJECT, :ARRAY, :BOOL, :ANY
+      when :OBJECT, :ARRAY
         value = JSON.parse(value) if value.is_a? String
       when :STRING, :BLOCK
         if item.array_size

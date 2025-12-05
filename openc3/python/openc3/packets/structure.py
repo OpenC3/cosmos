@@ -82,7 +82,7 @@ class Structure:
 
     # Resize the buffer at least the defined length of the structure
     def resize_buffer(self):
-        if self._buffer:
+        if self._buffer is not None:
             # Extend data size
             if len(self._buffer) < self.defined_length:
                 self._buffer += Structure.ZERO_STRING * (self.defined_length - len(self._buffer))
@@ -112,15 +112,15 @@ class Structure:
     # self.param buffer [String] The binary buffer to read the item from
     # self.return Hash of read names and values
     def read_items(self, items, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_items(items, buffer)
 
     # Allocate a buffer if not available
     def allocate_buffer_if_needed(self):
-        if not self._buffer:
+        if self._buffer is None:
             self._buffer = bytearray(Structure.ZERO_STRING * self.defined_length)
         return self._buffer
 
@@ -244,7 +244,7 @@ class Structure:
                 self.defined_length += 1
 
         # Resize the buffer if necessary
-        if self.buffer:
+        if self.buffer is not None:
             self.resize_buffer()
         return item
 
@@ -357,9 +357,9 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the value to
     def write_item(self, item, value, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         self.accessor.write_item(item, value, buffer)
 
@@ -371,9 +371,9 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the values to
     def write_items(self, items, values, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         self.accessor.write_items(items, values, buffer)
 
@@ -386,7 +386,7 @@ class Structure:
     # self.return Value based on the item definition. This could be an integer,
     #   float, or array of values.
     def read(self, name, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         return self.read_item(self.get_item(name), value_type, buffer)
 
@@ -399,7 +399,7 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the value to
     def write(self, name, value, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         self.write_item(self.get_item(name), value, value_type, buffer)
 
@@ -413,7 +413,7 @@ class Structure:
     # self.return [Array<Array>] Array of two element arrays containing the item
     #   name as element 0 and item value as element 1.
     def read_all(self, value_type="RAW", buffer=None, top=True):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         item_array = []
         with self.synchronize_allow_reads(top):
@@ -431,7 +431,7 @@ class Structure:
     # self.param ignored [Array<String>] List of items to ignore when building the string
     # self.return [String] String formatted with all the item names and values
     def formatted(self, value_type="RAW", indent=0, buffer=None, ignored=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         indent_string = " " * indent
         string = ""
