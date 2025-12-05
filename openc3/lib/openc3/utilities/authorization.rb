@@ -37,6 +37,7 @@ rescue LoadError
       private
 
       # Raises an exception if unauthorized, otherwise does nothing
+      # Token can be a session token or a password
       def authorize(permission: nil, target_name: nil, packet_name: nil, interface_name: nil, router_name: nil, manual: false, scope: nil, token: nil)
         raise AuthError.new("Scope is required") unless scope
 

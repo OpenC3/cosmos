@@ -42,16 +42,18 @@ module OpenC3
       Store.exists(key) == 1
     end
 
-    def self.verify(token)
+    # @param no_password [Boolean] enforces use of a session token or service password (default: true)
+    def self.verify(token, no_password: true)
       # Handle a service password - Generally only used by ScriptRunner
       # TODO: Replace this with temporary service tokens
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
       return true if service_password and service_password == token
 
-      return verify_no_service(token)
+      return verify_no_service(token, no_password: no_password)
     end
 
-    def self.verify_no_service(token)
+    # @param no_password [Boolean] enforces use of a session token (default: true)
+    def self.verify_no_service(token, no_password: true)
       return false if token.nil? or token.empty?
 
       time = Time.now
@@ -63,6 +65,8 @@ module OpenC3
       @@session_cache = Store.hgetall(SESSIONS_KEY)
       @@session_cache_time = time
       return true if @@session_cache[token]
+
+      return false if no_password
 
       # Check Direct password
       @@token_cache = Store.get(PRIMARY_KEY)
@@ -78,7 +82,7 @@ module OpenC3
 
       if set?(key)
         raise "old_token must not be nil or empty" if old_token.nil? or old_token.empty?
-        raise "old_token incorrect" unless verify(old_token)
+        raise "old_token incorrect" unless verify_no_service(old_token, no_password: false)
       end
       Store.set(key, hash(token))
     end
@@ -96,7 +100,7 @@ module OpenC3
     end
 
     def self.hash(token)
-      Digest::SHA2.hexdigest token
+      Digest::SHA256.hexdigest token
     end
   end
 end
