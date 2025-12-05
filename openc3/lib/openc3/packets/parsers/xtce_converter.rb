@@ -279,7 +279,6 @@ module OpenC3
         xml['xtce'].ArgumentTypeSet do
           commands[target_name].each do |packet_name, packet|
             packet.items.each do |arg_name, arg|
-              #TODO: handle derived types
               next if arg.data_type == :DERIVED
               next if unique_id_items.key?(arg_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
               to_xtce_type(arg, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
@@ -365,7 +364,6 @@ module OpenC3
       unique = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
-          #next if item.data_type == :DERIVED
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
         end
