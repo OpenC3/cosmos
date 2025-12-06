@@ -478,10 +478,13 @@ export default {
       // If we're passed in the route then manually call packetChanged to update
       if (this.$route.params.target && this.$route.params.packet) {
         // Initial position of chooser should be correct so call packetChanged for it
-        await this.packetChanged({
-          targetName: this.$route.params.target.toUpperCase(),
-          packetName: this.$route.params.packet.toUpperCase(),
-        }, true)
+        await this.packetChanged(
+          {
+            targetName: this.$route.params.target.toUpperCase(),
+            packetName: this.$route.params.packet.toUpperCase(),
+          },
+          true,
+        )
       } else {
         if (config.target && config.packet) {
           // Chooser probably won't be at the right packet so need to refresh
@@ -531,10 +534,11 @@ export default {
         return false
       }
     },
-    async packetChanged(event, force=false) {
+    async packetChanged(event, force = false) {
       if (
         this.targetName === event.targetName &&
-        this.packetName === event.packetName && !force
+        this.packetName === event.packetName &&
+        !force
       ) {
         return // No change
       }
