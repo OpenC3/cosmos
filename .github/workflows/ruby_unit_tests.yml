@@ -21,7 +21,6 @@ on:
 env:
   RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
-  OPENC3_API_PORT: 2900
 
 jobs:
   unit-test:

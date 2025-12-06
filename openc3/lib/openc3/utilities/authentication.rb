@@ -37,7 +37,7 @@ module OpenC3
       if password.nil?
         raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
       end
-      response = Faraday.new.post(_generate_auth_url, '{"token": "' + password + '"}', {'Content-Type' => 'application/json'})
+      response = _make_auth_request(password)
       @token = response.body
       if @token.nil?
         raise OpenC3AuthenticationError, "Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD"
@@ -47,6 +47,10 @@ module OpenC3
     # Load the token from the environment
     def token(include_bearer: true)
       @token
+    end
+
+    def _make_auth_request(password)
+      Faraday.new.post(_generate_auth_url, '{"token": "' + password + '"}', {'Content-Type' => 'application/json'})
     end
 
     def _generate_auth_url
