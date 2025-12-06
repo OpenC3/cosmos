@@ -88,7 +88,7 @@ require 'openc3/top_level'
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
 $openc3_scope = ENV['OPENC3_SCOPE']
-$openc3_token = ENV['OPENC3_API_PASSWORD']
+$openc3_password = ENV['OPENC3_API_PASSWORD']
 $openc3_authorize = false
 
 require 'openc3/utilities/store_queued'
@@ -216,7 +216,8 @@ def mock_redis
   OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
   require 'openc3/models/auth_model'
-  OpenC3::AuthModel.set($openc3_token, nil)
+  OpenC3::AuthModel.set($openc3_password, nil)
+  $openc3_token = OpenC3::AuthModel.generate_session()
   redis
 end
 
