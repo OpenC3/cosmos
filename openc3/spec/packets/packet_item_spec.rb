@@ -271,6 +271,51 @@ module OpenC3
         expect { pi.check_default_and_range_data_types }.to_not raise_error
       end
 
+      it "complains about BOOL default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = "true"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be true/false but is a String")
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = 1
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be true/false but is a Integer")
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = true
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = false
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
+      it "complains about ARRAY default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = "[]"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Array but is a String")
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = {}
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Array but is a Hash")
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = []
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = [1, 2, 3]
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
+      it "complains about OBJECT default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = "{}"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Hash but is a String")
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = []
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Hash but is a Array")
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = {}
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = {"key" => "value"}
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
       it "complains about range not matching data_type" do
         pi = PacketItem.new("test", 0, 32, :UINT, :BIG_ENDIAN, nil)
         pi.default = 5

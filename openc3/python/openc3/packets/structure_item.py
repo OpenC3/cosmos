@@ -24,7 +24,7 @@ class StructureItem:
     create_index = 0
 
     # Valid data types adds DERIVED to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor.DATA_TYPES + ["DERIVED"]
+    DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "DERIVED"]
 
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
@@ -169,9 +169,9 @@ class StructureItem:
             raise TypeError(
                 f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}"
             )
-        if data_type not in StructureItem.DATA_TYPES:
+        if data_type not in self.DATA_TYPES:
             raise ValueError(
-                f"{self.name}: unknown data_type: {data_type} - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'"
+                f"{self.name}: unknown data_type: {data_type} - Must be {', '.join(self.DATA_TYPES)}"
             )
 
         self.__data_type = data_type

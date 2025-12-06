@@ -233,6 +233,12 @@ module OpenC3
             raise ArgumentError, "#{@name}: default must be a String but is a #{@default.class}" unless String === @default
 
             @default = @default.clone.freeze
+          when :ARRAY
+            raise ArgumentError, "#{@name}: default must be an Array but is a #{@default.class}" unless Array === @default
+          when :OBJECT
+            raise ArgumentError, "#{@name}: default must be an Hash but is a #{@default.class}" unless Hash === @default
+          when :BOOL
+            raise ArgumentError, "#{@name}: default must be true/false but is a #{@default.class}" unless TrueClass === @default or FalseClass === @default
           end
         end
       end
@@ -519,6 +525,10 @@ module OpenC3
         Float(value)
       when :STRING, :BLOCK
         value.to_s.freeze
+      when :BOOL
+        ConfigParser.handle_true_false(value)
+      else
+        return value
       end
     rescue
       raise ArgumentError, "#{@name}: Invalid value: #{value} for data type: #{data_type}"

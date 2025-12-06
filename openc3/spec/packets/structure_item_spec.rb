@@ -69,7 +69,7 @@ module OpenC3
       end
 
       it "complains about bad data types" do
-        expect { StructureItem.new("test", 0, 0, :UNKNOWN, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: unknown data_type: UNKNOWN - Must be :INT, :UINT, :FLOAT, :STRING, :BLOCK, or :DERIVED")
+        expect { StructureItem.new("test", 0, 0, :UNKNOWN, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: unknown data_type: UNKNOWN - Must be INT, UINT, FLOAT, STRING, BLOCK, BOOL, OBJECT, ARRAY, ANY, DERIVED")
       end
     end
 

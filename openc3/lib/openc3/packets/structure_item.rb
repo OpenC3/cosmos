@@ -31,7 +31,7 @@ module OpenC3
     @@create_index = 0
 
     # Valid data types adds :DERIVED, :ARRAY, :OBJECT to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor::DATA_TYPES << :DERIVED << :ARRAY << :OBJECT
+    DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :DERIVED]
 
     # Name is used by higher level classes to access the StructureItem.
     # @return [String] Name of the item
@@ -210,7 +210,7 @@ module OpenC3
       when *DATA_TYPES
         # Valid data_type
       else
-        raise ArgumentError, "#{@name}: unknown data_type: #{data_type} - Must be :INT, :UINT, :FLOAT, :STRING, :BLOCK, or :DERIVED"
+        raise ArgumentError, "#{@name}: unknown data_type: #{data_type} - Must be #{DATA_TYPES.join(", ")}"
       end
 
       @data_type = data_type

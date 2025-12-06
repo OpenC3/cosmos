@@ -230,7 +230,7 @@ export default {
     },
     formatValue(value) {
       if (value === null || value === undefined) {
-        return ''
+        return 'null'
       }
       if (typeof value === 'object') {
         return JSON.stringify(value, null, 2)

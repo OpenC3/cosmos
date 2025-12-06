@@ -21,13 +21,13 @@ import serial
 
 class SerialDriver:
     """A platform independent serial driver"""
-    
+
     # Parity constants
     EVEN = 'EVEN'
     ODD = 'ODD'
     NONE = 'NONE'
     VALID_PARITY = [EVEN, ODD, NONE]
-    
+
     def __init__(self,
                  port_name: str,
                  baud_rate: int,
@@ -55,13 +55,13 @@ class SerialDriver:
 
         if parity not in self.VALID_PARITY:
             raise ValueError(f"Invalid parity: {parity}")
-        
+
         if data_bits not in [5, 6, 7, 8]:
             raise ValueError(f"Invalid data bits: {data_bits}")
-        
+
         if stop_bits not in [1, 2]:
             raise ValueError(f"Invalid stop bits: {stop_bits}")
-        
+
         # Convert parity to pyserial constants
         parity_map = {
             'ODD': serial.PARITY_ODD,
@@ -69,18 +69,18 @@ class SerialDriver:
             'NONE': serial.PARITY_NONE
         }
         serial_parity = parity_map[parity]
-        
+
         # Convert stop bits to pyserial constants
         serial_stopbits = serial.STOPBITS_TWO if stop_bits == 2 else serial.STOPBITS_ONE
-        
+
         # Configure flow control
         rtscts = (flow_control == 'RTSCTS')
-        
+
         self.write_timeout = write_timeout
         self.read_timeout = read_timeout
         self.read_polling_period = read_polling_period
         self.read_max_length = read_max_length
-        
+
         # Open the serial port using pyserial
         self.handle = serial.Serial(
             port=port_name,
@@ -92,16 +92,16 @@ class SerialDriver:
             write_timeout=write_timeout,
             rtscts=rtscts
         )
-        
+
         self.mutex = threading.Lock()
-    
+
     def close(self) -> None:
         """Disconnects the driver from the comm port"""
         if hasattr(self, 'handle') and self.handle and self.handle.is_open:
             with self.mutex:
                 self.handle.close()
                 self.handle = None
-    
+
     def closed(self) -> bool:
         """
         Returns:
@@ -116,21 +116,21 @@ class SerialDriver:
         """
         if isinstance(data, str):
             data = data.encode('utf-8')
-        
+
         start_time = time.time()
         bytes_to_write = len(data)
         total_bytes_written = 0
-        
+
         while total_bytes_written < bytes_to_write:
             bytes_written = self.handle.write(data[total_bytes_written:])
             if bytes_written <= 0:
                 raise RuntimeError("Error writing to comm port")
-            
+
             total_bytes_written += bytes_written
-            
+
             # Check for write timeout
-            if (self.write_timeout and 
-                (time.time() - start_time > self.write_timeout) and 
+            if (self.write_timeout and
+                (time.time() - start_time > self.write_timeout) and
                 total_bytes_written < bytes_to_write):
                 raise TimeoutError("Write Timeout")
 
@@ -141,7 +141,7 @@ class SerialDriver:
         """
         data = b''
         sleep_time = 0.0
-        
+
         while True:
             # Inner loop to read available data
             while True:
@@ -149,58 +149,58 @@ class SerialDriver:
                 with self.mutex:
                     if not self.handle or not self.handle.is_open:
                         break
-                    
+
                     # Read available bytes
                     available = self.handle.in_waiting
                     if available > 0:
                         read_size = min(available, self.read_max_length - len(data))
                         if read_size > 0:
                             buffer = self.handle.read(read_size)
-                
-                if not buffer:
+
+                if buffer is None:
                     break
-                
+
                 data += buffer
-                if (len(buffer) <= 0 or 
-                    len(data) >= self.read_max_length or 
-                    not self.handle or 
+                if (len(buffer) <= 0 or
+                    len(data) >= self.read_max_length or
+                    not self.handle or
                     not self.handle.is_open):
                     break
-            
+
             # Break if we have data or handle is closed
             if len(data) > 0 or not self.handle or not self.handle.is_open:
                 break
-            
+
             # Check for read timeout
             if self.read_timeout and sleep_time >= self.read_timeout:
                 raise TimeoutError("Read Timeout")
-            
+
             # Sleep and update sleep time
             time.sleep(self.read_polling_period)
             sleep_time += self.read_polling_period
-        
+
         return data
-    
+
     def read_nonblock(self) -> bytes:
         """
         Returns:
             [bytes] Binary data read from the serial port
         """
         data = b''
-        
+
         while True:
             available = self.handle.in_waiting
             if available <= 0:
                 break
-                
+
             read_size = min(available, self.read_max_length - len(data))
             if read_size <= 0:
                 break
-                
+
             buffer = self.handle.read(read_size)
             data += buffer
-            
+
             if len(buffer) <= 0 or len(data) >= self.read_max_length:
                 break
-        
+
         return data

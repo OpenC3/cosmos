@@ -44,6 +44,12 @@
     },
     {
       "path": "../openc3-cosmos-script-engine-cstol"
+    },
+    {
+      "path": "../api_tutorial"
+    },
+    {
+      "path": "../openc3-cosmos-nemesis"
     }
   ],
   "settings": {

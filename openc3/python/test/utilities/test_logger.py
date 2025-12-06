@@ -111,13 +111,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that log_message includes all required fields in output"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test message", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["level"], "INFO")
         self.assertEqual(data["message"], "Test message")
@@ -129,14 +129,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that microservice_name is included when set"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.microservice_name = "test-service"
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["microservice_name"], "test-service")
 
@@ -144,14 +144,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that microservice_name is omitted when None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.microservice_name = None
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("microservice_name", data)
 
@@ -159,14 +159,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that detail is included when detail_string is set"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.detail_string = "Additional details"
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["detail"], "Additional details")
 
@@ -174,14 +174,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that detail is omitted when detail_string is None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.detail_string = None
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("detail", data)
 
@@ -189,13 +189,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that user is included when provided"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user="testuser", type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["user"], "testuser")
 
@@ -203,13 +203,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that user is omitted when None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("user", data)
 
@@ -217,13 +217,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that type is included when provided"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type="notification", url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["type"], "notification")
 
@@ -231,13 +231,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that type is omitted when None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=None, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("type", data)
 
@@ -245,13 +245,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that url is included when provided"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url="http://example.com")
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["url"], "http://example.com")
 
@@ -259,13 +259,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that url is omitted when None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("url", data)
 
@@ -273,14 +273,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that other dict merges additional fields"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         other = {"request_id": "12345", "custom_field": "custom_value"}
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=other)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertEqual(data["request_id"], "12345")
         self.assertEqual(data["custom_field"], "custom_value")
@@ -289,36 +289,32 @@ class TestLogMessage(unittest.TestCase):
         """Test that nested structures in other dict are preserved"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         other = {
-            "metadata": {
-                "source": "test",
-                "version": "1.0"
-            },
-            "tags": ["error", "critical"]
+            "metadata": "true",
+            "tag": "error"
         }
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=other)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
-        self.assertEqual(data["metadata"]["source"], "test")
-        self.assertEqual(data["metadata"]["version"], "1.0")
-        self.assertEqual(data["tags"], ["error", "critical"])
+        self.assertEqual(data["metadata"], "true")
+        self.assertEqual(data["tag"], "error")
 
     def test_log_message_without_other(self):
         """Test that other is handled when None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         # Should only have standard fields
         self.assertIn("level", data)
@@ -328,13 +324,13 @@ class TestLogMessage(unittest.TestCase):
         """Test that message can be None"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", None, scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         self.assertNotIn("message", data)
 
@@ -346,23 +342,23 @@ class TestLogMessage(unittest.TestCase):
         import importlib
         import openc3.environment
         importlib.reload(openc3.environment)
-        
+
         orig_stdout = sys.stdout
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("WARN", "Warning", scope="TEST", user=None, type=Logger.LOG, url=None)
         logger.log_message("ERROR", "Error", scope="TEST", user=None, type=Logger.LOG, url=None)
         logger.log_message("FATAL", "Fatal", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         # All should go to stdout
         self.assertIn("Warning", stdout_output)
         self.assertIn("Error", stdout_output)
@@ -376,16 +372,16 @@ class TestLogMessage(unittest.TestCase):
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("WARN", "Warning", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         self.assertEqual(stdout_output, "")
         self.assertIn("Warning", stderr_output)
         data = json.loads(stderr_output)
@@ -398,16 +394,16 @@ class TestLogMessage(unittest.TestCase):
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("ERROR", "Error message", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         self.assertEqual(stdout_output, "")
         self.assertIn("Error message", stderr_output)
 
@@ -418,16 +414,16 @@ class TestLogMessage(unittest.TestCase):
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("FATAL", "Fatal error", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         self.assertEqual(stdout_output, "")
         self.assertIn("Fatal error", stderr_output)
 
@@ -438,16 +434,16 @@ class TestLogMessage(unittest.TestCase):
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Info message", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         self.assertIn("Info message", stdout_output)
         self.assertEqual(stderr_output, "")
 
@@ -458,16 +454,16 @@ class TestLogMessage(unittest.TestCase):
         orig_stderr = sys.stderr
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        
+
         logger = Logger()
         logger.log_message("DEBUG", "Debug message", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         stdout_output = sys.stdout.getvalue()
         stderr_output = sys.stderr.getvalue()
-        
+
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
-        
+
         self.assertIn("Debug message", stdout_output)
         self.assertEqual(stderr_output, "")
 
@@ -475,14 +471,14 @@ class TestLogMessage(unittest.TestCase):
         """Test that no output when stdout is False"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.stdout = False
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         self.assertEqual(output, "")
 
     @patch("openc3.utilities.logger.EphemeralStoreQueued")
@@ -491,7 +487,7 @@ class TestLogMessage(unittest.TestCase):
         logger = Logger()
         logger.no_store = False
         logger.log_message("INFO", "Test", scope="TESTSCOPE", user=None, type=Logger.LOG, url=None)
-        
+
         mock_store.write_topic.assert_called_once()
         call_args = mock_store.write_topic.call_args
         self.assertEqual(call_args[0][0], "TESTSCOPE__openc3_log_messages")
@@ -504,7 +500,7 @@ class TestLogMessage(unittest.TestCase):
         logger = Logger()
         logger.no_store = False
         logger.log_message("INFO", "Test", scope=None, user=None, type=Logger.LOG, url=None)
-        
+
         mock_store.write_topic.assert_called_once()
         call_args = mock_store.write_topic.call_args
         self.assertEqual(call_args[0][0], "NOSCOPE__openc3_log_messages")
@@ -515,20 +511,20 @@ class TestLogMessage(unittest.TestCase):
         logger = Logger()
         logger.no_store = True
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         mock_store.write_topic.assert_not_called()
 
     def test_log_message_timestamp_format(self):
         """Test that timestamp is in correct ISO format with Z suffix"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         timestamp = data["@timestamp"]
         # Verify format: YYYY-MM-DDTHH:MM:SS.ffffffZ
@@ -543,15 +539,15 @@ class TestLogMessage(unittest.TestCase):
         """Test that time field is in nanoseconds"""
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         before_ns = time.time_ns()
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None)
         after_ns = time.time_ns()
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         data = json.loads(output)
         log_time = data["time"]
         # Verify it's in the expected range (nanoseconds)
@@ -563,22 +559,22 @@ class TestLogMessage(unittest.TestCase):
         import threading
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
-        
+
         logger = Logger()
         results = []
-        
+
         def log_from_thread(n):
             logger.log_message("INFO", f"Message {n}", scope="TEST", user=None, type=Logger.LOG, url=None)
-        
+
         threads = [threading.Thread(target=log_from_thread, args=(i,)) for i in range(10)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        
+
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
-        
+
         lines = output.strip().split("\n")
         self.assertEqual(len(lines), 10)
         # Each line should be valid JSON

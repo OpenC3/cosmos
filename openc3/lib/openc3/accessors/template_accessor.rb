@@ -66,7 +66,7 @@ module OpenC3
         values.each_with_index do |value, i|
           item_key = @item_keys[i]
           if item_key == item.key
-            return Accessor.convert_to_type(value, item)
+            return self.class.convert_to_type(value, item)
           end
         end
       end
@@ -90,7 +90,7 @@ module OpenC3
           end
           index = @item_keys.index(item.key)
           if index
-            result[item.name] = Accessor.convert_to_type(values[index], item)
+            result[item.name] = self.class.convert_to_type(values[index], item)
           else
             raise "Unknown item with key #{item.key} requested"
           end

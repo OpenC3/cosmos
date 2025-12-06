@@ -1315,17 +1315,21 @@ module OpenC3
           current_value = read(item.name, :RAW)
 
           case current_value
+          when Hash
+            obfuscated_value = {}
           when Array
             # For arrays, create a new array of zeros with the same size
             case item.data_type
-              when :INT, :UINT
-                obfuscated_value = Array.new(current_value.size, 0)
-              when :FLOAT
-                obfuscated_value = Array.new(current_value.size, 0.0)
-              when :STRING, :BLOCK
-                obfuscated_value = Array.new(current_value.size) { |i|
-                  "\x00" * current_value[i].length if current_value[i]
-                }
+            when :INT, :UINT
+              obfuscated_value = Array.new(current_value.size, 0)
+            when :FLOAT
+              obfuscated_value = Array.new(current_value.size, 0.0)
+            when :STRING, :BLOCK
+              obfuscated_value = Array.new(current_value.size) { |i|
+                "\x00" * current_value[i].length if current_value[i]
+              }
+            when :BOOL, :ARRAY, :OBJECT, :ANY
+              obfuscated_value = []
             else
               obfuscated_value = Array.new(current_value.size, 0)
             end
@@ -1338,6 +1342,8 @@ module OpenC3
               obfuscated_value = 0
             when :FLOAT
               obfuscated_value = 0.0
+            when :BOOL
+              obfuscated_value = false
             else
               obfuscated_value = 0
             end

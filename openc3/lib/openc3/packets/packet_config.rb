@@ -100,6 +100,8 @@ module OpenC3
 
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
+    # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
+    CONVERTED_DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :TIME]
 
     def initialize
       @name = nil
@@ -714,7 +716,7 @@ module OpenC3
         @converted_bit_size = nil
         if params[0]
           @converted_type = params[0].upcase.intern
-          raise parser.error("Invalid converted_type: #{@converted_type}.") unless [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :TIME].include? @converted_type
+          raise parser.error("Invalid converted_type: #{@converted_type}.") unless CONVERTED_DATA_TYPES.include? @converted_type
         end
         @converted_bit_size = Integer(params[1]) if params[1]
         if @converted_type.nil? or @converted_bit_size.nil?

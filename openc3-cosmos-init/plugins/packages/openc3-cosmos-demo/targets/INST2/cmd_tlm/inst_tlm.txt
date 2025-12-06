@@ -195,6 +195,14 @@ TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
     KEY $.more.item4
   APPEND_ARRAY_ITEM ITEM5 8 UINT 0 "Array Item"
     KEY $.more.item5
+  APPEND_ITEM ITEM6 8 BOOL "Bool Item"
+    KEY $.item6
+  APPEND_ITEM ITEM7 8 ARRAY "Complex Array Item"
+    KEY $.item7
+  APPEND_ITEM ITEM8 8 OBJECT "Object Item"
+    KEY $.item8
+  APPEND_ITEM ITEM9 8 ANY "Any Item"
+    KEY $.item9
 
 TELEMETRY <%= target_name %> CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
   ACCESSOR CborAccessor

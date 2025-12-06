@@ -261,8 +261,8 @@ module OpenC3
         to_xtce_string(item, param_or_arg, xml, 'String')
       when :BLOCK
         to_xtce_string(item, param_or_arg, xml, 'Binary')
-      when :DERIVED
-        raise "DERIVED data type not supported in XTCE"
+      else
+        raise "#{item.data_type} data type not supported in XTCE"
       end
 
       # Handle arrays
