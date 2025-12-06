@@ -135,7 +135,7 @@ COMMAND <%= target_name %> SET_PASSWORD BIG_ENDIAN "Set Password Command"
 
 COMMAND <%= target_name %> JSONCMD BIG_ENDIAN "JSON Accessor Command"
   ACCESSOR JsonAccessor
-  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] }, "item6": true, "item7": [1, "2", 3.14], "item8": {"a":"b"}, "item9": {"c":"d"} }'
   APPEND_ID_PARAMETER ID_ITEM 32 INT 31 31 31 "Int Item"
     KEY $.id_item
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
@@ -150,6 +150,14 @@ COMMAND <%= target_name %> JSONCMD BIG_ENDIAN "JSON Accessor Command"
     KEY $.more.item4
   APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"
     KEY $.more.item5
+  APPEND_PARAMETER ITEM6 8 BOOL true "Bool Item"
+    KEY $.item6
+  APPEND_PARAMETER ITEM7 8 ARRAY '[1,"2",3.14]' "Complex Array Item"
+    KEY $.item7
+  APPEND_PARAMETER ITEM8 8 OBJECT '{"a":"b"}' "Object Item"
+    KEY $.item8
+  APPEND_PARAMETER ITEM9 8 ANY '{"c":"d"}' "Any Item"
+    KEY $.item9
 
 COMMAND <%= target_name %> CBORCMD BIG_ENDIAN "CBOR Accessor Command"
   ACCESSOR CborAccessor

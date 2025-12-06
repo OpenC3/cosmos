@@ -31,10 +31,13 @@ export default {
         return this.formatArray(value)
       }
       if (this.isObject(value)) {
-        return ''
+        return JSON.stringify(value).replace(/\\n/g, '')
       }
       if (formatString && value) {
         return sprintf(formatString, value)
+      }
+      if (value === null || value === undefined) {
+        return 'null'
       }
       return String(value)
     },

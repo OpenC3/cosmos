@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -481,7 +481,7 @@ export default {
         await this.packetChanged({
           targetName: this.$route.params.target.toUpperCase(),
           packetName: this.$route.params.packet.toUpperCase(),
-        })
+        }, true)
       } else {
         if (config.target && config.packet) {
           // Chooser probably won't be at the right packet so need to refresh
@@ -531,10 +531,10 @@ export default {
         return false
       }
     },
-    async packetChanged(event) {
+    async packetChanged(event, force=false) {
       if (
         this.targetName === event.targetName &&
-        this.packetName === event.packetName
+        this.packetName === event.packetName && !force
       ) {
         return // No change
       }
