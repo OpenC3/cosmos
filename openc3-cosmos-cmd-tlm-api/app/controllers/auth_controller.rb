@@ -33,7 +33,7 @@ class AuthController < ApplicationController
 
   def verify
     begin
-      if OpenC3::AuthModel.verify_no_service(params[:token])
+      if OpenC3::AuthModel.verify_no_service(params[:token], no_password: false)
         render :plain => OpenC3::AuthModel.generate_session()
       else
         head :unauthorized

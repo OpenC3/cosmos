@@ -88,8 +88,19 @@ require 'openc3/top_level'
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
 $openc3_scope = ENV['OPENC3_SCOPE']
-$openc3_token = ENV['OPENC3_API_PASSWORD']
+$openc3_password = ENV['OPENC3_API_PASSWORD']
 $openc3_authorize = false
+$openc3_mock_token = 'mock_token'
+
+# Mock the HTTP request for OpenC3Authentication
+require 'openc3/utilities/authentication'
+OpenC3::OpenC3Authentication.class_eval do
+  def _make_auth_request(password)
+    mock_response = Object.new
+    mock_response.define_singleton_method(:body) { $openc3_mock_token }
+    mock_response
+  end
+end
 
 require 'openc3/utilities/store_queued'
 
@@ -216,7 +227,8 @@ def mock_redis
   OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
   require 'openc3/models/auth_model'
-  OpenC3::AuthModel.set($openc3_token, nil)
+  OpenC3::AuthModel.set($openc3_password, nil)
+  $openc3_token = OpenC3::AuthModel.generate_session()
   redis
 end
 
@@ -311,6 +323,17 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
     c.max_formatted_output_length = nil # Prevent RSpec from doing truncation
+  end
+
+  # Mock AuthModel verification methods to accept mocked tokens
+  config.before(:each) do
+    allow(OpenC3::AuthModel).to receive(:verify) do |token, **kwargs|
+      token == $openc3_token || token == $openc3_mock_token || token == ENV['OPENC3_SERVICE_PASSWORD'] || token == ENV['OPENC3_API_PASSWORD']
+    end
+
+    allow(OpenC3::AuthModel).to receive(:verify_no_service) do |token, **kwargs|
+      token == $openc3_token || token == $openc3_mock_token || token == ENV['OPENC3_API_PASSWORD']
+    end
   end
 
   # Store standard output global and CONSTANT since we will mess with them

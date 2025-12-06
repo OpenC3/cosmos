@@ -16,6 +16,7 @@ on:
 
 env:
   OPENC3_API_PASSWORD: password
+  OPENC3_API_PORT: 2900
 
 jobs:
   openc3-cli:
