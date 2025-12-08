@@ -21,8 +21,8 @@ importers:
         specifier: ^17.1.0
         version: 17.1.0
       prettier:
-        specifier: ^3.7.3
-        version: 3.7.3
+        specifier: ^3.7.4
+        version: 3.7.4
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
@@ -486,8 +486,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  prettier@3.7.3:
-    resolution: {integrity: sha512-QgODejq9K3OzoBbuyobZlUhznP5SKwPqp+6Q6xw6o8gnhr4O85L2U915iM2IDcfF2NPXVaM9zlo9tdwipnYwzg==}
+  prettier@3.7.4:
+    resolution: {integrity: sha512-v6UNi1+3hSlVvv8fSaoUbggEM5VErKmmpGA7Pl3HF8V6uKY7rvClBOJlH6yNwQtfTueNkGVpOv/mtWL9L4bgRA==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -1137,7 +1137,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  prettier@3.7.3: {}
+  prettier@3.7.4: {}
 
   process-nextick-args@2.0.1: {}
 
