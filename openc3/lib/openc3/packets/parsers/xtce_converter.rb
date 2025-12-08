@@ -47,8 +47,8 @@ module OpenC3
     #   that were created while parsing the configuration
     # @param output_dir [String] The name of the output directory to generate
     #   the XTCE files. A file is generated for each target.
-    def self.convert(commands, telemetry, output_dir)
-      XtceConverter.new(commands, telemetry, output_dir)
+    def self.convert(commands, telemetry, output_dir, time_association_name)
+      XtceConverter.new(commands, telemetry, output_dir, time_association_name)
     end
 
     def self.combine_output_xtce(output_dir, root_target_name = nil)
@@ -114,7 +114,7 @@ module OpenC3
 
     private
 
-    def initialize(commands, telemetry, output_dir)
+    def initialize(commands, telemetry, output_dir, time_association_name)
       FileUtils.mkdir_p(output_dir)
 
       # Build target list
@@ -122,6 +122,8 @@ module OpenC3
       telemetry.each { |target_name, packets| targets << target_name }
       commands.each { |target_name, packets| targets << target_name }
       targets.uniq!
+
+      @packet_time_string = time_association_name
 
       targets.each do |target_name|
         next if target_name == 'UNKNOWN'
@@ -168,7 +170,7 @@ module OpenC3
         packet.sorted_items.each do |item|
           next if item.data_type != :DERIVED
           next if COSMOS_NATIVE_DERIVED_ITEMS.include?(item.name)
-          next if item.name == PACKET_TIME_STRING
+          next if item.name == @packet_time_string
           derived[packet_name] = item
         end
       end
@@ -209,7 +211,7 @@ module OpenC3
             to_xtce_type(item, 'Parameter', xml)
           end
         end
-        has_packet_time = unique_items.include?(PACKET_TIME_STRING)
+        has_packet_time = unique_items.include?(@packet_time_string)
 
         xml['xtce'].ParameterSet do
           unique_items.each do |item_name, item|
@@ -706,7 +708,7 @@ module OpenC3
     end
 
     def to_xtce_derived(item, param_or_arg, xml, prefix: "")
-      if item.name == PACKET_TIME_STRING
+      if item.name == @packet_time_string
         xml << "\n<!--TODO: \n" \
                "\t<xtce:AbsoluteTime#{param_or_arg}Type name=\"#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Type\">\n" \
                "\t\t<TODO/>\n" \
@@ -769,7 +771,7 @@ module OpenC3
           end
           if has_packet_time
             xml['xtce'].ParameterProperties do
-              xml['xtce'].TimeAssociation(:parameterRef => PACKET_TIME_STRING)
+              xml['xtce'].TimeAssociation(:parameterRef => @packet_time_string)
             end
           end
         end

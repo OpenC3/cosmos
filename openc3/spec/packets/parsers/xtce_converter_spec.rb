@@ -693,7 +693,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -717,7 +717,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -739,7 +739,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -761,7 +761,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -798,7 +798,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         #xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -844,7 +844,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         #xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -890,7 +890,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         combination_dir = File.join(spec_install)
@@ -928,7 +928,7 @@ module OpenC3
         tf_tgt1.close
         @pc.process_file(tf_tgt1.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir)
@@ -975,7 +975,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -1021,7 +1021,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -1062,7 +1062,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
