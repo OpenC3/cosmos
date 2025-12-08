@@ -37,6 +37,7 @@ class OpenC3Authentication:
         password = OPENC3_API_PASSWORD
         if not password:
             raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
+        self.service = password == OPENC3_SERVICE_PASSWORD
         response = Session().post(self._generate_auth_url(), json={"token": password}, headers={"Content-Type": "application/json"})
         self._token = response.text
         if not self._token:
@@ -50,7 +51,8 @@ class OpenC3Authentication:
         hostname = OPENC3_API_HOSTNAME or ("127.0.0.1" if OPENC3_DEVEL else "openc3-cosmos-cmd-tlm-api")
         port = OPENC3_API_PORT or "2901"
         port = int(port)
-        return f"{schema}://{hostname}:{port}/openc3-api/auth/verify"
+        endpoint = "auth/verify_service" if self.service else "auth/verify"
+        return f"{schema}://{hostname}:{port}/openc3-api/{endpoint}"
 
 
 # OpenC3 enterprise Keycloak authentication code

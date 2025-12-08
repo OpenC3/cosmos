@@ -44,6 +44,19 @@ class AuthController < ApplicationController
     end
   end
 
+  def verify_service
+    begin
+      if OpenC3::AuthModel.verify(params[:token], service_only: true)
+        render :plain => OpenC3::AuthModel.generate_session()
+      else
+        head :unauthorized
+      end
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
+    end
+  end
+
   def set
     begin
       # Set throws an exception if it fails for any reason

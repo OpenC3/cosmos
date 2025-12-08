@@ -37,9 +37,10 @@ module OpenC3
       if password.nil?
         raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
       end
+      @service = password == ENV['OPENC3_SERVICE_PASSWORD']
       response = _make_auth_request(password)
       @token = response.body
-      if @token.nil?
+      if @token.nil? or @token.empty?
         raise OpenC3AuthenticationError, "Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD"
       end
     end
@@ -58,7 +59,12 @@ module OpenC3
       hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
       port = ENV['OPENC3_API_PORT'] || '2901'
       port = port.to_i
-      return "#{schema}://#{hostname}:#{port}/openc3-api/auth/verify"
+      endpoint = if @service
+        "auth/verify_service"
+      else
+        "auth/verify"
+      end
+      return "#{schema}://#{hostname}:#{port}/openc3-api/#{endpoint}"
     end
 
   end

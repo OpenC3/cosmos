@@ -43,11 +43,13 @@ module OpenC3
     end
 
     # @param no_password [Boolean] enforces use of a session token or service password (default: true)
-    def self.verify(token, no_password: true)
+    def self.verify(token, no_password: true, service_only: false)
       # Handle a service password - Generally only used by ScriptRunner
       # TODO: Replace this with temporary service tokens
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
       return true if service_password and service_password == token
+
+      return false if service_only
 
       return verify_no_service(token, no_password: no_password)
     end
