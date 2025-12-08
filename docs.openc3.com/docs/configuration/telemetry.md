@@ -18,7 +18,7 @@ When COSMOS receives a telemetry packet from a target, the system will log the r
 
 Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
 
-When defining telemetry items you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Within COSMOS, the only difference between a STRING and BLOCK is when COSMOS reads a STRING type it stops reading when it encounters a null byte (0). This shows up when displaying the value in Packet Viewer or Tlm Viewer and in the output of Data Extractor. You should strive to store non-ASCII data inside BLOCK items and ASCII strings in STRING items.
+When defining telemetry items you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Within COSMOS, the only difference between a STRING and BLOCK is when COSMOS reads a STRING type it stops reading when it encounters a null byte (0). This shows up when displaying the value in Packet Viewer or Tlm Viewer and in the output of Data Extractor. You should strive to store non-ASCII data inside BLOCK items and ASCII strings in STRING items. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
 :::info Printing Data
 
@@ -340,6 +340,12 @@ LIMITS_RESPONSE example_limits_response.rb 10
 </TabItem>
 </Tabs>
 
+#### HIDDEN
+**Hides this item from all the OpenC3 tools**
+
+This item will not appear in PacketViewer or Item Choosers. It also hides this item from appearing in the Script Runner popup helper when writing scripts. The item will also not be included in decom data.
+
+
 ### APPEND_ITEM
 **Defines a telemetry item in the current telemetry packet**
 
@@ -425,6 +431,29 @@ Example Usage:
 ```ruby
 APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 ```
+
+### STRUCTURE
+**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Name | Name of the parameter. Must be unique within the command. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
+| Command or telemetry | Whether the structure packet is a command or telemetry packet<br/><br/>Valid Values: <span class="values">CMD, COMMAND, TLM, TELEMETRY</span> | True |
+| Target Name | Target Name of the structure packet | True |
+| Packet Name | Packet Name of the structure packet | True |
+
+### APPEND_STRUCTURE
+**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Name | Name of the parameter. Must be unique within the command. | True |
+| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
+| Command or telemetry | Whether the structure packet is a command or telemetry packet<br/><br/>Valid Values: <span class="values">CMD, COMMAND, TLM, TELEMETRY</span> | True |
+| Target Name | Target Name of the structure packet | True |
+| Packet Name | Packet Name of the structure packet | True |
 
 ### SELECT_ITEM
 **Selects an existing telemetry item for editing**
