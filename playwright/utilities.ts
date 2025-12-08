@@ -30,6 +30,7 @@ export class Utilities {
   }
 
   async selectTargetPacketItem(target: string, packet?: string, item?: string) {
+    await expect(this.page.locator('[data-test=select-target]')).toBeEnabled()
     await this.page.locator('[data-test=select-target]').click()
     await this.page.getByRole('option', { name: target, exact: true }).click()
     await expect(

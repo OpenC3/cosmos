@@ -265,8 +265,11 @@ export default {
                     if (parameter.format_string && parameter.default) {
                       val = sprintf(parameter.format_string, parameter.default)
                     }
-                    if (Object.prototype.toString.call(val).slice(8, -1) === 'Object') {
-                      val = JSON.stringify(val).replace(/\\n/g, '')
+                    if (
+                      Object.prototype.toString.call(val).slice(8, -1) ===
+                      'Object'
+                    ) {
+                      val = this.convertToString(val)
                     }
                     let range = 'N/A'
                     if (
@@ -275,12 +278,10 @@ export default {
                     ) {
                       if (parameter.data_type === 'FLOAT') {
                         if (parameter.minimum < -1e6) {
-                          parameter.minimum =
-                            parameter.minimum.toExponential(3)
+                          parameter.minimum = parameter.minimum.toExponential(3)
                         }
                         if (parameter.maximum > 1e6) {
-                          parameter.maximum =
-                            parameter.maximum.toExponential(3)
+                          parameter.maximum = parameter.maximum.toExponential(3)
                         }
                       }
                       range = `${parameter.minimum}..${parameter.maximum}`
