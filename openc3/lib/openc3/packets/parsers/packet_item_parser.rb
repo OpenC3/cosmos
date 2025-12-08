@@ -177,7 +177,7 @@ module OpenC3
       return nil if @parser.keyword.include?('ARRAY')
 
       data_type = get_data_type()
-      return nil if data_type == :STRING or data_type == :BLOCK
+      return nil unless data_type == :INT or data_type == :UINT or data_type == :FLOAT
 
       index = append? ? 3 : 4
       return nil if @parser.parameters[index] == 'nil'
@@ -232,8 +232,52 @@ module OpenC3
 
       index = append? ? 3 : 4
       data_type = get_data_type()
-      return [] if data_type == :ARRAY
-      return {} if data_type == :OBJECT
+      if data_type == :BOOL
+        value = @parser.parameters[index].to_s.upcase
+        if value == "TRUE" or value == "FALSE"
+          return ConfigParser.handle_true_false(@parser.parameters[index])
+        else
+          raise @parser.error("Default for BOOL data type must be TRUE or FALSE")
+        end
+      end
+      if data_type == :ARRAY
+        value = @parser.parameters[index].to_s
+        begin
+          value = JSON.parse(value, allow_nan: true)
+        rescue Exception
+          raise @parser.error("Unparsable value for ARRAY: #{value}")
+        end
+        if Array === value
+          return value
+        else
+          raise @parser.error("Default for ARRAY data type must be an Array")
+        end
+      end
+      if data_type == :OBJECT
+        value = @parser.parameters[index].to_s
+        begin
+          value = JSON.parse(value, allow_nan: true)
+        rescue Exception
+          raise @parser.error("Unparsable value for OBJECT: #{value}")
+        end
+        if Hash === value
+          return value
+        else
+          raise @parser.error("Default for OBJECT data type must be a Hash")
+        end
+      end
+      if data_type == :ANY
+        value = @parser.parameters[index].to_s
+        if value.length > 0
+          begin
+            return JSON.parse(value, allow_nan: true)
+          rescue Exception
+            return value
+          end
+        else
+          return ""
+        end
+      end
       if data_type == :STRING or data_type == :BLOCK
         return convert_string_value(index)
       else
@@ -259,6 +303,52 @@ module OpenC3
       end
 
       index = append? ? 3 : 4
+      if data_type == :BOOL
+        value = @parser.parameters[index].to_s.upcase
+        if value == "TRUE" or value == "FALSE"
+          return ConfigParser.handle_true_false(@parser.parameters[index])
+        else
+          raise @parser.error("ID Value for BOOL data type must be TRUE or FALSE")
+        end
+      end
+      if data_type == :ARRAY
+        value = @parser.parameters[index].to_s
+        begin
+          value = JSON.parse(value, allow_nan: true)
+        rescue Exception
+          raise @parser.error("Unparsable value for ARRAY: #{value}")
+        end
+        if Array === value
+          return value
+        else
+          raise @parser.error("ID Value for ARRAY data type must be an Array")
+        end
+      end
+      if data_type == :OBJECT
+        value = @parser.parameters[index].to_s
+        begin
+          value = JSON.parse(value, allow_nan: true)
+        rescue Exception
+          raise @parser.error("Unparsable value for OBJECT: #{value}")
+        end
+        if Hash === value
+          return value
+        else
+          raise @parser.error("ID Value for OBJECT data type must be a Hash")
+        end
+      end
+      if data_type == :ANY
+        value = @parser.parameters[index].to_s
+        if value.length > 0
+          begin
+            return JSON.parse(value, allow_nan: true)
+          rescue Exception
+            return value
+          end
+        else
+          return ""
+        end
+      end
       if data_type == :STRING or data_type == :BLOCK
         return convert_string_value(index)
       else
@@ -301,13 +391,13 @@ module OpenC3
     def type_usage
       keyword = @parser.keyword
       # Item type usage is simple so just return it
-      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED/ARRAY/OBJECT> " if keyword.include?("ITEM")
+      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED/BOOL/ARRAY/OBJECT/ANY> " if keyword.include?("ITEM")
 
       # Build up the parameter type usage based on the keyword
       usage = "<TYPE: "
       # ARRAY types don't have min or max or default values
       if keyword.include?("ARRAY")
-        usage << "INT/UINT/FLOAT/STRING/BLOCK/OBJECT> "
+        usage << "INT/UINT/FLOAT/STRING/BLOCK/BOOL/OBJECT/ANY> "
       else
         begin
           data_type = get_data_type()
@@ -315,14 +405,13 @@ module OpenC3
           # If the data type could not be determined set something
           data_type = :INT
         end
-        # STRING, BLOCK, ARRAY, OBJECT types do not have min or max values
-        if data_type == :STRING || data_type == :BLOCK
-          usage << "STRING/BLOCK/ARRAY/OBJECT> "
+        if data_type == :INT || data_type == :UINT || data_type == :FLOAT || data_type == :DERIVED
+          usage << "INT/UINT/FLOAT/DERIVED> <MIN VALUE> <MAX VALUE> "
         else
-          usage << "INT/UINT/FLOAT> <MIN VALUE> <MAX VALUE> "
+          usage << "STRING/BLOCK/BOOL/ARRAY/OBJECT/ANY> "
         end
-        # ID Values do not have default values (or ARRAY/OBJECT)
-        unless keyword.include?("ID") or data_type == :ARRAY or data_type == :OBJECT
+        # ID Values do not have default values
+        unless keyword.include?("ID")
           usage << "<DEFAULT_VALUE> "
         end
       end

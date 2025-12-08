@@ -18,6 +18,7 @@ from openc3.packets.packet_item import PacketItem
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import hex_to_byte_string, convert_to_value
+from ast import literal_eval
 
 class PacketItemParser:
     COMMAND = "Command"
@@ -179,14 +180,15 @@ class PacketItemParser:
             return None
 
         data_type = self._get_data_type()
-        if data_type == "STRING" or data_type == "BLOCK":
+        if data_type != "INT" and data_type != "UINT" and data_type != "FLOAT":
             return None
 
         index = 3 if self._append() else 4
-        if self.parser.parameters[index] == "nil":
+        value = self.parser.parameters[index]
+        if str(value).upper() == "NIL" or str(value).upper() == "NONE":
             return None
         return ConfigParser.handle_defined_constants(
-            convert_to_value(self.parser.parameters[index]),
+            convert_to_value(value),
             self._get_data_type(),
             self._get_bit_size(),
         )
@@ -196,14 +198,15 @@ class PacketItemParser:
             return None
 
         data_type = self._get_data_type()
-        if data_type == "STRING" or data_type == "BLOCK":
+        if data_type != "INT" and data_type != "UINT" and data_type != "FLOAT":
             return None
 
         index = 4 if self._append() else 5
-        if self.parser.parameters[index] == "nil":
+        value = self.parser.parameters[index]
+        if str(value).upper() == "NIL" or str(value).upper() == "NONE":
             return None
         return ConfigParser.handle_defined_constants(
-            convert_to_value(self.parser.parameters[index]),
+            convert_to_value(value),
             self._get_data_type(),
             self._get_bit_size(),
         )
@@ -247,6 +250,41 @@ class PacketItemParser:
 
         index = 3 if self._append() else 4
         data_type = self._get_data_type()
+        if data_type == "BOOL":
+            value = str(self.parser.parameters[index]).upper()
+            if value == "TRUE" or value == "FALSE":
+                return ConfigParser.handle_true_false(self.parser.parameters[index])
+            else:
+                raise self.parser.error("Default for BOOL data type must be TRUE or FALSE")
+        if data_type == "ARRAY":
+            value = str(self.parser.parameters[index])
+            try:
+                value = literal_eval(value)
+            except Exception:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            if isinstance(value, list):
+                return value
+            else:
+                raise self.parser.error("Default for ARRAY data type must be an Array")
+        if data_type == "OBJECT":
+            value = str(self.parser.parameters[index])
+            try:
+                value = literal_eval(value)
+            except Exception:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            if isinstance(value, dict):
+                return value
+            else:
+                raise self.parser.error("Default for OBJECT data type must be a Hash")
+        if data_type == "ANY":
+            value = str(self.parser.parameters[index])
+            if len(value) > 0:
+                try:
+                    return literal_eval(value)
+                except Exception:
+                    return value
+            else:
+                return ""
         if data_type == "STRING" or data_type == "BLOCK":
             return self._convert_string_value(index)
         else:
@@ -270,6 +308,41 @@ class PacketItemParser:
             return item.default
 
         index = 3 if self._append() else 4
+        if data_type == "BOOL":
+            value = str(self.parser.parameters[index]).upper()
+            if value == "TRUE" or value == "FALSE":
+                return ConfigParser.handle_true_false(self.parser.parameters[index])
+            else:
+                raise self.parser.error("ID Value for BOOL data type must be TRUE or FALSE")
+        if data_type == "ARRAY":
+            value = str(self.parser.parameters[index])
+            try:
+                value = literal_eval(value)
+            except Exception:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            if isinstance(value, list):
+                return value
+            else:
+                raise self.parser.error("ID Value for ARRAY data type must be an Array")
+        if data_type == "OBJECT":
+            value = str(self.parser.parameters[index])
+            try:
+                value = literal_eval(value)
+            except Exception:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            if isinstance(value, dict):
+                return value
+            else:
+                raise self.parser.error("ID Value for OBJECT data type must be a Hash")
+        if data_type == "ANY":
+            value = str(self.parser.parameters[index])
+            if len(value) > 0:
+                try:
+                    return literal_eval(value)
+                except Exception:
+                    return value
+            else:
+                return ""
         if data_type == "STRING" or data_type == "BLOCK":
             return self._convert_string_value(index)
         else:
@@ -314,24 +387,23 @@ class PacketItemParser:
         keyword = self.parser.keyword or ""
         # Item type usage is simple so just return it
         if "ITEM" in keyword:
-            return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED> "
+            return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED/BOOL/ARRAY/OBJECT/ANY> "
 
         # Build up the parameter type usage based on the keyword
         usage = "<TYPE: "
         # ARRAY types don't have min or max or default values
         if "ARRAY" in keyword:
-            usage += "INT/UINT/FLOAT/STRING/BLOCK> "
+            usage += "INT/UINT/FLOAT/STRING/BLOCK/BOOL/OBJECT/ANY> "
         else:
             try:
                 data_type = self._get_data_type()
             except TypeError:
                 # If the data type could not be determined set something
                 data_type = "INT"
-            # STRING and BLOCK types do not have min or max values
-            if data_type == "STRING" or data_type == "BLOCK":
-                usage += "STRING/BLOCK> "
+            if data_type == "INT" or data_type == "UINT" or data_type == "FLOAT" or data_type == "DERIVED":
+                usage += "INT/UINT/FLOAT/DERIVED> <MIN VALUE> <MAX VALUE> "
             else:
-                usage += "INT/UINT/FLOAT> <MIN VALUE> <MAX VALUE> "
+                usage += "STRING/BLOCK/BOOL/ARRAY/OBJECT/ANY> "
             # ID Values do not have default values
             if "ID" not in keyword:
                 usage += "<DEFAULT_VALUE> "

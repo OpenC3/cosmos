@@ -20,7 +20,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3'
 require 'openc3/core_ext/class'
 require 'openc3/core_ext/time'
 require 'openc3/utilities/store_queued'

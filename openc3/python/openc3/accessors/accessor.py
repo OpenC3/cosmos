@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from ast import literal_eval
-
+from openc3.config.config_parser import ConfigParser
 
 class Accessor:
     def __init__(self, packet=None):
@@ -90,9 +90,26 @@ class Accessor:
         if value is None:
             return None
         match item.data_type:
+            case "ANY":
+                try:
+                    if isinstance(value, str):
+                        # Thought about using json.loads here but it doesn't
+                        # support basic examples like "[2.2, '3', 4]"
+                        # Seems it's pretty strict about quotes and escaping
+                        value = literal_eval(value)
+                except Exception:
+                    # Just leave value as is
+                    pass
+            case "BOOL":
+                if isinstance(value, str):
+                    value = ConfigParser.handle_true_false(value)
             case "OBJECT" | "ARRAY":
-                pass  # No conversion on complex OBJECT types
-            case "STRING" | "BLOCK":
+                if isinstance(value, str):
+                    # Thought about using json.loads here but it doesn't
+                    # support basic examples like "[2.2, '3', 4]"
+                    # Seems it's pretty strict about quotes and escaping
+                    value = literal_eval(value)
+            case "STRING":
                 if item.array_size is not None:
                     if isinstance(value, str):
                         # Thought about using json.loads here but it doesn't
@@ -102,6 +119,18 @@ class Accessor:
                     value = [str(x) for x in value]
                 else:
                     value = str(value)
+            case "BLOCK":
+                if item.array_size is not None:
+                    if isinstance(value, str):
+                        # Thought about using json.loads here but it doesn't
+                        # support basic examples like "[2.2, '3', 4]"
+                        # Seems it's pretty strict about quotes and escaping
+                        value = literal_eval(value)
+                else:
+                    if isinstance(value, str):
+                        value = bytearray(value.encode())
+                    else:
+                        value = bytearray(value)
             case "INT" | "UINT":
                 if item.array_size is not None:
                     if isinstance(value, str):
