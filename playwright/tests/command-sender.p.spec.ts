@@ -707,6 +707,6 @@ test('disables command validation', async ({ page, utils }) => {
 
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'") sent',
+    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
   )
 })

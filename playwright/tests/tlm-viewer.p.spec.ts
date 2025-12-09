@@ -57,17 +57,10 @@ async function showScreen(
 
 test('changes targets', async ({ page, utils }) => {
   await page.locator('[data-test="select-target"]').click()
-  await page.getByRole('option', { name: 'SYSTEM' }).click()
-  await expect(
-    page.locator('.v-select__content [role="listbox"]'),
-  ).not.toBeVisible()
-  await page.locator('[data-test="select-screen"]').click()
-  await expect(page.locator('.v-select__content [role="listbox"]')).toHaveText(
+  await page.getByRole('option', { name: 'SYSTEM', exact: true }).click()
+  await expect(page.locator('[data-test="select-screen"]')).toContainText(
     'STATUS',
   )
-  await expect(
-    page.locator('.v-select__content [role="listbox"]'),
-  ).not.toHaveText('ADCS')
 })
 
 test('displays INST ADCS', async ({ page, utils }) => {

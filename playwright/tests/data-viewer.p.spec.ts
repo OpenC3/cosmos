@@ -27,6 +27,7 @@ test.use({
 
 async function addComponent(page, utils, target: string, packet: string) {
   await page.locator('[data-test=new-tab]').click()
+  await utils.sleep(500) // wait for the component selector to be clickable
   await utils.selectTargetPacketItem(target, packet)
   await page.locator('[data-test=select-send]').click() // add the packet to the list
   await page.locator('[data-test=add-component]').click()
@@ -83,7 +84,8 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
 
   // Verify the config
-  await page.getByRole('tab', { name: 'Test1' }).click()
+  await expect(page.getByText('Current Time:')).toBeVisible()
+  await page.getByRole('tab', { name: 'Test2' }).getByRole('button').click()
   await expect(page.getByText('COSMOS Packet Raw/Decom')).toBeVisible()
   // Verify display setting
   await page.locator('[data-test=history-component-open-settings]').click()
@@ -95,8 +97,6 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await expect(
     page.locator('[data-test=display-settings-card]'),
   ).not.toBeVisible()
-  await page.getByRole('tab', { name: 'Test2' }).click()
-  await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Reset this test configuration
   await page.locator('[data-test=data-viewer-file]').click()
@@ -192,7 +192,10 @@ test('deletes a component and tab', async ({ page, utils }) => {
   await expect(
     page.getByRole('tab', { name: 'INST ADCS [ RAW ]' }),
   ).toBeVisible()
-  await page.locator('[data-test=delete-component]').click()
+  await page
+    .getByRole('tab', { name: 'INST ADCS [ RAW ]' })
+    .getByRole('button')
+    .click()
   await expect(page.locator('.v-card > .v-card-title').first()).toHaveText(
     "You're not viewing any packets",
   )
@@ -411,6 +414,7 @@ test('displays event message format', async ({ page, utils }) => {
   await page.locator('[data-test="new-tab"]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('COSMOS Event Message').click()
+  await utils.sleep(500) // wait for the packet/item selector to be clickable
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSVER')
   await page.locator('button:has-text("Add Item")').click()
   await page.locator('[data-test=add-component]').click()
@@ -419,14 +423,11 @@ test('displays event message format', async ({ page, utils }) => {
   await expect(page.locator('[data-test=history-component-text-area] textarea'))
     // Create regular expression to match the line:
     // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
-    .toHaveValue(
-      /\d*/,
-    )
+    .toHaveValue(/\d*/)
   await expect(page.locator('[data-test=history-component-text-area] textarea'))
     // Create regular expression to match the line:
     // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
-    .not
-    .toHaveValue(
+    .not.toHaveValue(
       /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+CCSDSVER: .*/,
     )
 })
