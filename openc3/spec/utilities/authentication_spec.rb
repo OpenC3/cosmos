@@ -32,15 +32,9 @@ module OpenC3
       it "initializes with OPENC3_API_PASSWORD" do
         ENV['OPENC3_API_PASSWORD'] = 'test_password'
         auth = OpenC3Authentication.new
-        expect(auth.token).to eq('test_password')
-      end
-    end
-
-    describe "token" do
-      it "returns the token from environment" do
-        ENV['OPENC3_API_PASSWORD'] = 'my_token'
-        auth = OpenC3Authentication.new
-        expect(auth.token).to eq('my_token')
+        # Initialization calls a method that uses Faraday to get a token from the server.
+        # It's mocked to return $openc3_mock_token for unit testing.
+        expect(auth.token).to eq($openc3_mock_token)
       end
     end
   end

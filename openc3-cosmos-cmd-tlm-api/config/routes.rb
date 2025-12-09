@@ -212,6 +212,7 @@ Rails.application.routes.draw do
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
+    post "/auth/verify_service" => "auth#verify_service"
     post "/auth/set" => "auth#set"
 
     get "/internal/health" => "internal_health#health"
