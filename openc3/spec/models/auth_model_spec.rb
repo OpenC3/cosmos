@@ -28,7 +28,6 @@ module OpenC3
   describe AuthModel, type: :model do
     before(:each) do
       @redis = mock_redis()
-      wut = @redis.get(PW_HASH_PRIMARY_KEY)
       
       # Disable the auth model mock for this spec
       allow(OpenC3::AuthModel).to receive(:verify).and_call_original
