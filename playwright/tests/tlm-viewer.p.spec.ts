@@ -57,7 +57,7 @@ async function showScreen(
 
 test('changes targets', async ({ page, utils }) => {
   await page.locator('[data-test="select-target"]').click()
-  await page.getByText('SYSTEM').click()
+  await page.getByRole('option', { name: 'SYSTEM' }).click()
   await expect(
     page.locator('.v-select__content [role="listbox"]'),
   ).not.toBeVisible()

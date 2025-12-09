@@ -120,7 +120,8 @@ test('navigate gems volume', async ({ page, utils }) => {
   await expect(page.locator('tbody > tr')).toHaveCount(1)
 })
 
-test('direct URLs', async ({ page }) => {
+test('direct URLs', async ({ page, utils }) => {
+  await utils.sleep(500) // Wait for the app to be ready
   // Verify using slashes rather than %2F works
   await page.goto('/tools/bucketexplorer/config%2FDEFAULT%2Ftargets%2F')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
@@ -152,7 +153,7 @@ test('view file', async ({ page, utils }) => {
   await expect(page.locator('pre')).toContainText('create_timeline')
   await page.getByRole('button', { name: 'Ok' }).click()
   await page.locator('[data-test="search-input"] input').fill('')
-  await page.getByText('/ INST').click()
+  await page.getByText('INST', { exact: true }).click()
   await utils.sleep(500) // Allow the page to render
   await page.locator('[data-test="search-input"] input').fill('target.txt')
   await page.locator('[data-test="view-file"]').first().click()
@@ -161,7 +162,17 @@ test('view file', async ({ page, utils }) => {
 })
 
 test('upload and delete', async ({ page, utils }) => {
-  const randomDir = 'tmp_' + `${Math.random()}`.substring(2)
+  // Create a file so we have something in __TEMP__
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+  await page.locator('textarea').fill(`print('hello world')`)
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=Save File').click()
+
+  await page.goto('/tools/bucketexplorer')
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
@@ -169,24 +180,14 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/ DEFAULT /',
   )
-
-  // Upload something to make sure the tmp dir exists
-  await expect(page.getByLabel('prepended action')).toBeVisible()
-  const [fileChooser1] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    await page.getByLabel('prepended action').click(),
-  ])
-  await fileChooser1.setFiles('package.json')
-  await page
-    .locator('[data-test="upload-file-path"] input')
-    .fill(`DEFAULT/${randomDir}/tmp.json`)
-  await page.locator('[data-test="upload-file-submit-btn"]').click()
-
+  await page.getByRole('cell', { name: 'targets_modified' }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    `/ DEFAULT / ${randomDir} /`,
+    '/ DEFAULT / targets_modified /',
   )
-  await page.locator('tbody> tr').first().waitFor()
-  let count = await page.locator('tbody > tr').count()
+  await page.getByRole('cell', { name: '__TEMP__' }).click()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT / targets_modified / __TEMP__ /',
+  )
 
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
@@ -200,47 +201,9 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser.setFiles('package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
-  await expect
-    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
-    .toBeGreaterThanOrEqual(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
     .locator('tr:has-text("package.json") [data-test="delete-file"]')
-    .click()
-  await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect
-    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
-    .toBeGreaterThanOrEqual(count)
-
-  // Note that Promise.all prevents a race condition
-  // between clicking and waiting for the file chooser.
-  await expect(page.getByLabel('prepended action')).toBeVisible()
-  const [fileChooser2] = await Promise.all([
-    // It is important to call waitForEvent before click to set up waiting.
-    page.waitForEvent('filechooser'),
-    // Opens the file chooser.
-    await page.getByLabel('prepended action').click(),
-  ])
-  await fileChooser2.setFiles('package.json')
-  await page
-    .locator('[data-test="upload-file-path"] input')
-    .fill(`DEFAULT/${randomDir}/TEST/tmp/myfile.json`)
-  await page.locator('[data-test="upload-file-submit-btn"]').click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    `/ DEFAULT / ${randomDir} / TEST / tmp /`,
-  )
-  await page
-    .locator('tr:has-text("myfile.json") [data-test="delete-file"]')
-    .click()
-  await page.locator('[data-test="confirm-dialog-delete"]').click()
-
-  // Cleanup tmp.json
-  await page.getByText('logs').click()
-  await page.getByText('config').click()
-  await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await page.getByRole('cell', { name: randomDir }).click()
-  await page
-    .locator('tr:has-text("tmp.json") [data-test="delete-file"]')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })

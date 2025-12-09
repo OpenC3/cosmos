@@ -88,7 +88,7 @@ test('selects a target and packet to display', async ({ page, utils }) => {
 
 test('gets help info', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'IMAGE')
-  await page.locator('.v-data-table-footer > i').hover()
+  await page.getByRole('button', { name: '' }).first().hover()
   await expect(page.getByText('Name with * indicates DERIVED')).toBeVisible()
   await expect(page.getByText('Right click name to pin item')).toBeVisible()
   await expect(
