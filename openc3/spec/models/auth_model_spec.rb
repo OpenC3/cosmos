@@ -59,9 +59,12 @@ module OpenC3
         expect(AuthModel.verify(AUTH_INITIAL_PASSWORD, no_password: true)).to eq(false)
       end
 
-      it "verifies a session token" do
+      it "verifies and terminates a session token" do
         token = AuthModel.generate_session
         expect(AuthModel.verify(token)).to eq(true)
+
+        AuthModel.logout
+        expect(AuthModel.verify(token)).to eq(false)
       end
 
       it "raises when stored password hash is SHA256" do

@@ -78,5 +78,13 @@ RSpec.describe AuthController, :type => :controller do
       post :verify, params: { password: 'BAD' }
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it "validates the service password" do
+      post :verify_service, params: { password: 'BAD' }
+      expect(response).to have_http_status(:unauthorized)
+
+      post :verify_service, params: { password: 'openc3service' }
+      expect(response).to have_http_status(:ok)
+    end
   end
 end

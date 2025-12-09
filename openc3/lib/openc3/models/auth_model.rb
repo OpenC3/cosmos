@@ -119,8 +119,8 @@ module OpenC3
     # Terminates every session.
     def self.logout
       Store.del(SESSIONS_KEY)
-      @@sessions_cache = nil
-      @@sessions_cache_time = nil
+      @@session_cache = nil
+      @@session_cache_time = nil
     end
   end
 end
