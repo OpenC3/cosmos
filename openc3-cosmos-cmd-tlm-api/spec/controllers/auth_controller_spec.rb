@@ -30,7 +30,7 @@ RSpec.describe AuthController, :type => :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json).to eql({"result" => false})
 
-      post :set, params: { token: 'PASSWORD' }
+      post :set, params: { password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
 
       get :token_exists
@@ -41,23 +41,23 @@ RSpec.describe AuthController, :type => :controller do
   end
 
   describe "set" do
-    it "requires old_token after initial set" do
-      post :set, params: { token: 'PASSWORD' }
+    it "requires old_password after initial set" do
+      post :set, params: { password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
 
-      post :set, params: { token: 'PASSWORD2' }
+      post :set, params: { password: 'PASSWORD2' }
       expect(response).to have_http_status(:error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql 'error'
-      expect(json["message"]).to eql 'old_token must not be nil or empty'
+      expect(json["message"]).to eql 'old_password must not be nil or empty'
 
-      post :set, params: { token: 'PASSWORD2', old_token: 'BAD' }
+      post :set, params: { password: 'PASSWORD2', old_password: 'BAD' }
       expect(response).to have_http_status(:error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql 'error'
-      expect(json["message"]).to eql 'old_token incorrect'
+      expect(json["message"]).to eql 'old_password incorrect'
 
-      post :set, params: { token: 'PASSWORD2', old_token: 'PASSWORD' }
+      post :set, params: { password: 'PASSWORD2', old_password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
     end
   end
@@ -68,14 +68,14 @@ RSpec.describe AuthController, :type => :controller do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "validates the set token" do
-      post :set, params: { token: 'PASSWORD' }
+    it "validates the set password" do
+      post :set, params: { password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
 
-      post :verify, params: { token: 'PASSWORD' }
+      post :verify, params: { password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
 
-      post :verify, params: { token: 'BAD' }
+      post :verify, params: { password: 'BAD' }
       expect(response).to have_http_status(:unauthorized)
     end
   end
