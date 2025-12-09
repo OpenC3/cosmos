@@ -46,6 +46,8 @@ require 'redis'
 require 'erb'
 require 'irb'
 require 'irb/completion'
+require 'digest'
+require 'argon2'
 
 $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
 
@@ -869,6 +871,21 @@ def cli_script(args=[])
   exit(ret_code)
 end
 
+def migrate_password_hash
+  password = ENV['OPENC3_API_PASSWORD']
+  if password.nil? or password.empty?
+    abort "OPENC3_API_PASSWORD environment variable is required for password migration"
+  end
+  redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
+  old_pw_hash = redis.get('OPENC3__TOKEN')
+  abort "Password hash already migrated" if old_pw_hash.start_with?('$argon2')
+  abort "OPENC3_API_PASSWORD incorrect" unless old_pw_hash == Digest::SHA256.hexdigest(password)
+  new_pw_hash = Argon2::Password.create(password, profile: :rfc_9106_high_memory)
+  redis.set('OPENC3__TOKEN', new_pw_hash)
+  puts "Password migrated successfully."
+  exit 0
+end
+
 if not ARGV[0].nil? # argument(s) given
 
   # Handle each task
@@ -1330,6 +1347,9 @@ if not ARGV[0].nil? # argument(s) given
       exit 0
     end
     run_migrations(ARGV[1])
+
+  when 'migratepassword'
+    migrate_password_hash()
 
   else # Unknown task
     print_usage()
