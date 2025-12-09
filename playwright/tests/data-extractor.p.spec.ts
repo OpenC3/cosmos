@@ -162,7 +162,7 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 161')).toBeVisible()
+  await expect(page.getByText('1-20 of 234')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
@@ -305,6 +305,7 @@ test('outputs full column names', async ({ page, utils }) => {
   // Switch back and verify
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Normal Columns').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   // Create a new end time so we get a new filename
   start = sub(new Date(), { minutes: 2 })
   await page
@@ -319,6 +320,7 @@ test('fills values', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 1 })
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Fill Down').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))

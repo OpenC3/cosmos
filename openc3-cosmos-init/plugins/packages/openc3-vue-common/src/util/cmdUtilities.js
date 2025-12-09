@@ -97,6 +97,9 @@ export default {
           }
         } else if (value.json_class === 'Float' && value.raw) {
           returnValue = value.raw
+        } else {
+          // For other objects, use JSON.stringify as a fallback
+          returnValue = JSON.stringify(value).replace(/\\n/g, '')
         }
       } else {
         returnValue = String(value)
