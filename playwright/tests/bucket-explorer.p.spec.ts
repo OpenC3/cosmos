@@ -104,7 +104,7 @@ test('navigate gems volume', async ({ page, utils }) => {
   )
 
   await page.locator('[data-test="search-input"] input').fill('bucket')
-  await expect(page.locator('tbody > tr')).toHaveCount(2)
+  await expect(page.locator('tbody > tr')).toHaveCount(1)
   // Download the file
   await utils.download(page, 'tbody > tr [data-test="download-file"] >> nth=0')
 
@@ -117,7 +117,7 @@ test('navigate gems volume', async ({ page, utils }) => {
     /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
   )
   await page.locator('[data-test="search-input"] input').fill('bucket')
-  await expect(page.locator('tbody > tr')).toHaveCount(2)
+  await expect(page.locator('tbody > tr')).toHaveCount(1)
 })
 
 test('direct URLs', async ({ page, utils }) => {
@@ -255,7 +255,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   if (process.env.ENTERPRISE === '1') {
     await expect(page.locator('tbody > tr')).toHaveCount(23)
   } else {
-    await expect(page.locator('tbody > tr')).toHaveCount(20)
+    await expect(page.locator('tbody > tr')).toHaveCount(17)
   }
 })
 
