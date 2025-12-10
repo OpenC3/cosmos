@@ -873,6 +873,7 @@ end
 
 def migrate_password_hash
   password = ENV['OPENC3_API_PASSWORD']
+  argon2_profile = ENV["OPENC3_ARGON2_PROFILE"]&.to_sym || :rfc_9106_high_memory # More secure than default (:rfc_9106_low_memory)
   if password.nil? or password.empty?
     abort "OPENC3_API_PASSWORD environment variable is required for password migration"
   end
@@ -880,7 +881,7 @@ def migrate_password_hash
   old_pw_hash = redis.get('OPENC3__TOKEN')
   abort "Password hash already migrated" if old_pw_hash.start_with?('$argon2')
   abort "OPENC3_API_PASSWORD incorrect" unless old_pw_hash == Digest::SHA256.hexdigest(password)
-  new_pw_hash = Argon2::Password.create(password, profile: :rfc_9106_high_memory)
+  new_pw_hash = Argon2::Password.create(password, profile: argon2_profile)
   redis.set('OPENC3__TOKEN', new_pw_hash)
   puts "Password migrated successfully."
   exit 0
