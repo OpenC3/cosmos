@@ -26,7 +26,7 @@ require 'openc3/utilities/store'
 
 module OpenC3
   class AuthModel
-    ARGON2_PROFILE = :rfc_9106_high_memory # More secure than default (:rfc_9106_low_memory)
+    ARGON2_PROFILE = ENV["OPENC3_ARGON2_PROFILE"]&.to_sym || :rfc_9106_high_memory # More secure than default (:rfc_9106_low_memory)
 
     # Redis keys
     PRIMARY_KEY = 'OPENC3__TOKEN' # for argon2 password hash
