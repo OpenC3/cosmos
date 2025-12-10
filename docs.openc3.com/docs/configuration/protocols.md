@@ -318,6 +318,18 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
 
 </TabItem>
+
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE openc3/interfaces/protocols/ccsds_cltu_protocol.py
+```
+
+Source code for [cltu_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_cltu_protocol.py)
+
+</TabItem>
+
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
@@ -343,6 +355,16 @@ INTERFACE INTERFACE_NAME <params>
 ```
 
 Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE openc3/interfaces/protocols/ccsdc_tctf_protocol.py True False 1 0xA 0x1
+```
+
+Source code for [ccsds_tctf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tctf_protocol.py)
 
 </TabItem>
 </Tabs>
@@ -373,6 +395,18 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
 
 </TabItem>
+
+<TabItem value="python" label="Python">
+
+```python
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL READ openc3/interfaces/protocols/ccsdc_tmtf_protocol.py True 0 0x1ACFFC1D True
+```
+
+Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tmtf_protocol.py)
+
+</TabItem>
+
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
