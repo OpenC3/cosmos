@@ -64,7 +64,7 @@ setup('global setup', async ({ page }) => {
       await page.getByLabel('Confirm Password').fill('password')
       await page.click('data-test=set-password')
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500)) // wait for the auth request to process - even longer for github runners :)
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Save signed-in state to 'storageState.json' and adminStorageState to match Enterprise
     await page.context().storageState({ path: STORAGE_STATE })
