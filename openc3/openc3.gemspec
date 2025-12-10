@@ -95,6 +95,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
+  s.add_runtime_dependency 'argon2',    '~> 2.3'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.10'

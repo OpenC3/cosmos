@@ -38,7 +38,7 @@ class OpenC3Authentication:
         if not password:
             raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
         self.service = password == OPENC3_SERVICE_PASSWORD
-        response = Session().post(self._generate_auth_url(), json={"token": password}, headers={"Content-Type": "application/json"})
+        response = Session().post(self._generate_auth_url(), json={"password": password}, headers={"Content-Type": "application/json"})
         self._token = response.text
         if not self._token:
             raise OpenC3AuthenticationError("Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD")

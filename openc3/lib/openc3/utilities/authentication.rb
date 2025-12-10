@@ -51,7 +51,7 @@ module OpenC3
     end
 
     def _make_auth_request(password)
-      Faraday.new.post(_generate_auth_url, '{"token": "' + password + '"}', {'Content-Type' => 'application/json'})
+      Faraday.new.post(_generate_auth_url, '{"password": "' + password + '"}', {'Content-Type' => 'application/json'})
     end
 
     def _generate_auth_url
