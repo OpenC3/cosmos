@@ -860,7 +860,7 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
       '@openc3/js-common':
-        specifier: workspace:*
+        specifier: file:../openc3-js-common
         version: link:../openc3-js-common
       ace-builds:
         specifier: 1.43.4
