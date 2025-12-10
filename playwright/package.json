@@ -5,7 +5,7 @@
   "description": "OpenC3 integration testing",
   "scripts": {
     "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet",
-    "test:parallel": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
+    "test:parallel": "playwright test ./tests/*.p.spec.ts --project=chromium && playwright test ./tests/**/*.p.spec.ts --project=chromium",
     "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
     "test:enterprise": "ENTERPRISE=1 playwright test ./tests/enterprise/*.spec.ts --project=chromium --workers=1",
     "test:keycloak": "ENTERPRISE=1 playwright test ./tests/keycloak.setup.ts --workers=1",

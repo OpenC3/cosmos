@@ -19,6 +19,7 @@
 
 import os
 import tempfile
+import traceback
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
@@ -46,6 +47,8 @@ from openc3.top_level import get_class_from_module
 class PacketConfig:
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
+    # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
+    CONVERTED_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
 
     def __init__(self):
         self.name = None
@@ -245,6 +248,8 @@ class PacketConfig:
                         | "SCREEN"
                         | "RELATED_ITEM"
                         | "IGNORE_OVERLAP"
+                        | "STRUCTURE"
+                        | "APPEND_STRUCTURE"
                     ):
                         if not self.current_packet:
                             raise parser.error(f"No current packet for {keyword}")
@@ -584,6 +589,8 @@ class PacketConfig:
                 | "APPEND_ID_PARAMETER"
                 | "APPEND_ARRAY_ITEM"
                 | "APPEND_ARRAY_PARAMETER"
+                | "STRUCTURE"
+                | "APPEND_STRUCTURE"
             ):
                 self.start_item(parser)
 
@@ -642,9 +649,10 @@ class PacketConfig:
             case "HIDDEN":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
-                if not self.current_packet:
-                    raise parser.error(f"{keyword} requires a current packet")
-                self.current_packet.hidden = True
+                if self.current_item:
+                    self.current_item.hidden = True
+                else:
+                    self.current_packet.hidden = True
 
             case "DISABLED":
                 usage = keyword
@@ -692,12 +700,16 @@ class PacketConfig:
                         filename = class_name_to_filename(params[0])
                         if keyword == "ACCESSOR":
                             klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
-                        elif keyword == "VALIDATOR":
-                            klass = get_class_from_module(f"openc3.validators.{filename}", params[0])
                         elif keyword == "SUBPACKETIZER":
                             klass = get_class_from_module(f"openc3.subpacketizers.{filename}", params[0])
+                        else:
+                            raise parser.error(
+                                f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
+                            )
                     except ModuleNotFoundError:
-                        raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}")
+                        raise parser.error(
+                            f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
+                        )
 
                 if not klass:
                     raise parser.error(f"Failed to load class for {keyword}")
@@ -844,13 +856,7 @@ class PacketConfig:
                 self.converted_bit_size = None
                 if len(params) == 2:
                     self.converted_type = params[0].upper()
-                    if self.converted_type not in [
-                        "INT",
-                        "UINT",
-                        "FLOAT",
-                        "STRING",
-                        "BLOCK",
-                    ]:
+                    if self.converted_type not in self.CONVERTED_DATA_TYPES:
                         raise parser.error(f"Invalid converted_type: {self.converted_type}.")
                     self.converted_bit_size = int(params[1])
                 if self.converted_type is None or self.converted_bit_size is None:
@@ -940,9 +946,6 @@ class PacketConfig:
 
             # Update the default value for the current command parameter
             case "DEFAULT_VALUE":
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
-                    raise parser.error(f"{keyword} only applies to command parameters")
-
                 usage = "DEFAULT_VALUE <DEFAULT VALUE>"
                 parser.verify_num_parameters(1, 1, usage)
                 if (self.current_item.data_type == "STRING") or (self.current_item.data_type == "BLOCK"):
@@ -985,7 +988,9 @@ class PacketConfig:
 
     def start_item(self, parser):
         self.finish_item()
-        self.current_item = PacketItemParser.parse(parser, self.current_packet, self.current_cmd_or_tlm, self.warnings)
+        self.current_item = PacketItemParser.parse(
+            parser, self, self.current_packet, self.current_cmd_or_tlm, self.warnings
+        )
 
     # Finish updating packet item
     def finish_item(self):

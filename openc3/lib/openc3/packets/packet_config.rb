@@ -100,6 +100,8 @@ module OpenC3
 
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
+    # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
+    CONVERTED_DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :TIME]
 
     def initialize
       @name = nil
@@ -242,7 +244,8 @@ module OpenC3
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
               'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER'
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER',\
+              'STRUCTURE', 'APPEND_STRUCTURE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -486,7 +489,7 @@ module OpenC3
       # Start a new telemetry item in the current packet
       when 'ITEM', 'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER',\
           'APPEND_ITEM', 'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER',\
-          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER'
+          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER', 'STRUCTURE', 'APPEND_STRUCTURE'
         start_item(parser)
 
       # Allow this packet to be received with less data than the defined length
@@ -535,7 +538,11 @@ module OpenC3
       when 'HIDDEN'
         usage = "#{keyword}"
         parser.verify_num_parameters(0, 0, usage)
-        @current_packet.hidden = true
+        if @current_item
+          @current_item.hidden = true
+        else
+          @current_packet.hidden = true
+        end
 
       when 'DISABLED'
         usage = "#{keyword}"
@@ -709,7 +716,7 @@ module OpenC3
         @converted_bit_size = nil
         if params[0]
           @converted_type = params[0].upcase.intern
-          raise parser.error("Invalid converted_type: #{@converted_type}.") unless [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :TIME].include? @converted_type
+          raise parser.error("Invalid converted_type: #{@converted_type}.") unless CONVERTED_DATA_TYPES.include? @converted_type
         end
         @converted_bit_size = Integer(params[1]) if params[1]
         if @converted_type.nil? or @converted_bit_size.nil?
@@ -791,10 +798,6 @@ module OpenC3
 
       # Update the default value for the current command parameter
       when 'DEFAULT_VALUE'
-        if @current_cmd_or_tlm == TELEMETRY
-          raise parser.error("#{keyword} only applies to command parameters")
-        end
-
         usage = "DEFAULT_VALUE <DEFAULT VALUE>"
         parser.verify_num_parameters(1, 1, usage)
         if (@current_item.data_type == :STRING) ||
@@ -834,7 +837,7 @@ module OpenC3
 
     def start_item(parser)
       finish_item()
-      @current_item = PacketItemParser.parse(parser, @current_packet, @current_cmd_or_tlm, @warnings)
+      @current_item = PacketItemParser.parse(parser, self, @current_packet, @current_cmd_or_tlm, @warnings)
     end
 
     # Finish updating packet item

@@ -256,7 +256,8 @@ module OpenC3
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       t = _validate_tlm_type(type)
       raise ArgumentError, "Unknown type '#{type}' for #{target_name} #{packet_name}" if t.nil?
-      items = packet['items'].map { | item | item['name'].upcase }
+      items = packet["items"].reject { | item | item["hidden"] }
+      items = items.map { | item | item['name'].upcase }
       cvt_items = items.map { | item | [target_name, packet_name, item, type] }
       current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
       items.zip(current_values).map { | item , values | [item, values[0], values[1]]}

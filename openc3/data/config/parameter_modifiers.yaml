@@ -167,3 +167,8 @@ OVERFLOW:
       description: How OpenC3 treats an overflow value. Only applies to signed and
         unsigned integer data types.
       values: <%= %w(ERROR ERROR_ALLOW_HEX TRUNCATE SATURATE) %>
+HIDDEN:
+  summary: Hides this parameter from all the OpenC3 tools
+  description: This item will not appear in CmdSender.
+    It also hides this item from appearing in the Script Runner popup helper
+    when writing scripts. The parameter should not be provided to commands.

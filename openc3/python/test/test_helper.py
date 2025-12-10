@@ -96,7 +96,7 @@ def setup_system(targets=None):
                     packet.packet_name,
                     scope="DEFAULT",
                 )
-        except RuntimeError:
+        except Exception:
             pass
         try:
             for packet_name, packet in System.commands.packets(target_name).items():
@@ -105,7 +105,7 @@ def setup_system(targets=None):
                     packet_name,
                     json.dumps(packet.as_json()),
                 )
-        except RuntimeError:
+        except Exception:
             pass
 
         try:
@@ -113,7 +113,7 @@ def setup_system(targets=None):
             for set in System.limits.sets():
                 sets[set] = "false"
             Store.hset("DEFAULT__limits_sets", mapping=sets)
-        except RuntimeError:
+        except Exception:
             pass
 
 

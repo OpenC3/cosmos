@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,7 @@ module OpenC3
     @@create_index = 0
 
     # Valid data types adds :DERIVED, :ARRAY, :OBJECT to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor::DATA_TYPES << :DERIVED << :ARRAY << :OBJECT
+    DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :DERIVED]
 
     # Name is used by higher level classes to access the StructureItem.
     # @return [String] Name of the item
@@ -98,6 +98,15 @@ module OpenC3
     # @return [Integer] Incrementing value that shows relative order items are created
     attr_reader :create_index
 
+    # @return [Boolean] Indicates if item should be listed in items and in read all type methods
+    attr_accessor :hidden
+
+    # @return [StructureItem] Parent structure item
+    attr_accessor :parent_item
+
+    # @return [Structure] Structure associated with item
+    attr_accessor :structure
+
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
     # verifies the overall integrity.
@@ -126,6 +135,9 @@ module OpenC3
       self.overflow = overflow
       self.overlap = false
       self.variable_bit_size = nil
+      self.hidden = false
+      self.parent_item = nil
+      self.structure = nil
       @create_index = @@create_index
       @@create_index += 1
       @structure_item_constructed = true
@@ -198,7 +210,7 @@ module OpenC3
       when *DATA_TYPES
         # Valid data_type
       else
-        raise ArgumentError, "#{@name}: unknown data_type: #{data_type} - Must be :INT, :UINT, :FLOAT, :STRING, :BLOCK, or :DERIVED"
+        raise ArgumentError, "#{@name}: unknown data_type: #{data_type} - Must be #{DATA_TYPES.join(", ")}"
       end
 
       @data_type = data_type
@@ -308,31 +320,31 @@ module OpenC3
     end
     alias dup clone
 
-    def self.from_json(hash)
-      # Convert strings to symbols
-      endianness = hash['endianness'] ? hash['endianness'].intern : nil
-      data_type = hash['data_type'] ? hash['data_type'].intern : nil
-      overflow = hash['overflow'] ? hash['overflow'].intern : nil
-      si = StructureItem.new(hash['name'], hash['bit_offset'], hash['bit_size'], data_type,
-        endianness, hash['array_size'], overflow)
-      si.key = hash['key'] || hash['name']
-      si.variable_bit_size = hash['variable_bit_size']
-      si
-    end
-
     def as_json(*a)
       hash = {}
       hash['name'] = self.name
       hash['key'] = self.key
       hash['bit_offset'] = self.original_bit_offset
       hash['bit_size'] = self.original_bit_size
-      hash['data_type'] = self.data_type
-      hash['endianness'] = self.endianness
-      hash['array_size'] = self.original_array_size
-      hash['overflow'] = self.overflow
+      hash['data_type'] = self.data_type.to_s
+      hash['endianness'] = self.endianness.to_s
+      hash['overflow'] = self.overflow.to_s
+      hash['overlap'] = self.overlap
+      hash['create_index'] = self.create_index
+      hash['hidden'] = self.hidden
+      if self.original_array_size
+        hash['array_size'] = self.original_array_size
+      end
       if @variable_bit_size
         hash['variable_bit_size'] = @variable_bit_size
       end
+      if self.parent_item
+        hash['parent_item'] = self.parent_item.as_json
+      end
+      if self.structure
+        hash['structure'] = self.structure.as_json
+      end
+
       hash
     end
 

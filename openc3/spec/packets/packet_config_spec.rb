@@ -1161,14 +1161,6 @@ module OpenC3
           tf.close
           expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MAXIMUM_VALUE only applies to command parameters/)
           tf.unlink
-
-          tf = Tempfile.new('unittest')
-          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
-          tf.puts '  APPEND_ITEM item1 16 UINT'
-          tf.puts '    DEFAULT_VALUE 2'
-          tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DEFAULT_VALUE only applies to command parameters/)
-          tf.unlink
         end
 
         it "allows overriding the defined value" do

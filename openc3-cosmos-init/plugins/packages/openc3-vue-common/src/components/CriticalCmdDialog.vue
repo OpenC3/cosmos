@@ -27,7 +27,7 @@
 
       <v-card-text>
         <v-container fluid>
-          <v-alert v-model="error" type="error" dismissible>
+          <v-alert v-model="error" type="error" closable>
             {{ errorText }}
           </v-alert>
           <v-row class="pt-4" style="color: white"
@@ -57,7 +57,7 @@
               type="submit"
               class="mx-2"
               color="secondary"
-              outlined
+              variant="outlined"
               :disabled="disableButtons"
               data-test="reject"
               @click.prevent="reject"

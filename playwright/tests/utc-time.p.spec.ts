@@ -381,7 +381,7 @@ test.describe('Telemetry Grapher', () => {
       .click()
     await expect(page.getByText('Add a graph')).toBeVisible()
     await page.locator('[data-test=telemetry-grapher-graph]').click()
-    await page.locator('text=Add Graph').click()
+    await page.locator('[data-test=telemetry-grapher-graph-add-graph]').click()
     await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
     await page.locator('button:has-text("Add Item")').click()
     await page.locator('#innerapp button').first().click()

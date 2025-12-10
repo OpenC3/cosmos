@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,7 +24,7 @@ class StructureItem:
     create_index = 0
 
     # Valid data types adds DERIVED to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor.DATA_TYPES + ["DERIVED"]
+    DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "DERIVED"]
 
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
@@ -62,7 +62,10 @@ class StructureItem:
         self.original_array_size = array_size
         self.overflow = overflow
         self.overlap = False
-        self.variable_bit_size = False
+        self.variable_bit_size = None
+        self.hidden = False
+        self.parent_item = None
+        self.structure = None
         self.create_index = StructureItem.create_index
         StructureItem.create_index += 1
         self.structure_item_constructed = True
@@ -166,9 +169,9 @@ class StructureItem:
             raise TypeError(
                 f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}"
             )
-        if data_type not in StructureItem.DATA_TYPES:
+        if data_type not in self.DATA_TYPES:
             raise ValueError(
-                f"{self.name}: unknown data_type: {data_type} - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'"
+                f"{self.name}: unknown data_type: {data_type} - Must be {', '.join(self.DATA_TYPES)}"
             )
 
         self.__data_type = data_type
@@ -267,36 +270,27 @@ class StructureItem:
         StructureItem.create_index += 1
         return item
 
-    @classmethod
-    def from_json(cls, structure):
-        # Convert strings to symbols
-        endianness = structure.get("endianness")
-        data_type = structure.get("data_type")
-        array_size = structure.get("array_size")
-        overflow = structure.get("overflow")
-        si = StructureItem(
-            structure["name"],
-            structure["bit_offset"],
-            structure["bit_size"],
-            data_type,
-            endianness,
-            array_size,
-            overflow,
-        )
-        si.key = structure.get("key", structure["name"])
-        return si
-
     def as_json(self):
-        structure = {}
-        structure["name"] = self.name
-        structure["key"] = self.key
-        structure["bit_offset"] = self.original_bit_offset
-        structure["bit_size"] = self.original_bit_size
-        structure["data_type"] = self.data_type
-        structure["endianness"] = self.endianness
-        structure["array_size"] = self.original_array_size
-        structure["overflow"] = self.overflow
-        return structure
+        result = {}
+        result["name"] = self.name
+        result["key"] = self.key
+        result["bit_offset"] = self.original_bit_offset
+        result["bit_size"] = self.original_bit_size
+        result["data_type"] = self.data_type
+        result["endianness"] = self.endianness
+        result["overflow"] = self.overflow
+        result["overlap"] = self.overlap
+        result["create_index"] = self.create_index
+        result["hidden"] = self.hidden
+        if self.original_array_size is not None:
+            result["array_size"] = self.original_array_size
+        if self.variable_bit_size is not None:
+            result["variable_bit_size"] = self.variable_bit_size
+        if self.parent_item is not None:
+            result["parent_item"] = self.parent_item.as_json()
+        if self.structure is not None:
+            result["structure"] = self.structure.as_json()
+        return result
 
     def little_endian_bit_field(self):
         if self.endianness != "LITTLE_ENDIAN":

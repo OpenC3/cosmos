@@ -103,7 +103,7 @@ class Commands:
             target_packets = None
             try:
                 target_packets = self.packets(target_name)
-            except RuntimeError:
+            except Exception:
                 # No commands for this target
                 continue
 

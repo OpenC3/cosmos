@@ -589,6 +589,25 @@ module OpenC3
       packet_define_item(item, format_string, read_conversion, write_conversion, id_value)
     end
 
+    # @param item [StructureItem] item to make a parent item for a structure
+    # @param structure [Structure] structure to associate with the parent item
+    def structurize_item(item, structure)
+      item.structure = structure
+      item.hidden = true
+      structure.sorted_items.each do |sorted_item|
+        next if RESERVED_ITEM_NAMES.include?(sorted_item.name)
+        cloned_item = sorted_item.clone
+        cloned_item.key = cloned_item.name
+        cloned_item.name = "#{item.name}.#{cloned_item.name}"
+        cloned_item.parent_item = item
+        cloned_item.bit_offset = item.bit_offset
+        if sorted_item.bit_size <= 0
+          cloned_item.bit_size = item.bit_size
+        end
+        define(cloned_item)
+      end
+    end
+
     # (see Structure#get_item)
     def get_item(name)
       return super(name)
@@ -881,7 +900,12 @@ module OpenC3
       @sorted_items.each do |item|
         next if RESERVED_ITEM_NAMES.include?(item.name)
 
-        unless item.default.nil?
+        if item.structure
+          unless skip_item_names and upcase_skip_item_names.include?(item.name)
+            item.structure.restore_defaults(item.structure.buffer(false), skip_item_names, use_template)
+            write_item(item, item.structure.buffer(false), :RAW, buffer)
+          end
+        elsif not item.default.nil? and not item.parent_item
           write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
         end
       end
@@ -1248,11 +1272,15 @@ module OpenC3
 
       # Now read all other value types - no accessor required
       @sorted_items.each do |item|
-        given_raw = json_hash[item.name]
-        json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
-        limits_state = item.limits.state
-        json_hash["#{item.name}__L"] = limits_state if limits_state
+        if item.hidden
+          json_hash.delete(item.name)
+        else
+          given_raw = json_hash[item.name]
+          json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
+          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
+          limits_state = item.limits.state
+          json_hash["#{item.name}__L"] = limits_state if limits_state
+        end
       end
 
       json_hash
@@ -1287,17 +1315,21 @@ module OpenC3
           current_value = read(item.name, :RAW)
 
           case current_value
+          when Hash
+            obfuscated_value = {}
           when Array
             # For arrays, create a new array of zeros with the same size
             case item.data_type
-              when :INT, :UINT
-                obfuscated_value = Array.new(current_value.size, 0)
-              when :FLOAT
-                obfuscated_value = Array.new(current_value.size, 0.0)
-              when :STRING, :BLOCK
-                obfuscated_value = Array.new(current_value.size) { |i|
-                  "\x00" * current_value[i].length if current_value[i]
-                }
+            when :INT, :UINT
+              obfuscated_value = Array.new(current_value.size, 0)
+            when :FLOAT
+              obfuscated_value = Array.new(current_value.size, 0.0)
+            when :STRING, :BLOCK
+              obfuscated_value = Array.new(current_value.size) { |i|
+                "\x00" * current_value[i].length if current_value[i]
+              }
+            when :BOOL, :ARRAY, :OBJECT, :ANY
+              obfuscated_value = []
             else
               obfuscated_value = Array.new(current_value.size, 0)
             end
@@ -1310,6 +1342,8 @@ module OpenC3
               obfuscated_value = 0
             when :FLOAT
               obfuscated_value = 0.0
+            when :BOOL
+              obfuscated_value = false
             else
               obfuscated_value = 0
             end

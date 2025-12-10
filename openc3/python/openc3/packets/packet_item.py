@@ -20,7 +20,7 @@ from openc3.packets.structure_item import StructureItem
 from openc3.packets.packet_item_limits import PacketItemLimits
 from openc3.utilities.string import quote_if_necessary, simple_formatted
 from openc3.conversions.conversion import Conversion
-
+from openc3.config.config_parser import ConfigParser
 
 class PacketItem(StructureItem):
     # The allowable state colors
@@ -186,7 +186,7 @@ class PacketItem(StructureItem):
             self.__units = None
 
     def check_default_and_range_data_types(self):
-        if self.default and not self.write_conversion:
+        if self.default is not None and self.write_conversion is None:
             if self.array_size is not None:
                 if not isinstance(self.default, list):
                     raise TypeError(
@@ -228,6 +228,15 @@ class PacketItem(StructureItem):
                             raise TypeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )
+                    case "ARRAY":
+                        if not isinstance(self.default, list):
+                            raise TypeError(f"{self.name}: default must be a list but is a {self.default.__class__.__name__}")
+                    case "OBJECT":
+                        if not isinstance(self.default, dict):
+                            raise TypeError(f"{self.name}: default must be a dict but is a {self.default.__class__.__name__}")
+                    case "BOOL":
+                        if not isinstance(self.default, bool):
+                            raise TypeError(f"{self.name}: default must be a bool but is a {self.default.__class__.__name__}")
 
     @property
     def hazardous(self):
@@ -311,54 +320,6 @@ class PacketItem(StructureItem):
         # we have to manually update the create_index
         item.create_index = StructureItem.create_index
         StructureItem.create_index += 1
-        return item
-
-    # def clone(self):
-    #   item = super().clone()
-    #   item.format_string = self.format_string.clone if self.format_string:
-    #   item.read_conversion = self.read_conversion.clone if self.read_conversion:
-    #   item.write_conversion = self.write_conversion.clone if self.write_conversion:
-    #   item.states = self.states.clone if self.states:
-    #   item.description = self.description.clone if self.description:
-    #   item.units_full = self.units_full.clone if self.units_full:
-    #   item.units = self.units.clone if self.units:
-    #   item.default = self.default.clone if self.default and String === self.default:
-    #   item.hazardous = self.hazardous.clone if self.hazardous:
-    #   item.messages_disabled = self.messages_disabled.clone if self.messages_disabled:
-    #   item.state_colors = self.state_colors.clone if self.state_colors:
-    #   item.limits = self.limits.clone if self.limits:
-    #   item.meta = self.meta.clone if self.meta:
-    #   item
-
-    def to_hash(self):
-        item = {}
-        item["format_string"] = self.format_string
-        if self.read_conversion:
-            item["read_conversion"] = str(self.read_conversion)
-        else:
-            item["read_conversion"] = None
-        if self.write_conversion:
-            item["write_conversion"] = str(self.write_conversion)
-        else:
-            item["write_conversion"] = None
-        item["id_value"] = self.id_value
-        item["states"] = self.states
-        item["description"] = self.description
-        item["units_full"] = self.units_full
-        item["units"] = self.units
-        item["default"] = self.default
-        # item["range"] = self.range
-        item["minimum"] = self.minimum
-        item["maximum"] = self.maximum
-        item["required"] = self.required
-        item["hazardous"] = self.hazardous
-        item["messages_disabled"] = self.messages_disabled
-        item["state_colors"] = self.state_colors
-        item["limits"] = self.limits.as_json()
-        item["meta"] = None
-        item["obfuscate"] = self.obfuscate
-        if self.meta:
-            item["meta"] = self.meta
         return item
 
     # def calculate_range(self):
@@ -451,13 +412,7 @@ class PacketItem(StructureItem):
         return config
 
     def as_json(self):
-        config = {}
-        config["name"] = self.name
-        config["bit_offset"] = self.bit_offset
-        config["bit_size"] = self.bit_size
-        config["data_type"] = self.data_type
-        if self.array_size is not None:
-            config["array_size"] = self.array_size
+        config = super().as_json()
         config["description"] = self.description
         if self.id_value is not None:
             config["id_value"] = self.id_value
@@ -465,14 +420,12 @@ class PacketItem(StructureItem):
             config["default"] = self.default
         config["minimum"] = self.minimum
         config["maximum"] = self.maximum
-        config["endianness"] = self.endianness
         config["required"] = self.required
         if self.format_string:
             config["format_string"] = self.format_string
         if self.units:
             config["units"] = self.units
             config["units_full"] = self.units_full
-        config["overflow"] = self.overflow
         if self.states:
             states = {}
             config["states"] = states
@@ -522,77 +475,6 @@ class PacketItem(StructureItem):
             config["obfuscate"] = self.obfuscate
         return config
 
-    @classmethod
-    def from_json(cls, item_hash):
-        # Convert strings to symbols
-        endianness = item_hash.get("endianness")
-        data_type = item_hash.get("data_type")
-        overflow = item_hash.get("overflow")
-        item = PacketItem(
-            item_hash.get("name"),
-            item_hash.get("bit_offset"),
-            item_hash.get("bit_size"),
-            data_type,
-            endianness,
-            item_hash.get("array_size"),
-            overflow,
-        )
-        item.description = item_hash.get("description")
-        item.id_value = item_hash.get("id_value")
-        item.default = item_hash.get("default")
-        item.minimum = item_hash.get("minimum")
-        item.maximum = item_hash.get("maximum")
-        item.required = item_hash.get("required")
-        item.format_string = item_hash.get("format_string")
-        item.units = item_hash.get("units")
-        item.units_full = item_hash.get("units_full")
-        if item_hash.get("states"):
-            item.states = {}
-            item.hazardous = {}
-            item.messages_disabled = {}
-            item.state_colors = {}
-            for state_name, state in item_hash.get("states").items():
-                item.states[state_name] = state.get("value")
-                item.hazardous[state_name] = state.get("hazardous")
-                item.messages_disabled[state_name] = state.get("messages_disabled")
-                item.state_colors[state_name] = state.get("color")
-        # Recreate OpenC3 built-in conversions
-        #   if item_hash.get('read_conversion']:
-        #     try:
-        #       item.read_conversion = OpenC3::const_get(item_hash['read_conversion']['class'])(*item_hash['read_conversion']['params'])
-        #     except:
-        #       Logger.error(f"{item.name} read_conversion of {item_hash['read_conversion']} could not be instantiated due to {error}")
-        #   if item_hash.get('write_conversion']:
-        #     try:
-        #       item.write_conversion = OpenC3::const_get(item_hash['write_conversion']['class'])(*item_hash['write_conversion']['params'])
-        #     except:
-        #       Logger.error(f"{item.name} write_conversion of {item_hash['write_conversion']} could not be instantiated due to {error}")
-
-        item.limits = PacketItemLimits()
-        if item_hash.get("limits"):
-            # Delete the keys so the only ones left are limits sets
-            persistence_setting = item_hash["limits"].pop("persistence_setting", None)
-            if persistence_setting:
-                item.limits.persistence_setting = persistence_setting
-            item_hash["limits"].pop("response", None)  # Can't round trip response
-            if item_hash["limits"].pop("enabled", None):
-                item.limits.enabled = True
-            values = {}
-            for set, items in item_hash["limits"].items():
-                values[set] = [
-                    items["red_low"],
-                    items["yellow_low"],
-                    items["yellow_high"],
-                    items["red_high"],
-                ]
-                if items.get("green_low") is not None and items.get("green_high") is not None:
-                    values[set] += [items["green_low"], items["green_high"]]
-            if len(values) > 0:
-                item.limits.values = values
-        item.meta = item_hash.get("meta")
-        item.obfuscate = item_hash.get("obfuscate", False)
-        return item
-
     def parameter_config(self):
         if self.id_value:
             value = self.id_value
@@ -627,7 +509,16 @@ class PacketItem(StructureItem):
                     return int(value)
                 case "FLOAT":
                     return float(value)
-                case "STRING" | "BLOCK":
+                case "STRING":
+                    return value
+                case "BLOCK":
+                    if isinstance(value, str):
+                        return bytearray(value.encode())
+                    else:
+                        return bytearray(value)
+                case "BOOL":
+                    return ConfigParser.handle_true_false(value)
+                case _:
                     return value
         except ValueError:
             raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}")

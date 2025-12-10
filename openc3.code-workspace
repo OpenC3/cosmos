@@ -44,6 +44,12 @@
     },
     {
       "path": "../openc3-cosmos-script-engine-cstol"
+    },
+    {
+      "path": "../api_tutorial"
+    },
+    {
+      "path": "../openc3-cosmos-nemesis"
     }
   ],
   "settings": {
@@ -59,6 +65,30 @@
     "editor.insertSpaces": true,
     "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "python.analysis.stubPath": "/Users/jmthomas/Library/Application Support/Code/User/workspaceStorage/e00efcdc7e2d32a7200c7669166fd957/JakeHill.openc3/pystubs",
+    "python.analysis.diagnosticSeverityOverrides": {
+      "reportMissingModuleSource": "none"
+    },
+    "python.analysis.extraPaths": [
+      "cosmos-enterprise-plugins/openc3-cosmos-gems-interface/targets",
+      "cosmos-enterprise-plugins/openc3-cosmos-apc-switched-pdu/targets",
+      "cosmos-enterprise-plugins/openc3-cosmos-prometheus-metrics/targets",
+      "cosmos-enterprise-plugins/openc3-cosmos-scpi-power-supply/targets",
+      "cosmos-enterprise-plugins/openc3-cosmos-proto-target/targets",
+      "cosmos-enterprise-plugins/openc3-cosmos-influx/spec/install/targets",
+      "openc3-cosmos-load-sim/targets",
+      "openc3-cosmos-cfdp/targets",
+      "cosmos-enterprise/openc3-enterprise-gem/spec/install/config/targets",
+      "cosmos/openc3-cosmos-ruby/targets",
+      "cosmos/examples/openc3-cosmos-http-example/targets",
+      "cosmos/examples/openc3-cosmos-html-get/targets",
+      "cosmos/examples/openc3-cosmos-erb-test/targets",
+      "cosmos/playwright/openc3-cosmos-pw-test/targets",
+      "cosmos/openc3/templates/target/targets",
+      "cosmos/openc3/spec/install/config/targets",
+      "cosmos/openc3/python/test/install/config/targets",
+      "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets"
+    ]
   }
 }

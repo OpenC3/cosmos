@@ -221,7 +221,7 @@ class Packet(Structure):
     # self.param buffer [String] Raw buffer of binary data
     # self.return [Boolean] Whether or not the buffer of data is this packet
     def identify(self, buffer):
-        if not buffer:
+        if buffer is None:
             return False
         if self.virtual:
             return False
@@ -244,7 +244,7 @@ class Packet(Structure):
     # self.param buffer [String] Raw buffer of binary data
     # self.return [Array] Array of read id values in order
     def read_id_values(self, buffer):
-        if not buffer:
+        if buffer is None:
             return []
         if not self.id_items:
             return []
@@ -275,7 +275,7 @@ class Packet(Structure):
         return self.config_name
 
     @property
-    def buffer(self, copy=True):
+    def buffer(self):
         return self.allocate_buffer_if_needed()[:]
 
     @buffer.setter
@@ -508,6 +508,23 @@ class Packet(Structure):
         item = super().append_item(name, bit_size, data_type, array_size, endianness, overflow)
         return self.packet_define_item(item, format_string, read_conversion, write_conversion, id_value)
 
+    # @param item [StructureItem] item to make a parent item for a structure
+    # @param structure [Structure] structure to associate with the parent item
+    def structurize_item(self, item, structure):
+        item.structure = structure
+        item.hidden = True
+        for sorted_item in structure.sorted_items:
+            if sorted_item.name in self.RESERVED_ITEM_NAMES:
+                continue
+            cloned_item = sorted_item.clone()
+            cloned_item.key = cloned_item.name
+            cloned_item.name = f"{item.name}.{cloned_item.name}"
+            cloned_item.parent_item = item
+            cloned_item.bit_offset = item.bit_offset
+            if sorted_item.bit_size <= 0:
+                cloned_item.bit_size = item.bit_size
+            self.define(cloned_item)
+
     # (see Structure#get_item)
     def get_item(self, name):
         try:
@@ -529,7 +546,7 @@ class Packet(Structure):
     #   'CONVERTED' values can be any type
     #   'RAW' values will match their data_type
     def read_item(self, item, value_type="CONVERTED", buffer=None, given_raw=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         if given_raw:
             # Must clone this since value is returned
@@ -625,9 +642,9 @@ class Packet(Structure):
     # self.param buffer [String] The binary buffer to read the items from
     # self.return Hash of read names and values
     def read_items(self, items, value_type="RAW", buffer=None, raw_value=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         if value_type == "RAW":
             result = super().read_items(items, value_type, buffer)
@@ -648,7 +665,7 @@ class Packet(Structure):
     # self.param value_type (see #read_item)
     # self.param buffer (see Structure#write_item)
     def write_item(self, item, value, value_type="CONVERTED", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         match value_type:
             case "RAW":
@@ -696,9 +713,9 @@ class Packet(Structure):
     # self.param value_type [Symbol] Value type of each item to write
     # self.param buffer [String] The binary buffer to write the values to
     def write_items(self, items, values, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         if value_type == "RAW":
             return super().write_items(items, values, value_type, buffer)
@@ -714,7 +731,7 @@ class Packet(Structure):
     # self.param buffer (see #read_item)
     # self.return (see #read_item)
     def read(self, name, value_type="CONVERTED", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         return super().read(name, value_type, buffer)
 
@@ -725,7 +742,7 @@ class Packet(Structure):
     # self.param value_type (see #write_item)
     # self.param buffer (see #write_item)
     def write(self, name, value, value_type="CONVERTED", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         super().write(name, value, value_type, buffer)
 
@@ -737,7 +754,7 @@ class Packet(Structure):
     # self.param top (See Structure#read_all)
     # self.return (see Structure#read_all)
     def read_all(self, value_type="CONVERTED", buffer=None, top=True):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         return super().read_all(value_type, buffer, top)
 
@@ -750,7 +767,7 @@ class Packet(Structure):
     #   of [item name, item value, item limits state] where the item limits
     #   state can be one of {OpenC3:'L'imits='LIMITS_STATES'}
     def read_all_with_limits_states(self, value_type="CONVERTED", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         result = None
         with self.synchronize_allow_reads(True):
@@ -767,7 +784,7 @@ class Packet(Structure):
     # self.param ignored (see Structure#ignored)
     # self.return (see Structure#formatted)
     def formatted(self, value_type="CONVERTED", indent=0, buffer=None, ignored=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         return super().formatted(value_type, indent, buffer, ignored)
 
@@ -777,20 +794,25 @@ class Packet(Structure):
     # self.param skip_item_names [Array] Array of item names to skip
     # self.param use_templase [Boolean] Apply template before setting defaults (or not)
     def restore_defaults(self, buffer=None, skip_item_names=None, use_template=True):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
-        if skip_item_names:
+        if skip_item_names is not None:
             upcase_skip_item_names = [name.upper() for name in skip_item_names]
-        if self.template and use_template:
+        if self.template is not None and use_template:
             # Set both the internal buffer and our local copy
             self.buffer = self.template
             buffer = self._buffer
         for item in self.sorted_items:
             if item.name in Packet.RESERVED_ITEM_NAMES:
                 continue
-            if item.default is not None:
+
+            if item.structure is not None:
+                if not (skip_item_names and item.name in upcase_skip_item_names):
+                    item.structure.restore_defaults(skip_item_names=skip_item_names, use_template=use_template)
+                    self.write_item(item, item.structure.buffer, "RAW", buffer)
+            elif item.default is not None and item.parent_item is None:
                 if not (skip_item_names and item.name in upcase_skip_item_names):
                     self.write_item(item, item.default, "CONVERTED", buffer)
 
@@ -1171,7 +1193,7 @@ class Packet(Structure):
     # Performs packet specific processing on the packet.
     # Intended to only be run once for each packet received
     def process(self, buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         if not self.processors:
             return
@@ -1297,6 +1319,9 @@ class Packet(Structure):
 
             try:
                 current_value = self.read(item.name, "RAW")
+                if isinstance(current_value, dict):
+                    obfuscated_value = {}
+
                 if isinstance(current_value, list):
                     # For arrays, create a new array of zeros with the same size
                     if item.data_type in ["INT", "UINT"]:
@@ -1305,6 +1330,8 @@ class Packet(Structure):
                         obfuscated_value = [0.0] * len(current_value)
                     elif item.data_type in ["STRING", "BLOCK"]:
                         obfuscated_value = ["\x00" * len(val) if val else None for val in current_value]
+                    elif item.data_type in ["BOOL", "ARRAY", "OBJECT", "ANY"]:
+                        obfuscated_value = []
                     else:
                         obfuscated_value = [0] * len(current_value)
 
@@ -1319,6 +1346,8 @@ class Packet(Structure):
                         obfuscated_value = 0.0
                     elif item.data_type == "BLOCK":
                         obfuscated_value = "\x00" * len(current_value)
+                    elif item.data_type == "BOOL":
+                        obfuscated_value = False
                     else:
                         obfuscated_value = 0
 
