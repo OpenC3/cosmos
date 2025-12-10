@@ -16,7 +16,7 @@
 import { test as setup, expect } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 
-setup('global setup', async ({ page, request }) => {
+setup('global setup', async ({ page }) => {
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
     await page.getByLabel('Username or email').fill('operator')
@@ -56,17 +56,15 @@ setup('global setup', async ({ page, request }) => {
         await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
-    const endpoint = await page.getByText('Enter the password').isVisible()
-      ? '/openc3-api/auth/verify'
-      : '/openc3-api/auth/set'
-    const response = await request.post(endpoint, {
-      data: {
-        password: 'password',
-      }
-    })
-    expect(response.ok()).toBeTruthy()
-    const token = await response.text()
-    await page.evaluate((token) => localStorage.setItem('openc3Token', token), token)
+    if (await page.getByText('Enter the password').isVisible()) {
+      await page.getByLabel('Password').fill('password')
+      await page.locator('button:has-text("Login")').click()
+    } else {
+      await page.getByLabel('New Password').fill('password')
+      await page.getByLabel('Confirm Password').fill('password')
+      await page.click('data-test=set-password')
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500)) // wait for the auth request to process - even longer for github runners :)
 
     // Save signed-in state to 'storageState.json' and adminStorageState to match Enterprise
     await page.context().storageState({ path: STORAGE_STATE })
