@@ -22,6 +22,10 @@ on:
         type: boolean
         default: true
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
 jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -143,14 +147,10 @@ jobs:
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: pnpm -F "@openc3/*-common" publish --no-git-checks --access public
         working-directory: openc3-cosmos-init/plugins
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: publish common npm packages pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
         run: pnpm -F "@openc3/*-common" publish --no-git-checks --tag pre --access public
         working-directory: openc3-cosmos-init/plugins
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Update version to next
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release
