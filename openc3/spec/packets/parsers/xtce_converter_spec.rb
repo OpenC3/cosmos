@@ -560,6 +560,122 @@ module OpenC3
       tf
     end
 
+    def algorithm_xtce
+      tf = Tempfile.new(["unittest", ".xtce"])
+
+      tf.puts "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+      tf.puts "<xtce:SpaceSystem xmlns:xtce=\"http://www.omg.org/spec/XTCE/20180204\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" name=\"TGT1\" xsi:schemaLocation=\"http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd\">"
+      tf.puts "  <xtce:TelemetryMetaData>"
+      tf.puts "    <xtce:ParameterTypeSet>"
+      tf.puts "<!--TODO: "
+      tf.puts "	<xtce:TODOParameterType name=\"ITEM1_DERIVED_Type\" shortDescription=\"DERIVED Item\" />"
+      tf.puts "-->"
+      tf.puts ""
+      tf.puts "<!--TODO: "
+      tf.puts "	<xtce:TODOParameterType name=\"ITEM2_DERIVED_Type\" shortDescription=\"DERIVED Item\" />"
+      tf.puts "-->"
+      tf.puts "<xtce:IntegerParameterType name=\"ID_Type\" shortDescription=\"Integer Item\" signed=\"true\"><xtce:UnitSet/><xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"twosComplement\" byteOrder=\"leastSignificantByteFirst\"/></xtce:IntegerParameterType></xtce:ParameterTypeSet>"
+      tf.puts "    <xtce:ParameterSet>"
+      tf.puts "<!-- TODO: "
+      tf.puts "	<xtce:Parameter name=\"ITEM1_DERIVED\" parameterTypeRef=\"ITEM1_DERIVED_Type\">"
+      tf.puts "\t\t<xtce:ParameterProperties dataSource=\"derived\"/>"
+      tf.puts "		<xtce:AliasSet>"
+      tf.puts "			<xtce:Alias nameSpace=\"COSMOS\" alias=\"ITEM1_DERIVED\"/>"
+      tf.puts "		</xtce:AliasSet>"
+      tf.puts "	</xtce:Parameter>"
+      tf.puts "-->"
+      tf.puts ""
+      tf.puts "<!-- TODO: "
+      tf.puts "	<xtce:Parameter name=\"ITEM2_DERIVED\" parameterTypeRef=\"ITEM2_DERIVED_Type\">"
+      tf.puts "\t\t<xtce:ParameterProperties dataSource=\"derived\"/>"
+      tf.puts "		<xtce:AliasSet>"
+      tf.puts "			<xtce:Alias nameSpace=\"COSMOS\" alias=\"ITEM2_DERIVED\"/>"
+      tf.puts "		</xtce:AliasSet>"
+      tf.puts "	</xtce:Parameter>"
+      tf.puts "-->"
+      tf.puts "<xtce:Parameter name=\"ID\" parameterTypeRef=\"ID_Type\"/></xtce:ParameterSet>"
+      tf.puts "    <xtce:ContainerSet>"
+      tf.puts "      <xtce:SequenceContainer name=\"PKT2\" shortDescription=\"Packet\">"
+      tf.puts "        <xtce:EntryList>"
+      tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
+      tf.puts "        </xtce:EntryList>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"PKT2\"/>"
+      tf.puts "      </xtce:SequenceContainer>"
+      tf.puts "      <xtce:SequenceContainer name=\"PKT1\" shortDescription=\"Packet\">"
+      tf.puts "        <xtce:EntryList>"
+      tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
+      tf.puts "        </xtce:EntryList>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"PKT1\"/>"
+      tf.puts "      </xtce:SequenceContainer>"
+      tf.puts "    </xtce:ContainerSet>"
+      tf.puts "  </xtce:TelemetryMetaData>"
+      tf.puts "  <!--TODO "
+      tf.puts "<AlgorithmSet>"
+      tf.puts "  <CustomAlgorithm name=\"PKT2_ITEM2_DERIVED_Conversion2\">"
+      tf.puts "    <ExternalAlgorithmSet>"
+      tf.puts "      <ExternalAlgorithm implementationName=\"TODO\" algorithmLocation=\"TODO\"/>"
+      tf.puts "    </ExternalAlgorithmSet>"
+      tf.puts "    <InputSet>"
+      tf.puts "      <InputParameterInstanceRef parameterRef=\"TODO\" instance=\"0\" useCalibratedValue=\"TODO\"/>"
+      tf.puts "    </InputSet>"
+      tf.puts "    <OutputSet>"
+      tf.puts "      <OutputParameterRef parameterRef=\"ITEM2_DERIVED\"/>"
+      tf.puts "    </OutputSet>"
+      tf.puts "    <TriggerSet name=\"triggerSet\">"
+      tf.puts "      <OnParameterUpdateTrigger parameterRef=\"TODO\"/>"
+      tf.puts "    </TriggerSet>"
+      tf.puts "  </CustomAlgorithm>"
+      tf.puts "  <CustomAlgorithm name=\"PKT1_ITEM1_DERIVED_Conversion2\">"
+      tf.puts "    <ExternalAlgorithmSet>"
+      tf.puts "      <ExternalAlgorithm implementationName=\"TODO\" algorithmLocation=\"TODO\"/>"
+      tf.puts "    </ExternalAlgorithmSet>"
+      tf.puts "    <InputSet>"
+      tf.puts "      <InputParameterInstanceRef parameterRef=\"TODO\" instance=\"0\" useCalibratedValue=\"TODO\"/>"
+      tf.puts "    </InputSet>"
+      tf.puts "    <OutputSet>"
+      tf.puts "      <OutputParameterRef parameterRef=\"ITEM1_DERIVED\"/>"
+      tf.puts "    </OutputSet>"
+      tf.puts "    <TriggerSet name=\"triggerSet\">"
+      tf.puts "      <OnParameterUpdateTrigger parameterRef=\"TODO\"/>"
+      tf.puts "    </TriggerSet>"
+      tf.puts "  </CustomAlgorithm>"
+      tf.puts "</AlgorithmSet>"
+      tf.puts ""
+      tf.puts "-->"
+      tf.puts "</xtce:SpaceSystem>"
+      tf.close
+      tf
+    end
+
+    def special_packet_time_xtce
+      tf = Tempfile.new(["unittest", ".xtce"])
+
+      tf.puts "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+      tf.puts "<xtce:SpaceSystem xmlns:xtce=\"http://www.omg.org/spec/XTCE/20180204\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" name=\"TGT1\" xsi:schemaLocation=\"http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd\">"
+      tf.puts "  <xtce:TelemetryMetaData>"
+      tf.puts "    <xtce:ParameterTypeSet>"
+      tf.puts "<xtce:IntegerParameterType name=\"ID_Type\" shortDescription=\"Integer Item\" signed=\"true\"><xtce:UnitSet/><xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"twosComplement\" byteOrder=\"leastSignificantByteFirst\"/></xtce:IntegerParameterType></xtce:ParameterTypeSet>"
+      tf.puts "    <xtce:ParameterSet>"
+      tf.puts "<!-- TODO: "
+      tf.puts "	<xtce:Parameter name=\"PACKET_TIME\" parameterTypeRef=\"PACKET_TIME_Type\">"
+      tf.puts "		<xtce:ParameterProperties dataSource=\"derived\"/>"
+      tf.puts "	</xtce:Parameter>"
+      tf.puts "-->"
+      tf.puts "<xtce:Parameter name=\"ID\" parameterTypeRef=\"ID_Type\"><xtce:ParameterProperties><xtce:TimeAssociation parameterRef=\"PACKET_TIME\"/></xtce:ParameterProperties></xtce:Parameter></xtce:ParameterSet>"
+      tf.puts "    <xtce:ContainerSet>"
+      tf.puts "      <xtce:SequenceContainer name=\"PKT1\" shortDescription=\"Packet\">"
+      tf.puts "        <xtce:EntryList>"
+      tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
+      tf.puts "        </xtce:EntryList>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"PKT1\"/>"
+      tf.puts "      </xtce:SequenceContainer>"
+      tf.puts "    </xtce:ContainerSet>"
+      tf.puts "  </xtce:TelemetryMetaData>"
+      tf.puts "</xtce:SpaceSystem>"
+      tf.close
+      tf
+    end
+
 
     describe "Convert CMD and TLM definitions" do
       before(:each) do
@@ -577,7 +693,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -601,7 +717,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -623,7 +739,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -645,7 +761,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -682,7 +798,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         #xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -728,7 +844,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         #xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -774,7 +890,7 @@ module OpenC3
         tf_tgt2.close
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         combination_dir = File.join(spec_install)
@@ -812,7 +928,7 @@ module OpenC3
         tf_tgt1.close
         @pc.process_file(tf_tgt1.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir)
@@ -859,7 +975,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
@@ -870,35 +986,95 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
 
-      #TODO:
-      #it "creates a template for derived parameters" do
-      #  tf = Tempfile.new('unittest')
-      #  tlm1 = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
-      #         "  ALLOW_SHORT \n"\
-      #         "  ID_ITEM TLM_OPCODE 0 8 UINT 1 \"Opcode\"\n"\
-      #         "  ITEM UNSIGNED[0] 8 8 UINT \"Unsigned\"\n"\
-      #         "    STATE FALSE 0\n"\
-      #         "    STATE TRUE 1\n"\
-      #         "  ITEM UNSIGNED[1] 16 8 UINT \"Unsigned\"\n"\
-      #         "    STATE FALSE 0\n"\
-      #         "    STATE TRUE 1\n"\
-      #         "  ITEM UNSIGNED[2] 24 8 UINT \"Unsigned\"\n"\
-      #         "    STATE FALSE 0\n"\
-      #         "    STATE TRUE 1\n"
-      #  tf.puts tlm1
-      #  tf.close
-      #  @pc.process_file(tf.path, "TGT1")
-      #  spec_install = File.join("..", "..", "install")
-      #  @pc.to_xtce(spec_install)
-      #  xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-      #  expect(File.exist?(xml_path)).to be true
-      #  xtce_doc = Nokogiri::XML(File.open(xml_path))
-      #  expected_output_file_path = File.join(File.dirname(__FILE__),"expected_xtce_outputs", "allow_short_test.xtce")
-      #  expected_result_xml = Nokogiri::XML(File.open(expected_output_file_path))
-      #  expect(xtce_doc).to be_equivalent_to(expected_result_xml)
-      #  tf.unlink
-      #  FileUtils.rm_rf File.join(spec_install, "TGT1")
-      #end
+
+      it "converts the DERIVED Tlm" do
+        filename = File.join(File.dirname(__FILE__), "../../conversion2.rb")
+        File.open(filename, 'w') do |file|
+          file.puts "require 'openc3/conversions/conversion'"
+          file.puts "class Conversion2 < OpenC3::Conversion"
+          file.puts "  def initialize(parameter_name)"
+          file.puts "    super()"
+          file.puts "    @converted_type = :STRING"
+          file.puts "    @parameter_name = parameter_name"
+          file.puts "    @converted_bit_size = 0"
+          file.puts "    @params = nil"
+          file.puts "  end"
+          file.puts "  def call(value, packet, buffer)"
+          file.puts "    value * 2"
+          file.puts "  end"
+          file.puts "end"
+        end
+        load 'conversion2.rb'
+
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY TGT1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  ITEM ID 0 16 INT "Integer Item"'
+        tf.puts '  APPEND_ITEM item1.derived 0 DERIVED "DERIVED Item"'
+        tf.puts '  READ_CONVERSION conversion2.rb ID'
+        tf.puts '                                       '
+        tf.puts 'TELEMETRY TGT1 pkt2 LITTLE_ENDIAN "Packet"'
+        tf.puts '  ITEM ID 0 16 INT "Integer Item"'
+        tf.puts '  APPEND_ITEM item1.derived 0 DERIVED "DERIVED Item"'
+        tf.puts '  READ_CONVERSION conversion2.rb ID'
+        tf.puts '  APPEND_ITEM item2.derived 0 DERIVED "DERIVED Item"'
+        tf.puts '  READ_CONVERSION conversion2.rb ID'
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        expected_xtce_file = algorithm_xtce()
+        expected_result_xml = Nokogiri::XML(File.open(expected_xtce_file))
+        string_output = xtce_doc.canonicalize(nil, nil, true)
+        expected_string_output = expected_result_xml.canonicalize(nil, nil, true)
+        expect(string_output).to eq(expected_string_output)
+        tf.unlink
+        expected_xtce_file.unlink
+        File.delete(filename) if File.exist?(filename)
+      end
+
+      it "converts the PACKET_TIME special case" do
+        filename = File.join(File.dirname(__FILE__), "../../conversion2.rb")
+        File.open(filename, 'w') do |file|
+          file.puts "require 'openc3/conversions/conversion'"
+          file.puts "class Conversion2 < OpenC3::Conversion"
+          file.puts "  def initialize(parameter_name)"
+          file.puts "    super()"
+          file.puts "    @converted_type = :STRING"
+          file.puts "    @parameter_name = parameter_name"
+          file.puts "    @converted_bit_size = 0"
+          file.puts "    @params = nil"
+          file.puts "  end"
+          file.puts "  def call(value, packet, buffer)"
+          file.puts "    value * 2"
+          file.puts "  end"
+          file.puts "end"
+        end
+        load 'conversion2.rb'
+
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY TGT1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  ITEM ID 0 16 INT "Integer Item"'
+        tf.puts '  APPEND_ITEM PACKET_TIME 0 DERIVED "DERIVED Item"'
+        tf.puts '  READ_CONVERSION conversion2.rb ID'
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        expected_xtce_file = special_packet_time_xtce()
+        expected_result_xml = Nokogiri::XML(File.open(expected_xtce_file))
+        string_output = xtce_doc.canonicalize(nil, nil, true)
+        expected_string_output = expected_result_xml.canonicalize(nil, nil, true)
+        expect(string_output).to eq(expected_string_output)
+        tf.unlink
+        expected_xtce_file.unlink
+        File.delete(filename) if File.exist?(filename)
+      end
     end
   end
 end
