@@ -33,7 +33,7 @@ test.describe.configure({ mode: 'serial' })
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('combobox', { name: 'Open' }).click({ force: true })
+  await page.locator('[data-test="cmd-param-select"]').click()
   await page.getByRole('option', { name: value }).click()
 }
 
@@ -327,9 +327,6 @@ test('handles array values', async ({ page, utils }) => {
 test('handles string values', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ASCIICMD')
   await expect(page.locator('main')).toContainText('ASCII command')
-  // The default text 'NOOP' should be selected
-  let row = page.locator(`tr:has-text("STRING")`)
-  await expect(row.getByRole('combobox', { name: 'Open' })).toHaveValue('NOOP')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
