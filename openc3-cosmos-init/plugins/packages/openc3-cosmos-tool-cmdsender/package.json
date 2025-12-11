@@ -13,7 +13,7 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "ace-builds": "1.43.4",
+    "ace-builds": "1.43.5",
     "axios": "1.13.2",
     "date-fns": "4.1.0",
     "single-spa-vue": "3.0.1",
@@ -23,8 +23,8 @@
     "@rushstack/eslint-patch": "1.15.0",
     "@vitejs/plugin-vue": "5.2.3",
     "@vue/test-utils": "2.4.6",
-    "prettier": "3.7.3",
-    "sass": "1.94.2",
+    "prettier": "3.7.4",
+    "sass": "1.95.1",
     "vite": "6.4.1",
     "vue": "3.5.25"
   }
