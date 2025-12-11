@@ -49,7 +49,9 @@ export class Utilities {
         await this.sleep(500) // Wait for items to populate
         await this.page.locator('[data-test=select-item] i').click()
         // Need to fill the item to allow filtering since the item list can be long
-        await this.page.getByLabel('Select Item').fill(item)
+        await this.page
+          .getByRole('combobox', { name: 'Select Item' })
+          .fill(item)
         await this.page.getByRole('option', { name: item, exact: true }).click()
         await expect(
           this.page.locator('[data-test="select-item"]'),

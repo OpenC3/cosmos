@@ -33,7 +33,7 @@ test.describe.configure({ mode: 'serial' })
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('combobox', { name: 'Open' }).click({ force: true })
+  await row.locator('[data-test=cmd-param-select]').click({ force: true })
   await page.getByRole('option', { name: value }).click()
 }
 
