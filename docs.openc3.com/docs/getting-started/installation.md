@@ -18,7 +18,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
   <iframe width="560" height="315" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
 </div>
 
-### PREREQUISITES
+### Prerequisites
 
 If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
@@ -41,7 +41,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 **Note:** As of December 2021 the COSMOS Docker containers are based on the Alpine Docker image.
 
-### CLONE PROJECT
+### Clone Project
 
 We recommend using the COSMOS [project template](key-concepts#projects) to get started.
 
@@ -63,7 +63,7 @@ git clone https://github.com/OpenC3/cosmos-enterprise-project.git
   <p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
 :::
 
-### CERTIFICATES
+### Certificates
 
 The COSMOS containers are designed to work and be built in the presence of an SSL Decryption device. To support this a cacert.pem file can be placed at the base of the COSMOS project that includes any certificates needed by your organization. **Note**: If you set the path to the ssl file in the `SSL_CERT_FILE` environment variables the openc3 setup script will copy it and place it for the docker container to load.
 
@@ -84,7 +84,7 @@ Here are some directions on environment variables in Windows: [Windows Environme
 You will need to create new ones with the names above and set their value to the full path to the certificate file.
 :::
 
-### RUN
+### Run
 
 Add the locally cloned project directory to your path so you can directly use the batch file or shell script. In Windows this would be adding "C:\cosmos-project" to the PATH. In Linux you would edit your shell's rc file and export the PATH. For example, on a Mac add the following to ~/.zshrc: `export PATH=~/cosmos-project:$PATH`.
 
@@ -110,11 +110,11 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 *  util: various helper commands
 ```
 
-### CONNECT
+### Connect
 
 Connect a web browser to http://localhost:2900. Set the password to whatever you want.
 
-### NEXT STEPS
+### Next Steps
 
 Continue to [Getting Started](gettingstarted).
 
