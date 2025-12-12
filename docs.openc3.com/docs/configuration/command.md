@@ -500,7 +500,7 @@ APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
 ### STRUCTURE
-**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -512,7 +512,7 @@ APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 | Packet Name | Packet Name of the structure packet | True |
 
 ### APPEND_STRUCTURE
-**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
