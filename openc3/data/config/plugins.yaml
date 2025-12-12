@@ -93,6 +93,7 @@ SCRIPT_ENGINE:
   summary: Define a script engine to add language support to Script Runner
   example: SCRIPT_ENGINE .print print_script_engine.py
   description: Defines a script engine to add language support to Script Runner
+  since: 6.5.0
   parameters:
     - name: Extension
       description: Extension that will use this script engine

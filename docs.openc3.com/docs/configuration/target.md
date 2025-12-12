@@ -108,22 +108,22 @@ TELEMETRY inst_tlm_v2.txt
 ```
 
 ## CMD_UNIQUE_ID_MODE
+:::note Deprecated
+Since 6.10.0 this condition is now automatically detected
+:::
+
 <div class="right">(Since 4.4.0)</div>**Command packet identifiers don't all share the same bit offset, size, and type**
 
 Ideally all commands for a target are identified using the exact same bit offset, size, and type field in each command. If ANY command identifiers differ then this flag must be set to force a brute force identification method.
 
-:::warning
-Using this mode significantly slows packet identification
-:::
-
 
 ## TLM_UNIQUE_ID_MODE
+:::note Deprecated
+Since 6.10.0 this condition is now automatically detected
+:::
+
 <div class="right">(Since 4.4.0)</div>**Telemetry packets identifiers don't all share the same bit offset, size, and type**
 
 Ideally all telemetry for a target are identified using the exact same bit offset, size, and type field in each packet. If ANY telemetry identifiers differ then this flag must be set to force a brute force identification method.
-
-:::warning
-Using this mode significantly slows packet identification
-:::
 
 

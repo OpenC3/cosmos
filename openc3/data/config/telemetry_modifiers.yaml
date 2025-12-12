@@ -90,6 +90,7 @@ STRUCTURE:
   modifiers:
     <%= MetaConfigParser.load('item_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  since: 6.10.0
   parameters:
     - name: Name
       required: true
@@ -124,6 +125,7 @@ APPEND_STRUCTURE:
   modifiers:
     <%= MetaConfigParser.load('item_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  since: 6.10.0
   parameters:
     - name: Name
       required: true

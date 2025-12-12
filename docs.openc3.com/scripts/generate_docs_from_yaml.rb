@@ -88,6 +88,11 @@ class CosmosMetaTag
     modifiers = {}
     meta.each do |keyword, data|
       page << "\n#{'#' * @level} #{keyword}\n"
+      if data['deprecated']
+        page << ":::note Deprecated\n"
+        page << "#{data['deprecated']}\n"
+        page << ":::\n\n"
+      end
       if data['since']
         page << '<div class="right">'
         page <<  "(Since #{data['since']})"
