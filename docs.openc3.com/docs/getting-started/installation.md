@@ -120,12 +120,28 @@ Continue to [Getting Started](gettingstarted).
 
 ---
 
-### CLEANUP
+### Stop COSMOS
+
+The below command will stop all running COSMOS containers. This will _not_ remove Docker volumes and data, and will be preserved after stopping. If COSMOS is restarted using the `./openc3.sh run` command, the data will remain intact.
+
+```bash
+./openc3.sh stop
+```
+
+### Resume COSMOS
+
+COSMOS can be started up again with the `run` command, with previously used data intact (if any). If there are previously used Docker volumes and data available, COSMOS will start up using that data. If COSMOS is used with [Local Mode](../guides/local-mode.md), the local configurations will be referenced and used. If this is a first time deploy, the `run` command will begin with a fresh installation.
+
+```bash
+./openc3.sh run
+```
+
+### Cleanup COSMOS
 
 If you need to remove COSMOS from your system or reset your installation, follow these steps. 
 
-:::note CLI Helpful guidance
-The `--help` option on the `./openc3.sh` CLI will provide helpful guidance of CLI commands. Visit the [CLI guide](./cli.md) to learn more. Example below:
+:::note Helpful guidance
+The `--help` option on the `./openc3.sh` command will provide helpful guidance of the available options and further descriptions. Example below:
 
 ```
 ❯ ./openc3.sh cleanup --help
@@ -150,20 +166,6 @@ Options:
 ```
 :::
 
-#### To stop COSMOS, but not remove Docker volumes and data
-
-The below command will stop all running COSMOS containers. Note that the volumes and data will be preserved after stopping.
-
-```bash
-./openc3.sh stop
-```
-
-COSMOS can be started up again with the `run` command, with previously used data intact:
-
-```bash
-./openc3.sh run
-```
-
 #### To remove Docker networks, volumes, and data
 
 To cleanup Docker volumes and data created by COSMOS:
@@ -179,7 +181,7 @@ Make sure to backup any important data before running cleanup.
 
 #### To remove Docker networks, volumes, data, and Local Mode changes
 
-If you're running COSMOS in [Local Mode](../guides/local-mode.md), you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
+If you're running COSMOS with [Local Mode](../guides/local-mode.md), you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
 
 ```bash
 ./openc3.sh cleanup local
@@ -215,6 +217,10 @@ Or to remove all unused Docker images:
 ```bash
 docker image prune -a
 ```
+
+:::warning Docker image prune -a removes all unused images
+With -a flag: The command docker image prune -a is more aggressive and removes all unused images, meaning any image that is not currently associated with a running or stopped container. Use this with caution, as it might remove base images you want to keep.
+:::
 
 ---
 
