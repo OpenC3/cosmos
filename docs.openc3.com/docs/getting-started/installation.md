@@ -122,7 +122,33 @@ Continue to [Getting Started](gettingstarted).
 
 ### CLEANUP
 
-If you need to remove COSMOS from your system or reset your installation, follow these steps. Note that using the `tab` key on the `./openc3.sh` script will display helpful guidance on the CLI options.
+If you need to remove COSMOS from your system or reset your installation, follow these steps. 
+
+:::note CLI Helpful guidance
+The `--help` option on the `./openc3.sh` CLI will provide helpful guidance of CLI commands. Visit the [CLI guide](./cli.md) to learn more. Example below:
+
+```
+❯ ./openc3.sh cleanup --help
+Usage: ./openc3.sh cleanup [local] [force]
+
+Remove all COSMOS Core docker volumes and data.
+
+WARNING: This is a destructive operation that removes ALL COSMOS Core data!
+
+Arguments:
+  local    Also remove local plugin files in plugins/DEFAULT/
+  force    Skip confirmation prompt
+
+Examples:
+  ./openc3.sh cleanup              # Remove volumes (with confirmation)
+  ./openc3.sh cleanup force        # Remove volumes (no confirmation)
+  ./openc3.sh cleanup local        # Remove volumes and local plugins
+  ./openc3.sh cleanup local force  # Remove volumes and local plugins (no confirmation)
+
+Options:
+  -h, --help    Show this help message
+```
+:::
 
 #### To stop COSMOS, but not remove Docker volumes and data
 
@@ -153,7 +179,7 @@ Make sure to backup any important data before running cleanup.
 
 #### To remove Docker networks, volumes, data, and Local Mode changes
 
-If you're running COSMOS in Local Mode, you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
+If you're running COSMOS in [Local Mode](../guides/local-mode.md), you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
 
 ```bash
 ./openc3.sh cleanup local
