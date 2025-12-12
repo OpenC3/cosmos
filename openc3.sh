@@ -172,6 +172,10 @@ EOF
   util [COMMAND]        Utility commands (encode, hash, save, load, etc.)
                         Use '$1 util' to see available utilities.
 
+  generate_compose      Generate compose.yaml from template
+                        Merges template with core/enterprise overrides.
+                        Use '$1 generate_compose --help' for details.
+
 EOF
   if [ "$OPENC3_DEVEL" -eq 0 ]; then
     cat >&2 << EOF
@@ -683,6 +687,117 @@ case $1 in
       exit 1
     fi
     "$(find_script openc3_upgrade.sh)" "${@:2}"
+    ;;
+  generate_compose )
+    if [ "$OPENC3_DEVEL" -eq 0 ]; then
+      echo "Error: 'generate_command' command is only available in development environments"
+      echo "This appears to be a runtime-only installation."
+      exit 1
+    fi
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 generate_compose [OPTIONS]"
+      echo ""
+      echo "Generate compose.yaml from template and mode-specific overrides."
+      echo ""
+      echo "This command uses a template-based system to generate compose.yaml files"
+      echo "for both OpenC3 Core and Enterprise editions. It ensures that shared"
+      echo "configuration stays in sync while allowing edition-specific customizations."
+      echo ""
+      echo "Files used:"
+      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+        echo "  - Template:  ../cosmos/compose.yaml.template"
+        echo "  - Overrides: ./compose.enterprise.yaml"
+        echo "  - Output:    ./compose.yaml"
+      else
+        echo "  - Template:  ./compose.yaml.template"
+        echo "  - Overrides: ./compose.core.yaml"
+        echo "  - Output:    ./compose.yaml"
+      fi
+      echo ""
+      echo "How it works:"
+      echo "  1. The template file contains placeholders like {{REGISTRY_VAR}}, {{IMAGE_PREFIX}}, etc."
+      echo "  2. The override file defines the actual values for these placeholders"
+      echo "  3. The script merges the template with the overrides to produce compose.yaml"
+      echo ""
+      echo "Options:"
+      echo "  --dry-run             Print output to stdout instead of writing to file"
+      echo "  --output PATH         Custom output file path (default: ./compose.yaml)"
+      echo "  -h, --help            Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  $0 generate_compose                    # Generate compose.yaml"
+      echo "  $0 generate_compose --dry-run           # Preview without writing"
+      echo "  $0 generate_compose --output /tmp/test.yaml  # Write to custom path"
+      echo ""
+      echo "Making changes:"
+      echo "  - To change shared config:    Edit compose.yaml.template"
+      echo "  - To change core-specific:    Edit compose.core.yaml"
+      echo "  - To change enterprise-specific: Edit compose.enterprise.yaml"
+      echo ""
+      echo "After editing, regenerate compose.yaml for both core and enterprise."
+      echo ""
+      echo "Benefits:"
+      echo "  - Single source of truth for shared configuration"
+      echo "  - No manual syncing needed between core and enterprise"
+      echo "  - Clear visibility of what's different between editions"
+      echo "  - Automated generation prevents copy-paste errors"
+      exit 0
+    fi
+
+    # Detect mode based on OPENC3_ENTERPRISE
+    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      MODE="enterprise"
+      # Enterprise uses the template from core repo
+      SCRIPT_DIR="$(cd "$(dirname -- "$0")" && pwd)"
+      if [ -f "$SCRIPT_DIR/../cosmos/scripts/release/generate_compose.py" ]; then
+        GENERATOR="$SCRIPT_DIR/../cosmos/scripts/release/generate_compose.py"
+        TEMPLATE="$SCRIPT_DIR/../cosmos/compose.yaml.template"
+      else
+        echo "Error: Cannot find generate_compose.py in ../cosmos/scripts/release/"
+        echo "Make sure the cosmos repository is checked out in the parent directory."
+        exit 1
+      fi
+    else
+      MODE="core"
+      GENERATOR="$(dirname -- "$0")/scripts/release/generate_compose.py"
+      TEMPLATE=""  # Will use default (./compose.yaml.template)
+    fi
+
+    # Check if Python 3 is available
+    if ! command -v python3 &> /dev/null; then
+      echo "Error: python3 is required but not found"
+      echo "Please install Python 3 to use this command"
+      exit 1
+    fi
+
+    # Check if PyYAML is installed, install if missing
+    if ! python3 -c "import yaml" &> /dev/null; then
+      echo "PyYAML not found, installing..."
+      if python3 -m pip install --user pyyaml &> /dev/null; then
+        echo "✓ PyYAML installed successfully"
+      else
+        echo "Error: Failed to install PyYAML automatically"
+        echo "Please install it manually with: pip install pyyaml"
+        exit 1
+      fi
+    fi
+
+    # Build arguments for the generator
+    ARGS="--mode $MODE"
+
+    # Add template path for enterprise
+    if [ -n "$TEMPLATE" ]; then
+      ARGS="$ARGS --template $TEMPLATE"
+    fi
+
+    # Pass through any additional arguments (like --dry-run, --output)
+    shift  # Remove 'generate_compose' from args
+    if [ $# -gt 0 ]; then
+      ARGS="$ARGS $@"
+    fi
+
+    # Run the generator
+    python3 "$GENERATOR" $ARGS
     ;;
   util )
     if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
