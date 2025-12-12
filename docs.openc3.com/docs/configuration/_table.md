@@ -13,7 +13,7 @@ sidebar_custom_props:
 Table definition files define the binary tables that can be displayed in COSMOS [Table Manager](../tools/table-manager.md)
 . Table definitions are defined in the target's tables/config directory and are typically named after the table such as `PPSSelectionTable_def.txt`. The `_def.txt` extension helps to identify the file as a table definition. Table definitions can be combined using the `TABLEFILE` keyword. This allows you to build individual table components into a larger binary.
 
-The Table definition files share a lot of similarity with the [Command Configuration](command.md). You have the same data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data.
+The Table definition files share a lot of similarity with the [Command Configuration](command.md). You have the same data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
 <div style={{"clear": 'both'}}></div>
 

@@ -26,8 +26,8 @@ from openc3.packets.packet_item import PacketItem
 from openc3.utilities.logger import Logger
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.accessors.json_accessor import JsonAccessor
+from openc3.accessors.cbor_accessor import CborAccessor
 from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,
 )
@@ -35,7 +35,7 @@ from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
 from datetime import datetime, timezone
-
+from cbor2 import dumps, loads
 
 class TestPacket(unittest.TestCase):
     def test_sets_the_template(self):
@@ -1209,12 +1209,9 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.append_item("test2", 16, "UINT")
         i3 = p.define_item("test3", 0, 0, "DERIVED")
         i3.read_conversion = GenericConversion("packet.read('TEST1')")
-        print(p.items.keys())
-        # expect(p.items.keys).to eql %w(TEST1 TEST2 TEST3)
+        self.assertEqual(list(p.items.keys()), ["TEST1", "TEST2", "TEST3"])
         p.clear_all_non_derived_items()
-        # expect(p.items.keys).to eql %w(TEST3)
-        print(p.items.keys())
-
+        self.assertEqual(list(p.items.keys()), ["TEST3"])
 
 class PacketLimits(unittest.TestCase):
     def test_enables_limits_on_each_packet_item(self):
@@ -1720,19 +1717,6 @@ class PacketJson(unittest.TestCase):
         self.assertIn("BinaryAccessor", json["accessor"])
         # self.assertEqual(json['template'], Base64.encode64("\x00\x01\x02\x03"))
 
-    def test_creates_a_packet_from_a_hash(self):
-        p = Packet("tgt", "pkt")
-        p.template = b"\x00\x01\x02\x03"
-        p.append_item("test1", 8, "UINT")
-        p.accessor = BinaryAccessor()
-        packet = Packet.from_json(p.as_json())
-        self.assertEqual(packet.target_name, p.target_name)
-        self.assertEqual(packet.packet_name, p.packet_name)
-        self.assertEqual(packet.accessor.__class__.__name__, "BinaryAccessor")
-        item = packet.sorted_items[0]
-        self.assertEqual(item.name, "TEST1")
-        self.assertEqual(packet.template, b"\x00\x01\x02\x03")
-
 
 class PacketDecom(unittest.TestCase):
     def test_creates_decommutated_array_data(self):
@@ -2009,3 +1993,154 @@ class PacketObfuscation(unittest.TestCase):
                     mock_logger.call_args[0][0],
                 )
                 self.assertEqual(p.buffer, b"\x01\x02\x03\x04\x00")
+
+    def test_subpacketize_returns_array_with_single_packet_when_no_subpacketizer(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("item1", 8, "UINT")
+        p.buffer = b"\x01"
+        result = p.subpacketize()
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], p)
+
+    def test_subpacketize_calls_subpacketizer_when_present(self):
+        from openc3.subpacketizers.subpacketizer import Subpacketizer
+
+        class TestSubpacketizer(Subpacketizer):
+            def call(self, packet):
+                # Create two subpackets
+                sub1 = Packet("tgt", "sub1")
+                sub1.append_item("item1", 8, "UINT")
+                sub1.buffer = packet.buffer[0:1]
+                sub2 = Packet("tgt", "sub2")
+                sub2.append_item("item1", 8, "UINT")
+                sub2.buffer = packet.buffer[1:2]
+                return [sub1, sub2]
+
+        p = Packet("tgt", "pkt")
+        p.append_item("item1", 16, "UINT")
+        p.buffer = b"\x01\x02"
+        p.subpacketizer = TestSubpacketizer()
+
+        result = p.subpacketize()
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].packet_name, "SUB1")
+        self.assertEqual(result[1].packet_name, "SUB2")
+
+    def test_subpacket_attribute_defaults_to_false(self):
+        p = Packet("tgt", "pkt")
+        self.assertFalse(p.subpacket)
+
+    def test_subpacket_attribute_can_be_set(self):
+        p = Packet("tgt", "pkt")
+        p.subpacket = True
+        self.assertTrue(p.subpacket)
+
+    def test_subpacketizer_attribute_defaults_to_none(self):
+        p = Packet("tgt", "pkt")
+        self.assertIsNone(p.subpacketizer)
+
+    def test_subpacketize_item(self):
+        json_struct = Packet()
+        json_struct.accessor = JsonAccessor(json_struct)
+        json_struct.virtual = True
+        json_template = bytearray('{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}', "ascii")
+        json_struct.template = json_template
+        item = json_struct.append_item("ITEM0", 32, 'INT')
+        item.default = 1
+        item.key = "$.id_item"
+        item = json_struct.append_item("ITEM1", 16, 'UINT')
+        item.default = 101
+        item.key = "$.item1"
+        item = json_struct.append_item("ITEM2", 16, 'UINT')
+        item.default = 12
+        item.key = "$.more.item2"
+        item = json_struct.append_item("ITEM3", 64, 'FLOAT')
+        item.default = 3.14
+        item.key = "$.more.item3"
+        item = json_struct.append_item("ITEM4", 128, 'STRING')
+        item.default = "Example"
+        item.key = "$.more.item4"
+        item = json_struct.append_item("ITEM5", 8, 'UINT')
+        item.array_size = 0
+        item.default = []
+        item.key = "$.more.item5"
+
+        cbor_struct = Packet()
+        cbor_struct.accessor = CborAccessor(cbor_struct)
+        cbor_struct.virtual = True
+        cbor_template = dumps({"id_item":2, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[] } })
+        cbor_struct.template = cbor_template
+        item = cbor_struct.append_item("ITEM0", 32, 'INT')
+        item.default = 2
+        item.key = "$.id_item"
+        item = cbor_struct.append_item("ITEM1", 16, 'UINT')
+        item.default = 101
+        item.key = "$.item1"
+        item = cbor_struct.append_item("ITEM2", 16, 'UINT')
+        item.default = 12
+        item.key = "$.more.item2"
+        item = cbor_struct.append_item("ITEM3", 64, 'FLOAT')
+        item.default = 3.14
+        item.key = "$.more.item3"
+        item = cbor_struct.append_item("ITEM4", 128, 'STRING')
+        item.default = "Example"
+        item.key = "$.more.item4"
+        item = cbor_struct.append_item("ITEM5", 8, 'UINT')
+        item.array_size = 0
+        item.default = []
+        item.key = "$.more.item5"
+
+        packet = Packet()
+        item = packet.append_item("JSON_LENGTH", 32, 'UINT')
+        item.default = 0
+        item = packet.append_item("JSON", 0, 'BLOCK')
+        item.default = ""
+        item.variable_bit_size = {'length_item_name': "JSON_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
+        packet.structurize_item(item, json_struct)
+        item = packet.append_item("CBOR_LENGTH", 32, 'UINT')
+        item.default = 0
+        item = packet.append_item("CBOR", 0, 'BLOCK')
+        item.default = ""
+        item.variable_bit_size = {'length_item_name': "CBOR_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
+        packet.structurize_item(item, cbor_struct)
+
+        packet.restore_defaults()
+        self.assertEqual(packet.read("JSON_LENGTH"), len(json_template))
+        self.assertEqual(packet.read("JSON.ITEM0"), 1)
+        self.assertEqual(packet.read("JSON.ITEM1"), 101)
+        self.assertEqual(packet.read("JSON.ITEM2"), 12)
+        self.assertAlmostEqual(packet.read("JSON.ITEM3"), 3.14)
+        self.assertEqual(packet.read("JSON.ITEM4"), "Example")
+        self.assertEqual(packet.read("JSON.ITEM5"), [])
+        self.assertEqual(packet.read("CBOR_LENGTH"), len(cbor_template))
+        self.assertEqual(packet.read("CBOR.ITEM0"), 2)
+        self.assertEqual(packet.read("CBOR.ITEM1"), 101)
+        self.assertEqual(packet.read("CBOR.ITEM2"), 12)
+        self.assertAlmostEqual(packet.read("CBOR.ITEM3"), 3.14)
+        self.assertEqual(packet.read("CBOR.ITEM4"), "Example")
+        self.assertEqual(packet.read("CBOR.ITEM5"), [])
+
+        packet.write("JSON.ITEM2", 202)
+        self.assertEqual(packet.read("JSON.ITEM2"), 202)
+        self.assertEqual(packet.read("JSON_LENGTH"), (len(json_template) + 1))
+        packet.write("CBOR.ITEM2", 202)
+        self.assertEqual(packet.read("CBOR.ITEM2"), 202)
+        self.assertEqual(packet.read("CBOR_LENGTH"), (len(cbor_template) + 1))
+
+        packet.restore_defaults()
+        self.assertEqual(packet.read("JSON_LENGTH"), len(json_template))
+        self.assertEqual(packet.read("JSON.ITEM0"), 1)
+        self.assertEqual(packet.read("JSON.ITEM1"), 101)
+        self.assertEqual(packet.read("JSON.ITEM2"), 12)
+        self.assertAlmostEqual(packet.read("JSON.ITEM3"), 3.14)
+        self.assertEqual(packet.read("JSON.ITEM4"), "Example")
+        self.assertEqual(packet.read("JSON.ITEM5"), [])
+        self.assertEqual(packet.read("CBOR_LENGTH"), len(cbor_template))
+        self.assertEqual(packet.read("CBOR.ITEM0"), 2)
+        self.assertEqual(packet.read("CBOR.ITEM1"), 101)
+        self.assertEqual(packet.read("CBOR.ITEM2"), 12)
+        self.assertAlmostEqual(packet.read("CBOR.ITEM3"), 3.14)
+        self.assertEqual(packet.read("CBOR.ITEM4"), "Example")
+        self.assertEqual(packet.read("CBOR.ITEM5"), [])

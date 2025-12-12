@@ -79,17 +79,29 @@ module OpenC3
     # that returns a hash keyed by an array of id values. The id values resolve to the packet
     # defined by that identification. Command version
     attr_reader :cmd_id_value_hash
+    attr_reader :cmd_subpacket_id_value_hash
+    attr_reader :cmd_id_signature
+    attr_reader :cmd_subpacket_id_signature
+    attr_reader :cmd_unique_id_mode
+    attr_reader :cmd_subpacket_unique_id_mode
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
     # that returns a hash keyed by an array of id values. The id values resolve to the packet
     # defined by that identification. Telemetry version
     attr_reader :tlm_id_value_hash
+    attr_reader :tlm_subpacket_id_value_hash
+    attr_reader :tlm_id_signature
+    attr_reader :tlm_subpacket_id_signature
+    attr_reader :tlm_unique_id_mode
+    attr_reader :tlm_subpacket_unique_id_mode
 
     # @return [String] Language of current target (ruby or python)
     attr_reader :language
 
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
+    # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
+    CONVERTED_DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :TIME]
 
     def initialize
       @name = nil
@@ -102,7 +114,17 @@ module OpenC3
       @latest_data = {}
       @warnings = []
       @cmd_id_value_hash = {}
+      @cmd_subpacket_id_value_hash = {}
+      @cmd_id_signature = {}
+      @cmd_subpacket_id_signature = {}
+      @cmd_unique_id_mode = {}
+      @cmd_subpacket_unique_id_mode = {}
       @tlm_id_value_hash = {}
+      @tlm_subpacket_id_value_hash = {}
+      @tlm_id_signature = {}
+      @tlm_subpacket_id_signature = {}
+      @tlm_unique_id_mode = {}
+      @tlm_subpacket_unique_id_mode = {}
 
       # Create unknown packets
       @commands['UNKNOWN'] = {}
@@ -222,7 +244,8 @@ module OpenC3
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
               'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR'
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER',\
+              'STRUCTURE', 'APPEND_STRUCTURE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -321,18 +344,20 @@ module OpenC3
           PacketParser.check_item_data_types(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet
           unless @current_packet.virtual
-            hash = @cmd_id_value_hash[@current_packet.target_name]
-            hash = {} unless hash
-            @cmd_id_value_hash[@current_packet.target_name] = hash
-            update_id_value_hash(@current_packet, hash)
+            if @current_packet.subpacket
+              build_id_metadata(@current_packet, @cmd_subpacket_id_value_hash, @cmd_subpacket_id_signature, @cmd_subpacket_unique_id_mode)
+            else
+              build_id_metadata(@current_packet, @cmd_id_value_hash, @cmd_id_signature, @cmd_unique_id_mode)
+            end
           end
         else
           @telemetry[@current_packet.target_name][@current_packet.packet_name] = @current_packet
           unless @current_packet.virtual
-            hash = @tlm_id_value_hash[@current_packet.target_name]
-            hash = {} unless hash
-            @tlm_id_value_hash[@current_packet.target_name] = hash
-            update_id_value_hash(@current_packet, hash)
+            if @current_packet.subpacket
+              build_id_metadata(@current_packet, @tlm_subpacket_id_value_hash, @tlm_subpacket_id_signature, @tlm_subpacket_unique_id_mode)
+            else
+              build_id_metadata(@current_packet, @tlm_id_value_hash, @tlm_id_signature, @tlm_unique_id_mode)
+            end
           end
         end
         @current_packet = nil
@@ -345,10 +370,11 @@ module OpenC3
         @commands[packet.target_name][packet.packet_name] = packet
 
         if affect_ids and not packet.virtual
-          hash = @cmd_id_value_hash[packet.target_name]
-          hash = {} unless hash
-          @cmd_id_value_hash[packet.target_name] = hash
-          update_id_value_hash(packet, hash)
+          if packet.subpacket
+            build_id_metadata(packet, @cmd_subpacket_id_value_hash, @cmd_subpacket_id_signature, @cmd_subpacket_unique_id_mode)
+          else
+            build_id_metadata(packet, @cmd_id_value_hash, @cmd_id_signature, @cmd_unique_id_mode)
+          end
         end
       else
         @telemetry[packet.target_name][packet.packet_name] = packet
@@ -362,10 +388,11 @@ module OpenC3
         end
 
         if affect_ids and not packet.virtual
-          hash = @tlm_id_value_hash[packet.target_name]
-          hash = {} unless hash
-          @tlm_id_value_hash[packet.target_name] = hash
-          update_id_value_hash(packet, hash)
+          if packet.subpacket
+            build_id_metadata(packet, @tlm_subpacket_id_value_hash, @tlm_subpacket_id_signature, @tlm_subpacket_unique_id_mode)
+          else
+            build_id_metadata(packet, @tlm_id_value_hash, @tlm_id_signature, @tlm_unique_id_mode)
+          end
         end
       end
     end
@@ -398,15 +425,32 @@ module OpenC3
 
     protected
 
-    def update_id_value_hash(packet, hash)
+    def build_id_metadata(packet, id_value_hash, id_signature_hash, unique_id_mode_hash)
+      target_id_value_hash = id_value_hash[packet.target_name]
+      target_id_value_hash = {} unless target_id_value_hash
+      id_value_hash[packet.target_name] = target_id_value_hash
+      update_id_value_hash(packet, target_id_value_hash, id_signature_hash, unique_id_mode_hash)
+    end
+
+    def update_id_value_hash(packet, target_id_value_hash, id_signature_hash, unique_id_mode_hash)
       if packet.id_items.length > 0
         key = []
+        id_signature = ""
         packet.id_items.each do |item|
           key << item.id_value
+          id_signature << "__#{item.key}__#{item.bit_offset}__#{item.bit_size}__#{item.data_type}"
         end
-        hash[key] = packet
+        target_id_value_hash[key] = packet
+        target_id_signature = id_signature_hash[packet.target_name]
+        if target_id_signature
+          if id_signature != target_id_signature
+            unique_id_mode_hash[packet.target_name] = true
+          end
+        else
+          id_signature_hash[packet.target_name] = id_signature
+        end
       else
-        hash['CATCHALL'.freeze] = packet
+        target_id_value_hash['CATCHALL'.freeze] = packet
       end
     end
 
@@ -445,7 +489,7 @@ module OpenC3
       # Start a new telemetry item in the current packet
       when 'ITEM', 'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER',\
           'APPEND_ITEM', 'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER',\
-          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER'
+          'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER', 'STRUCTURE', 'APPEND_STRUCTURE'
         start_item(parser)
 
       # Allow this packet to be received with less data than the defined length
@@ -494,7 +538,11 @@ module OpenC3
       when 'HIDDEN'
         usage = "#{keyword}"
         parser.verify_num_parameters(0, 0, usage)
-        @current_packet.hidden = true
+        if @current_item
+          @current_item.hidden = true
+        else
+          @current_packet.hidden = true
+        end
 
       when 'DISABLED'
         usage = "#{keyword}"
@@ -509,12 +557,17 @@ module OpenC3
         @current_packet.disabled = true
         @current_packet.virtual = true
 
+      when 'SUBPACKET'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.subpacket = true
+
       when 'RESTRICTED'
         usage = "#{keyword}"
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.restricted = true
 
-      when 'ACCESSOR', 'VALIDATOR'
+      when 'ACCESSOR', 'VALIDATOR', 'SUBPACKETIZER'
         usage = "#{keyword} <Class name> <Optional parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
@@ -663,7 +716,7 @@ module OpenC3
         @converted_bit_size = nil
         if params[0]
           @converted_type = params[0].upcase.intern
-          raise parser.error("Invalid converted_type: #{@converted_type}.") unless [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :TIME].include? @converted_type
+          raise parser.error("Invalid converted_type: #{@converted_type}.") unless CONVERTED_DATA_TYPES.include? @converted_type
         end
         @converted_bit_size = Integer(params[1]) if params[1]
         if @converted_type.nil? or @converted_bit_size.nil?
@@ -745,10 +798,6 @@ module OpenC3
 
       # Update the default value for the current command parameter
       when 'DEFAULT_VALUE'
-        if @current_cmd_or_tlm == TELEMETRY
-          raise parser.error("#{keyword} only applies to command parameters")
-        end
-
         usage = "DEFAULT_VALUE <DEFAULT VALUE>"
         parser.verify_num_parameters(1, 1, usage)
         if (@current_item.data_type == :STRING) ||
@@ -788,7 +837,7 @@ module OpenC3
 
     def start_item(parser)
       finish_item()
-      @current_item = PacketItemParser.parse(parser, @current_packet, @current_cmd_or_tlm, @warnings)
+      @current_item = PacketItemParser.parse(parser, self, @current_packet, @current_cmd_or_tlm, @warnings)
     end
 
     # Finish updating packet item

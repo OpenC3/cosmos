@@ -237,6 +237,6 @@ class Microservice:
                 MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
                 if self.microservice_status_sleeper.sleep(self.microservice_status_period_seconds):
                     break
-            except RuntimeError as error:
+            except Exception as error:
                 self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
                 raise error

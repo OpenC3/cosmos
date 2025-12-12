@@ -213,6 +213,7 @@ export default {
   data() {
     return {
       details: Object,
+      available: null,
       updater: null,
       rawValue: null,
       convertedValue: null,
@@ -239,14 +240,8 @@ export default {
         this.requestDetails()
         if (this.type === 'tlm') {
           this.updater = setInterval(() => {
-            this.api
-              .get_tlm_values([
-                `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
-                `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
-                `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
-                `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
-              ])
-              .then((values) => {
+            if (this.available && this.details) {
+              this.api.get_tlm_values(this.available).then((values) => {
                 for (let value of values) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
@@ -304,6 +299,7 @@ export default {
                 this.formattedValue = values[2][0]
                 this.unitsValue = values[3][0]
               })
+            }
           }, 1000)
         }
       } else {
@@ -340,18 +336,30 @@ export default {
     },
     async requestDetails() {
       if (this.type === 'tlm') {
-        await this.api
-          .get_item(this.targetName, this.packetName, this.itemName)
-          .then((details) => {
-            this.details = details
-            // If the item does not have limits explicitly null it
-            // to make the check in the template easier
-            if (!this.hasLimits(details)) {
-              this.details.limits = null
+        this.api
+          .get_tlm_available([
+            `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
+            `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
+            `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
+            `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
+          ])
+          .then((available) => {
+            if (available && available.length > 0) {
+              this.available = available
             }
+            this.api
+              .get_item(this.targetName, this.packetName, this.itemName)
+              .then((details) => {
+                this.details = details
+                // If the item does not have limits explicitly null it
+                // to make the check in the template easier
+                if (!this.hasLimits(details)) {
+                  this.details.limits = null
+                }
+              })
           })
       } else {
-        await this.api
+        this.api
           .get_parameter(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details

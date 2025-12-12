@@ -28,13 +28,16 @@ export default {
         return this.formatJsonString(value)
       }
       if (Array.isArray(value)) {
-        return this.formatArray(value)
+        return JSON.stringify(value).replace(/\\n/g, '')
       }
       if (this.isObject(value)) {
-        return ''
+        return JSON.stringify(value).replace(/\\n/g, '')
       }
       if (formatString && value) {
         return sprintf(formatString, value)
+      }
+      if (value === null || value === undefined) {
+        return 'null'
       }
       return String(value)
     },

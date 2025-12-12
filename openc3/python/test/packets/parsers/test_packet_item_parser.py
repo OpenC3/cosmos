@@ -153,6 +153,100 @@ class TestPacketItemParserTlm(unittest.TestCase):
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].id_items, id_items)
         tf.close()
 
+    def test_accepts_types_bool_array_object_any(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  PARAMETER ITEM1 0 0 BOOL TRUE\n")
+        tf.write("  APPEND_PARAMETER ITEM2 0 BOOL FALSE\n")
+        tf.write("  APPEND_ID_PARAMETER ITEM3 0 BOOL TRUE\n")
+        tf.write("  APPEND_PARAMETER ITEM4 0 ARRAY [1,2,3]\n")
+        tf.write('  APPEND_ID_PARAMETER ITEM5 0 ARRAY ["a","b"]\n')
+        tf.write('  APPEND_PARAMETER ITEM6 0 OBJECT {"key":"value"}\n')
+        tf.write('  APPEND_ID_PARAMETER ITEM7 0 OBJECT {"test":123}\n')
+        tf.write('  APPEND_PARAMETER ITEM8 0 ANY "text"\n')
+        tf.write("  APPEND_ID_PARAMETER ITEM9 0 ANY 456\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        packet = self.pc.commands["TGT1"]["PKT1"]
+        self.assertTrue(
+            set(["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7", "ITEM8", "ITEM9"]).issubset(
+                set(packet.items.keys())
+            )
+        )
+        self.assertEqual(packet.items["ITEM1"].default, True)
+        self.assertEqual(packet.items["ITEM2"].default, False)
+        self.assertEqual(packet.items["ITEM3"].id_value, True)
+        self.assertEqual(packet.items["ITEM4"].default, [1, 2, 3])
+        self.assertEqual(packet.items["ITEM5"].id_value, ["a", "b"])
+        self.assertEqual(packet.items["ITEM6"].default, {"key": "value"})
+        self.assertEqual(packet.items["ITEM7"].id_value, {"test": 123})
+        self.assertEqual(packet.items["ITEM8"].default, "text")
+        self.assertEqual(packet.items["ITEM9"].id_value, 456)
+        tf.close()
+
+    def test_complains_about_invalid_bool_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  PARAMETER ITEM1 0 0 BOOL 1\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "Default for BOOL data type must be TRUE or FALSE"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  APPEND_ID_ITEM ITEM1 0 BOOL invalid\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "ID Value for BOOL data type must be TRUE or FALSE"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+    def test_complains_about_invalid_array_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  PARAMETER ITEM1 0 0 ARRAY notarray\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "Unparsable value for ARRAY: notarray"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write('  APPEND_ID_ITEM ITEM1 0 ARRAY "string"\n')
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "Unparsable value for ARRAY: string"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+    def test_complains_about_invalid_object_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  PARAMETER ITEM1 0 0 OBJECT notobject\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "Unparsable value for OBJECT: notobject"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  APPEND_ID_ITEM ITEM1 0 OBJECT [1,2,3]\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "ID Value for OBJECT data type must be a Hash"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
     def test_supports_arbitrary_endianness_per_item(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')

@@ -108,7 +108,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
     def test_initializes_attributes(self):
         self.interface.add_protocol(PreidentifiedProtocol, ["0xDEADBEEF", 100], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
-        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xde\xad\xbe\xef")
         self.assertEqual(self.interface.read_protocols[0].max_length, 100)
 
     def test_write_creates_a_packet_header(self):
@@ -170,7 +170,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
     def test_write_handles_a_sync_pattern(self):
         time, pkt = self.setup_stream_pkt(args=["DEAD"])
         self.interface.write(pkt)
-        self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xDE\xAD")
+        self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xde\xad")
         self.assertEqual(TestPreidentifiedProtocol.buffer[2], 0)
         self.verify_time_tgt_pkt_buffer(3, time, pkt)
 
@@ -180,7 +180,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         extra_data = {"vcid": 4}
         pkt.extra = extra_data
         self.interface.write(pkt)
-        self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xDE\xAD")
+        self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xde\xad")
         self.assertEqual(TestPreidentifiedProtocol.buffer[2], 0xC0)
         json_extra = json.dumps(extra_data)
         offset = 3
@@ -251,10 +251,10 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface.add_protocol(PreidentifiedProtocol, ["0xDEADBEEF", 1024], "READ_WRITE")
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "PreidentifiedProtocol")
@@ -262,7 +262,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertIn("write_data_input", details)
         self.assertIn("write_data_output_time", details)
         self.assertIn("write_data_output", details)
-        
+
         # Check preidentified protocol specific fields
         self.assertIn("max_length", details)
         self.assertEqual(details["max_length"], 1024)
@@ -271,10 +271,10 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface.add_protocol(PreidentifiedProtocol, ["0xABCD", 2048], "READ_WRITE")
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
-        
+
         # Check that it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check base protocol fields from super()
         self.assertIn("name", details)
         self.assertEqual(details["name"], "PreidentifiedProtocol")
@@ -282,8 +282,12 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertIn("read_data_input", details)
         self.assertIn("read_data_output_time", details)
         self.assertIn("read_data_output", details)
-        
+
         # Check preidentified protocol specific read fields
         self.assertIn("max_length", details)
         self.assertEqual(details["max_length"], 2048)
         self.assertIn("reduction_state", details)
+
+    def test_accepts_hex_string_for_max_length(self):
+        self.interface.add_protocol(PreidentifiedProtocol, [None, "0x400"], "READ_WRITE")
+        self.assertEqual(self.interface.read_protocols[0].max_length, 1024)

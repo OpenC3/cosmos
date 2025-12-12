@@ -145,6 +145,8 @@ class TriggerController < ApplicationController
       model.left = hash['left'] if hash['left']
       model.operator = hash['operator'] if hash['operator']
       model.right = hash['right'] if hash['right']
+      # Update the timestamp before notifying so the event has the current time
+      model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the TriggerGroupMicroservice to update the TriggerModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the trigger

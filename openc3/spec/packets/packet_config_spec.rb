@@ -26,6 +26,20 @@ require 'openc3/packets/packet_config'
 require 'tempfile'
 
 module OpenC3
+  # Test subpacketizer class for unit tests
+  class TestSubpacketizer
+    attr_reader :args
+
+    def initialize(packet, *args)
+      @packet = packet
+      @args = args
+    end
+
+    def call(packet)
+      [packet]
+    end
+  end
+
   describe PacketConfig do
     describe "process_file" do
       before(:all) do
@@ -1147,14 +1161,6 @@ module OpenC3
           tf.close
           expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MAXIMUM_VALUE only applies to command parameters/)
           tf.unlink
-
-          tf = Tempfile.new('unittest')
-          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
-          tf.puts '  APPEND_ITEM item1 16 UINT'
-          tf.puts '    DEFAULT_VALUE 2'
-          tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DEFAULT_VALUE only applies to command parameters/)
-          tf.unlink
         end
 
         it "allows overriding the defined value" do
@@ -1185,6 +1191,106 @@ module OpenC3
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 2
           expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range).to eql(1..3)
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM2")).to eql "NO"
+          tf.unlink
+        end
+
+        it "supports hex values in min max default" do
+          # Test basic hex values with lowercase 0x
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 16 UINT 0 65535 0'
+          tf.puts '  MINIMUM_VALUE 0x10'
+          tf.puts '  MAXIMUM_VALUE 0xff'
+          tf.puts '  DEFAULT_VALUE 0x80'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x10
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x80
+          tf.unlink
+
+          # Test uppercase 0X notation
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 32 UINT 0 4294967295 0'
+          tf.puts '  MINIMUM_VALUE 0X100'
+          tf.puts '  MAXIMUM_VALUE 0XFFFF'
+          tf.puts '  DEFAULT_VALUE 0X1000'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x100
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFFFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x1000
+          tf.unlink
+
+          # Test mixed case hex digits
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 32 UINT 0 4294967295 0'
+          tf.puts '  MINIMUM_VALUE 0xAbC'
+          tf.puts '  MAXIMUM_VALUE 0xDeAdBeEf'
+          tf.puts '  DEFAULT_VALUE 0xCaFeBaBe'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0xABC
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xDEADBEEF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0xCAFEBABE
+          tf.unlink
+
+          # Test hex with SELECT_PARAMETER
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 8 UINT 0 255 0'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          tf.unlink
+
+          # Override with hex values
+          tf = Tempfile.new('unittest')
+          tf.puts 'SELECT_COMMAND tgt1 pkt1'
+          tf.puts 'SELECT_PARAMETER item1'
+          tf.puts '  MINIMUM_VALUE 0x01'
+          tf.puts '  MAXIMUM_VALUE 0xFE'
+          tf.puts '  DEFAULT_VALUE 0x7F'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x01
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xFE
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x7F
+          tf.unlink
+
+          # Test single digit hex
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 8 UINT 0 255 0'
+          tf.puts '  MINIMUM_VALUE 0x0'
+          tf.puts '  MAXIMUM_VALUE 0xF'
+          tf.puts '  DEFAULT_VALUE 0xA'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x0
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0xF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0xA
+          tf.unlink
+
+          # Test hex values with INT type (signed)
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  APPEND_PARAMETER item1 16 INT -32768 32767 0'
+          tf.puts '  MINIMUM_VALUE 0x10'
+          tf.puts '  MAXIMUM_VALUE 0x7FFF'
+          tf.puts '  DEFAULT_VALUE 0x100'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.commands["TGT1"]["PKT1"].restore_defaults
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.first).to eql 0x10
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range.last).to eql 0x7FFF
+          expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 0x100
           tf.unlink
         end
       end
@@ -1222,6 +1328,95 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.warnings).to be_empty
+          tf.unlink
+        end
+      end
+
+      context "with SUBPACKET" do
+        it "marks packet as subpacket" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].subpacket).to be true
+          tf.unlink
+        end
+
+        it "builds subpacket ID hash for telemetry" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Normal Packet"'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub1 LITTLE_ENDIAN "Subpacket 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub2 LITTLE_ENDIAN "Subpacket 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1]])
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"].keys).to contain_exactly([10], [20])
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"][[10]].packet_name).to eql("SUB1")
+          expect(@pc.tlm_subpacket_id_value_hash["TGT1"][[20]].packet_name).to eql("SUB2")
+          tf.unlink
+        end
+
+        it "builds subpacket ID hash for commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Normal Command"'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
+          tf.puts 'COMMAND tgt1 sub1 LITTLE_ENDIAN "Subcommand 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 10 10 10 "Item1"'
+          tf.puts 'COMMAND tgt1 sub2 LITTLE_ENDIAN "Subcommand 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 20 20 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[1]])
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"].keys).to contain_exactly([10], [20])
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"][[10]].packet_name).to eql("SUB1")
+          expect(@pc.cmd_subpacket_id_value_hash["TGT1"][[20]].packet_name).to eql("SUB2")
+          tf.unlink
+        end
+
+        it "detects unique_id_mode for subpackets" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub1 LITTLE_ENDIAN "Subpacket 1"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 10 "Item1"'
+          tf.puts 'TELEMETRY tgt1 sub2 LITTLE_ENDIAN "Subpacket 2"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  APPEND_ID_ITEM item1 16 UINT 20 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_subpacket_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+      end
+
+      context "with SUBPACKETIZER" do
+        it "sets subpacketizer on telemetry packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKETIZER TestSubpacketizer'
+          tf.puts '  APPEND_ID_ITEM item1 8 UINT 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].subpacketizer).to_not be_nil
+          tf.unlink
+        end
+
+        it "sets subpacketizer on command packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  SUBPACKETIZER TestSubpacketizer'
+          tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].subpacketizer).to_not be_nil
           tf.unlink
         end
       end

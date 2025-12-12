@@ -12,3 +12,11 @@ updates:
       - "/docs.openc3.com/*"
     schedule:
       interval: "weekly"
+    ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
+      - dependency-name: "import-map-overrides"
+      - dependency-name: "single-spa"
+      - dependency-name: "systemjs"
+      - dependency-name: "vue"
+      - dependency-name: "vue-router"
+      - dependency-name: "vuetify"
+      - dependency-name: "vuex"

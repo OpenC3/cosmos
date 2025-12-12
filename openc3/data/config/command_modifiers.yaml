@@ -96,6 +96,68 @@ APPEND_ARRAY_PARAMETER:
       values: .*
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
   example: APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
+STRUCTURE:
+  modifiers:
+    <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
+  summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  parameters:
+    - name: Name
+      required: true
+      description: Name of the parameter. Must be unique within the command.
+      values: .*
+    - name: Bit Offset
+      required: true
+      description: Bit offset into the command packet of the Most Significant Bit of this parameter.
+        May be negative to indicate an offset from the end of the packet.
+        Always use a bit offset of 0 for derived parameters.
+      values: '[-]?\d+'
+    - name: Bit Size
+      required: true
+      description: Bit size of this parameter. Zero or Negative values may be used
+        to indicate that a string fills the packet up to the offset from the end of
+        the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
+        this is a derived parameter and the Data Type must be set to 'DERIVED'.
+      values: \d+
+    - name: Command or telemetry
+      required: true
+      description: Whether the structure packet is a command or telemetry packet
+      values: <%= %w(CMD COMMAND TLM TELEMETRY) %>
+    - name: Target Name
+      required: true
+      description: Target Name of the structure packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of the structure packet
+      values: .+
+APPEND_STRUCTURE:
+  modifiers:
+    <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
+  summary: Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.
+  parameters:
+    - name: Name
+      required: true
+      description: Name of the parameter. Must be unique within the command.
+      values: .*
+    - name: Bit Size
+      required: true
+      description: Bit size of this parameter. Zero or Negative values may be used
+        to indicate that a string fills the packet up to the offset from the end of
+        the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
+        this is a derived parameter and the Data Type must be set to 'DERIVED'.
+      values: \d+
+    - name: Command or telemetry
+      required: true
+      description: Whether the structure packet is a command or telemetry packet
+      values: <%= %w(CMD COMMAND TLM TELEMETRY) %>
+    - name: Target Name
+      required: true
+      description: Target Name of the structure packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of the structure packet
+      values: .+
 SELECT_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
@@ -176,6 +238,19 @@ ACCESSOR:
       description: Additional argument passed to the accessor class constructor
       values: .+
   since: 5.0.10
+SUBPACKETIZER:
+  summary: Defines a class used to break up the packet into subpackets before decom
+  description: Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+  parameters:
+    - name: Subpacketizer Class Name
+      required: true
+      description: The name of the Subpacketizer class
+      values: .+
+    - name: Argument
+      required: false
+      description: Additional argument passed to the Subpacketizer class constructor
+      values: .+
+  since: 6.10.0
 TEMPLATE:
   summary: Defines a template string used to initialize the command before default values are filled in
   description: Generally the template string is formatted in JSON or HTML and then values are filled in with
@@ -256,6 +331,10 @@ RESTRICTED:
   summary: Marks this packet as restricted and will require approval if critical commanding is enabled
   description: Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
   since: 5.20.0
+SUBPACKET:
+  summary: Marks this packet as as a subpacket which will exclude it from Interface level identification
+  description: Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
+  since: 6.10.0
 VALIDATOR:
   summary: Defines a validator class for a command
   description: Validator class is used to validate the command success or failure with both a pre_check and post_check method.

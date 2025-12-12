@@ -19,7 +19,7 @@ import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonEncoder, JsonDecoder
-
+from openc3.config.config_parser import ConfigParser
 
 class DecomInterfaceTopic(Topic):
     @classmethod
@@ -73,3 +73,34 @@ class DecomInterfaceTopic(Topic):
             "*",
             100,
         )
+
+    @classmethod
+    def get_tlm_buffer(cls, target_name, packet_name, timeout=5, scope=OPENC3_SCOPE):
+        data = {}
+        data['target_name'] = target_name.upper()
+        data['packet_name'] = packet_name.upper()
+        # DecomMicroservice is listening to the DECOMINTERFACE topic and has
+        # the most recent decommed packets including subpackets
+        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
+        Topic.update_topic_offsets([ack_topic])
+        decom_id = Topic.write_topic(
+            f"{scope}__DECOMINTERFACE__{{{target_name}}}",
+            {"get_tlm_buffer": json.dumps(data, cls=JsonEncoder)},
+            "*",
+            100,
+        )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == decom_id:
+                    if msg_hash[b"result"] == b"SUCCESS":
+                        msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
+                        msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
+                        msg_hash["stored"] = ConfigParser.handle_true_false(msg_hash["stored"])
+                        extra = msg_hash.get("extra")
+                        if extra is not None:
+                            msg_hash["extra"] = json.loads(extra)
+                        return msg_hash
+                    else:
+                        raise RuntimeError(msg_hash[b"message"])
+        raise RuntimeError(f"Timeout of {timeout}s waiting for ack. Does target '{target_name}' exist?")

@@ -38,12 +38,23 @@ class QueuesController < ApplicationController
   def index
     return unless authorization('cmd_info')
     begin
-      queues = @model_class.all(scope: params[:scope])
-      ret = []
-      queues.each do |_, trigger|
-        ret << trigger
+      models = @model_class.all(scope: params[:scope])
+      queues = []
+      models.each do |_, queue|
+        queues << queue
       end
-      render json: ret
+      # Sort queues by name
+      queues.sort_by! { |queue| queue['name'] }
+      # If OPENC3_DEFAULT_QUEUE is set, move it to the front of the list
+      default_queue = ENV['OPENC3_DEFAULT_QUEUE']
+      if default_queue
+        default_index = queues.find_index { |queue| queue['name'] == default_queue }
+        if default_index
+          default_queue_obj = queues.delete_at(default_index)
+          queues.unshift(default_queue_obj)
+        end
+      end
+      render json: queues
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
@@ -219,10 +230,30 @@ class QueuesController < ApplicationController
         hazardous = false
         token = get_token(username(), scope: params[:scope])
         begin
-          if hazardous
-            cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+          # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
+          if command_data['target_name'] && command_data['cmd_name']
+            # New format: use 3-parameter cmd() method
+            if command_data['cmd_params']
+              cmd_params = JSON.parse(command_data['cmd_params'], allow_nan: true, create_additions: true)
+            else
+              cmd_params = {}
+            end
+            if hazardous
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+            end
+          elsif command_data['value']
+            # Legacy format: use single string parameter
+            if hazardous
+              cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            end
           else
-            cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            log_error("Invalid command format in queue: #{command_data}")
+            render json: { status: 'error', message: "Invalid command format: missing required fields" }, status: 400
+            return
           end
         rescue HazardousError => e
           # Rescue hazardous error and retry with cmd_no_hazardous_check

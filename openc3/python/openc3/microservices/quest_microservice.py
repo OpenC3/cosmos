@@ -37,7 +37,7 @@ class QuestMicroservice(Microservice):
 
         Topic.update_topic_offsets(self.topics)
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
-        self.topic_offset =Topic.update_topic_offsets([config_topic])[0]
+        self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
         self.ingest = None
         self.connect_ingest()
@@ -208,7 +208,7 @@ class QuestMicroservice(Microservice):
                                 # QuestDB treats int64 min value as NULL, so we set it to -2^63 + 1
                                 value = -(2**63) + 1
 
-                        case float() | str():
+                        case float() | str() | None:
                             pass
 
                         case bytes():
@@ -274,9 +274,9 @@ class QuestMicroservice(Microservice):
                         # 'error in line 1: table: INST2__HEALTH_STATUS, column: TEMP1STDDEV;
                         # cast error from protocol type: FLOAT to column type: LONG","line":1,"errorId":"a507394ab099-25"'
                         error_message = str(error)
-                        table_match = re.search(r'table:\s+(.+?),', error_message) # .+? is non-greedy
-                        column_match = re.search(r'column:\s+(.+?);', error_message)
-                        type_match = re.search(r'protocol type:\s+([A-Z]+)\s', error_message)
+                        table_match = re.search(r"table:\s+(.+?),", error_message)  # .+? is non-greedy
+                        column_match = re.search(r"column:\s+(.+?);", error_message)
+                        type_match = re.search(r"protocol type:\s+([A-Z]+)\s", error_message)
 
                         if table_match and column_match and type_match:
                             table_name = table_match.group(1)
@@ -291,7 +291,7 @@ class QuestMicroservice(Microservice):
                         alter = f"""ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE {column_type}"""
                         cur.execute(alter)
                         self.logger.info(f"QuestDB: {alter}")
-                        self.connect_ingest() # reconnect
+                        self.connect_ingest()  # reconnect
                         # Retry write to QuestDB
                         self.ingest.row(table_name, columns=values, at=TimestampNanos(timestamp))
                 except psycopg.Error as error:
@@ -299,7 +299,6 @@ class QuestMicroservice(Microservice):
             else:
                 self.error = error
                 self.logger.error(f"QuestDB: Error writing to QuestDB: {error}\n")
-
 
     def run(self):
         """Main run loop"""

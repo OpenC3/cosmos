@@ -177,29 +177,173 @@ if [ "$#" -eq 0 ]; then
   usage $0
 fi
 
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+  usage $0
+fi
+
 case $1 in
   encode )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 encode STRING"
+      echo ""
+      echo "Encode a string to base64."
+      echo ""
+      echo "Arguments:"
+      echo "  STRING    The string to encode (required)"
+      echo ""
+      echo "Example:"
+      echo "  $0 encode \"my secret password\""
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     echo -n $2 | base64
     ;;
   hash )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 hash STRING"
+      echo ""
+      echo "Hash a string using SHA-256."
+      echo ""
+      echo "Arguments:"
+      echo "  STRING    The string to hash (required)"
+      echo ""
+      echo "Example:"
+      echo "  $0 hash \"my password\""
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     echo -n $2 | shasum -a 256 | sed 's/-//'
     ;;
   save )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 save REPO NAMESPACE TAG [SUFFIX]"
+      echo ""
+      echo "Pull and save all OpenC3 docker images to tar files in tmp/ directory."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO        Docker repository (e.g., docker.io)"
+      echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
+      echo "  TAG         Image tag (e.g., latest or 5.1.0)"
+      echo "  SUFFIX      Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 save docker.io openc3inc 5.1.0"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     saveTar "${@:2}"
     ;;
   load )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 load [TAG] [SUFFIX]"
+      echo ""
+      echo "Load OpenC3 docker images from tar files in tmp/ directory."
+      echo ""
+      echo "Arguments:"
+      echo "  TAG      Image tag (default: latest)"
+      echo "  SUFFIX   Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 load 5.1.0"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     loadTar "${@:2}"
     ;;
   tag )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 tag REPO1 REPO2 NAMESPACE1 TAG1 [NAMESPACE2] [TAG2] [SUFFIX]"
+      echo ""
+      echo "Tag OpenC3 images from one repository to another."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO1        Source repository (e.g., docker.io)"
+      echo "  REPO2        Target repository (e.g., localhost:12345)"
+      echo "  NAMESPACE1   Source namespace (e.g., openc3inc)"
+      echo "  TAG1         Source tag (e.g., latest)"
+      echo "  NAMESPACE2   Target namespace (default: same as NAMESPACE1)"
+      echo "  TAG2         Target tag (default: same as TAG1)"
+      echo "  SUFFIX       Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 tag docker.io localhost:12345 openc3inc latest"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     tag "${@:2}"
     ;;
   push )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 push REPO NAMESPACE TAG [SUFFIX]"
+      echo ""
+      echo "Push all OpenC3 images to a docker repository."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO        Docker repository (e.g., localhost:12345)"
+      echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
+      echo "  TAG         Image tag (e.g., latest)"
+      echo "  SUFFIX      Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 push localhost:12345 openc3 latest"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     push "${@:2}"
     ;;
   clean )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 clean"
+      echo ""
+      echo "Clean up development files from the project."
+      echo ""
+      echo "This command removes:"
+      echo "  - All node_modules directories"
+      echo "  - All coverage directories"
+      echo "  - pnpm-lock.yaml files (with prompt)"
+      echo "  - Gemfile.lock files (with prompt)"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     cleanFiles
     ;;
   hostsetup )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 hostsetup REPO NAMESPACE TAG"
+      echo ""
+      echo "Configure Docker host for Redis optimal performance."
+      echo ""
+      echo "This command:"
+      echo "  - Disables transparent huge pages"
+      echo "  - Sets vm.max_map_count to 262144"
+      echo ""
+      echo "Arguments:"
+      echo "  REPO        Docker repository (e.g., docker.io)"
+      echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
+      echo "  TAG         Image tag (e.g., latest)"
+      echo ""
+      echo "Example:"
+      echo "  $0 hostsetup docker.io openc3inc latest"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     if [ "$#" -ne 4 ]; then
       echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" >&2
       echo "e.g. hostsetup docker.io openc3inc latest" >&2
@@ -213,6 +357,18 @@ case $1 in
     docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=262144"
     ;;
   hostenter )
+    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+      echo "Usage: $0 hostenter"
+      echo ""
+      echo "Enter a shell on the Docker VM host."
+      echo ""
+      echo "This uses nsenter to access the VM host running Docker."
+      echo "Useful for debugging Docker host issues."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
     docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD} nsenter -t 1 -m -u -n -i sh
     ;;
   * )

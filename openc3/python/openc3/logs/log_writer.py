@@ -323,7 +323,7 @@ class LogWriter:
                 self.file = None
                 self.file_size = 0
                 self.filename = None
-        except RuntimeError:
+        except Exception:
             Logger.error(f"Error closing {self.filename} : {traceback.format_exc()}")
         finally:
             if take_mutex:

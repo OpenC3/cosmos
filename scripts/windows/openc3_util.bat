@@ -3,6 +3,12 @@
 if "%1" == "" (
   GOTO usage
 )
+if "%1" == "--help" (
+  GOTO usage
+)
+if "%1" == "-h" (
+  GOTO usage
+)
 if "%1" == "encode" (
   GOTO encode
 )

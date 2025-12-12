@@ -265,6 +265,7 @@ RSpec.describe ReactionController, type: :controller do
       allow(model).to receive(:triggers=).and_raise(OpenC3::ReactionInputError.new("Invalid trigger format"))
       allow(model).to receive(:trigger_level=)
       allow(model).to receive(:actions=)
+      allow(model).to receive(:updated_at=)
       allow(OpenC3::ReactionModel).to receive(:get).and_return(model)
 
       put :update, params: {
@@ -298,6 +299,7 @@ RSpec.describe ReactionController, type: :controller do
       allow(model).to receive(:triggers=)
       allow(model).to receive(:trigger_level=)
       allow(model).to receive(:actions=)
+      allow(model).to receive(:updated_at=)
       allow(model).to receive(:notify).and_raise(OpenC3::ReactionError.new("Failed to notify"))
       allow(OpenC3::ReactionModel).to receive(:get).and_return(model)
 

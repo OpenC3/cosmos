@@ -22,24 +22,29 @@ on:
         type: boolean
         default: true
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+  packages: write  # Required for pushing to ghcr.io
+
 jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     environment: Release
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.QA_PAT }}
-      - name: Set up Ruby 3.3
+      - name: Set up Ruby 3.4
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -141,16 +146,12 @@ jobs:
           packages-dir: openc3/python/dist
       - name: publish common npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
-        run: pnpm -F "@openc3/*-common" publish --access public
+        run: pnpm -F "@openc3/*-common" publish --no-git-checks --access public
         working-directory: openc3-cosmos-init/plugins
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: publish common npm packages pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
-        run: pnpm -F "@openc3/*-common" publish --tag pre --access public
+        run: pnpm -F "@openc3/*-common" publish --no-git-checks --tag pre --access public
         working-directory: openc3-cosmos-init/plugins
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Update version to next
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release

@@ -156,6 +156,8 @@ class ReactionController < ApplicationController
       model.actions = hash['actions'] if hash['actions']
       model.trigger_level = hash['trigger_level'] if hash['trigger_level']
       model.snooze = hash['snooze'] if hash['snooze']
+      # Update the timestamp before notifying so the event has the current time
+      model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the ReactionMicroservice to update the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the reaction

@@ -87,11 +87,11 @@ class TerminatedProtocol(BurstProtocol):
 
     def write_details(self):
         result = super().write_details()
-        result['write_termination_characters'] = repr(self.write_termination_characters)
+        result["write_termination_characters"] = repr(self.write_termination_characters)
         return result
 
     def read_details(self):
         result = super().read_details()
-        result['read_termination_characters'] = repr(self.read_termination_characters)
-        result['strip_read_termination'] = self.strip_read_termination
+        result["read_termination_characters"] = repr(self.read_termination_characters)
+        result["strip_read_termination"] = self.strip_read_termination
         return result

@@ -148,6 +148,82 @@ module OpenC3
           tf.unlink
         end
 
+        it "accepts types BOOL ARRAY OBJECT ANY" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  PARAMETER ITEM1 0 0 BOOL TRUE'
+          tf.puts '  APPEND_PARAMETER ITEM2 0 BOOL FALSE'
+          tf.puts '  APPEND_ID_PARAMETER ITEM3 0 BOOL TRUE'
+          tf.puts '  APPEND_PARAMETER ITEM4 0 ARRAY [1,2,3]'
+          tf.puts '  APPEND_ID_PARAMETER ITEM5 0 ARRAY ["a","b"]'
+          tf.puts '  APPEND_PARAMETER ITEM6 0 OBJECT {"key":"value"}'
+          tf.puts '  APPEND_ID_PARAMETER ITEM7 0 OBJECT {"test":123}'
+          tf.puts "  APPEND_PARAMETER ITEM8 0 ANY '\"text\"'"
+          tf.puts '  APPEND_ID_PARAMETER ITEM9 0 ANY 456'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          packet = @pc.commands["TGT1"]["PKT1"]
+          expect(packet.items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6', 'ITEM7', 'ITEM8', 'ITEM9')
+          expect(packet.items["ITEM1"].default).to eql true
+          expect(packet.items["ITEM2"].default).to eql false
+          expect(packet.items["ITEM3"].id_value).to eql true
+          expect(packet.items["ITEM4"].default).to eql [1,2,3]
+          expect(packet.items["ITEM5"].id_value).to eql ["a","b"]
+          expect(packet.items["ITEM6"].default).to eql({"key" => "value"})
+          expect(packet.items["ITEM7"].id_value).to eql({"test" => 123})
+          expect(packet.items["ITEM8"].default).to eql "text"
+          expect(packet.items["ITEM9"].id_value).to eql 456
+          tf.unlink
+        end
+
+        it "complains about invalid BOOL values" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  PARAMETER ITEM1 0 0 BOOL 1'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Default for BOOL data type must be TRUE or FALSE/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ID_ITEM ITEM1 0 BOOL invalid'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ID Value for BOOL data type must be TRUE or FALSE/)
+          tf.unlink
+        end
+
+        it "complains about invalid ARRAY values" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  PARAMETER ITEM1 0 0 ARRAY notarray'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unparsable value for ARRAY: notarray/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ID_ITEM ITEM1 0 ARRAY "string"'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unparsable value for ARRAY: string/)
+          tf.unlink
+        end
+
+        it "complains about invalid OBJECT values" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  PARAMETER ITEM1 0 0 OBJECT notobject'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unparsable value for OBJECT: notobject/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ID_ITEM ITEM1 0 OBJECT [1,2,3]'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ID Value for OBJECT data type must be a Hash/)
+          tf.unlink
+        end
+
         it "supports arbitrary endianness per item" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'

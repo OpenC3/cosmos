@@ -35,14 +35,106 @@ from openc3.packets.limits import Limits
 from openc3.system.target import Target
 
 
-class System:
-    # Declare the System class variables ... they are set in __init__
-    targets = {}
-    packet_config = None
-    commands = None
-    telemetry = None
-    limits = None
+class SystemMeta(type):
+    """Metaclass that provides class-level property-like access to singleton instance attributes"""
 
+    @property
+    def targets(cls):  # type: ignore
+        """Access the targets hash from the System singleton"""
+        if cls.instance_obj:
+            return cls.instance_obj.targets
+        raise RuntimeError("System instance has not been created. Call System.instance() first.")
+
+    @targets.setter
+    def targets(cls, value):  # type: ignore
+        """Set the targets hash on the System singleton"""
+        if not cls.instance_obj:
+            cls.instance_obj = object.__new__(cls)
+            cls.instance_obj.targets = {}
+            cls.instance_obj.packet_config = None
+            cls.instance_obj.commands = None
+            cls.instance_obj.telemetry = None
+            cls.instance_obj.limits = None
+        cls.instance_obj.targets = value
+
+    @property
+    def packet_config(cls):  # type: ignore
+        """Access the packet configuration from the System singleton"""
+        if cls.instance_obj:
+            return cls.instance_obj.packet_config
+        raise RuntimeError("System instance has not been created. Call System.instance() first.")
+
+    @packet_config.setter
+    def packet_config(cls, value):  # type: ignore
+        """Set the packet configuration on the System singleton"""
+        if not cls.instance_obj:
+            cls.instance_obj = object.__new__(cls)
+            cls.instance_obj.targets = {}
+            cls.instance_obj.packet_config = None
+            cls.instance_obj.commands = None
+            cls.instance_obj.telemetry = None
+            cls.instance_obj.limits = None
+        cls.instance_obj.packet_config = value
+
+    @property
+    def commands(cls):  # type: ignore
+        """Access the commands definition from the System singleton"""
+        if cls.instance_obj:
+            return cls.instance_obj.commands
+        raise RuntimeError("System instance has not been created. Call System.instance() first.")
+
+    @commands.setter
+    def commands(cls, value):  # type: ignore
+        """Set the commands definition on the System singleton"""
+        if not cls.instance_obj:
+            cls.instance_obj = object.__new__(cls)
+            cls.instance_obj.targets = {}
+            cls.instance_obj.packet_config = None
+            cls.instance_obj.commands = None
+            cls.instance_obj.telemetry = None
+            cls.instance_obj.limits = None
+        cls.instance_obj.commands = value
+
+    @property
+    def telemetry(cls):  # type: ignore
+        """Access the telemetry definition from the System singleton"""
+        if cls.instance_obj:
+            return cls.instance_obj.telemetry
+        raise RuntimeError("System instance has not been created. Call System.instance() first.")
+
+    @telemetry.setter
+    def telemetry(cls, value):  # type: ignore
+        """Set the telemetry definition on the System singleton"""
+        if not cls.instance_obj:
+            cls.instance_obj = object.__new__(cls)
+            cls.instance_obj.targets = {}
+            cls.instance_obj.packet_config = None
+            cls.instance_obj.commands = None
+            cls.instance_obj.telemetry = None
+            cls.instance_obj.limits = None
+        cls.instance_obj.telemetry = value
+
+    @property
+    def limits(cls):  # type: ignore
+        """Access the limits definition from the System singleton"""
+        if cls.instance_obj:
+            return cls.instance_obj.limits
+        raise RuntimeError("System instance has not been created. Call System.instance() first.")
+
+    @limits.setter
+    def limits(cls, value):  # type: ignore
+        """Set the limits definition on the System singleton"""
+        if not cls.instance_obj:
+            cls.instance_obj = object.__new__(cls)
+            cls.instance_obj.targets = {}
+            cls.instance_obj.packet_config = None
+            cls.instance_obj.commands = None
+            cls.instance_obj.telemetry = None
+            cls.instance_obj.limits = None
+        cls.instance_obj.limits = value
+
+
+class System(metaclass=SystemMeta):
     # Variable that holds the singleton instance
     instance_obj = None
 
@@ -69,21 +161,21 @@ class System:
 
     @classmethod
     def add_post_instance_callback(cls, callback):
-        if System.obj_instance:
+        if System.instance_obj:  # type: ignore[has-type]
             callback()
         else:
-            cls.post_instance_callbacks << callback
+            cls.post_instance_callbacks.append(callback)
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
-        if not System.instance_obj:
+        if not System.instance_obj:  # type: ignore[has-type]
             os.makedirs(f"{base_dir}/targets", exist_ok=True)
             bucket = Bucket.getClient()
             for target_name in target_names:
                 # Retrieve bucket/targets/target_name/<TARGET>_current.zip
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"
                 bucket_key = f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
-                Logger.info(f"Retrieving {bucket_key} from targets bucket")
+                Logger.info(f"Retrieving {bucket_key} from targets bucket")  # type: ignore
                 bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path)
                 with zipfile.ZipFile(zip_path) as zip_file:
                     zip_file.extractall(f"{base_dir}/targets")
@@ -113,18 +205,18 @@ class System:
         Returns:
             [System] The System singleton
         """
-        if System.instance_obj:
-            return System.instance_obj
+        if System.instance_obj:  # type: ignore[has-type]
+            return System.instance_obj  # type: ignore[has-type]
         if not target_names and not target_config_dir:
             raise Exception("System.instance parameters are required on first call")
 
         with System.instance_mutex:
-            if System.instance_obj:
-                return System.instance_obj
-            System.instance_obj = cls(target_names, target_config_dir)
+            if System.instance_obj:  # type: ignore[has-type]
+                return System.instance_obj  # type: ignore[has-type]
+            System.instance_obj = cls(target_names, target_config_dir)  # type: ignore[has-type]
             for callback in System.post_instance_callbacks:
                 callback()
-            return System.instance_obj
+            return System.instance_obj  # type: ignore[has-type]
 
     # Dynamically add packets to the system instance
     #
@@ -135,9 +227,9 @@ class System:
     def dynamic_update(cls, dynamic_packets, cmd_or_tlm="TELEMETRY", affect_ids=False):
         for packet in dynamic_packets:
             if cmd_or_tlm == "TELEMETRY":
-                System.instance_obj.telemetry.dynamic_add_packet(packet, affect_ids=affect_ids)
+                cls.telemetry.dynamic_add_packet(packet, affect_ids=affect_ids)
             else:
-                System.instance_obj.commands.dynamic_add_packet(packet, affect_ids=affect_ids)
+                cls.commands.dynamic_add_packet(packet, affect_ids=affect_ids)
 
     # Create a new System object.
     #
@@ -150,11 +242,11 @@ class System:
             add_to_search_path(path, True)
         if target_config_dir:
             add_to_search_path(target_config_dir, True)
-        System.targets = {}
-        System.packet_config = PacketConfig()
-        System.commands = Commands(System.packet_config, System)
-        System.telemetry = Telemetry(System.packet_config, System)
-        System.limits = Limits(System.packet_config, System)
+        self.targets = {}
+        self.packet_config = PacketConfig()
+        self.commands = Commands(self.packet_config, self)
+        self.telemetry = Telemetry(self.packet_config, self)
+        self.limits = Limits(self.packet_config, self)
         for target_name in target_names:
             self.add_target(target_name, target_config_dir)
 
@@ -165,7 +257,7 @@ class System:
             raise parser.error(f"Target folder must exist '{folder_name}'.")
 
         target = Target(target_name, target_config_dir)
-        System.targets[target.name] = target
+        self.targets[target.name] = target
         errors = []  # Store all errors processing the cmd_tlm files
         try:
             for cmd_tlm_file in target.cmd_tlm_files:

@@ -18,7 +18,7 @@ The COSMOS front end provides multiple ways to send commands. They can come from
 
 Command definition files define the command packets that can be sent to COSMOS targets. One large file can be used to define the command packets, or multiple files can be used at the user's discretion. Command definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some command files that depend on others, e.g. they override or extend existing commands, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have cmd.txt you can create cmd_override.txt for commands that depends on the definitions in cmd.txt. Also note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
 
-When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters.
+When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
 <div style={{"clear": 'both'}}></div>
 
@@ -355,6 +355,12 @@ Example Usage:
 OVERFLOW TRUNCATE
 ```
 
+#### HIDDEN
+**Hides this parameter from all the OpenC3 tools**
+
+This item will not appear in CmdSender. It also hides this item from appearing in the Script Runner popup helper when writing scripts. The parameter should not be provided to commands.
+
+
 ### APPEND_PARAMETER
 **Defines a command parameter in the current command packet**
 
@@ -493,6 +499,29 @@ Example Usage:
 APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
+### STRUCTURE
+**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Name | Name of the parameter. Must be unique within the command. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate an offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
+| Command or telemetry | Whether the structure packet is a command or telemetry packet<br/><br/>Valid Values: <span class="values">CMD, COMMAND, TLM, TELEMETRY</span> | True |
+| Target Name | Target Name of the structure packet | True |
+| Packet Name | Packet Name of the structure packet | True |
+
+### APPEND_STRUCTURE
+**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Name | Name of the parameter. Must be unique within the command. | True |
+| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
+| Command or telemetry | Whether the structure packet is a command or telemetry packet<br/><br/>Valid Values: <span class="values">CMD, COMMAND, TLM, TELEMETRY</span> | True |
+| Target Name | Target Name of the structure packet | True |
+| Packet Name | Packet Name of the structure packet | True |
+
 ### SELECT_PARAMETER
 **Selects an existing command parameter for editing**
 
@@ -575,6 +604,16 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Accessor Class Name | The name of the accessor class | True |
 | Argument | Additional argument passed to the accessor class constructor | False |
 
+### SUBPACKETIZER
+<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+
+Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Subpacketizer Class Name | The name of the Subpacketizer class | True |
+| Argument | Additional argument passed to the Subpacketizer class constructor | False |
+
 ### TEMPLATE
 <div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
 
@@ -636,6 +675,12 @@ Used for packet definitions that can be used as structures for items with a give
 <div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
 
 Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+
+
+### SUBPACKET
+<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+
+Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 
 
 ### VALIDATOR

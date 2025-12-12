@@ -53,14 +53,10 @@
           item-value="value"
           @update:model-value="packetNameChanged"
         >
-          <template v-if="includeLatestPacketInDropdown" #prepend-item>
-            <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
-            <v-divider />
-          </template>
         </v-autocomplete>
       </v-col>
       <v-col
-        v-if="mode === 'cmd'"
+        v-if="mode === 'cmd' && showQueueSelect"
         :cols="colSize"
         class="tpic-select pr-4"
         data-test="select-queue"
@@ -249,6 +245,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    showQueueSelect: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: ['on-set', 'addItem'],
   data() {
@@ -257,9 +257,7 @@ export default {
       selectedTargetName: this.initialTargetName?.toUpperCase(),
       packetNames: [],
       selectedPacketName: this.initialPacketName?.toUpperCase(),
-      queueNames: [
-        { label: 'None', value: null },
-      ],
+      queueNames: [{ label: 'None', value: null }],
       selectedQueueName: null,
       itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
@@ -292,6 +290,11 @@ export default {
         value: 'UNKNOWN',
         description: 'UNKNOWN',
       },
+      LATEST: {
+        label: 'LATEST',
+        value: 'LATEST',
+        description: 'Latest values from all packets',
+      }, // Constant to indicate latest values from all packets
     }
   },
   computed: {
@@ -400,17 +403,20 @@ export default {
 
     // Fetch queues if in command mode
     if (this.mode === 'cmd') {
-      Api.get('/openc3-api/queues').then((response) => {
-        this.queueNames = [{ label: 'None', value: null }]
-        if (response.data && Array.isArray(response.data)) {
-          response.data.forEach((queue) => {
-            this.queueNames.push({ label: queue.name, value: queue.name })
-          })
-        }
-      }).catch((error) => {
-        console.error('Error fetching queues:', error)
-        // Keep default "None" option even if fetch fails
-      })
+      Api.get('/openc3-api/queues')
+        .then((response) => {
+          this.queueNames = [{ label: 'None', value: null }]
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach((queue) => {
+              this.queueNames.push({ label: queue.name, value: queue.name })
+            })
+          }
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching queues:', error)
+          // Keep default "None" option even if fetch fails
+        })
     }
 
     this.api.get_target_names().then((result) => {
@@ -479,11 +485,20 @@ export default {
         if (this.allowAll) {
           this.packetNames.unshift(this.ALL)
         }
+        if (this.includeLatestPacketInDropdown) {
+          this.packetNames.unshift(this.LATEST)
+        }
         if (!this.selectedPacketName) {
           if (this.packetNames.length === 0) {
             this.selectedPacketName = null
           } else {
             this.selectedPacketName = this.packetNames[0].value
+            if (
+              this.selectedPacketName === 'LATEST' &&
+              this.packetNames.length > 1
+            ) {
+              this.selectedPacketName = this.packetNames[1].value
+            }
           }
         }
         this.updatePacketDetails(this.selectedPacketName)
@@ -521,7 +536,13 @@ export default {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
-            this.itemNames = packet.items.map((item) => {
+            let items = []
+            packet.items.forEach((item) => {
+              if (!item['hidden']) {
+                items.push(item)
+              }
+            })
+            this.itemNames = items.map((item) => {
               let label = item.name
               if (item.data_type == 'DERIVED') {
                 label += ' *'
@@ -601,6 +622,8 @@ export default {
       } else if (value === 'LATEST') {
         this.itemsDisabled = false
         this.selectedPacketName = 'LATEST'
+        this.description = 'Latest values from all packets'
+        this.hazardous = false
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {
@@ -695,14 +718,16 @@ export default {
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {
-              this.$emit('addItem', {
-                targetName: this.selectedTargetName,
-                packetName: packetName.value,
-                itemName: item['name'],
-                valueType: this.selectedValueType,
-                reduced: this.selectedReduced,
-                reducedType: this.selectedReducedType,
-              })
+              if (!item['hidden']) {
+                this.$emit('addItem', {
+                  targetName: this.selectedTargetName,
+                  packetName: packetName.value,
+                  itemName: item['name'],
+                  valueType: this.selectedValueType,
+                  reduced: this.selectedReduced,
+                  reducedType: this.selectedReducedType,
+                })
+              }
             })
           },
         )

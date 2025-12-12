@@ -86,11 +86,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.demo == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -105,11 +105,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.admin == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -124,11 +124,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.bucketexplorer == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -143,11 +143,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdsender == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -162,11 +162,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdtlmserver == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -181,11 +181,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataextractor == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -200,11 +200,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -219,11 +219,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.handbooks == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -238,11 +238,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.iframe == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -257,11 +257,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.limitsmonitor == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -276,18 +276,18 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.packetviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
       - name: Run ESLint
-        run: pnpm lint --max-warnings 3
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
 
   scriptrunner:
@@ -295,11 +295,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.scriptrunner == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -314,11 +314,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tablemanager == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -333,11 +333,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmgrapher == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -352,11 +352,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -371,11 +371,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.jscommon == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -390,11 +390,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.toolbase == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
@@ -409,16 +409,16 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.vuecommon == 'true' || needs.changes.outputs.plugins == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+          node-version: 24
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
       - name: Run ESLint
-        run: pnpm lint --max-warnings 352
+        run: pnpm lint --max-warnings 331
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common

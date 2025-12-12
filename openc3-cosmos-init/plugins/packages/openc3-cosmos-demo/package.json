@@ -1,6 +1,6 @@
 {
   "name": "widgets_src",
-  "version": "6.9.2-beta0",
+  "version": "6.10.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,12 +13,12 @@
     "@openc3/vue-common": "workspace:*"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "1.14.1",
+    "@rushstack/eslint-patch": "1.15.0",
     "@vitejs/plugin-vue": "5.2.3",
-    "prettier": "3.6.2",
-    "sass": "1.93.2",
+    "prettier": "3.7.3",
+    "sass": "1.94.2",
     "vite": "6.4.1",
     "vite-plugin-style-inject": "0.0.1",
-    "vue": "3.5.22"
+    "vue": "3.5.25"
   }
 }

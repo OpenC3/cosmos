@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-scriptrunner",
-  "version": "6.9.2-beta0",
+  "version": "6.10.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "ace-builds": "1.43.4",
-    "axios": "1.12.2",
+    "axios": "1.13.2",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
     "single-spa-vue": "3.0.1",
@@ -24,9 +24,9 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "5.2.3",
     "@vue/test-utils": "2.4.6",
-    "prettier": "3.6.2",
-    "sass": "1.93.2",
+    "prettier": "3.7.3",
+    "sass": "1.94.2",
     "vite": "6.4.1",
-    "vue": "3.5.22"
+    "vue": "3.5.25"
   }
 }
