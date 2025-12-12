@@ -120,6 +120,78 @@ Continue to [Getting Started](gettingstarted).
 
 ---
 
+### CLEANUP
+
+If you need to remove COSMOS from your system or reset your installation, follow these steps. Note that using the `tab` key on the `./openc3.sh` script will display helpful guidance on the CLI options.
+
+#### To stop COSMOS, but not remove Docker volumes and data
+
+The below command will stop all running COSMOS containers. Note that the volumes and data will be preserved after stopping.
+
+```bash
+./openc3.sh stop
+```
+
+COSMOS can be started up again with the `run` command, with previously used data intact:
+
+```bash
+./openc3.sh run
+```
+
+#### To remove Docker networks, volumes, and data
+
+To cleanup Docker volumes and data created by COSMOS:
+
+```bash
+./openc3.sh cleanup
+```
+
+:::warning Data Loss
+The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**.
+Make sure to backup any important data before running cleanup.
+:::
+
+#### To remove Docker networks, volumes, data, and Local Mode changes
+
+If you're running COSMOS in Local Mode, you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
+
+```bash
+./openc3.sh cleanup local
+```
+
+:::warning Data Loss
+The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**, including **local mode changes added to your host machine**.
+Make sure to backup any important data before running cleanup.
+:::
+
+#### To remove Docker networks, volumes, and data _without confirmation_
+
+The `cleanup` options will prompt for a confirmation as they are going to delete your COSMOS installation. If you'd like to skip the confirmation, run the following:
+
+```bash
+./openc3.sh cleanup force
+    or
+./openc3.sh cleanup local force
+```
+
+The force option will remove containers, networks, volumes, and data without user confirmation.
+
+#### Remove Docker Images (Optional)
+
+If you want to free up disk space by removing the COSMOS Docker images:
+
+```bash
+docker images | grep openc3inc | awk '{print $3}' | xargs docker rmi
+```
+
+Or to remove all unused Docker images:
+
+```bash
+docker image prune -a
+```
+
+---
+
 ### Feedback
 
 :::note Find a problem in the documentation?
