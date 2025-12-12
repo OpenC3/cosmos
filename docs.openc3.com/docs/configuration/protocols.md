@@ -361,7 +361,7 @@ Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterp
 
 ```python
 INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE openc3/interfaces/protocols/ccsdc_tctf_protocol.py True False 1 0xA 0x1
+  PROTOCOL WRITE openc3/interfaces/protocols/ccsds_tctf_protocol.py True False 1 0xA 0x1
 ```
 
 Source code for [ccsds_tctf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tctf_protocol.py)
@@ -400,7 +400,7 @@ Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterp
 
 ```python
 INTERFACE INTERFACE_NAME <params>
-  PROTOCOL READ openc3/interfaces/protocols/ccsdc_tmtf_protocol.py True 0 0x1ACFFC1D True
+  PROTOCOL READ openc3/interfaces/protocols/ccsds_tmtf_protocol.py True 0 0x1ACFFC1D True
 ```
 
 Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tmtf_protocol.py)
