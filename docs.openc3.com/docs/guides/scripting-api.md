@@ -38,6 +38,12 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
+:::note Including APIs
+When writing a script for a microservice, interface, or something run within COSMOS you should include the openc3/api library.
+When writing a script that connects to COSMOS from outside of the COSMOS cluster you should include the openc3/script library.
+For more information see [API vs Script](./script-writing.md#api-vs-script)
+:::
+
 ### Migration from COSMOS v5 to v6
 
 The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
