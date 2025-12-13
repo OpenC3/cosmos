@@ -52,6 +52,13 @@ module OpenC3
         Microservice.run
         sleep 0.3 # Allow the ThreadManager to shut down the microservice
       end
+
+      it "logs a message when the run method returns cleanly" do
+        ENV['OPENC3_MICROSERVICE_NAME'] = "DEFAULT__TYPE__NAME"
+        expect(Logger).to receive(:info).with(/Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown\./)
+        Microservice.run
+        sleep 0.3 # Allow the ThreadManager to shut down the microservice
+      end
     end
   end
 end

@@ -30,15 +30,21 @@ class TestMicroservice(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Microservice must be named"):
             Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT"
-        with self.assertRaisesRegex(
-           RuntimeError, "Name DEFAULT doesn't match convention"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Name DEFAULT doesn't match convention"):
             Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT_TYPE_NAME"
-        with self.assertRaisesRegex(
-           RuntimeError, "Name DEFAULT_TYPE_NAME doesn't match convention"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Name DEFAULT_TYPE_NAME doesn't match convention"):
             Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
         Microservice.class_run()
         time.sleep(0.1)
+
+    @patch("openc3.utilities.logger.Logger.info")
+    def test_logs_message_when_run_method_returns_cleanly(self, mock_logger_info):
+        os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
+        Microservice.class_run()
+        time.sleep(0.1)
+        # Check that Logger.info was called with the expected message
+        mock_logger_info.assert_any_call(
+            "Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown."
+        )
