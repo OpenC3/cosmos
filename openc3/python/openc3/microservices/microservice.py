@@ -46,6 +46,7 @@ class Microservice:
             MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
             microservice.state = "RUNNING"
             microservice.run()
+            Logger.info(f"Microservice {microservice.name} run method returned cleanly and will now shutdown.")
             microservice.state = "FINISHED"
         except Exception as err:
             # TODO: Handle SystemExit and SignalException
@@ -56,7 +57,7 @@ class Microservice:
                 microservice.error = err
                 microservice.state = "DIED_ERROR"
             Logger.fatal(f"Microservice {microservice.name} dying from exception\n{traceback.format_exc()}")
-            microservice.shutdown() # Dying in crash so should try to shutdown
+            microservice.shutdown()  # Dying in crash so should try to shutdown
         finally:
             if microservice:
                 MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
@@ -192,7 +193,7 @@ class Microservice:
     def run(self):
         self.shutdown()
 
-    def shutdown(self, state='STOPPED'):
+    def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
         self.logger.info(f"Shutting down microservice: {self.name}")
