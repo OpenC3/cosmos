@@ -15,6 +15,7 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 # Configure QuestDB environment variables for performance tuning
 ENV QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=64K
+ENV QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE=64K
 
 USER root
 # Update packages to eliminate CVEs if we're not using the ubi image
