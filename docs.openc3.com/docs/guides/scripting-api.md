@@ -37,6 +37,12 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
+:::note Including APIs
+When writing a script for a microservice, interface, or something run within COSMOS you should include the openc3/api library.
+When writing a script that connects to COSMOS from outside of the COSMOS cluster you should include the openc3/script library.
+For more information see [API vs Script](./script-writing.md#api-vs-script)
+:::
+
 ### Migration from COSMOS v5 to v6
 
 The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
@@ -9653,7 +9659,11 @@ setting of the offline_access_token.
 
 ### initialize_offline_access
 
-Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place. 
+
+In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
+
+Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">

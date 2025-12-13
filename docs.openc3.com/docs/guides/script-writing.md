@@ -837,3 +837,35 @@ class MyTest < OpenC3::Group
   end
 end
 ```
+
+### API vs Script
+
+For many COSMOS APIs, they can be imported from either the API or Script library, like the following:
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+require 'openc3/api/api'
+  or
+require 'openc3/script'
+```
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from openc3.api import *
+  or
+from openc3.script import *
+```
+</TabItem>
+</Tabs>
+
+When writing a script for a microservice, interface, or something that is run _within_ COSMOS, the _openc3/api_ library should be used. Since the running script will already be inside the cluster, it can make direct connections to the database and does not need authentication.
+
+Examples: [microservice.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/templates/microservice/microservices/TEMPLATE/microservice.rb) and [microservice.py](https://github.com/OpenC3/cosmos/blob/main/openc3/templates/microservice/microservices/TEMPLATE/microservice.py).
+
+When writing a script that connects to COSMOS from outside of the COSMOS cluster the _openc3/script_ library should be used. Since the running script is external to COSMOS, it will also need environment variables set to ensure the script knows where to connect to. It will also need to authenticate, and therefore the `OPENC3_API_PASSWORD` (and `OPENC3_API_USER` for Enterprise) environment variables are needed.
+
+Examples: [external_script.rb](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.rb) and [external_script.py](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.py). 
+

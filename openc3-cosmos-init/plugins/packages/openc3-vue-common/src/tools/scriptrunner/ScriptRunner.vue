@@ -2010,9 +2010,14 @@ export default {
             this.processLine(data)
             break
           case 'output':
-            // data.line can consist of multiple lines split by newlines
-            // thus we split and only output if the content is not empty
-            for (const line of data.line.split('\n')) {
+            // data.line can consist of multiple lines split by newlines,
+            // thus we split and only output if the content is not empty.
+            // We also need to ensure it's properly serialized as a string.
+            let dataLine = data.line
+            if (dataLine === null || dataLine === undefined) { dataLine = '' }
+            else if (typeof dataLine === 'object') { dataLine = JSON.stringify(dataLine) }
+            else { dataLine = String(dataLine) }
+            for (const line of dataLine.split('\n')) {
               if (line) {
                 if (this.messagesNewestOnTop) {
                   this.messages.unshift({ message: line })
