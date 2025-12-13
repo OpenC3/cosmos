@@ -331,8 +331,8 @@ module OpenC3
       end
     end # def to_config
 
-    def to_xtce(output_dir)
-      XtceConverter.convert(@commands, @telemetry, output_dir)
+    def to_xtce(output_dir, time_association_name)
+      XtceConverter.convert(@commands, @telemetry, output_dir, time_association_name)
     end
 
     # Add current packet into hash if it exists

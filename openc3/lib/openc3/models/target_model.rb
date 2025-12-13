@@ -638,7 +638,8 @@ module OpenC3
         system = System.new([@name], temp_dir)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
-          system.packet_config.to_xtce(variables["xtce_output"])
+          puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
+          system.packet_config.to_xtce(variables["xtce_output"], variables['time_association_name'])
         end
         unless validate_only
           build_target_archive(temp_dir, target_folder)
