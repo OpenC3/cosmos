@@ -162,7 +162,7 @@ The process should loook something like this:
 
 If you are using COSMOS Enterprise, you can skip this section. COSOMS 7 Core introduces some security enhancements around the handling of the user password.
 
-First, we have switched the password hashing algorithm from SHA-256 to the industry standard argon2id. Before you can log in using COSMOS 7, you need to migrate the stored password hash used for user authentication. To do this, with Redis running, run `OPENC3_API_PASSWORD=<your-password> openc3.sh cli migratepassword`. You can do this at any point of the upgrade process while COSMOS is running (e.g. either before tearing down COSMOS 6 or after starting up COSMOS 7).
+First, we have switched the password hashing algorithm from SHA-256 to the industry standard argon2id. Before you can log in using COSMOS 7, you need to migrate the stored password hash used for user authentication. To do this, with Redis running, set the `OPENC3_API_PASSWORD` environment variable to your current password and run `openc3.sh cli migratepassword`. You can do this at any point of the upgrade process while COSMOS is running (e.g. either before tearing down COSMOS 6 or after starting up COSMOS 7).
 
 Second, the JSON API no longer accepts plaintext passwords. You must instead use a session token. Please see the note at the bottom of our [JSON API documentation](../development/json-api#further-debugging) for how to acquire a session token for the API.
 
