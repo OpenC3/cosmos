@@ -905,6 +905,9 @@ module OpenC3
             write_item(item, item.structure.buffer(false), :RAW, buffer)
           end
         elsif not item.default.nil? and not item.parent_item
+          # Skip writing default for accessor-based items when template is used
+          # The template already contains the correct default value
+          next if item.key and @template and use_template
           write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
         end
       end
@@ -1233,7 +1236,18 @@ module OpenC3
       # Items with derived items last
       @sorted_items.each do |item|
         if item.data_type != :DERIVED
-          items << item.as_json(*a)
+          item_hash = item.as_json(*a)
+          # For accessor-based items with a template, extract the default from the template
+          if item.key and @template
+            begin
+              template_value = @accessor.class.read_item(item, @template)
+              item_hash['default'] = template_value unless template_value.nil?
+            rescue => e
+              # If we can't read from template, keep the original default
+              Logger.debug("Could not read template default for #{item.name}: #{e.message}")
+            end
+          end
+          items << item_hash
         end
       end
       @sorted_items.each do |item|
