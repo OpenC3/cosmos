@@ -812,6 +812,12 @@ class Packet(Structure):
                     item.structure.restore_defaults(skip_item_names=skip_item_names, use_template=use_template)
                     self.write_item(item, item.structure.buffer, "RAW", buffer)
             elif item.default is not None and item.parent_item is None:
+                # Skip writing default for accessor-based items when template is used
+                # The template already contains the correct default value
+                # Only skip if key is explicitly set (different from item name) - this distinguishes
+                # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+                if item.key and self.template is not None and use_template:
+                    continue
                 if not (skip_item_names and item.name in upcase_skip_item_names):
                     self.write_item(item, item.default, "CONVERTED", buffer)
 
