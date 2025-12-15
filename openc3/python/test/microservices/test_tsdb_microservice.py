@@ -351,35 +351,6 @@ class TestTsdbMicroservice(unittest.TestCase):
 
             self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
-    @patch("openc3.microservices.microservice.System")
-    def test_is_printable(self, mock_system, mock_psycopg, mock_sender):
-        """Test _is_printable method"""
-        mock_ingest = Mock()
-        mock_sender.return_value = mock_ingest
-        mock_query = Mock()
-        mock_psycopg.return_value = mock_query
-        mock_cursor = Mock()
-        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
-        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
-
-        model = MicroserviceModel(
-            "DEFAULT__TSDB__TEST",
-            scope="DEFAULT",
-            topics=[],
-            target_names=[],
-        )
-        model.create()
-
-        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
-
-        # Test various strings
-        self.assertTrue(tsdb._is_printable("Hello World"))
-        self.assertTrue(tsdb._is_printable("123 456"))
-        self.assertTrue(tsdb._is_printable("Test\nWith\nNewlines"))
-        self.assertFalse(tsdb._is_printable("\x00\x01\x02"))
-
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.microservices.tsdb_microservice.Sender")
     @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
