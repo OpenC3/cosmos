@@ -18,6 +18,7 @@ import re
 import time
 from datetime import datetime, timezone
 from openc3.utilities.extract import remove_quotes
+from openc3.api.settings_api import get_setting
 import traceback
 
 
@@ -136,8 +137,23 @@ class SuiteResults:
             self._report.append("")
 
     def write(self, string):
-        # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
+        # Get time_zone setting to determine timestamp format
+        try:
+            time_zone = get_setting("time_zone")
+        except Exception:
+            time_zone = None
+
+        # Format timestamp based on time_zone setting
+        if time_zone and time_zone.upper() == "LOCAL":
+            # Use local time with timezone offset
+            # astimezone() converts to local timezone-aware datetime
+            timestamp = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        else:
+            # Default to UTC (for None, "UTC", "utc", or unknown values)
+            # Can't use isoformat because it appends "+00:00" instead of "Z"
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+        self._report.append(timestamp + ": " + string)
 
     # Define a few aliases
     puts = write
