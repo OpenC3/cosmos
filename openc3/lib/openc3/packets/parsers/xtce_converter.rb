@@ -353,7 +353,6 @@ module OpenC3
           if string_or_binary == :STRING
             initial_value = item.default.inspect
           else
-            # TODO: verify hexBinary is just two hex values nothing else
             initial_value = item.default.inspect.unpack('H*').first
           end
         end
@@ -374,7 +373,6 @@ module OpenC3
           unique[item_name] = unique_items[0]
           next
         end
-        # TODO: need to make sure all the items in the array are exactly the same
         unique[item_name] = unique_items[0]
       end
       unique
@@ -395,7 +393,6 @@ module OpenC3
           unique[item_name] = unique_items[0]
           next
         end
-        # TODO: need to make sure all the items in the array are exactly the same
         unique[item_name] = unique_items[0]
       end
       unique
@@ -425,7 +422,6 @@ module OpenC3
           unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
           next
         end
-        # TODO: need to make sure all the items in the array are exactly the same
         unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
       end
       unique
@@ -489,7 +485,6 @@ module OpenC3
     end
 
     def to_xtce_type(item, param_or_arg, xml, prefix: "")
-      # TODO: Spline Conversions
       case item.data_type
       when :INT, :UINT
         to_xtce_int(item, param_or_arg, xml, prefix:prefix)
@@ -673,7 +668,6 @@ module OpenC3
           if string_or_binary == 'String'
             attrs[:initialValue] = item.default.inspect
           else
-            # TODO: verify hexBinary is just two hex values nothing else
             attrs[:initialValue] = item.default.inspect.unpack('H*').first
           end
         end
