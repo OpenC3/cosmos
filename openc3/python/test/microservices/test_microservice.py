@@ -39,12 +39,13 @@ class TestMicroservice(unittest.TestCase):
         Microservice.class_run()
         time.sleep(0.1)
 
-    @patch("openc3.utilities.logger.Logger.info")
-    def test_logs_message_when_run_method_returns_cleanly(self, mock_logger_info):
+    def test_logs_message_when_run_method_returns_cleanly(self):
+        from openc3.utilities.logger import Logger
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
-        Microservice.class_run()
-        time.sleep(0.1)
-        # Check that Logger.info was called with the expected message
-        mock_logger_info.assert_any_call(
-            "Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown."
-        )
+        with patch.object(Logger.instance(), "info") as mock_logger_info:
+            Microservice.class_run()
+            time.sleep(0.1)
+            # Check that Logger.info was called with the expected message
+            mock_logger_info.assert_any_call(
+                "Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown."
+            )

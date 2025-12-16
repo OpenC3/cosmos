@@ -80,11 +80,6 @@ class LoggerMeta(type):
         if func in CLASS_ATTRS:
             return super().__setattr__(func, value)
 
-        # Allow setting methods on the instance (e.g., for mocking in tests)
-        # This mirrors the behavior of __getattribute__ which delegates to the instance
-        if hasattr(cls.instance(), func):
-            return setattr(cls.instance(), func, value)
-
         raise AttributeError(f"Unknown attribute {func}")
 
 
