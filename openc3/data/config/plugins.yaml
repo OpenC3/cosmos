@@ -92,7 +92,7 @@ WIDGET:
 SCRIPT_ENGINE:
   summary: Define a script engine to add language support to Script Runner
   example: SCRIPT_ENGINE .print print_script_engine.py
-  description: Defines a script engine to add language support to Script Runner
+  description: Defines a script engine to add language support to Script Runner. For a realistic example, see our [CSTOL](https://github.com/OpenC3/openc3-cosmos-script-engine-cstol) plugin.
   since: 6.5.0
   parameters:
     - name: Extension
