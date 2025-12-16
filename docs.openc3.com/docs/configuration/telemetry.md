@@ -25,9 +25,25 @@ When defining telemetry items you can choose from the following data types: INT,
 Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
 :::
 
+### Naming Convention
+
+Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+
+* Use underscores
+
+    Packet and Item names like `HEALTH_STATUS` or `GND1_STATUS` are easy to read and understand.
+
+* Be descriptive but succient
+
+    A packet name like `BUS_FLIGHT_SOFTWARE_ADCS_PACKET` is a valid packet name but makes all the drop downs extra long and is a lot to type. A better choice might be `BFSW_ADCS`. You already know it's a packet and the first three words collapse to an easy to understand acronym.
+
+* Avoid brackets in telemetry and item names
+
+    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double braces. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
+
 ### ID Items
 
-All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry.md#id_item) and [APPEND_ID_ITEM](telemetry.md#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify. If this is not the case, you must set [TLM_UNIQUE_ID_MODE](target.md#tlm_unique_id_mode) in the target.txt file which incurs a performance penalty on every packet identification.
+All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry#id_item) and [APPEND_ID_ITEM](telemetry#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify. If this is not the case, you must set [TLM_UNIQUE_ID_MODE](target#tlm_unique_id_mode) in the target.txt file which incurs a performance penalty on every packet identification.
 
 ### Variable Sized Items
 
@@ -41,7 +57,7 @@ COSMOS has a concept of a derived item which is a telemetry item that doesn't ac
 ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
-Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry.md#read_conversion), to generate the value.
+Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry#read_conversion), to generate the value.
 
 ### Received Time and Packet Time
 
