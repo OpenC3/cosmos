@@ -43,7 +43,7 @@ Telemetry Packets and Items can be named however you want with very few exceptio
 
 ### ID Items
 
-All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry#id_item) and [APPEND_ID_ITEM](telemetry#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify. If this is not the case, you must set [TLM_UNIQUE_ID_MODE](target#tlm_unique_id_mode) in the target.txt file which incurs a performance penalty on every packet identification.
+All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry#id_item) and [APPEND_ID_ITEM](telemetry#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify.
 
 ### Variable Sized Items
 
