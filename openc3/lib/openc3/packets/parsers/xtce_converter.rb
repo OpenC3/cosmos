@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,7 +85,7 @@ module OpenC3
                                   "xmlns:xsi" => "http://www.w3.org/2001/XMLSchema-instance",
                                   "name" => root_target_name ? root_target_name : "root",
                                   "xsi:schemaLocation" => "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd")
-        end 
+        end
         new_doc = root_builder.doc
         new_root = new_doc.root
         xml_files.each do |file_path|
@@ -175,7 +175,7 @@ module OpenC3
         end
       end
       return unless derived.length > 0
-      algorithm_xml = Nokogiri::XML::Builder.new do |alg_xml| 
+      algorithm_xml = Nokogiri::XML::Builder.new do |alg_xml|
         alg_xml.AlgorithmSet do
           derived.each do |packet_name, item|
             alg_xml.CustomAlgorithm("name" => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_" \
@@ -304,7 +304,7 @@ module OpenC3
                     to_xtce_item(item, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
                   end
                 end # ArgumentList
-              end # If Aguments List is greater than 0
+              end # If Arguments List is greater than 0
               xml['xtce'].CommandContainer(:name => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
                 process_entry_list(xml, packet, :COMMAND, unique_tlm_params)
                   #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
@@ -348,15 +348,14 @@ module OpenC3
       initial_value = nil
       if item.default && !item.array_size
         unless item.default.is_printable?
-          #attrs[:initialValue] = '0x' + item.default.simple_formatted
-          initial_value = item.default.simple_formatted
+          initial_value = '0x' + item.default.simple_formatted
         else
           if string_or_binary == :STRING
             initial_value = item.default.inspect
           else
-            # TODO: verify hexBinary is just two hex values nothing else 
+            # TODO: verify hexBinary is just two hex values nothing else
             initial_value = item.default.inspect.unpack('H*').first
-          end         
+          end
         end
       end
       initial_value
@@ -406,7 +405,7 @@ module OpenC3
       sorted_items = []
       items.each do |item|
         next if item.data_type == :DERIVED
-        next if item.id_value 
+        next if item.id_value
         sorted_items.push(item)
       end
       sorted_items
@@ -449,8 +448,8 @@ module OpenC3
           temp_type = item.id_value ? "Parameter" : type
           prefix = (cmd_vs_tlm == :COMMAND && unique_tlm_params.include?(item.name)) ? "CMD_" : ""
           if item.array_size
-            reference_symbol = "#{temp_type.downcase}Ref".to_sym
             # Requiring parameterRef for argument arrays appears to be a defect in the schema
+            reference_symbol = temp_type == "Argument" ? :parameterRef : "#{temp_type.downcase}Ref".to_sym
             xml['xtce'].public_send("Array#{temp_type}RefEntry".intern, reference_symbol => prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
               set_fixed_value(xml, item) if !packed
               xml['xtce'].DimensionList do
@@ -520,7 +519,7 @@ module OpenC3
                 xml['xtce'].FixedValue do
                   xml['xtce'].text 0
                 end # FixedValue
-              end # StartingIndex                
+              end # StartingIndex
               xml['xtce'].EndingIndex do
                 xml['xtce'].FixedValue do
                   xml['xtce'].text 0 # OpenC3 Only supports one-dimensional arrays
@@ -612,7 +611,7 @@ module OpenC3
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding, :byteOrder => "leastSignificantByteFirst")
             else
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding)
-            end          
+            end
           end
           to_xtce_limits(item, xml)
           if item.range and item.range.last <= MAX_64_BIT_INT
@@ -640,7 +639,7 @@ module OpenC3
             to_xtce_conversion(item, xml)
           end
           else
-            xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985') do            
+            xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985') do
               to_xtce_conversion(item, xml)
             end
           end
@@ -649,7 +648,7 @@ module OpenC3
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985', :byteOrder => "leastSignificantByteFirst")
           else
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985')
-          end        
+          end
         end
         to_xtce_limits(item, xml)
         if item.range and item.range.last < MAX_64_BIT_INT
@@ -658,7 +657,7 @@ module OpenC3
           else
             xml['xtce'].ValidRangeSet do
                 xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-            end        
+            end
           end
         end
       end
@@ -669,15 +668,14 @@ module OpenC3
       attrs[:characterWidth] = 8 if string_or_binary == 'String'
       if item.default && !item.array_size
         unless item.default.is_printable?
-          #attrs[:initialValue] = '0x' + item.default.simple_formatted
-          attrs[:initialValue] = item.default.simple_formatted
+          attrs[:initialValue] = '0x' + item.default.simple_formatted
         else
           if string_or_binary == 'String'
             attrs[:initialValue] = item.default.inspect
           else
-            # TODO: verify hexBinary is just two hex values nothing else 
+            # TODO: verify hexBinary is just two hex values nothing else
             attrs[:initialValue] = item.default.inspect.unpack('H*').first
-          end         
+          end
         end
       end
       attrs[:shortDescription] = item.description if item.description
@@ -731,9 +729,9 @@ module OpenC3
       end
       attrs = {:name => replaced_item_name, "#{param_or_arg.downcase}TypeRef" => replaced_item_name + type_suffix}
       needs_alias = item.name.count(INVALID_CHARS) > 0 || !prefix.empty?
-      if param_or_arg.downcase == "argument" 
+      if param_or_arg.downcase == "argument"
         # Set the name to just be the item name since ArgumentsTypes
-        # will use the packet name as a prefix but not in the actual argument name. 
+        # will use the packet name as a prefix but not in the actual argument name.
         # Maintains the individual type between arguments with a shared name.
         needs_alias = item.name.count(INVALID_CHARS) > 0
         attrs[:name] = item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)

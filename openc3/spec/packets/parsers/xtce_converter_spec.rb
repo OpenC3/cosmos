@@ -486,7 +486,7 @@ module OpenC3
       tf.puts "          </xtce:SizeInBits>"
       tf.puts "        </xtce:StringDataEncoding>"
       tf.puts "      </xtce:StringArgumentType>"
-      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING2_Type\" characterWidth=\"8\" initialValue=\"DEAD\" shortDescription=\"Binary\">"
+      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING2_Type\" characterWidth=\"8\" initialValue=\"0xDEAD\" shortDescription=\"Binary\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:StringDataEncoding encoding=\"UTF-8\">"
       tf.puts "          <xtce:SizeInBits>"
@@ -497,7 +497,7 @@ module OpenC3
       tf.puts "          </xtce:SizeInBits>"
       tf.puts "        </xtce:StringDataEncoding>"
       tf.puts "      </xtce:StringArgumentType>"
-      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\" shortDescription=\"Block\">"
+      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"0xBEEF\" shortDescription=\"Block\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:BinaryDataEncoding>"
       tf.puts "          <xtce:SizeInBits>"
@@ -518,15 +518,15 @@ module OpenC3
       tf.puts "          <xtce:Argument name=\"CMD_FLOAT\" argumentTypeRef=\"CMD_PKT_CMD_FLOAT_Type\" initialValue=\"10.0\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_DOUBLE\" argumentTypeRef=\"CMD_PKT_CMD_DOUBLE_Type\" initialValue=\"0.0\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_PKT_CMD_STRING_Type\" initialValue=\"&quot;DEAD&quot;\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_PKT_CMD_STRING2_Type\" initialValue=\"DEAD\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_PKT_CMD_STRING2_Type\" initialValue=\"0xDEAD\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"0xBEEF\"/>"
       tf.puts "        </xtce:ArgumentList>"
       tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_Commands\">"
       tf.puts "          <xtce:EntryList>"
       tf.puts "            <xtce:ParameterRefEntry parameterRef=\"CMD_OPCODE\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_UNSIGNED\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_SIGNED\"/>"
-      tf.puts "            <xtce:ArrayArgumentRefEntry argumentRef=\"CMD_ARRAY\">"
+      tf.puts "            <xtce:ArrayArgumentRefEntry parameterRef=\"CMD_ARRAY\">"
       tf.puts "              <xtce:DimensionList>"
       tf.puts "                <xtce:Dimension>"
       tf.puts "                  <xtce:StartingIndex>"
@@ -907,14 +907,14 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TARGETS_COMBINED")
       end
 
-      it "doesnt combine xtce since no target exists" do
+      it "does not combine xtce since no target exists" do
         spec_install = File.join("..", "..", "install")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir)
         expect(output_path).to be_equivalent_to(nil)
       end
 
-      it "doesnt combine xtce since only one target exists" do
+      it "does not combine xtce since only one target exists" do
         tf_tgt1 = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"TLMPKT Description\"\n"\
                "  ID_ITEM TLM.OPCODE 0 8 UINT 0 \"TLM_OPCODE Description\"\n"
@@ -1074,6 +1074,188 @@ module OpenC3
         tf.unlink
         expected_xtce_file.unlink
         File.delete(filename) if File.exist?(filename)
+      end
+
+      it "converts items with read and write conversions" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM ITEM1 0 16 UINT \"Item with conversion\"\n"\
+              "    GENERIC_READ_CONVERSION_START\n"\
+              "      value * 2\n"\
+              "    GENERIC_READ_CONVERSION_END\n"\
+              "  ITEM ITEM2 16 16 UINT \"Item with poly conversion\"\n"\
+              "    POLY_READ_CONVERSION 1.0 2.0\n"
+        tf.puts tlm
+        cmd = "COMMAND TGT1 CMD_PKT LITTLE_ENDIAN \"Command\"\n"\
+              "  PARAMETER CMD_ITEM1 0 16 UINT 0 65535 0 \"Command item\"\n"\
+              "    GENERIC_WRITE_CONVERSION_START\n"\
+              "      value / 2\n"\
+              "    GENERIC_WRITE_CONVERSION_END\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        # Verify conversions are present
+        expect(xtce_doc.to_s).to include("DefaultCalibrator")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "converts items with limits groups" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM ITEM1 0 16 UINT \"Item with limits\"\n"\
+              "    LIMITS DEFAULT 1 ENABLED -10.0 -5.0 5.0 10.0\n"\
+              "  ITEM ITEM2 16 16 INT \"Item with limits\"\n"\
+              "    LIMITS DEFAULT 1 ENABLED -100 -50 50 100\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        # Verify DEFAULT limits are present
+        expect(xtce_doc.to_s).to include("DefaultAlarm")
+        expect(xtce_doc.to_s).to include("StaticAlarmRanges")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "converts items with different endianness" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMD_PKT BIG_ENDIAN \"Command\"\n"\
+              "  PARAMETER PARAM1 0 32 UINT 0 100 0 \"Big endian parameter\"\n"\
+              "  PARAMETER PARAM2 32 32 UINT 0 100 0 \"Little endian parameter\" LITTLE_ENDIAN\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        # Verify little endian byte order is present
+        expect(xtce_doc.to_s).to include("byteOrder=\"leastSignificantByteFirst\"")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "converts boolean parameters" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMD_PKT LITTLE_ENDIAN \"Command\"\n"\
+              "  PARAMETER CMD_BOOL 0 8 UINT 0 1 0 \"Boolean parameter\"\n"\
+              "    STATE FALSE 0\n"\
+              "    STATE TRUE 1\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        expect(xtce_doc.to_s).to include("EnumeratedArgumentType")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "handles items with min/max values" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM ITEM1 0 16 INT \"Item with min/max\"\n"\
+              "  ITEM ITEM2 16 32 FLOAT \"Float with range\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "handles string with different encodings" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM STR1 0 64 STRING \"String item\"\n"\
+              "  ITEM STR2 64 64 STRING \"Another string\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        expect(xtce_doc.to_s).to include("StringDataEncoding")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "handles packed vs unpacked items" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM ITEM1 0 8 UINT \"Packed item\"\n"\
+              "  ITEM ITEM2 100 8 UINT \"Unpacked item\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        # Unpacked items should have LocationInContainerInBits
+        expect(xtce_doc.to_s).to include("LocationInContainerInBits")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "handles multiple id parameters" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMD_PKT LITTLE_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER CMD_ID1 0 8 UINT 1 1 1 \"First ID\"\n"\
+              "  ID_PARAMETER CMD_ID2 8 8 UINT 2 2 2 \"Second ID\"\n"\
+              "  PARAMETER CMD_PARAM 16 16 UINT 0 65535 0 \"Parameter\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        # Should have both ID parameters
+        expect(xtce_doc.to_s).to include("CMD_ID1")
+        expect(xtce_doc.to_s).to include("CMD_ID2")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "handles array items in telemetry" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLM_PKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ARRAY_ITEM ARRAY1 0 8 UINT 80 \"Array of 10 bytes\"\n"\
+              "  ITEM ITEM1 80 16 UINT \"Regular item\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        expect(File.exist?(xml_path)).to be true
+        xtce_doc = Nokogiri::XML(File.open(xml_path))
+        expect(xtce_doc.to_s).to include("ArrayParameterType")
+        expect(xtce_doc.to_s).to include("ArrayParameterRefEntry")
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
     end
   end

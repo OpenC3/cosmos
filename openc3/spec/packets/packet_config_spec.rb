@@ -107,7 +107,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         @pc.to_config(OpenC3::USERPATH)
-        @pc.to_xtce(OpenC3::USERPATH)
+        @pc.to_xtce(OpenC3::USERPATH, "PACKET_TIME")
         expect(cmd.strip).to eql File.read(File.join(OpenC3::USERPATH, 'TGT1', 'cmd_tlm', 'tgt1_cmd.txt')).strip
         expect(tlm.strip).to eql File.read(File.join(OpenC3::USERPATH, 'TGT1', 'cmd_tlm', 'tgt1_tlm.txt')).strip
         expect(limits.strip).to eql File.read(File.join(OpenC3::USERPATH, 'SYSTEM', 'cmd_tlm', 'limits_groups.txt')).strip
