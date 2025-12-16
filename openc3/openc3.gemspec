@@ -104,7 +104,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'faraday-multipart',   '~> 1.0'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows
   s.add_runtime_dependency 'jsonpath', '~> 1.1'
-  s.add_runtime_dependency 'mqtt', '~> 0.6'
+  s.add_runtime_dependency 'mqtt', '~> 0.7'
   s.add_runtime_dependency 'opentelemetry-exporter-otlp', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-action_pack', '~> 0.2'
   s.add_runtime_dependency 'opentelemetry-instrumentation-aws_sdk', '~> 0.3'
