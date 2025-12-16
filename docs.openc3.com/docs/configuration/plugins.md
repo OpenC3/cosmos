@@ -918,7 +918,7 @@ Disable ERB processing for the entire widget or a set of regular expressions ove
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ## SCRIPT_ENGINE
-**Define a script engine to add language support to Script Runner**
+<div class="right">(Since 6.5.0)</div>**Define a script engine to add language support to Script Runner**
 
 Defines a script engine to add language support to Script Runner. For a realistic example, see our [CSTOL](https://github.com/OpenC3/openc3-cosmos-script-engine-cstol) plugin.
 
