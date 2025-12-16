@@ -1659,7 +1659,7 @@ module OpenC3
 
       it "extracts default values from template for accessor-based items" do
         packet = Packet.new("tgt", "pkt")
-        packet.accessor = JsonAccessor
+        packet.accessor = JsonAccessor.new(packet)
         template = '{"id_item":31, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
         packet.template = template
 
@@ -1691,7 +1691,7 @@ module OpenC3
 
       it "keeps original default when template read fails" do
         packet = Packet.new("tgt", "pkt")
-        packet.accessor = JsonAccessor
+        packet.accessor = JsonAccessor.new(packet)
         packet.template = '{"item1":101}'
 
         # Add an item with a key that doesn't exist in the template

@@ -821,7 +821,6 @@ module OpenC3
           Store.del("#{@scope}__COMMANDCNTS__{#{target_name}}")
         end
         packets.each do |packet_name, packet|
-          Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
           rescue JSON::GeneratorError => e

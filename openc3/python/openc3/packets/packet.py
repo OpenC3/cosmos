@@ -816,7 +816,7 @@ class Packet(Structure):
                 # The template already contains the correct default value
                 # Only skip if key is explicitly set (different from item name) - this distinguishes
                 # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
-                if item.key and self.template is not None and use_template:
+                if item.key and item.key != item.name and self.template is not None and use_template:
                     continue
                 if not (skip_item_names and item.name in upcase_skip_item_names):
                     self.write_item(item, item.default, "CONVERTED", buffer)
@@ -1134,7 +1134,7 @@ class Packet(Structure):
         if self.validator:
             config["validator"] = self.validator.__class__.__name__
         if self.template:
-            config["template"] = base64.b64encode(self.template)
+            config["template"] = base64.b64encode(self.template).decode("ascii")
 
         if self.processors:
             processors = []
@@ -1152,7 +1152,9 @@ class Packet(Structure):
             if item.data_type != "DERIVED":
                 item_dict = item.as_json()
                 # For accessor-based items with a template, extract the default from the template
-                if item.key and self.template:
+                # Only extract for items with explicit keys (different from item name) - this distinguishes
+                # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+                if item.key and item.key != item.name and self.template:
                     try:
                         # Convert template to the format expected by the accessor
                         template_buffer = self.template
