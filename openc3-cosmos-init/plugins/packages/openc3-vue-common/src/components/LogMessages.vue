@@ -82,7 +82,7 @@
       hide-default-footer
       :sort-by="[{ key: 'time', order: 'desc' }]"
       density="compact"
-      sticky
+      fixed-header
       hover
       data-test="log-messages"
     >
