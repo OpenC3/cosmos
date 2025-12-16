@@ -1717,6 +1717,57 @@ class PacketJson(unittest.TestCase):
         self.assertIn("BinaryAccessor", json["accessor"])
         # self.assertEqual(json['template'], Base64.encode64("\x00\x01\x02\x03"))
 
+    def test_extracts_default_values_from_template_for_accessor_based_items(self):
+        from openc3.accessors.json_accessor import JsonAccessor
+
+        packet = Packet("tgt", "pkt")
+        packet.accessor = JsonAccessor()
+        template = b'{"id_item":31, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+        packet.template = template
+
+        # Add items with keys
+        item1 = packet.append_item("ID_ITEM", 32, "INT")
+        item1.key = "$.id_item"
+        item1.default = 0  # Placeholder default
+
+        item2 = packet.append_item("ITEM1", 16, "UINT")
+        item2.key = "$.item1"
+        item2.default = 0  # Placeholder default
+
+        item3 = packet.append_item("ITEM5", 8, "UINT", 0)  # Array parameter
+        item3.key = "$.more.item5"
+        item3.default = 0  # Placeholder default
+
+        json = packet.as_json()
+
+        # Verify that defaults are extracted from the template
+        id_item_json = next(i for i in json["items"] if i["name"] == "ID_ITEM")
+        self.assertEqual(id_item_json["default"], 31)
+
+        item1_json = next(i for i in json["items"] if i["name"] == "ITEM1")
+        self.assertEqual(item1_json["default"], 101)
+
+        item5_json = next(i for i in json["items"] if i["name"] == "ITEM5")
+        self.assertEqual(item5_json["default"], [4, 3, 2, 1])
+
+    def test_keeps_original_default_when_template_read_fails(self):
+        from openc3.accessors.json_accessor import JsonAccessor
+
+        packet = Packet("tgt", "pkt")
+        packet.accessor = JsonAccessor()
+        packet.template = b'{"item1":101}'
+
+        # Add an item with a key that doesn't exist in the template
+        item1 = packet.append_item("ITEM1", 16, "UINT")
+        item1.key = "$.nonexistent"
+        item1.default = 99
+
+        json = packet.as_json()
+
+        # Should keep the original default since template read fails
+        item1_json = next(i for i in json["items"] if i["name"] == "ITEM1")
+        self.assertEqual(item1_json["default"], 99)
+
 
 class PacketDecom(unittest.TestCase):
     def test_creates_decommutated_array_data(self):

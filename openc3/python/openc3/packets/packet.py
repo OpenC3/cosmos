@@ -812,6 +812,12 @@ class Packet(Structure):
                     item.structure.restore_defaults(skip_item_names=skip_item_names, use_template=use_template)
                     self.write_item(item, item.structure.buffer, "RAW", buffer)
             elif item.default is not None and item.parent_item is None:
+                # Skip writing default for accessor-based items when template is used
+                # The template already contains the correct default value
+                # Only skip if key is explicitly set (different from item name) - this distinguishes
+                # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+                if item.key and item.key != item.name and self.template is not None and use_template:
+                    continue
                 if not (skip_item_names and item.name in upcase_skip_item_names):
                     self.write_item(item, item.default, "CONVERTED", buffer)
 
@@ -1128,7 +1134,7 @@ class Packet(Structure):
         if self.validator:
             config["validator"] = self.validator.__class__.__name__
         if self.template:
-            config["template"] = base64.b64encode(self.template)
+            config["template"] = base64.b64encode(self.template).decode("ascii")
 
         if self.processors:
             processors = []
@@ -1144,7 +1150,23 @@ class Packet(Structure):
         # Items with derived items last
         for item in self.sorted_items:
             if item.data_type != "DERIVED":
-                items.append(item.as_json())
+                item_dict = item.as_json()
+                # For accessor-based items with a template, extract the default from the template
+                # Only extract for items with explicit keys (different from item name) - this distinguishes
+                # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+                if item.key and item.key != item.name and self.template:
+                    try:
+                        # Convert template to the format expected by the accessor
+                        template_buffer = self.template
+                        if isinstance(template_buffer, bytes):
+                            template_buffer = bytearray(template_buffer)
+                        template_value = self.accessor.__class__.class_read_item(item, template_buffer)
+                        if template_value is not None:
+                            item_dict["default"] = template_value
+                    except Exception as e:
+                        # If we can't read from template, keep the original default
+                        Logger.debug(f"Could not read template default for {item.name}: {e}")
+                items.append(item_dict)
 
         for item in self.sorted_items:
             if item.data_type == "DERIVED":

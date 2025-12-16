@@ -1656,6 +1656,55 @@ module OpenC3
         json = json_hash.as_json()
         expect(json.length).to eql 204800
       end
+
+      it "extracts default values from template for accessor-based items" do
+        packet = Packet.new("tgt", "pkt")
+        packet.accessor = JsonAccessor.new(packet)
+        template = '{"id_item":31, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+        packet.template = template
+
+        # Add items with keys
+        item1 = packet.append_item("ID_ITEM", 32, :INT)
+        item1.key = "$.id_item"
+        item1.default = 0  # Placeholder default
+
+        item2 = packet.append_item("ITEM1", 16, :UINT)
+        item2.key = "$.item1"
+        item2.default = 0  # Placeholder default
+
+        item3 = packet.append_item("ITEM5", 8, :UINT, 0)  # Array parameter
+        item3.key = "$.more.item5"
+        item3.default = 0  # Placeholder default
+
+        json = packet.as_json()
+
+        # Verify that defaults are extracted from the template
+        id_item_json = json['items'].find { |i| i['name'] == 'ID_ITEM' }
+        expect(id_item_json['default']).to eql 31
+
+        item1_json = json['items'].find { |i| i['name'] == 'ITEM1' }
+        expect(item1_json['default']).to eql 101
+
+        item5_json = json['items'].find { |i| i['name'] == 'ITEM5' }
+        expect(item5_json['default']).to eql [4, 3, 2, 1]
+      end
+
+      it "keeps original default when template read fails" do
+        packet = Packet.new("tgt", "pkt")
+        packet.accessor = JsonAccessor.new(packet)
+        packet.template = '{"item1":101}'
+
+        # Add an item with a key that doesn't exist in the template
+        item1 = packet.append_item("ITEM1", 16, :UINT)
+        item1.key = "$.nonexistent"
+        item1.default = 99
+
+        json = packet.as_json()
+
+        # Should keep the original default since template read fails
+        item1_json = json['items'].find { |i| i['name'] == 'ITEM1' }
+        expect(item1_json['default']).to eql 99
+      end
     end
 
     describe "decom" do
