@@ -206,8 +206,12 @@ describe String do
       expect("[0,1,2,3]".convert_to_value).to eql [0, 1, 2, 3]
     end
 
-    it "just returns the string if something goes wrong" do
-      expect("[.a,2,3]".convert_to_value).to eql "[.a,2,3]"
+    it "is very tolerant to array contents" do
+      expect("[.a,2,3]".convert_to_value).to eql [".a",2,3]
+    end
+
+    it "it handles objects" do
+      expect("{'hello':'goodbye'}".convert_to_value).to eql({"hello" => "goodbye"})
     end
 
     it "doesn't match(multiline strings" do
