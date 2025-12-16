@@ -55,6 +55,7 @@ module OpenC3
           MicroserviceStatusModel.set(microservice.as_json(), scope: microservice.scope)
           microservice.state = 'RUNNING'
           microservice.run
+          Logger.info("Microservice #{name} run method returned cleanly and will now shutdown.")
           microservice.state = 'FINISHED'
         rescue Exception => e
           if SystemExit === e or SignalException === e
