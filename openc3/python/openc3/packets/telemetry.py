@@ -84,25 +84,84 @@ class Telemetry:
             raise RuntimeError(f"Telemetry packet '{upcase_target_name} {upcase_packet_name}' does not exist")
         return packet
 
+    # @param target_name (see #packet)
+    # @param packet_name (see #packet)
+    # @return [Array<PacketItem>] The telemetry items for the given target and packet name
+    def items(self, target_name, packet_name):
+        return self.packet(target_name, packet_name).sorted_items
+
+    # @param target_name (see #packet)
+    # @param packet_name (see #packet) The packet name.  LATEST is supported.
+    # @return [Array<PacketItem>] The telemetry item names for the given target and packet name
+    def item_names(self, target_name, packet_name):
+        upcase_packet_name = packet_name.upper()
+        if self.LATEST_PACKET_NAME == upcase_packet_name:
+            target_upcase = target_name.upper()
+            target_latest_data = self.config.latest_data.get(target_upcase)
+            if target_latest_data is None:
+                raise RuntimeError(f"Telemetry Target '{target_upcase}' does not exist")
+
+            item_names = target_latest_data.keys()
+        else:
+            tlm_packet = self.packet(target_name, packet_name)
+            item_names = []
+            for item in tlm_packet.sorted_items:
+                item_names.append(item.name)
+        return item_names
+
+    # Set a telemetry value in a packet.
+    #
+    # @param target_name (see #packet_and_item)
+    # @param packet_name (see #packet_and_item)
+    # @param item_name (see #packet_and_item)
+    # @param value The value to set in the packet
+    # @param value_type (see #tlm)
+    def set_value(self, target_name, packet_name, item_name, value, value_type = 'CONVERTED'):
+        packet, _ = self.packet_and_item(target_name, packet_name, item_name)
+        return packet.write(item_name, value, value_type)
+
+    # @param target_name (see #packet_and_item)
+    # @param item_name (see #packet_and_item)
+    # @return [Array<Packet>] The latest (most recently arrived) packets with
+    #   the specified target and item.
+    def latest_packets(self, target_name, item_name):
+        target_upcase = target_name.upper()
+        item_upcase = item_name.upper()
+        target_latest_data = self.config.latest_data.get(target_upcase)
+        if target_latest_data is None:
+            raise RuntimeError(f"Telemetry target '{target_upcase}' does not exist")
+
+        packets = self.config.latest_data[target_upcase].get(item_upcase)
+        if packets is None:
+            raise RuntimeError(f"Telemetry item '{target_upcase} {self.LATEST_PACKET_NAME} {item_upcase}' does not exist")
+
+        return packets
+
     # Finds the newest (most recently defined) packet that contains the given item
     #
     # @param target_name [String] The target name
     # @param item_name [String] The item name
     # @return [Packet] The newest packet that contains the item
     def newest_packet(self, target_name: str, item_name: str) -> "Packet":
-        upcase_target_name = target_name.upper()
-        upcase_item_name = item_name.upper()
+        packets = self.latest_packets(target_name, item_name)
 
-        target_latest_data = self.config.latest_data.get(upcase_target_name)
-        if not target_latest_data:
-            raise RuntimeError(f"Telemetry target '{upcase_target_name}' does not exist")
-
-        item_latest_data = target_latest_data.get(upcase_item_name)
-        if not item_latest_data:
-            raise RuntimeError(f"Telemetry item '{upcase_target_name} LATEST {upcase_item_name}' does not exist")
-
-        packet = item_latest_data
-        return packet
+        # Find packet with newest timestamp
+        newest_packet = None
+        newest_received_time = None
+        for packet in packets:
+            received_time = packet.received_time
+            if newest_received_time is not None:
+                # See if the received time from this packet is newer.
+                # Having the >= makes this method return the last defined packet
+                # whether the timestamps are both nil or both equal.
+                if received_time is not None and received_time >= newest_received_time:
+                    newest_packet = packet
+                    newest_received_time = newest_packet.received_time
+            else:
+                # No received time yet so take this packet
+                newest_packet = packet
+                newest_received_time = newest_packet.received_time
+        return newest_packet
 
     # Get a telemetry packet and item
     #
@@ -323,6 +382,22 @@ class Telemetry:
         for _, packets in self.config.telemetry.items():
             for _, packet in packets.items():
                 packet.reset()
+
+    # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system
+    def all_item_strings(self, include_hidden = False, _splash = None):
+        strings = []
+        tnames = self.target_names()
+        index = 0
+        for target_name in tnames:
+            for packet_name, packet in self.packets(target_name).items():
+                # We don't audit against hidden or disabled packets
+                if not include_hidden and (packet.hidden or packet.disabled):
+                    continue
+
+                for item_name in packet.items.keys():
+                    strings.append(f"{target_name} {packet_name} {item_name}")
+            index += 1
+        return strings
 
     # @return [Hash{String=>Hash{String=>Packet}}] Hash of all the telemetry
     #   packets keyed by the target name. The value is another hash keyed by the
