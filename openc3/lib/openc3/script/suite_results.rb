@@ -20,11 +20,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/api/settings_api'
-
 module OpenC3
   class SuiteResults
-    include Api
     attr_accessor :metadata, :context
 
     def initialize
@@ -175,25 +172,11 @@ module OpenC3
     end
 
     def write(string)
-      @report << (format_timestamp + ': ' + string)
+      @report << (Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S.%6NZ") + ': ' + string)
     end
 
     def puts(string)
-      @report << (format_timestamp + ': ' + string)
-    end
-
-    def format_timestamp
-      time_zone = begin
-        get_setting('time_zone', manual: true)
-      rescue
-        nil
-      end
-
-      if time_zone&.upcase == 'LOCAL'
-        Time.now.localtime.strftime("%Y-%m-%dT%H:%M:%S.%6N%z")
-      else
-        Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S.%6NZ")
-      end
+      @report << (Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S.%6NZ") + ': ' + string)
     end
 
     # def collect_metadata(parent = nil)
