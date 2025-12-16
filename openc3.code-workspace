@@ -50,6 +50,12 @@
     },
     {
       "path": "../openc3-cosmos-nemesis"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": ".."
     }
   ],
   "settings": {
