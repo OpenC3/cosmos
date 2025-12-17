@@ -116,7 +116,7 @@ module OpenC3
               @logger.info "#{@interface.name}: Connect requested"
               params = []
               if msg_hash['params']
-                params = JSON.parse(msg_hash['params'], :allow_nan => true, :create_additions => true)
+                params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
               end
               @interface = @tlm.attempting(*params)
               next 'SUCCESS'
@@ -163,7 +163,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
                 @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
                 next e.message
@@ -175,7 +175,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
                 @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
                 next e.message
@@ -196,16 +196,47 @@ module OpenC3
                 next "Critical command #{msg_hash['release_critical']} not found"
               end
             end
+            if msg_hash.key?('target_control')
+              begin
+                params = JSON.parse(msg_hash['target_control'], allow_nan: true, create_additions: true)
+                target_name = params['target_name']
+                cmd_only = params['cmd_only']
+                tlm_only = params['tlm_only']
+                action = params['action']
+                if action == 'disable'
+                  @interface.cmd_target_enabled[target_name] = false unless tlm_only
+                  @interface.tlm_target_enabled[target_name] = false unless cmd_only
+                  @logger.info "#{@interface.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+                else # enable
+                  @interface.cmd_target_enabled[target_name] = true unless tlm_only
+                  @interface.tlm_target_enabled[target_name] = true unless cmd_only
+                  @logger.info "#{@interface.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+                end
+              rescue => e
+                @logger.error "#{@interface.name}: target_control: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
+            if msg_hash.key?('interface_details')
+              next @interface.details.as_json.to_json(allow_nan: true)
+            end
           end
 
           target_name = msg_hash['target_name']
+          if target_name and not @interface.cmd_target_enabled[target_name]
+            next nil # Return and don't ack given target_name if disabled
+          end
+
           cmd_name = msg_hash['cmd_name']
           manual = ConfigParser.handle_true_false(msg_hash['manual'])
           cmd_params = nil
+          range_check = true
+          raw = false
           cmd_buffer = nil
           hazardous_check = nil
           if msg_hash['cmd_params']
-            cmd_params = JSON.parse(msg_hash['cmd_params'], :allow_nan => true, :create_additions => true)
+            cmd_params = JSON.parse(msg_hash['cmd_params'], allow_nan: true, create_additions: true)
             range_check = ConfigParser.handle_true_false(msg_hash['range_check'])
             raw = ConfigParser.handle_true_false(msg_hash['raw'])
             hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'])
@@ -230,10 +261,15 @@ module OpenC3
               else
                 raise "Invalid command received:\n #{msg_hash}"
               end
-              orig_command = System.commands.packet(command.target_name, command.packet_name)
-              orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
-              command.received_count = orig_command.received_count
-              command.received_time = Time.now
+
+              if @interface.cmd_target_enabled[command.target_name]
+                orig_command = System.commands.packet(command.target_name, command.packet_name)
+                orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
+                command.received_count = orig_command.received_count
+                command.received_time = Time.now
+              else
+                next nil # Don't ack disabled targets
+              end
             rescue => e
               @logger.error "#{@interface.name}: #{msg_hash}"
               @logger.error "#{@interface.name}: #{e.formatted}"
@@ -254,14 +290,13 @@ module OpenC3
             if @critical_commanding and @critical_commanding != 'OFF' and not release_critical
               restricted = command.restricted
               if hazardous or restricted or (@critical_commanding == 'ALL' and manual)
+                cmd_type = 'NORMAL'
                 if hazardous
-                  type = 'HAZARDOUS'
+                  cmd_type = 'HAZARDOUS'
                 elsif restricted
-                  type = 'RESTRICTED'
-                else
-                  type = 'NORMAL'
+                  cmd_type = 'RESTRICTED'
                 end
-                model = CriticalCmdModel.new(name: SecureRandom.uuid, type: type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
+                model = CriticalCmdModel.new(name: SecureRandom.uuid, type: cmd_type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
                 model.create
                 @logger.info("Critical Cmd Pending: #{msg_hash['cmd_string']}", user: msg_hash['username'], scope: @scope)
                 next "CriticalCmdError\n#{model.name}"
@@ -312,7 +347,7 @@ module OpenC3
 
                 CommandDecomTopic.write_packet(command, scope: @scope)
                 CommandTopic.write_packet(command, scope: @scope)
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
 
                 # Explicitly check for false to allow nil to represent unknown
                 if result == false
@@ -391,13 +426,15 @@ module OpenC3
             @logger.info "#{@router.name}: Connect requested"
             params = []
             if msg_hash['params']
-              params = JSON.parse(msg_hash['params'], :allow_nan => true, :create_additions => true)
+              params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
             end
             @router = @tlm.attempting(*params)
+            next 'SUCCESS'
           end
           if msg_hash['disconnect']
             @logger.info "#{@router.name}: Disconnect requested"
             @tlm.disconnect(false)
+            next 'SUCCESS'
           end
           if msg_hash.key?('log_stream')
             if msg_hash['log_stream'] == 'true'
@@ -407,13 +444,14 @@ module OpenC3
               @logger.info "#{@router.name}: Disable stream logging"
               @router.stop_raw_logging
             end
+            next 'SUCCESS'
           end
           if msg_hash.key?('router_cmd')
             params = JSON.parse(msg_hash['router_cmd'], allow_nan: true, create_additions: true)
             begin
               @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
               @router.interface_cmd(params['cmd_name'], *params['cmd_params'])
-              RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
+              RouterStatusModel.set(@router.as_json(), queued: true, scope: @scope)
             rescue => e
               @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
               next e.message
@@ -425,12 +463,37 @@ module OpenC3
             begin
               @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
               @router.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
-              RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
+              RouterStatusModel.set(@router.as_json(), queued: true, scope: @scope)
             rescue => e
-              @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
+              @logger.error "#{@router.name}: protocol_cmd: #{e.formatted}"
               next e.message
             end
             next 'SUCCESS'
+          end
+          if msg_hash.key?('target_control')
+            begin
+              params = JSON.parse(msg_hash['target_control'], allow_nan: true, create_additions: true)
+              target_name = params['target_name']
+              cmd_only = params['cmd_only']
+              tlm_only = params['tlm_only']
+              action = params['action']
+              if action == 'disable'
+                @router.cmd_target_enabled[target_name] = false unless tlm_only
+                @router.tlm_target_enabled[target_name] = false unless cmd_only
+                @logger.info "#{@router.name}: target_disable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+              else # enable
+                @router.cmd_target_enabled[target_name] = true unless tlm_only
+                @router.tlm_target_enabled[target_name] = true unless cmd_only
+                @logger.info "#{@router.name}: target_enable: #{target_name} cmd_only:#{cmd_only} tlm_only:#{tlm_only}"
+              end
+            rescue => e
+              @logger.error "#{@router.name}: target_control: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
+          end
+          if msg_hash.key?('router_details')
+            next @router.details.as_json.to_json(allow_nan: true)
           end
           next 'SUCCESS'
         end
@@ -442,20 +505,24 @@ module OpenC3
           target_name = msg_hash["target_name"]
           packet_name = msg_hash["packet_name"]
 
-          packet = System.telemetry.packet(target_name, packet_name)
-          packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
-          packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
-          packet.received_count = msg_hash["received_count"].to_i
-          packet.buffer = msg_hash["buffer"]
+          if @router.tlm_target_enabled[target_name]
+            packet = System.telemetry.packet(target_name, packet_name)
+            packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+            packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
+            packet.received_count = msg_hash["received_count"].to_i
+            packet.buffer = msg_hash["buffer"]
 
-          begin
-            @router.write(packet)
-            RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
-            next 'SUCCESS'
-          rescue => e
-            @logger.error "#{@router.name}: #{e.formatted}"
-            next e.message
+            begin
+              @router.write(packet)
+              RouterStatusModel.set(@router.as_json(), queued: true, scope: @scope)
+              next 'SUCCESS'
+            rescue => e
+              @logger.error "#{@router.name}: #{e.formatted}"
+              next e.message
+            end
           end
+        else
+          next nil # Don't ack disabled targets
         end
       end
     end
@@ -487,38 +554,19 @@ module OpenC3
         target = System.targets[target_name]
         target.interface = @interface
       end
-      @interface.tlm_target_names.each do |target_name|
-        # Initialize the target's packet counters based on the Topic stream
-        # Prevents packet count resetting to 0 when interface restarts
-        begin
-          System.telemetry.packets(target_name).each do |packet_name, packet|
-            topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-            msg_id, msg_hash = Topic.get_newest_message(topic)
-            if msg_id
-              packet.received_count = msg_hash['received_count'].to_i
-            else
-              packet.received_count = 0
-            end
-          end
-        rescue
-          # Handle targets without telemetry
-        end
-      end
+      TargetModel.init_tlm_packet_counts(@interface.tlm_target_names, scope: @scope)
       if @interface.connect_on_startup
         @interface.state = 'ATTEMPTING'
       else
         @interface.state = 'DISCONNECTED'
       end
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(), scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        RouterStatusModel.set(@interface.as_json(), scope: @scope)
       end
 
       @queued = false
-      @sync_packet_count_data = {}
-      @sync_packet_count_time = nil
-      @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
       @interface.options.each do |option_name, option_values|
         if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
@@ -527,7 +575,7 @@ module OpenC3
           StoreQueued.instance.set_update_interval(update_interval)
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
-          @sync_packet_count_delay_seconds = option_values[0].to_f
+          TargetModel.sync_packet_count_delay_seconds = option_values[0].to_f
         end
       end
 
@@ -576,9 +624,9 @@ module OpenC3
 
       @interface.state = 'ATTEMPTING'
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
       @interface # Return the interface/router since we may have recreated it
     # Need to rescue Exception so we cover LoadError
@@ -651,15 +699,15 @@ module OpenC3
         disconnect(false)
       end
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
       @logger.info "#{@interface.name}: Stopped packet reading"
     end
 
     def handle_packet(packet)
-      InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+      InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       packet.received_time = Time.now.sys unless packet.received_time
 
       if packet.stored
@@ -709,8 +757,10 @@ module OpenC3
       end
 
       # Write to stream
-      sync_tlm_packet_counts(packet)
-      TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
+      if @interface.tlm_target_enabled[packet.target_name]
+        TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
+        TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
+      end
     end
 
     def handle_connection_failed(connection, connect_error)
@@ -774,9 +824,9 @@ module OpenC3
       end
       @interface.state = 'CONNECTED'
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+        RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
       @logger.info "#{@interface.name}: Connection Success"
     end
@@ -806,9 +856,9 @@ module OpenC3
       else
         @interface.state = 'DISCONNECTED'
         if @interface_or_router == 'INTERFACE'
-          InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+          InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
         else
-          RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+          RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
         end
       end
     end
@@ -842,59 +892,6 @@ module OpenC3
 
     def graceful_kill
       # Just to avoid warning
-    end
-
-    def sync_tlm_packet_counts(packet)
-      if @sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
-        # Perfect but slow method
-        packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
-      else
-        # Eventually consistent method
-        # Only sync every period (default 1 second) to avoid hammering Redis
-        # This is a trade off between speed and accuracy
-        # The packet count is eventually consistent
-        @sync_packet_count_data[packet.target_name] ||= {}
-        @sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
-        @sync_packet_count_data[packet.target_name][packet.packet_name] += 1
-
-        # Ensures counters change between syncs
-        packet.received_count += 1
-
-        # Check if we need to sync the packet counts
-        if @sync_packet_count_time.nil? or (Time.now - @sync_packet_count_time) > @sync_packet_count_delay_seconds
-          @sync_packet_count_time = Time.now
-
-          inc_count = 0
-          # Use pipeline to make this one transaction
-          result = Store.redis_pool.pipelined do
-            # Increment global counters for packets received
-            @sync_packet_count_data.each do |target_name, packet_data|
-              packet_data.each do |packet_name, count|
-                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope: @scope)
-                inc_count += 1
-              end
-            end
-            @sync_packet_count_data = {}
-
-            # Get all the packet counts with the global counters
-            @interface.tlm_target_names.each do |target_name|
-              TargetModel.get_all_telemetry_counts(target_name, scope: @scope)
-            end
-            TargetModel.get_all_telemetry_counts('UNKNOWN', scope: @scope)
-          end
-          @interface.tlm_target_names.each do |target_name|
-            result[inc_count].each do |packet_name, count|
-              update_packet = System.telemetry.packet(target_name, packet_name)
-              update_packet.received_count = count.to_i
-            end
-            inc_count += 1
-          end
-          result[inc_count].each do |packet_name, count|
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-            update_packet.received_count = count.to_i
-          end
-        end
-      end
     end
   end
 end

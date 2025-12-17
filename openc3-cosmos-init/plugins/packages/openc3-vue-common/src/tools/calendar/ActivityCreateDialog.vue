@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" persistent width="600">
+    <v-dialog v-model="show" persistent width="600" @keydown.esc="clearHandler">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -39,9 +39,21 @@
         </v-toolbar>
         <v-stepper
           v-model="dialogStep"
-          editable
           :items="['Activity Times', 'Activity Type']"
         >
+          <template v-if="dialogStep === 1" #actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-spacer />
+              <v-btn
+                color="primary"
+                :disabled="validationError"
+                @click="dialogStep = 2"
+              >
+                Next
+              </v-btn>
+            </v-row>
+          </template>
+
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -76,6 +88,26 @@
                   class="pb-2"
                 >
                 </v-select>
+                <v-text-field
+                  v-model="customTitle"
+                  type="text"
+                  label="Custom Title"
+                  class="pb-2"
+                  data-test="activity-custom-title"
+                  hide-details
+                  variant="outlined"
+                  density="compact"
+                />
+                <v-textarea
+                  v-model="notes"
+                  label="Notes"
+                  class="py-2 mb-2"
+                  data-test="activity-notes"
+                  hide-details
+                  variant="outlined"
+                  density="compact"
+                  rows="3"
+                />
                 <v-row dense>
                   <v-text-field
                     v-model="startDate"
@@ -203,15 +235,14 @@
                 >
                 </v-select>
                 <div v-if="kind === 'COMMAND'">
-                  <v-text-field
+                  <v-textarea
                     v-model="activityData"
-                    type="text"
                     label="Command Input"
-                    placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
-                    prefix="cmd('"
-                    suffix="')"
-                    hint="Timeline runs commands with cmd_no_hazardous_check"
+                    rows="1"
+                    readonly
+                    auto-grow
                     data-test="activity-cmd"
+                    @click:control="editItem()"
                   />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'" class="ma-3">
@@ -230,12 +261,60 @@
         </v-stepper>
       </v-card>
     </v-dialog>
+
+    <!-- Command Editor Dialog -->
+    <v-dialog
+      v-model="showCommandDialog"
+      max-width="1200"
+      persistent
+      scrollable
+      @keydown.esc="closeCommandDialog"
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <span>{{ dialogTitle }}</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
+        </v-card-title>
+        <v-card-text class="pa-0">
+          <div v-if="dialogError" class="error-message">
+            <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+            <span class="flex-grow-1">{{ dialogError }}</span>
+            <v-btn
+              icon="mdi-close"
+              size="small"
+              variant="text"
+              color="error"
+              class="ml-2"
+              @click="clearDialogError"
+            />
+          </div>
+          <command-editor
+            ref="commandEditor"
+            :send-disabled="false"
+            :states-in-hex="statesInHex"
+            :show-ignored-params="showIgnoredParams"
+            :cmd-raw="cmdRaw"
+            :cmd-string="dialogCmdString"
+            :show-command-button="false"
+            @build-cmd="updateCommand($event)"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="updateCommand()">
+            Update Command
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { EnvironmentChooser, ScriptChooser } from '@/components'
+import { EnvironmentChooser, ScriptChooser, CommandEditor } from '@/components'
 import { TimeFilters } from '@/util'
 import CreateDialog from './CreateDialog'
 
@@ -243,6 +322,7 @@ export default {
   components: {
     EnvironmentChooser,
     ScriptChooser,
+    CommandEditor,
   },
   mixins: [CreateDialog, TimeFilters],
   props: {
@@ -264,6 +344,8 @@ export default {
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
       activityData: '',
       activityEnvironment: [],
+      customTitle: '',
+      notes: '',
       rules: {
         required: (value) => !!value || 'Required',
       },
@@ -273,6 +355,10 @@ export default {
       frequency: 90,
       timeSpan: 'minutes',
       timeSpans: ['minutes', 'hours', 'days'],
+      showCommandDialog: false,
+      dialogTitle: 'Add Command',
+      dialogError: '',
+      dialogCmdString: null,
     }
   },
   computed: {
@@ -313,6 +399,9 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+    validationError: function () {
+      return !!this.timeError || !this.timeline
+    },
   },
   mounted: function () {
     this.updateValues()
@@ -341,6 +430,8 @@ export default {
         this.kind = this.activity.kind.toUpperCase()
         this.activityData = this.activity.data[this.activity.kind]
         this.activityEnvironment = this.activity.data.environment
+        this.customTitle = this.activity.data.customTitle || ''
+        this.notes = this.activity.data.notes || ''
         if (this.activity.recurring?.uuid) {
           this.recurring = true
           const rDate = new Date(this.activity.recurring.end * 1000)
@@ -356,6 +447,8 @@ export default {
         this.kind = ''
         this.activityData = ''
         this.activityEnvironment = []
+        this.customTitle = ''
+        this.notes = ''
         this.timeline = this.timelineNames[0]
       }
     },
@@ -387,7 +480,11 @@ export default {
         }
       }
       const kind = this.kind.toLowerCase()
-      let data = { environment: this.activityEnvironment }
+      let data = {
+        environment: this.activityEnvironment,
+        customTitle: this.customTitle,
+        notes: this.notes,
+      }
       data[kind] = this.activityData
       let recurring = {}
       if (this.recurring) {
@@ -439,6 +536,31 @@ export default {
       }
       // We don't do the $emit or set show here because it has to be in the callback
       this.clearHandler()
+    },
+    editItem: function () {
+      // Set up dialog for editing
+      this.dialogTitle = 'Edit Command'
+      this.dialogCmdString = this.activityData
+      this.showCommandDialog = true
+    },
+    closeCommandDialog: function () {
+      this.showCommandDialog = false
+      this.dialogCmdString = null
+      this.dialogError = ''
+    },
+    clearDialogError: function () {
+      this.dialogError = ''
+    },
+    updateCommand: function () {
+      let commandString = ''
+      try {
+        commandString = this.$refs.commandEditor.getCmdString()
+      } catch (error) {
+        this.dialogError = error.message || 'Please fix command parameters'
+        return
+      }
+      this.activityData = commandString
+      this.showCommandDialog = false
     },
   },
 }

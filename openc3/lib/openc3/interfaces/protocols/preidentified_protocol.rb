@@ -70,7 +70,7 @@ module OpenC3
       @write_extra = nil
       if packet.extra
         @write_flags |= COSMOS4_EXTRA_FLAG_MASK
-        @write_extra = packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        @write_extra = packet.extra.as_json().to_json(allow_nan: true)
       end
       return packet
     end
@@ -95,7 +95,7 @@ module OpenC3
       return data_to_send, extra
     end
 
-    protected
+    # protected
 
     def read_length_field_followed_by_string(length_num_bytes)
       # Read bytes for string length
@@ -161,7 +161,7 @@ module OpenC3
         @read_extra = read_length_field_followed_by_string(4)
         return :STOP if @read_extra == :STOP
 
-        @read_extra = JSON.parse(@read_extra, :allow_nan => true, :create_additions => true)
+        @read_extra = JSON.parse(@read_extra, allow_nan: true, create_additions: true)
         @reduction_state = :FLAGS_REMOVED
       end
 
@@ -202,6 +202,19 @@ module OpenC3
       end
 
       raise "Error should never reach end of method #{@reduction_state}"
+    end
+
+    def write_details
+      result = super()
+      result['max_length'] = @max_length
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['max_length'] = @max_length
+      result['reduction_state'] = @reduction_state
+      return result
     end
   end
 end

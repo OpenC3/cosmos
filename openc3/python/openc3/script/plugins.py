@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import traceback
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
@@ -39,7 +40,7 @@ def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
             ]
 
     except Exception as error:
-        raise RuntimeError(f"plugins_list failed due to {repr(error)}") from error
+        raise RuntimeError(f"plugins_list failed due to {traceback.format_exc()}") from error
 
 
 def plugin_get(plugin_name: str, scope: str = OPENC3_SCOPE):
@@ -50,4 +51,4 @@ def plugin_get(plugin_name: str, scope: str = OPENC3_SCOPE):
             raise RuntimeError(f"Unexpected response to plugin_get: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"plugin_get failed due to {repr(error)}") from error
+        raise RuntimeError(f"plugin_get failed due to {traceback.format_exc()}") from error

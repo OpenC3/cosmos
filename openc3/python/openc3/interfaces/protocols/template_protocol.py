@@ -17,11 +17,14 @@
 import re
 import time
 from queue import SimpleQueue, Empty
+from datetime import datetime, timezone
+import traceback
 from openc3.config.config_parser import ConfigParser
 from openc3.system.system import System
 from openc3.packets.packet import Packet
 from openc3.utilities.logger import Logger
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
+from openc3.utilities.extract import convert_to_value
 
 
 # Protocol which delineates packets using delimiter characters. Designed for
@@ -77,8 +80,8 @@ class TemplateProtocol(TerminatedProtocol):
         self.response_target_name = None
         self.response_packets = []
         self.write_block_queue = SimpleQueue()
-        self.ignore_lines = int(ignore_lines)
-        self.response_lines = int(response_lines)
+        self.ignore_lines = int(convert_to_value(ignore_lines))
+        self.response_lines = int(convert_to_value(response_lines))
         self.initial_read_delay = ConfigParser.handle_none(initial_read_delay)
         if self.initial_read_delay is not None:
             self.initial_read_delay = float(initial_read_delay)
@@ -167,11 +170,13 @@ class TemplateProtocol(TerminatedProtocol):
                 try:
                     for i, value in enumerate(response_values):
                         result_packet.write(response_item_names[i], value)
-                except (ValueError, RuntimeError) as error:
+                except (ValueError, RuntimeError):
                     interface_name = ""
                     if self.interface:
                         interface_name = self.interface.name
-                    self.handle_error(f"{interface_name}: Could not write value {value} due to {repr(error)}")
+                    self.handle_error(
+                        f"{interface_name}: Could not write value {value} due to {traceback.format_exc()}"
+                    )
 
             self.response_packets = []
 
@@ -269,3 +274,41 @@ class TemplateProtocol(TerminatedProtocol):
         Logger.error(msg)
         if self.raise_exceptions:
             raise RuntimeError(msg)
+
+    def write_details(self):
+        result = super().write_details()
+        result["response_template"] = self.response_template
+        result["response_packet"] = self.response_packet
+        result["response_target_name"] = self.response_target_name
+        result["ignore_lines"] = self.ignore_lines
+        result["response_lines"] = self.response_lines
+        result["initial_read_delay"] = self.initial_read_delay
+        result["response_timeout"] = self.response_timeout
+        result["response_polling_period"] = self.response_polling_period
+        if self.connect_complete_time:
+            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%S.%fZ"
+            )
+        else:
+            result["connect_complete_time"] = None
+        result["raise_exceptions"] = self.raise_exceptions
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result["response_template"] = self.response_template
+        result["response_packet"] = self.response_packet
+        result["response_target_name"] = self.response_target_name
+        result["ignore_lines"] = self.ignore_lines
+        result["response_lines"] = self.response_lines
+        result["initial_read_delay"] = self.initial_read_delay
+        result["response_timeout"] = self.response_timeout
+        result["response_polling_period"] = self.response_polling_period
+        if self.connect_complete_time:
+            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%S.%fZ"
+            )
+        else:
+            result["connect_complete_time"] = None
+        result["raise_exceptions"] = self.raise_exceptions
+        return result

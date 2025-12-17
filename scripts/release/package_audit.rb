@@ -30,7 +30,12 @@ version_tag = ARGV[0] || "latest"
 # Get versions from the Dockerfiles
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 redis_version = get_docker_version("openc3-redis/Dockerfile")
-minio_version = get_docker_version("openc3-minio/Dockerfile")
+minio_version = get_docker_version("openc3-minio/Dockerfile", arg: 'OPENC3_MINIO_RELEASE')
+minio_ubi_version = get_docker_version("openc3-minio/Dockerfile-ubi", arg: 'OPENC3_MINIO_RELEASE')
+if minio_version != minio_ubi_version
+  puts "WARN: minio versions for standard and UBI do not match: #{minio_version} != #{minio_ubi_version}"
+end
+go_version = get_docker_version("openc3-minio/Dockerfile", arg: 'GO_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
@@ -40,14 +45,13 @@ containers = [
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true,
-    yarn: ["/openc3/plugins/yarn.lock"] },
+    pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:#{minio_version}", rpm: true },
+  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "golang:#{go_version}-alpine#{ENV['ALPINE_VERSION']}", apk: true },
 ]
-
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `rm Gemfile.lock 2>&1`
@@ -71,13 +75,13 @@ report = build_report(containers, client)
 summary_report = build_summary_report(containers)
 
 # Now check for latest versions
+check_build_files(minio_version, traefik_version)
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
-check_minio(client, containers)
+check_minio(client, containers, minio_version, go_version)
 check_container_version(client, containers, 'redis')
 base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
-
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Check the bundles
@@ -110,16 +114,16 @@ File.open("openc3_package_report.txt", "w") do |file|
 end
 
 puts "\n\nRun the following:"
-puts "cd openc3-cosmos-init/plugins; yarn install; yarn upgrade-interactive --latest; cd ../.."
-puts "cd playwright; yarn install; yarn upgrade-interactive --latest; cd .."
-puts "cd docs.openc3.com; yarn install; yarn upgrade-interactive --latest; cd .."
+puts "cd openc3-cosmos-init/plugins; pnpm install; pnpm update --interactive --latest --recursive; cd ../.."
+puts "cd playwright; pnpm install; pnpm update --interactive --latest; cd .."
+puts "cd docs.openc3.com; pnpm install; pnpm update --interactive --latest; cd .."
 
 # Commenting this out since the templates don't really need to be updated, and updates broke them over time
 # puts "\n\nYou can run the following, but check that the templates still work if you do:"
-# puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/widget; pnpm install; pnpm update --interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_vue; pnpm install; pnpm update --interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_react; pnpm install; pnpm update --interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_angular; pnpm install; pnpm update --interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_svelte; pnpm install; pnpm update --interactive --latest; cd ../../.."
 
 puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

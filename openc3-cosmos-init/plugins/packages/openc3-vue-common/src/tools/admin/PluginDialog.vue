@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" persistent width="80vw">
+  <v-dialog v-model="show" persistent width="80vw" @keydown.esc="close">
     <v-card>
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>

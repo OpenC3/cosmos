@@ -143,7 +143,7 @@ module OpenC3
         @interface.write(pkt)
         offset = 0
         expect($buffer[0..0].unpack('C')[0]).to eql 0x40
-        json_extra = extra_data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        json_extra = extra_data.as_json().to_json(allow_nan: true)
         offset += 1
         expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql json_extra.length
         offset += 4
@@ -177,7 +177,7 @@ module OpenC3
         @interface.write(pkt)
         offset = 0
         expect($buffer[0..0].unpack('C')[0]).to eql 0xC0
-        json_extra = extra_data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        json_extra = extra_data.as_json().to_json(allow_nan: true)
         offset += 1
         expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql json_extra.length
         offset += 4
@@ -237,7 +237,7 @@ module OpenC3
         expect($buffer[0..1]).to eql("\xDE\xAD")
         offset = 2
         expect($buffer[2..2].unpack('C')[0]).to eql 0xC0
-        json_extra = extra_data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        json_extra = extra_data.as_json().to_json(allow_nan: true)
         offset += 1
         expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql json_extra.length
         offset += 4
@@ -321,6 +321,54 @@ module OpenC3
           expect(packet.identified?).to be true
           expect(packet.received_time).to eql (time + i)
         end
+      end
+    end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('PreidentifiedProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes preidentified protocol-specific configuration" do
+        @interface.add_protocol(PreidentifiedProtocol, ["DEAD", 50], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+        
+        expect(details['sync_pattern']).to eq("\xDE\xAD".inspect)
+        expect(details['max_length']).to eq(50)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(PreidentifiedProtocol, [], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('PreidentifiedProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes preidentified protocol-specific configuration" do
+        @interface.add_protocol(PreidentifiedProtocol, ["0x1234", 200], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+        
+        expect(details['sync_pattern']).to eq("\x12\x34".inspect)
+        expect(details['max_length']).to eq(200)
       end
     end
   end

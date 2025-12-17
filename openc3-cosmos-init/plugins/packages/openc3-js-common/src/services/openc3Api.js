@@ -184,8 +184,29 @@ export default class OpenC3Api {
     return this.exec('get_all_interface_info', [])
   }
 
-  map_target_to_interface(target_name, interface_name) {
-    return this.exec('map_target_to_interface', [target_name, interface_name])
+  map_target_to_interface(
+    target_name,
+    interface_name,
+    cmd_only,
+    tlm_only,
+    unmap_old,
+  ) {
+    return this.exec('map_target_to_interface', [target_name, interface_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+      unmap_old: unmap_old,
+    })
+  }
+
+  unmap_target_from_interface(target_name, interface_name, cmd_only, tlm_only) {
+    return this.exec(
+      'unmap_target_from_interface',
+      [target_name, interface_name],
+      {
+        cmd_only: cmd_only,
+        tlm_only: tlm_only,
+      },
+    )
   }
 
   connect_interface(interface_name, ...interface_params) {
@@ -211,8 +232,61 @@ export default class OpenC3Api {
     ])
   }
 
+  interface_target_enable(
+    interface_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('interface_target_enable', [interface_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  interface_target_disable(
+    interface_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec(
+      'interface_target_disable',
+      [interface_name, target_name],
+      {
+        cmd_only: cmd_only,
+        tlm_only: tlm_only,
+      },
+    )
+  }
+
+  interface_details(interface_name) {
+    return this.exec('interface_details', [interface_name])
+  }
+
   get_all_router_info() {
     return this.exec('get_all_router_info', [])
+  }
+
+  map_target_to_router(
+    target_name,
+    router_name,
+    cmd_only,
+    tlm_only,
+    unmap_old,
+  ) {
+    return this.exec('map_target_to_router', [target_name, router_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+      unmap_old: unmap_old,
+    })
+  }
+
+  unmap_target_from_router(target_name, router_name, cmd_only, tlm_only) {
+    return this.exec('unmap_target_from_router', [target_name, router_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
   }
 
   connect_router(router_name) {
@@ -221,6 +295,34 @@ export default class OpenC3Api {
 
   disconnect_router(router_name) {
     return this.exec('disconnect_router', [router_name])
+  }
+
+  router_target_enable(
+    router_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('router_target_enable', [router_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  router_target_disable(
+    router_name,
+    target_name,
+    cmd_only = false,
+    tlm_only = false,
+  ) {
+    return this.exec('router_target_disable', [router_name, target_name], {
+      cmd_only: cmd_only,
+      tlm_only: tlm_only,
+    })
+  }
+
+  router_details(router_name) {
+    return this.exec('router_details', [router_name])
   }
 
   get_target_interfaces() {
@@ -357,12 +459,12 @@ export default class OpenC3Api {
       10000, // 10s timeout ... should never be this long
     )
     if (data && data.length > 0) {
-      let len = data[0].length
+      let len = data.length
       let converted = null
       for (let i = 0; i < len; i++) {
-        converted = this.decode_openc3_type(data[0][i])
+        converted = this.decode_openc3_type(data[i][0])
         if (converted !== null) {
-          data[0][i] = converted
+          data[i][0] = converted
         }
       }
     }
@@ -380,14 +482,12 @@ export default class OpenC3Api {
       data = await this.exec('tlm', [target_name])
       // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
     } else if (item_name === undefined) {
-      if (
-        ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'].includes(packet_name)
-      ) {
+      if (['RAW', 'CONVERTED', 'FORMATTED'].includes(packet_name)) {
         data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
         let err = new Error()
         err.name = 'TypeError'
-        err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
+        err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED or FORMATTED.`
         throw err
       }
     } else {
@@ -482,7 +582,14 @@ export default class OpenC3Api {
   }
 
   // Implementation of functionality shared by cmd methods with param_lists.
-  _cmd(method, target_name, command_name, param_list, headerOptions, kwparams = {}) {
+  _cmd(
+    method,
+    target_name,
+    command_name,
+    param_list,
+    headerOptions,
+    kwparams = {},
+  ) {
     let converted = null
     for (let key in param_list) {
       if (Object.prototype.hasOwnProperty.call(param_list, key)) {
@@ -514,9 +621,15 @@ export default class OpenC3Api {
     }
   }
 
-  cmd(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  cmd(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd', target_name, {}, headerOptions)
+      return this.exec('cmd', target_name, kwparams, headerOptions)
     } else {
       return this._cmd(
         'cmd',
@@ -524,7 +637,7 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
-        kwparams
+        kwparams,
       )
     }
   }
@@ -537,7 +650,12 @@ export default class OpenC3Api {
     kwparams = {},
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_range_check', target_name, {}, headerOptions, kwparams)
+      return this.exec(
+        'cmd_no_range_check',
+        target_name,
+        kwparams,
+        headerOptions,
+      )
     } else {
       return this._cmd(
         'cmd_no_range_check',
@@ -545,14 +663,20 @@ export default class OpenC3Api {
         command_name,
         param_list,
         headerOptions,
-        kwparams
+        kwparams,
       )
     }
   }
 
-  cmd_raw(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  cmd_raw(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw', target_name, {}, headerOptions, kwparams)
+      return this.exec('cmd_raw', target_name, kwparams, headerOptions)
     } else {
       return this._cmd(
         'cmd_raw',
@@ -573,7 +697,12 @@ export default class OpenC3Api {
     kwparams = {},
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions, kwparams)
+      return this.exec(
+        'cmd_raw_no_range_check',
+        target_name,
+        kwparams,
+        headerOptions,
+      )
     } else {
       return this._cmd(
         'cmd_raw_no_range_check',
@@ -591,10 +720,15 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
-    kwparams = {}
+    kwparams = {},
   ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions, kwparams)
+      return this.exec(
+        'cmd_no_hazardous_check',
+        target_name,
+        kwparams,
+        headerOptions,
+      )
     } else {
       return this._cmd(
         'cmd_no_hazardous_check',
@@ -607,9 +741,15 @@ export default class OpenC3Api {
     }
   }
 
-  cmd_no_checks(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  cmd_no_checks(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_checks', target_name, {}, headerOptions, kwparams)
+      return this.exec('cmd_no_checks', target_name, kwparams, headerOptions)
     } else {
       return this._cmd(
         'cmd_no_checks',
@@ -627,15 +767,14 @@ export default class OpenC3Api {
     command_name,
     param_list,
     headerOptions = {},
-    kwparams = {}
+    kwparams = {},
   ) {
     if (command_name === undefined) {
       return this.exec(
         'cmd_raw_no_hazardous_check',
         target_name,
-        {},
-        headerOptions,
         kwparams,
+        headerOptions,
       )
     } else {
       return this._cmd(
@@ -649,9 +788,20 @@ export default class OpenC3Api {
     }
   }
 
-  cmd_raw_no_checks(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  cmd_raw_no_checks(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_checks', target_name, {}, headerOptions, kwparams)
+      return this.exec(
+        'cmd_raw_no_checks',
+        target_name,
+        kwparams,
+        headerOptions,
+      )
     } else {
       return this._cmd(
         'cmd_raw_no_checks',
@@ -664,24 +814,54 @@ export default class OpenC3Api {
     }
   }
 
-  build_cmd(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  build_cmd(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('build_cmd', target_name)
+      return this.exec('build_cmd', target_name, kwparams, headerOptions)
     } else {
-      return this._cmd('build_cmd', target_name, command_name, param_list, headerOptions, kwparams)
+      return this._cmd(
+        'build_cmd',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions,
+        kwparams,
+      )
     }
   }
   // DEPRECATED for build_cmd
-  build_command(target_name, command_name, param_list, headerOptions = {}, kwparams = {}) {
+  build_command(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+    kwparams = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('build_cmd', target_name)
+      return this.exec('build_cmd', target_name, kwparams, headerOptions)
     } else {
-      return this._cmd('build_cmd', target_name, command_name, param_list, headerOptions, kwparams)
+      return this._cmd(
+        'build_cmd',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions,
+        kwparams,
+      )
     }
   }
 
   get_interface_names() {
     return this.exec('get_interface_names', [])
+  }
+
+  get_router_names() {
+    return this.exec('get_router_names', [])
   }
 
   send_raw(interface_name, data) {

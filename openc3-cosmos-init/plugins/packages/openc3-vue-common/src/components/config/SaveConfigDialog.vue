@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" @keydown.esc="cancel">
+  <v-dialog v-model="show" persistent width="600" @keydown.esc="cancel">
     <v-card>
       <form @submit.prevent="success">
         <v-toolbar height="24">

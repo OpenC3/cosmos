@@ -104,13 +104,13 @@ module OpenC3
       it "updates command_authority and works in core" do
         model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)
         model.create()
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['command_authority']).to eql true
         expect(json['critical_commanding']).to eql "ALL"
         model.command_authority = false
         model.critical_commanding = "OFF"
         model.update()
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['command_authority']).to eql false
         expect(json['critical_commanding']).to eql "OFF"
       end
@@ -119,7 +119,7 @@ module OpenC3
     describe "as_json" do
       it "encodes all the input parameters" do
         model = ScopeModel.new(name: "DEFAULT", updated_at: 12345)
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['name']).to eql "DEFAULT"
         expect(json['updated_at']).to eql 12345
       end

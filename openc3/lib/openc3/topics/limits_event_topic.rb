@@ -47,7 +47,7 @@ module OpenC3
         field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
         limits_settings = Store.hget("#{scope}__current_limits_settings", field)
         if limits_settings
-          limits_settings = JSON.parse(limits_settings, :allow_nan => true, :create_additions => true)
+          limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
         else
           limits_settings = {}
         end
@@ -61,18 +61,18 @@ module OpenC3
         limits_settings[event[:limits_set]] = limits
         limits_settings['persistence_setting'] = event[:persistence] if event[:persistence]
         limits_settings['enabled'] = event[:enabled] if not event[:enabled].nil?
-        Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, :allow_nan => true))
+        Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
       when :LIMITS_ENABLE_STATE
         field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
         limits_settings = Store.hget("#{scope}__current_limits_settings", field)
         if limits_settings
-          limits_settings = JSON.parse(limits_settings, :allow_nan => true, :create_additions => true)
+          limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
         else
           limits_settings = {}
         end
         limits_settings['enabled'] = event[:enabled]
-        Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, :allow_nan => true))
+        Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
       when :LIMITS_SET
         sets = sets(scope: scope)
@@ -86,7 +86,7 @@ module OpenC3
         raise "Invalid limits event type '#{event[:type]}'"
       end
 
-      Topic.write_topic("#{scope}__openc3_limits_events", {event: JSON.generate(event, :allow_nan => true)}, '*', 1000)
+      Topic.write_topic("#{scope}__openc3_limits_events", {event: JSON.generate(event, allow_nan: true)}, '*', 1000)
     end
 
     # Remove the JSON encoding to return hashes directly
@@ -106,7 +106,7 @@ module OpenC3
       end
       parsed_result = []
       final_result.each do |offset, hash|
-        parsed_result << [offset, JSON.parse(hash['event'], :allow_nan => true, :create_additions => true)]
+        parsed_result << [offset, JSON.parse(hash['event'], allow_nan: true, create_additions: true)]
       end
       return parsed_result
     end
@@ -175,7 +175,7 @@ module OpenC3
         if target
           packet = target[packet_name]
           if packet
-            limits_settings = JSON.parse(limits_settings, :allow_nan => true, :create_additions => true)
+            limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
             enabled = limits_settings['enabled']
             persistence = limits_settings['persistence_setting']
             limits_settings.each do |limits_set, settings|
@@ -199,7 +199,7 @@ module OpenC3
       telemetry = System.telemetry.all
       topics = ["#{scope}__openc3_limits_events"]
       Topic.read_topics(topics, nil, block_ms) do |_topic, _msg_id, event, _redis|
-        event = JSON.parse(event['event'], :allow_nan => true, :create_additions => true)
+        event = JSON.parse(event['event'], allow_nan: true, create_additions: true)
         case event['type']
         when 'LIMITS_CHANGE'
           # Ignore

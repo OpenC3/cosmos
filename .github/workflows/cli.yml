@@ -8,19 +8,22 @@ name: CLI Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   OPENC3_API_PASSWORD: password
+  OPENC3_API_PORT: 2900
 
 jobs:
   openc3-cli:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

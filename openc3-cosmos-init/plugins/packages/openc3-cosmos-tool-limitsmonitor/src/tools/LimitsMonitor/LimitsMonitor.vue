@@ -45,7 +45,12 @@
       :config-key="configKey"
       @success="saveConfiguration"
     />
-    <v-dialog v-model="limitsSetDialog" max-width="650">
+    <v-dialog
+      v-model="limitsSetDialog"
+      max-width="650"
+      persistent
+      @keydown.esc="limitsSetDialog = false"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />

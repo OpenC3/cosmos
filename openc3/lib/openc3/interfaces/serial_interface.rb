@@ -108,5 +108,19 @@ module OpenC3
         @data_bits = option_values[0].to_i
       end
     end
+
+    def details
+      result = super()
+      result['write_port_name'] = @write_port_name
+      result['read_port_name'] = @read_port_name
+      result['baud_rate'] = @baud_rate
+      result['parity'] = @parity
+      result['stop_bits'] = @stop_bits
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      result['flow_control'] = @flow_control
+      result['data_bits'] = @data_bits
+      return result
+    end
   end
 end

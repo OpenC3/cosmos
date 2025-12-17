@@ -120,7 +120,8 @@ module OpenC3
             part = "targets"
             redo
           else
-            raise e
+            # Return nil instead of raising when file not found
+            return nil
           end
         end
         break
@@ -199,7 +200,7 @@ module OpenC3
       if response.nil? || response.status != 201
         raise "Failed to get presigned URL for #{endpoint}"
       end
-      JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      JSON.parse(response.body, allow_nan: true, create_additions: true)
     end
   end
 end

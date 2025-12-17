@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -82,6 +82,7 @@ export default {
   methods: {
     handleAppChange: function (event) {
       this.show = !event.detail.appsByNewStatus.MOUNTED
+      this.hideSpinner = true
     },
     pollForMountedApps: function () {
       // Check to see if there are single-spa apps that matched the route.

@@ -91,8 +91,8 @@ module OpenC3
       unless @subscribed
         json_hash = {}
         json_hash['command'] = 'subscribe'
-        json_hash['identifier'] = JSON.generate(@identifier)
-        @stream.write(JSON.generate(json_hash))
+        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+        @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = true
       end
     end
@@ -102,8 +102,8 @@ module OpenC3
       if @subscribed
         json_hash = {}
         json_hash['command'] = 'unsubscribe'
-        json_hash['identifier'] = JSON.generate(@identifier)
-        @stream.write(JSON.generate(json_hash))
+        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+        @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = false
       end
     end
@@ -112,9 +112,9 @@ module OpenC3
     def write_action(data_hash)
       json_hash = {}
       json_hash['command'] = 'message'
-      json_hash['identifier'] = JSON.generate(@identifier)
-      json_hash['data'] = JSON.generate(data_hash)
-      write(JSON.generate(json_hash))
+      json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+      json_hash['data'] = JSON.generate(data_hash, allow_nan: true)
+      write(JSON.generate(json_hash, allow_nan: true))
     end
 
     # General write to the websocket
@@ -338,7 +338,7 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     #   item_key is an optional shortened name to return the data as
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
@@ -346,7 +346,7 @@ module OpenC3
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: $openc3_scope)
       data_hash = {}
@@ -380,14 +380,14 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED
     #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
     # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
     #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
     #   CMDORTLM - CMD or TLM
     #   TARGET - Target name
     #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def remove(items: nil, packets: nil, scope: $openc3_scope)
       data_hash = {}

@@ -84,7 +84,6 @@ class Table < OpenC3::TargetFile
       report.filename = binary_filename.sub('.bin', '.csv')
     end
     report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
-    create(scope, report.filename, report.contents)
     return report
   end
 
@@ -95,7 +94,7 @@ class Table < OpenC3::TargetFile
     raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
     json = OpenC3::TableManagerCore.build_json_hash(binary, root_definition)
     json['definition'] = definition_filename
-    return json.to_json(:allow_nan => true)
+    return json.to_json(allow_nan: true)
   end
 
   def self.save(scope, binary_filename, definition_filename, tables)
@@ -103,7 +102,7 @@ class Table < OpenC3::TargetFile
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary
     root_definition = get_definitions(scope, definition_filename, binary_filename)[0]
     raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-    binary = OpenC3::TableManagerCore.save(root_definition, JSON.parse(tables, :allow_nan => true, :create_additions => true))
+    binary = OpenC3::TableManagerCore.save(root_definition, JSON.parse(tables, allow_nan: true, create_additions: true))
     create(scope, binary_filename, binary, content_type: nil)
   end
 

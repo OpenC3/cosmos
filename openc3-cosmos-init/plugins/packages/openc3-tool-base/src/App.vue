@@ -25,6 +25,7 @@
     <app-nav class="d-print-none" />
 
     <!-- Sizes your content based upon application components -->
+    <!-- consider changing min-height to height, as long as it doesn't cause any double scroll bars -->
     <v-main :style="mainStyle" min-height="100vh">
       <v-container fluid height="100%">
         <div><router-view /></div>

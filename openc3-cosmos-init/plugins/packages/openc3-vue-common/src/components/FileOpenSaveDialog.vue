@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="800" @keydown.enter="success()">
+  <v-dialog
+    v-model="show"
+    persistent
+    width="800"
+    @keydown.enter="success()"
+    @keydown.esc="disableButtons ? null : (show = false)"
+  >
     <v-card>
       <v-overlay :model-value="loading">
         <v-progress-circular
@@ -133,6 +139,7 @@ export default {
     requireTargetParentDir: Boolean, // Require that the save filename be nested in a directory with the name of a target
     inputFilename: String, // passed if this is a 'save' dialog
     modelValue: Boolean,
+    customHelpText: String, // Optional custom help text to display
   },
   data() {
     return {
@@ -170,6 +177,9 @@ export default {
       }
     },
     helpText: function () {
+      if (this.customHelpText) {
+        return this.customHelpText
+      }
       if (this.type === 'open') {
         return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results. You can also Tab to the files and Enter to select.'
       } else {

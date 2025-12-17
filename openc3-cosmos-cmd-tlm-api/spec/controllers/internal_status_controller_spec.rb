@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -30,7 +30,7 @@ RSpec.describe InternalStatusController, :type => :controller do
   describe "GET status" do
     it "returns a Hash<string, string> and status code 200" do
       get :status
-      expect(JSON.parse(response.body, symbolize_names: true, :allow_nan => true)).to include(status: 'UP')
+      expect(JSON.parse(response.body, symbolize_names: true, allow_nan: true)).to include(status: 'UP')
       expect(response).to have_http_status(:ok)
     end
   end

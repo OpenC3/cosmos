@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,9 +30,9 @@ module OpenC3
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
         # everything base name is RAW (including DERIVED)
-        # Request for WITH_UNITS, etc will look down until it finds something
+        # Request for FORMATTED, etc will look down until it finds something
         # If nothing - item does not exist - nil
-        # __ as separators ITEM1, ITEM1__C, ITEM1__F, ITEM1__U
+        # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
         json_hash = CvtModel.build_json_from_packet(packet)
         # Write to stream
@@ -42,7 +42,7 @@ module OpenC3
           :target_name => packet.target_name,
           :packet_name => packet.packet_name,
           :received_count => packet.received_count,
-          :json_data => JSON.generate(json_hash.as_json(:allow_nan => true)),
+          :json_data => JSON.generate(json_hash.as_json, allow_nan: true),
         }
         Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id)
 

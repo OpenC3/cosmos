@@ -6,12 +6,12 @@ TABBOOK
 
     HORIZONTAL
       VERTICALBOX "Position and Velocity"
-        LABELVALUE <%= target_name %> ADCS POSX WITH_UNITS 20
-        LABELVALUE <%= target_name %> ADCS POSY WITH_UNITS 20
-        LABELVALUE <%= target_name %> ADCS POSZ WITH_UNITS 20
-        LABELVALUE <%= target_name %> ADCS VELX WITH_UNITS 20
-        LABELVALUE <%= target_name %> ADCS VELY WITH_UNITS 20
-        LABELVALUE <%= target_name %> ADCS VELZ WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS POSX FORMATTED 20
+        LABELVALUE <%= target_name %> ADCS POSY FORMATTED 20
+        LABELVALUE <%= target_name %> ADCS POSZ FORMATTED 20
+        LABELVALUE <%= target_name %> ADCS VELX FORMATTED 20
+        LABELVALUE <%= target_name %> ADCS VELY FORMATTED 20
+        LABELVALUE <%= target_name %> ADCS VELZ FORMATTED 20
       END
 
       VERTICALBOX "Attitude"
@@ -31,7 +31,7 @@ TABBOOK
     END
 
     VERTICALBOX
-      LABELVALUE <%= target_name %> ADCS PACKET_TIMEFORMATTED WITH_UNITS 30
+      LABELVALUE <%= target_name %> ADCS PACKET_TIMEFORMATTED FORMATTED 30
     END
   END
 
@@ -50,7 +50,7 @@ TABBOOK
     END
 
     VERTICALBOX
-      LABELVALUE <%= target_name %> HEALTH_STATUS PACKET_TIMEFORMATTED WITH_UNITS 30
+      LABELVALUE <%= target_name %> HEALTH_STATUS PACKET_TIMEFORMATTED FORMATTED 30
     END
   END
 END

@@ -255,20 +255,22 @@ export default {
     },
     update() {
       if (this.tabId != this.curTab) return
-      this.api.get_target_interfaces().then(async (info) => {
-        for (let i = 0; i < info.length; i++) {
-          this.data[i].name = info[i][0]
-          this.data[i].interface = info[i][1]
-          if (this.enterprise) {
-            if (this.cmdAuth[this.data[i].name]) {
-              this.data[i].username =
-                this.cmdAuth[this.data[i].name]['username']
-            } else {
-              this.data[i].username = ''
+      if (this.data.length !== 0) {
+        this.api.get_target_interfaces().then(async (info) => {
+          for (let i = 0; i < info.length; i++) {
+            this.data[i].name = info[i][0]
+            this.data[i].interface = info[i][1]
+            if (this.enterprise) {
+              if (this.cmdAuth[this.data[i].name]) {
+                this.data[i].username =
+                  this.cmdAuth[this.data[i].name]['username']
+              } else {
+                this.data[i].username = ''
+              }
             }
           }
-        }
-      })
+        })
+      }
     },
     take(target_name) {
       Api.post('/openc3-api/cmdauth/take', {

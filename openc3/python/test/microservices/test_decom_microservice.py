@@ -51,7 +51,7 @@ class TestDecomMicroservice(unittest.TestCase):
             result = None
             try:
                 result = orig_xread(*args, **kwargs)
-            except RuntimeError:
+            except Exception:
                 pass
 
             # # Create a slight delay to simulate the blocking call

@@ -125,6 +125,37 @@ Downgrades are not necessarily supported. When upgrading COSMOS we need to upgra
 In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _might_ be able to be downgraded and major releases (X.y.z) are NOT able to be downgraded.
 :::
 
+## Upgrading from COSMOS Core to COSMOS Enterprise
+
+Going from COSMOS Core (open source) to COSMOS Enterprise (OpenC3 customer) is a straight forward process that will preserve all your data collected by COSMOS Core.
+
+:::info Coming Soon
+This process is being simplified in an upcoming release and will be integrated into the `openc3.sh upgrade` command.
+:::
+
+If you currently are using the `cosmos-project` repo to run COSMOS then you should separately clone the `cosmos-enterprise-project` repo at the same release tag and simply copy over the various files.
+
+The process should loook something like this:
+
+1. Clone the `cosmos-enterprise-project` and checkout the equivalent tag. You'll need to ensure you have your Personally Access Token set to clone the repo. See the project [README](https://github.com/OpenC3/cosmos-enterprise-project) for help.
+
+   `git clone https://github.com/OpenC3/cosmos-enterprise-project.git`
+   `git checkout v6.9.2`
+
+2. From your current `cosmos-project` directory, stop the current COSMOS application
+
+   `openc3.sh stop`
+
+3. Copy the project files from the Enterprise project to your current project
+
+   `cp -r cosmos-enterprise-project/* .`
+
+4. Start the new Enterprise application
+
+   `openc3.sh run`
+
+5. Test and verify functionality and commit your changes.
+
 ## Migrating From COSMOS 5 to COSMOS 6
 
 :::info Developers Only
@@ -166,7 +197,7 @@ Eslint will help call out changes you'll need to make to your code for the migra
 - **Add:** `eslint-plugin-vuetify` >= 2.5 ([npmjs.com](https://www.npmjs.com/package/eslint-plugin-vuetify))
 - **Add:** `vue-eslint-parser` >= 9.4 ([npmjs.com](https://www.npmjs.com/package/vue-eslint-parser))
 
-If you modified your package.json file manually, don't forget to `yarn` or `npm install` at your project's root to apply the changes.
+If you modified your package.json file manually, don't forget to `pnpm install` at your project's root to apply the changes.
 
 ##### (1.b) Update the Vue config file (`vue.config.js`)
 
@@ -220,9 +251,9 @@ extends: [
 
 ##### (1.d) Fix build and runtime warnings and errors
 
-Run your linting and build scripts (e.g. `yarn lint` and `yarn build`). The eslint plugin and Vue's compat mode will find the first set of code changes you need to address. Fix these lint/build errors until your project builds successfully.
+Run your linting and build scripts (e.g. `pnpm lint` and `pnpm build`). The eslint plugin and Vue's compat mode will find the first set of code changes you need to address. Fix these lint/build errors until your project builds successfully.
 
-Once it builds, run your project like you would for development. It's recommended to serve it from a local dev server with `yarn serve` and add it to the import map overrides in the browser. Test the functionality of your tool and address any Vue errors and warnings that get printed to the browser console in the dev tools. _(NOTE: On `MODE: 2` - your first pass through this section - it's ok if your tool doesn't completely work yet. Just address the warnings and errors that are logged to the browser console. You'll get your tool completely working in the next step.)_
+Once it builds, run your project like you would for development. It's recommended to serve it from a local dev server with `pnpm serve` and add it to the import map overrides in the browser. Test the functionality of your tool and address any Vue errors and warnings that get printed to the browser console in the dev tools. _(NOTE: On `MODE: 2` - your first pass through this section - it's ok if your tool doesn't completely work yet. Just address the warnings and errors that are logged to the browser console. You'll get your tool completely working in the next step.)_
 
 From our experience migrating the COSMOS first-party tools, you'll most likely have to make changes to your `main.js` and `router.js` files at a minimum. You can reference the PR mentioned above in the "The quick and dirty way" section above to see what we changed, or search the internet for Vue 2 -> Vue 3 migration guides if you need help addressing any warnings or errors.
 
@@ -256,7 +287,7 @@ parserOptions: {
 },
 ```
 
-Now when you run eslint, it can tell you about any changes you'll need to address regarding how your code is using the Vuetify API. To find these changes, run eslint on your Vue files (e.g. `yarn eslint . --ext .vue`). You can address these manually, or if you trust eslint or have good version control, you can have the plugin fix most of them automatically with `yarn eslint . --ext .vue --fix`
+Now when you run eslint, it can tell you about any changes you'll need to address regarding how your code is using the Vuetify API. To find these changes, run eslint on your Vue files (e.g. `pnpm eslint . --ext .vue`). You can address these manually, or if you trust eslint or have good version control, you can have the plugin fix most of them automatically with `pnpm eslint . --ext .vue --fix`
 
 Lastly, if you are using the Astro UXDS icons via Vuetify from COSMOS - or any custom icon packs for that matter - then you'll need to change their pack alias format from `$packName-` to `packName:`. Here's an example for the `antenna-transmit` Astro icon:
 

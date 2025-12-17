@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: ⌨️
 ---
 
-The COSMOS Command Line Interface is `openc3.sh` and `openc3.bat` which are included in the COSMOS [project](https://github.com/OpenC3/cosmos-project) (more about [projects](key-concepts#projects)).
+The COSMOS Command Line Interface is a command on `openc3.sh` and `openc3.bat` which are included in the COSMOS [project](https://github.com/OpenC3/cosmos-project) (more about [projects](key-concepts#projects)).
 
 If you followed the [Installation Guide](installation.md) you should already be inside a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved). To see all the available type the following:
 
@@ -35,6 +35,24 @@ Usage:
 
 :::note seccomp profile
 You can safely ignore `WARNING: daemon is not using the default seccomp profile`
+:::
+
+### COSMOS Autocompletion in ZSH
+
+Create a directory in your home for the autocomplete file if you do not have one already. For example, create `~/.zsh/completions/` by running `mkdir -p ~/.zsh/completions`. 
+
+Then, copy `_openc3` from a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) repository and add the following to your `~/.zshrc` file:
+
+```shell
+fpath=(~/.zsh/completions $fpath) 
+autoload -Uz compinit
+compinit
+```
+
+Then, either run `exec zsh` in your current shell or open a new shell in your terminal application. 
+
+:::note issues getting argument completion
+If you are having issues getting "argument completion" working for `openc3.sh` try clearing the ZSH autocomplete cache running `rm ~/.zcompdump*` and then reinitialize the completion system with `compinit`.
 :::
 
 ## Rake

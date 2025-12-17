@@ -57,7 +57,7 @@ class TestCmdApi(unittest.TestCase):
             if self.process:
                 try:
                     result = orig_xread(*args)
-                except RuntimeError:
+                except Exception:
                     pass
 
             # Create a slight delay to simulate the blocking call
@@ -79,6 +79,8 @@ class TestCmdApi(unittest.TestCase):
         self.interface.target_names = ["INST"]
         self.interface.cmd_target_names = ["INST"]
         self.interface.tlm_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True}
+        self.interface.tlm_target_enabled = {"INST": True}
         model = InterfaceModel(name="INST_INT", scope="DEFAULT")
         model.create()
         InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
@@ -246,7 +248,7 @@ class TestCmdApi(unittest.TestCase):
                     func("INST COLLECT with TYPE 0, DURATION 1000")
                 else:
                     func("INST COLLECT with TYPE NORMAL, DURATION 1000")
-            except RuntimeError:
+            except Exception:
                 self.fail(f"{name} raised RuntimeError unexpectedly!")
 
     def test_cmd_warns_about_hazardous_parameters(self):
@@ -777,11 +779,11 @@ class BuildCommand(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)
+        time.sleep(0.1)  # Increased from 0.01 to 0.1 to allow microservice to fully initialize
 
     def tearDown(self):
         self.dm.shutdown()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
     def test_complains_about_unknown_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?"):

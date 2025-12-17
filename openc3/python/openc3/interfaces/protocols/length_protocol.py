@@ -17,6 +17,7 @@
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.utilities.extract import convert_to_value
 
 
 # Protocol which delineates packets using a length field at a fixed
@@ -61,10 +62,10 @@ class LengthProtocol(BurstProtocol):
         )
 
         # Save length field attributes
-        self.length_bit_offset = int(length_bit_offset)
-        self.length_bit_size = int(length_bit_size)
-        self.length_value_offset = int(length_value_offset)
-        self.length_bytes_per_count = int(length_bytes_per_count)
+        self.length_bit_offset = int(convert_to_value(length_bit_offset))
+        self.length_bit_size = int(convert_to_value(length_bit_size))
+        self.length_value_offset = int(convert_to_value(length_value_offset))
+        self.length_bytes_per_count = int(convert_to_value(length_bytes_per_count))
 
         # Save endianness
         if str(length_endianness).upper() == "LITTLE_ENDIAN":
@@ -84,7 +85,7 @@ class LengthProtocol(BurstProtocol):
         # Save max length setting
         self.max_length = ConfigParser.handle_none(max_length)
         if self.max_length:
-            self.max_length = int(self.max_length)
+            self.max_length = int(convert_to_value(self.max_length))
 
     # Called to perform modifications on a command packet before it is send
     #
@@ -171,3 +172,25 @@ class LengthProtocol(BurstProtocol):
         self.data = self.data[packet_length:]
 
         return (packet_data, self.extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result["length_bit_offset"] = self.length_bit_offset
+        result["length_bit_size"] = self.length_bit_size
+        result["length_value_offset"] = self.length_value_offset
+        result["length_bytes_per_count"] = self.length_bytes_per_count
+        result["length_endianness"] = self.length_endianness
+        result["length_bytes_needed"] = self.length_bytes_needed
+        result["max_length"] = self.max_length
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result["length_bit_offset"] = self.length_bit_offset
+        result["length_bit_size"] = self.length_bit_size
+        result["length_value_offset"] = self.length_value_offset
+        result["length_bytes_per_count"] = self.length_bytes_per_count
+        result["length_endianness"] = self.length_endianness
+        result["length_bytes_needed"] = self.length_bytes_needed
+        result["max_length"] = self.max_length
+        return result

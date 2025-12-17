@@ -38,12 +38,23 @@ class QueuesController < ApplicationController
   def index
     return unless authorization('cmd_info')
     begin
-      queues = @model_class.all(scope: params[:scope])
-      ret = Array.new
-      queues.each do |_, trigger|
-        ret << trigger
+      models = @model_class.all(scope: params[:scope])
+      queues = []
+      models.each do |_, queue|
+        queues << queue
       end
-      render json: ret
+      # Sort queues by name
+      queues.sort_by! { |queue| queue['name'] }
+      # If OPENC3_DEFAULT_QUEUE is set, move it to the front of the list
+      default_queue = ENV['OPENC3_DEFAULT_QUEUE']
+      if default_queue
+        default_index = queues.find_index { |queue| queue['name'] == default_queue }
+        if default_index
+          default_queue_obj = queues.delete_at(default_index)
+          queues.unshift(default_queue_obj)
+        end
+      end
+      render json: queues
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
@@ -63,7 +74,7 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::QueueError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
@@ -86,7 +97,7 @@ class QueuesController < ApplicationController
         state = params[:state] if params[:state]
         model = @model_class.new(name: params[:name], state: state, scope: params[:scope])
         model.create()
-        render json: model.as_json(:allow_nan => true), status: 201
+        render json: model.as_json(), status: 201
       else
         render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400
       end
@@ -141,12 +152,12 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = nil
-      if params[:index]
-        index = params[:index].to_f
+      id = nil
+      if params[:id]
+        id = params[:id].to_f
       end
-      # If params[:index] is not given this will be nil which means insert at the end
-      model.insert_command(index, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
+      # If params[:id] is not given this will be nil which means insert at the end
+      model.insert_command(id, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -162,8 +173,8 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = params[:index]&.to_f
-      command_data = model.remove_command(index)
+      id = params[:id]&.to_f
+      command_data = model.remove_command(id)
       if command_data
         render json: command_data
       else
@@ -189,12 +200,12 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = params[:index]
-      if index.nil?
-        render json: { status: 'error', message: 'index is required' }, status: 400
+      id = params[:id]
+      if id.nil?
+        render json: { status: 'error', message: 'id is required' }, status: 400
         return
       end
-      model.update_command(index: index, username: username(), command: command)
+      model.update_command(id: id, username: username(), command: command)
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)
@@ -213,16 +224,36 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      index = params[:index]&.to_f
-      command_data = model.remove_command(index)
+      id = params[:id]&.to_f
+      command_data = model.remove_command(id)
       if command_data
         hazardous = false
+        token = get_token(username(), scope: params[:scope])
         begin
-          token = get_token(command_data['username'], scope: params[:scope])
-          if hazardous
-            cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+          # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
+          if command_data['target_name'] && command_data['cmd_name']
+            # New format: use 3-parameter cmd() method
+            if command_data['cmd_params']
+              cmd_params = JSON.parse(command_data['cmd_params'], allow_nan: true, create_additions: true)
+            else
+              cmd_params = {}
+            end
+            if hazardous
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+            end
+          elsif command_data['value']
+            # Legacy format: use single string parameter
+            if hazardous
+              cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+            else
+              cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            end
           else
-            cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+            log_error("Invalid command format in queue: #{command_data}")
+            render json: { status: 'error', message: "Invalid command format: missing required fields" }, status: 400
+            return
           end
         rescue HazardousError => e
           # Rescue hazardous error and retry with cmd_no_hazardous_check
@@ -235,8 +266,8 @@ class QueuesController < ApplicationController
         end
         render json: command_data
       else
-        if index
-          render json: { status: 'error', message: "No command in queue #{params[:name]} at index #{index}" }, status: 404
+        if id
+          render json: { status: 'error', message: "No command in queue #{params[:name]} at id #{id}" }, status: 404
         else
           render json: { status: 'error', message: "No commands in queue #{params[:name]}" }, status: 404
         end
@@ -255,7 +286,7 @@ class QueuesController < ApplicationController
       return
     end
     model.destroy()
-    render json: model.as_json(:allow_nan => true)
+    render json: model.as_json()
   end
 
   private
@@ -270,7 +301,7 @@ class QueuesController < ApplicationController
       end
       model.state = state
       model.update()
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500

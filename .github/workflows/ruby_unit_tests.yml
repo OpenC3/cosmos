@@ -12,9 +12,11 @@ name: Ruby Unit Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   RUBYOPT: --disable=frozen_string_literal
@@ -26,10 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ["3.3", "3.4"]
+        ruby-version: ["3.4"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         with:

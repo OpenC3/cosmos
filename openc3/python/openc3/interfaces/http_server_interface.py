@@ -17,6 +17,7 @@
 import queue
 from threading import Thread
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import traceback
 from openc3.interfaces.interface import Interface
 from openc3.accessors.http_accessor import HttpAccessor
 from openc3.packets.packet import Packet
@@ -109,10 +110,10 @@ class HttpServerInterface(Interface):
                 path = None
                 try:
                     path = packet.read("HTTP_PATH")
-                except Exception as error:
+                except Exception:
                     # No HTTP_PATH is an error
                     Logger.error(
-                        f"HttpServerInterface Packet {target_name} {packet_name} unable to read HTTP_PATH\n{repr(error)}"
+                        f"HttpServerInterface Packet {target_name} {packet_name} unable to read HTTP_PATH\n{traceback.format_exc()}"
                     )
                 if path:
                     self.lookup[path] = self.lookup.get(path) or []
@@ -186,3 +187,13 @@ class HttpServerInterface(Interface):
             packet.extra = extra
 
         return packet
+
+    def details(self):
+        result = super().details()
+        result['listen_address'] = self.listen_address
+        result['port'] = self.port
+        if self.server is not None:
+            result['request_queue_length'] = self.server.request_queue.qsize()
+        else:
+            result['request_queue_length'] = 0
+        return result

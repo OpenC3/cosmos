@@ -69,7 +69,7 @@ module OpenC3
       end
 
       it "complains about bad data types" do
-        expect { StructureItem.new("test", 0, 0, :UNKNOWN, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: unknown data_type: UNKNOWN - Must be :INT, :UINT, :FLOAT, :STRING, :BLOCK, or :DERIVED")
+        expect { StructureItem.new("test", 0, 0, :UNKNOWN, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: unknown data_type: UNKNOWN - Must be INT, UINT, FLOAT, STRING, BLOCK, BOOL, OBJECT, ARRAY, ANY, DERIVED")
       end
     end
 
@@ -219,31 +219,19 @@ module OpenC3
     describe "as_json" do
       it "creates a Hash" do
         item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
-        hash = item.as_json(:allow_nan => true)
-        expect(hash.keys.length).to eql 8
-        expect(hash.keys).to include('name', 'bit_offset', 'bit_size', 'data_type', 'endianness', 'array_size', 'overflow')
+        hash = item.as_json()
+        expect(hash.keys.length).to eql 11
+        expect(hash.keys).to include('name', 'key', 'bit_offset', 'bit_size', 'data_type', 'endianness', 'array_size', 'overflow', 'hidden', 'create_index', 'overlap')
         expect(hash["name"]).to eql "TEST"
         expect(hash["key"]).to eql "test"
         expect(hash["bit_offset"]).to eql 0
         expect(hash["bit_size"]).to eql 8
-        expect(hash["data_type"]).to eql :UINT
-        expect(hash["endianness"]).to eql :BIG_ENDIAN
+        expect(hash["data_type"]).to eql 'UINT'
+        expect(hash["endianness"]).to eql 'BIG_ENDIAN'
         expect(hash["array_size"]).to eql 16
-        expect(hash["overflow"]).to eql :ERROR
-      end
-    end
-
-    describe "self.from_json" do
-      it "creates StructureItem from hash" do
-        item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, 16)
-        new_item = StructureItem.from_json(item.as_json(:allow_nan => true))
-        expect(new_item.name).to eql item.name
-        expect(new_item.bit_offset).to eql item.bit_offset
-        expect(new_item.bit_size).to eql item.bit_size
-        expect(new_item.data_type).to eql item.data_type
-        expect(new_item.endianness).to eql item.endianness
-        expect(new_item.array_size).to eql item.array_size
-        expect(new_item.overflow).to eql item.overflow
+        expect(hash["overflow"]).to eql 'ERROR'
+        expect(hash["hidden"]).to eql false
+        expect(hash["overlap"]).to eql false
       end
     end
   end

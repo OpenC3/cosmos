@@ -1,0 +1,1 @@
+nodeLinker: hoisted # makes a flat node_modules dir - required by our fixlinux script to be able to browse code coverage

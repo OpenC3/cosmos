@@ -214,3 +214,30 @@ class MqttInterface(Interface):
                 self.ca_file.close()
             case "KEYFILE_PASSWORD":
                 self.keyfile_password = option_values[0]
+
+    def details(self):
+        result = super().details()
+        result['hostname'] = self.hostname
+        result['port'] = self.port
+        result['ssl'] = self.ssl
+        result['ack_timeout'] = self.ack_timeout
+        result['username'] = self.username
+        if self.password:
+            result['password'] = 'Set'
+        if self.cert:
+            result['cert'] = 'Set'
+        if self.key:
+            result['key'] = 'Set'
+        if self.ca_file:
+            result['ca_file'] = 'Set'
+        # Remove sensitive options from the options dict
+        if 'PASSWORD' in result['options']:
+            del result['options']['PASSWORD']
+        if 'CERT' in result['options']:
+            del result['options']['CERT']
+        if 'KEY' in result['options']:
+            del result['options']['KEY']
+        if 'CA_FILE' in result['options']:
+            del result['options']['CA_FILE']
+        result['read_packets_by_topic'] = self.read_packets_by_topic
+        return result

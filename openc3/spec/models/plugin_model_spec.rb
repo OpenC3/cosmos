@@ -41,7 +41,7 @@ module OpenC3
         model.create
         names = PluginModel.names(scope: "DEFAULT")
         plugin = PluginModel.get(name: names[0], scope: "DEFAULT")
-        expect(plugin["name"]).to match(/TEST1__\d{13}/)
+        expect(plugin["name"]).to eq("TEST1__0")
       end
     end
 
@@ -55,9 +55,9 @@ module OpenC3
         model.create
         names = PluginModel.names(scope: "DEFAULT")
         # contain_exactly doesn't care about ordering and neither do we
-        expect(names).to include(/TEST__\d{14}|SPEC__\d{14}/).twice
+        expect(names).to contain_exactly("TEST__0", "SPEC__0")
         names = PluginModel.names(scope: "OTHER")
-        expect(names).to include(/OTHER__\d{14}/)
+        expect(names).to contain_exactly("OTHER__0")
       end
     end
 
@@ -68,7 +68,7 @@ module OpenC3
         model = PluginModel.new(name: "SPEC", scope: "DEFAULT")
         model.create
         all = PluginModel.all(scope: "DEFAULT")
-        expect(all.keys).to include(/TEST__\d{14}|SPEC__\d{14}/).twice
+        expect(all.keys).to contain_exactly("TEST__0", "SPEC__0")
       end
     end
 
@@ -151,14 +151,19 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
@@ -197,8 +202,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -224,8 +234,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -253,8 +268,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -283,8 +303,13 @@ module OpenC3
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
@@ -345,6 +370,63 @@ module OpenC3
       end
     end
 
+    describe "counter-based naming" do
+      it "increments counter for duplicate plugin names" do
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        model3 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model3.create
+        expect(model3.name).to eq("TEST__2")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__0", "TEST__1", "TEST__2")
+      end
+
+      it "fills gaps in counter sequence" do
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        model3 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model3.create
+        expect(model3.name).to eq("TEST__2")
+        # Destroy the middle one to create a gap
+        model2.destroy
+        # Now create a new plugin with base name - should fill the gap at __1
+        model4 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model4.create
+        expect(model4.name).to eq("TEST__1")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__0", "TEST__1", "TEST__2")
+      end
+
+      it "handles backwards compatibility with timestamp-based naming" do
+        old_plugin_name = "TEST__20250904175756"
+        old_plugin_data = {
+          'name' => old_plugin_name,
+          'variables' => {},
+          'plugin_txt_lines' => [],
+          'needs_dependencies' => false,
+          'store_id' => nil,
+          'updated_at' => Time.now.to_nsec_from_epoch
+        }
+        Store.hset("DEFAULT__openc3_plugins", old_plugin_name, JSON.generate(old_plugin_data))
+        model1 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model1.create
+        expect(model1.name).to eq("TEST__0")
+        model2 = PluginModel.new(name: "TEST", scope: "DEFAULT")
+        model2.create
+        expect(model2.name).to eq("TEST__1")
+        names = PluginModel.names(scope: "DEFAULT")
+        expect(names).to contain_exactly("TEST__20250904175756", "TEST__0", "TEST__1")
+      end
+    end
+
     describe "destroy, restore" do
       it "destroys and restores the model" do
         expect(GemModel).to receive(:get).and_return('path')
@@ -353,8 +435,13 @@ module OpenC3
         expect(gem).to receive(:extract_files)
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
-        expect(gem).to receive(:spec).and_return(spec)
-        expect(spec).to receive(:runtime_dependencies).and_return([])
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
 
         model = PluginModel.new(name: "TEST", scope: "DEFAULT")
         model.create

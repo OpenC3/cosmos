@@ -84,7 +84,7 @@ begin
   redis = OpenC3::Store.instance.build_redis
   redis.subscribe([SCRIPT_API, "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
     on.message do |_channel, msg|
-      parsed_cmd = JSON.parse(msg, :allow_nan => true, :create_additions => true)
+      parsed_cmd = JSON.parse(msg, allow_nan: true, create_additions: true)
       run_script_log(id, "Script #{path} received command: #{msg}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
       case parsed_cmd
       when "go"

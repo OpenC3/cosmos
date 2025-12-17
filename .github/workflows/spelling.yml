@@ -3,19 +3,21 @@ name: Check Spelling
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 jobs:
   spelling:
     name: Codespell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: codespell-project/actions-codespell@v2
         with:
           # Skip generated code as well as cstol_converter which has false
           # positivies on ADN and Adn
-          skip: ./docs,*.map,*.min.js,*.pem,*.bin,cstol_converter,vue.global*,vuetify-labs*
+          skip: ./docs,*.map,*.min.js,*.pem,*.bin,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
           ignore_words_file: .whitelist

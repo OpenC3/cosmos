@@ -20,6 +20,7 @@ from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.packet import Packet
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import hex_to_byte_string
+from openc3.utilities.extract import convert_to_value
 
 
 # Reads all data available on the interface and creates a packet
@@ -40,8 +41,8 @@ class BurstProtocol(Protocol):
         fill_fields=False,
         allow_empty_data=None,
     ):
-        super().__init__(allow_empty_data) # Calls reset()
-        self.discard_leading_bytes = int(discard_leading_bytes)
+        super().__init__(allow_empty_data)  # Calls reset()
+        self.discard_leading_bytes = int(convert_to_value(discard_leading_bytes))
         self.sync_pattern = ConfigParser.handle_none(sync_pattern)
         if self.sync_pattern:
             self.sync_pattern = hex_to_byte_string(self.sync_pattern)
@@ -212,3 +213,17 @@ class BurstProtocol(Protocol):
         packet_data = self.data[:]
         self.data = b""
         return (packet_data, self.extra)
+
+    def write_details(self):
+        result = super().write_details()
+        result["discard_leading_bytes"] = self.discard_leading_bytes
+        result["sync_pattern"] = repr(self.sync_pattern)
+        result["fill_fields"] = self.fill_fields
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result["discard_leading_bytes"] = self.discard_leading_bytes
+        result["sync_pattern"] = repr(self.sync_pattern)
+        result["fill_fields"] = self.fill_fields
+        return result

@@ -70,7 +70,7 @@ class TopicsThread
 
   def transmit_results(results, force: false)
     if results.length > 0 or force
-      ActionCable.server.broadcast(@subscription_key, results.as_json(:allow_nan => true))
+      ActionCable.server.broadcast(@subscription_key, results.as_json())
     end
   end
 

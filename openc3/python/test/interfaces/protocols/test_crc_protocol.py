@@ -872,7 +872,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("DATA", 32, "UINT")
         packet.append_item("CRC", 8, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
-        packet.buffer = b"\x00\x01\x02\x03\x3F\x04\x05\x06\x07"
+        packet.buffer = b"\x00\x01\x02\x03\x3f\x04\x05\x06\x07"
         self.interface.write(packet)
         buffer = b"\x00\x01\x02\x03"
         buffer += struct.pack(">B", Crc8().calc(b"\x00\x01\x02\x03"))
@@ -1068,3 +1068,181 @@ class TestCrcProtocol(unittest.TestCase):
         self.interface.write(packet)
         self.assertEqual(len(TestCrcProtocol.buffer), 20)
         self.assertEqual(TestCrcProtocol.buffer, buffer)
+
+    def test_write_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "TRUE",  # strip crc
+                "ERROR",  # bad strategy
+                -32,  # bit offset
+                32,  # bit size
+                "BIG_ENDIAN",  # endianness
+                0xABCD,  # poly
+                0x1234,  # seed
+                "TRUE",  # xor
+                "FALSE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.write_protocols[0]
+        details = protocol.write_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CrcProtocol")
+        self.assertIn("write_data_input_time", details)
+        self.assertIn("write_data_input", details)
+        self.assertIn("write_data_output_time", details)
+        self.assertIn("write_data_output", details)
+
+        # Check CRC protocol specific write fields
+        self.assertIn("write_item_name", details)
+        self.assertEqual(details["write_item_name"], "CRC")
+        self.assertIn("endianness", details)
+        self.assertEqual(details["endianness"], "BIG_ENDIAN")
+        self.assertIn("bit_offset", details)
+        self.assertEqual(details["bit_offset"], -32)
+        self.assertIn("bit_size", details)
+        self.assertEqual(details["bit_size"], 32)
+
+    def test_read_details_returns_correct_information(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "TRUE",  # strip crc
+                "DISCONNECT",  # bad strategy
+                -16,  # bit offset
+                16,  # bit size
+                "LITTLE_ENDIAN",  # endianness
+                0x1234,  # poly
+                0x5678,  # seed
+                "FALSE",  # xor
+                "TRUE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.read_protocols[0]
+        details = protocol.read_details()
+
+        # Check that it returns a dictionary
+        self.assertIsInstance(details, dict)
+
+        # Check base protocol fields from super()
+        self.assertIn("name", details)
+        self.assertEqual(details["name"], "CrcProtocol")
+        self.assertIn("read_data_input_time", details)
+        self.assertIn("read_data_input", details)
+        self.assertIn("read_data_output_time", details)
+        self.assertIn("read_data_output", details)
+
+        # Check CRC protocol specific read fields
+        self.assertIn("strip_crc", details)
+        self.assertEqual(details["strip_crc"], True)
+        self.assertIn("bad_strategy", details)
+        self.assertEqual(details["bad_strategy"], "DISCONNECT")
+        self.assertIn("endianness", details)
+        self.assertEqual(details["endianness"], "LITTLE_ENDIAN")
+        self.assertIn("bit_offset", details)
+        self.assertEqual(details["bit_offset"], -16)
+        self.assertIn("bit_size", details)
+        self.assertEqual(details["bit_size"], 16)
+
+    def test_accepts_hex_string_for_bit_offset(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                None,  # item name
+                "TRUE",  # strip crc
+                "ERROR",  # bad strategy
+                "0x20",  # bit offset as hex string (32 in decimal)
+                16,
+            ],  # bit size
+            "READ_WRITE",
+        )
+        self.assertEqual(self.interface.read_protocols[0].bit_offset, 32)
+
+    def test_accepts_hex_string_for_bit_size(self):
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                None,  # item name
+                "TRUE",  # strip crc
+                "ERROR",  # bad strategy
+                -32,  # bit offset
+                "0x20",  # bit size as hex string (32 in decimal)
+            ],
+            "READ_WRITE",
+        )
+        self.assertEqual(self.interface.read_protocols[0].bit_size, 32)
+
+    def test_accepts_hex_string_for_poly(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -16,  # bit offset
+                16,  # bit size
+                "BIG_ENDIAN",  # endianness
+                "0x8005",  # poly as hex string
+                0x0,  # seed
+                "TRUE",  # xor
+                "TRUE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 16, "UINT")
+
+        TestCrcProtocol.buffer = b"\x00\x01\x02\x03"
+        crc16 = Crc16(0x8005, 0, True, True)
+        crc = crc16.calc(TestCrcProtocol.buffer)
+        TestCrcProtocol.buffer += struct.pack(">H", crc)
+
+        packet = self.interface.read()
+        self.assertEqual(len(packet.buffer), 6)
+        self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
+
+    def test_accepts_hex_string_for_seed(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -16,  # bit offset
+                16,  # bit size
+                "BIG_ENDIAN",  # endianness
+                0x8005,  # poly
+                "0xFFFF",  # seed as hex string
+                "TRUE",  # xor
+                "TRUE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 16, "UINT")
+
+        TestCrcProtocol.buffer = b"\x00\x01\x02\x03"
+        crc16 = Crc16(0x8005, 0xFFFF, True, True)
+        crc = crc16.calc(TestCrcProtocol.buffer)
+        TestCrcProtocol.buffer += struct.pack(">H", crc)
+
+        packet = self.interface.read()
+        self.assertEqual(len(packet.buffer), 6)
+        self.assertEqual(packet.buffer, TestCrcProtocol.buffer)

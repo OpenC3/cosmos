@@ -115,7 +115,7 @@ module OpenC3
       key = "DEFAULT/settings/classification_banner.json"
       full_path = "#{@tmp_dir}/#{key}"
       FileUtils.mkdir_p(File.dirname(full_path))
-      File.open(full_path, 'wb') {|file| file.write(JSON.generate({text: 'CLASS'}))}
+      File.open(full_path, 'wb') {|file| file.write(JSON.generate({text: 'CLASS'}, allow_nan: true))}
       expect(File.exist?(full_path)).to be true
 
       # Setup remote catalog
@@ -566,7 +566,7 @@ module OpenC3
         setup_sync_test()
         Zip.continue_on_exists_proc = true
         zip_filename = "#{@tmp_dir}/test.zip"
-        zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+        zip = Zip::File.open(zip_filename, create: true)
         LocalMode.zip_target('INST', zip, scope: 'DEFAULT')
         zip.close
         expect(File.exist?(zip_filename)).to be true
@@ -923,7 +923,7 @@ module OpenC3
       it "should save tool config JSON to disk and delete it" do
         json = [ { "data" => "value"} ]
         setup_sync_test()
-        LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', 'temps', JSON.generate(json))
+        LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', 'temps', JSON.generate(json, allow_nan: true))
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
@@ -940,7 +940,7 @@ module OpenC3
 
         # Works with JSON that we generate and parse
         json = {"text" => "blah"}
-        LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json))
+        LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json, allow_nan: true))
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/data.json"))).to eq(json)
       end
     end

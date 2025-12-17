@@ -33,7 +33,7 @@ module OpenC3
     @@conn = nil
     @@conn_mutex = Mutex.new
 
-    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
+    VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
     def self.build_json_from_packet(packet)
       packet.decom
     end
@@ -48,7 +48,7 @@ module OpenC3
 
     # Set the current value table for a target, packet
     def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
-      packet_json = JSON.generate(hash.as_json(:allow_nan => true))
+      packet_json = JSON.generate(hash.as_json, allow_nan: true)
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
@@ -71,7 +71,7 @@ module OpenC3
       end
       packet = Store.hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
-      hash = JSON.parse(packet, :allow_nan => true, :create_additions => true)
+      hash = JSON.parse(packet, allow_nan: true, create_additions: true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
       hash
     end
@@ -80,16 +80,13 @@ module OpenC3
     def self.set_item(target_name, packet_name, item_name, value, type:, queued: false, scope: $openc3_scope)
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: nil, scope: scope)
       case type
-      when :WITH_UNITS
-        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
       when :CONVERTED
         hash["#{item_name}__C"] = value
       when :RAW
         hash[item_name] = value
       when :ALL
-        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
         hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
         hash["#{item_name}__C"] = value
         hash[item_name] = value
@@ -143,9 +140,7 @@ module OpenC3
         # NOTE: Semicolon added as it appears invalid
         item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
         case value_type
-        when 'WITH_UNITS'
-          names << "\"T#{index}.#{item_name}__U\""
-        when 'FORMATTED'
+        when 'FORMATTED', 'WITH_UNITS'
           names << "\"T#{index}.#{item_name}__F\""
         when 'CONVERTED'
           names << "\"T#{index}.#{item_name}__C\""
@@ -222,10 +217,10 @@ module OpenC3
         retry_count += 1
         if retry_count > 4
           # After the 5th retry just raise the error
-          raise "Error querying QuestDB: #{e.message}"
+          raise "Error querying TSDB: #{e.message}"
         end
-        Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-        Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
+        Logger.warn("TSDB: Retrying due to error: #{e.message}")
+        Logger.warn("TSDB: Last query: #{query}") # Log the last query for debugging
         @@conn_mutex.synchronize do
           if @@conn and !@@conn.finished?
             @@conn.finish()
@@ -310,7 +305,7 @@ module OpenC3
         all = Store.hgetall("#{scope}__override__#{target_name}")
         next if all.nil? or all.empty?
         all.each do |packet_name, hash|
-          items = JSON.parse(hash, :allow_nan => true, :create_additions => true)
+          items = JSON.parse(hash, allow_nan: true, create_additions: true)
           items.each do |key, value|
             item = {}
             item['target_name'] = target_name
@@ -318,9 +313,7 @@ module OpenC3
             item_name, value_type_key = key.split('__')
             item['item_name'] = item_name
             case value_type_key
-            when 'U'
-              item['value_type'] = 'WITH_UNITS'
-            when 'F'
+            when 'F', 'U'
               item['value_type'] = 'FORMATTED'
             when 'C'
               item['value_type'] = 'CONVERTED'
@@ -339,50 +332,44 @@ module OpenC3
     # for the given type
     def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)
       hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
       when :ALL
         hash[item_name] = value
         hash["#{item_name}__C"] = value
         hash["#{item_name}__F"] = value.to_s
-        hash["#{item_name}__U"] = value.to_s
       when :RAW
         hash[item_name] = value
       when :CONVERTED
         hash["#{item_name}__C"] = value
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # Always a String
-      when :WITH_UNITS
-        hash["#{item_name}__U"] = value.to_s # Always a String
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
       @@override_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
     end
 
     # Normalize a current value table item such that it returns the actual value
     def self.normalize(target_name, packet_name, item_name, type: :ALL, scope: $openc3_scope)
       hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
       when :ALL
         hash.delete(item_name)
         hash.delete("#{item_name}__C")
         hash.delete("#{item_name}__F")
-        hash.delete("#{item_name}__U")
       when :RAW
         hash.delete(item_name)
       when :CONVERTED
         hash.delete("#{item_name}__C")
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         hash.delete("#{item_name}__F")
-      when :WITH_UNITS
-        hash.delete("#{item_name}__U")
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
@@ -393,7 +380,7 @@ module OpenC3
         Store.hdel("#{scope}__override__#{target_name}", packet_name)
       else
         @@override_cache[tgt_pkt_key] = [Time.now, hash]
-        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
       end
     end
 
@@ -411,7 +398,10 @@ module OpenC3
           latest_packet_name = packet_name
         end
       end
-      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" if latest == -1
+      # Return the first packet name if no packets have been received
+      if latest == -1
+        latest_packet_name = packet_names[0]
+      end
       return latest_packet_name
     end
 
@@ -421,10 +411,7 @@ module OpenC3
       override_key = item_name
       types = []
       case type
-      when :WITH_UNITS
-        types = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
-        override_key = "#{item_name}__U"
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         types = ["#{item_name}__F", "#{item_name}__C", item_name]
         override_key = "#{item_name}__F"
       when :CONVERTED
@@ -453,7 +440,7 @@ module OpenC3
       end
       override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
       if override_data
-        hash = JSON.parse(override_data, :allow_nan => true, :create_additions => true)
+        hash = JSON.parse(override_data, allow_nan: true, create_additions: true)
         overrides[tgt_pkt_key] = hash
       else
         hash = {}
@@ -474,16 +461,14 @@ module OpenC3
       end
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-      # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+      # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value
       case value_type.to_s
       when 'RAW'
         keys = [item_name]
       when 'CONVERTED'
         keys = ["#{item_name}__C", item_name]
-      when 'FORMATTED'
+      when 'FORMATTED', 'WITH_UNITS'
         keys = ["#{item_name}__F", "#{item_name}__C", item_name]
-      when 'WITH_UNITS'
-        keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
       else
         raise "Unknown value type '#{value_type}'"
       end

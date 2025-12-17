@@ -522,7 +522,7 @@ module OpenC3
       reduce(type, state.raw_keys, state.converted_keys, state.reduced)
       state.reduced.merge!(state.entry_samples)
       time = state.entry_time
-      data = JSON.generate(state.reduced.as_json(:allow_nan => true))
+      data = JSON.generate(state.reduced.as_json, allow_nan: true)
       if type == "minute"
         redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
       elsif type == "hour"

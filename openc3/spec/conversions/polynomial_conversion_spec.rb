@@ -51,7 +51,7 @@ module OpenC3
     describe 'as_json' do
       it 'creates a reproducible format' do
         pc = PolynomialConversion.new(1, 2, 3)
-        json = pc.as_json(:allow_nan => true)
+        json = pc.as_json()
         expect(json['class']).to eql 'OpenC3::PolynomialConversion'
         new_pc = OpenC3.const_get(json['class']).new(*json['params'])
         expect(pc.coeffs).to eql(new_pc.coeffs)

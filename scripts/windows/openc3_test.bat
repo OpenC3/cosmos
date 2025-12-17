@@ -3,6 +3,12 @@
 if ("%1" == "") (
   GOTO usage
 )
+if "%1" == "--help" (
+  GOTO usage
+)
+if "%1" == "-h" (
+  GOTO usage
+)
 if "%1" == "rspec" (
   GOTO rspec
 )
@@ -22,9 +28,9 @@ GOTO :EOF
   REM Starting OpenC3
   docker compose -f compose.yaml up -d
   CD playwright
-  CALL yarn run fixwindows
-  CALL yarn test
-  CALL yarn coverage
+  CALL pnpm run fixwindows
+  CALL pnpm test
+  CALL pnpm coverage
   CD ..
 GOTO :EOF
 

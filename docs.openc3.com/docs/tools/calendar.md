@@ -15,6 +15,8 @@ Calendar visualizes metadata, notes, and timeline information in one easy to und
 
 Adding a Timeline to COSMOS is as simple as clicking Create -> Timeline and giving it a unique name. Timelines can be created for organizational purposes or for overlapping activities as no activities can overlap on a given timeline. However, each additional timeline consists of several threads so only create timelines as necessary.
 
+![Timeline](/img/calendar/timeline.png)
+
 ## Types of Events
 
 ### Metadata
@@ -41,7 +43,7 @@ You then record the note to create the note event on the calendar.
 
 ### Activity
 
-Scheduled on a timeline, activities take both a start and end time.
+Scheduled on a timeline, activities take both a start and end time. A custom title and notes can also be specified. If a custom title is specified, that title will appear on the calendar instead of the default title that is generated.
 
 ![CreateActivity1](/img/calendar/create_activity1.png)
 
@@ -49,13 +51,30 @@ Activities can run single commands, run a script, or simply "Reserve" space on t
 
 ![CreateActivity2](/img/calendar/create_activity2.png)
 
-When calendar activities are scheduled they appear with a green circle containing a plus (+). Once they complete successfully the icon changes to a green circle containing a checkbox (✓). Reserve activities simply have a blank green circle.
+When calendar activities are scheduled they appear with a status icon, compliant with the AstroUX standards. As calendar activities are executed, there are lifecycle hooks set to track and display the latest status update from the executed script or command. Green circle will signify nominal (created, started, completed states), yellow square signifies warnings (script stopped, paused, hit breakpoint, completed with errors, disabled), and red triangle signifies error states (error, failed, crashed). Clicking into a Calendar Activity will show the details of the status updates.
 
-![Calendar](/img/calendar/calendar.png)
+![Activity](/img/calendar/activity.png)
 
-Calendar events can also be viewed in a list format via File->Show Table Display which supports pagination for listing both past and future events.
+### Gantt View
+
+Calendar events can be viewed as a Gantt chart view via the "Gantt" button. Gantt view shows a day's worth of activity, and users can click the next day / previous day buttons to view other day's events.
+
+![Gantt View](/img/calendar/gantt_view.png)
+
+### List View
+
+Calendar events can be viewed as a List view via the "List" button. List view shows a day's worth of activity, and users can click the next day / previous day buttons to view other day's events.
 
 ![List View](/img/calendar/list_view.png)
+
+### Settings
+
+By clicking File -> Options, the options can be modified. The configurations include:
+- Calendar view can be modified to be Sunday - Saturday view or Monday - Sunday
+- The default view modified to Calendar, Gantt, or List
+- The progress icon indicating the script is currently running can be modified
+
+![Options](/img/calendar/options.png)
 
 ## Timeline Implementation Details
 

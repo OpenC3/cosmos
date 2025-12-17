@@ -12,9 +12,11 @@ name: Python Unit Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   OPENC3_CLOUD: local
@@ -28,7 +30,7 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:

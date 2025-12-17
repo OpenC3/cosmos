@@ -96,5 +96,25 @@ module OpenC3
         @ca_file.close
       end
     end
+
+    def details
+      result = super()
+      result['hostname'] = @hostname
+      result['port'] = @port
+      result['ssl'] = @ssl
+      result['write_topic'] = @write_topic
+      result['read_topic'] = @read_topic
+      result['ack_timeout'] = @ack_timeout
+      result['username'] = @username
+      result['password'] = 'Set' if @password
+      result['cert'] = 'Set' if @cert
+      result['key'] = 'Set' if @key
+      result['ca_file'] = 'Set' if @ca_file
+      result['options'].delete('PASSWORD')
+      result['options'].delete('CERT')
+      result['options'].delete('KEY')
+      result['options'].delete('CA_FILE')
+      return result
+    end
   end
 end

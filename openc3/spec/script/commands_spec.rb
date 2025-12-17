@@ -56,6 +56,7 @@ module OpenC3
       capture_io do |stdout|
         redis = mock_redis()
         setup_system()
+        local_s3()
 
         @api = CommandsSpecApi.new
         # Mock the server proxy to directly call the api
@@ -77,6 +78,9 @@ module OpenC3
         @interface.target_names = %w[INST]
         @interface.cmd_target_names = %w[INST]
         @interface.tlm_target_names = %w[INST]
+        @interface.cmd_target_enabled = {"INST" => true}
+        @interface.tlm_target_enabled = {"INST" => true}
+
         # Stub to make the InterfaceCmdHandlerThread happy
         @interface_data = ''
         allow(@interface).to receive(:connected?).and_return(true)
@@ -98,6 +102,7 @@ module OpenC3
     end
 
     after(:each) do
+      local_s3_unset()
       shutdown_script()
       InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
       count = 0

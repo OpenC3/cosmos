@@ -12,7 +12,13 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ## Installing OpenC3 COSMOS on Host Machines
 
-### PREREQUISITES
+### Installation Video for macOS
+
+<div style={{textAlign: 'center'}}>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+</div>
+
+### Prerequisites
 
 If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
@@ -35,7 +41,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 **Note:** As of December 2021 the COSMOS Docker containers are based on the Alpine Docker image.
 
-### CLONE PROJECT
+### Clone Project
 
 We recommend using the COSMOS [project template](key-concepts#projects) to get started.
 
@@ -57,9 +63,9 @@ git clone https://github.com/OpenC3/cosmos-enterprise-project.git
   <p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
 :::
 
-### CERTIFICATES
+### Certificates
 
-The COSMOS containers are designed to work and be built in the presence of an SSL Decryption device. To support this a cacert.pem file can be placed at the base of the COSMOS 5 project that includes any certificates needed by your organization. **Note**: If you set the path to the ssl file in the `SSL_CERT_FILE` environment variables the openc3 setup script will copy it and place it for the docker container to load.
+The COSMOS containers are designed to work and be built in the presence of an SSL Decryption device. To support this a cacert.pem file can be placed at the base of the COSMOS project that includes any certificates needed by your organization. **Note**: If you set the path to the ssl file in the `SSL_CERT_FILE` environment variables the openc3 setup script will copy it and place it for the docker container to load.
 
 :::warning SSL Issues
 
@@ -78,7 +84,7 @@ Here are some directions on environment variables in Windows: [Windows Environme
 You will need to create new ones with the names above and set their value to the full path to the certificate file.
 :::
 
-### RUN
+### Run
 
 Add the locally cloned project directory to your path so you can directly use the batch file or shell script. In Windows this would be adding "C:\cosmos-project" to the PATH. In Linux you would edit your shell's rc file and export the PATH. For example, on a Mac add the following to ~/.zshrc: `export PATH=~/cosmos-project:$PATH`.
 
@@ -104,13 +110,117 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 *  util: various helper commands
 ```
 
-### CONNECT
+### Connect
 
 Connect a web browser to http://localhost:2900. Set the password to whatever you want.
 
-### NEXT STEPS
+### Next Steps
 
 Continue to [Getting Started](gettingstarted).
+
+---
+
+### Stop COSMOS
+
+The below command will stop all running COSMOS containers. This will _not_ remove Docker volumes and data, and will be preserved after stopping. If COSMOS is restarted using the `./openc3.sh run` command, the data will remain intact.
+
+```bash
+./openc3.sh stop
+```
+
+### Resume COSMOS
+
+COSMOS can be started up again with the `run` command, with previously used data intact (if any). If there are previously used Docker volumes and data available, COSMOS will start up using that data. If COSMOS is used with [Local Mode](../guides/local-mode.md), the local configurations will be referenced and used. If this is a first time deploy, the `run` command will begin with a fresh installation.
+
+```bash
+./openc3.sh run
+```
+
+### Cleanup COSMOS
+
+If you need to remove COSMOS from your system or reset your installation, follow these steps. 
+
+:::note Helpful guidance
+The `--help` option on the `./openc3.sh` command will provide helpful guidance of the available options and further descriptions. Example below:
+
+```
+❯ ./openc3.sh cleanup --help
+Usage: ./openc3.sh cleanup [local] [force]
+
+Remove all COSMOS Core docker volumes and data.
+
+WARNING: This is a destructive operation that removes ALL COSMOS Core data!
+
+Arguments:
+  local    Also remove local plugin files in plugins/DEFAULT/
+  force    Skip confirmation prompt
+
+Examples:
+  ./openc3.sh cleanup              # Remove volumes (with confirmation)
+  ./openc3.sh cleanup force        # Remove volumes (no confirmation)
+  ./openc3.sh cleanup local        # Remove volumes and local plugins
+  ./openc3.sh cleanup local force  # Remove volumes and local plugins (no confirmation)
+
+Options:
+  -h, --help    Show this help message
+```
+:::
+
+#### To remove Docker networks, volumes, and data
+
+To cleanup Docker volumes and data created by COSMOS:
+
+```bash
+./openc3.sh cleanup
+```
+
+:::warning Data Loss
+The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**.
+Make sure to backup any important data before running cleanup.
+:::
+
+#### To remove Docker networks, volumes, data, and Local Mode changes
+
+If you're running COSMOS with [Local Mode](../guides/local-mode.md), you may notice that modified files and newly created files are added to your host machine, under the `plugins` directory in your repository. Files are synced between server and local file system, which eliminates the need for rebuilding & re-uploading a plugin for development. If you want these local changes to also be cleaned up, run the following:
+
+```bash
+./openc3.sh cleanup local
+```
+
+:::warning Data Loss
+The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**, including **local mode changes added to your host machine**.
+Make sure to backup any important data before running cleanup.
+:::
+
+#### To remove Docker networks, volumes, and data _without confirmation_
+
+The `cleanup` options will prompt for a confirmation as they are going to delete your COSMOS installation. If you'd like to skip the confirmation, run the following:
+
+```bash
+./openc3.sh cleanup force
+    or
+./openc3.sh cleanup local force
+```
+
+The force option will remove containers, networks, volumes, and data without user confirmation.
+
+#### Remove Docker Images (Optional)
+
+If you want to free up disk space by removing the COSMOS Docker images:
+
+```bash
+docker images | grep openc3inc | awk '{print $3}' | xargs docker rmi
+```
+
+Or to remove all unused Docker images:
+
+```bash
+docker image prune -a
+```
+
+:::warning Docker image prune -a removes all unused images
+With -a flag: The command docker image prune -a is more aggressive and removes all unused images, meaning any image that is not currently associated with a running or stopped container. Use this with caution, as it might remove base images you want to keep.
+:::
 
 ---
 

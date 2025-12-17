@@ -17,10 +17,10 @@ export default defineConfig((options) => {
           hashCharacters: 'hex',
           entryFileNames: '[name].js',
           chunkFileNames: '[name]-[hash:20].js',
-          assetFileNames: 'assets/[name]-[hash][extname]'
+          assetFileNames: 'assets/[name]-[hash][extname]',
         },
         external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
-        preserveEntrySignatures: 'strict'
+        preserveEntrySignatures: 'strict',
       },
     },
     server: {

@@ -122,7 +122,9 @@ body,
 .v-navigation-drawer,
 .v-theme--cosmosDark.v-toolbar,
 .v-theme--cosmosDark.v-date-picker-header {
-  background-color: var(--color-background-surface-header); // don't do !important here (it breaks TlmGrapher)
+  background-color: var(
+    --color-background-surface-header
+  ); // don't do !important here (it breaks TlmGrapher)
 }
 
 .v-navigation-drawer .v-treeview-item {
@@ -187,13 +189,6 @@ table,
 }
 .v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list .v-list-item:hover {
   background-color: var(--color-background-interactive-muted) !important;
-}
-
-.v-theme--cosmosDark.v-overlay--active:not([role='tooltip']):not(
-    :has([role='listbox'])
-  ) {
-  backdrop-filter: blur(2px) !important;
-  --v-overlay-opacity: 0.1 !important;
 }
 
 .v-theme--cosmosDark.v-list-item:hover,

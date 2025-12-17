@@ -49,9 +49,13 @@ module OpenC3
 
       @hostname = hostname
       @write_port = ConfigParser.handle_nil(write_port)
+      @write_port = Integer(@write_port) if @write_port
       @read_port = ConfigParser.handle_nil(read_port)
-      @write_timeout = write_timeout
-      @read_timeout = read_timeout
+      @read_port = Integer(@read_port) if @read_port
+      @write_timeout = ConfigParser.handle_nil(write_timeout)
+      @write_timeout = Float(@write_timeout) if @write_timeout
+      @read_timeout = ConfigParser.handle_nil(read_timeout)
+      @read_timeout = Float(@read_timeout) if @read_timeout
       @read_allowed = false unless @read_port
       @write_allowed = false unless @write_port
       @write_raw_allowed = false unless @write_port
@@ -89,6 +93,16 @@ module OpenC3
         @stream.set_option(option_name, option_values)
       end
       super()
+    end
+
+    def details
+      result = super()
+      result['hostname'] = @hostname
+      result['write_port'] = @write_port
+      result['read_port'] = @read_port
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      return result
     end
   end
 end

@@ -209,5 +209,21 @@ module OpenC3
                              @data.length >= 6 ? @data.getbyte(5) : 0))
       end
     end
+
+    def write_details
+      result = super()
+      result['discard_leading_bytes'] = @discard_leading_bytes
+      result['sync_pattern'] = @sync_pattern.inspect
+      result['fill_fields'] = @fill_fields
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['discard_leading_bytes'] = @discard_leading_bytes
+      result['sync_pattern'] = @sync_pattern.inspect
+      result['fill_fields'] = @fill_fields
+      return result
+    end
   end
 end

@@ -11,9 +11,11 @@ name: API Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - "**"
 
 env:
   RUBYOPT: --disable=frozen_string_literal
@@ -33,10 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ["3.3", "3.4"]
+        ruby-version: ["3.4"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0 # all history for all branches and tags
@@ -76,10 +78,10 @@ jobs:
     strategy:
       matrix:
         # Note that the report-coverage job needs this value hard coded
-        ruby-version: ["3.3", "3.4"]
+        ruby-version: ["3.4"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
@@ -118,7 +120,7 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
@@ -158,7 +160,7 @@ jobs:
   #   needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v5
+  #     - uses: actions/checkout@v6
   #       with:
   #         fetch-depth: 0
   #     - name: Download coverage reports

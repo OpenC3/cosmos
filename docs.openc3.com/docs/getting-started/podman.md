@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 title: Podman
 description: Installing and running COSMOS with Podman
 sidebar_custom_props:

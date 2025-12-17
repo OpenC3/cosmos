@@ -15,9 +15,9 @@ Update this comment with your own description.
    - VERSION is required
    - gem file will be built locally
 
-## Building tool / widget plugins using a local Ruby/Node/Yarn/Rake Environment
+## Building tool / widget plugins using a local Ruby/Node/pnpm/Rake Environment
 
-1. yarn
+1. pnpm install --frozen-lockfile --ignore-scripts
 1. rake build VERSION=1.0.0
 
 ## Building tool / widget plugins using Docker and the openc3-node container
@@ -36,7 +36,7 @@ Windows:
 docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3-node sh
 ```
 
-1. yarn
+1. pnpm install --frozen-lockfile --ignore-scripts
 1. rake build VERSION=1.0.0
 
 ## Installing into OpenC3 COSMOS

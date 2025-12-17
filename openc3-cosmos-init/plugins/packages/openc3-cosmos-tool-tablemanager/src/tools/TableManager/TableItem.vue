@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,17 +24,17 @@
   <td>
     <v-checkbox
       v-if="isCheckbox"
+      v-model="checkValue"
       density="compact"
       hide-details
-      v-model="checkValue"
       :disabled="!dataItem.editable"
       data-test="table-item-checkbox"
     />
     <v-select
       v-else-if="dataItem.states"
+      v-model="stateValue"
       density="compact"
       hide-details
-      v-model="stateValue"
       :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
@@ -46,10 +46,10 @@
       single-line
       hide-no-data
       hide-details
-      @update:model-value="textChange"
       :model-value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"
+      @update:model-value="textChange"
     />
   </td>
 </template>
@@ -70,14 +70,7 @@ export default {
       dataItem: this.item,
       stateValue: null,
       checkValue: false,
-    }
-  },
-  created() {
-    if (this.dataItem.states) {
-      this.stateValue = this.dataItem.states[this.dataItem.value]
-    }
-    if (this.isCheckbox) {
-      this.checkValue = this.stateValue === 1
+      isMounted: false,
     }
   },
   computed: {
@@ -104,6 +97,7 @@ export default {
   },
   watch: {
     checkValue: function () {
+      if (!this.isMounted) return
       if (this.checkValue) {
         this.$emit('change', 'CHECKED')
       } else {
@@ -111,12 +105,24 @@ export default {
       }
     },
     stateValue: function () {
+      if (!this.isMounted) return
       // Lookup the state key that corresponds to the value
       let state = Object.keys(this.dataItem.states).find(
         (key) => this.dataItem.states[key] === this.stateValue,
       )
       this.$emit('change', state)
     },
+  },
+  created() {
+    if (this.dataItem.states) {
+      this.stateValue = this.dataItem.states[this.dataItem.value]
+    }
+    if (this.isCheckbox) {
+      this.checkValue = this.stateValue === 1
+    }
+  },
+  mounted() {
+    this.isMounted = true
   },
   methods: {
     textChange: function (value) {

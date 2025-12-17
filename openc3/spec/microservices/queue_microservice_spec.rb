@@ -41,73 +41,6 @@ module OpenC3
       end
     end
 
-    describe '#get_token' do
-      context 'when OPENC3_API_CLIENT is not set' do
-        before do
-          allow(ENV).to receive(:[]).with('OPENC3_API_CLIENT').and_return(nil)
-          allow(ENV).to receive(:[]).with('OPENC3_SERVICE_PASSWORD').and_return('test_password')
-          allow(ENV).to receive(:[]=).with('OPENC3_API_PASSWORD', 'test_password')
-        end
-
-        it 'uses OpenC3Authentication to get token' do
-          auth_double = double('OpenC3Authentication')
-          allow(OpenC3Authentication).to receive(:new).and_return(auth_double)
-          allow(auth_double).to receive(:token).and_return('test_token')
-
-          token = processor.get_token('test_user')
-          expect(token).to eq('test_token')
-        end
-      end
-
-      context 'when OPENC3_API_CLIENT is set' do
-        before do
-          allow(ENV).to receive(:[]).with('OPENC3_API_CLIENT').and_return('client')
-          allow(ENV).to receive(:[]).with('OPENC3_KEYCLOAK_URL').and_return('http://keycloak.test')
-        end
-
-        context 'with valid username and offline access token' do
-          it 'returns token from refresh token' do
-            model_double = double('OfflineAccessModel')
-            allow(model_double).to receive(:offline_access_token).and_return('refresh_token')
-            allow(OpenC3::OfflineAccessModel).to receive(:get_model)
-              .with(name: 'test_user', scope: scope)
-              .and_return(model_double)
-
-            auth_double = double('OpenC3KeycloakAuthentication')
-            allow(OpenC3KeycloakAuthentication).to receive(:new)
-              .with('http://keycloak.test')
-              .and_return(auth_double)
-            allow(auth_double).to receive(:get_token_from_refresh_token)
-              .with('refresh_token')
-              .and_return('access_token')
-
-            token = processor.get_token('test_user')
-            expect(token).to eq('access_token')
-          end
-        end
-
-        context 'with no offline access token' do
-          it 'returns nil' do
-            model_double = double('OfflineAccessModel')
-            allow(model_double).to receive(:offline_access_token).and_return(nil)
-            allow(OpenC3::OfflineAccessModel).to receive(:get_model)
-              .with(name: 'test_user', scope: scope)
-              .and_return(model_double)
-
-            token = processor.get_token('test_user')
-            expect(token).to be_nil
-          end
-        end
-
-        context 'with empty username' do
-          it 'returns nil' do
-            token = processor.get_token('')
-            expect(token).to be_nil
-          end
-        end
-      end
-    end
-
     describe '#run' do
       it 'processes commands when state is RELEASE' do
         processor.state = 'RELEASE'
@@ -158,9 +91,10 @@ module OpenC3
     describe '#process_queued_commands' do
       let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
+      let(:command3_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3', 'cmd_params' => JSON.generate({ 'PARAM' => 3 }) } }
+      let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4' } }
 
       before do
-        allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
         allow(processor).to receive(:cmd)
         processor.state = 'RELEASE'
       end
@@ -185,9 +119,86 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd)
-          .with(command1['value'], queue: false, scope: scope, token: 'test_token')
+          .with(command1['value'], queue: false, scope: scope)
         expect(processor).to have_received(:cmd)
-          .with(command2['value'], queue: false, scope: scope, token: 'test_token')
+          .with(command2['value'], queue: false, scope: scope)
+      end
+
+      it 'processes commands with new format (target_name, cmd_name, cmd_params)' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command3_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(2).times
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope)
+      end
+
+      it 'processes commands with new format without cmd_params' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command4_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(2).times
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope)
+      end
+
+      it 'processes mixed legacy and new format commands' do
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command1.to_json, 0]
+          when 2
+            ["#{scope}:QUEUE", command3_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+
+        processor.process_queued_commands
+
+        expect(Store).to have_received(:bzpopmin).exactly(3).times
+        expect(processor).to have_received(:cmd)
+          .with(command1['value'], queue: false, scope: scope)
+        expect(processor).to have_received(:cmd)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope)
+      end
+
+      it 'logs error for invalid command format (missing required fields)' do
+        invalid_command = { 'username' => 'test_user' }
+        allow(Store).to receive(:bzpopmin) do
+          processor.state = 'HOLD' if processor.state == 'RELEASE'
+          ["#{scope}:QUEUE", invalid_command.to_json, 0]
+        end
+        expect(logger).to receive(:error).with(/QueueProcessor: Invalid command format, missing required fields/)
+
+        processor.process_queued_commands
+
+        expect(processor).not_to have_received(:cmd)
       end
 
       it 'stops processing when queue is empty' do
@@ -207,7 +218,6 @@ module OpenC3
           processor.state = 'HOLD' if processor.state == 'RELEASE'
           ["#{scope}:QUEUE", command1.to_json, 0]
         end
-        allow(processor).to receive(:get_token).with('test_user').and_return('test_token')
         allow(processor).to receive(:cmd).and_raise(StandardError.new('Command failed'))
         expect(logger).to receive(:error).with(/QueueProcessor failed to process command from queue/)
 

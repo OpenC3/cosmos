@@ -2,10 +2,14 @@
   "name": "openc3",
   "private": true,
   "scripts": {
-    "build:common": "yarn workspace @openc3/js-common build && yarn workspace @openc3/vue-common build"
+    "build:common": "pnpm -F @openc3/*-common build"
   },
-  "workspaces": [
-    "packages/*"
-  ],
-  "packageManager": "yarn@1.22.22"
+  "devDependencies": {
+    "@vue/eslint-config-prettier": "10.2.0",
+    "eslint": "9.39.1",
+    "eslint-plugin-vue": "10.6.2",
+    "eslint-plugin-vuetify": "2.5.3",
+    "globals": "16.5.0",
+    "vue-eslint-parser": "10.2.0"
+  }
 }

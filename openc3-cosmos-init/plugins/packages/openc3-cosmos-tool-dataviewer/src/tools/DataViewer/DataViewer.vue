@@ -174,7 +174,12 @@
     @success="saveConfiguration"
   />
   <!-- Dialog for renaming a new tab -->
-  <v-dialog v-model="tabNameDialog" width="600">
+  <v-dialog
+    v-model="tabNameDialog"
+    width="600"
+    persistent
+    @keydown.esc="cancelTabRename"
+  >
     <v-card>
       <v-toolbar height="24">
         <v-spacer />

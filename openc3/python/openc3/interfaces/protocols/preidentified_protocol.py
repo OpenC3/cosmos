@@ -20,6 +20,7 @@ import struct
 from datetime import datetime, timezone
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
+from openc3.utilities.extract import convert_to_value
 
 
 # Delineates packets using the OpenC3 preidentification system
@@ -35,7 +36,7 @@ class PreidentifiedProtocol(BurstProtocol):
         super().__init__(0, sync_pattern, False, allow_empty_data)
         self.max_length = ConfigParser.handle_none(max_length)
         if self.max_length:
-            self.max_length = int(self.max_length)
+            self.max_length = int(convert_to_value(self.max_length))
 
     def reset(self):
         super().reset()
@@ -202,3 +203,14 @@ class PreidentifiedProtocol(BurstProtocol):
             return (packet_data, self.extra)
 
         raise RuntimeError(f"Error should never reach end of method {self.reduction_state}")
+
+    def write_details(self):
+        result = super().write_details()
+        result["max_length"] = self.max_length
+        return result
+
+    def read_details(self):
+        result = super().read_details()
+        result["max_length"] = self.max_length
+        result["reduction_state"] = self.reduction_state
+        return result

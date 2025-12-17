@@ -38,7 +38,7 @@ class ReactionController < ApplicationController
     return unless authorization('system')
     begin
       triggers = @model_class.all(scope: params[:scope])
-      ret = Array.new
+      ret = []
       triggers.each do |_, trigger|
         ret << trigger
       end
@@ -58,7 +58,7 @@ class ReactionController < ApplicationController
     return unless authorization('system')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::ReactionInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 404
@@ -112,7 +112,7 @@ class ReactionController < ApplicationController
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
       model.deploy()
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue OpenC3::ReactionInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -156,11 +156,13 @@ class ReactionController < ApplicationController
       model.actions = hash['actions'] if hash['actions']
       model.trigger_level = hash['trigger_level'] if hash['trigger_level']
       model.snooze = hash['snooze'] if hash['snooze']
+      # Update the timestamp before notifying so the event has the current time
+      model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the ReactionMicroservice to update the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the reaction
       model.notify(kind: 'updated')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::ReactionInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -201,7 +203,7 @@ class ReactionController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user enabling the reaction
       model.notify_enable
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
@@ -236,7 +238,7 @@ class ReactionController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user disabling the reaction
       model.notify_disable
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
@@ -256,7 +258,7 @@ class ReactionController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user executing the reaction
       model.notify_execute
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
@@ -287,7 +289,7 @@ class ReactionController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user deleting the reaction
       model.notify(kind: 'deleted')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue OpenC3::ReactionInputError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 404

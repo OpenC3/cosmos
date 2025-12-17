@@ -125,7 +125,31 @@ module OpenC3
       return data, extra
     end
 
-    protected
+    def write_details
+      result = super()
+      result['length_bit_offset'] = @length_bit_offset
+      result['length_bit_size'] = @length_bit_size
+      result['length_value_offset'] = @length_value_offset
+      result['length_bytes_per_count'] = @length_bytes_per_count
+      result['length_endianness'] = @length_endianness
+      result['length_bytes_needed'] = @length_bytes_needed
+      result['max_length'] = @max_length
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['length_bit_offset'] = @length_bit_offset
+      result['length_bit_size'] = @length_bit_size
+      result['length_value_offset'] = @length_value_offset
+      result['length_bytes_per_count'] = @length_bytes_per_count
+      result['length_endianness'] = @length_endianness
+      result['length_bytes_needed'] = @length_bytes_needed
+      result['max_length'] = @max_length
+      return result
+    end
+
+    # protected
 
     def calculate_length(buffer_length)
       length = (buffer_length / @length_bytes_per_count) - @length_value_offset

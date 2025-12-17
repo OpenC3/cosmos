@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <template v-if="!inline">
+  <div
+    v-if="!inline"
+    class="d-flex flex-column overflow-hidden"
+    :style="{
+      height: containerHeight,
+    }"
+  >
     <top-bar :menus="menus" :title="title" />
     <v-snackbar
       v-model="showAlert"
@@ -100,7 +106,7 @@
         </div>
       </div>
     </div>
-    <v-card>
+    <v-card class="flex-shrink-0">
       <v-card-text>
         <suite-runner
           v-if="suiteRunner"
@@ -179,7 +185,7 @@
               v-model="stateTimer"
               label="Script State"
               data-test="state"
-              class="shrink ml-2 script-state"
+              :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
               style="max-width: 120px"
               density="compact"
               variant="outlined"
@@ -259,8 +265,12 @@
         </div>
       </v-card-text>
     </v-card>
-    <splitpanes horizontal style="height: 100%" @resize="calcHeight">
-      <pane class="editorbox" size="50">
+    <splitpanes
+      horizontal
+      class="flex-grow-1 overflow-hidden"
+      @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
+    >
+      <pane class="editorbox" :size="editorBoxSize">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -278,6 +288,11 @@
         ></pre>
         <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
+            <v-list-item
+              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
+              @click="openCommandEditor"
+            />
+            <v-divider />
             <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
               v-if="scriptId"
@@ -303,7 +318,7 @@
           </v-list>
         </v-menu>
       </pane>
-      <pane id="messages" ref="messagesDiv" class="mt-2">
+      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
         <div v-if="showDebug" id="debug" class="pa-0">
           <v-row no-gutters>
             <v-btn
@@ -336,67 +351,96 @@
         />
       </pane>
     </splitpanes>
-  </template>
+  </div>
 
-  <div v-if="inline">
-    <v-row>
-      <v-col class="v-col-10" style="margin: 0px; padding: 0px">
-        <pre
-          ref="editor"
-          class="editor"
-          style="height: 200px"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-      </v-col>
-      <v-col
-        class="v-col-2"
-        style="
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: var(--color-background-surface-default);
-        "
-      >
-        <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            class="mx-1"
-            color="primary"
-            text="Start"
-            data-test="start-button"
-            :disabled="startOrGoDisabled || !executeUser"
-            :hidden="suiteRunner"
-            @click="startHandler"
+  <div
+    v-else
+    style="
+      background-color: var(--color-background-base-default);
+      margin: 0px;
+      padding: 0px;
+    "
+  >
+    <v-tabs v-model="inlineTab" density="compact">
+      <v-tab value="script" text="Script" data-test="script-tab" />
+      <v-tab value="messages" text="Messages" data-test="messages-tab" />
+    </v-tabs>
+
+    <v-tabs-window v-model="inlineTab">
+      <v-tabs-window-item value="script">
+        <v-row>
+          <v-col
+            class="v-col-10"
+            style="margin: 15px 0px 0px 0px; padding: 0px"
+          >
+            <pre
+              ref="editor"
+              class="editor"
+              style="height: 200px"
+              @contextmenu.prevent="showExecuteSelectionMenu"
+            ></pre>
+          </v-col>
+          <v-col
+            class="v-col-2"
+            style="
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              background-color: var(--color-background-surface-default);
+            "
+          >
+            <div v-if="startOrGoButton === 'Start'">
+              <v-btn
+                class="mx-1"
+                color="primary"
+                text="Start"
+                data-test="start-button"
+                :disabled="startOrGoDisabled || !executeUser"
+                :hidden="suiteRunner"
+                @click="startHandler"
+              />
+            </div>
+            <div v-else>
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Go"
+                :disabled="startOrGoDisabled"
+                data-test="go-button"
+                @click="go"
+              />
+              <v-btn
+                color="primary"
+                class="ma-2"
+                :text="pauseOrRetryButton"
+                :disabled="pauseOrRetryDisabled"
+                data-test="pause-retry-button"
+                @click="pauseOrRetry"
+              />
+
+              <v-btn
+                color="primary"
+                class="ma-2"
+                text="Stop"
+                data-test="stop-button"
+                :disabled="stopDisabled"
+                @click="stop"
+              />
+            </div>
+          </v-col>
+        </v-row>
+      </v-tabs-window-item>
+
+      <v-tabs-window-item value="messages">
+        <div style="height: 200px; overflow: hidden">
+          <script-log-messages
+            v-model="messages"
+            :newest-on-top="messagesNewestOnTop"
+            @message-order-changed="messageOrderChanged"
           />
         </div>
-        <div v-else>
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Go"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-            @click="go"
-          />
-          <v-btn
-            color="primary"
-            class="ma-2"
-            :text="pauseOrRetryButton"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-            @click="pauseOrRetry"
-          />
-
-          <v-btn
-            color="primary"
-            class="ma-2"
-            text="Stop"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-            @click="stop"
-          />
-        </div>
-      </v-col>
-    </v-row>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </div>
 
   <file-open-save-dialog
@@ -491,6 +535,52 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <!-- Command Editor Dialog -->
+  <v-dialog
+    v-model="commandEditor.show"
+    max-width="1200"
+    persistent
+    scrollable
+    @keydown.esc="closeCommandDialog"
+  >
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <span>Insert Command</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
+      </v-card-title>
+      <v-card-text class="pa-0">
+        <div v-if="commandEditor.dialogError" class="error-message">
+          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+          <span class="flex-grow-1">{{ commandEditor.dialogError }}</span>
+          <v-btn
+            icon="mdi-close"
+            size="small"
+            variant="text"
+            color="error"
+            class="ml-2"
+            @click="commandEditor.dialogError = null"
+          />
+        </div>
+        <command-editor
+          ref="commandEditor"
+          :initial-target-name="commandEditor.targetName"
+          :initial-packet-name="commandEditor.packetName"
+          :cmd-string="commandEditor.cmdString"
+          :send-disabled="false"
+          :show-command-button="false"
+          @build-cmd="insertCommand($event)"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
+        <v-btn color="primary" variant="flat" @click="insertCommand()">
+          Insert Command
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <v-bottom-sheet v-model="showScripts">
     <v-sheet class="pb-11 pt-5 px-5">
       <running-scripts
@@ -514,6 +604,7 @@ import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import { useContainerHeight } from '@/composables/useContainerHeight'
 import {
   AceEditorModes,
   AceEditorUtils,
@@ -535,6 +626,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import {
@@ -574,6 +666,7 @@ export default {
     RunningScripts,
     ScriptLogMessages,
     CriticalCmdDialog,
+    CommandEditor,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -594,6 +687,11 @@ export default {
     },
   },
   emits: ['alert', 'script-id'],
+  setup() {
+    const containerHeight = useContainerHeight()
+
+    return { containerHeight }
+  },
   data() {
     return {
       title: 'Script Runner',
@@ -655,6 +753,7 @@ export default {
       receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
+      inlineTab: 'script',
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {
@@ -710,6 +809,16 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
+      commandEditor: {
+        show: false,
+        targetName: null,
+        commandName: null,
+        dialogError: null,
+        cmdString: null,
+        isEditing: false,
+        editLine: null,
+      },
+      currentLineHasCommand: false,
       activePromptId: '',
       api: null,
       timeZone: 'local',
@@ -725,6 +834,7 @@ export default {
       criticalCmdString: null,
       criticalCmdUser: null,
       displayCriticalCmd: false,
+      editorBoxSize: 50,
     }
   },
   computed: {
@@ -732,7 +842,29 @@ export default {
       if (this.state === 'waiting' || this.state === 'paused') {
         return `${this.state} ${this.waitingTime}s`
       }
+      // Map completed_errors to completed for display
+      // it will be colored via the stateColorClass
+      if (this.state === 'completed_errors') {
+        return 'completed'
+      }
       return this.state
+    },
+    stateColorClass: function () {
+      // All possible states: spawning, init, running, paused, waiting, breakpoint,
+      // error, crashed, stopped, completed, completed_errors, killed
+      if (
+        this.state === 'error' ||
+        this.state === 'crashed' ||
+        this.state === 'killed'
+      ) {
+        return 'script-state-red'
+      } else if (this.state === 'completed_errors') {
+        return 'script-state-orange'
+      } else if (this.state === 'completed') {
+        return 'script-state-green'
+      } else {
+        return ''
+      }
     },
     // This is the list of files shown in the select dropdown
     fileList: function () {
@@ -770,7 +902,7 @@ export default {
               icon: 'mdi-file-plus',
               disabled: this.scriptId || this.readOnlyUser,
               command: () => {
-                this.newFile()
+                this.newFileWithConfirm()
               },
             },
             {
@@ -799,7 +931,7 @@ export default {
               icon: 'mdi-folder-open',
               disabled: this.scriptId,
               command: () => {
-                this.openFile()
+                this.openFileWithConfirm()
               },
             },
             {
@@ -1031,6 +1163,17 @@ export default {
         }
       }
     },
+    readOnlyUser: function (val) {
+      if (this.editor) {
+        if (val) {
+          this.editor.setReadOnly(true)
+          this.editor.renderer.$cursorLayer.element.style.display = 'none'
+        } else {
+          this.editor.setReadOnly(false)
+          this.editor.renderer.$cursorLayer.element.style.display = null
+        }
+      }
+    },
   },
   created: async function () {
     // Ensure Offline Access Is Setup For the Current User
@@ -1155,10 +1298,6 @@ export default {
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
 
-    // Allow the charts to dynamically resize when the window resizes
-    window.addEventListener('resize', this.calcHeight)
-    this.calcHeight()
-
     this.cable = new Cable('/script-api/cable')
 
     if (!this.inline && localStorage['script_runner__recent']) {
@@ -1219,33 +1358,74 @@ export default {
     toggleVimMode() {
       AceEditorUtils.toggleVimMode(this.editor)
     },
+    openCommandEditor() {
+      this.executeSelectionMenu = false
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+
+      if (this.currentLineHasCommand) {
+        // Extract and parse the command from the line
+        const cmdString = this.parseCommandFromLine(line)
+        this.commandEditor.cmdString = cmdString
+        this.commandEditor.isEditing = true
+        this.commandEditor.editLine = position.row
+      } else {
+        // Inserting a new command
+        this.commandEditor.cmdString = null
+        this.commandEditor.isEditing = false
+        this.commandEditor.editLine = null
+      }
+      this.commandEditor.show = true
+      this.commandEditor.dialogError = null
+    },
+    insertCommand(event) {
+      let commandString = ''
+      try {
+        commandString = this.$refs.commandEditor.getCmdString()
+        let parts = commandString.split(' ')
+        this.commandEditor.targetName = parts[0]
+        this.commandEditor.commandName = parts[1]
+      } catch (error) {
+        this.commandEditor.dialogError =
+          error.message || 'Please fix command parameters'
+        return
+      }
+
+      if (
+        this.commandEditor.isEditing &&
+        this.commandEditor.editLine !== null
+      ) {
+        // Replace the existing line
+        const line = this.editor.session.getLine(this.commandEditor.editLine)
+        const indent = line.match(/^\s*/)[0] // Preserve indentation
+        // Extract trailing comment if present
+        const commentMatch = line.match(/\s+#.*$/)
+        const trailingComment = commentMatch ? commentMatch[0] : ''
+        const newLine = `${indent}cmd("${commandString}")${trailingComment}`
+        const Range = this.Range
+        this.editor.session.replace(
+          new Range(
+            this.commandEditor.editLine,
+            0,
+            this.commandEditor.editLine,
+            line.length,
+          ),
+          newLine,
+        )
+      } else {
+        // Insert a new command at the cursor position
+        const position = this.editor.getCursorPosition()
+        this.editor.session.insert(position, `cmd("${commandString}")\n`)
+      }
+
+      this.fileModified = true
+      this.commandEditor.show = false
+    },
+    closeCommandDialog: function () {
+      this.commandEditor.show = false
+    },
     doResize() {
       this.editor.resize()
-      // nextTick allows the resize to work correctly
-      // when we remove the SuiteRunner chrome
-      this.$nextTick(() => {
-        this.calcHeight()
-      })
-    },
-    calcHeight() {
-      const editor = document.getElementsByClassName('editorbox')[0]
-      const h = Math.max(
-        document.documentElement.offsetHeight,
-        window.innerHeight || 0,
-      )
-      let editorHeight = 0
-      if (editor) {
-        editorHeight = editor.offsetHeight
-      }
-      let suitesHeight = 0
-      const suites = document.getElementsByClassName('suite-runner')[0]
-      if (suites) {
-        suitesHeight = suites.offsetHeight
-      }
-      let logMessages = document.getElementById('script-log-messages')
-      if (logMessages) {
-        logMessages.style.height = `${h - editorHeight - suitesHeight}px`
-      }
     },
     scriptDisconnect() {
       if (this.subscription) {
@@ -1310,6 +1490,7 @@ export default {
         .then((response) => {
           if (response.data) {
             let state = response.data.state
+            // Check for all the completed states, see is_complete in script_status_model
             if (
               state !== 'completed' &&
               state !== 'completed_errors' &&
@@ -1334,6 +1515,8 @@ export default {
           }
         })
         .catch((error) => {
+          // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
+          // We should probably not allow the bottom sheet to blur the screen
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
@@ -1343,17 +1526,35 @@ export default {
         })
     },
     tryLoadSuites: function (response) {
-      if (response.data.suite_runner) {
+      if (response.data.suites) {
         this.startOrGoDisabled = true
         this.suiteRunner = true
-        this.suiteMap = JSON.parse(response.data.suite_runner)
+        this.suiteMap = JSON.parse(response.data.suites)
       }
       this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
       this.menuX = $event.pageX
       this.menuY = $event.pageY
+      // Check if the current line contains a command
+      const position = this.editor.getCursorPosition()
+      const line = this.editor.session.getLine(position.row)
+      this.currentLineHasCommand = this.isCommandLine(line)
       this.executeSelectionMenu = true
+    },
+    isCommandLine: function (line) {
+      // Check if line contains cmd() or cmd_no_hazardous_check() or similar command patterns
+      const trimmedLine = line.trim()
+      // Match patterns like: cmd("...", cmd_no_hazardous_check("...", cmd_raw("...", etc.
+      return /^\s*cmd(_\w+)?\s*\(/.test(trimmedLine)
+    },
+    parseCommandFromLine: function (line) {
+      // Extract the command string from patterns like: cmd("TARGET COMMAND with PARAM value")
+      const match = line.match(/cmd(_\w+)?\s*\(\s*["'](.+?)["']\s*\)/)
+      if (match) {
+        return match[2] // Return the command string
+      }
+      return null
     },
     runFromCursor: function () {
       const start_row = this.editor.getCursorPosition().row + 1
@@ -1566,7 +1767,6 @@ export default {
         })
     },
     async scriptComplete() {
-      this.fatal = false
       this.scriptId = null // No current scriptId
       sessionStorage.removeItem('script_runner__script_id')
       this.currentFilename = null // No current file running
@@ -1577,8 +1777,6 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -1669,15 +1867,7 @@ export default {
       }
     },
     stop() {
-      // We previously encountered a fatal error so remove the marker
-      // and cleanup by calling scriptComplete() because the script
-      // is already stopped in the backend
-      if (this.fatal) {
-        this.removeAllMarkers()
-        this.scriptComplete()
-      } else {
-        Api.post(`/script-api/running-script/${this.scriptId}/stop`)
-      }
+      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
@@ -1736,6 +1926,8 @@ export default {
       this.state = data.state
       const markers = this.editor.session.getMarkers()
       switch (this.state) {
+        // Handle all the script states, see script_status_model for details
+        // spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
         case 'running':
           this.handleWaiting()
           this.startOrGoDisabled = false
@@ -1752,23 +1944,17 @@ export default {
           this.editor.gotoLine(data.line_no)
           this.files[data.filename].lineNo = data.line_no
           break
-        case 'crashed':
-          this.fatal = true
-        // Deliberate fall through (no break)
         case 'error':
           this.pauseOrRetryButton = RETRY
         // Deliberate fall through (no break)
-        case 'breakpoint':
-        case 'waiting':
+        case 'spawning': // wait for script to be spawned
+        case 'init': // wait for script to initialize
         case 'paused':
+        case 'waiting':
+        case 'breakpoint':
           this.handleWaiting()
-          if (this.state == 'fatal') {
-            this.startOrGoDisabled = true
-            this.pauseOrRetryDisabled = true
-          } else {
-            this.startOrGoDisabled = false
-            this.pauseOrRetryDisabled = false
-          }
+          this.startOrGoDisabled = false
+          this.pauseOrRetryDisabled = false
           this.stopDisabled = false
           let existing = Object.keys(markers).filter(
             (key) => markers[key].clazz === `${this.state}Marker`,
@@ -1788,6 +1974,15 @@ export default {
             }
           }
           break
+        case 'completed':
+        case 'completed_errors':
+        case 'stopped':
+        case 'crashed':
+        case 'killed':
+          this.removeAllMarkers()
+          this.scriptComplete()
+          break
+
         default:
           break
       }
@@ -1815,9 +2010,14 @@ export default {
             this.processLine(data)
             break
           case 'output':
-            // data.line can consist of multiple lines split by newlines
-            // thus we split and only output if the content is not empty
-            for (const line of data.line.split('\n')) {
+            // data.line can consist of multiple lines split by newlines,
+            // thus we split and only output if the content is not empty.
+            // We also need to ensure it's properly serialized as a string.
+            let dataLine = data.line
+            if (dataLine === null || dataLine === undefined) { dataLine = '' }
+            else if (typeof dataLine === 'object') { dataLine = JSON.stringify(dataLine) }
+            else { dataLine = String(dataLine) }
+            for (const line of dataLine.split('\n')) {
               if (line) {
                 if (this.messagesNewestOnTop) {
                   this.messages.unshift({ message: line })
@@ -1838,11 +2038,8 @@ export default {
             this.results.show = true
             break
           case 'complete':
-            // Don't complete on fatal because we just sit there on the fatal line
-            if (!this.fatal) {
-              this.removeAllMarkers()
-              this.scriptComplete()
-            }
+            this.removeAllMarkers()
+            this.scriptComplete()
             break
           case 'step':
             this.showDebug = true
@@ -2138,6 +2335,24 @@ export default {
       this.showAlert = true
     },
     // ScriptRunner File menu actions
+    async confirmUnsavedChanges() {
+      if (this.fileModified === '*') {
+        return await this.$dialog.confirm(
+          'You have unsaved changes. Are you sure you want to continue?',
+          {
+            okText: 'Continue',
+            cancelText: 'Cancel',
+          },
+        )
+      }
+      return true
+    },
+    async newFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.newFile()
+      }
+    },
     newFile() {
       this.unlockFile()
       this.filename = NEW_FILENAME
@@ -2162,6 +2377,8 @@ export default {
       this.doResize()
     },
     async newRubyTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -2207,6 +2424,8 @@ end
       await this.saveFile('auto')
     },
     async newPythonTestSuite() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (!confirmed) return
       this.newFile()
       this.editor.session.setValue(`from openc3.script.suite import Suite, Group
 
@@ -2260,6 +2479,8 @@ class TestSuite(Suite):
         label: filename,
         icon: fileIcon(filename),
         command: async (event) => {
+          const confirmed = await this.confirmUnsavedChanges()
+          if (!confirmed) return
           this.filename = event.label
           await this.reloadFile()
         },
@@ -2279,6 +2500,12 @@ class TestSuite(Suite):
         if (localStorage['script_runner__filename'] === filename) {
           localStorage.removeItem('script_runner__filename')
         }
+      }
+    },
+    async openFileWithConfirm() {
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        this.openFile()
       }
     },
     openFile() {
@@ -2709,6 +2936,25 @@ class TestSuite(Suite):
 </script>
 
 <style scoped>
+hr {
+  color: white;
+  height: 3px;
+}
+
+.error-message {
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #d32f2f;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
+}
+
 #sr-controls {
   padding: 0px;
 }
@@ -2727,12 +2973,22 @@ class TestSuite(Suite):
 .script-state :deep(input) {
   text-transform: capitalize;
 }
-</style>
-<style>
-.splitpanes {
-  height: 100%;
+
+/* Taken from the various status-symbol-color-fill classes
+   on https://www.astrouxds.com/design-tokens/component/ */
+.script-state-red :deep(input) {
+  color: #ff3838 !important;
 }
 
+.script-state-orange :deep(input) {
+  color: #ffb302 !important;
+}
+
+.script-state-green :deep(input) {
+  color: #56f000 !important;
+}
+</style>
+<style>
 .splitpanes--horizontal > .splitpanes__splitter {
   min-height: 4px;
   position: relative;
@@ -2772,12 +3028,6 @@ class TestSuite(Suite):
 .errorMarker {
   position: absolute;
   background: rgba(255, 0, 119, 0.5);
-  z-index: 20;
-}
-
-.fatalMarker {
-  position: absolute;
-  background: rgba(255, 0, 0, 0.5);
   z-index: 20;
 }
 

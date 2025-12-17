@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'json'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class Accessor
@@ -28,11 +29,26 @@ module OpenC3
     end
 
     def read_item(item, buffer)
-      self.class.read_item(item, buffer)
+      if item.parent_item
+        # Structure is used to read items with parent, not accessor
+        structure_buffer = read_item(item.parent_item, buffer)
+        structure = item.parent_item.structure
+        structure.read(item.key, :RAW, structure_buffer)
+      else
+        self.class.read_item(item, buffer)
+      end
     end
 
     def write_item(item, value, buffer)
-      self.class.write_item(item, value, buffer)
+      if item.parent_item
+        # Structure is used to write items with parent, not accessor
+        structure_buffer = read_item(item.parent_item, buffer)
+        structure = item.parent_item.structure
+        structure.write(item.key, value, :RAW, structure_buffer)
+        self.class.write_item(item.parent_item, structure_buffer, buffer)
+      else
+        self.class.write_item(item, value, buffer)
+      end
     end
 
     def read_items(items, buffer)
@@ -106,8 +122,16 @@ module OpenC3
     def self.convert_to_type(value, item)
       return value if value.nil?
       case item.data_type
+      when :ANY
+        begin
+          value = JSON.parse(value) if value.is_a? String
+        rescue Exception
+          # Just leave value as is
+        end
+      when :BOOL
+        value = ConfigParser.handle_true_false(value) if value.is_a? String
       when :OBJECT, :ARRAY
-        # Do nothing for complex object types
+        value = JSON.parse(value) if value.is_a? String
       when :STRING, :BLOCK
         if item.array_size
           value = JSON.parse(value) if value.is_a? String

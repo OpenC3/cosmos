@@ -22,6 +22,7 @@ import sys
 import time
 import json
 import threading
+import traceback
 import uuid
 from datetime import datetime, timezone
 from openc3.microservices.microservice import Microservice
@@ -34,7 +35,6 @@ from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
-from openc3.topics.topic import Topic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.router_topic import RouterTopic
 from openc3.topics.command_topic import CommandTopic
@@ -45,8 +45,7 @@ from openc3.interfaces.interface import WriteRejectError
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
-from openc3.utilities.json import JsonDecoder
-from openc3.utilities.store import Store, openc3_redis_cluster
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.top_level import kill_thread
@@ -99,7 +98,7 @@ class InterfaceCmdHandlerThread:
         # receive_commands does a while True and does not return
         InterfaceTopic.receive_commands(self.process_cmd, self.interface, self.scope)
 
-    def process_cmd(self, topic, msg_id, msg_hash, redis):
+    def process_cmd(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.with_context(msg_hash) do
         release_critical = False
 
@@ -146,7 +145,11 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"disconnect"):
                 self.logger.info(f"{self.interface.name}: Disconnect requested")
-                self.tlm.disconnect(False)
+                try:
+                    self.tlm.disconnect(False)
+                except Exception as e:
+                    self.logger.error(f"{self.interface.name}: disconnect: {traceback.format_exc()}")
+                    return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"raw"):
                 if self.interface.connected():
@@ -154,16 +157,20 @@ class InterfaceCmdHandlerThread:
                         self.logger.info(f"{self.interface.name}: Write raw")
                         # A raw interface write results in an UNKNOWN packet
                         command = System.commands.packet("UNKNOWN", "UNKNOWN")
-                        command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
+                        command.received_count = TargetModel.increment_command_count(
+                            command.target_name, command.packet_name, 1, scope=self.scope
+                        )
                         command = command.clone()
                         command.buffer = msg_hash[b"raw"]
                         command.received_time = datetime.now(timezone.utc)
                         CommandTopic.write_packet(command, scope=self.scope)
-                        self.logger.info(f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope = self.scope)
+                        self.logger.info(
+                            f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope=self.scope
+                        )
                         self.interface.write_raw(msg_hash[b"raw"])
-                    except RuntimeError as error:
-                        self.logger.error(f"{self.interface.name}: write_raw: {repr(error)}")
-                        return repr(error)
+                    except Exception:
+                        self.logger.error(f"{self.interface.name}: write_raw: {traceback.format_exc()}")
+                        return traceback.format_exc()
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
@@ -182,9 +189,9 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
-                    self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
-                    return repr(error)
+                except Exception:
+                    self.logger.error(f"{self.interface.name}: interface_cmd: {traceback.format_exc()}")
+                    return traceback.format_exc()
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -200,9 +207,9 @@ class InterfaceCmdHandlerThread:
                         index=params["index"],
                     )
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except RuntimeError as error:
-                    self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
-                    return repr(error)
+                except Exception:
+                    self.logger.error(f"{self.interface.name}: protocol_cmd:{traceback.format_exc()}")
+                    return traceback.format_exc()
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -214,11 +221,45 @@ class InterfaceCmdHandlerThread:
                     release_critical = True
                 else:
                     return f"Critical command {msg_hash[b'release_critical'].decode()} not found"
+                return "SUCCESS"
+            if msg_hash.get(b"target_control"):
+                try:
+                    params = json.loads(msg_hash[b"target_control"])
+                    target_name = params["target_name"]
+                    cmd_only = params["cmd_only"]
+                    tlm_only = params["tlm_only"]
+                    action = params["action"]
+                    if action == "disable":
+                        if not tlm_only:
+                            self.interface.cmd_target_enabled[target_name] = False
+                        if not cmd_only:
+                            self.interface.tlm_target_enabled[target_name] = False
+                        self.logger.info(
+                            f"{self.interface.name}: target_disable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
+                        )
+                    else:  # enable
+                        if not tlm_only:
+                            self.interface.cmd_target_enabled[target_name] = True
+                        if not cmd_only:
+                            self.interface.tlm_target_enabled[target_name] = True
+                        self.logger.info(
+                            f"{self.interface.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
+                        )
+                except Exception as e:
+                    self.logger.error(f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}")
+                    return str(e)
+                return "SUCCESS"
+            if msg_hash.get(b"interface_details"):
+                return json.dumps(self.interface.details(), cls=JsonEncoder)
 
         target_name = msg_hash[b"target_name"].decode()
+        if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
+            return None  # Return and don't ack given target_name if disabled
         cmd_name = msg_hash[b"cmd_name"].decode()
         manual = ConfigParser.handle_true_false(msg_hash[b"manual"].decode())
         cmd_params = None
+        range_check = True
+        raw = False
         cmd_buffer = None
         hazardous_check = None
         if msg_hash[b"cmd_params"] is not None:
@@ -243,14 +284,20 @@ class InterfaceCmdHandlerThread:
                         command.buffer = cmd_buffer
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
+
+                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                    return None  # Don't ack disabled targets
+
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
-                orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
+                orig_command.received_count = TargetModel.increment_command_count(
+                    command.target_name, command.packet_name, 1, scope=self.scope
+                )
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
-            except Exception as error:
+            except Exception:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
-                self.logger.error(f"{self.interface.name}: {repr(error)}")
-                return repr(error)
+                self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
+                return traceback.format_exc()
 
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
@@ -267,16 +314,14 @@ class InterfaceCmdHandlerThread:
             if self.critical_commanding is not None and self.critical_commanding != "OFF" and not release_critical:
                 restricted = command.restricted
                 if hazardous or restricted or (self.critical_commanding == "ALL" and manual):
-                    type = None
+                    cmd_type = "NORMAL"
                     if hazardous:
-                        type = "HAZARDOUS"
+                        cmd_type = "HAZARDOUS"
                     elif restricted:
-                        type = "RESTRICTED"
-                    else:
-                        type = "NORMAL"
+                        cmd_type = "RESTRICTED"
                     model = CriticalCmdModel(
                         name=str(uuid.uuid1()),
-                        type=type,
+                        cmd_type=cmd_type,
                         interface_name=self.interface.name,
                         username=msg_hash[b"username"].decode(),
                         cmd_hash=msg_hash,
@@ -298,9 +343,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
-                            reason = repr(error)
+                            reason = traceback.format_exc()
                         if not result:
                             message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
                             raise WriteRejectError(message)
@@ -322,9 +367,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
-                        except Exception as error:
+                        except Exception:
                             result = False
-                            reason = repr(error)
+                            reason = traceback.format_exc()
                         command.extra["cmd_success"] = result
                         if reason:
                             command.extra["cmd_reason"] = reason
@@ -340,11 +385,11 @@ class InterfaceCmdHandlerThread:
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            except WriteRejectError as error:
-                return repr(error)
-        except RuntimeError as error:
-            self.logger.error(f"{self.interface.name}: {repr(error)}")
-            return repr(error)
+            except WriteRejectError:
+                return traceback.format_exc()
+        except Exception:
+            self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
+            return traceback.format_exc()
 
 
 class RouterTlmHandlerThread:
@@ -381,7 +426,11 @@ class RouterTlmHandlerThread:
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
-        for topic, msg_id, msg_hash, redis in RouterTopic.receive_telemetry(self.router, scope=self.scope):
+        generator = RouterTopic.receive_telemetry(self.router, scope=self.scope)
+        topic, msg_id, msg_hash, _redis = next(generator)
+        result = None
+
+        while True:
             msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
             delta = time.time() - msgid_seconds_from_epoch
             if self.metric is not None:
@@ -392,6 +441,8 @@ class RouterTlmHandlerThread:
                     unit="seconds",
                     help="Delta time between data written to stream and router tlm start",
                 )
+
+            result = None  # Reset result for this iteration
 
             # Check for commands to the router itself
             if "CMD}ROUTER" in topic:
@@ -406,35 +457,42 @@ class RouterTlmHandlerThread:
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
                     RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope))
-                    return
-                if msg_hash.get(b"connect"):
+                    result = "SHUTDOWN"
+                elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
                     params = []
                     if msg_hash.get(b"params"):
                         params = json.loads(msg_hash[b"params"])
                     self.router = self.tlm.attempting(*params)
-                if msg_hash.get(b"disconnect"):
+                    result = "SUCCESS"
+                elif msg_hash.get(b"disconnect"):
                     self.logger.info(f"{self.router.name}: Disconnect requested")
-                    self.tlm.disconnect(False)
-                if msg_hash.get(b"log_stream"):
+                    try:
+                        self.tlm.disconnect(False)
+                        result = "SUCCESS"
+                    except Exception as e:
+                        self.logger.error(f"{self.router.name}: disconnect: {traceback.format_exc()}")
+                        result = str(e)
+                elif msg_hash.get(b"log_stream"):
                     if msg_hash[b"log_stream"].decode() == "true":
                         self.logger.info(f"{self.router.name}: Enable stream logging")
-                        self.router.start_raw_logging
+                        self.router.start_raw_logging()
                     else:
                         self.logger.info(f"{self.router.name}: Disable stream logging")
-                        self.router.stop_raw_logging
-                if msg_hash.get(b"router_cmd"):
+                        self.router.stop_raw_logging()
+                    result = "SUCCESS"
+                elif msg_hash.get(b"router_cmd"):
                     params = json.loads(msg_hash[b"router_cmd"])
                     try:
                         self.logger.info(
                             f"{self.router.name}: router_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
                         )
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
-                    except RuntimeError as error:
-                        self.logger.error(f"{self.router.name}: router_cmd: {repr(error)}")
-                        return error.message
-                    return "SUCCESS"
-                if msg_hash.get(b"protocol_cmd"):
+                        result = "SUCCESS"
+                    except Exception as error:
+                        self.logger.error(f"{self.router.name}: router_cmd: {traceback.format_exc()}")
+                        result = str(error)
+                elif msg_hash.get(b"protocol_cmd"):
                     params = json.loads(msg_hash[b"protocol_cmd"])
                     try:
                         self.logger.info(
@@ -446,33 +504,74 @@ class RouterTlmHandlerThread:
                             read_write=params["read_write"],
                             index=params["index"],
                         )
-                    except RuntimeError as error:
-                        self.logger.error(f"{self.router.name}: protoco_cmd: {repr(error)}")
-                        return error.message
-                    return "SUCCESS"
-                return "SUCCESS"
+                        result = "SUCCESS"
+                    except Exception as error:
+                        self.logger.error(f"{self.router.name}: protocol_cmd: {traceback.format_exc()}")
+                        result = str(error)
+                elif msg_hash.get(b"target_control"):
+                    try:
+                        params = json.loads(msg_hash[b"target_control"])
+                        target_name = params["target_name"]
+                        cmd_only = params["cmd_only"]
+                        tlm_only = params["tlm_only"]
+                        action = params["action"]
+                        if action == "disable":
+                            if not tlm_only:
+                                self.router.cmd_target_enabled[target_name] = False
+                            if not cmd_only:
+                                self.router.tlm_target_enabled[target_name] = False
+                            self.logger.info(
+                                f"{self.router.name}: target_disable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
+                            )
+                        else:  # enable
+                            if not tlm_only:
+                                self.router.cmd_target_enabled[target_name] = True
+                            if not cmd_only:
+                                self.router.tlm_target_enabled[target_name] = True
+                            self.logger.info(
+                                f"{self.router.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
+                            )
+                        result = "SUCCESS"
+                    except Exception as e:
+                        self.logger.error(f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}")
+                        result = str(e)
+                elif msg_hash.get(b"router_details"):
+                    result = json.dumps(self.router.details(), cls=JsonEncoder)
+                else:
+                    result = "SUCCESS"
 
-            if self.router.connected():
-                self.count += 1
-                if self.metric is not None:
-                    self.metric.set(name="router_tlm_total", value=self.count, type="counter")
+            else:  # Not a router command, process telemetry
+                if self.router.connected():
+                    self.count += 1
+                    if self.metric is not None:
+                        self.metric.set(name="router_tlm_total", value=self.count, type="counter")
 
-                target_name = msg_hash[b"target_name"].decode()
-                packet_name = msg_hash[b"packet_name"].decode()
+                    target_name = msg_hash[b"target_name"].decode()
+                    packet_name = msg_hash[b"packet_name"].decode()
 
-                packet = System.telemetry.packet(target_name, packet_name)
-                packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
-                packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
-                packet.received_count = int(msg_hash[b"received_count"])
-                packet.buffer = msg_hash[b"buffer"]
+                    if self.router.tlm_target_enabled.get(target_name, False):
+                        packet = System.telemetry.packet(target_name, packet_name)
+                        packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
+                        packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
+                        packet.received_count = int(msg_hash[b"received_count"])
+                        packet.buffer = msg_hash[b"buffer"]
 
-                try:
-                    self.router.write(packet)
-                    RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
-                    return "SUCCESS"
-                except RuntimeError as error:
-                    self.logger.error(f"{self.router.name}: {repr(error)}")
-                    return repr(error)
+                        try:
+                            self.router.write(packet)
+                            RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
+                            result = "SUCCESS"
+                        except Exception:
+                            self.logger.error(f"{self.router.name}: {traceback.format_exc()}")
+                            result = traceback.format_exc()
+                    else:
+                        result = None
+
+            # Send result back to generator and get next message
+            topic, msg_id, msg_hash, _redis = generator.send(result)
+
+            # Exit loop if shutdown was requested
+            if result == "SHUTDOWN":
+                break
 
 
 class InterfaceMicroservice(Microservice):
@@ -507,19 +606,7 @@ class InterfaceMicroservice(Microservice):
         for target_name in self.interface.target_names:
             target = System.targets[target_name]
             target.interface = self.interface
-        for target_name in self.interface.tlm_target_names:
-            # Initialize the target's packet counters based on the Topic stream
-            # Prevents packet count resetting to 0 when interface restarts
-            try:
-                for packet_name, packet in System.telemetry.packets(target_name).items():
-                    topic = f"{self.scope}__TELEMETRY__{{target_name}}__{packet_name}"
-                    msg_id, msg_hash = Topic.get_newest_message(topic)
-                    if msg_id:
-                        packet.received_count = int(msg_hash[b"received_count"])
-                    else:
-                        packet.received_count = 0
-            except RuntimeError:
-                pass  # Handle targets without telemetry
+        TargetModel.init_tlm_packet_counts(self.interface.tlm_target_names, scope=self.scope)
         if self.interface.connect_on_startup:
             self.interface.state = "ATTEMPTING"
         else:
@@ -530,17 +617,15 @@ class InterfaceMicroservice(Microservice):
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
         self.queued = False
-        self.sync_packet_count_data = {}
-        self.sync_packet_count_time = None
-        self.sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
         for option_name, option_values in self.interface.options.items():
-            if option_name.upper() == "OPTIMIZE_THROUGHPUT":
+            # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
+            if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
                 self.queued = True
                 update_interval = float(option_values[0])
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
                 StoreQueued.instance().set_update_interval(update_interval)
-            if option_name.upper() == 'SYNC_PACKET_COUNT_DELAY_SECONDS':
-                self.sync_packet_count_delay_seconds = float(option_values[0])
+            if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
+                TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -578,15 +663,15 @@ class InterfaceMicroservice(Microservice):
                 self.interface = new_interface
 
                 # Update the model
-                if self.interface_or_router == 'INTERFACE':
+                if self.interface_or_router == "INTERFACE":
                     interface_model = InterfaceModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model['config_params'][1:] = list(params)
+                    interface_model["config_params"][1:] = list(params)
                     InterfaceModel.set(interface_model, scope=self.scope)
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model['config_params'][1:] = list(params)
+                    interface_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -596,8 +681,10 @@ class InterfaceMicroservice(Microservice):
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
-        except RuntimeError as error:
-            self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {repr(error)}")
+        except RuntimeError:
+            self.logger.error(
+                f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
+            )
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
             #   self.cancel_thread = True
@@ -623,7 +710,7 @@ class InterfaceMicroservice(Microservice):
                                 # We need to make sure connect is not called after stop() has been called
                                 if not self.cancel_thread:
                                     self.connect()
-                        except (RuntimeError, OSError) as error:
+                        except Exception as error:
                             self.handle_connection_failed(self.interface.connection_string(), error)
                             if self.cancel_thread:
                                 break
@@ -653,7 +740,7 @@ class InterfaceMicroservice(Microservice):
                                     self.handle_connection_lost()
                                     if self.cancel_thread:
                                         break
-                            except RuntimeError as error:
+                            except Exception as error:
                                 self.handle_connection_lost(error)
                                 if self.cancel_thread:
                                     break
@@ -661,9 +748,9 @@ class InterfaceMicroservice(Microservice):
                             self.interface_thread_sleeper.sleep(1)
                             if not self.interface.connected():
                                 self.handle_connection_lost()
-        except RuntimeError as error:
+        except Exception as error:
             if not isinstance(error, SystemExit):  # or signal exception
-                self.logger.error(f"{self.interface.name}: Packet reading thread died: {repr(error)}")
+                self.logger.error(f"{self.interface.name}: Packet reading thread died: {traceback.format_exc()}")
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
@@ -687,7 +774,7 @@ class InterfaceMicroservice(Microservice):
                 try:
                     # Preidentifed packet - place it into the current value table
                     identified_packet = System.telemetry.update(packet.target_name, packet.packet_name, packet.buffer)
-                except RuntimeError:
+                except Exception:
                     # Packet identified but we don't know about it
                     # Clear packet_name and target_name and try to identify
                     self.logger.warn(
@@ -731,8 +818,9 @@ class InterfaceMicroservice(Microservice):
             )
 
         # Write to stream
-        self.sync_tlm_packet_counts(packet)
-        TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
+        if self.interface.tlm_target_enabled.get(packet.target_name, False):
+            TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
+            TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
@@ -744,10 +832,10 @@ class InterfaceMicroservice(Microservice):
         # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
         #   # Do not write an exception file for these extremely common cases
         # else _:
-        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
             pass  # Do not write an exception file for these extremely common cases
         else:
-            self.logger.error(f"{self.interface.name}: {str(connect_error)}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
             if str(connect_error) not in self.connection_failed_messages:
                 # OpenC3.write_exception_file(connect_error)
                 self.connection_failed_messages.append(str(connect_error))
@@ -764,7 +852,7 @@ class InterfaceMicroservice(Microservice):
             #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
             #     # Do not write an exception file for these extremely common cases
             #   else _:
-            self.logger.error(f"{self.interface.name}: {str(error)}")
+            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
             if str(error) not in self.connection_lost_messages:
                 # OpenC3.write_exception_file(err)
                 self.connection_lost_messages.append(str(error))
@@ -778,10 +866,10 @@ class InterfaceMicroservice(Microservice):
         try:
             self.interface.connect()
             self.interface.post_connect()
-        except RuntimeError as error:
+        except Exception as error:
             try:
                 self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect
-            except RuntimeError:
+            except Exception:
                 pass  # We want to report any connect errors, not disconnect in this case
             raise error
 
@@ -803,8 +891,8 @@ class InterfaceMicroservice(Microservice):
             try:
                 if self.interface.connected():
                     self.interface.disconnect()
-            except RuntimeError as error:
-                self.logger.error(f"Disconnect: {self.interface.name}: {repr(error)}")
+            except Exception:
+                self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
@@ -855,59 +943,6 @@ class InterfaceMicroservice(Microservice):
     def graceful_kill(self):
         pass  # Just to avoid warning
 
-    def sync_tlm_packet_counts(self, packet):
-        if self.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
-            # Perfect but slow method
-            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=self.scope)
-        else:
-            # Eventually consistent method
-            # Only sync every period (default 1 second) to avoid hammering Redis
-            # This is a trade off between speed and accuracy
-            # The packet count is eventually consistent
-            if self.sync_packet_count_data.get(packet.target_name) is None:
-                self.sync_packet_count_data[packet.target_name] = {}
-            if self.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
-                self.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
-            self.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
-
-            # Ensures counters change between syncs
-            packet.received_count += 1
-
-            # Check if we need to sync the packet counts
-            if self.sync_packet_count_time is None or (time.time() - self.sync_packet_count_time) > self.sync_packet_count_delay_seconds:
-                self.sync_packet_count_time = time.time()
-
-                result = []
-                inc_count = 0
-                # Use pipeline to make this one transaction
-                with Store.instance().redis_pool.get() as redis:
-                    pipeline = redis.pipeline(transaction=False)
-                    thread_id = threading.get_native_id()
-                    Store.instance().redis_pool.pipelines[thread_id] = pipeline
-                    try:
-                        # Increment global counters for packets received
-                        for target_name, packet_data in self.sync_packet_count_data.items():
-                            for packet_name, count in packet_data.items():
-                                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=self.scope)
-                                inc_count += 1
-                        self.sync_packet_count_data = {}
-
-                        # Get all the packet counts with the global counters
-                        for target_name in self.interface.tlm_target_names:
-                            TargetModel.get_all_telemetry_counts(target_name, scope=self.scope)
-                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=self.scope)
-
-                        result = pipeline.execute()
-                    finally:
-                        Store.instance().redis_pool.pipelines[thread_id] = None
-                for target_name in self.interface.tlm_target_names:
-                    for packet_name, count in result[inc_count].items():
-                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                        update_packet.received_count = int(count)
-                    inc_count += 1
-                for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
-                    update_packet.received_count = int(count)
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     InterfaceMicroservice.class_run()

@@ -55,5 +55,19 @@ module OpenC3
 
       return super(packet)
     end
+
+    def write_details
+      result = super()
+      result['target_name'] = @target_name
+      result['packet_name'] = @packet_name
+      return result
+    end
+
+    def read_details
+      result = super()
+      result['target_name'] = @target_name
+      result['packet_name'] = @packet_name
+      return result
+    end
   end
 end

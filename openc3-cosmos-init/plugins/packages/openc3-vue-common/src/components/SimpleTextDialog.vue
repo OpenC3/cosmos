@@ -21,6 +21,7 @@
 -->
 
 <template>
+  <!-- This dialog does not have a cancel button and has no user input, so it does not need to be persistent -->
   <v-dialog v-model="show" :width="width" scrollable>
     <v-card>
       <v-toolbar height="24">

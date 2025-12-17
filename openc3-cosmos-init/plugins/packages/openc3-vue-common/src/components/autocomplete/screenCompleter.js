@@ -34,7 +34,7 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 //       { 'Target name': 1 },
 //       { 'Packet name': 1 },
 //       { 'Item name': 1 },
-//       { RAW: 'raw description', CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+//       { RAW: 'raw description', CONVERTED: 1, FORMATTED: 1 },
 //       { '<Number of characters>': 'characters description' },
 //     ],
 //   },
@@ -88,14 +88,23 @@ export default class ScreenCompleter {
           (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
           {},
         )
+        suggestions['LATEST'] = 'LATEST values from all packets'
       } else if (current['Item name']) {
         let target_name = parsedLine[parsedLine.length - 3]
         let packet_name = parsedLine[parsedLine.length - 2]
-        let packet = await this.api.get_tlm(target_name, packet_name)
-        suggestions = packet.items.reduce(
-          (acc, item) => ((acc[item.name] = item.description), acc),
-          {},
-        )
+        if (packet_name === 'LATEST') {
+          let items = await this.api.get_all_tlm_item_names(target_name)
+          suggestions = {}
+          items.forEach((item) => {
+            suggestions[item] = `LATEST ${item}`
+          })
+        } else {
+          let packet = await this.api.get_tlm(target_name, packet_name)
+          suggestions = packet.items.reduce(
+            (acc, item) => ((acc[item.name] = item.description), acc),
+            {},
+          )
+        }
       } else {
         // Not a special case so just use the param as is
         suggestions = current

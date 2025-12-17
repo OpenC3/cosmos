@@ -37,7 +37,7 @@ from openc3.conversions.conversion import Conversion
 class DoubleConversion(Conversion):
     def __init__(self):
         super().__init__()
-        # Should be one of 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK'
+        # Should be one of 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', 'BOOL', 'ARRAY', 'OBJECT', 'ANY', 'TIME'
         self.converted_type = 'STRING'
         # Size of the converted type in bits
         # Use 0 for 'STRING' or 'BLOCK' where the size can be variable
@@ -116,7 +116,7 @@ The generic conversion is meant to be a quick and easy way to apply a conversion
 
 | Parameter | Description                                                                                                                        | Required                          |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, TIME</span> | False (warning will be generated) |
+| Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, BOOL, ARRAY, OBJECT, ANY, TIME</span> | False (warning will be generated) |
 | Size      | Data size in bits after the conversion is applied                                                                                  | False (warning will be generated) |
 
 <Tabs groupId="script-language">

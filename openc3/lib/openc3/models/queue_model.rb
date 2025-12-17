@@ -20,6 +20,7 @@ require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/topics/queue_topic'
 require 'openc3/utilities/logger'
+require 'openc3/io/json_rpc'
 
 module OpenC3
   class QueueError < StandardError; end
@@ -44,21 +45,37 @@ module OpenC3
     end
     # END NOTE
 
-    def self.queue_command(name, command:, username:, scope:)
+    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, username:, scope:)
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
       if model.state != 'DISABLE'
         result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
         if result.empty?
-          index = 1.0
+          id = 1.0
         else
-          index = result[0][1].to_f + 1
+          id = result[0][1].to_f + 1
         end
-        Store.zadd("#{scope}:#{name}", index, { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }.to_json)
+
+        # Build command data with support for both formats
+        command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
+        if target_name && cmd_name
+          # New format: store target_name, cmd_name, and cmd_params separately
+          command_data[:target_name] = target_name
+          command_data[:cmd_name] = cmd_name
+          command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
+        elsif command
+          # Legacy format: store command string for backwards compatibility
+          command_data[:value] = command
+        else
+          raise QueueError, "Must provide either command string or target_name/cmd_name parameters"
+        end
+
+        Store.zadd("#{scope}:#{name}", id, command_data.to_json)
         model.notify(kind: 'command')
       else
-        raise QueueError, "Queue '#{name}' is disabled. Command '#{command}' not queued."
+        error_msg = command || "#{target_name} #{cmd_name}"
+        raise QueueError, "Queue '#{name}' is disabled. Command '#{error_msg}' not queued."
       end
     end
 
@@ -98,60 +115,70 @@ module OpenC3
     def notify(kind:)
       notification = {
         'kind' => kind,
-        'data' => JSON.generate(as_json(:allow_nan => true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
       }
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def insert_command(index, command_data)
+    def insert_command(id, command_data)
       if @state == 'DISABLE'
-        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_data['value']}' not queued."
+        if command_data['value']
+          command_name = command_data['value']
+        else
+          command_name = "#{command_data['target_name']} #{command_data['cmd_name']}"
+        end
+        raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_name}' not queued."
       end
 
-      unless index
+      unless id
         result = Store.zrevrange("#{@scope}:#{@name}", 0, 0, with_scores: true)
         if result.empty?
-          index = 1.0
+          id = 1.0
         else
-          index = result[0][1].to_f + 1
+          id = result[0][1].to_f + 1
         end
       end
-      Store.zadd("#{@scope}:#{@name}", index, command_data.to_json)
+
+      # Convert cmd_params values to JSON-safe format if present
+      if command_data['cmd_params']
+        command_data['cmd_params'] = JSON.generate(command_data['cmd_params'].as_json, allow_nan: true)
+      end
+      Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
 
-    def update_command(index:, command:, username:)
+    def update_command(id:, command:, username:)
       if @state == 'DISABLE'
-        raise QueueError, "Queue '#{@name}' is disabled. Command at index #{index} not updated."
+        raise QueueError, "Queue '#{@name}' is disabled. Command at id #{id} not updated."
       end
 
-      # Check if command exists at the given index
-      existing = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
+      # Check if command exists at the given id
+      existing = Store.zrangebyscore("#{@scope}:#{@name}", id, id)
       if existing.empty?
-        raise QueueError, "No command found at index #{index} in queue '#{@name}'"
+        raise QueueError, "No command found at id #{id} in queue '#{@name}'"
       end
 
-      # Remove the existing command and add the new one at the same index
-      Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
+      # Remove the existing command and add the new one at the same id
+      Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
       command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
-      Store.zadd("#{@scope}:#{@name}", index, command_data.to_json)
+      Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
 
-    def remove_command(index = nil)
+    def remove_command(id = nil)
       if @state == 'DISABLE'
         raise QueueError, "Queue '#{@name}' is disabled. Command not removed."
       end
 
-      if index
-        # Remove specific index
-        result = Store.zrangebyscore("#{@scope}:#{@name}", index, index)
+      if id
+        # Remove specific id
+        result = Store.zrangebyscore("#{@scope}:#{@name}", id, id)
         if result.empty?
           return nil
         else
-          Store.zremrangebyscore("#{@scope}:#{@name}", index, index)
+          Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
           command_data = JSON.parse(result[0])
-          command_data['index'] = index.to_f
+          command_data['id'] = id.to_f
           notify(kind: 'command')
           return command_data
         end
@@ -163,8 +190,8 @@ module OpenC3
         else
           score = result[0][1]
           Store.zremrangebyscore("#{@scope}:#{@name}", score, score)
-          command_data = JSON.parse(result[0][0])
-          command_data['index'] = score.to_f
+          command_data = JSON.parse(result[0][0], allow_nan: true)
+          command_data['id'] = score.to_f
           notify(kind: 'command')
           return command_data
         end
@@ -174,7 +201,7 @@ module OpenC3
     def list
       return Store.zrange("#{@scope}:#{@name}", 0, -1, with_scores: true).map do |item|
         result = JSON.parse(item[0])
-        result['index'] = item[1].to_f
+        result['id'] = item[1].to_f
         result
       end
     end

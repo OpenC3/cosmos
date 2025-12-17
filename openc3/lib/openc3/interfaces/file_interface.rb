@@ -222,5 +222,23 @@ module OpenC3
         end
       end
     end
+
+    def details
+      result = super()
+      result['command_write_folder'] = @command_write_folder
+      result['telemetry_read_folder'] = @telemetry_read_folder
+      result['telemetry_archive_folder'] = @telemetry_archive_folder
+      result['file_read_size'] = @file_read_size
+      result['stored'] = @stored
+      result['filename'] = @filename
+      result['extension'] = @extension
+      result['label'] = @label
+      result['queue_length'] = @queue.length
+      result['polling'] = @polling
+      result['recursive'] = @recursive
+      result['throttle'] = @throttle
+      result['discard_file_header_bytes'] = @discard_file_header_bytes
+      return result
+    end
   end
 end

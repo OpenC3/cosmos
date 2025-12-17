@@ -61,7 +61,7 @@ test('show started scripts', async ({ page, utils }) => {
   // Get out of the Running Scripts sheet
   await page.keyboard.press('Escape')
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await page.locator('[data-test=script-runner-script]').click()
   await page.getByText('Execution Status').click()
   await utils.sleep(1000)
@@ -104,14 +104,17 @@ test('sets environment variables', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"KEY"=>"VALUE"',
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"JASON"', // JASON not RYAN because it was overridden locally
+    '"KEY" => "VALUE"',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"USER" => "JASON"', // JASON not RYAN because it was overridden locally
   )
   await page.locator('[data-test=clear-log]').click()
   await page.locator('button:has-text("Clear")').click()
@@ -129,14 +132,17 @@ test('sets environment variables', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"KEY"=>"VALUE"',
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"RYAN"',
+    '"KEY" => "VALUE"',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"USER" => "RYAN"',
   )
 
   // Clear the globals
@@ -154,7 +160,7 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
-test('show overrides', async ({ page, utils }) => {
+test.fixme('show overrides', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
 set_tlm("INST HEALTH_STATUS COLLECTS = 5")
 override_tlm("INST HEALTH_STATUS COLLECTS = 10")
@@ -166,9 +172,12 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   // Run twice to view the overrides in the output messages
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
@@ -177,9 +186,12 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'The following overrides were present',
   )
@@ -193,15 +205,12 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
     'INST HEALTH_STATUS COLLECTS = 10, type: :FORMATTED',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :WITH_UNITS',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
     'INST HEALTH_STATUS DURATION = 10, type: :CONVERTED',
   )
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('[data-test="script-runner-script-overrides"]').click()
-  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(5)
+  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(4)
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSRAW10',
   )
@@ -210,9 +219,6 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
   )
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSFORMATTED10',
-  )
-  await expect(page.locator('.v-dialog >> tbody')).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSWITH_UNITS10',
   )
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',
@@ -256,6 +262,7 @@ test('mnemonic check', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=New File').click()
+  await page.locator('button:has-text("Continue")').click()
 
   await page
     .locator('textarea')

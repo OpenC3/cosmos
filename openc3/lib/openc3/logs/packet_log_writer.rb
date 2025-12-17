@@ -215,7 +215,7 @@ module OpenC3
         key_map = @key_map_table[packet_index]
         unless key_map
           parsed = data
-          parsed = JSON.parse(data, :allow_nan => true, :create_additions => true) if String === parsed
+          parsed = JSON.parse(data, allow_nan: true, create_additions: true) if String === parsed
           keys = parsed.keys
           key_map = {}
           reverse_key_map = {}
@@ -227,7 +227,7 @@ module OpenC3
           if @data_format == :CBOR
             write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, key_map.to_cbor, nil)
           else # JSON
-            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, allow_nan: true), nil)
           end
         end
       end
@@ -292,7 +292,7 @@ module OpenC3
           key_map = @key_map_table[packet_index]
           if key_map
             # Compress data using key map
-            data = JSON.parse(data, :allow_nan => true, :create_additions => true) if String === data
+            data = JSON.parse(data, allow_nan: true, create_additions: true) if String === data
             compressed = {}
             data.each do |key, value|
               compressed_key = key_map[key]
@@ -303,7 +303,7 @@ module OpenC3
               flags |= OPENC3_CBOR_FLAG_MASK
               data = compressed.to_cbor
             else
-              data = JSON.generate(compressed, :allow_nan => true)
+              data = JSON.generate(compressed, allow_nan: true)
             end
           end
         end
@@ -317,12 +317,12 @@ module OpenC3
         extra_encoded = nil
         if extra
           flags |= OPENC3_EXTRA_FLAG_MASK
-          extra = JSON.parse(extra, :allow_nan => true, :create_additions => true) if String === extra
+          extra = JSON.parse(extra, allow_nan: true, create_additions: true) if String === extra
           length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
           if @data_format == :CBOR
             extra_encoded = extra.as_json.to_cbor
           else
-            extra_encoded = JSON.generate(extra.as_json, :allow_nan => true)
+            extra_encoded = JSON.generate(extra.as_json, allow_nan: true)
           end
           length += extra_encoded.length
         end

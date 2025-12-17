@@ -24,7 +24,12 @@
   <div>
     <!-- Dialog for adding a new component to a tab -->
     <!-- width chosen to fit target-packet-item-chooser at full width -->
-    <v-dialog v-model="show" width="1200">
+    <v-dialog
+      v-model="show"
+      persistent
+      width="1200"
+      @keydown.esc="cancelAddComponent"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -178,8 +183,8 @@ export default {
       newPacket: null,
       newPacketCmdOrTlm: 'tlm',
       newPacketMode: 'RAW',
-      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
-      newPacketValueType: 'WITH_UNITS',
+      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED'],
+      newPacketValueType: 'FORMATTED',
       chooseItem: false,
       disableRadioOptions: false,
       headers: [

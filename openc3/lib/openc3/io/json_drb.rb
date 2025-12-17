@@ -336,7 +336,7 @@ module OpenC3
     protected
 
     def process_response(response, start_time)
-      response_data = response.to_json(:allow_nan => true)
+      response_data = response.to_json(allow_nan: true)
       STDOUT.puts response_data if JsonDRb.debug?
       end_time = Time.now.sys
       request_time = end_time - start_time

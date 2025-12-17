@@ -30,7 +30,7 @@ module OpenC3
       it "creates a JsonPacket" do
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         pkt.write("COLLECTS", 100)
-        json_data = JSON.generate(pkt.as_json(:allow_nan => true))
+        json_data = JSON.generate(pkt.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.cmd_or_tlm).to eql :TLM
@@ -47,13 +47,13 @@ module OpenC3
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         pkt.write("TEMP1", 0, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("TEMP1", :RAW)).to eql 0
         expect(p.read("TEMP1", :CONVERTED)).to eql(-100.0)
         expect(p.read("TEMP1")).to eql(-100.0)
-        expect(p.read("TEMP1", :FORMATTED)).to eql '-100.000'
+        expect(p.read("TEMP1", :FORMATTED)).to eql '-100.000 C'
         expect(p.read("TEMP1", :WITH_UNITS)).to eql '-100.000 C'
       end
 
@@ -70,7 +70,7 @@ module OpenC3
         json_hash["TEMP1__CS"] = 0.1
         json_hash["TEMP1__CN"] = -100.0
         json_hash["TEMP1__CX"] = 100.0
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("TEMP1", :RAW, :AVG)).to eql 16000
@@ -90,7 +90,7 @@ module OpenC3
         pkt.write("CCSDSVER", 3, :RAW)
         pkt.write("GROUND1STATUS", 1, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("CCSDSVER", :RAW)).to eql 3
@@ -109,19 +109,19 @@ module OpenC3
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         pkt.write("ARY", [0,1,2,3,4,5,6,7,8,9])
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("ARY", :RAW)).to eql [0,1,2,3,4,5,6,7,8,9]
         expect(p.read("ARY", :CONVERTED)).to eql [0,1,2,3,4,5,6,7,8,9]
         expect(p.read("ARY")).to eql [0,1,2,3,4,5,6,7,8,9]
-        expect(p.read("ARY", :FORMATTED)).to eql '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+        expect(p.read("ARY", :FORMATTED)).to eql ['0 V', '1 V', '2 V', '3 V', '4 V', '5 V', '6 V', '7 V', '8 V', '9 V']
         expect(p.read("ARY", :WITH_UNITS)).to eql ['0 V', '1 V', '2 V', '3 V', '4 V', '5 V', '6 V', '7 V', '8 V', '9 V']
         (0..9).each do |i|
           expect(p.read("ARY[#{i}]", :RAW)).to eql i
           expect(p.read("ARY[#{i}]", :CONVERTED)).to eql i
           expect(p.read("ARY[#{i}]")).to eql i
-          expect(p.read("ARY[#{i}]", :FORMATTED)).to eql i.to_s
+          expect(p.read("ARY[#{i}]", :FORMATTED)).to eql "#{i} V"
           expect(p.read("ARY[#{i}]", :WITH_UNITS)).to eql "#{i} V"
         end
       end
@@ -130,7 +130,7 @@ module OpenC3
         pkt = System.telemetry.packet("INST", "HIDDEN")
         pkt.write("BRACKET[0]", 0xABCD)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HIDDEN", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("BRACKET[0]", :RAW)).to eql 0xABCD
@@ -140,7 +140,7 @@ module OpenC3
       it "returns nil if the value does not exist" do
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("NOPE", :RAW)).to eql nil
@@ -157,7 +157,7 @@ module OpenC3
         pkt.write("TEMP1", 0, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
         json_hash['TEMP1__L'] = 'RED_LOW'
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read_with_limits_state("TEMP1", :RAW)).to eql [0, :RED_LOW]
@@ -167,7 +167,7 @@ module OpenC3
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         pkt.write("TEMP1", 0, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read_with_limits_state("TEMP1", :RAW)).to eql [0, nil]
@@ -182,7 +182,7 @@ module OpenC3
         pkt.write("TEMP3", 3, :RAW)
         pkt.write("TEMP4", 4, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all(:RAW)
@@ -201,7 +201,7 @@ module OpenC3
         json_hash = CvtModel.build_json_from_packet(pkt)
         json_hash['TEMP1__L'] = 'RED_LOW'
         json_hash['TEMP2__L'] = 'YELLOW_HIGH'
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all(:RAW, nil, ['TEMP1', 'TEMP2'])
@@ -215,7 +215,7 @@ module OpenC3
         pkt.write("TEMP1", 0, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
         json_hash['TEMP1__L'] = 'GREEN'
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all_with_limits_states(:RAW)
@@ -234,7 +234,7 @@ module OpenC3
         json_hash = CvtModel.build_json_from_packet(pkt)
         json_hash['TEMP1__L'] = 'RED_LOW'
         json_hash['TEMP2__L'] = 'YELLOW_HIGH'
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all_with_limits_states(:RAW, nil, ['TEMP1', 'TEMP2'])
@@ -246,7 +246,7 @@ module OpenC3
       it "reads all hash names" do
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all_names
@@ -274,7 +274,7 @@ module OpenC3
         json_hash["TEMP2__CS"] = 0
         json_hash["TEMP3__CN"] = 0
         json_hash["TEMP4__CX"] = 0
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         all = p.read_all_names(:RAW)
@@ -282,9 +282,9 @@ module OpenC3
         all = p.read_all_names(:CONVERTED)
         expect(all).to eql %w(CCSDSTYPE CCSDSSHF CCSDSSEQFLAGS TEMP1 TEMP2 TEMP3 TEMP4 COLLECT_TYPE ASCIICMD GROUND1STATUS GROUND2STATUS)
         all = p.read_all_names(:FORMATTED)
-        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4)
+        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
         all = p.read_all_names(:WITH_UNITS)
-        expect(all).to eql %w(TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
+        expect(all).to eql %w(PACKET_TIMESECONDS RECEIVED_TIMESECONDS TEMP1 TEMP2 TEMP3 TEMP4 ARY ARY2)
 
         all = p.read_all_names(:RAW, :AVG)
         expect(all).to eql %w(TEMP1 TEMP2)
@@ -310,7 +310,7 @@ module OpenC3
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
         pkt.write("TEMP1", 0, :RAW)
         json_hash = CvtModel.build_json_from_packet(pkt)
-        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        json_data = JSON.generate(json_hash.as_json, allow_nan: true)
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         # Check some interesting values

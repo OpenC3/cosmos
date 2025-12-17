@@ -23,6 +23,7 @@
 require 'spec_helper'
 require 'openc3/interfaces/protocols/ignore_packet_protocol'
 require 'openc3/interfaces/interface'
+require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
 
 module OpenC3
@@ -297,6 +298,54 @@ module OpenC3
         # Verify the read works
         packet = @interface.read
         expect(packet.buffer).to eq $buffer
+      end
+    end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(IgnorePacketProtocol, ['SYSTEM', 'META'], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('IgnorePacketProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes ignore packet protocol-specific configuration" do
+        @interface.add_protocol(IgnorePacketProtocol, ['INST', 'HEALTH_STATUS'], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details['target_name']).to eq('INST')
+        expect(details['packet_name']).to eq('HEALTH_STATUS')
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(IgnorePacketProtocol, ['SYSTEM', 'META'], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('IgnorePacketProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes ignore packet protocol-specific configuration" do
+        @interface.add_protocol(IgnorePacketProtocol, ['INST', 'ADCS'], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details['target_name']).to eq('INST')
+        expect(details['packet_name']).to eq('ADCS')
       end
     end
   end

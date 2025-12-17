@@ -77,6 +77,10 @@ test('routes to a packet with a period in the name', async ({
 })
 
 test('selects a target and packet to display', async ({ page, utils }) => {
+  await page.goto('/tools/packetviewer/EXAMPLE/STATUS/')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIMESECONDS *',
+  )
   await utils.selectTargetPacketItem('INST', 'IMAGE')
   await utils.dropdownSelectedValue(page, '[data-test=select-target]', 'INST')
   await utils.dropdownSelectedValue(page, '[data-test=select-packet]', 'IMAGE')
@@ -87,8 +91,8 @@ test('selects a target and packet to display', async ({ page, utils }) => {
 })
 
 test('gets help info', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'IMAGE')
-  await page.locator('.v-data-table-footer > i').hover()
+  await page.goto('/tools/packetviewer/INST/IMAGE/')
+  await page.locator('.mdi-information-variant-circle').hover()
   await expect(page.getByText('Name with * indicates DERIVED')).toBeVisible()
   await expect(page.getByText('Right click name to pin item')).toBeVisible()
   await expect(
@@ -103,7 +107,7 @@ test('gets help info', async ({ page, utils }) => {
 })
 
 test('gets details with right click', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page
     .getByRole('cell', { name: 'TEMP1', exact: true })
     .locator('xpath=..') // parent row
@@ -152,7 +156,7 @@ test('gets details with right click', async ({ page, utils }) => {
 })
 
 test('stops posting to the api after closing', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'ADCS')
+  await page.goto('/tools/packetviewer/INST/ADCS/')
   let requestCount = 0
   page.on('request', () => {
     requestCount++
@@ -169,7 +173,7 @@ test('stops posting to the api after closing', async ({ page, utils }) => {
 // Changing the polling rate is fraught with danger because it's all
 // about waiting for changes and detecting changes
 test('changes the polling rate', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
   await page
@@ -207,19 +211,21 @@ test('displays formatted items with units by default', async ({
   page,
   utils,
 }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   // Check for exactly 3 decimal points followed by units
   await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
 })
 
 test('searches on packets without data', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('EXAMPLE', 'STATUS')
+  await page.goto('/tools/packetviewer/EXAMPLE/STATUS/')
   await page.locator('[data-test="search"] input').fill('STRING')
-  await expect.poll(() => page.locator('tbody > tr').count()).toEqual(1)
+  await expect
+    .poll(() => page.locator('tr:has(td:nth-child(2))').count())
+    .toEqual(1)
 })
 
 test('displays formatted items with units', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Formatted Items with Units').click()
@@ -228,7 +234,7 @@ test('displays formatted items with units', async ({ page, utils }) => {
 })
 
 test('displays raw items', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Raw').click()
@@ -237,7 +243,7 @@ test('displays raw items', async ({ page, utils }) => {
 })
 
 test('displays converted items', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Converted').click()
@@ -246,88 +252,120 @@ test('displays converted items', async ({ page, utils }) => {
 })
 
 test('displays formatted items', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
-  // Use text-is because we have to match exactly since there is
-  // also a 'Formatted Items with Units' option
-  await page.locator(':text-is("Formatted Items")').click()
-  // Check for exactly 3 decimal points
-  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}$/)
+  await page.locator('text=Formatted').click()
+  // Check for exactly 3 decimal points followed by units
+  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
 })
 
 test('shows ignored items', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Display Derived').click()
-  await expect(page.locator('text=Display Derived')).not.toBeVisible()
+  await page.locator('[data-test=packet-viewer-view]').click()
   await expect(page.getByRole('cell', { name: 'CCSDSVER' })).not.toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('text=Show Ignored')).not.toBeVisible()
+  await page.locator('[data-test=packet-viewer-view]').click()
   await expect(page.getByRole('cell', { name: 'CCSDSVER' })).toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
+  await page.locator('[data-test=packet-viewer-view]').click()
   await expect(page.getByRole('cell', { name: 'CCSDSVER' })).not.toBeVisible()
 })
 
 test('displays derived first', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  // First row (0) is the header: Index, Name, Value
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIMESECONDS',
+  )
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Display Derived').click()
-  await expect(page.locator('text=Display Derived')).not.toBeVisible()
-  await expect(page.locator('tr').nth(1)).toContainText('TIMESEC')
-  // Check 2 because TIMESEC is included in PACKET_<TIMESEC>ONDS
+  await page.locator('[data-test=packet-viewer-view]').click()
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'TIMESEC',
+  )
+  // Check 3 because TIMESEC is included in PACKET_<TIMESEC>ONDS
   // so the first check could result in a false positive
-  await expect(page.locator('tr').nth(2)).toContainText('TIMEUS')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(1)).toContainText(
+    'TIMEUS',
+  )
 })
 
 test('pins items to the top of the list', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   // Default sort order
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIMESECONDS *',
+  )
 
   await page.getByText('PACKET_TIME *').click({
     button: 'right',
   })
   await page.getByText('Pin Item', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   // Verify pin is not affected by sorting
   await page.getByText('Name', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('Name', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('Name', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('Value', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('Value', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('Value', { exact: true }).click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
 
   await page.locator('[data-test="search"] input').fill('GROUND')
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
   await page.getByText('GROUND1STATUS', { exact: true }).click({
     button: 'right',
   })
   await page.getByText('Pin Item', { exact: true }).click()
   await page.locator('[data-test="search"] input').fill('')
   // Default sort order is packet order so PACKET_TIME is first
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await expect(page.locator('tr').nth(2)).toContainText('GROUND1STATUS')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(1)).toContainText(
+    'GROUND1STATUS',
+  )
 
   await page.getByText('GROUND1STATUS', { exact: true }).click({
     button: 'right',
   })
   await page.getByText('Unpin Item').click()
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await expect(page.locator('tr').nth(2)).not.toContainText('GROUND1STATUS')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIME *',
+  )
+  await expect(
+    page.locator('tr:has(td:nth-child(2))').nth(1),
+  ).not.toContainText('GROUND1STATUS')
 
   await page.locator('[data-test="packet-viewer-file"]').click()
   await page.getByText('Reset Configuration').click()
   // Return to default sort order
-  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')
+  await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
+    'PACKET_TIMESECONDS *',
+  )
 })

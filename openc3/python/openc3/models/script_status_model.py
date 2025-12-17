@@ -165,7 +165,7 @@ class ScriptStatusModel(Model):
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
     def create(self, update = False, force = False, queued = False, isoformat = True):
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         if queued:
             write_store = self.store_queued()

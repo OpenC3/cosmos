@@ -44,7 +44,7 @@ module OpenC3
     describe "as_json" do
       it "encodes all the input parameters" do
         model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json["name"]).to eql("foo")
       end
     end

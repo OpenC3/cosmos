@@ -22,7 +22,13 @@
 
 <template>
   <!-- Edit Item dialog -->
-  <v-dialog v-model="show" width="400" @keydown.enter="success()">
+  <v-dialog
+    v-model="show"
+    persistent
+    width="400"
+    @keydown.enter="success()"
+    @keydown.esc="$emit('cancel')"
+  >
     <v-card>
       <v-card-title class="mb-2">Edit Item</v-card-title>
       <v-card-text>

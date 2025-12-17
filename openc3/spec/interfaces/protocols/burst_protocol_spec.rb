@@ -23,6 +23,7 @@
 require 'spec_helper'
 require 'openc3/interfaces/protocols/burst_protocol'
 require 'openc3/interfaces/interface'
+require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
 
 module OpenC3
@@ -261,6 +262,56 @@ module OpenC3
         @interface.add_protocol(BurstProtocol, [2, '0x1234', true], :READ_WRITE)
         @interface.write_raw("\x00\x01\x02\x03")
         expect($data).to eql "\x00\x01\x02\x03"
+      end
+    end
+
+    describe "write_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(BurstProtocol, [1, '0xDEADBEEF', true], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('BurstProtocol')
+        expect(details.key?('write_data_input_time')).to be true
+        expect(details.key?('write_data_input')).to be true
+        expect(details.key?('write_data_output_time')).to be true
+        expect(details.key?('write_data_output')).to be true
+      end
+
+      it "includes burst protocol-specific configuration" do
+        @interface.add_protocol(BurstProtocol, [2, '0x1234', false], :READ_WRITE)
+        protocol = @interface.write_protocols[0]
+        details = protocol.write_details
+
+        expect(details['discard_leading_bytes']).to eq(2)
+        expect(details['sync_pattern']).to eq("\x12\x34".inspect)
+        expect(details['fill_fields']).to eq(false)
+      end
+    end
+
+    describe "read_details" do
+      it "returns the protocol configuration details" do
+        @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details).to be_a(Hash)
+        expect(details['name']).to eq('BurstProtocol')
+        expect(details.key?('read_data_input_time')).to be true
+        expect(details.key?('read_data_input')).to be true
+        expect(details.key?('read_data_output_time')).to be true
+        expect(details.key?('read_data_output')).to be true
+      end
+
+      it "includes burst protocol-specific configuration" do
+        @interface.add_protocol(BurstProtocol, [3, '0xABCD', true], :READ_WRITE)
+        protocol = @interface.read_protocols[0]
+        details = protocol.read_details
+
+        expect(details['discard_leading_bytes']).to eq(3)
+        expect(details['sync_pattern']).to eq("\xAB\xCD".inspect)
+        expect(details['fill_fields']).to eq(true)
       end
     end
   end

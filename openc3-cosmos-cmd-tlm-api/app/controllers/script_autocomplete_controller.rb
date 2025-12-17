@@ -89,8 +89,24 @@ class ScriptAutocompleteController < ApplicationController
       end
     else
       targets.each do |target_name, target_info|
+        latest_data = []
         OpenC3::TargetModel.packets(target_name, type: type.upcase.intern, scope: scope).each do |packet|
           packet_to_autocomplete_hashes(autocomplete_data, packet, target_info, type)
+          if type.upcase.intern == :TLM
+            packet['items'].each do |item|
+              if not item["hidden"]
+                latest_data <<
+                  {
+                    :caption => "#{target_name} LATEST #{item}",
+                    :snippet => "#{target_name} LATEST #{item}",
+                    :meta => 'telemetry',
+                  }
+              end
+            end
+          end
+        end
+        if type.upcase.intern == :TLM
+          autocomplete_data.concat(latest_data)
         end
       end
       autocomplete_data.sort_by { |packet| packet[:caption] }
@@ -175,7 +191,7 @@ class ScriptAutocompleteController < ApplicationController
   #   { '<Target Name>': 1 },
   #   { '<Packet Name>': 1 },
   #   { '<Item Name>': 1 },
-  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1 },
   #   { '<Number of characters>': 1 },
   # ],
 
@@ -186,12 +202,14 @@ class ScriptAutocompleteController < ApplicationController
   def packet_to_autocomplete_hashes(autocomplete_data, packet, target_info, type)
     if type.upcase == 'TLM'
       packet['items'].each do |item|
-        autocomplete_data <<
-          {
-            :caption => "#{target_packet_name(packet)} #{item['name']}",
-            :snippet => "#{target_packet_name(packet)} #{item['name']}",
-            :meta => 'telemetry',
-          }
+        if not item['hidden']
+          autocomplete_data <<
+            {
+              :caption => "#{target_packet_name(packet)} #{item['name']}",
+              :snippet => "#{target_packet_name(packet)} #{item['name']}",
+              :meta => 'telemetry',
+            }
+        end
       end
     else
       # There's only one autocomplete option for each command packet
@@ -209,7 +227,7 @@ class ScriptAutocompleteController < ApplicationController
   def build_cmd_snippet(packet, target_info)
     snippet = target_packet_name(packet)
     filtered_items = packet['items'].select do |item|
-      !OpenC3::Packet::RESERVED_ITEM_NAMES.include?(item['name']) and !target_info['ignored_parameters'].include?(item['name'])
+      !item["hidden"] and !OpenC3::Packet::RESERVED_ITEM_NAMES.include?(item['name']) and !target_info['ignored_parameters'].include?(item['name'])
     end
     if filtered_items.any?
       params = filtered_items.each_with_index.map do |item, index|

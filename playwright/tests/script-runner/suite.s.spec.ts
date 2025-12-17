@@ -18,6 +18,8 @@
 */
 
 // @ts-check
+import { Page } from '@playwright/test'
+import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'
 
 test.use({
@@ -193,7 +195,9 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
 test('disables all suite buttons when running', async ({ page, utils }) => {
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup < OpenC3::Group
-  def test_test; wait; end
+  def test_test
+    wait
+  end
 end
 class TestSuite < OpenC3::Suite
   def initialize
@@ -218,7 +222,33 @@ end`)
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()
   await expect(page.locator('[data-test=teardown-suite]')).toBeDisabled()
   await expect(page.locator('[data-test=teardown-group]')).toBeDisabled()
+  await utils.sleep(2000)
 
+  // Navigate to another tool and back to verify we can resume the script
+  await page.goto('/tools/cmdsender')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.sleep(1000)
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+
+  // Manually connect to the script
+  await page.locator('[data-test=script-runner-script]').click()
+  await page.getByText('Execution Status').click()
+  await page.getByRole('tab', { name: 'Running Scripts' }).click()
+  await page.getByRole('button', { name: 'Connect' }).first().click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+  )
+  await expect(
+    page.locator('[data-test="select-suite"]').getByText('TestSuite'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test="select-group"]').getByText('TestGroup'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test="select-script"]').getByText('test'),
+  ).toBeVisible()
+  await utils.sleep(2000)
   await page.locator('[data-test=go-button]').click()
   // Wait for the results
   await expect(page.locator('.v-dialog')).toContainText('Script Results')
@@ -226,20 +256,39 @@ end`)
   await deleteFile(page)
 })
 
-test('starts a suite', async ({ page, utils }) => {
-  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
-class TestGroup < OpenC3::Group
-  def test_test; puts "test"; end
-end
-class TestSuite < OpenC3::Suite
-  def setup; OpenC3::Group.puts("setup"); end
-  def teardown; OpenC3::Group.puts("teardown"); end
-  def initialize
-    super()
-    add_group("TestGroup")
+async function startsSuite(page: Page, utils: Utilities, type: string) {
+  if (type === 'Ruby') {
+    await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+  class TestGroup < OpenC3::Group
+    def test_test; puts "test"; end
   end
-end`)
-  await saveAs(page, 'test_suite1.rb')
+  class TestSuite < OpenC3::Suite
+    def setup; OpenC3::Group.puts("setup"); end
+    def teardown; OpenC3::Group.puts("teardown"); end
+    def initialize
+      super()
+      add_group("TestGroup")
+    end
+  end`)
+    await saveAs(page, 'test_suite1.rb')
+  } else {
+    // Python
+    await page.locator('textarea')
+      .fill(`from openc3.script.suite import Suite, Group
+class TestGroup(Group):
+  def test_test(self):
+    print("test")
+class TestSuite(Suite):
+  def setup(self):
+    Group.print("setup")
+  def teardown(self):
+    Group.print("teardown")
+  def __init__(self):
+    super().__init__()
+    self.add_group(TestGroup)
+`)
+    await saveAs(page, 'test_suite1.py')
+  }
 
   // Verify the suite startup, teardown buttons are enabled
   await expect(page.locator('[data-test=setup-suite]')).toBeEnabled()
@@ -323,16 +372,41 @@ end`)
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
-  await page.locator('textarea').fill(`require "openc3/script/suite.rb"
-class TestGroup < OpenC3::Group
-  def test_test; puts "test"; end
-end
-class TestSuite < OpenC3::Suite
-  def initialize
-    super()
-    add_group("TestGroup")
+
+  await page.locator('.ace_content').click()
+  if (process.platform === 'darwin') {
+    await page.keyboard.press('Meta+A')
+  } else {
+    await page.keyboard.press('Control+A')
+  }
+  await utils.sleep(1000)
+  await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
+
+  if (type === 'Ruby') {
+    await page.locator('textarea').fill(`require "openc3/script/suite.rb"
+  class TestGroup < OpenC3::Group
+    def test_test; puts "test"; end
   end
-end`)
+  class TestSuite < OpenC3::Suite
+    def initialize
+      super()
+      add_group("TestGroup")
+    end
+  end`)
+  } else {
+    // Python
+    await page.locator('textarea')
+      .fill(`from openc3.script.suite import Suite, Group
+class TestGroup(Group):
+  def test_test(self):
+    print("test")
+class TestSuite(Suite):
+  def __init__(self):
+    super().__init__()
+    self.add_group(TestGroup)
+`)
+  }
   await utils.sleep(1000)
   // Verify filename is marked as edited
   await expect(page.locator('#sr-controls')).toContainText('*')
@@ -349,6 +423,14 @@ end`)
   await expect(page.locator('[data-test=teardown-suite]')).toBeDisabled()
 
   await deleteFile(page)
+}
+
+test('starts a ruby suite', async ({ page, utils }) => {
+  await startsSuite(page, utils, 'Ruby')
+})
+
+test('starts a python suite', async ({ page, utils }) => {
+  await startsSuite(page, utils, 'Python')
 })
 
 test('starts a group', async ({ page, utils }) => {
@@ -410,6 +492,7 @@ end`)
   )
 
   // Rewrite the script but remove setup and teardown
+  await utils.sleep(500)
   await page.locator('.ace_content').click()
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+A')
@@ -419,6 +502,17 @@ end`)
   await utils.sleep(1000)
   await page.keyboard.press('Backspace')
   await utils.sleep(1000)
+
+  await page.locator('.ace_content').click()
+  if (process.platform === 'darwin') {
+    await page.keyboard.press('Meta+A')
+  } else {
+    await page.keyboard.press('Control+A')
+  }
+  await utils.sleep(1000)
+  await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
+
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup1 < OpenC3::Group
   def test_test1; puts "test"; end

@@ -46,7 +46,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.8.2.pre.beta0'
+  s.version = '6.10.2.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -80,24 +80,24 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
   s.add_runtime_dependency 'fiddle',    '~> 1.1'
-  s.add_runtime_dependency 'json',      '~> 2.6'
+  s.add_runtime_dependency 'json',      '~> 2.14' # Breaking change in 2.14 for require 'json/add/string'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
   s.add_runtime_dependency 'ostruct',   '~> 0.6'
   s.add_runtime_dependency 'prism',     '~> 1.3'
   s.add_runtime_dependency 'psych',     '~> 5.0'
-  s.add_runtime_dependency 'puma',      '~> 6.2'
+  s.add_runtime_dependency 'puma',      '~> 7.0'
   s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'redis',     '~> 5.0'
-  s.add_runtime_dependency 'rubyzip',   '~> 2.3'
+  s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
-  s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
+  s.add_runtime_dependency 'cbor', '~> 0.5.10'
   s.add_runtime_dependency 'childprocess', '~> 5.0'
   s.add_runtime_dependency 'connection_pool', '~> 2.4'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
@@ -135,7 +135,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.22'
-  s.add_development_dependency 'rexml', '3.4.1' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
+  s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
   s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
   # simplecov_json_formatter formatter supports SonarQube
   # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'

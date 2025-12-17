@@ -41,6 +41,8 @@ require 'tempfile'
 require 'fileutils'
 
 module OpenC3
+  class EmptyGemFileError < StandardError; end
+
   # Represents a OpenC3 plugin that can consist of targets, interfaces, routers
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
@@ -56,6 +58,13 @@ module OpenC3
     attr_accessor :plugin_txt_lines
     attr_accessor :needs_dependencies
     attr_accessor :store_id
+    attr_accessor :title
+    attr_accessor :description
+    attr_accessor :licenses
+    attr_accessor :homepage
+    attr_accessor :repository
+    attr_accessor :keywords
+    attr_accessor :img_path
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -80,6 +89,10 @@ module OpenC3
       tf = nil
       begin
         if File.exist?(gem_file_path)
+          if File.zero?(gem_file_path)
+            raise EmptyGemFileError, "Gem file is empty: #{gem_file_path}"
+          end
+
           # Load gem to internal gem server
           OpenC3::GemModel.put(gem_file_path, gem_install: false, scope: scope) unless validate_only
         else
@@ -133,7 +146,7 @@ module OpenC3
 
         store_id = Integer(store_id) if store_id
         model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, scope: scope)
-        result = model.as_json(:allow_nan => true)
+        result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
       ensure
@@ -179,11 +192,31 @@ module OpenC3
             raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
+
+        # Process app store metadata
+        plugin_model.title = pkg.spec.metadata['openc3_store_title'] || pkg.spec.summary.strip
+        plugin_model.description = pkg.spec.metadata['openc3_store_description'] || pkg.spec.description.strip
+        plugin_model.licenses = pkg.spec.licenses
+        plugin_model.homepage = pkg.spec.homepage
+        plugin_model.repository = pkg.spec.metadata['source_code_uri'] # this key because it's in the official gemspec examples
+        plugin_model.keywords = pkg.spec.metadata['openc3_store_keywords']&.split(/, ?/)
+        img_path = pkg.spec.metadata['openc3_store_image']
+        unless img_path
+          default_img_path = 'public/store_img.png'
+          full_default_path = File.join(gem_path, default_img_path)
+          img_path = default_img_path if File.exist? full_default_path
+        end
+        plugin_model.img_path = File.join('gems', gem_name.split(".gem")[0], img_path) if img_path # convert this filesystem path to volumes mount path
+        plugin_model.update() unless validate_only
+
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
 
-        # Handle python requirements.txt
-        if File.exist?(File.join(gem_path, 'requirements.txt'))
+        # Handle python dependencies (pyproject.toml or requirements.txt)
+        pyproject_path = File.join(gem_path, 'pyproject.toml')
+        requirements_path = File.join(gem_path, 'requirements.txt')
+
+        if File.exist?(pyproject_path) || File.exist?(requirements_path)
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
             if pypi_url
@@ -202,11 +235,20 @@ module OpenC3
             end
           end
           unless validate_only
-            Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-              pip_args = "--no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}"
+            if File.exist?(pyproject_path)
+              Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
+              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+                pip_args = "--no-warn-script-location -i #{pypi_url} #{gem_path}"
+              else
+                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
+              end
             else
-              pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{File.join(gem_path, 'requirements.txt')}"
+              Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+                pip_args = "--no-warn-script-location -i #{pypi_url} -r #{requirements_path}"
+              else
+                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
+              end
             end
             puts `/openc3/bin/pipinstall #{pip_args}`
           end
@@ -293,7 +335,7 @@ module OpenC3
         FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
-      return plugin_model.as_json(:allow_nan => true)
+      return plugin_model.as_json()
     end
 
     def initialize(
@@ -302,6 +344,13 @@ module OpenC3
       plugin_txt_lines: [],
       needs_dependencies: false,
       store_id: nil,
+      title: nil,
+      description: nil,
+      keywords: nil,
+      licenses: nil,
+      homepage: nil,
+      repository: nil,
+      img_path: nil,
       updated_at: nil,
       scope:
     )
@@ -310,10 +359,22 @@ module OpenC3
       @plugin_txt_lines = plugin_txt_lines
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
       @store_id = store_id
+      @title = title
+      @description = description
+      @keywords = keywords
+      @licenses = licenses
+      @homepage = homepage
+      @repository = repository
+      @img_path = img_path
     end
 
     def create(update: false, force: false, queued: false)
-      @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
+      if not update and not @name.index("__")
+        existing_names = Set.new(self.class.names(scope: @scope))
+        counter = 0
+        counter += 1 while existing_names.include?("#{@name}__#{counter}")
+        @name = "#{@name}__#{counter}"
+      end
       super(update: update, force: force, queued: queued)
     end
 
@@ -324,6 +385,13 @@ module OpenC3
         'plugin_txt_lines' => @plugin_txt_lines,
         'needs_dependencies' => @needs_dependencies,
         'store_id' => @store_id,
+        'title' => @title,
+        'description' => @description,
+        'keywords' => @keywords,
+        'licenses' => @licenses,
+        'homepage' => @homepage,
+        'repository' => @repository,
+        'img_path' => @img_path,
         'updated_at' => @updated_at
       }
     end
@@ -389,7 +457,7 @@ module OpenC3
 
     # Reinstall
     def restore
-      plugin_hash = self.as_json(:allow_nan => true)
+      plugin_hash = self.as_json()
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
       @destroyed = false
     end

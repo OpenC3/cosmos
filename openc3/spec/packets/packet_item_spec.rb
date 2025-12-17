@@ -271,6 +271,51 @@ module OpenC3
         expect { pi.check_default_and_range_data_types }.to_not raise_error
       end
 
+      it "complains about BOOL default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = "true"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be true/false but is a String")
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = 1
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be true/false but is a Integer")
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = true
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :BOOL, :BIG_ENDIAN, nil)
+        pi.default = false
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
+      it "complains about ARRAY default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = "[]"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Array but is a String")
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = {}
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Array but is a Hash")
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = []
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :ARRAY, :BIG_ENDIAN, nil)
+        pi.default = [1, 2, 3]
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
+      it "complains about OBJECT default not matching data_type" do
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = "{}"
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Hash but is a String")
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = []
+        expect { pi.check_default_and_range_data_types }.to raise_error(ArgumentError, "TEST: default must be an Hash but is a Array")
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = {}
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+        pi = PacketItem.new("test", 0, 0, :OBJECT, :BIG_ENDIAN, nil)
+        pi.default = {"key" => "value"}
+        expect { pi.check_default_and_range_data_types }.to_not raise_error
+      end
+
       it "complains about range not matching data_type" do
         pi = PacketItem.new("test", 0, 32, :UINT, :BIG_ENDIAN, nil)
         pi.default = 5
@@ -433,6 +478,7 @@ module OpenC3
         @pi.format_string = "%5.1f"
         @pi.id_value = 10
         @pi.array_size = 64
+        @pi.original_array_size = 64
         @pi.states = { "TRUE" => 1, "FALSE" => 0 }
         @pi.read_conversion = GenericConversion.new("value / 2")
         @pi.write_conversion = GenericConversion.new("value * 2")
@@ -456,7 +502,7 @@ module OpenC3
         @pi.limits = pil
         @pi.obfuscate = true
 
-        hash = @pi.as_json(:allow_nan => true)
+        hash = @pi.as_json()
         expect(hash["name"]).to eql "TEST"
         expect(hash["bit_offset"]).to eql 0
         expect(hash["bit_size"]).to eql 32
@@ -494,86 +540,6 @@ module OpenC3
         expect(hash["limits"][:DEFAULT]["green_high"]).to eql 5
         expect(hash["meta"]).to be_nil
         expect(hash["obfuscate"]).to be true
-      end
-    end
-
-    describe "self.from_hash" do
-      it "creates empty PacketItem from hash" do
-        item = PacketItem.from_json(@pi.as_json(:allow_nan => true))
-        expect(item.name).to eql @pi.name
-        expect(item.bit_offset).to eql @pi.bit_offset
-        expect(item.bit_size).to eql @pi.bit_size
-        expect(item.data_type).to eql @pi.data_type
-        expect(item.endianness).to eql @pi.endianness
-        expect(item.array_size).to eql @pi.array_size
-        expect(item.overflow).to eql @pi.overflow
-        expect(item.format_string).to eql @pi.format_string
-        # conversions don't round trip
-        # expect(item.read_conversion).to eql @pi.read_conversion
-        # expect(item.write_conversion).to eql @pi.write_conversion
-        expect(item.id_value).to eql @pi.id_value
-        expect(item.states).to eql @pi.states
-        expect(item.description).to eql @pi.description
-        expect(item.units_full).to eql @pi.units_full
-        expect(item.units).to eql @pi.units
-        expect(item.default).to eql @pi.default
-        expect(item.range).to eql @pi.range
-        expect(item.required).to eql @pi.required
-        expect(item.state_colors).to eql @pi.state_colors
-        expect(item.hazardous).to eql @pi.hazardous
-        expect(item.messages_disabled).to eql @pi.messages_disabled
-        expect(item.limits.enabled).to eql @pi.limits.enabled
-        expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
-        expect(item.limits.values).to eql @pi.limits.values
-        expect(item.meta).to eql @pi.meta
-        expect(item.obfuscate).to eql @pi.obfuscate
-      end
-
-      it "converts a populated item to and from JSON" do
-        @pi.format_string = "%5.1f"
-        @pi.id_value = 10
-        @pi.states = { "TRUE" => 1, "FALSE" => 0 }
-        @pi.read_conversion = GenericConversion.new("value / 2")
-        @pi.write_conversion = PolynomialConversion.new(1, 2, 3)
-        @pi.description = "description"
-        @pi.units_full = "Celsius"
-        @pi.units = "C"
-        @pi.default = 0
-        @pi.range = (0..100)
-        @pi.required = true
-        @pi.hazardous = { "TRUE" => nil, "FALSE" => "NO!" }
-        @pi.messages_disabled = { "TRUE" => true, "FALSE" => nil }
-        @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
-        @pi.limits = PacketItemLimits.new
-        @pi.limits.values = { DEFAULT: [10, 20, 80, 90, 40, 50], TVAC: [100, 200, 800, 900] }
-        @pi.obfuscate = true
-        item = PacketItem.from_json(@pi.as_json(:allow_nan => true))
-        expect(item.name).to eql @pi.name
-        expect(item.bit_offset).to eql @pi.bit_offset
-        expect(item.bit_size).to eql @pi.bit_size
-        expect(item.data_type).to eql @pi.data_type
-        expect(item.endianness).to eql @pi.endianness
-        expect(item.array_size).to eql @pi.array_size
-        expect(item.overflow).to eql @pi.overflow
-        expect(item.format_string).to eql @pi.format_string
-        expect(item.read_conversion).to be_a GenericConversion
-        expect(item.write_conversion).to be_a PolynomialConversion
-        expect(item.id_value).to eql @pi.id_value
-        expect(item.states).to eql @pi.states
-        expect(item.description).to eql @pi.description
-        expect(item.units_full).to eql @pi.units_full
-        expect(item.units).to eql @pi.units
-        expect(item.default).to eql @pi.default
-        expect(item.range).to eql @pi.range
-        expect(item.required).to eql @pi.required
-        expect(item.state_colors).to eql @pi.state_colors
-        expect(item.hazardous).to eql @pi.hazardous
-        expect(item.messages_disabled).to eql @pi.messages_disabled
-        expect(item.limits.enabled).to eql @pi.limits.enabled
-        expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
-        expect(item.limits.values).to eql @pi.limits.values
-        expect(item.meta).to eql @pi.meta
-        expect(item.obfuscate).to eql @pi.obfuscate
       end
     end
   end

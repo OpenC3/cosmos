@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" @keydown.esc="cancel">
+  <v-dialog v-model="show" persistent width="600" @keydown.esc="cancel">
     <v-card>
       <form @submit.prevent="success">
         <v-toolbar height="24">
@@ -35,7 +35,7 @@
             <v-row dense>
               <v-text-field
                 v-model="search"
-                label="search"
+                label="Search"
                 type="text"
                 prepend-inner-icon="mdi-magnify"
                 clearable

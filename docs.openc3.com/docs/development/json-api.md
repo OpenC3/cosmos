@@ -16,7 +16,7 @@ This document provides the information necessary for external applications to in
 The HTTP Authorization request header contains the credentials to authenticate a user agent with a server, usually, but not necessarily, after the server has responded with a 401 Unauthorized status and the WWW-Authenticate header.
 
 ```
-Authorization: <token/password>
+Authorization: <token>
 ```
 
 ## JSON-RPC 2.0
@@ -73,9 +73,9 @@ Example Usage:
 
 ### Getting Telemetry
 
-The following methods are used to get telemetry: tlm, tlm_raw, tlm_formatted, tlm_with_units
+The following methods are used to get telemetry: tlm, tlm_raw, tlm_formatted
 
-The tlm method returns the current converted value of a telemetry point. The tlm_raw method returns the current raw value of a telemetry point. The tlm_formatted method returns the current formatted value of a telemetry point. The tlm_with_units method returns the current formatted value of a telemetry point with its units appended to the end.
+The tlm method returns the current converted value of a telemetry point. The tlm_raw method returns the current raw value of a telemetry point. The tlm_formatted method returns the current formatted value of a telemetry point with its units appended.
 
 Two parameter syntaxes are supported.
 
@@ -117,5 +117,16 @@ If developing an interface for the JSON API from another language, the best way 
 You can also try sending these raw commands from the terminal with a program like `curl`:
 
 ```bash
-curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"WITH_UNITS","scope":"DEFAULT"}}' http://localhost:2900/openc3-api/api  -H "Authorization: password"
+curl -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "id": 2, "keyword_params":{"type":"FORMATTED","scope":"DEFAULT"}}' \
+-H "Content-Type: application/json" \
+-H "Authorization: <token>" \
+http://localhost:2900/openc3-api/api
+```
+
+Note that you will need a valid session token in the `Authorization` header to access the JSON API. You can retrieve one either by logging in via your browser and copying the value of `localStorage.openc3Token` in the dev tools console, or also with `curl`:
+
+```bash
+curl http://localhost:2900/openc3-api/auth/verify \
+-H 'Content-Type: application/json' \
+-d '{"token": "your-password-here"}'
 ```

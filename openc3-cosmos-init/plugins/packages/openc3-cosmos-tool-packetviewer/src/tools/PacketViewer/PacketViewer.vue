@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,19 +21,49 @@
 -->
 
 <template>
-  <div>
+  <div
+    :style="{ height: containerHeight }"
+    class="d-flex flex-column overflow-hidden"
+  >
     <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <div style="padding: 10px">
-        <target-packet-item-chooser
-          :initial-target-name="$route.params.target"
-          :initial-packet-name="$route.params.packet"
-          @on-set="packetChanged($event)"
-        />
-      </div>
+    <v-expansion-panels v-model="panel" class="mb-1">
+      <v-expansion-panel>
+        <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <target-packet-item-chooser
+            class="pa-4"
+            :initial-target-name="$route.params.target"
+            :initial-packet-name="$route.params.packet"
+            show-latest
+            @on-set="packetChanged($event)"
+          />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+    <v-card
+      class="d-flex flex-column flex-shrink-1"
+      style="overflow: hidden !important"
+    >
       <v-card-title class="d-flex align-center justify-content-space-between">
-        Items
+        Items {{ rows.length ? `(${rows.length})` : '' }}
         <v-spacer />
+        <v-tooltip location="right" close-delay="2000">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" class="mr-2">
+              mdi-information-variant-circle
+            </v-icon>
+          </template>
+          <span>
+            Name with * indicates
+            <a
+              href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+              target="_blank"
+              >DERIVED</a
+            >&nbsp;item<br />
+            Right click name to pin item<br />
+            Right click value for details / graph
+          </span>
+        </v-tooltip>
         <v-text-field
           v-model="search"
           label="Search"
@@ -47,8 +77,8 @@
           data-test="search"
         />
       </v-card-title>
-      <v-data-table
-        v-model:items-per-page="itemsPerPage"
+      <v-data-table-virtual
+        class="overflow-hidden"
         :search="search"
         :headers="headers"
         :header-props="{
@@ -57,16 +87,20 @@
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
+        :loading="loading > 0"
         multi-sort
-        :items-per-page-options="[10, 20, 50, 100, -1]"
+        fixed-header
         density="compact"
       >
+        <template #loading>
+          <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
+        </template>
         <template #item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip
               :key="`${item.name}-${isPinned(item.name)}`"
               :open-delay="600"
-              bottom
+              location="bottom"
             >
               <template #activator="{ props }">
                 <v-icon
@@ -96,27 +130,7 @@
             :screen-time-zone="timeZone"
           />
         </template>
-        <template #footer.prepend>
-          <v-tooltip right close-delay="2000">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" class="info-tooltip">
-                mdi-information-variant-circle
-              </v-icon>
-            </template>
-            <span>
-              Name with * indicates
-              <a
-                href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
-                target="_blank"
-                >DERIVED</a
-              >&nbsp;item<br />
-              Right click name to pin item<br />
-              Right click value for details / graph
-            </span>
-          </v-tooltip>
-          <v-spacer />
-        </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
@@ -171,7 +185,7 @@
       :config-key="configKey"
       @success="saveConfiguration"
     />
-    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute>
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -195,10 +209,11 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
+import { useContainerHeight } from '@openc3/vue-common/composables'
+import { useTemplateRef } from 'vue'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
-  WITH_UNITS: 'Formatted Items with Units',
   FORMATTED: 'Formatted Items',
   CONVERTED: 'Converted Items',
   RAW: 'Raw Items',
@@ -213,8 +228,16 @@ export default {
     SaveConfigDialog,
   },
   mixins: [Config],
+  setup() {
+    const containerHeight = useContainerHeight()
+
+    return { containerHeight }
+  },
   data() {
     return {
+      panel: 0,
+      loadingPacket: false,
+      loadingTlmData: false,
       title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
@@ -240,7 +263,7 @@ export default {
       counter: 0,
       targetName: '',
       packetName: '',
-      valueType: 'WITH_UNITS',
+      valueType: 'FORMATTED',
       refreshInterval: 1000,
       staleLimit: 30,
       rows: [],
@@ -252,9 +275,14 @@ export default {
       itemName: '',
       x: 0,
       y: 0,
+      latestAvailable: null,
+      latestItems: null,
     }
   },
   computed: {
+    loading: function () {
+      return this.loadingPacket || this.loadingTlmData
+    },
     menus: function () {
       return [
         {
@@ -323,10 +351,6 @@ export default {
                 this.valueType = value
               },
               choices: [
-                {
-                  label: valueTypeToRadioGroup['WITH_UNITS'],
-                  value: 'WITH_UNITS',
-                },
                 {
                   label: valueTypeToRadioGroup['FORMATTED'],
                   value: 'FORMATTED',
@@ -425,7 +449,7 @@ export default {
       })
     },
   },
-  created() {
+  async created() {
     this.api = new OpenC3Api()
     this.api
       .get_setting('time_zone')
@@ -449,10 +473,13 @@ export default {
       // If we're passed in the route then manually call packetChanged to update
       if (this.$route.params.target && this.$route.params.packet) {
         // Initial position of chooser should be correct so call packetChanged for it
-        this.packetChanged({
-          targetName: this.$route.params.target.toUpperCase(),
-          packetName: this.$route.params.packet.toUpperCase(),
-        })
+        await this.packetChanged(
+          {
+            targetName: this.$route.params.target.toUpperCase(),
+            packetName: this.$route.params.packet.toUpperCase(),
+          },
+          true,
+        )
       } else {
         if (config.target && config.packet) {
           // Chooser probably won't be at the right packet so need to refresh
@@ -502,50 +529,102 @@ export default {
         return false
       }
     },
-    packetChanged(event) {
-      this.api
-        .get_target(event.targetName)
-        .then((target) => {
-          if (target) {
-            this.ignoredItems = target.ignored_items
-
-            return this.api.get_packet_derived_items(
+    async packetChanged(event, force = false) {
+      if (
+        this.targetName === event.targetName &&
+        this.packetName === event.packetName &&
+        !force
+      ) {
+        return // No change
+      }
+      try {
+        this.loadingPacket = true
+        const target = await this.api.get_target(event.targetName)
+        if (target) {
+          this.ignoredItems = target.ignored_items
+          this.targetName = event.targetName
+          this.packetName = event.packetName
+          const currentTarget = this.$route.params.target?.toUpperCase()
+          const currentPacket = this.$route.params.packet?.toUpperCase()
+          if (event.packetName === 'LATEST') {
+            // For LATEST, we can't get specific packet derived items
+            this.derivedItems = []
+          } else {
+            // Regular packet handling
+            const derived = await this.api.get_packet_derived_items(
               event.targetName,
               event.packetName,
             )
-          } else {
-            // Probably got here from an old config or URL params that point to something that no longer exists
-            // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
-            this.targetName = null
-            this.packetName = null
+            if (derived) {
+              this.derivedItems = derived
+            }
+          }
+          if (
+            currentTarget !== event.targetName ||
+            currentPacket !== event.packetName
+          ) {
+            this.saveDefaultConfig(this.currentConfig)
             this.$router.push({
               name: 'PackerViewer',
-              params: {},
+              params: {
+                target: this.targetName,
+                packet: this.packetName,
+              },
             })
           }
-        })
-        .then((derived) => {
-          if (derived) {
-            this.derivedItems = derived
-
-            this.targetName = event.targetName
-            this.packetName = event.packetName
-            if (
-              this.$route.params.target !== event.targetName ||
-              this.$route.params.packet !== event.packetName
-            ) {
-              this.saveDefaultConfig(this.currentConfig)
-              this.$router.push({
-                name: 'PackerViewer',
-                params: {
-                  target: this.targetName,
-                  packet: this.packetName,
-                },
+          this.changeUpdater(true)
+        } else {
+          // Probably got here from an old config or URL params that point to something that no longer exists
+          // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
+          this.targetName = null
+          this.packetName = null
+          this.$router.push({
+            name: 'PackerViewer',
+            params: {},
+          })
+        }
+      } finally {
+        this.loadingPacket = false
+      }
+    },
+    latestGetTlmValues(values) {
+      if (values != null && values.length > 0) {
+        this.counter += 1
+        let derived = []
+        let other = []
+        this.latestItemNames.forEach((itemName, index) => {
+          if (!this.showIgnored && this.ignoredItems.includes(itemName)) {
+            return
+          }
+          const itemValue = values[index]
+          if (itemValue) {
+            if (this.derivedItems.includes(itemName)) {
+              derived.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: true,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
+              })
+            } else {
+              other.push({
+                name: itemName,
+                value: itemValue[0],
+                limitsState: itemValue[1],
+                derived: false,
+                counter: this.counter,
+                pinned: this.isPinned(itemName),
               })
             }
-            this.changeUpdater(true)
           }
         })
+        if (this.derivedLast) {
+          this.rows = other.concat(derived)
+        } else {
+          this.rows = derived.concat(other)
+        }
+      }
     },
     changeUpdater(clearExisting) {
       if (this.updater != null) {
@@ -554,62 +633,120 @@ export default {
       }
       if (clearExisting) {
         this.rows = []
+        this.latestAvailable = null
+        this.latestItems = null
+      }
+      let loadingFirstTlm = false
+      if (!this.rows.length) {
+        this.loadingTlmData = true
+        loadingFirstTlm = true
       }
       this.updater = setInterval(() => {
         if (!this.targetName || !this.packetName) {
+          if (loadingFirstTlm) {
+            loadingFirstTlm = false
+            this.loadingTlmData = false
+          }
           return // noop if target/packet aren't set
         }
-        this.api
-          .get_tlm_packet(
-            this.targetName,
-            this.packetName,
-            this.valueType,
-            this.staleLimit,
-          )
-          .then((data) => {
-            // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
-            if (data != null) {
-              this.counter += 1
-              let derived = []
-              let other = []
-              data.forEach((value) => {
-                if (!this.showIgnored && this.ignoredItems.includes(value[0])) {
-                  return
-                }
-                if (this.derivedItems.includes(value[0])) {
-                  derived.push({
-                    name: value[0],
-                    value: value[1],
-                    limitsState: value[2],
-                    derived: true,
-                    counter: this.counter,
-                    pinned: this.isPinned(value[0]),
-                  })
-                } else {
-                  other.push({
-                    name: value[0],
-                    value: value[1],
-                    limitsState: value[2],
-                    derived: false,
-                    counter: this.counter,
-                    pinned: this.isPinned(value[0]),
-                  })
-                }
+
+        // Handle LATEST packet using get_tlm_values
+        if (this.packetName === 'LATEST') {
+          if (this.latestAvailable) {
+            this.api
+              .get_tlm_values(this.latestAvailable, this.staleLimit)
+              .then((values) => {
+                this.latestGetTlmValues(values)
               })
-              if (this.derivedLast) {
-                this.rows = other.concat(derived)
-              } else {
-                this.rows = derived.concat(other)
+              .catch((error) => {
+                // eslint-disable-next-line no-console
+                console.log(error)
+              })
+          } else {
+            this.api
+              .get_all_tlm_item_names(this.targetName)
+              .then((itemNames) => {
+                this.latestItemNames = itemNames
+                // Build items array in format TGT__LATEST__ITEM__TYPE
+                const items = itemNames.map(
+                  (item) =>
+                    `${this.targetName}__LATEST__${item}__${this.valueType}`,
+                )
+                return this.api.get_tlm_available(items)
+              })
+              .then((available) => {
+                this.latestAvailable = available
+                return this.api.get_tlm_values(available, this.staleLimit)
+              })
+              .then((values) => {
+                this.latestGetTlmValues(values)
+              })
+              .catch((error) => {
+                // eslint-disable-next-line no-console
+                console.log(error)
+              })
+          }
+        } else {
+          // Regular packet handling using get_tlm_packet
+          this.api
+            .get_tlm_packet(
+              this.targetName,
+              this.packetName,
+              this.valueType,
+              this.staleLimit,
+            )
+            .then((data) => {
+              // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
+              if (data != null) {
+                this.counter += 1
+                let derived = []
+                let other = []
+                data.forEach((value) => {
+                  if (
+                    !this.showIgnored &&
+                    this.ignoredItems.includes(value[0])
+                  ) {
+                    return
+                  }
+                  if (this.derivedItems.includes(value[0])) {
+                    derived.push({
+                      name: value[0],
+                      value: value[1],
+                      limitsState: value[2],
+                      derived: true,
+                      counter: this.counter,
+                      pinned: this.isPinned(value[0]),
+                    })
+                  } else {
+                    other.push({
+                      name: value[0],
+                      value: value[1],
+                      limitsState: value[2],
+                      derived: false,
+                      counter: this.counter,
+                      pinned: this.isPinned(value[0]),
+                    })
+                  }
+                })
+                if (this.derivedLast) {
+                  this.rows = other.concat(derived)
+                } else {
+                  this.rows = derived.concat(other)
+                }
               }
-            }
-          })
-          // Catch errors but just log to the console
-          // We don't clear the updater because errors can happen on upgrade
-          // and we want to continue updating once the new plugin comes online
-          .catch((error) => {
-            // eslint-disable-next-line
-            console.log(error)
-          })
+            })
+            // Catch errors but just log to the console
+            // We don't clear the updater because errors can happen on upgrade
+            // and we want to continue updating once the new plugin comes online
+            .catch((error) => {
+              // eslint-disable-next-line no-console
+              console.log(error)
+            })
+        }
+        if (loadingFirstTlm) {
+          loadingFirstTlm = false
+          this.loadingTlmData = false
+        }
       }, this.refreshInterval)
     },
     resetConfig: function () {
@@ -617,7 +754,7 @@ export default {
       this.staleLimit = 30
       this.showIgnored = false
       this.derivedLast = false
-      this.valueType = 'WITH_UNITS'
+      this.valueType = 'FORMATTED'
       this.itemsPerPage = 20
       this.pinnedItems = []
     },
@@ -630,7 +767,7 @@ export default {
       this.menus[1].items[0].checked = this.showIgnored
       this.derivedLast = config.derivedLast || false
       this.menus[1].items[1].checked = this.derivedLast
-      this.valueType = config.valueType || 'WITH_UNITS'
+      this.valueType = config.valueType || 'FORMATTED'
       this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
       this.pinnedItems = config.pinnedItems || []
@@ -672,9 +809,5 @@ a {
 
 .pin-item {
   float: left;
-}
-
-.info-tooltip {
-  margin-left: 10px;
 }
 </style>

@@ -106,3 +106,73 @@ class TestMqttInterface(unittest.TestCase):
         pkt = System.commands.packet("INST", "CLEAR")
         with self.assertRaisesRegex(RuntimeError, "Command packet 'INST CLEAR' requires a META TOPIC or TOPICS"):
             i.write(pkt)
+
+    def test_details(self):
+        i = MqttInterface("mqtt.example.com", "1883", True)
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Check that it includes the expected keys specific to MqttInterface
+        self.assertIn('hostname', details)
+        self.assertIn('port', details)
+        self.assertIn('ssl', details)
+        self.assertIn('ack_timeout', details)
+        self.assertIn('username', details)
+        self.assertIn('read_packets_by_topic', details)
+        
+        # Verify the specific values are correct
+        self.assertEqual(details['hostname'], "mqtt.example.com")
+        self.assertEqual(details['port'], 1883)
+        self.assertTrue(details['ssl'])
+        self.assertEqual(details['ack_timeout'], 5.0)  # default value
+        self.assertIsNone(details['username'])
+        self.assertIsInstance(details['read_packets_by_topic'], dict)
+
+    def test_details_with_sensitive_data(self):
+        i = MqttInterface("mqtt.example.com", "1883", False)
+        i.set_option("USERNAME", ["test_user"])
+        i.set_option("PASSWORD", ["secret_pass"])
+        i.set_option("CERT", ["cert_content"])
+        i.set_option("KEY", ["key_content"])
+        i.set_option("CA_FILE", ["ca_file_content"])
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Verify basic settings
+        self.assertEqual(details['hostname'], "mqtt.example.com")
+        self.assertEqual(details['port'], 1883)
+        self.assertFalse(details['ssl'])
+        self.assertEqual(details['username'], "test_user")
+        
+        # Verify sensitive fields show "Set" instead of actual values
+        self.assertEqual(details['password'], 'Set')
+        self.assertEqual(details['cert'], 'Set')
+        self.assertEqual(details['key'], 'Set')
+        self.assertEqual(details['ca_file'], 'Set')
+        
+        # Verify sensitive options are removed from options dict
+        self.assertNotIn('PASSWORD', details['options'])
+        self.assertNotIn('CERT', details['options'])
+        self.assertNotIn('KEY', details['options'])
+        self.assertNotIn('CA_FILE', details['options'])
+
+    def test_details_without_sensitive_data(self):
+        i = MqttInterface("localhost", "1883", False)
+        i.set_option("ACK_TIMEOUT", ["10.0"])
+        details = i.details()
+        
+        # Verify it returns a dictionary
+        self.assertIsInstance(details, dict)
+        
+        # Verify sensitive keys are not present when not set
+        self.assertNotIn('password', details)
+        self.assertNotIn('cert', details)
+        self.assertNotIn('key', details)
+        self.assertNotIn('ca_file', details)
+        
+        # Verify non-sensitive options remain
+        self.assertEqual(details['ack_timeout'], 10.0)

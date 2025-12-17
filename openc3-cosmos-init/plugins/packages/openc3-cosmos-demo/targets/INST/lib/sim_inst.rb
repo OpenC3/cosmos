@@ -137,7 +137,7 @@ module OpenC3
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
 
-      @track_stars = Array.new
+      @track_stars = []
       @track_stars[0] = 1237
       @track_stars[1] = 1329
       @track_stars[2] = 1333
@@ -163,6 +163,11 @@ module OpenC3
       set_rate('IMAGE', 100)
       set_rate('MECH', 10)
       set_rate('HIDDEN', 500)
+      set_rate('JSONTLM', 500)
+      set_rate('CBORTLM', 500)
+      set_rate('XMLTLM', 500)
+      set_rate('HTMLTLM', 500)
+      set_rate('HYBRIDTLM', 500)
     end
 
     def tick_period_seconds
@@ -178,6 +183,11 @@ module OpenC3
 
       hs_packet = @tlm_packets['HEALTH_STATUS']
       params_packet = @tlm_packets['PARAMS']
+      json_packet = @tlm_packets['JSONTLM']
+      cbor_packet = @tlm_packets['CBORTLM']
+      xml_packet = @tlm_packets['XMLTLM']
+      html_packet = @tlm_packets['HTMLTLM']
+      hybrid_packet = @tlm_packets['HYBRIDTLM']
 
       case name
       when 'COLLECT'
@@ -245,6 +255,16 @@ module OpenC3
       when 'HIDDEN'
         # Deliberately do not increment cmd_acpt_cnt
         @tlm_packets['HIDDEN'].count = packet.read('count')
+      when 'JSONCMD'
+        json_packet.buffer = packet.buffer
+      when 'CBORCMD'
+        cbor_packet.buffer = packet.buffer
+      when 'XMLCMD'
+        xml_packet.buffer = packet.buffer
+      when 'HTMLCMD'
+        html_packet.buffer = packet.buffer
+      when 'HYBRIDCMD'
+        hybrid_packet.buffer = packet.buffer
       end
     end
 

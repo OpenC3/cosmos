@@ -224,7 +224,7 @@ module OpenC3
     describe "as_json" do
       it "encodes all the input parameters" do
         model = generate_reaction()
-        json = model.as_json(:allow_nan => true)
+        json = model.as_json()
         expect(json['name']).to eql('REACT1')
         expect(json['scope']).to eql($openc3_scope)
         expect(json['snooze']).to eql(300)

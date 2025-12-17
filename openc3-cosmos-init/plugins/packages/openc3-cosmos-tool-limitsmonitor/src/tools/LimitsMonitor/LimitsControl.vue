@@ -140,6 +140,7 @@
         is loaded.
       </div>
     </v-card>
+    <!-- Changes in this dialog are applied immediately, so persistent is not necessary -->
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-card>
         <v-toolbar height="24">
@@ -211,6 +212,7 @@ export default {
       items: [],
       itemList: [],
       screenItems: [],
+      availableItems: [],
       screenValues: {},
       updateCounter: 0,
       itemsPerPage: 25,
@@ -230,7 +232,7 @@ export default {
           sortable: true,
           minWidth: '100px',
           width: '200px',
-          maxWidth: '300px',
+          maxWidth: '410px', // Widest without overflow at 100% zoom
         },
         {
           title: 'Value',
@@ -507,8 +509,8 @@ export default {
       }
     },
     update() {
-      if (this.screenItems.length !== 0) {
-        this.api.get_tlm_values(this.screenItems).then((data) => {
+      if (this.availableItems.length !== 0) {
+        this.api.get_tlm_values(this.availableItems).then((data) => {
           this.updateValues(data)
         })
       }
@@ -521,11 +523,15 @@ export default {
       }
     },
     addItem: function (valueId) {
-      this.screenItems.push(valueId)
-      this.screenValues[valueId] = [null, null, 0]
+      this.api.get_tlm_available([valueId]).then((available) => {
+        this.screenItems.push(valueId)
+        this.availableItems.push(available[0])
+        this.screenValues[available[0]] = [null, null, 0]
+      })
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)
+      this.availableItems.splice(index, 1)
       this.screenItems.splice(index, 1)
     },
 

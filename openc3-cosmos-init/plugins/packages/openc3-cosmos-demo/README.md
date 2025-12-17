@@ -8,7 +8,7 @@ This plugin provides a simple demo configuration for OpenC3 COSMOS that shows of
 
 1.  At the OpenC3 COSMOS Admin - Plugins, upload the openc3-cosmos-demo.gem file
 
-2. To build widgets run: yarn && yarn build
+2.  To build widgets run: pnpm install --frozen-lockfile --ignore-scripts && pnpm build
 
 ## Contributing
 

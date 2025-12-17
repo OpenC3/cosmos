@@ -46,7 +46,7 @@ module OpenC3
     def self.get(primary_key, name:)
       json = store.hget(primary_key, name)
       if json
-        return JSON.parse(json, :allow_nan => true, :create_additions => true)
+        return JSON.parse(json, allow_nan: true, create_additions: true)
       else
         return nil
       end
@@ -61,7 +61,7 @@ module OpenC3
     def self.all(primary_key)
       hash = store.hgetall(primary_key)
       hash.each do |key, value|
-        hash[key] = JSON.parse(value, :allow_nan => true, :create_additions => true)
+        hash[key] = JSON.parse(value, allow_nan: true, create_additions: true)
       end
       hash
     end
@@ -88,7 +88,7 @@ module OpenC3
 
     # @return [Model] Model generated from the passed JSON
     def self.from_json(json, scope:)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       json[:scope] = scope
       self.new(**json.transform_keys(&:to_sym), scope: scope)
@@ -159,7 +159,7 @@ module OpenC3
       else
         write_store = self.class.store
       end
-      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
+      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(), allow_nan: true))
     end
 
     # Alias for create(update: true)

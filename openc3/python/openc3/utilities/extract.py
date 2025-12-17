@@ -112,11 +112,11 @@ def convert_to_value(string):
 
 def hex_to_byte_string(string):
     """Converts the String representing a hexadecimal number (i.e. "0xABCD")
-    to a binary String with the same data (i.e "\xAB\xCD")
+    to a binary String with the same data (i.e "\xab\xcd")
     @return [String] Binary byte string"""
 
     # Remove leading 0x or 0X
-    if string[:2] == "0x" or string[:2] == "0X":
+    if string.startswith("0x") or string.startswith("0X"):
         string = string[2:]
     # fromhex only works with an even number of characters to prepend
     # a zero in case we get something like '0xA' or '0xABC'

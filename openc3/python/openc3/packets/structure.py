@@ -82,7 +82,7 @@ class Structure:
 
     # Resize the buffer at least the defined length of the structure
     def resize_buffer(self):
-        if self._buffer:
+        if self._buffer is not None:
             # Extend data size
             if len(self._buffer) < self.defined_length:
                 self._buffer += Structure.ZERO_STRING * (self.defined_length - len(self._buffer))
@@ -112,15 +112,15 @@ class Structure:
     # self.param buffer [String] The binary buffer to read the item from
     # self.return Hash of read names and values
     def read_items(self, items, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_items(items, buffer)
 
     # Allocate a buffer if not available
     def allocate_buffer_if_needed(self):
-        if not self._buffer:
+        if self._buffer is None:
             self._buffer = bytearray(Structure.ZERO_STRING * self.defined_length)
         return self._buffer
 
@@ -213,28 +213,29 @@ class Structure:
 
         # Recalculate the overall defined length of the structure
         update_needed = False
-        if item.bit_offset >= 0:
-            if item.bit_size > 0:
-                if item.array_size is not None:
-                    if item.array_size >= 0:
-                        item_defined_length_bits = item.bit_offset + item.array_size
+        if item.parent_item is None:
+            if item.bit_offset >= 0:
+                if item.bit_size > 0:
+                    if item.array_size is not None:
+                        if item.array_size >= 0:
+                            item_defined_length_bits = item.bit_offset + item.array_size
+                        else:
+                            item_defined_length_bits = item.bit_offset
                     else:
-                        item_defined_length_bits = item.bit_offset
-                else:
-                    item_defined_length_bits = item.bit_offset + item.bit_size
+                        item_defined_length_bits = item.bit_offset + item.bit_size
 
-                if item_defined_length_bits > self.pos_bit_size:
-                    self.pos_bit_size = item_defined_length_bits
+                    if item_defined_length_bits > self.pos_bit_size:
+                        self.pos_bit_size = item_defined_length_bits
+                        update_needed = True
+
+                elif item.bit_offset > self.pos_bit_size:
+                    self.pos_bit_size = item.bit_offset
                     update_needed = True
 
-            elif item.bit_offset > self.pos_bit_size:
-                self.pos_bit_size = item.bit_offset
-                update_needed = True
-
-        else:
-            if abs(item.bit_offset) > self.neg_bit_size:
-                self.neg_bit_size = abs(item.bit_offset)
-                update_needed = True
+            else:
+                if abs(item.bit_offset) > self.neg_bit_size:
+                    self.neg_bit_size = abs(item.bit_offset)
+                    update_needed = True
 
         if update_needed:
             self.defined_length_bits = self.pos_bit_size + self.neg_bit_size
@@ -243,7 +244,7 @@ class Structure:
                 self.defined_length += 1
 
         # Resize the buffer if necessary
-        if self.buffer:
+        if self.buffer is not None:
             self.resize_buffer()
         return item
 
@@ -326,7 +327,7 @@ class Structure:
                         item.variable_bit_size["length_value_bit_offset"]
                         * item.variable_bit_size["length_bits_per_count"]
                     )
-                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset:
+                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset and item.parent_item is None:
                     self.defined_length_bits += minimum_data_bits
         else:
             raise ValueError(f"Unknown item: {item.name} - Ensure item name is uppercase")
@@ -356,9 +357,9 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the value to
     def write_item(self, item, value, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         self.accessor.write_item(item, value, buffer)
 
@@ -370,9 +371,9 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the values to
     def write_items(self, items, values, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
-        if not buffer:
+        if buffer is None:
             buffer = self.allocate_buffer_if_needed()
         self.accessor.write_items(items, values, buffer)
 
@@ -385,7 +386,7 @@ class Structure:
     # self.return Value based on the item definition. This could be an integer,
     #   float, or array of values.
     def read(self, name, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         return self.read_item(self.get_item(name), value_type, buffer)
 
@@ -398,7 +399,7 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the value to
     def write(self, name, value, value_type="RAW", buffer=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         self.write_item(self.get_item(name), value, value_type, buffer)
 
@@ -412,12 +413,13 @@ class Structure:
     # self.return [Array<Array>] Array of two element arrays containing the item
     #   name as element 0 and item value as element 1.
     def read_all(self, value_type="RAW", buffer=None, top=True):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         item_array = []
         with self.synchronize_allow_reads(top):
             for item in self.sorted_items:
-                item_array.append([item.name, self.read_item(item, value_type, buffer)])
+                if not item.hidden:
+                    item_array.append([item.name, self.read_item(item, value_type, buffer)])
         return item_array
 
     # Create a string that shows the name and value of each item in the structure
@@ -429,13 +431,13 @@ class Structure:
     # self.param ignored [Array<String>] List of items to ignore when building the string
     # self.return [String] String formatted with all the item names and values
     def formatted(self, value_type="RAW", indent=0, buffer=None, ignored=None):
-        if not buffer:
+        if buffer is None:
             buffer = self._buffer
         indent_string = " " * indent
         string = ""
         with self.synchronize_allow_reads(True):
             for item in self.sorted_items:
-                if ignored and item.name in ignored:
+                if item.hidden or (ignored and item.name in ignored):
                     continue
 
                 if (item.data_type != "BLOCK") or (
@@ -569,6 +571,9 @@ class Structure:
     def recalculate_bit_offsets(self):
         adjustment = 0
         for item in self.sorted_items:
+            # Parented items rely on the parent
+            if item.parent_item is not None:
+                continue
             # Anything with a negative bit offset should be left alone
             if item.original_bit_offset >= 0:
                 item.bit_offset = item.original_bit_offset + adjustment

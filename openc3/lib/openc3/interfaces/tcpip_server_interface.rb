@@ -297,7 +297,7 @@ module OpenC3
       end
     end
 
-    protected
+    # protected
 
     def shutdown_interfaces(interface_infos)
       @connection_mutex.synchronize do
@@ -625,6 +625,16 @@ module OpenC3
           @write_interface_infos.delete_at(index_to_delete)
         end
       end # connection_mutex.synchronize
+    end
+
+    def details
+      result = super()
+      result['write_port'] = @write_port
+      result['read_port'] = @read_port
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      result['listen_address'] = @listen_address
+      return result
     end
   end
 end

@@ -59,9 +59,12 @@ async function runScript(page, utils, filename, callback = async () => {}) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await callback()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 60000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 60000,
+    },
+  )
 }
 
 test('opens a target file', async ({ page, utils }) => {
@@ -71,7 +74,8 @@ file = get_target_file("INST/test.txt")
 puts file.read
 file.delete
 delete_target_file("INST/test.txt")
-get_target_file("INST/test.txt") # Causes error
+file = get_target_file("INST/test.txt")
+puts file.read # Causes error because file is nil
 file = get_target_file("INST/screens/web.txt")
 web = file.read
 web += 'LABEL "TEST"'
@@ -116,7 +120,7 @@ delete_target_file("INST/screens/web.txt") # Cleanup modified`)
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'Original web',
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 test('runs a script', async ({ page, utils }) => {
@@ -130,9 +134,12 @@ test('runs a script', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
@@ -226,24 +233,27 @@ async function testMetadataApis(page, utils, filename) {
   await page.getByRole('button', { name: 'Ok' }).click()
   await page.locator('[data-test="close-event-list"]').click()
 
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 }
 
 test('test ruby metadata apis', async ({ page, utils }) => {
   await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>1',
+    '"setkey" => 1',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>2',
+    '"setkey" => 2',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"updatekey"=>3',
+    '"updatekey" => 3',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"inputkey_metadata.rb"=>"inputvalue"',
+    '"inputkey_metadata.rb" => "inputvalue"',
   )
 })
 
@@ -353,7 +363,10 @@ test('test python numpy import', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
 })

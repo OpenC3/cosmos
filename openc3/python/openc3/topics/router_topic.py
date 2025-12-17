@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,13 +15,15 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import time
 from openc3.topics.topic import Topic
 from openc3.system.system import System
-from openc3.utilities.json import JsonEncoder
 from openc3.environment import OPENC3_SCOPE
-
+from openc3.utilities.json import JsonDecoder
 
 class RouterTopic(Topic):
+    COMMAND_ACK_TIMEOUT_S = 30
+
     # Generate a list of topics for this router. This includes the router itself
     # and all the targets which are assigned to this router.
     @classmethod
@@ -38,11 +40,11 @@ class RouterTopic(Topic):
         while True:
             for topic, msg_id, msg_hash, redis in Topic.read_topics(RouterTopic.topics(router, scope)):
                 result = yield topic, msg_id, msg_hash, redis
-                if "CMD}ROUTER" in topic:
+                if result is not None and "CMD}ROUTER" in topic:
                     ack_topic = topic.split("__")
                     ack_topic[1] = "ACK" + ack_topic[1]
                     ack_topic = "__".join(ack_topic)
-                    Topic.write_topic(ack_topic, {"result": result}, msg_id, 100)
+                    Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, msg_id, 100)
 
     @classmethod
     def route_command(cls, packet, target_names, scope=OPENC3_SCOPE):
@@ -53,7 +55,7 @@ class RouterTopic(Topic):
                 {
                     "target_name": packet.target_name,
                     "cmd_name": packet.packet_name,
-                    "cmd_buffer": json.dumps(packet.buffer_no_copy(), cls=JsonEncoder),
+                    "cmd_buffer": packet.buffer_no_copy(),
                 },
                 "*",
                 100,
@@ -68,7 +70,7 @@ class RouterTopic(Topic):
                 {
                     "target_name": target_name,
                     "cmd_name": "UNKNOWN",
-                    "cmd_buffer": json.dumps(packet.buffer_no_copy(), cls=JsonEncoder),
+                    "cmd_buffer": packet.buffer_no_copy(),
                 },
                 "*",
                 100,
@@ -143,3 +145,67 @@ class RouterTopic(Topic):
             "*",
             100,
         )
+
+    @classmethod
+    def router_target_enable(
+        cls,
+        router_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "enable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def router_target_disable(
+        cls,
+        router_name,
+        target_name,
+        cmd_only=False,
+        tlm_only=False,
+        scope=OPENC3_SCOPE,
+    ):
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["cmd_only"] = cmd_only
+        data["tlm_only"] = tlm_only
+        data["action"] = "disable"
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+        )
+
+    @classmethod
+    def router_details(cls, router_name, scope=OPENC3_SCOPE, timeout = None):
+        router_name = router_name.upper()
+
+        if timeout is None:
+            timeout = cls.COMMAND_ACK_TIMEOUT_S
+        ack_topic = f"{{{scope}__ACKCMD}}ROUTER__{router_name}"
+        Topic.update_topic_offsets([ack_topic])
+
+        cmd_id =Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}",
+            {"router_details": "true"},
+            "*",
+            100,
+        )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == cmd_id:
+                    return json.loads(msg_hash[b"result"].decode(), cls=JsonDecoder)
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")

@@ -89,7 +89,7 @@ module OpenC3
         capture_io do |stdout|
           expect(MicroserviceOperator.processes).to be_empty()
           config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__START_INT', JSON.generate(config))
+          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__START_INT', JSON.generate(config, allow_nan: true))
           sleep 1
           expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__START_INT')
           expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__START_INT']).to be_a OperatorProcess
@@ -103,14 +103,14 @@ module OpenC3
       xit "should restart changed microservices" do
         capture_io do |stdout|
           config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config))
+          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
           sleep 1
           expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
           expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
 
           # Slightly change the configuration by adding something
           config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [], 'target_list' => 'TEST' }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config))
+          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
           sleep 3 # Due to 2s wait in shutdown
           expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
           expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
@@ -128,7 +128,7 @@ module OpenC3
       xit "should remove deleted microservices" do
         capture_io do |stdout|
           config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT', JSON.generate(config))
+          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT', JSON.generate(config, allow_nan: true))
           sleep 1
           expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__DELETE_INT')
           expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__DELETE_INT']).to be_a OperatorProcess

@@ -184,7 +184,7 @@ module OpenC3
       if !data.nil? and !data.is_a?(Hash) and !data.is_a?(String)
         raise JsonApiError, "incorrect type for keyword 'data' MUST be Hash or String: #{data}"
       end
-      return kwargs[:json] ? JSON.generate(data) : data
+      return kwargs[:json] ? JSON.generate(data, allow_nan: true) : data
     end
 
     # NOTE: This is a helper method and should not be called directly

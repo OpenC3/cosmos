@@ -2,9 +2,9 @@
 
 NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) directory
 
-1.  Bootstrap the frontend with yarn
+1.  Bootstrap the frontend with pnpm
 
-        openc3-cosmos-init> yarn
+        openc3-cosmos-init> pnpm install --frozen-lockfile --ignore-scripts
 
 1.  Start openc3
 
@@ -14,9 +14,9 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
 1.  Serve a local OpenC3 COSMOS application (CmdTlmServer, ScriptRunner, etc)
 
         openc3-cosmos-init> cd plugins/packages/openc3-cosmos-tool-scriptrunner
-        openc3-cosmos-tool-scriptrunner> yarn
+        openc3-cosmos-tool-scriptrunner> pnpm install --frozen-lockfile --ignore-scripts
         ...
-        openc3-cosmos-tool-scriptrunner> yarn serve
+        openc3-cosmos-tool-scriptrunner> pnpm serve
 
 1.  Set the single SPA override for the application
 
@@ -27,7 +27,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
 
     Refresh and you should see {...} in the bottom right<br>
     Click the Default button next to the application (@openc3/tool-scriptrunner)<br>
-    Paste in the development path which is dependent on the port returned by the local yarn serve and the tool name (scriptrunner)
+    Paste in the development path which is dependent on the port returned by the local pnpm serve and the tool name (scriptrunner)
 
         http://localhost:2914/tools/scriptrunner/main.js
 

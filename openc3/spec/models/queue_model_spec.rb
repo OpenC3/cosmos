@@ -148,8 +148,80 @@ module OpenC3
           { "username" => "anonymous", "value" => command, "timestamp" => anything })
 
         list = model.list()
-        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything, "index" => 1.0 },
-          { "username" => "anonymous", "value" => command, "timestamp" => anything, "index" => 2.0 })
+        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything, "id" => 1.0 },
+          { "username" => "anonymous", "value" => command, "timestamp" => anything, "id" => 2.0 })
+      end
+
+      it "queues command with target_name, cmd_name, and cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'test_user', scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "test_user",
+          "target_name" => "INST",
+          "cmd_name" => "COLLECT",
+          "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
+          "timestamp" => anything
+        })
+      end
+
+      it "queues command with target_name and cmd_name but no cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "ABORT", username: 'test_user', scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "test_user",
+          "target_name" => "INST",
+          "cmd_name" => "ABORT",
+          "timestamp" => anything
+        })
+      end
+
+      it "raises error when neither command string nor target_name/cmd_name are provided" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+
+        expect {
+          QueueModel.queue_command("TEST", username: 'anonymous', scope: "DEFAULT")
+        }.to raise_error(QueueError, "Must provide either command string or target_name/cmd_name parameters")
+      end
+
+      it "logs error with target_name/cmd_name when queue is disabled (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
+        model.create
+
+        expect {
+          QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'anonymous', scope: "DEFAULT")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'INST COLLECT' not queued.")
+      end
+
+      it "handles binary data in cmd_params (new format)" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        # Create a binary string parameter
+        binary_data = "\xDE\xAD\xBE\xEF".b
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "UPLOAD", cmd_params: { "DATA" => binary_data }, username: 'test_user', scope: "DEFAULT")
+
+        # Verify the command was queued successfully with binary data
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["target_name"]).to eq("INST")
+        expect(commands[0]["cmd_name"]).to eq("UPLOAD")
+        result = JSON.parse(commands[0]["cmd_params"])
+        expect(result["DATA"]).to eq({"json_class" => "String", "raw" => [222, 173, 190, 239]})
+        # Verify it can be decoded back
+        decoded = result["DATA"]["raw"].pack('C*')
+        expect(decoded).to eq(binary_data)
       end
     end
 
@@ -273,16 +345,44 @@ module OpenC3
           model.insert_command(1, command_data)
         }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'TGT CMD' not queued.")
       end
+
+      it "handles binary data in cmd_params when inserting" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        # Create a binary string parameter
+        binary_data = "\xDE\xAD\xBE\xEF".b
+        command_data = {
+          'username' => "test_user",
+          'target_name' => "INST",
+          'cmd_name' => "UPLOAD",
+          'cmd_params' => { "DATA" => binary_data },
+          'timestamp' => Time.now.to_nsec_from_epoch
+        }
+
+        model.insert_command(1, command_data)
+
+        # Verify the command was inserted successfully with binary data
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["target_name"]).to eq("INST")
+        expect(commands[0]["cmd_name"]).to eq("UPLOAD")
+        result = JSON.parse(commands[0]["cmd_params"])
+        expect(result["DATA"]).to eq({"json_class" => "String", "raw" => [222, 173, 190, 239]})
+        # Verify it can be decoded back
+        decoded = result["DATA"]["raw"].pack('C*')
+        expect(decoded).to eq(binary_data)
+      end
     end
 
     describe "update_command" do
-      it "updates existing command at given index" do
+      it "updates existing command at given id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         original_command = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
 
         model.insert_command(1.5, original_command)
-        model.update_command(index: 1.5, command: "TGT CMD2", username: "user2")
+        model.update_command(id: 1.5, command: "TGT CMD2", username: "user2")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands.length).to eq(1)
@@ -295,8 +395,8 @@ module OpenC3
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
 
         expect {
-          model.update_command(index: 1.0, command: "TGT CMD", username: "user1")
-        }.to raise_error(QueueError, "No command found at index 1.0 in queue 'TEST'")
+          model.update_command(id: 1.0, command: "TGT CMD", username: "user1")
+        }.to raise_error(QueueError, "No command found at id 1.0 in queue 'TEST'")
       end
 
       it "sends command notification when updating" do
@@ -308,23 +408,23 @@ module OpenC3
           hash_including('kind' => 'command'),
           scope: "DEFAULT"
         )
-        model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
+        model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
       end
 
-      it "preserves command index when updating" do
+      it "preserves command id when updating" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
         model.insert_command(2.0, { username: "user1", value: "TGT CMD3", timestamp: 3000 })
 
-        model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
+        model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
 
         result = model.list
         expect(result.length).to eq(2)
-        expect(result[0]["index"]).to eq(1.0)
+        expect(result[0]["id"]).to eq(1.0)
         expect(result[0]["value"]).to eq("TGT CMD2")
         expect(result[0]["username"]).to eq("user2")
-        expect(result[1]["index"]).to eq(2.0)
+        expect(result[1]["id"]).to eq(2.0)
         expect(result[1]["value"]).to eq("TGT CMD3")
       end
 
@@ -337,8 +437,8 @@ module OpenC3
         model.state = "DISABLE"
 
         expect {
-          model.update_command(index: 1.0, command: "TGT CMD2", username: "user2")
-        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command at index 1.0 not updated.")
+          model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command at id 1.0 not updated.")
       end
     end
 
@@ -364,11 +464,11 @@ module OpenC3
         result = model.list
         expect(result.length).to eql 3
         one = command1.transform_keys(&:to_s)
-        one["index"] = 1.0
+        one["id"] = 1.0
         two = command2.transform_keys(&:to_s)
-        two["index"] = 2.0
+        two["id"] = 2.0
         three = command3.transform_keys(&:to_s)
-        three["index"] = 3.0
+        three["id"] = 3.0
         expect(result[0]).to eql one
         expect(result[1]).to eql two
         expect(result[2]).to eql three
@@ -385,9 +485,9 @@ module OpenC3
 
         result = model.list
         one = first_command.transform_keys(&:to_s)
-        one["index"] = 1.0
+        one["id"] = 1.0
         two = second_command.transform_keys(&:to_s)
-        two["index"] = 2.0
+        two["id"] = 2.0
         expect(result[0]).to eql one
         expect(result[1]).to eql two
       end
@@ -411,9 +511,9 @@ module OpenC3
         result = model.list
         expect(result.length).to eql 2
         two = command2.transform_keys(&:to_s)
-        two["index"] = 2.0
+        two["id"] = 2.0
         three = command3.transform_keys(&:to_s)
-        three["index"] = 3.0
+        three["id"] = 3.0
         expect(result[0]).to eql two
         expect(result[1]).to eql three
       end
@@ -543,7 +643,7 @@ module OpenC3
         expect(result).to be_nil
       end
 
-      it "removes the first command when no index is specified" do
+      it "removes the first command when no id is specified" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -559,7 +659,7 @@ module OpenC3
         expect(result["username"]).to eq("user1")
         expect(result["value"]).to eq("CMD1")
         expect(result["timestamp"]).to eq(1000)
-        expect(result["index"]).to eq(1.0)
+        expect(result["id"]).to eq(1.0)
 
         # Verify the command was removed from the queue
         remaining = model.list
@@ -568,7 +668,7 @@ module OpenC3
         expect(remaining[1]["value"]).to eq("CMD3")
       end
 
-      it "removes command at specific index when index is provided" do
+      it "removes command at specific id when id is provided" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -584,7 +684,7 @@ module OpenC3
         expect(result["username"]).to eq("user2")
         expect(result["value"]).to eq("CMD2")
         expect(result["timestamp"]).to eq(2000)
-        expect(result["index"]).to eq(2.0)
+        expect(result["id"]).to eq(2.0)
 
         # Verify the middle command was removed from the queue
         remaining = model.list
@@ -593,7 +693,7 @@ module OpenC3
         expect(remaining[1]["value"]).to eq("CMD3")
       end
 
-      it "returns nil when trying to remove non-existent index" do
+      it "returns nil when trying to remove non-existent id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -609,7 +709,7 @@ module OpenC3
         expect(remaining[0]["value"]).to eq("CMD1")
       end
 
-      it "sends command notification when removing without index" do
+      it "sends command notification when removing without id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -624,7 +724,7 @@ module OpenC3
         model.remove_command
       end
 
-      it "sends command notification when removing with specific index" do
+      it "sends command notification when removing with specific id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -650,7 +750,7 @@ module OpenC3
         expect(result).to be_nil
       end
 
-      it "does not send notification when removing non-existent index" do
+      it "does not send notification when removing non-existent id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
@@ -674,14 +774,14 @@ module OpenC3
 
         expect(result["username"]).to eq("user1")
         expect(result["value"]).to eq("CMD1")
-        expect(result["index"]).to eq(1.0)
+        expect(result["id"]).to eq(1.0)
 
         # Queue should now be empty
         remaining = model.list
         expect(remaining).to be_empty
       end
 
-      it "removes commands in FIFO order when called multiple times without index" do
+      it "removes commands in FIFO order when called multiple times without id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "FIRST", timestamp: 1000 }
@@ -694,15 +794,15 @@ module OpenC3
 
         first_pop = model.remove_command
         expect(first_pop["value"]).to eq("FIRST")
-        expect(first_pop["index"]).to eq(1.0)
+        expect(first_pop["id"]).to eq(1.0)
 
         second_pop = model.remove_command
         expect(second_pop["value"]).to eq("SECOND")
-        expect(second_pop["index"]).to eq(2.0)
+        expect(second_pop["id"]).to eq(2.0)
 
         third_pop = model.remove_command
         expect(third_pop["value"]).to eq("THIRD")
-        expect(third_pop["index"]).to eq(3.0)
+        expect(third_pop["id"]).to eq(3.0)
 
         # Queue should now be empty
         fourth_pop = model.remove_command
@@ -721,11 +821,11 @@ module OpenC3
         result = model.remove_command(1.5)
 
         expect(result["value"]).to eq("CMD1")
-        expect(result["index"]).to eq(1.5)
+        expect(result["id"]).to eq(1.5)
 
         remaining = model.list
         expect(remaining.length).to eq(1)
-        expect(remaining[0]["index"]).to eq(2.7)
+        expect(remaining[0]["id"]).to eq(2.7)
       end
 
       it "raises error when queue state is DISABLE" do
@@ -743,7 +843,7 @@ module OpenC3
         }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command not removed.")
       end
 
-      it "raises error when queue state is DISABLE and removing by index" do
+      it "raises error when queue state is DISABLE and removing by id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         command1 = { username: "user1", value: "CMD1", timestamp: 1000 }

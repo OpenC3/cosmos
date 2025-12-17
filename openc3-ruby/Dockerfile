@@ -1,7 +1,7 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_VERSION=3.21
-ARG ALPINE_BUILD=4
+ARG ALPINE_VERSION=3.22
+ARG ALPINE_BUILD=2
 
 # Should be loaded from ARG
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
@@ -75,14 +75,11 @@ RUN apk update \
   ruby \
   ruby-bigdecimal \
   ruby-dev \
-  ruby-etc \
-  ruby-io-console \
-  ruby-irb \
   tini \
   # Ruby 3.2+ no longer bundles libyaml so explicitly include
   yaml-dev \
   zeromq-dev \
-  && gem update --system \
+  && gem update --system 3.7.2 \
   && gem install rake \
   && gem install google-protobuf \
   && gem install grpc \

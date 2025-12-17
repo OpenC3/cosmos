@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import traceback
 from openc3.utilities.extract import *
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
@@ -29,7 +30,7 @@ def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):
         result = json.loads(response.text)
         return result["status"]
     except Exception as error:
-        raise RuntimeError(f"critical_cmd_status failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_status failed due to {traceback.format_exc()}") from error
 
 
 def critical_cmd_approve(uuid: str, scope: str = OPENC3_SCOPE):
@@ -44,7 +45,7 @@ def critical_cmd_approve(uuid: str, scope: str = OPENC3_SCOPE):
                 raise RuntimeError("critical_cmd_approve failed")
         return
     except Exception as error:
-        raise RuntimeError(f"critical_cmd_approve failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_approve failed due to {traceback.format_exc()}") from error
 
 
 def critical_cmd_reject(uuid: str, scope: str = OPENC3_SCOPE):
@@ -59,7 +60,7 @@ def critical_cmd_reject(uuid: str, scope: str = OPENC3_SCOPE):
                 raise RuntimeError("critical_cmd_reject failed")
         return
     except Exception as error:
-        raise RuntimeError(f"critical_cmd_reject failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_reject failed due to {traceback.format_exc()}") from error
 
 
 def critical_cmd_can_approve(uuid: str, scope: str = OPENC3_SCOPE):
@@ -74,4 +75,4 @@ def critical_cmd_can_approve(uuid: str, scope: str = OPENC3_SCOPE):
         else:
             return False
     except Exception as error:
-        raise RuntimeError(f"critical_cmd_approve failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_approve failed due to {traceback.format_exc()}") from error

@@ -167,7 +167,7 @@ module OpenC3
         @l.persistence_setting = 1
         @l.persistence_count = 2
 
-        hash = @l.as_json(:allow_nan => true)
+        hash = @l.as_json()
         expect(hash.keys.length).to eql 6
         expect(hash.keys).to include('values', 'enabled', 'state', 'response', 'persistence_setting', 'persistence_count')
         expect(hash["enabled"]).to be true
@@ -185,7 +185,7 @@ module OpenC3
         @l.persistence_setting = 1
         @l.persistence_count = 2
 
-        hash = @l.as_json(:allow_nan => true)
+        hash = @l.as_json()
         expect(hash["enabled"]).to be false
         expect(hash["values"]).to include(:DEFAULT => [0, 1, 2, 3, 4, 5])
         expect(hash["state"]).to eql :RED_LOW
@@ -197,7 +197,7 @@ module OpenC3
 
     describe "self.from_json" do
       it "converts empty object from JSON" do
-        pil = PacketItemLimits.from_json(@l.as_json(:allow_nan => true))
+        pil = PacketItemLimits.from_json(@l.as_json())
         expect(pil.enabled).to eql @l.enabled
         expect(pil.values).to eql @l.values
         expect(pil.state).to eql @l.state
@@ -214,7 +214,7 @@ module OpenC3
         @l.response = r
         @l.persistence_setting = 10
         @l.persistence_count = 20
-        pil = PacketItemLimits.from_json(@l.as_json(:allow_nan => true))
+        pil = PacketItemLimits.from_json(@l.as_json())
         expect(pil.enabled).to eql @l.enabled
         expect(pil.values).to eql @l.values
         expect(pil.state).to eql @l.state

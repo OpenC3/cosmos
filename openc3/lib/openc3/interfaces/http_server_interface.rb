@@ -188,5 +188,13 @@ module OpenC3
     def convert_packet_to_data(_packet)
       raise "Commands cannot be sent to HttpServerInterface"
     end
+
+    def details
+      result = super()
+      result['listen_address'] = @listen_address
+      result['port'] = @port
+      result['request_queue_length'] = @request_queue.length
+      return result
+    end
   end
 end

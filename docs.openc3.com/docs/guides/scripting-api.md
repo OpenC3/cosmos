@@ -27,16 +27,21 @@ Finally, the bottom of the display is the log messages. All commands that are se
 
 There are four different ways that telemetry values can be retrieved in COSMOS. The following chart explains their differences.
 
-| Telemetry Type       | Description                                                                                                                                                                                                                                                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Raw                  | Raw telemetry is exactly as it is in the telemetry packet before any conversions. All telemetry items will have a raw value except for Derived telemetry points which have no real location in a packet. Requesting raw telemetry on a derived item will return nil.                                                         |
-| Converted            | Converted telemetry is raw telemetry that has gone through a conversion factor such as a state conversion or a polynomial conversion. If a telemetry item does not have a conversion defined, then converted telemetry will be the same as raw telemetry. This is the most common type of telemety used in scripts.          |
-| Formatted            | Formatted telemetry is converted telemetry that has gone through a printf style conversion into a string. Formatted telemetry will always have a string representation. If no format string is defined for a telemetry point, then formatted telemetry will be the same as converted telemetry except represented as string. |
-| Formatted with Units | Formatted with Units telemetry is the same as Formatted telemetry except that a space and the units of the telemetry item are appended to the end of the string. If no units are defined for a telemetry item then this type is the same as Formatted telemetry.                                                             |
+| Telemetry Type | Description                                                                                                                                                                                                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Raw            | Raw telemetry is exactly as it is in the telemetry packet before any conversions. All telemetry items will have a raw value except for Derived telemetry points which have no real location in a packet. Requesting raw telemetry on a derived item will return nil.                                                                                       |
+| Converted      | Converted telemetry is raw telemetry that has gone through a conversion factor such as a state conversion or a polynomial conversion. If a telemetry item does not have a conversion defined, then converted telemetry will be the same as raw telemetry. This is the most common type of telemety used in scripts.                                        |
+| Formatted      | Formatted telemetry is converted telemetry that has gone through a printf style conversion into a string with units appended. Formatted telemetry will always have a string representation. If no format string or units are defined for a telemetry point, then formatted telemetry will be the same as converted telemetry except represented as string. |
 
 ## Script Runner API
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
+
+:::note Including APIs
+When writing a script for a microservice, interface, or something run within COSMOS you should include the openc3/api library.
+When writing a script that connects to COSMOS from outside of the COSMOS cluster you should include the openc3/script library.
+For more information see [API vs Script](./script-writing.md#api-vs-script)
+:::
 
 ### Migration from COSMOS v5 to v6
 
@@ -184,7 +189,6 @@ password = ask("Enter your password", false, true)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -209,7 +213,6 @@ ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -236,7 +239,6 @@ password = ask_string("Enter your password", false, true)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -267,7 +269,6 @@ combo_box("<Message>", "<selection text 1>", ...)
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -300,7 +301,6 @@ end
 ```
 
 </TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -317,9 +317,86 @@ match value:
 </TabItem>
 </Tabs>
 
+### open_file_dialog
+
+### open_files_dialog
+
+The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+
+Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+open_file_dialog("<Title>", "<Message>", filter: "<filter>")
+open_files_dialog("<Title>", "<Message>", filter: "<filter>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+open_file_dialog("<Title>", "<Message>", filter="<filter>")
+open_files_dialog("<Title>", "<Message>", filter="<filter>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title     | The title to put on the dialog. Required.                                                                                                                                                                                          |
+| Message   | The message to display in the dialog box. Optional parameter.                                                                                                                                                                      |
+| filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+file = open_file_dialog("Open a single file", "Choose something interesting", filter: ".txt")
+puts file # Ruby File object
+puts file.read
+file.delete
+
+files = open_files_dialog("Open multiple files") # message is optional
+puts files # Array of File objects (even if you select only one)
+files.each do |file|
+  puts file
+  puts file.read
+  file.delete
+end
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
+print(file)
+print(file.read())
+file.close()
+
+files = open_files_dialog("Open multiple files") # message is optional
+print(files) # Array of File objects (even if you select only one)
+for file in files:
+    print(file)
+    print(file.read())
+    file.close()
+```
+
+</TabItem>
+</Tabs>
+
+## File Manipulation
+
+These methods provide capability to interact with files in the target directory.
+
 ### get_target_file
 
-Return a file handle to a file in the target directory
+Return a file handle to a file in the target directory. Returns `None` (Python) or `nil` (Ruby) if the file is not found.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -475,20 +552,15 @@ delete_target_file("INST/delete_me.txt")
 </TabItem>
 </Tabs>
 
-### open_file_dialog
+### download_file
 
-### open_files_dialog
-
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
-
-Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
+Prompts the user to download a file from the OpenC3 system to their local machine.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-open_file_dialog("<Title>", "<Message>", filter: "<filter>")
-open_files_dialog("<Title>", "<Message>", filter: "<filter>")
+download_file("<File Path>")
 ```
 
 </TabItem>
@@ -496,35 +568,21 @@ open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 <TabItem value="python" label="Python Syntax">
 
 ```python
-open_file_dialog("<Title>", "<Message>", filter="<filter>")
-open_files_dialog("<Title>", "<Message>", filter="<filter>")
+download_file("<File Path>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                                                                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Title     | The title to put on the dialog. Required.                                                                                                                                                                                          |
-| Message   | The message to display in the dialog box. Optional parameter.                                                                                                                                                                      |
-| filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
+| Parameter | Description                                                                 |
+| --------- | --------------------------------------------------------------------------- |
+| File Path | File Path to the file to download within the OpenC3 system.                 |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-file = open_file_dialog("Open a single file", "Choose something interesting", filter: ".txt")
-puts file # Ruby File object
-puts file.read
-file.delete
-
-files = open_files_dialog("Open multiple files") # message is optional
-puts files # Array of File objects (even if you select only one)
-files.each do |file|
-  puts file
-  puts file.read
-  file.delete
-end
+download_file("targets/INST/procedures/my_data.csv")
 ```
 
 </TabItem>
@@ -532,17 +590,7 @@ end
 <TabItem value="python" label="Python Example">
 
 ```python
-file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
-print(file)
-print(file.read())
-file.close()
-
-files = open_files_dialog("Open multiple files") # message is optional
-print(files) # Array of File objects (even if you select only one)
-for file in files:
-    print(file)
-    print(file.read())
-    file.close()
+download_file("targets/INST/procedures/my_data.csv")
 ```
 
 </TabItem>
@@ -1582,12 +1630,12 @@ get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target.                                                                                  |
-| Command Name   | Name of the command.                                                                                 |
-| Parameter Name | Name of the command parameter.                                                                       |
-| Value Type     | Value Type to read. RAW, CONVERTED, FORMATTED, or WITH_UNITS. NOTE: Symbol in Ruby and str in Python |
+| Parameter      | Description                                                                             |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target.                                                                     |
+| Command Name   | Name of the command.                                                                    |
+| Parameter Name | Name of the command parameter.                                                          |
+| Value Type     | Value Type to read. RAW, CONVERTED or FORMATTED. NOTE: Symbol in Ruby and str in Python |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2304,7 +2352,7 @@ queue_exec('<Queue Name>', '<Optional Index>')
 
 ```ruby
 queue_exec('TEST') # Removes and executes the first command in the queue
-queue_exec('TEST', index: 5)
+queue_exec('TEST', index: 5) # Removes and executes the command at index 5
 ```
 
 </TabItem>
@@ -2313,7 +2361,56 @@ queue_exec('TEST', index: 5)
 
 ```python
 queue_exec('TEST') # Removes and executes the first command in the queue
-queue_exec('TEST', index=5)
+queue_exec('TEST', index=5) # Removes and executes the command at index 5
+```
+
+</TabItem>
+</Tabs>
+
+### queue_remove
+
+Removes a command from the queue.
+
+> Since 6.9.1
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+queue_remove('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+queue_remove('<Queue Name>', '<Optional Index>')
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter  | Description                                                                            |
+| ---------- | -------------------------------------------------------------------------------------- |
+| Queue Name | Case sensitive name of the queue                                                       |
+| Index      | Remove at the specified index. If the index is not given the first command is removed. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_remove('TEST') # Removes the first command in the queue
+queue_remove('TEST', index: 5) # Removes the command at index 5
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+queue_remove('TEST') # Removes the first command in the queue
+queue_remove('TEST', index=5) # Removes the command at index 5
 ```
 
 </TabItem>
@@ -2369,7 +2466,7 @@ queue_delete('TEST')
 
 These methods allow the user to interact with telemetry items.
 
-### check, check_raw, check_formatted, check_with_units
+### check, check_raw, check_formatted
 
 Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
@@ -2405,7 +2502,6 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
-check_with_units("INST HEALTH_STATUS COLLECTS > 1")
 # Ruby passes type as symbol
 check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 ```
@@ -2418,7 +2514,6 @@ check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
-check_with_units("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
 check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 ```
@@ -2582,7 +2677,7 @@ check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 </TabItem>
 </Tabs>
 
-### tlm, tlm_raw, tlm_formatted, tlm_with_units
+### tlm, tlm_raw, tlm_formatted
 
 Reads the specified form of a telemetry item.
 
@@ -2606,12 +2701,12 @@ tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name | Name of the target of the telemetry item.                                                                          |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name   | Name of the telemetry item.                                                                                        |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter   | Description                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item.                                                                |
+| Packet Name | Name of the telemetry packet of the telemetry item.                                                      |
+| Item Name   | Name of the telemetry item.                                                                              |
+| type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2621,7 +2716,6 @@ value = tlm("INST HEALTH_STATUS COLLECTS")
 value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
-value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
 # Equivalent to tlm_raw
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
 ```
@@ -2635,7 +2729,6 @@ value = tlm("INST HEALTH_STATUS COLLECTS")
 value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
-value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
 # Equivalent to tlm_raw
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 ```
@@ -2716,11 +2809,11 @@ get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target.                                                                                                   |
-| Packet Name | Name of the packet.                                                                                                   |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, or WITH_UNITS (Ruby symbol, Python string). |
+| Parameter   | Description                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| Target Name | Name of the target.                                                                                      |
+| Packet Name | Name of the packet.                                                                                      |
+| type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2742,7 +2835,7 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 
 ### get_tlm_available
 
-Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
+Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__FORMATTED` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2770,8 +2863,8 @@ actual = get_tlm_available(<Items>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
-puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
+puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
 ```
 
 </TabItem>
@@ -2779,8 +2872,8 @@ puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1
 <TabItem value="python" label="Python Example">
 
 ```python
-values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__WITH_UNITS", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"])
-print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__WITH_UNITS"]
+values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
+print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
 ```
 
 </TabItem>
@@ -3210,13 +3303,13 @@ set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                             |
-| --------- | --------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                             |
-| Packet    | Packet name                                                                             |
-| Item      | Item name                                                                               |
-| Value     | Value to set                                                                            |
-| type      | Value type RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| Target    | Target name                                                                   |
+| Packet    | Packet name                                                                   |
+| Item      | Item name                                                                     |
+| Value     | Value to set                                                                  |
+| type      | Value type RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3269,7 +3362,7 @@ inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
 | Target    | Target name                                                                                                                                                      |
 | Packet    | Packet name                                                                                                                                                      |
 | Item Hash | Hash of item name/value for each item. If an item is not specified in the hash, the current value table value will be used. Optional parameter, defaults to nil. |
-| type      | Type of values in the item hash, RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string)                                                    |
+| type      | Type of values in the item hash, RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string)                                                              |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3311,13 +3404,13 @@ override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                         |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                         |
-| Packet    | Packet name                                                                                         |
-| Item      | Item name                                                                                           |
-| Value     | Value to set                                                                                        |
-| type      | Type to override, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                               |
+| --------- | ----------------------------------------------------------------------------------------- |
+| Target    | Target name                                                                               |
+| Packet    | Packet name                                                                               |
+| Item      | Item name                                                                                 |
+| Value     | Value to set                                                                              |
+| type      | Type to override, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3361,12 +3454,12 @@ normalize_tlm("<Target> <Packet> <Item>", <type>)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                          |
-| Packet    | Packet name                                                                                          |
-| Item      | Item name                                                                                            |
-| type      | Type to normalize, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| Parameter | Description                                                                                |
+| --------- | ------------------------------------------------------------------------------------------ |
+| Target    | Target name                                                                                |
+| Packet    | Packet name                                                                                |
+| Item      | Item name                                                                                  |
+| type      | Type to normalize, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3418,8 +3511,7 @@ override_tlm("INST HEALTH_STATUS TEMP1 = 5")
 puts get_overrides() #=>
 # [ {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>5}
 #   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>5}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"WITH_UNITS", "value"=>"5"} ]
+#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"} ]
 ```
 
 </TabItem>
@@ -3431,8 +3523,7 @@ override_tlm("INST HEALTH_STATUS TEMP1 = 5")
 print(get_overrides()) #=>
 # [ {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'RAW', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'CONVERTED', 'value': 5},
-#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'},
-#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'WITH_UNITS', 'value': '5'} ]
+#   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'} ]
 ```
 
 </TabItem>
@@ -3742,16 +3833,16 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| Parameter    | Description                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| Target Name  | Name of the target of the telemetry item.                                                                      |
+| Packet Name  | Name of the telemetry packet of the telemetry item.                                                            |
+| Item Name    | Name of the telemetry item.                                                                                    |
+| Comparison   | A comparison to perform against the telemetry item.                                                            |
+| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
+| type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
+| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -3801,17 +3892,17 @@ success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Va
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| Parameter      | Description                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target of the telemetry item.                                                                      |
+| Packet Name    | Name of the telemetry packet of the telemetry item.                                                            |
+| Item Name      | Name of the telemetry item.                                                                                    |
+| Expected Value | Expected value of the telemetry item.                                                                          |
+| Tolerance      | ± Tolerance on the expected value.                                                                             |
+| Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
+| type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
+| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                        |
 
 Ruby Examples:
 
@@ -3970,15 +4061,15 @@ elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Ti
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter    | Description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| Target Name  | Name of the target of the telemetry item.                                                                   |
+| Packet Name  | Name of the telemetry packet of the telemetry item.                                                         |
+| Item Name    | Name of the telemetry item.                                                                                 |
+| Comparison   | A comparison to perform against the telemetry item.                                                         |
+| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+| type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4024,16 +4115,16 @@ elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expec
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| Parameter      | Description                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target of the telemetry item.                                                                   |
+| Packet Name    | Name of the telemetry packet of the telemetry item.                                                         |
+| Item Name      | Name of the telemetry item.                                                                                 |
+| Expected Value | Expected value of the telemetry item.                                                                       |
+| Tolerance      | ± Tolerance on the expected value.                                                                          |
+| Timeout        | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
+| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+| type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4563,7 +4654,7 @@ print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 ### set_limits
 
-The set_limits_method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -5432,13 +5523,13 @@ for interface in interface_info():
 
 ### map_target_to_interface
 
-Map a target to an interface allowing target commands and telemetry to be processed by that interface.
+Map a target to an interface allowing target commands and telemetry to be processed by that interface. Note this will cause the interface to respawn.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
+map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false, unmap_old: true)
 ```
 
 </TabItem>
@@ -5446,7 +5537,7 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only,
 <TabItem value="python" label="Python Syntax">
 
 ```python
-map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
+map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False, unmap_old=True)
 ```
 
 </TabItem>
@@ -5465,6 +5556,8 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only,
 
 ```ruby
 map_target_to_interface("INST", "INST_INT", unmap_old: false)
+map_target_to_interface("INST", "INST_INT", cmd_only: true)
+map_target_to_interface("INST", "INST_INT", tlm_only: true)
 ```
 
 </TabItem>
@@ -5473,6 +5566,61 @@ map_target_to_interface("INST", "INST_INT", unmap_old: false)
 
 ```python
 map_target_to_interface("INST", "INST_INT", unmap_old=False)
+map_target_to_interface("INST", "INST_INT", cmd_only=True)
+map_target_to_interface("INST", "INST_INT", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### unmap_target_from_interface
+
+> Since 6.9.0
+
+Unmap a target from an interface. This removes all knowledge of the target and will cause the interface to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target                                                                       |
+| Interface Name | Name of the interface                                                                    |
+| cmd_only       | Named parameter whether to unmap target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to unmap target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_interface("INST", "INST_INT")
+unmap_target_from_interface("INST", "INST_INT", cmd_only: true)
+unmap_target_from_interface("INST", "INST_INT", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+unmap_target_from_interface("INST", "INST_INT")
+unmap_target_from_interface("INST", "INST_INT", cmd_only=True)
+unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
 ```
 
 </TabItem>
@@ -5567,6 +5715,158 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1
 
 ```python
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_target_enable
+
+> Since 6.9.0
+
+Enable commanding and telemetry processing for a given target in an interface.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_enable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_target_enable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| Interface Name | Name of the interface                                                                     |
+| Target Name    | Name of the target                                                                        |
+| cmd_only       | Named parameter whether to enable target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to enable target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_enable("INST_INT", "INST")
+interface_target_enable("INST_INT", "INST", cmd_only: true)
+interface_target_enable("INST_INT", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_target_enable("INST_INT", "INST")
+interface_target_enable("INST_INT", "INST", cmd_only=True)
+interface_target_enable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_target_disable
+
+> Since 6.9.0
+
+Disable commanding and telemetry processing for a given target in an interface.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_disable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_target_disable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| Interface Name | Name of the interface                                                                      |
+| Target Name    | Name of the target                                                                         |
+| cmd_only       | Named parameter whether to disable target commands only to the interface (default: false)  |
+| tlm_only       | Named parameter whether to disable target telemetry only to the interface (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_disable("INST_INT", "INST")
+interface_target_disable("INST_INT", "INST", cmd_only: true)
+interface_target_disable("INST_INT", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_target_disable("INST_INT", "INST")
+interface_target_disable("INST_INT", "INST", cmd_only=True)
+interface_target_disable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### interface_details
+
+> Since 6.9.0
+
+Get details on the interface and its protocols.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_details("<Interface Name>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+interface_details("<Interface Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter      | Description           |
+| -------------- | --------------------- |
+| Interface Name | Name of the interface |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_details("INST_INT")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+interface_details("INST_INT")
 ```
 
 </TabItem>
@@ -5809,6 +6109,113 @@ for router in router_info:
 </TabItem>
 </Tabs>
 
+### map_target_to_router
+
+> Since 6.9.0
+
+Map a target to an router allowing target commands and telemetry to be processed by that router. Note: this will cause the router to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+map_target_to_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false, unmap_old: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+map_target_to_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False, unmap_old=True)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                         |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Target Name | Name of the target                                                                  |
+| Router Name | Name of the router                                                                  |
+| cmd_only    | Named parameter whether to map target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to map target telemetry only to the router (default: false) |
+| unmap_old   | Named parameter whether remove the target from all existing routers (default: true) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+map_target_to_router("INST", "INST_ROUTER", unmap_old: false)
+map_target_to_router("INST", "INST_ROUTER", cmd_only: true)
+map_target_to_router("INST", "INST_ROUTER", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+map_target_to_router("INST", "INST_ROUTER", unmap_old=False)
+map_target_to_router("INST", "INST_ROUTER", cmd_only=True)
+map_target_to_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### unmap_target_from_router
+
+> Since 6.9.0
+
+Unmap a target from an router. This removes all knowledge of the target and will cause the router to respawn.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                           |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Target Name | Name of the target                                                                    |
+| Router Name | Name of the router                                                                    |
+| cmd_only    | Named parameter whether to unmap target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to unmap target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_router("INST", "INST_ROUTER")
+unmap_target_from_router("INST", "INST_ROUTER", cmd_only: true)
+unmap_target_from_router("INST", "INST_ROUTER", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+unmap_target_from_router("INST", "INST_ROUTER")
+unmap_target_from_router("INST", "INST_ROUTER", cmd_only=True)
+unmap_target_from_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
 ### start_raw_logging_router
 
 Starts logging of raw data on one or all routers. This is for debugging purposes only.
@@ -5986,6 +6393,158 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+</Tabs>
+
+### router_target_enable
+
+> Since 6.9.0
+
+Enable commanding and telemetry processing for a given target in a router.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_enable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_target_enable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                            |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Router Name | Name of the router                                                                     |
+| Target Name | Name of the target                                                                     |
+| cmd_only    | Named parameter whether to enable target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to enable target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_enable("INST_ROUTER", "INST")
+router_target_enable("INST_ROUTER", "INST", cmd_only: true)
+router_target_enable("INST_ROUTER", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_target_enable("INST_ROUTER", "INST")
+router_target_enable("INST_ROUTER", "INST", cmd_only=True)
+router_target_enable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### router_target_disable
+
+> Since 6.9.0
+
+Disable commanding and telemetry processing for a given target in a router.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_disable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_target_disable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                             |
+| ----------- | --------------------------------------------------------------------------------------- |
+| Router Name | Name of the router                                                                      |
+| Target Name | Name of the target                                                                      |
+| cmd_only    | Named parameter whether to disable target commands only to the router (default: false)  |
+| tlm_only    | Named parameter whether to disable target telemetry only to the router (default: false) |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_disable("INST_ROUTER", "INST")
+router_target_disable("INST_ROUTER", "INST", cmd_only: true)
+router_target_disable("INST_ROUTER", "INST", tlm_only: true)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_target_disable("INST_ROUTER", "INST")
+router_target_disable("INST_ROUTER", "INST", cmd_only=True)
+router_target_disable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+</Tabs>
+
+### router_details
+
+> Since 6.9.0
+
+Get details on the router and its protocols.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_details("<Router Name>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+router_details("<Router Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description        |
+| ----------- | ------------------ |
+| Router Name | Name of the router |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_details("INST_ROUTER")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+router_details("INST_ROUTER")
 ```
 
 </TabItem>
@@ -9100,7 +9659,11 @@ setting of the offline_access_token.
 
 ### initialize_offline_access
 
-Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place. 
+
+In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
+
+Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">

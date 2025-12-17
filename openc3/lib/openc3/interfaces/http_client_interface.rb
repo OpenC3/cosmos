@@ -234,5 +234,16 @@ module OpenC3
       packet.extra = extra
       return packet
     end
+
+    def details
+      result = super()
+      result['url'] = @url
+      result['write_timeout'] = @write_timeout
+      result['read_timeout'] = @read_timeout
+      result['connect_timeout'] = @connect_timeout
+      result['include_request_in_response'] = @include_request_in_response
+      result['request_queue_length'] = @request_queue.length
+      return result
+    end
   end
 end

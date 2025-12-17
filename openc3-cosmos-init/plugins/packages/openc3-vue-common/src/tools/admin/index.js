@@ -17,7 +17,6 @@
 */
 
 import DownloadDialog from './DownloadDialog.vue'
-import EditDialog from './EditDialog.vue'
 import ModifiedPluginDialog from './ModifiedPluginDialog.vue'
 import OpenC3Admin from './OpenC3Admin.vue'
 import PluginDialog from './PluginDialog.vue'
@@ -25,7 +24,6 @@ import { TabsList } from './tabs'
 
 export {
   DownloadDialog,
-  EditDialog,
   ModifiedPluginDialog,
   OpenC3Admin,
   PluginDialog,

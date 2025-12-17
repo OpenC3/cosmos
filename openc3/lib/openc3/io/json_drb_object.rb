@@ -62,7 +62,7 @@ module OpenC3
         @log = [nil, nil, nil]
         connect() if !@http
         json_rpc_request = JsonRpcRequest.new(method_name, method_params, keyword_params, @id)
-        data = json_rpc_request.to_json(:allow_nan => true)
+        data = json_rpc_request.to_json(allow_nan: true)
         token = keyword_params[:token]
         response_body = make_request(data: data, token: token)
         if !response_body or response_body.to_s.length < 1

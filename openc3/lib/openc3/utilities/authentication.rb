@@ -23,6 +23,7 @@
 require 'openc3/version'
 require 'openc3/io/json_drb'
 require 'faraday'
+require 'uri'
 
 module OpenC3
   # Basic exception for known errors
@@ -32,9 +33,15 @@ module OpenC3
   # OpenC3 COSMOS Core authentication code
   class OpenC3Authentication
     def initialize()
-      @token = ENV['OPENC3_API_PASSWORD']
-      if @token.nil?
+      password = ENV['OPENC3_API_PASSWORD']
+      if password.nil?
         raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
+      end
+      @service = password == ENV['OPENC3_SERVICE_PASSWORD']
+      response = _make_auth_request(password)
+      @token = response.body
+      if @token.nil? or @token.empty?
+        raise OpenC3AuthenticationError, "Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD"
       end
     end
 
@@ -42,6 +49,24 @@ module OpenC3
     def token(include_bearer: true)
       @token
     end
+
+    def _make_auth_request(password)
+      Faraday.new.post(_generate_auth_url, '{"token": "' + password + '"}', {'Content-Type' => 'application/json'})
+    end
+
+    def _generate_auth_url
+      schema = ENV['OPENC3_API_SCHEMA'] || 'http'
+      hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
+      port = ENV['OPENC3_API_PORT'] || '2901'
+      port = port.to_i
+      endpoint = if @service
+        "auth/verify_service"
+      else
+        "auth/verify"
+      end
+      return "#{schema}://#{hostname}:#{port}/openc3-api/#{endpoint}"
+    end
+
   end
 
   # OpenC3 enterprise Keycloak authentication code
@@ -112,9 +137,13 @@ module OpenC3
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
       if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
         # Username and password
-        data = "username=#{ENV['OPENC3_API_USER']}&password=#{ENV['OPENC3_API_PASSWORD']}"
-        data << "&client_id=#{client_id}"
-        data << "&grant_type=password&scope=#{openid_scope}"
+        data = {
+          'username' => ENV['OPENC3_API_USER'],
+          'password' => ENV['OPENC3_API_PASSWORD'],
+          'client_id' => client_id,
+          'grant_type' => 'password',
+          'scope' => openid_scope
+        }
         headers = {
           'Content-Type' => 'application/x-www-form-urlencoded',
           'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
@@ -134,7 +163,11 @@ module OpenC3
     # Refresh the token and save token to instance
     def _refresh_token(current_time)
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
-      data = "client_id=#{client_id}&refresh_token=#{@refresh_token}&grant_type=refresh_token"
+      data = {
+        'client_id' => client_id,
+        'refresh_token' => @refresh_token,
+        'grant_type' => 'refresh_token'
+      }
       headers = {
         'Content-Type' => 'application/x-www-form-urlencoded',
         'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
@@ -150,18 +183,28 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      @log[0] = "request uri: #{uri} header: #{headers} body: #{data}"
+      # Obfuscate password and refresh token in logs unless debug mode is enabled
+      if JsonDRb.debug?
+        log_data = data.inspect
+      else
+        # Create a copy of the hash with sensitive values obfuscated
+        log_data = data.dup
+        log_data['password'] = '***' if log_data.key?('password')
+        log_data['refresh_token'] = '***' if log_data.key?('refresh_token')
+        log_data = log_data.inspect
+      end
+      @log[0] = "request uri: #{uri} header: #{headers} body: #{log_data}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
-        resp = @http.post(uri, data, headers)
+        resp = @http.post(uri, URI.encode_www_form(data), headers)
       ensure
         $VERBOSE = saved_verbose
       end
       @log[1] = "response status: #{resp.status} header: #{resp.headers} body: #{resp.body}"
       STDOUT.puts @log[1] if JsonDRb.debug?
       if resp.status >= 200 && resp.status <= 299
-        return JSON.parse(resp.body, :allow_nan => true, :create_additions => true)
+        return JSON.parse(resp.body, allow_nan: true, create_additions: true)
       elsif resp.status >= 500 && resp.status <= 599
         raise OpenC3AuthenticationRetryableError, "authentication request retryable #{@log[0]} ::: #{@log[1]}"
       else

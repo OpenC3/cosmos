@@ -25,7 +25,7 @@
 
 <template>
   <div class="pt-4 pb-4">
-    <v-row :no-gutters="!vertical">
+    <v-row class="align-center" :no-gutters="!vertical">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
           v-model="selectedTargetName"
@@ -53,11 +53,26 @@
           item-value="value"
           @update:model-value="packetNameChanged"
         >
-          <template v-if="includeLatestPacketInDropdown" #prepend-item>
-            <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
-            <v-divider />
-          </template>
         </v-autocomplete>
+      </v-col>
+      <v-col
+        v-if="mode === 'cmd' && showQueueSelect"
+        :cols="colSize"
+        class="tpic-select pr-4"
+        data-test="select-queue"
+      >
+        <v-autocomplete
+          v-model="selectedQueueName"
+          label="Select Queue"
+          hide-details
+          density="compact"
+          variant="outlined"
+          :disabled="autocompleteDisabled || queueNames.length === 1"
+          :items="queueNames"
+          item-title="label"
+          item-value="value"
+          @update:model-value="queueNameChanged"
+        />
       </v-col>
       <v-col
         v-if="chooseItem"
@@ -110,7 +125,7 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row v-if="selectTypes" class="pt-6" no-gutters>
+    <v-row v-if="selectTypes" class="pt-6 align-center" no-gutters>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
           v-model="selectedValueType"
@@ -144,7 +159,7 @@
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pa-3">
+    <v-row no-gutters class="pt-3 px-3 align-center">
       <v-col :cols="colSize" :class="{ 'openc3-yellow': hazardous }">
         Description: {{ description }}
         <template v-if="hazardous"> (HAZARDOUS) </template>
@@ -154,7 +169,7 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {
@@ -230,6 +245,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    showQueueSelect: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: ['on-set', 'addItem'],
   data() {
@@ -238,6 +257,8 @@ export default {
       selectedTargetName: this.initialTargetName?.toUpperCase(),
       packetNames: [],
       selectedPacketName: this.initialPacketName?.toUpperCase(),
+      queueNames: [{ label: 'None', value: null }],
+      selectedQueueName: null,
       itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
       valueTypes: ['CONVERTED', 'RAW'],
@@ -269,6 +290,11 @@ export default {
         value: 'UNKNOWN',
         description: 'UNKNOWN',
       },
+      LATEST: {
+        label: 'LATEST',
+        value: 'LATEST',
+        description: 'Latest values from all packets',
+      }, // Constant to indicate latest values from all packets
     }
   },
   computed: {
@@ -374,6 +400,25 @@ export default {
   created() {
     this.internalDisabled = true
     this.api = new OpenC3Api()
+
+    // Fetch queues if in command mode
+    if (this.mode === 'cmd') {
+      Api.get('/openc3-api/queues')
+        .then((response) => {
+          this.queueNames = [{ label: 'None', value: null }]
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach((queue) => {
+              this.queueNames.push({ label: queue.name, value: queue.name })
+            })
+          }
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching queues:', error)
+          // Keep default "None" option even if fetch fails
+        })
+    }
+
     this.api.get_target_names().then((result) => {
       this.targetNames = result.flatMap((target) => {
         // Ignore the UNKNOWN target as it doesn't make sense to select this
@@ -440,11 +485,20 @@ export default {
         if (this.allowAll) {
           this.packetNames.unshift(this.ALL)
         }
+        if (this.includeLatestPacketInDropdown) {
+          this.packetNames.unshift(this.LATEST)
+        }
         if (!this.selectedPacketName) {
           if (this.packetNames.length === 0) {
             this.selectedPacketName = null
           } else {
             this.selectedPacketName = this.packetNames[0].value
+            if (
+              this.selectedPacketName === 'LATEST' &&
+              this.packetNames.length > 1
+            ) {
+              this.selectedPacketName = this.packetNames[1].value
+            }
           }
         }
         this.updatePacketDetails(this.selectedPacketName)
@@ -482,7 +536,13 @@ export default {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
-            this.itemNames = packet.items.map((item) => {
+            let items = []
+            packet.items.forEach((item) => {
+              if (!item['hidden']) {
+                items.push(item)
+              }
+            })
+            this.itemNames = items.map((item) => {
               let label = item.name
               if (item.data_type == 'DERIVED') {
                 label += ' *'
@@ -515,6 +575,7 @@ export default {
         valueType: this.selectedValueType,
         reduced: this.selectedReduced,
         reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
       })
       this.internalDisabled = false
     },
@@ -541,6 +602,19 @@ export default {
       }
     },
 
+    queueNameChanged: function (value) {
+      this.selectedQueueName = value
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
+      })
+    },
+
     updatePacketDetails: function (value) {
       if (value === 'ALL') {
         this.itemsDisabled = true
@@ -548,6 +622,8 @@ export default {
       } else if (value === 'LATEST') {
         this.itemsDisabled = false
         this.selectedPacketName = 'LATEST'
+        this.description = 'Latest values from all packets'
+        this.hazardous = false
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {
@@ -574,6 +650,7 @@ export default {
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
+          queueName: this.selectedQueueName,
         })
       }
     },
@@ -592,6 +669,7 @@ export default {
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
+          queueName: this.selectedQueueName,
         })
       }
     },
@@ -604,6 +682,7 @@ export default {
         valueType: this.selectedValueType,
         reduced: this.selectedReduced,
         reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
       })
     },
 
@@ -639,14 +718,16 @@ export default {
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {
-              this.$emit('addItem', {
-                targetName: this.selectedTargetName,
-                packetName: packetName.value,
-                itemName: item['name'],
-                valueType: this.selectedValueType,
-                reduced: this.selectedReduced,
-                reducedType: this.selectedReducedType,
-              })
+              if (!item['hidden']) {
+                this.$emit('addItem', {
+                  targetName: this.selectedTargetName,
+                  packetName: packetName.value,
+                  itemName: item['name'],
+                  valueType: this.selectedValueType,
+                  reduced: this.selectedReduced,
+                  reducedType: this.selectedReducedType,
+                })
+              }
             })
           },
         )

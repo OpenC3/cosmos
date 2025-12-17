@@ -200,21 +200,21 @@ module OpenC3
       end
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'created')
     end
 
     def update
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       # No notification as this is only called via trigger_controller which already notifies
     end
 
     def state=(value)
       @state = value
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: @state.to_s)
     end
 
@@ -232,12 +232,12 @@ module OpenC3
     def disable
       notify_disable()
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
     end
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]
     def generate_topics
-      topics = Hash.new
+      topics = {}
       if @left['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{left['target']}}__#{left['packet']}"] = 1
       end
@@ -278,7 +278,7 @@ module OpenC3
 
     # @return [TriggerModel] Model generated from the passed JSON
     def self.from_json(json, name:, scope:)
-      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
@@ -288,7 +288,7 @@ module OpenC3
       notification = {
         'kind' => kind,
         'type' => 'trigger',
-        'data' => JSON.generate(as_json(:allow_nan => true)),
+        'data' => JSON.generate(as_json, allow_nan: true),
       }
       AutonomicTopic.write_notification(notification, scope: @scope)
     end

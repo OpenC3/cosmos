@@ -75,7 +75,7 @@ class EnvironmentController < ApplicationController
       model = @model_class.new(name: name, key: params['key'], value: params['value'], scope: params[:scope])
       model.create()
       OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: username())
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400

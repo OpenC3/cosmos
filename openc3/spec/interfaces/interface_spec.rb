@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/interfaces'
 require 'openc3/interfaces/interface'
 require 'openc3/interfaces/protocols/protocol'
 
@@ -82,6 +83,35 @@ module OpenC3
       end
     end
 
+    describe 'interfaces.rb autoload' do
+      it "loads Interface and Protocol classes" do
+        expect(defined?(OpenC3::FileInterface)).to eql 'constant'
+        expect(defined?(OpenC3::HttpClientInterface)).to eql 'constant'
+        expect(defined?(OpenC3::HttpServerInterface)).to eql 'constant'
+        expect(defined?(OpenC3::Interface)).to eql 'constant'
+        expect(defined?(OpenC3::MqttInterface)).to eql 'constant'
+        expect(defined?(OpenC3::MqttStreamInterface)).to eql 'constant'
+        expect(defined?(OpenC3::SerialInterface)).to eql 'constant'
+        expect(defined?(OpenC3::SimulatedTargetInterface)).to eql 'constant'
+        expect(defined?(OpenC3::StreamInterface)).to eql 'constant'
+        expect(defined?(OpenC3::TcpipClientInterface)).to eql 'constant'
+        expect(defined?(OpenC3::TcpipServerInterface)).to eql 'constant'
+        expect(defined?(OpenC3::UdpInterface)).to eql 'constant'
+        expect(defined?(OpenC3::BurstProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CmdResponseProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CobsProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::CrcProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::FixedProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::IgnorePacketProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::LengthProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::PreidentifiedProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::Protocol)).to eql 'constant'
+        expect(defined?(OpenC3::SlipProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::TemplateProtocol)).to eql 'constant'
+        expect(defined?(OpenC3::TerminatedProtocol)).to eql 'constant'
+      end
+    end
+
     describe "initialize" do
       it "initializes the instance variables" do
         i = Interface.new
@@ -91,7 +121,6 @@ module OpenC3
         expect(i.auto_reconnect).to be true
         expect(i.reconnect_delay).to eql 5.0
         expect(i.disable_disconnect).to be false
-        expect(i.packet_log_writer_pairs).to eql []
         expect(i.stream_log_pair).to eql nil
         expect(i.routers).to eql []
         expect(i.read_count).to eql 0
@@ -164,7 +193,7 @@ module OpenC3
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "aborts and doesn't log if no data is returned from read_interface" do
@@ -179,7 +208,7 @@ module OpenC3
         expect(interface.stream_log_pair.read_log.filename).to be_nil
         expect(interface.bytes_read).to eq 0
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "counts raw bytes read" do
@@ -229,7 +258,7 @@ module OpenC3
         # Raw logging is still the original read_data return
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "aborts if protocol read_data returns :DISCONNECT" do
@@ -248,7 +277,7 @@ module OpenC3
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "gets more data if a protocol read_data returns :STOP" do
@@ -267,7 +296,7 @@ module OpenC3
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x01\x02\x03\x04"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "allows protocol read_packet to manipulate packet" do
@@ -393,7 +422,7 @@ module OpenC3
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x05\x06"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "aborts if write_packet returns :DISCONNECT" do
@@ -437,7 +466,7 @@ module OpenC3
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x08\x07"
         interface.stream_log_pair.shutdown
-        wait 0.01
+        sleep 0.01
       end
 
       it "aborts if write_data returns :DISCONNECT" do
@@ -524,7 +553,6 @@ module OpenC3
         i.auto_reconnect = false
         i.reconnect_delay = 1.0
         i.disable_disconnect = true
-        i.packet_log_writer_pairs = [1, 2]
         i.routers = [3, 4]
         i.read_count = 1
         i.write_count = 2
@@ -545,7 +573,6 @@ module OpenC3
         expect(i2.auto_reconnect).to be false
         expect(i2.reconnect_delay).to eql 1.0
         expect(i2.disable_disconnect).to be true
-        expect(i2.packet_log_writer_pairs).to eql [1, 2]
         expect(i2.routers).to eql [3, 4]
         expect(i2.read_count).to eql 1
         expect(i2.write_count).to eql 2
@@ -638,6 +665,83 @@ module OpenC3
         expect(@read_protocol).to_not receive(:protocol_cmd)
         expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
         @i.protocol_cmd("A", "GREAT", "CMD", read_write: :READ, index: 2)
+      end
+    end
+
+    describe "initialize" do
+      it "initializes cmd_target_enabled and tlm_target_enabled" do
+        i = Interface.new
+        expect(i.cmd_target_enabled).to eql({})
+        expect(i.tlm_target_enabled).to eql({})
+      end
+    end
+
+    describe "copy_to" do
+      it "copies cmd_target_enabled and tlm_target_enabled" do
+        i = Interface.new
+        i.cmd_target_enabled = {"TARGET1" => true, "TARGET2" => false}
+        i.tlm_target_enabled = {"TARGET1" => false, "TARGET2" => true}
+
+        i2 = Interface.new
+        i.copy_to(i2)
+
+        expect(i2.cmd_target_enabled).to eql({"TARGET1" => true, "TARGET2" => false})
+        expect(i2.tlm_target_enabled).to eql({"TARGET1" => false, "TARGET2" => true})
+      end
+
+      it "properly handles options that support multiple instances" do
+        i = Interface.new
+        i.options["TEST_OPTION"] = [["value1", "value2"], ["value3", "value4"]]
+
+        i2 = Interface.new
+        allow(i2).to receive(:set_option)
+        expect(i2).to receive(:set_option).with("TEST_OPTION", ["value1", "value2"])
+        expect(i2).to receive(:set_option).with("TEST_OPTION", ["value3", "value4"])
+
+        i.copy_to(i2)
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        i = Interface.new
+        i.name = "TEST_INT"
+        i.cmd_target_names = ["TARGET1"]
+        i.tlm_target_names = ["TARGET2"]
+        i.cmd_target_enabled = {"TARGET1" => true}
+        i.tlm_target_enabled = {"TARGET2" => false}
+        i.connect_on_startup = false
+        i.auto_reconnect = false
+        i.reconnect_delay = 10.0
+        i.disable_disconnect = true
+        i.options = {"TEST_OPTION" => ["value1"]}
+
+        # Mock protocols
+        read_protocol = double("ReadProtocol")
+        allow(read_protocol).to receive(:read_details).and_return({"type" => "read"})
+        i.read_protocols = [read_protocol]
+
+        write_protocol = double("WriteProtocol")
+        allow(write_protocol).to receive(:write_details).and_return({"type" => "write"})
+        i.write_protocols = [write_protocol]
+
+        details = i.details
+
+        expect(details["name"]).to eql("TEST_INT")
+        expect(details["cmd_target_names"]).to eql(["TARGET1"])
+        expect(details["tlm_target_names"]).to eql(["TARGET2"])
+        expect(details["cmd_target_enabled"]).to eql({"TARGET1" => true})
+        expect(details["tlm_target_enabled"]).to eql({"TARGET2" => false})
+        expect(details["connect_on_startup"]).to be false
+        expect(details["auto_reconnect"]).to be false
+        expect(details["reconnect_delay"]).to eql(10.0)
+        expect(details["disable_disconnect"]).to be true
+        expect(details["read_allowed"]).to be true
+        expect(details["write_allowed"]).to be true
+        expect(details["write_raw_allowed"]).to be true
+        expect(details["options"]).to eql({"TEST_OPTION" => ["value1"]})
+        expect(details["read_protocols"]).to eql([{"type" => "read"}])
+        expect(details["write_protocols"]).to eql([{"type" => "write"}])
       end
     end
   end

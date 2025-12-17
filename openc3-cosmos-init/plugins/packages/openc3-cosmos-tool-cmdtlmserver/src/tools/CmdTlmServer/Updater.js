@@ -16,22 +16,18 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
 import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
-  props: {
-    refreshInterval: {
-      default: 1000,
-    },
-  },
   data() {
     return {
       updater: null,
       api: null,
+      refreshInterval: 1000,
     }
   },
   created() {
@@ -60,6 +56,7 @@ export default {
       this.updater = setInterval(() => {
         this.update()
       }, this.refreshInterval)
+      this.update()
     },
   },
 }

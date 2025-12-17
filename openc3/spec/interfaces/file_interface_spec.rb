@@ -18,6 +18,7 @@
 
 require 'spec_helper'
 require 'openc3/interfaces/file_interface'
+require 'openc3/interfaces/protocols/preidentified_protocol'
 require 'fileutils'
 require 'tempfile'
 
@@ -36,6 +37,7 @@ module OpenC3
 
     after(:each) do
       @interface.disconnect if @interface
+      sleep(0.01)
       FileUtils.remove_entry_secure(@temp_dir) if File.exist?(@temp_dir)
     end
 
@@ -377,6 +379,63 @@ module OpenC3
         allow(@interface).to receive(:super).and_return(packet)
         result = @interface.convert_data_to_packet("\x01\x02\x03\x04")
         expect(result.stored).to be false
+      end
+    end
+
+    describe "details" do
+      it "returns detailed interface information" do
+        @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir, 8192, true)
+        @interface.connect
+
+        details = @interface.details
+
+        expect(details).to be_a(Hash)
+        expect(details['command_write_folder']).to eql(@command_dir)
+        expect(details['telemetry_read_folder']).to eql(@telemetry_dir)
+        expect(details['telemetry_archive_folder']).to eql(@archive_dir)
+        expect(details['file_read_size']).to eql(8192)
+        expect(details['stored']).to be true
+        expect(details['queue_length']).to eql(0)
+
+        # Check that base interface details are included
+        expect(details['name']).to eql('FileInterface')
+        expect(details).to have_key('read_allowed')
+        expect(details).to have_key('write_allowed')
+        expect(details).to have_key('options')
+      end
+
+      it "handles default values" do
+        @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir)
+        @interface.connect
+
+        details = @interface.details
+
+        expect(details['file_read_size']).to eql(65536)
+        expect(details['stored']).to be true
+        expect(details['label']).to eql('command')
+        expect(details['extension']).to eql('.bin')
+        expect(details['queue_length']).to eql(0)
+      end
+
+      it "shows current queue length" do
+        @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir)
+        @interface.connect
+        queue = @interface.instance_variable_get(:@queue)
+        queue.push(['test1'])
+        queue.push(['test2'])
+
+        details = @interface.details
+
+        expect(details['queue_length']).to eql(2)
+      end
+
+      it "handles archive folder as DELETE" do
+        @interface = FileInterface.new(@command_dir, @telemetry_dir, 'DELETE')
+        @interface.connect
+
+        details = @interface.details
+
+        expect(details['telemetry_archive_folder']).to eql('DELETE')
       end
     end
   end

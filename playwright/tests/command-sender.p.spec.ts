@@ -33,7 +33,7 @@ test.describe.configure({ mode: 'serial' })
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('combobox').click()
+  await row.locator('[data-test=cmd-param-select]').click({ force: true })
   await page.getByRole('option', { name: value }).click()
 }
 
@@ -75,6 +75,7 @@ test('selects a target and packet', async ({ page, utils }) => {
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   // Test the autocomplete by typing in a command
+  await page.locator('[data-test=select-packet]').click()
   await page.locator('[data-test=select-packet] input[type="text"]').fill('COL')
   await page.locator('span:has-text("COL")').click()
   await expect(page.locator('main')).toContainText('Starts a collect')
@@ -128,6 +129,7 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // Disable range checks to confirm history output
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
 
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -139,6 +141,7 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // Disable parameter conversions to confirm history output
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Disable Parameter').click()
+  await page.locator('[data-test=command-sender-mode]').click()
 
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -150,6 +153,7 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // Enable range checks to confirm history output
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
 
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -218,6 +222,7 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
 
   await expect(page.locator('main')).toContainText(
@@ -322,9 +327,6 @@ test('handles array values', async ({ page, utils }) => {
 test('handles string values', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ASCIICMD')
   await expect(page.locator('main')).toContainText('ASCII command')
-  // The default text 'NOOP' should be selected
-  let row = page.locator(`tr:has-text("STRING")`)
-  await expect(row.getByRole('combobox')).toContainText('NOOP')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
@@ -352,6 +354,7 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.locator('text=Collect type').click({ button: 'right' })
   await page.locator('text=Details').click()
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
+  await utils.sleep(500) // Or we might miss the escape press
   await page.locator('.v-dialog').press('Escape')
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 })
@@ -403,6 +406,9 @@ test('executes commands from history', async ({ page, utils }) => {
   // Edit the existing SETPARAMS command and then send
   // This is somewhat fragile but not sure how else to edit
   await page.locator('[data-test=sender-history]').click()
+  await page.locator('[data-test=sender-history]').press('ArrowDown')
+  await page.locator('[data-test=sender-history]').press('ArrowDown')
+  await page.locator('[data-test=sender-history]').press('End')
   await page.locator('[data-test=sender-history]').press('ArrowUp')
   await page.locator('[data-test=sender-history]').press('End')
   await page.locator('[data-test=sender-history]').press('ArrowLeft')
@@ -526,6 +532,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
@@ -538,6 +545,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   // Enable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change
@@ -572,6 +580,7 @@ test('ignores hazardous range checks', async ({ page, utils }) => {
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
   await expect(page.locator('main')).toContainText(
@@ -599,6 +608,7 @@ test('shows ignored parameters', async ({ page, utils }) => {
   await expect(page.locator('main')).not.toContainText('Parameters')
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Show Ignored').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await expect(page.locator('main')).toContainText('Parameters') // Now the parameters table is shown
   await expect(page.locator('main')).toContainText('CCSDSVER') // CCSDSVER is one of the parameters
 })
@@ -625,9 +635,12 @@ test('disable parameter conversions', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 02 00',
   )
@@ -636,6 +649,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Disable Parameter').click()
+  await page.locator('[data-test=command-sender-mode]').click()
 
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
@@ -649,6 +663,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   // Disable range checks just to verify the command history 'cmd_raw_no_range_check'
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
@@ -668,9 +683,12 @@ test('disable parameter conversions', async ({ page, utils }) => {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 01 00',
   )
@@ -679,12 +697,13 @@ test('disable parameter conversions', async ({ page, utils }) => {
 test('disables command validation', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
-  
+
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Disable Command Validation').click()
-  
+  await page.locator('[data-test=command-sender-mode]').click()
+
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'") sent',
+    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
   )
 })

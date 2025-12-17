@@ -30,7 +30,7 @@ RSpec.describe ScreensController, :type => :controller do
     it "requires target" do
       post :create, params: { scope: 'DEFAULT', screen: 'TEST', text: 'SCREEN' }
       expect(response).to have_http_status(:error)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
       expect(ret['message']).to include("value is empty: target")
     end
@@ -38,7 +38,7 @@ RSpec.describe ScreensController, :type => :controller do
     it "requires screen" do
       post :create, params: { scope: 'DEFAULT', target: 'TEST', text: 'SCREEN' }
       expect(response).to have_http_status(:error)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
       expect(ret['message']).to include("value is empty: screen")
     end
@@ -46,7 +46,7 @@ RSpec.describe ScreensController, :type => :controller do
     it "requires text" do
       post :create, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:error)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
       expect(ret['message']).to include("value is empty: text")
     end
@@ -71,7 +71,7 @@ RSpec.describe ScreensController, :type => :controller do
       end
       get :index, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret).to eql(['INST/screens/screen1.txt', 'INST/screens/screen2.txt'])
     end
   end
@@ -121,7 +121,7 @@ RSpec.describe ScreensController, :type => :controller do
       end
       delete :destroy, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:error)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['message']).to eql 'whoops'
     end
   end

@@ -166,6 +166,7 @@ Rails.application.routes.draw do
       get '/storage/files/:root/(*path)', to: 'storage#files'
       get '/storage/exists/:object_id', to: 'storage#exists', object_id: /.*/
       get '/storage/download_file/:object_id', to: 'storage#download_file', object_id: /.*/
+      post '/storage/download_multiple_files', to: 'storage#download_multiple_files'
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
       delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
@@ -211,6 +212,7 @@ Rails.application.routes.draw do
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
+    post "/auth/verify_service" => "auth#verify_service"
     post "/auth/set" => "auth#set"
 
     get "/internal/health" => "internal_health#health"

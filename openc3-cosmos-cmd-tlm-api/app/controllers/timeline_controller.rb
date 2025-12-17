@@ -35,7 +35,7 @@ class TimelineController < ApplicationController
   def index
     return unless authorization('system')
     timelines = @model_class.all
-    ret = Array.new
+    ret = []
     timelines.each do |timeline, value|
       if params[:scope] == timeline.split('__')[0]
         ret << value
@@ -70,7 +70,7 @@ class TimelineController < ApplicationController
       model.create()
       model.deploy()
       OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: username())
-      render json: model.as_json(:allow_nan => true), status: 201
+      render json: model.as_json(), status: 201
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -95,7 +95,7 @@ class TimelineController < ApplicationController
       if model.nil?
         render json: { status: 'error', message: 'not found' }, status: 404
       else
-        render json: model.as_json(:allow_nan => true)
+        render json: model.as_json()
       end
     rescue StandardError => e
       log_error(e)
@@ -137,7 +137,7 @@ class TimelineController < ApplicationController
       model.color = params['color']
       model.update()
       model.notify(kind: 'updated')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
@@ -184,7 +184,7 @@ class TimelineController < ApplicationController
       model.execute = params['enable']
       model.update()
       model.notify(kind: 'updated')
-      render json: model.as_json(:allow_nan => true)
+      render json: model.as_json()
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400

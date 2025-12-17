@@ -17,6 +17,7 @@
 import sys
 import time
 from contextlib import contextmanager
+import traceback
 import openc3.script
 from .exceptions import CheckError
 from openc3.utilities.extract import (
@@ -68,6 +69,7 @@ def check_formatted(*args, scope="DEFAULT"):
     return _check(*args, type="FORMATTED", scope=scope)
 
 
+# DEPRECATED
 def check_with_units(*args, scope="DEFAULT"):
     """Check the formatted with units value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
@@ -77,7 +79,7 @@ def check_with_units(*args, scope="DEFAULT"):
     or
     check('target_name packet_name item_name > 1')
     """
-    return _check(*args, type="WITH_UNITS", scope=scope)
+    return _check(*args, type="FORMATTED", scope=scope)
 
 
 def check_exception(method_name, *args, **kwargs):
@@ -94,8 +96,8 @@ def check_exception(method_name, *args, **kwargs):
         if orig_kwargs:
             method += f", {orig_kwargs}"
         method += ")"
-    except Exception as error:
-        print(f"CHECK: {method} raised {repr(error)}")
+    except Exception:
+        print(f"CHECK: {method} raised {traceback.format_exc()}")
     else:
         raise CheckError(f"{method} should have raised an exception but did not.")
 

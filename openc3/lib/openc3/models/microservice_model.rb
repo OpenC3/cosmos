@@ -157,7 +157,7 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
-        'secrets' => @secrets.as_json(*a),
+        'secrets' => @secrets,
         'prefix' => @prefix,
         'disable_erb' => @disable_erb,
         'ignore_changes' => @ignore_changes,

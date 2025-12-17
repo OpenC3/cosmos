@@ -24,6 +24,7 @@
         :initial-packet-name="commandName"
         :disabled="sendDisabled"
         :button-text="showCommandButton ? 'Send' : null"
+        :show-queue-select="showQueueSelect"
         mode="cmd"
         @on-set="commandChanged($event)"
         @add-item="buildCmd($event)"
@@ -144,6 +145,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    showQueueSelect: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: ['command-changed', 'build-cmd'],
   data() {
@@ -242,8 +247,9 @@ export default {
                 command.items.forEach((parameter) => {
                   if (this.reservedItemNames.includes(parameter.name)) return
                   if (
-                    !this.ignoredParams.includes(parameter.name) ||
-                    this.showIgnoredParams
+                    !parameter.hidden &&
+                    (!this.ignoredParams.includes(parameter.name) ||
+                      this.showIgnoredParams)
                   ) {
                     let val = parameter.default
                     if (
@@ -259,6 +265,12 @@ export default {
                     if (parameter.format_string && parameter.default) {
                       val = sprintf(parameter.format_string, parameter.default)
                     }
+                    if (
+                      Object.prototype.toString.call(val).slice(8, -1) ===
+                      'Object'
+                    ) {
+                      val = this.convertToString(val)
+                    }
                     let range = 'N/A'
                     if (
                       parameter.minimum != null &&
@@ -266,16 +278,10 @@ export default {
                     ) {
                       if (parameter.data_type === 'FLOAT') {
                         if (parameter.minimum < -1e6) {
-                          if (Number.isSafeInteger(parameter.minimum)) {
-                            parameter.minimum =
-                              parameter.minimum.toExponential(3)
-                          }
+                          parameter.minimum = parameter.minimum.toExponential(3)
                         }
                         if (parameter.maximum > 1e6) {
-                          if (Number.isSafeInteger(parameter.maximum)) {
-                            parameter.maximum =
-                              parameter.maximum.toExponential(3)
-                          }
+                          parameter.maximum = parameter.maximum.toExponential(3)
                         }
                       }
                       range = `${parameter.minimum}..${parameter.maximum}`
@@ -313,7 +319,7 @@ export default {
     getCmdString() {
       let cmd = `${this.targetName} ${this.commandName}`
       if (this.computedRows.length === 0) return cmd
-      cmd += ' with '
+      cmd += ' with'
       for (const row of this.computedRows) {
         // null value indicates required parameter not set, see updateCmdParams
         if (row.val === null) {

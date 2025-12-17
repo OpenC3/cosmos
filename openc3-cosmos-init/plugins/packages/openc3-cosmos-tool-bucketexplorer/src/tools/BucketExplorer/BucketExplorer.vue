@@ -57,6 +57,17 @@
       >
         {{ root }} Files
         <v-spacer />
+        <v-btn
+          v-if="selectedFiles.length > 0"
+          color="primary"
+          variant="elevated"
+          prepend-icon="mdi-download-multiple"
+          class="mr-2"
+          data-test="download-selected"
+          @click="downloadMultipleFiles"
+        >
+          Download {{ selectedFiles.length }} Selected
+        </v-btn>
         <v-text-field
           v-model="search"
           label="Search"
@@ -72,16 +83,35 @@
       </v-card-title>
       <v-data-table
         v-model:sort-by="sortBy"
+        v-model="selectedFiles"
         :headers="headers"
         :items="files"
         :search="search"
         :items-per-page="-1"
         :items-per-page-options="[10, 20, 50, 100, -1]"
+        :item-selectable="(item) => item.icon === 'mdi-file'"
+        show-select
+        item-value="name"
         multi-sort
         density="compact"
         hover
         @click:row.stop="fileClick"
       >
+        <template
+          #item.data-table-select="{
+            item,
+            internalItem,
+            isSelected,
+            toggleSelect,
+          }"
+        >
+          <v-checkbox-btn
+            v-if="item.icon === 'mdi-file'"
+            :model-value="isSelected(internalItem)"
+            @update:model-value="toggleSelect(internalItem)"
+            @click.stop
+          />
+        </template>
         <template #top>
           <v-row
             class="ma-0"
@@ -165,7 +195,12 @@
         </template>
       </v-data-table>
     </v-card>
-    <v-dialog v-model="uploadPathDialog" max-width="600">
+    <v-dialog
+      v-model="uploadPathDialog"
+      max-width="600"
+      persistent
+      @keydown.esc="cancelFileUpload"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -194,7 +229,7 @@
                 variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
-                @click="uploadPathDialog = false"
+                @click="cancelFileUpload"
               >
                 Cancel
               </v-btn>
@@ -215,7 +250,8 @@
     <v-dialog
       v-model="optionsDialog"
       max-width="300"
-      @keydown.esc="optionsDialog = false"
+      persistent
+      @keydown.esc="cancelChangeRefreshInterval"
     >
       <v-card>
         <v-toolbar height="24">
@@ -236,6 +272,22 @@
             />
           </div>
         </v-card-text>
+        <v-card-actions class="px-2">
+          <v-btn
+            data-test="options-close-btn"
+            variant="outlined"
+            @click="saveRefreshInterval"
+          >
+            Save
+          </v-btn>
+          <v-btn
+            data-test="options-close-btn"
+            variant="outlined"
+            @click="cancelChangeRefreshInterval"
+          >
+            Cancel
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
     <output-dialog
@@ -255,6 +307,7 @@ import { Api } from '@openc3/js-common/services'
 import { formatBytesToString } from '@openc3/js-common/utils'
 import { OutputDialog, TopBar } from '@openc3/vue-common/components'
 import axios from 'axios'
+import { downloadBase64File } from './helper'
 
 export default {
   components: {
@@ -262,6 +315,10 @@ export default {
     OutputDialog,
   },
   data() {
+    const refreshIntervalKey = 'bucketExplorerRefreshInterval'
+    const refreshInterval =
+      Number.parseInt(localStorage.getItem(refreshIntervalKey)) || 60
+
     return {
       title: 'Bucket Explorer',
       search: '',
@@ -271,12 +328,14 @@ export default {
       volumes: [],
       uploadPathDialog: false,
       optionsDialog: false,
-      refreshInterval: 60,
+      refreshInterval,
+      refreshIntervalKey,
       updater: null,
       updating: false,
       path: '',
       file: null,
       files: [],
+      selectedFiles: [],
       showDialog: false,
       dialogName: '',
       dialogContent: '',
@@ -329,8 +388,9 @@ export default {
   },
   computed: {
     folderTotal() {
-      return formatBytesToString(this.files
-        .reduce((a, b) => a + (b.size ? b.size : 0), 0))
+      return formatBytesToString(
+        this.files.reduce((a, b) => a + (b.size ? b.size : 0), 0),
+      )
     },
     breadcrumbPath() {
       const parts = this.path.split('/')
@@ -346,9 +406,6 @@ export default {
       if (this.file === null) return
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true
-    },
-    refreshInterval() {
-      this.changeUpdater()
     },
   },
   created() {
@@ -411,6 +468,7 @@ export default {
     },
     update() {
       this.updating = true
+      this.selectedFiles = []
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
@@ -418,6 +476,23 @@ export default {
         },
       })
       this.updateFiles()
+    },
+    saveRefreshInterval() {
+      if (this.refreshInterval) {
+        localStorage.setItem(this.refreshIntervalKey, this.refreshInterval)
+      } else {
+        // restore previous value
+        this.refreshInterval =
+          Number.parseInt(localStorage.getItem(this.refreshIntervalKey)) || 60
+      }
+      this.optionsDialog = false
+      this.changeUpdater()
+    },
+    cancelChangeRefreshInterval() {
+      // restore previous value
+      this.refreshInterval =
+        Number.parseInt(localStorage.getItem(this.refreshIntervalKey)) || 60
+      this.optionsDialog = false
     },
     changeUpdater() {
       this.clearUpdater()
@@ -511,26 +586,16 @@ export default {
         )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
       )
         .then((response) => {
-          let href = null
           if (this.mode === 'bucket') {
-            href = response.data.url
+            // For buckets, use the presigned URL
+            const link = document.createElement('a')
+            link.href = response.data.url
+            link.setAttribute('download', filename)
+            link.click()
           } else {
-            // Decode Base64 string
-            const decodedData = window.atob(response.data.contents)
-            // Create UNIT8ARRAY of size same as row data length
-            const uInt8Array = new Uint8Array(decodedData.length)
-            // Insert all character code into uInt8Array
-            for (let i = 0; i < decodedData.length; ++i) {
-              uInt8Array[i] = decodedData.charCodeAt(i)
-            }
-            const blob = new Blob([uInt8Array])
-            href = URL.createObjectURL(blob)
+            // For volumes, use the helper to download base64 data
+            downloadBase64File(response.data.contents, filename)
           }
-          // Make a link and then 'click' on it to start the download
-          const link = document.createElement('a')
-          link.href = href
-          link.setAttribute('download', filename)
-          link.click()
         })
 
         .catch((response) => {
@@ -538,6 +603,43 @@ export default {
             title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
           })
         })
+    },
+    async downloadMultipleFiles() {
+      if (this.selectedFiles.length === 0) return
+
+      try {
+        let root = this.root.toUpperCase()
+        if (this.mode === 'volume') {
+          root = root.slice(1)
+        }
+
+        const response = await Api.post(
+          '/openc3-api/storage/download_multiple_files',
+          {
+            data: {
+              [this.mode]: `OPENC3_${root}_${this.mode.toUpperCase()}`,
+              path: this.path,
+              files: this.selectedFiles,
+            },
+          },
+        )
+
+        downloadBase64File(response.data.contents, response.data.filename)
+
+        this.$notify.normal({
+          title: `Successfully downloaded ${this.selectedFiles.length} file${
+            this.selectedFiles.length > 1 ? 's' : ''
+          }`,
+          severity: 'success',
+        })
+      } catch (error) {
+        this.$notify.caution({
+          title: `Failed to download files: ${error.message}`,
+        })
+      }
+    },
+    clearSelection() {
+      this.selectedFiles = []
     },
     async uploadFile() {
       this.uploadPathDialog = false
@@ -566,6 +668,10 @@ export default {
         this.path = ''
       }
       this.updateFiles()
+    },
+    cancelFileUpload() {
+      this.file = null
+      this.uploadPathDialog = false
     },
     deleteFile(filename) {
       let root = this.root.toUpperCase()

@@ -93,14 +93,13 @@ export default {
           // This is binary data, display in hex.
           returnValue = '0x'
           for (let part of value.raw) {
-            let nibble = part.toString(16).toUpperCase()
-            if (nibble.length < 2) {
-              nibble = '0' + nibble
-            }
-            returnValue += nibble
+            returnValue += part.toString(16).padStart(2, '0').toUpperCase()
           }
         } else if (value.json_class === 'Float' && value.raw) {
           returnValue = value.raw
+        } else {
+          // For other objects, use JSON.stringify as a fallback
+          returnValue = JSON.stringify(value).replace(/\\n/g, '')
         }
       } else {
         returnValue = String(value)

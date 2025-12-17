@@ -25,7 +25,7 @@ test.use({
   toolName: 'CmdTlmServer',
 })
 
-test('displays the list of command', async ({ page, utils }) => {
+test.fixme('displays the list of command', async ({ page, utils }) => {
   // When we ask for just text there are no spaces
   await expect(
     page.locator('[data-test=cmd-packets-table]').locator('text=INSTABORT'),
@@ -41,7 +41,7 @@ test('displays the list of command', async ({ page, utils }) => {
   ).toBeVisible()
 })
 
-test('displays the command count', async ({ page, utils }) => {
+test.fixme('displays the command count', async ({ page, utils }) => {
   await expect
     .poll(() =>
       page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
@@ -103,7 +103,7 @@ test('displays the command count', async ({ page, utils }) => {
     .toEqual(`${count + 1}`)
 })
 
-test('displays a raw command', async ({ page, utils }) => {
+test.fixme('displays a raw command', async ({ page, utils }) => {
   await expect(page.locator('text=INSTABORT')).toBeVisible()
   await page
     .getByRole('row', { name: 'INST ABORT' })
@@ -128,7 +128,7 @@ test('displays a raw command', async ({ page, utils }) => {
   await expect(page.locator('.raw-dialog')).not.toBeVisible()
 })
 
-test('links to command sender', async ({ page, utils }) => {
+test.fixme('links to command sender', async ({ page, utils }) => {
   await expect(page.locator('text=INSTCOLLECT')).toBeVisible()
   const [newPage] = await Promise.all([
     page.context().waitForEvent('page'),

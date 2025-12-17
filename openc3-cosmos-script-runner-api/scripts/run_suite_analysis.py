@@ -17,10 +17,12 @@
 import sys
 import json
 import os
+import glob
+import openc3.utilities.target_file_importer
+from openc3.top_level import  add_to_search_path
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.target_file import TargetFile
 from openc3.script import *
-import openc3.utilities.target_file_importer
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
 path = sys.argv[2]
@@ -52,6 +54,9 @@ setattr(openc3.script, "require_utility", load_utility)
 data = None
 with open(path) as file:
     data = file.read()
+
+for path in glob.glob("/gems/gems/**/lib"):
+    add_to_search_path(path, True)
 
 exec(data, globals())
 
