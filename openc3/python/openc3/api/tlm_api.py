@@ -306,12 +306,8 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
             if item_name in Packet.RESERVED_ITEM_NAMES:
                 value_type = 'RAW'  # Must request the raw value when dealing with the reserved items
 
-            # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
-            if item_config.get('array_size'):
-                # TODO: This needs work ... we're JSON encoding non numeric array values
-                if item_config.get('data_type') in ['STRING', 'BLOCK']:
-                    results.append(None)
-                    continue
+            # Arrays must be accessed as RAW since there's no conversion
+            if item_config.get('array_size') is not None:
                 value_type = 'RAW'
 
             # Determine the best available value type based on item configuration
