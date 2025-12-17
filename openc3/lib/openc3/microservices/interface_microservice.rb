@@ -89,6 +89,7 @@ module OpenC3
       InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, _redis|
         OpenC3.with_context(msg_hash) do
           release_critical = false
+          critical_model = nil
           msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
           delta = Time.now.to_f - msgid_seconds_from_epoch
           @metric.set(name: 'interface_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and interface cmd start') if @metric
@@ -188,9 +189,9 @@ module OpenC3
             end
             if msg_hash.key?('release_critical')
               # Note: intentional fall through below this point
-              model = CriticalCmdModel.get_model(name: msg_hash['release_critical'], scope: @scope)
-              if model
-                msg_hash = model.cmd_hash
+              critical_model = CriticalCmdModel.get_model(name: msg_hash['release_critical'], scope: @scope)
+              if critical_model
+                msg_hash = critical_model.cmd_hash
                 release_critical = true
               else
                 next "Critical command #{msg_hash['release_critical']} not found"
@@ -279,6 +280,10 @@ module OpenC3
             command.extra ||= {}
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
+            # Add approver info if this was a critical command that was approved
+            if critical_model
+              command.extra['approver'] = critical_model.approver
+            end
             hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
 
             # Initial Are you sure? Hazardous check
