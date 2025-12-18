@@ -33,7 +33,7 @@ Telemetry Packets and Items can be named however you want with very few exceptio
 
     Packet and Item names like `HEALTH_STATUS` or `GND1_STATUS` are easy to read and understand.
 
-* Be descriptive but succient
+* Be descriptive but succinct
 
     A packet name like `BUS_FLIGHT_SOFTWARE_ADCS_PACKET` is a valid packet name but makes all the drop downs extra long and is a lot to type. A better choice might be `BFSW_ADCS`. You already know it's a packet and the first three words collapse to an easy to understand acronym.
 
