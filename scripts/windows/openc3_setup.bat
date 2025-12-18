@@ -48,6 +48,6 @@ if not exist .\cacert.pem (
 copy .\cacert.pem openc3-ruby\cacert.pem
 copy .\cacert.pem openc3-redis\cacert.pem
 copy .\cacert.pem openc3-traefik\cacert.pem
-copy .\cacert.pem openc3-minio\cacert.pem
+copy .\cacert.pem openc3-s3\cacert.pem
 
 @echo on
