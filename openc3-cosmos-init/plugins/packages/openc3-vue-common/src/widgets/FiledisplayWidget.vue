@@ -23,19 +23,18 @@
     </v-card-title>
     <v-divider />
     <v-card-text class="pa-0">
-      <v-checkbox
-        v-model="prettyPrint"
-        label="Pretty print"
-        density="compact"
-        hide-details
-        class="ml-2"
-      />
-      <pre class="ma-0 pa-2" :style="contentStyle">{{ formattedContent }}</pre>
+      <div ref="editor" :style="contentStyle"></div>
     </v-card-text>
   </v-card>
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/mode-json'
+import 'ace-builds/src-min-noconflict/mode-ruby'
+import 'ace-builds/src-min-noconflict/mode-python'
+import 'ace-builds/src-min-noconflict/mode-text'
+import 'ace-builds/src-min-noconflict/theme-twilight'
 import { Api } from '@openc3/js-common/services'
 import Widget from './Widget'
 
@@ -48,7 +47,7 @@ export default {
       loading: false,
       width: 600,
       height: 300,
-      prettyPrint: false,
+      editor: null,
     }
   },
   computed: {
@@ -56,30 +55,23 @@ export default {
       return {
         width: this.width + 'px',
         height: this.height + 'px',
-        overflow: 'auto',
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        whiteSpace: 'pre',
       }
     },
-    formattedContent() {
-      if (!this.prettyPrint) {
-        return this.fileContent
+    aceMode() {
+      const ext = this.filePath.split('.').pop()?.toLowerCase()
+      const modeMap = {
+        json: 'ace/mode/json',
+        rb: 'ace/mode/ruby',
+        py: 'ace/mode/python',
+        txt: 'ace/mode/text',
       }
-      try {
-        const parsed = JSON.parse(this.fileContent)
-        return JSON.stringify(parsed, null, 2)
-      } catch {
-        // Not valid JSON, return as-is
-        return this.fileContent
-      }
+      return modeMap[ext] || 'ace/mode/text'
     },
   },
   created() {
     // Parameter 0: File path (required) e.g. "INST/procedures/test.txt"
     // Parameter 1: Width (optional, default 600)
     // Parameter 2: Height (optional, default 300)
-    // Parameter 3: Pretty print (optional, default false) - "TRUE" or "FALSE"
     if (this.parameters[0]) {
       this.filePath = this.parameters[0]
     }
@@ -89,20 +81,40 @@ export default {
     if (this.parameters[2]) {
       this.height = parseInt(this.parameters[2])
     }
-    if (this.parameters[3]) {
-      this.prettyPrint = this.parameters[3].toUpperCase() === 'TRUE'
-    }
   },
   mounted() {
+    this.editor = ace.edit(this.$refs.editor)
+    this.editor.setTheme('ace/theme/twilight')
+    this.editor.setReadOnly(true)
+    this.editor.setShowPrintMargin(false)
+    this.editor.setHighlightActiveLine(false)
+    this.editor.renderer.setShowGutter(false)
+    this.editor.renderer.setScrollMargin(8, 8, 0, 0)
+    this.editor.renderer.setPadding(8)
+    this.editor.setValue(this.fileContent, -1)
+
     if (this.filePath) {
       this.fetchFile()
     }
   },
+  beforeUnmount() {
+    if (this.editor) {
+      this.editor.destroy()
+      this.editor.container.remove()
+    }
+  },
   methods: {
+    updateEditor() {
+      if (this.editor) {
+        this.editor.session.setMode(this.aceMode)
+        this.editor.setValue(this.fileContent, -1)
+      }
+    },
     async fetchFile() {
       if (!this.filePath) {
         this.fileContent =
           'Error: No file path specified. Usage: FILEDISPLAY "TARGET/path/to/file.txt"'
+        this.updateEditor()
         return
       }
       this.loading = true
@@ -136,6 +148,7 @@ export default {
         this.fileContent = `Error: ${error.message || error}`
       } finally {
         this.loading = false
+        this.updateEditor()
       }
     },
   },
