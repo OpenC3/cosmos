@@ -168,9 +168,10 @@ class InterfaceCmdHandlerThread:
                             f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope=self.scope
                         )
                         self.interface.write_raw(msg_hash[b"raw"])
-                    except Exception:
+                    except Exception as e:
                         self.logger.error(f"{self.interface.name}: write_raw: {traceback.format_exc()}")
-                        return traceback.format_exc()
+                        # Return only the error message (not full traceback) to match Ruby behavior
+                        return str(e)
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
@@ -189,9 +190,10 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except Exception:
+                except Exception as e:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {traceback.format_exc()}")
-                    return traceback.format_exc()
+                    # Return only the error message (not full traceback) to match Ruby behavior
+                    return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -207,9 +209,10 @@ class InterfaceCmdHandlerThread:
                         index=params["index"],
                     )
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                except Exception:
+                except Exception as e:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{traceback.format_exc()}")
-                    return traceback.format_exc()
+                    # Return only the error message (not full traceback) to match Ruby behavior
+                    return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -294,10 +297,12 @@ class InterfaceCmdHandlerThread:
                 )
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
-            except Exception:
+            except Exception as e:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
-                return traceback.format_exc()
+                # Return only the error message (not full traceback) to match Ruby behavior
+                # This provides a clean error message to the GUI while still logging the full trace
+                return str(e)
 
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
@@ -385,11 +390,13 @@ class InterfaceCmdHandlerThread:
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            except WriteRejectError:
-                return traceback.format_exc()
-        except Exception:
+            except WriteRejectError as e:
+                # Return only the error message (not full traceback) to match Ruby behavior
+                return str(e)
+        except Exception as e:
             self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
-            return traceback.format_exc()
+            # Return only the error message (not full traceback) to match Ruby behavior
+            return str(e)
 
 
 class RouterTlmHandlerThread:

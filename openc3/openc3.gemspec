@@ -46,7 +46,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.10.2.pre.beta0'
+  s.version = '6.10.3.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -75,7 +75,6 @@ spec = Gem::Specification.new do |s|
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
 
   # Runtime Dependencies
-  s.add_runtime_dependency 'bundler',   '~> 2.3'
   s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
@@ -106,7 +105,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'faraday-multipart',   '~> 1.0'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows
   s.add_runtime_dependency 'jsonpath', '~> 1.1'
-  s.add_runtime_dependency 'mqtt', '~> 0.6'
+  s.add_runtime_dependency 'mqtt', '~> 0.7'
   s.add_runtime_dependency 'opentelemetry-exporter-otlp', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-action_pack', '~> 0.2'
   s.add_runtime_dependency 'opentelemetry-instrumentation-aws_sdk', '~> 0.3'
@@ -128,6 +127,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'flog', '~> 4.6'
+  s.add_development_dependency 'equivalent-xml', '~> 0.6.0'
   s.add_development_dependency 'listen', '~> 3.7'
   s.add_development_dependency 'mock_redis', '~> 0.47'
   s.add_development_dependency 'reek', '~> 6.0'

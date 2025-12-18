@@ -92,10 +92,11 @@ class StructureItem:
 
     @key.setter
     def key(self, key):
-        if not isinstance(key, str):
-            raise TypeError(f"key must be a String but is a {key.__class__.__name__}")
-        if len(key) == 0:
-            raise ValueError("key must contain at least one character")
+        if key is not None:
+            if not isinstance(key, str):
+                raise TypeError(f"key must be a String but is a {key.__class__.__name__}")
+            if len(key) == 0:
+                raise ValueError("key must contain at least one character")
         self.__key = key
 
     @property

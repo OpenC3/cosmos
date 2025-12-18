@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "6.10.2-beta0",
+  "version": "6.10.3-beta0",
   "type": "module",
   "scripts": {
     "serve": "vite build --watch --mode dev-server",
@@ -23,7 +23,7 @@
     "@types/systemjs": "6.15.4",
     "@vitejs/plugin-vue": "5.2.3",
     "prettier": "3.7.4",
-    "sass": "1.95.1",
+    "sass": "1.96.0",
     "serve": "14.2.5",
     "vite": "6.4.1",
     "vue": "3.5.25"

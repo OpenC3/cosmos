@@ -623,7 +623,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         spec_install = File.join("..", "..", "install")
-        @pc.to_xtce(spec_install)
+        @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         expect(File.exist?(xml_path)).to be true
         @pc.process_file(xml_path, "TGT1")

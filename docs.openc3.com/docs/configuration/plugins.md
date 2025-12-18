@@ -12,7 +12,9 @@ sidebar_custom_props:
 
 This document provides the information necessary to configure a COSMOS plugin. Plugins are how you configure and extend COSMOS.
 
-Plugins are where you define targets (and their corresponding command and telemetry packet definitions), where you configure the interfaces needed to talk to targets, where you can define routers to stream raw data out of COSMOS, how you can add new tools to the COSMOS user interface, and how you can run additional microservices to provide new functionality.
+Plugins are where you define [Targets](./target.md) (and their corresponding command and telemetry packet definitions), [Interfaces](/docs/configuration/interfaces.md) needed to talk to targets, [Routers](/docs/configuration/interfaces.md) to stream raw data out of COSMOS, Microservices to provide new functionality, Widgets and Tools to add new GUIs, and Script Engines to implement custom script languages.
+
+Plugin [Targets](/docs/configuration/target.md) must be installed (or re-installed) to update commands, telemetry, conversions, limits responses, microservices, and anything that changes the structure of a packet or contains code (conversions, limits responses, etc). Certain aspects of a Target can be changed through APIs like limits but most require reinstalling the Target. Note that COSMOS also supports [Dynamic Packets](/docs/guides/dynamic-packets) but this is meant for use during COSMOS plugin initialization rather than while running.
 
 Each plugin is built as a Ruby gem and thus has a plugin.gemspec file which builds it. Plugins have a plugin.txt file which declares all the variables used by the plugin and how to interface to the target(s) it contains.
 
@@ -30,6 +32,10 @@ Interfaces implement the physical connection to one or more targets. They are ty
 
 Routers flow streams of telemetry packets out of COSMOS and receive streams of commands into COSMOS. The commands are forwarded by COSMOS to associated interfaces. Telemetry comes from associated interfaces.
 
+### Widgets
+
+COSMOS Widgets are GUI elements that can be placed on [Screens](/docs/configuration/telemetry-screens.md) in [Telemetry Viewer](/docs/tools/tlm-viewer.md).
+
 ### Tool
 
 COSMOS Tools are web-based applications the communicate with the COSMOS APIs to perform takes like displaying telemetry, sending commands, and running scripts.
@@ -37,6 +43,10 @@ COSMOS Tools are web-based applications the communicate with the COSMOS APIs to 
 ### Microservice
 
 Microservices are persistent running backend code that runs within the COSMOS environment. They can process data and perform other useful tasks.
+
+### Script Engines
+
+Script Engines enhance Script Runner by providing the implementation of a new file type and language. The new language must be implemented in either Ruby or Python but can support any custom Domain Specific Language (DSL). For a real example see our [CSTOL](https://github.com/OpenC3/openc3-cosmos-script-engine-cstol) implementation.
 
 ## Plugin Directory Structure
 
@@ -908,9 +918,9 @@ Disable ERB processing for the entire widget or a set of regular expressions ove
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ## SCRIPT_ENGINE
-**Define a script engine to add language support to Script Runner**
+<div class="right">(Since 6.5.0)</div>**Define a script engine to add language support to Script Runner**
 
-Defines a script engine to add language support to Script Runner
+Defines a script engine to add language support to Script Runner. For a realistic example, see our [CSTOL](https://github.com/OpenC3/openc3-cosmos-script-engine-cstol) plugin.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
