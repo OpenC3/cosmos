@@ -183,13 +183,13 @@ META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**This item is allowed to overlap other items in the packet**
 
 If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the key used to access this raw value in the packet.**
 
 Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
@@ -203,7 +203,7 @@ KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks an item as having its bit size defined by another length item**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -212,7 +212,7 @@ KEY $.book.title
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### OBFUSCATE
-<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+<span class="badge badge--secondary since-right">Since 6.6.0</span>**Hides the item value in the UI, text logs, and raw binary file**
 
 
 #### STATE
@@ -449,7 +449,7 @@ APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 ```
 
 ### STRUCTURE
-<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -461,7 +461,7 @@ APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 | Packet Name | Packet Name of the structure packet | True |
 
 ### APPEND_STRUCTURE
-<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -489,7 +489,7 @@ SELECT_TELEMETRY INST HEALTH_STATUS
 ```
 
 ### DELETE_ITEM
-<div class="right">(Since 4.4.1)</div>**Delete an existing telemetry item from the packet definition**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**Delete an existing telemetry item from the packet definition**
 
 Deleting an item from the packet definition does not remove the defined space for that item. Thus unless you redefine a new item, there will be a "hole" in the packet where the data is not accessible. You can use SELECT_TELEMETRY and then ITEM to define a new item.
 
@@ -555,7 +555,7 @@ This packet will not appear in Packet Viewer, Telemetry Grapher and Handbook Cre
 
 
 ### ACCESSOR
-<div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the class used to read and write raw values from the packet**
 
 Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
@@ -564,7 +564,7 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Accessor Class Name | The name of the accessor class | True |
 
 ### SUBPACKETIZER
-<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Defines a class used to break up the packet into subpackets before decom**
 
 Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
 
@@ -574,33 +574,33 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 | Argument | Additional argument passed to the Subpacketizer class constructor | False |
 
 ### TEMPLATE
-<div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template string used to pull telemetry values from a string buffer**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Template | The template string which should be enclosed in quotes | True |
 
 ### TEMPLATE_FILE
-<div class="right">(Since 5.0.10)</div>**Defines a template file used to pull telemetry values from a string buffer**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to pull telemetry values from a string buffer**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
 
 ### IGNORE_OVERLAP
-<div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
+<span class="badge badge--secondary since-right">Since 5.16.0</span>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
 
 
 ### VIRTUAL
-<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks this packet as virtual and not participating in identification**
 
 Used for packet definitions that can be used as structures for items with a given packet.
 
 
 ### SUBPACKET
-<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
 
 Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 

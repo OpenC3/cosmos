@@ -93,12 +93,8 @@ class CosmosMetaTag
         page << "#{data['deprecated']}\n"
         page << ":::\n\n"
       end
-      if data['since']
-        page << '<div class="right">'
-        page <<  "(Since #{data['since']})"
-        page << '</div>'
-      end
-      page << "**#{data['summary']}**\n\n"
+      since_badge = data['since'] ? "<span class=\"badge badge--secondary since-right\">Since #{data['since']}</span>" : ""
+      page << "#{since_badge}**#{data['summary']}**\n\n"
 
       page << "#{data['description']}\n\n" if data['description']
       if data['warning']

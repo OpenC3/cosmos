@@ -14,7 +14,7 @@ Targets are the external embedded systems that COSMOS connects to. Targets are d
 
 
 ## LANGUAGE
-<div class="right">(Since 5.11.1)</div>**Programming language of the target interfaces and microservices**
+<span class="badge badge--secondary since-right">Since 5.11.1</span>**Programming language of the target interfaces and microservices**
 
 The target language must be either Ruby or Python. The language determines how the target's interfaces and microservices are run. Note that both Ruby and Python still use ERB to perform templating.
 
@@ -112,7 +112,7 @@ TELEMETRY inst_tlm_v2.txt
 Since 6.10.0 this condition is now automatically detected
 :::
 
-<div class="right">(Since 4.4.0)</div>**Command packet identifiers don't all share the same bit offset, size, and type**
+<span class="badge badge--secondary since-right">Since 4.4.0</span>**Command packet identifiers don't all share the same bit offset, size, and type**
 
 Ideally all commands for a target are identified using the exact same bit offset, size, and type field in each command. If ANY command identifiers differ then this flag must be set to force a brute force identification method.
 
@@ -122,7 +122,7 @@ Ideally all commands for a target are identified using the exact same bit offset
 Since 6.10.0 this condition is now automatically detected
 :::
 
-<div class="right">(Since 4.4.0)</div>**Telemetry packets identifiers don't all share the same bit offset, size, and type**
+<span class="badge badge--secondary since-right">Since 4.4.0</span>**Telemetry packets identifiers don't all share the same bit offset, size, and type**
 
 Ideally all telemetry for a target are identified using the exact same bit offset, size, and type field in each packet. If ANY telemetry identifiers differ then this flag must be set to force a brute force identification method.
 
