@@ -856,7 +856,9 @@ export default {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
           // Don't count metadata keys (__type, __time, __extra)
-          let metadataCount = packetKeys.filter((k) => k.startsWith('__')).length
+          let metadataCount = packetKeys.filter((k) =>
+            k.startsWith('__'),
+          ).length
           this.itemsReceived += packetKeys.length - metadataCount
           this.totalItemsReceived += packetKeys.length - metadataCount
         }
