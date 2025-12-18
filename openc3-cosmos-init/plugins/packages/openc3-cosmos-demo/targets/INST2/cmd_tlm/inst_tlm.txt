@@ -163,7 +163,7 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
     UNITS DEGREES DEG
   APPEND_ITEM CURRENT       32 FLOAT    "Device current"
     UNITS micro-Ampères µA
-  APPEND_ITEM STRING       0 STRING     "String"
+  APPEND_ARRAY_ITEM STRINGS 2048 STRING 0 "Array of strings"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 

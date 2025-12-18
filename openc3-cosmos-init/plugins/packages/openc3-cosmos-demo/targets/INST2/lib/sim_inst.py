@@ -157,11 +157,11 @@ class SimInst(SimulatedTarget):
         self.set_rate("PARAMS.PKT", 100)
         self.set_rate("IMAGE", 100)
         self.set_rate("MECH", 10)
-        self.set_rate('JSONTLM', 500)
-        self.set_rate('CBORTLM', 500)
-        self.set_rate('XMLTLM', 500)
-        self.set_rate('HTMLTLM', 500)
-        self.set_rate('HYBRIDTLM', 500)
+        self.set_rate("JSONTLM", 500)
+        self.set_rate("CBORTLM", 500)
+        self.set_rate("XMLTLM", 500)
+        self.set_rate("HTMLTLM", 500)
+        self.set_rate("HYBRIDTLM", 500)
 
     def tick_period_seconds(self):
         return 0.1  # Override this method to optimize
@@ -430,7 +430,15 @@ class SimInst(SimulatedTarget):
                     packet.write("slrpnl4", self.solar_panel_positions[3])
                     packet.write("slrpnl5", self.solar_panel_positions[4])
                     packet.write("current", 0.5)
-                    packet.write("string", f"Time is {time}")
+                    packet.write(
+                        "strings",
+                        [
+                            "STRING1".ljust(256, "\x00"),
+                            "STRING2".ljust(256, "\x00"),
+                            "STRING3".ljust(256, "\x00"),
+                        ],
+                    )
+                    packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         # Every 10s throw an unknown packet at the server just to demo that
         if count_100hz % 1000 == 900:
