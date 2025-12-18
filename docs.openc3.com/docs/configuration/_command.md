@@ -34,7 +34,7 @@ Command Packets and Parameters can be named however you want with very few excep
 
 * Avoid brackets in commands and parameters
 
-    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible.
+    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
 
 <div style={{"clear": 'both'}}></div>
 
