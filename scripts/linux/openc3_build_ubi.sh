@@ -5,7 +5,7 @@ AVAILABLE_IMAGES=(
   "openc3-ruby-ubi"
   "openc3-base-ubi"
   "openc3-node-ubi"
-  "openc3-minio-ubi"
+  "openc3-s3-ubi"
   "openc3-redis-ubi"
   "openc3-tsdb-ubi"
   "openc3-cosmos-cmd-tlm-api-ubi"
@@ -229,25 +229,23 @@ if should_build "openc3-node-ubi"; then
   record_build "openc3-node-ubi" "$DURATION"
 fi
 
-if should_build "openc3-minio-ubi"; then
-  echo "Building openc3-minio-ubi..."
+if should_build "openc3-s3-ubi"; then
+  echo "Building openc3-s3-ubi..."
   START_TIME=$SECONDS
-  # NOTE: Ensure the release is on IronBank:
-  # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fminio
-  # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
-  cd openc3-minio
+  cd openc3-s3
   docker build \
     -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-    --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
+    --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
+    --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+    --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
     --platform linux/amd64 \
-    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
+    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-s3-ubi:${OPENC3_TAG}" \
     .
   cd ..
   DURATION=$((SECONDS - START_TIME))
-  echo "✓ openc3-minio-ubi completed in $(format_duration $DURATION)"
-  record_build "openc3-minio-ubi" "$DURATION"
+  echo "✓ openc3-s3-ubi completed in $(format_duration $DURATION)"
+  record_build "openc3-s3-ubi" "$DURATION"
 fi
 
 if should_build "openc3-redis-ubi"; then

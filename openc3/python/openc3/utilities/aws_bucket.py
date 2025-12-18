@@ -28,7 +28,7 @@ if OPENC3_BUCKET_URL:
 elif OPENC3_DEVEL:
     s3_endpoint_url = "http://127.0.0.1:9000"
 else:
-    s3_endpoint_url = "http://openc3-minio:9000"
+    s3_endpoint_url = "http://openc3-s3:9000"
 
 if OPENC3_CLOUD == "local":
     s3_session = boto3.session.Session(
