@@ -9,11 +9,12 @@ ARG OPENC3_VERSITYGW_VERSION
 ARG TARGETARCH
 
 # Copy and extract versitygw binary from local tar.gz files
-COPY versitygw_${OPENC3_VERSITYGW_VERSION}_linux_*.tar.gz /tmp/
-RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") && \
-    tar xzf /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_linux_${ARCH}.tar.gz -C /usr/local/bin versitygw && \
+COPY versitygw_v${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
+RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x86_64") && \
+    tar xzf /tmp/versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}.tar.gz -C /tmp versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw && \
+    mv /tmp/versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw /usr/local/bin/ && \
     chmod +x /usr/local/bin/versitygw && \
-    rm -f /tmp/versitygw_*.tar.gz
+    rm -rf /tmp/versitygw_*
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem

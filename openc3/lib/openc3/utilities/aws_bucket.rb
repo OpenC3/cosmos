@@ -206,7 +206,7 @@ module OpenC3
         body: body,
         content_type: content_type,
         cache_control: cache_control,
-        metadata: metadata
+        metadata: metadata,
         checksum_algorithm: "SHA256"
       }
       @client.put_object(options)
