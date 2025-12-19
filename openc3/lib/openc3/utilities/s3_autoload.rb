@@ -7,14 +7,7 @@ if ENV['OPENC3_CLOUD'] == 'local'
       access_key_id: ENV['OPENC3_BUCKET_USERNAME'],
       secret_access_key: ENV['OPENC3_BUCKET_PASSWORD'],
       force_path_style: true,
-      region: 'us-east-1',
-      # Disable automatic checksum calculation for S3-compatible backends (versitygw, minio)
-      # that may not support the newer checksum features
-      request_checksum_calculation: 'when_required',
-      response_checksum_validation: 'when_required',
-      # Disable chunked encoding - versitygw has bugs with STREAMING-*-PAYLOAD-TRAILER
-      # See: https://github.com/versity/versitygw/issues/1692, #1694, #1695
-      disable_request_compression: true
+      region: 'us-east-1'
     }
   )
 else # AWS
