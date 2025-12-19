@@ -41,25 +41,25 @@ Use the provided migration script for a safe, side-by-side migration. The script
 #    (MINIO keeps running until you stop/start)
 ./openc3.sh upgrade v7.0.0
 
-# 2. Build the new containers
-./openc3.sh build
-
-# 3. Start temporary versitygw container for migration
+# 2. Start temporary versitygw container for migration
 ./scripts/linux/openc3_migrate_s3.sh start
 
-# 4. Migrate all data from MINIO to versitygw
+# 3. Migrate all data from MINIO to versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 
-# 5. Stop all services
+# 4. Stop all services
 ./openc3.sh stop
 
-# 6. Start COSMOS with versitygw
+# 5. Start COSMOS with versitygw
 ./openc3.sh run
 
-# 7. Verify everything works and old data is accessible
+# 6. Verify everything works and old data is accessible
 
-# 8. Cleanup migration container
+# 7. Cleanup migration container
 ./scripts/linux/openc3_migrate_s3.sh cleanup
+
+# 8. Remove old minio volume
+docker volume rm openc3-bucket-v
 ```
 
 The migration script:
