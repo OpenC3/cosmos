@@ -30,6 +30,9 @@ except ImportError:
     )
     sys.exit(1)
 
+# Constant for placeholder pattern
+PLACEHOLDER_PATTERN = r"\{\{(\w+)\}\}"
+
 
 def load_yaml_file(filepath: Path) -> Dict[str, Any]:
     """Load a YAML file and return its contents as a dictionary."""
@@ -55,7 +58,7 @@ def load_template(filepath: Path) -> str:
 def replace_placeholders(template: str, overrides: Dict[str, Any]) -> str:
     """Replace all {{PLACEHOLDER}} markers in template with override values."""
     # Track which placeholders were found and replaced
-    placeholders_in_template = set(re.findall(r"\{\{(\w+)\}\}", template))
+    placeholders_in_template = set(re.findall(PLACEHOLDER_PATTERN, template))
     placeholders_replaced = set()
 
     # Filter out the mode key and create replacement mapping
@@ -92,6 +95,89 @@ def replace_placeholders(template: str, overrides: Dict[str, Any]) -> str:
     return result
 
 
+def validate_compose(content: str, mode: str) -> tuple[bool, list[str]]:
+    """
+    Validate generated compose file.
+
+    Returns:
+        tuple: (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # 1. Check if it's valid YAML
+    try:
+        parsed = yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        errors.append(f"Invalid YAML syntax: {e}")
+        return False, errors
+
+    # 2. Check for required top-level keys
+    if not isinstance(parsed, dict):
+        errors.append("Root element must be a dictionary")
+        return False, errors
+
+    if "services" not in parsed:
+        errors.append("Missing required 'services' key")
+
+    if "volumes" not in parsed:
+        errors.append("Missing required 'volumes' key")
+
+    # 3. Check for unreplaced placeholders
+    unreplaced = re.findall(PLACEHOLDER_PATTERN, content)
+    if unreplaced:
+        errors.append(f"Unreplaced placeholders found: {', '.join(set(unreplaced))}")
+
+    # 4. Validate service structure
+    if "services" in parsed and isinstance(parsed["services"], dict):
+        for service_name, service_config in parsed["services"].items():
+            if not isinstance(service_config, dict):
+                errors.append(f"Service '{service_name}' must be a dictionary")
+                continue
+
+            # Check for image key
+            if "image" not in service_config:
+                errors.append(f"Service '{service_name}' missing required 'image' key")
+
+    # 5. Mode-specific validation
+    if mode == "enterprise":
+        # Check for enterprise-specific services
+        if "services" in parsed:
+            services = parsed["services"]
+            expected_enterprise_services = ["openc3-postgresql", "openc3-keycloak", "openc3-grafana"]
+            for svc in expected_enterprise_services:
+                if svc not in services:
+                    errors.append(f"Enterprise mode missing expected service: {svc}")
+    elif mode == "core":
+        # Check that enterprise services are NOT present
+        if "services" in parsed:
+            services = parsed["services"]
+            enterprise_only_services = ["openc3-postgresql", "openc3-keycloak", "openc3-grafana", "openc3-metrics"]
+            for svc in enterprise_only_services:
+                if svc in services:
+                    errors.append(f"Core mode should not contain enterprise service: {svc}")
+
+    return len(errors) == 0, errors
+
+
+def check_unused_overrides(template: str, overrides: Dict[str, Any]) -> list[str]:
+    """
+    Check for override keys that don't have corresponding placeholders in template.
+
+    Returns:
+        list: Warning messages for unused overrides
+    """
+    warnings = []
+    placeholders_in_template = set(re.findall(PLACEHOLDER_PATTERN, template))
+
+    for key in overrides.keys():
+        if key == "mode":
+            continue
+        if key not in placeholders_in_template:
+            warnings.append(f"Override key '{key}' has no corresponding placeholder in template")
+
+    return warnings
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate compose.yaml from template and mode-specific overrides"
@@ -121,6 +207,12 @@ def main():
         "--dry-run",
         action="store_true",
         help="Print output to stdout instead of writing to file",
+    )
+    parser.add_argument(
+        "--validate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Validate the generated compose file (default: enabled)",
     )
 
     args = parser.parse_args()
@@ -166,9 +258,27 @@ def main():
             file=sys.stderr,
         )
 
+    # Check for unused overrides
+    unused_warnings = check_unused_overrides(template_content, overrides)
+    if unused_warnings:
+        for warning in unused_warnings:
+            print(f"Warning: {warning}", file=sys.stderr)
+
     # Generate compose.yaml
     print(f"Generating compose.yaml for {args.mode} mode...")
     output_content = replace_placeholders(template_content, overrides)
+
+    # Validate the generated content (unless explicitly disabled)
+    if args.validate:
+        is_valid, validation_errors = validate_compose(output_content, args.mode)
+
+        if is_valid:
+            print("✓ Validation passed")
+        else:
+            print("✗ Validation failed:", file=sys.stderr)
+            for error in validation_errors:
+                print(f"  - {error}", file=sys.stderr)
+            sys.exit(1)
 
     # Output result
     if args.dry_run:
