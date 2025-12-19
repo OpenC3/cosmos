@@ -284,13 +284,8 @@ module OpenC3
             value_type = 'RAW' # Must request the raw value when dealing with the reserved items
           end
 
-          # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+          # Arrays must be accessed as RAW since there's no conversion
           if item['array_size']
-            # TODO: This needs work ... we're JSON encoding non numeric array values
-            if item['data_type'] == 'STRING' or item['data_type'] == 'BLOCK'
-              results << nil
-              next
-            end
             value_type = 'RAW'
           end
 

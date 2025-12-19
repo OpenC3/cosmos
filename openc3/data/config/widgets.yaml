@@ -204,6 +204,24 @@ Decoration Widgets:
           SPACER 0 100
           LABEL "Spacer above"
         END
+    FILEDISPLAY:
+      summary: Displays the contents of a target file with syntax highlighting
+      since: 6.10.3
+      parameters:
+        - name: File path
+          required: true
+          description: Path to the file relative to the target folder (e.g. "INST/procedures/file.rb")
+          values: .+
+        - name: Width
+          required: false
+          description: Width of the widget in pixels (default = 600)
+          values: \d+
+        - name: Height
+          required: false
+          description: Height of the widget in pixels (default = 300)
+          values: \d+
+      example: |
+        FILEDISPLAY "INST/data/sample.json" 400 200
 Telemetry Widgets:
   description: Telemetry widgets are used to display telemetry values.
     The first parameters to each of these widgets is a telemetry mnemonic.

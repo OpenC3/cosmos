@@ -33,6 +33,7 @@ import CheckbuttonWidget from './CheckbuttonWidget.vue'
 import ComboboxWidget from './ComboboxWidget.vue'
 import DateWidget from './DateWidget.vue'
 import DynamicWidget from './DynamicWidget.vue'
+import FiledisplayWidget from './FiledisplayWidget.vue'
 import FormatValueBase from './FormatValueBase'
 import FormatvalueWidget from './FormatvalueWidget.vue'
 import GraphWidget from './GraphWidget'
@@ -100,6 +101,7 @@ export {
   ComboboxWidget,
   DateWidget,
   DynamicWidget,
+  FiledisplayWidget,
   FormatValueBase,
   FormatvalueWidget,
   GraphWidget,

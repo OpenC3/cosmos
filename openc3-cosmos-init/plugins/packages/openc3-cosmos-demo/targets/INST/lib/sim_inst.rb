@@ -428,6 +428,8 @@ module OpenC3
           packet.slrpnl4 = @solar_panel_positions[3]
           packet.slrpnl5 = @solar_panel_positions[4]
           packet.current = 0.5
+          packet.strings = ['STRING1'.ljust(256, "\x00"), 'STRING2'.ljust(256, "\x00"), 'STRING3'.ljust(256, "\x00")]
+          packet.CcsdsLength = packet.buffer.length - 7
 
         when 'HIDDEN'
           packet.timesec = time.tv_sec - @time_offset
