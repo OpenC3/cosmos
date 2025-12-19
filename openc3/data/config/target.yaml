@@ -1,7 +1,7 @@
 ---
 TARGET:
   summary: Defines a new target
-  example: TARGET INST INST
+  example: TARGET KEYSIGHT_N6700 PWR_SUPPLY1
   parameters:
     - name: Folder Name
       required: true
@@ -10,8 +10,13 @@ TARGET:
     - name: Name
       required: true
       description:
-        The target name. While this is almost always the same as Folder Name
-        it can be different to create multiple targets based on the same target folder.
+        The target name. While this typically matches the Folder Name
+        it can be different to create multiple targets based on the same target definition.
+        As in the Example Usage, the target folder is KEYSIGHT_N6700 but the target name is PWR_SUPPLY1.
+        To create multiple targets from the same folder, just define multiple TARGET entries
+        with different target names. To make the target definition flexbible, you can use ERB to
+        insert the target name in procedures, libraries, etc via &lt;%= target_name %&gt;.
+        See [ERB target_name](/docs/configuration/format#target_name) for more information.
       values: .*
   modifiers:
     CMD_BUFFER_DEPTH:

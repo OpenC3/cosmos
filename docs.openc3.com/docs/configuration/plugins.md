@@ -388,11 +388,11 @@ Additional parameters are required. Please see the [Interfaces](../configuration
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Folder Name | The target folder | True |
-| Name | The target name. While this is almost always the same as Folder Name it can be different to create multiple targets based on the same target folder. | True |
+| Name | The target name. While this typically matches the Folder Name it can be different to create multiple targets based on the same target definition. As in the Example Usage, the target folder is KEYSIGHT_N6700 but the target name is PWR_SUPPLY1. To create multiple targets from the same folder, just define multiple TARGET entries with different target names. To make the target definition flexbible, you can use ERB to insert the target name in procedures, libraries, etc via &lt;%= target_name %&gt;. See [ERB target_name](/docs/configuration/format#target_name) for more information. | True |
 
 Example Usage:
 ```ruby
-TARGET INST INST
+TARGET KEYSIGHT_N6700 PWR_SUPPLY1
 ```
 
 ## TARGET Modifiers
