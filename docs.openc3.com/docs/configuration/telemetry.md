@@ -292,7 +292,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 ```python
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return int(value * 1.5) # Convert the value by a scale factor
+    int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 </TabItem>
@@ -300,7 +300,7 @@ APPEND_ITEM ITEM1 32 UINT
 ```ruby
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
+    (value * 1.5).to_i # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 </TabItem>

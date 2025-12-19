@@ -308,7 +308,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    return int(value * 1.5) # Convert the value by a scale factor
+    int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 </TabItem>
@@ -316,7 +316,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
+    (value * 1.5).to_i # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 </TabItem>
