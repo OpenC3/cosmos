@@ -1,6 +1,6 @@
 # OpenC3 S3 Gateway (versitygw)
 
-This directory contains the Dockerfile and configuration for the versitygw S3 gateway, which replaces MINIO as the S3-compatible storage backend.
+This directory contains the Dockerfile and configuration for the versitygw S3 gateway, which replaces MINIO as the S3-compatible storage backend in COSMOS 7+.
 
 ## About versitygw
 
@@ -8,7 +8,7 @@ This directory contains the Dockerfile and configuration for the versitygw S3 ga
 
 ## Building
 
-The container is built from source using the version specified in the Dockerfile (`OPENC3_VERSITYGW_VERSION`).
+The container downloads pre-built binaries from [versitygw GitHub releases](https://github.com/versity/versitygw/releases). The version is specified by `OPENC3_VERSITYGW_VERSION` in the Dockerfile.
 
 ## Configuration
 
@@ -34,18 +34,15 @@ MINIO stores data in a specific internal format that is not directly compatible 
 
 ### Automated Migration (Recommended)
 
-Use the provided migration script for a safe, side-by-side migration:
+Use the provided migration script for a safe, side-by-side migration. The script runs `mc` via Docker so no local installation is required.
 
 ```bash
-# 1. Install mc (MINIO client) if not already installed
-# macOS
-brew install minio/stable/mc
-# Linux
-wget https://dl.min.io/client/mc/release/linux-amd64/mc
-chmod +x mc && sudo mv mc /usr/local/bin/
+# 1. Upgrade to COSMOS 7+ to get the migration scripts and openc3-s3 container
+#    (MINIO keeps running until you stop/start)
+./openc3.sh upgrade v7.0.0
 
-# 2. Ensure MINIO is running
-./openc3.sh run
+# 2. Build the new containers
+./openc3.sh build
 
 # 3. Start temporary versitygw container for migration
 ./scripts/linux/openc3_migrate_s3.sh start
@@ -53,77 +50,24 @@ chmod +x mc && sudo mv mc /usr/local/bin/
 # 4. Migrate all data from MINIO to versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 
-# 5. Verify the migration
-./scripts/linux/openc3_migrate_s3.sh status
-
-# 6. Stop all services
+# 5. Stop all services
 ./openc3.sh stop
 
-# 7. Cleanup migration container
-./scripts/linux/openc3_migrate_s3.sh cleanup
-
-# 8. compose.yaml already uses openc3-s3-v, so just start COSMOS
-
-# 9. Start with versitygw
+# 6. Start COSMOS with versitygw
 ./openc3.sh run
+
+# 7. Verify everything works and old data is accessible
+
+# 8. Cleanup migration container
+./scripts/linux/openc3_migrate_s3.sh cleanup
 ```
 
 The migration script:
 - Runs versitygw on a temporary port (9002) alongside MINIO
 - Creates the new volume (`openc3-s3-v`) for versitygw
-- Uses `mc mirror` to copy all buckets and objects
+- Uses `mc mirror` to copy all buckets and objects via Docker
 - Preserves object metadata and timestamps
-
-### Manual Migration Steps
-
-If you prefer to migrate manually:
-
-1. **Ensure MINIO is running** and accessible
-
-2. **Install mc (MINIO client)**:
-   ```bash
-   # macOS
-   brew install minio/stable/mc
-
-   # Linux
-   wget https://dl.min.io/client/mc/release/linux-amd64/mc
-   chmod +x mc
-   sudo mv mc /usr/local/bin/
-   ```
-
-3. **Configure mc to connect to your MINIO instance**:
-   ```bash
-   mc alias set openc3minio http://localhost:9000 openc3minio openc3miniopassword
-   ```
-
-4. **Export data from MINIO** to a local directory:
-   ```bash
-   # List all buckets
-   mc ls openc3minio
-
-   # Mirror all buckets to a local backup directory
-   mc mirror --preserve openc3minio /path/to/backup
-   ```
-
-5. **Stop MINIO and switch to versitygw** by updating compose.yaml
-
-6. **Start versitygw** and verify it's running:
-   ```bash
-   docker compose up -d openc3-s3
-   ```
-
-7. **Import data into versitygw**:
-   ```bash
-   mc alias set openc3s3 http://localhost:9000 openc3minio openc3miniopassword
-
-   # Create buckets
-   mc mb openc3s3/config
-   mc mb openc3s3/logs
-   mc mb openc3s3/tools
-
-   # Copy data back
-   mc mirror --preserve /path/to/backup openc3s3
-   ```
+- Fixes volume permissions to match your host user ID
 
 ## Updating versitygw
 

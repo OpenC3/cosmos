@@ -47,6 +47,15 @@ class AwsBucket(Bucket):
         # Check whether the session is a real Session or a MockS3
         # print(f"\nAwsBucket INIT session:{s3_session}\n")
         self.client = s3_session.client("s3", endpoint_url=s3_endpoint_url, config=s3_config)
+        # Checksums are supported by real AWS S3 but may not be supported by
+        # S3-compatible backends like versitygw or minio. Auto-detect based on
+        # whether a custom endpoint is configured. Can be overridden with ENV var.
+        if os.environ.get("OPENC3_NO_S3_CHECKSUM") is not None:
+            # Empty string means use checksum, any value means don't
+            self.use_checksum = os.environ.get("OPENC3_NO_S3_CHECKSUM") == ""
+        else:
+            # If OPENC3_BUCKET_URL is set or OPENC3_CLOUD is local, we're using a non-AWS S3 backend
+            self.use_checksum = not OPENC3_BUCKET_URL and OPENC3_CLOUD != "local"
 
     def create(self, bucket):
         if not self.exist(bucket):
@@ -105,7 +114,13 @@ class AwsBucket(Bucket):
   ]
 }"""
             )
-            self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
+            try:
+                kw_args = {"Bucket": bucket, "Policy": policy}
+                if self.use_checksum:
+                    kw_args["ChecksumAlgorithm"] = "SHA256"
+                self.client.put_bucket_policy(**kw_args)
+            except ClientError as e:
+                LOGGER.warning(f"put_bucket_policy not supported by S3 backend: {e}")
 
     def exist(self, bucket):
         try:
@@ -210,8 +225,9 @@ class AwsBucket(Bucket):
             "Bucket": bucket,
             "Key": key,
             "Body": body,
-            "ChecksumAlgorithm": "SHA256",
         }
+        if self.use_checksum:
+            kw_args["ChecksumAlgorithm"] = "SHA256"
         if content_type:
             kw_args["ContentType"] = content_type
         if cache_control:
