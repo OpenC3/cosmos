@@ -17,7 +17,7 @@ Unknown generator ''. Valid generators: plugin, target, microservice, widget, co
 ```
 
 :::note Training Available
-If any of this gets confusing, contact us at <a href="mailto:support@openc3.com">support@openc3.com</a>. We have training classes available!
+If any of this gets confusing, contact us at [support@openc3.com](mailto:support@openc3.com). We have training classes available!
 :::
 
 ## Plugin Generator

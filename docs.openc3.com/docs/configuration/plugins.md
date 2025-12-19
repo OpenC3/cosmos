@@ -69,7 +69,7 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 | Default Value | Default value of the variable | True |
 
 ## NEEDS_DEPENDENCIES
-<div class="right">(Since 5.5.0)</div>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
+<span class="badge badge--secondary since-right">Since 5.5.0</span>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 
 If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
 
@@ -112,7 +112,7 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 </Tabs>
 
 ### MAP_CMD_TARGET
-<div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for commands only**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for commands only**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -134,7 +134,7 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 </Tabs>
 
 ### MAP_TLM_TARGET
-<div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for telemetry only**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for telemetry only**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -183,7 +183,7 @@ Use this keyword to prevent the user from disconnecting from the interface. This
 
 
 ### LOG_STREAM
-<div class="right">(Since 5.5.2)</div>**Log all data on the interface exactly as it is sent and received**
+<span class="badge badge--secondary since-right">Since 5.5.2</span>**Log all data on the interface exactly as it is sent and received**
 
 LOG_STREAM does not add any OpenC3 headers and thus can not be read by OpenC3 tools. It is primarily useful for low level debugging of an interface. You will have to manually parse these logs yourself using a hex editor or other application.
 
@@ -202,7 +202,7 @@ INTERFACE EXAMPLE example_interface.rb
 ```
 
 ### PROTOCOL
-<div class="right">(Since 4.0.0)</div>**Protocols modify the interface by processing the data**
+<span class="badge badge--secondary since-right">Since 4.0.0</span>**Protocols modify the interface by processing the data**
 
 Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
 
@@ -251,7 +251,7 @@ ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
 ```
 
 ### SECRET
-<div class="right">(Since 5.3.0)</div>**Define a secret needed by this interface**
+<span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this interface**
 
 Defines a secret for this interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
@@ -270,7 +270,7 @@ SECRET FILE KEY "/tmp/DATA/cert" KEY
 ```
 
 ### ENV
-<div class="right">(Since 5.7.0)</div>**Sets an environment variable in the microservice.**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Sets an environment variable in the microservice.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -283,7 +283,7 @@ ENV COMPANY OpenC3
 ```
 
 ### WORK_DIR
-<div class="right">(Since 5.7.0)</div>**Set the working directory**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Set the working directory**
 
 Working directory to run the microservice CMD in.  Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
 
@@ -297,7 +297,7 @@ WORK_DIR '/openc3/lib/openc3/microservices'
 ```
 
 ### PORT
-<div class="right">(Since 5.7.0)</div>**Open port for the microservice**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Open port for the microservice**
 
 Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
 
@@ -312,7 +312,7 @@ PORT 7272
 ```
 
 ### CMD
-<div class="right">(Since 5.7.0)</div>**Command line to execute to run the microservice.**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Command line to execute to run the microservice.**
 
 Command line to execute to run the microservice.
 
@@ -334,7 +334,7 @@ CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
 </Tabs>
 
 ### CONTAINER
-<div class="right">(Since 5.7.0)</div>**Docker Container**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Docker Container**
 
 Container to execute and run the microservice in. Only used in COSMOS Enterprise.
 
@@ -343,7 +343,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 | Args | Name of the container | False |
 
 ### ROUTE_PREFIX
-<div class="right">(Since 5.7.0)</div>**Prefix of route**
+<span class="badge badge--secondary since-right">Since 5.7.0</span>**Prefix of route**
 
 Prefix of route to the microservice to expose externally with Traefik
 
@@ -357,7 +357,7 @@ ROUTE_PREFIX /interface
 ```
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<span class="badge badge--secondary since-right">Since 6.0.0</span>**Operator shard to run target microservices on**
 
 Operator Shard. Only used if running multiple operator containers typically in Kubernetes
 
@@ -399,7 +399,7 @@ TARGET INST INST
 The following keywords must follow a TARGET keyword.
 
 ### CMD_BUFFER_DEPTH
-<div class="right">(Since 5.2.0)</div>**Number of commands to buffer to ensure logged in order**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Number of commands to buffer to ensure logged in order**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -448,7 +448,7 @@ The following keywords must follow a TARGET keyword.
 | Time | Number of seconds to keep decom command logs (default = nil = Forever) | True |
 
 ### TLM_BUFFER_DEPTH
-<div class="right">(Since 5.2.0)</div>**Number of telemetry packets to buffer to ensure logged in order**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Number of telemetry packets to buffer to ensure logged in order**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -550,7 +550,7 @@ The following keywords must follow a TARGET keyword.
 | Percentage | 0 to 100 percent (default = 30) | True |
 
 ### TARGET_MICROSERVICE
-<div class="right">(Since 5.2.0)</div>**Breaks a target microservice out into its own process.**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Breaks a target microservice out into its own process.**
 
 Can be used to give more resources to processing that is falling behind. If defined multiple times for the same type, will create multiple processes. Each process can be given specific packets to process with the PACKET keyword.
 
@@ -559,14 +559,14 @@ Can be used to give more resources to processing that is falling behind. If defi
 | Type | The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP | True |
 
 ### PACKET
-<div class="right">(Since 5.2.0)</div>**Packet Name to allocate to the current TARGET_MICROSERVICE.**
+<span class="badge badge--secondary since-right">Since 5.2.0</span>**Packet Name to allocate to the current TARGET_MICROSERVICE.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Packet Name | The packet name. Does not apply to REDUCER or CLEANUP target microservice types. | True |
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
 
 Disable ERB processing for the entire target or a set of regular expressions over its filenames
 
@@ -575,7 +575,7 @@ Disable ERB processing for the entire target or a set of regular expressions ove
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<span class="badge badge--secondary since-right">Since 6.0.0</span>**Operator shard to run target microservices on**
 
 Operator Shard. Only used if running multiple operator containers typically in Kubernetes
 
@@ -636,7 +636,7 @@ MICROSERVICE EXAMPLE openc3-example
 ```
 
 ### PORT
-<div class="right">(Since 5.0.10)</div>**Open port for the microservice**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Open port for the microservice**
 
 Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
 
@@ -728,7 +728,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 | Args | Name of the container | False |
 
 ### SECRET
-<div class="right">(Since 5.3.0)</div>**Define a secret needed by this microservice**
+<span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this microservice**
 
 Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
@@ -746,7 +746,7 @@ SECRET FILE KEY "/tmp/DATA/cert"
 ```
 
 ### ROUTE_PREFIX
-<div class="right">(Since 5.5.0)</div>**Prefix of route**
+<span class="badge badge--secondary since-right">Since 5.5.0</span>**Prefix of route**
 
 Prefix of route to the microservice to expose externally with Traefik
 
@@ -761,7 +761,7 @@ MICROSERVICE CFDP CFDP
 ```
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
 
 Disable ERB processing for the entire microservice or a set of regular expressions over its filenames
 
@@ -770,7 +770,7 @@ Disable ERB processing for the entire microservice or a set of regular expressio
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<span class="badge badge--secondary since-right">Since 6.0.0</span>**Operator shard to run target microservices on**
 
 Operator Shard. Only used if running multiple operator containers typically in Kubernetes
 
@@ -784,7 +784,7 @@ SHARD 0
 ```
 
 ### STOPPED
-<div class="right">(Since 6.2.0)</div>**Initially creates the microservice in a stopped state (not enabled)**
+<span class="badge badge--secondary since-right">Since 6.2.0</span>**Initially creates the microservice in a stopped state (not enabled)**
 
 
 Example Usage:
@@ -865,7 +865,7 @@ Whether or not the tool is shown in the Navigation menu. Should generally be tru
 | Shown | Whether or not the tool is shown.  TRUE or FALSE<br/><br/>Valid Values: <span class="values">true, false</span> | True |
 
 ### POSITION
-<div class="right">(Since 5.0.8)</div>**Position of the tool in the nav bar**
+<span class="badge badge--secondary since-right">Since 5.0.8</span>**Position of the tool in the nav bar**
 
 Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS Core tools have consecutive integer values for position.
 
@@ -874,7 +874,7 @@ Position of the tool starting at 2 (1 is reserved for Admin Console). Tools with
 | Position | Numerical position | True |
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
 
 Disable ERB processing for the entire tool or a set of regular expressions over its filenames
 
@@ -883,7 +883,7 @@ Disable ERB processing for the entire tool or a set of regular expressions over 
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ### IMPORT_MAP_ITEM
-<div class="right">(Since 6.0.0)</div>**Add an item to the import map**
+<span class="badge badge--secondary since-right">Since 6.0.0</span>**Add an item to the import map**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -909,7 +909,7 @@ WIDGET HELLOWORLD
 The following keywords must follow a WIDGET keyword.
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
 
 Disable ERB processing for the entire widget or a set of regular expressions over its filenames
 
@@ -918,7 +918,7 @@ Disable ERB processing for the entire widget or a set of regular expressions ove
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ## SCRIPT_ENGINE
-<div class="right">(Since 6.5.0)</div>**Define a script engine to add language support to Script Runner**
+<span class="badge badge--secondary since-right">Since 6.5.0</span>**Define a script engine to add language support to Script Runner**
 
 Defines a script engine to add language support to Script Runner. For a realistic example, see our [CSTOL](https://github.com/OpenC3/openc3-cosmos-script-engine-cstol) plugin.
 

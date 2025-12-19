@@ -132,13 +132,13 @@ META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**This item is allowed to overlap other items in the packet**
 
 If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the key used to access this raw value in the packet.**
 
 Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
@@ -152,7 +152,7 @@ KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks an item as having its bit size defined by another length item**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -161,7 +161,7 @@ KEY $.book.title
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### OBFUSCATE
-<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+<span class="badge badge--secondary since-right">Since 6.6.0</span>**Hides the item value in the UI, text logs, and raw binary file**
 
 
 #### REQUIRED
