@@ -27,12 +27,12 @@ find_script() {
 
 export DOCKER_COMPOSE_COMMAND="docker compose"
 ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
-if [ "$?" -ne 0 ]; then
+if [[ "$?" -ne 0 ]]; then
   export DOCKER_COMPOSE_COMMAND="docker-compose"
 fi
 
 docker info | grep -e "rootless$" -e "rootless: true"
-if [ "$?" -ne 0 ]; then
+if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
   export OPENC3_USER_ID=`id -u`
   export OPENC3_GROUP_ID=`id -g`
@@ -44,23 +44,23 @@ fi
 
 # Detect if this is a development (build) environment or runtime environment
 # by checking for compose-build.yaml
-if [ -f "$(dirname -- "$0")/compose-build.yaml" ]; then
+if [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
   export OPENC3_DEVEL=1
 else
   export OPENC3_DEVEL=0
 fi
 
 # Detect if this is enterprise by checking for enterprise-specific services
-if [ -f "$(dirname -- "$0")/compose-build.yaml" ] && grep -q "openc3-enterprise-gem" "$(dirname -- "$0")/compose-build.yaml" 2>/dev/null; then
+if [[ -f "$(dirname -- "$0")/compose-build.yaml" ]] && grep -q "openc3-enterprise-gem" "$(dirname -- "$0")/compose-build.yaml" 2>/dev/null; then
   export OPENC3_ENTERPRISE=1
-elif [ -f "$(dirname -- "$0")/compose.yaml" ] && grep -q "openc3-metrics" "$(dirname -- "$0")/compose.yaml" 2>/dev/null; then
+elif [[ -f "$(dirname -- "$0")/compose.yaml" ]] && grep -q "openc3-metrics" "$(dirname -- "$0")/compose.yaml" 2>/dev/null; then
   export OPENC3_ENTERPRISE=1
 else
   export OPENC3_ENTERPRISE=0
 fi
 
 # Set display name based on enterprise flag
-if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
   export COSMOS_NAME="COSMOS Enterprise"
 else
   export COSMOS_NAME="COSMOS Core"
@@ -69,7 +69,7 @@ fi
 set -e
 
 usage() {
-  if [ "$OPENC3_DEVEL" -eq 1 ] && [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+  if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
     cat >&2 << EOF
 OpenC3 $COSMOS_NAME - Command and Control System (Enterprise Development Installation)
 Usage: $1 COMMAND [OPTIONS]
@@ -83,7 +83,7 @@ DESCRIPTION:
 
 COMMON COMMANDS:
 EOF
-  elif [ "$OPENC3_DEVEL" -eq 1 ]; then
+  elif [[ "$OPENC3_DEVEL" -eq 1 ]]; then
     cat >&2 << EOF
 OpenC3 $COSMOS_NAME - Command and Control System (Development Installation)
 Usage: $1 COMMAND [OPTIONS]
@@ -97,7 +97,7 @@ DESCRIPTION:
 
 COMMON COMMANDS:
 EOF
-  elif [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+  elif [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
     cat >&2 << EOF
 OpenC3 $COSMOS_NAME - Command and Control System (Enterprise Runtime-Only Installation)
 Usage: $1 COMMAND [OPTIONS]
@@ -126,7 +126,7 @@ DESCRIPTION:
 COMMON COMMANDS:
 EOF
   fi
-  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+  if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
     cat >&2 << EOF
   start                 Build and run $COSMOS_NAME (equivalent to: build + run)
                         This is the typical command to get $COSMOS_NAME running.
@@ -154,7 +154,7 @@ EOF
                         Same as 'cli' but with root privileges
 
 EOF
-  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+  if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
     cat >&2 << EOF
 DEVELOPMENT COMMANDS:
   build                 Build all $COSMOS_NAME Docker containers from source
@@ -177,7 +177,7 @@ EOF
                         Use '$1 generate_compose --help' for details.
 
 EOF
-  if [ "$OPENC3_DEVEL" -eq 0 ]; then
+  if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
     cat >&2 << EOF
   upgrade               Upgrade $COSMOS_NAME to latest version
                         Downloads and installs latest release.
@@ -193,7 +193,7 @@ CLEANUP:
                           force  - Skip confirmation prompt
 
 EOF
-  if [ "$OPENC3_DEVEL" -eq 1 ]; then
+  if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
     cat >&2 << EOF
 REDHAT:
   start-ubi             Build and run with Red Hat UBI images
@@ -221,24 +221,24 @@ EOF
   exit 1
 }
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   usage $0
 fi
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   usage $0
 fi
 
 check_root() {
-  if [ "$(id -u)" -eq 0 ]; then
+  if [[ "$(id -u)" -eq 0 ]]; then
     echo "WARNING: $COSMOS_NAME should not be run as the root user, as permissions for Local Mode will be affected. Do not use sudo when running $COSMOS_NAME. See more: https://docs.openc3.com/docs/guides/local-mode"
   fi
 }
 
 case $1 in
   cli )
-    if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 cli [COMMAND] [OPTIONS]"
       echo ""
       echo "Run $COSMOS_NAME CLI commands inside a Docker container as the default user."
@@ -282,15 +282,15 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     # Shift off the first argument (script name) to get CLI args
     shift
-    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
   cliroot )
-    if [ "$2" == "--wrapper-help" ] || [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 cliroot [COMMAND] [OPTIONS]"
       echo ""
       echo "Run $COSMOS_NAME CLI commands inside a Docker container as root user."
@@ -333,16 +333,16 @@ case $1 in
     # (enterprise or non-enterprise) based on environment variables.
     # Shift off the first argument (script name) to get CLI args
     shift
-    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
   start )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
         echo "Usage: $0 start"
         echo ""
         echo "Build and run $COSMOS_NAME containers."
@@ -365,7 +365,7 @@ case $1 in
       fi
       exit 0
     fi
-    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
       "$0" build
       "$0" run
     else
@@ -373,8 +373,8 @@ case $1 in
     fi
     ;;
   start-ubi )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
-      if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
         echo "Usage: $0 start-ubi"
         echo ""
         echo "Build and run $COSMOS_NAME UBI containers."
@@ -397,7 +397,7 @@ case $1 in
       fi
       exit 0
     fi
-    if [ "$OPENC3_DEVEL" -eq 1 ]; then
+    if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
       "$0" build-ubi
       "$0" run-ubi
     else
@@ -405,12 +405,12 @@ case $1 in
     fi
     ;;
   stop )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 stop"
       echo ""
       echo "Stop all $COSMOS_NAME containers gracefully."
       echo ""
-      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "This command:"
         echo "  1. Stops operator, script-runner-api, cmd-tlm-api, and metrics containers"
         echo "  2. Waits 5 seconds"
@@ -429,14 +429,14 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
-    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
     fi
     sleep 5
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
   cleanup )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 cleanup [local] [force]"
       echo ""
       echo "Remove all $COSMOS_NAME docker volumes and data."
@@ -458,7 +458,7 @@ case $1 in
       exit 0
     fi
     # They can specify 'cleanup force' or 'cleanup local force'
-    if [ "$2" == "force" ] || [ "$3" == "force" ]
+    if [[ "$2" == "force" ]] || [[ "$3" == "force" ]]
     then
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
     else
@@ -470,25 +470,24 @@ case $1 in
         esac
       done
     fi
-    if [ "$2" == "local" ]
-    then
+    if [[ "$2" == "local" ]]; then
       cd "$(dirname -- "$0")/plugins/DEFAULT"
       ls | grep -xv "README.md" | xargs rm -r
       cd ../..
     fi
     ;;
   build )
-    if [ "$OPENC3_DEVEL" -eq 0 ]; then
-      echo "Error: 'build' command is only available in development environments"
-      echo "This appears to be a runtime-only installation."
+    if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
+      echo "Error: 'build' command is only available in development environments" >&2
+      echo "This appears to be a runtime-only installation." >&2
       exit 1
     fi
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 build"
       echo ""
       echo "Build all $COSMOS_NAME docker containers."
       echo ""
-      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "This command:"
         echo "  1. Runs setup to download certificates"
         echo "  2. Builds openc3-enterprise-gem image"
@@ -512,7 +511,7 @@ case $1 in
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
-    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-enterprise-gem
     else
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
@@ -522,12 +521,12 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     ;;
   build-ubi )
-    if [ "$OPENC3_DEVEL" -eq 0 ]; then
-      echo "Error: 'build-ubi' command is only available in development environments"
-      echo "This appears to be a runtime-only installation."
+    if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
+      echo "Error: 'build-ubi' command is only available in development environments" >&2
+      echo "This appears to be a runtime-only installation." >&2
       exit 1
     fi
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 build-ubi [IMAGE_NAME...]"
       echo ""
       echo "Build $COSMOS_NAME UBI (Universal Base Image) containers."
@@ -582,7 +581,7 @@ case $1 in
     set +a
     ;;
   run )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 run"
       echo ""
       echo "Run all $COSMOS_NAME containers in detached mode."
@@ -612,7 +611,7 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 run-ubi"
       echo ""
       echo "Run all $COSMOS_NAME UBI (Universal Base Image) containers in detached mode."
@@ -647,7 +646,7 @@ case $1 in
     ;;
   test )
     # Check for help at any position
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]] || [[ "$#" -eq 1 ]]; then
       echo "Usage: $0 test COMMAND [OPTIONS]"
       echo ""
       echo "Test $COSMOS_NAME. This builds $COSMOS_NAME and runs the specified test suite."
@@ -669,7 +668,7 @@ case $1 in
     fi
     # If subcommand has --help or -h, skip setup/build and pass through directly
     for arg in "$@"; do
-      if [ "$arg" == "--help" ] || [ "$arg" == "-h" ]; then
+      if [[ "$arg" == "--help" ]] || [[ "$arg" == "-h" ]]; then
         "$(find_script openc3_test.sh)" "${@:2}"
         exit 0
       fi
@@ -681,20 +680,20 @@ case $1 in
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   upgrade )
-    if [ "$OPENC3_DEVEL" -eq 1 ]; then
-      echo "Error: 'upgrade' command is only available in runtime environments"
-      echo "This appears to be a development installation."
+    if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
+      echo "Error: 'upgrade' command is only available in runtime environments" >&2
+      echo "This appears to be a development installation." >&2
       exit 1
     fi
     "$(find_script openc3_upgrade.sh)" "${@:2}"
     ;;
   generate_compose )
-    if [ "$OPENC3_DEVEL" -eq 0 ]; then
-      echo "Error: 'generate_command' command is only available in development environments"
-      echo "This appears to be a runtime-only installation."
+    if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
+      echo "Error: 'generate_command' command is only available in development environments" >&2
+      echo "This appears to be a runtime-only installation." >&2
       exit 1
     fi
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 generate_compose [OPTIONS]"
       echo ""
       echo "Generate compose.yaml from template and mode-specific overrides."
@@ -704,7 +703,7 @@ case $1 in
       echo "configuration stays in sync while allowing edition-specific customizations."
       echo ""
       echo "Files used:"
-      if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+      if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "  - Template:  ../cosmos/compose.yaml.template"
         echo "  - Overrides: ./compose.enterprise.yaml"
         echo "  - Output:    ./compose.yaml"
@@ -745,16 +744,16 @@ case $1 in
     fi
 
     # Detect mode based on OPENC3_ENTERPRISE
-    if [ "$OPENC3_ENTERPRISE" -eq 1 ]; then
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ];] then
       MODE="enterprise"
       # Enterprise uses the template from core repo
       SCRIPT_DIR="$(cd "$(dirname -- "$0")" && pwd)"
-      if [ -f "$SCRIPT_DIR/../cosmos/scripts/release/generate_compose.py" ]; then
+      if [[ -f "$SCRIPT_DIR/../cosmos/scripts/release/generate_compose.py" ]]; then
         GENERATOR="$SCRIPT_DIR/../cosmos/scripts/release/generate_compose.py"
         TEMPLATE="$SCRIPT_DIR/../cosmos/compose.yaml.template"
       else
-        echo "Error: Cannot find generate_compose.py in ../cosmos/scripts/release/"
-        echo "Make sure the cosmos repository is checked out in the parent directory."
+        echo "Error: Cannot find generate_compose.py in ../cosmos/scripts/release/" >&2
+        echo "Make sure the cosmos repository is checked out in the parent directory." >&2
         exit 1
       fi
     else
@@ -765,8 +764,8 @@ case $1 in
 
     # Check if Python 3 is available
     if ! command -v python3 &> /dev/null; then
-      echo "Error: python3 is required but not found"
-      echo "Please install Python 3 to use this command"
+      echo "Error: python3 is required but not found" >&2
+      echo "Please install Python 3 to use this command" >&2
       exit 1
     fi
 
@@ -776,8 +775,8 @@ case $1 in
       if python3 -m pip install --user pyyaml &> /dev/null; then
         echo "✓ PyYAML installed successfully"
       else
-        echo "Error: Failed to install PyYAML automatically"
-        echo "Please install it manually with: pip install pyyaml"
+        echo "Error: Failed to install PyYAML automatically" >&2
+        echo "Please install it manually with: pip install pyyaml" >&2
         exit 1
       fi
     fi
@@ -786,13 +785,13 @@ case $1 in
     ARGS="--mode $MODE"
 
     # Add template path for enterprise
-    if [ -n "$TEMPLATE" ]; then
+    if [[ -n "$TEMPLATE" ]]; then
       ARGS="$ARGS --template $TEMPLATE"
     fi
 
     # Pass through any additional arguments (like --dry-run, --output)
     shift  # Remove 'generate_compose' from args
-    if [ $# -gt 0 ]; then
+    if [[ $# -gt 0 ]]; then
       ARGS="$ARGS $@"
     fi
 
@@ -800,7 +799,7 @@ case $1 in
     python3 "$GENERATOR" $ARGS
     ;;
   util )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ] || [ "$#" -eq 1 ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]] || [[ "$#" -eq 1 ]]; then
       echo "Usage: $0 util COMMAND [OPTIONS]"
       echo ""
       echo "Various $COSMOS_NAME utility commands."
