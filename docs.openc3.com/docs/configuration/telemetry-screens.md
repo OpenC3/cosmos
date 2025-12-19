@@ -571,6 +571,20 @@ END
 ![SPACER](/img/telemetry_viewer/widgets/spacer.png)
 
 
+### FILEDISPLAY
+<span class="badge badge--secondary since-right">Since 6.10.3</span>**Displays the contents of a target file with syntax highlighting**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| File path | Path to the file relative to the target folder (e.g. "INST/procedures/file.rb") | True |
+| Width | Width of the widget in pixels (default = 600) | False |
+| Height | Height of the widget in pixels (default = 300) | False |
+
+Example Usage:
+```ruby
+FILEDISPLAY "INST/data/sample.json" 400 200
+```
+
 ## Telemetry Widgets
 ****
 
