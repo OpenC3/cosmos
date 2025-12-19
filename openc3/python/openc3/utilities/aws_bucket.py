@@ -18,6 +18,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, WaiterError
 from openc3.utilities.bucket import Bucket
+from openc3.utilities.logger import Logger
 from openc3.environment import *
 import time
 
@@ -40,6 +41,7 @@ else:  # AWS
     s3_endpoint_url = f"https://s3.{AWS_REGION}.amazonaws.com"
     s3_session = boto3.session.Session(region_name=AWS_REGION)
 
+
 class AwsBucket(Bucket):
     CREATE_CHECK_COUNT = 100  # 10 seconds
 
@@ -47,15 +49,6 @@ class AwsBucket(Bucket):
         # Check whether the session is a real Session or a MockS3
         # print(f"\nAwsBucket INIT session:{s3_session}\n")
         self.client = s3_session.client("s3", endpoint_url=s3_endpoint_url, config=s3_config)
-        # Checksums are supported by real AWS S3 but may not be supported by
-        # S3-compatible backends like versitygw or minio. Auto-detect based on
-        # whether a custom endpoint is configured. Can be overridden with ENV var.
-        if os.environ.get("OPENC3_NO_S3_CHECKSUM") is not None:
-            # Empty string means use checksum, any value means don't
-            self.use_checksum = os.environ.get("OPENC3_NO_S3_CHECKSUM") == ""
-        else:
-            # If OPENC3_BUCKET_URL is set or OPENC3_CLOUD is local, we're using a non-AWS S3 backend
-            self.use_checksum = not OPENC3_BUCKET_URL and OPENC3_CLOUD != "local"
 
     def create(self, bucket):
         if not self.exist(bucket):
@@ -115,12 +108,9 @@ class AwsBucket(Bucket):
 }"""
             )
             try:
-                kw_args = {"Bucket": bucket, "Policy": policy}
-                if self.use_checksum:
-                    kw_args["ChecksumAlgorithm"] = "SHA256"
-                self.client.put_bucket_policy(**kw_args)
+                self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
             except ClientError as e:
-                LOGGER.warning(f"put_bucket_policy not supported by S3 backend: {e}")
+                Logger.warn(f"put_bucket_policy not supported by S3 backend: {e}")
 
     def exist(self, bucket):
         try:
@@ -163,8 +153,8 @@ class AwsBucket(Bucket):
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             # Array  of objects with key and size methods
             return result
-        except ClientError:
-            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.") from exc
 
     # Lists the files under a specified path
     def list_files(self, bucket, path, only_directories=False, metadata=False):
@@ -209,15 +199,15 @@ class AwsBucket(Bucket):
                     break
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             return result
-        except ClientError:
-            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.") from exc
 
     # get metadata for a specific object
     def head_object(self, bucket, key):
         try:
             return self.client.head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.") from exc
 
     # put_object fires off the request to store but does not confirm
     def put_object(self, bucket, key, body, content_type=None, cache_control=None, metadata=None):
@@ -225,9 +215,8 @@ class AwsBucket(Bucket):
             "Bucket": bucket,
             "Key": key,
             "Body": body,
+            "ChecksumAlgorithm": "SHA256",
         }
-        if self.use_checksum:
-            kw_args["ChecksumAlgorithm"] = "SHA256"
         if content_type:
             kw_args["ContentType"] = content_type
         if cache_control:
