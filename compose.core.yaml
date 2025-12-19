@@ -93,8 +93,5 @@ INIT_CI_ENV: |2
         # straight to the container and doesn't complain if CI is not set
         CI: "${CI:-}"
 
-# No enterprise-only services
-ENTERPRISE_ONLY_SERVICES: ""
-
 # No enterprise volumes
 ENTERPRISE_VOLUMES: ""

@@ -32,6 +32,7 @@ except ImportError:
 
 # Constant for placeholder pattern
 PLACEHOLDER_PATTERN = r"\{\{(\w+)\}\}"
+TEMPLATE_FILENAME = "compose.yaml.template"
 
 
 def load_yaml_file(filepath: Path) -> Dict[str, Any]:
@@ -223,7 +224,18 @@ def main():
     if args.template:
         template_path = Path(args.template)
     else:
-        template_path = current_dir / "compose.yaml.template"
+        # Auto-detect template location based on mode
+        if args.mode == "enterprise":
+            # Enterprise mode: try ../cosmos/compose.yaml.template first
+            enterprise_template = current_dir.parent / "cosmos" / TEMPLATE_FILENAME
+            if enterprise_template.exists():
+                template_path = enterprise_template
+            else:
+                # Fallback to local template (shouldn't exist, but check anyway)
+                template_path = current_dir / TEMPLATE_FILENAME
+        else:
+            # Core mode: use local template
+            template_path = current_dir / TEMPLATE_FILENAME
 
     if args.overrides:
         overrides_path = Path(args.overrides)

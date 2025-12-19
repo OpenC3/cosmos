@@ -5,11 +5,13 @@ This document describes the template-based system for generating `compose.yaml` 
 ## Overview
 
 The compose file generation system uses:
+
 - **Single source of truth**: `compose.yaml.template` in the core repository
 - **Mode-specific overrides**: `compose.core.yaml` and `compose.enterprise.yaml`
 - **Generator script**: `scripts/release/generate_compose.py`
 
 This approach ensures:
+
 - Core maintains the authoritative compose structure
 - Enterprise only specifies differences/additions
 - Minimal maintenance in enterprise repository
@@ -47,7 +49,7 @@ compose.yaml (enterprise edition)
 Placeholders in the template use double curly braces:
 
 ```yaml
-{{PLACEHOLDER_NAME}}
+{ { PLACEHOLDER_NAME } }
 ```
 
 ### Rules
@@ -68,6 +70,7 @@ PLACEHOLDER_NAME: |2
 ```
 
 The `|2` means:
+
 - `|` = literal block scalar (preserves newlines)
 - `2` = strip 2 spaces of indentation from each line
 
@@ -75,57 +78,56 @@ The `|2` means:
 
 ### Image Configuration
 
-| Placeholder | Purpose | Core Value | Enterprise Value |
-|-------------|---------|------------|------------------|
-| `LICENSE_HEADER` | File license header | AGPL license | Commercial license |
-| `REGISTRY_VAR` | Registry env var name | `OPENC3_REGISTRY` | `OPENC3_ENTERPRISE_REGISTRY` |
-| `NAMESPACE_VAR` | Namespace env var name | `OPENC3_NAMESPACE` | `OPENC3_ENTERPRISE_NAMESPACE` |
-| `TAG_VAR` | Tag env var name | `OPENC3_TAG` | `OPENC3_ENTERPRISE_TAG` |
-| `IMAGE_PREFIX` | Docker image prefix | `openc3-` | `openc3-enterprise-` |
+| Placeholder      | Purpose                | Core Value         | Enterprise Value              |
+| ---------------- | ---------------------- | ------------------ | ----------------------------- |
+| `LICENSE_HEADER` | File license header    | AGPL license       | Commercial license            |
+| `REGISTRY_VAR`   | Registry env var name  | `OPENC3_REGISTRY`  | `OPENC3_ENTERPRISE_REGISTRY`  |
+| `NAMESPACE_VAR`  | Namespace env var name | `OPENC3_NAMESPACE` | `OPENC3_ENTERPRISE_NAMESPACE` |
+| `TAG_VAR`        | Tag env var name       | `OPENC3_TAG`       | `OPENC3_ENTERPRISE_TAG`       |
+| `IMAGE_PREFIX`   | Docker image prefix    | `openc3-`          | `openc3-enterprise-`          |
 
 ### Directory Names
 
-| Placeholder | Purpose | Core Value | Enterprise Value |
-|-------------|---------|------------|------------------|
-| `REDIS_DIR` | Redis config directory | `openc3-redis` | `openc3-enterprise-redis` |
+| Placeholder   | Purpose                  | Core Value       | Enterprise Value            |
+| ------------- | ------------------------ | ---------------- | --------------------------- |
+| `REDIS_DIR`   | Redis config directory   | `openc3-redis`   | `openc3-enterprise-redis`   |
 | `TRAEFIK_DIR` | Traefik config directory | `openc3-traefik` | `openc3-enterprise-traefik` |
 
 ### Service-Specific Images
 
-| Placeholder | Purpose | Core Value | Enterprise Value |
-|-------------|---------|------------|------------------|
-| `CMD_TLM_API_IMAGE` | Command/Telemetry API image | `openc3-cosmos-cmd-tlm-api` | `openc3-cosmos-enterprise-cmd-tlm-api` |
-| `SCRIPT_RUNNER_API_IMAGE` | Script Runner API image | `openc3-cosmos-script-runner-api` | `openc3-cosmos-enterprise-script-runner-api` |
-| `COSMOS_INIT_IMAGE` | Initialization service image | `openc3-cosmos-init` | `openc3-cosmos-enterprise-init` |
+| Placeholder               | Purpose                      | Core Value                        | Enterprise Value                             |
+| ------------------------- | ---------------------------- | --------------------------------- | -------------------------------------------- |
+| `CMD_TLM_API_IMAGE`       | Command/Telemetry API image  | `openc3-cosmos-cmd-tlm-api`       | `openc3-cosmos-enterprise-cmd-tlm-api`       |
+| `SCRIPT_RUNNER_API_IMAGE` | Script Runner API image      | `openc3-cosmos-script-runner-api` | `openc3-cosmos-enterprise-script-runner-api` |
+| `COSMOS_INIT_IMAGE`       | Initialization service image | `openc3-cosmos-init`              | `openc3-cosmos-enterprise-init`              |
 
 ### Environment Configuration
 
-| Placeholder | Purpose | Core Value | Enterprise Value |
-|-------------|---------|------------|------------------|
-| `ENV_FILE` | Environment file path | `.env` | `".env"` (quoted) |
+| Placeholder | Purpose               | Core Value | Enterprise Value  |
+| ----------- | --------------------- | ---------- | ----------------- |
+| `ENV_FILE`  | Environment file path | `.env`     | `".env"` (quoted) |
 
 ### Service Customization
 
-| Placeholder | Purpose | Type | Core Value | Enterprise Value |
-|-------------|---------|------|------------|------------------|
-| `MINIO_PORTS` | MinIO port mappings | Optional | Commented ports | Empty (no ports) |
-| `CMD_TLM_API_SERVICE_PASSWORD` | Service password env var | Optional | Set with env var | Empty |
-| `CMD_TLM_API_EXTRA_HOSTS` | Extra hosts config | Optional | `host.docker.internal` | Empty |
-| `SCRIPT_RUNNER_API_SERVICE_PASSWORD` | Service password env var | Optional | Set with env var | Empty |
-| `OPERATOR_PORTS` | Operator port mappings | Optional | Commented ports | Empty |
-| `OPERATOR_VOLUME_COMMENTS` | Operator volume examples | Optional | Commented volumes | Commented volumes |
-| `OPERATOR_CI_ENV` | CI environment variable | Optional | Set with CI var | Empty |
-| `OPERATOR_SERVICE_PASSWORD` | Service password env var | Optional | Set with env var | Empty |
-| `OPERATOR_COMMAND` | Operator command override | Optional | Empty (default cmd) | Ruby microservice operator |
-| `INIT_CI_ENV` | CI environment variable | Optional | Set with CI var | Empty |
+| Placeholder                          | Purpose                   | Type     | Core Value             | Enterprise Value           |
+| ------------------------------------ | ------------------------- | -------- | ---------------------- | -------------------------- |
+| `MINIO_PORTS`                        | MinIO port mappings       | Optional | Commented ports        | Empty (no ports)           |
+| `CMD_TLM_API_SERVICE_PASSWORD`       | Service password env var  | Optional | Set with env var       | Empty                      |
+| `CMD_TLM_API_EXTRA_HOSTS`            | Extra hosts config        | Optional | `host.docker.internal` | Empty                      |
+| `SCRIPT_RUNNER_API_SERVICE_PASSWORD` | Service password env var  | Optional | Set with env var       | Empty                      |
+| `OPERATOR_PORTS`                     | Operator port mappings    | Optional | Commented ports        | Empty                      |
+| `OPERATOR_VOLUME_COMMENTS`           | Operator volume examples  | Optional | Commented volumes      | Commented volumes          |
+| `OPERATOR_CI_ENV`                    | CI environment variable   | Optional | Set with CI var        | Empty                      |
+| `OPERATOR_SERVICE_PASSWORD`          | Service password env var  | Optional | Set with env var       | Empty                      |
+| `OPERATOR_COMMAND`                   | Operator command override | Optional | Empty (default cmd)    | Ruby microservice operator |
+| `INIT_CI_ENV`                        | CI environment variable   | Optional | Set with CI var        | Empty                      |
 
 ### Mode-Specific Services
 
-| Placeholder | Purpose | Type | Core Value | Enterprise Value |
-|-------------|---------|------|------------|------------------|
-| `ENTERPRISE_SERVICES` | Additional services for enterprise | Required | Empty | `openc3-metrics` service definition |
-| `ENTERPRISE_ONLY_SERVICES` | Enterprise-exclusive services | Required | Empty | PostgreSQL, Keycloak, Grafana services |
-| `ENTERPRISE_VOLUMES` | Enterprise-specific volumes | Required | Empty | PostgreSQL and Grafana volumes |
+| Placeholder           | Purpose                          | Type     | Core Value | Enterprise Value                                                                                      |
+| --------------------- | -------------------------------- | -------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| `ENTERPRISE_SERVICES` | All enterprise-specific services | Required | Empty      | All 4 enterprise services: `openc3-metrics`, `openc3-postgresql`, `openc3-keycloak`, `openc3-grafana` |
+| `ENTERPRISE_VOLUMES`  | Enterprise-specific volumes      | Required | Empty      | PostgreSQL and Grafana volumes                                                                        |
 
 ## Placeholder Categories
 
@@ -159,6 +161,7 @@ cd /path/to/cosmos
 ```
 
 This generates `compose.yaml` using:
+
 - Template: `./compose.yaml.template`
 - Overrides: `./compose.core.yaml`
 
@@ -170,6 +173,7 @@ cd /path/to/cosmos-enterprise
 ```
 
 This generates `compose.yaml` using:
+
 - Template: `../cosmos/compose.yaml.template`
 - Overrides: `./compose.enterprise.yaml`
 
@@ -349,30 +353,36 @@ OPERATOR_NEW_ENV: |2
 **Template change** (`compose.yaml.template`):
 
 ```yaml
-{{ENTERPRISE_ONLY_SERVICES}}
+{{ENTERPRISE_SERVICES}}
 volumes:
 ```
 
 **Core override** (`compose.core.yaml`):
 
 ```yaml
-ENTERPRISE_ONLY_SERVICES: ""
+ENTERPRISE_SERVICES: ""
 ```
 
 **Enterprise override** (`compose.enterprise.yaml`):
 
 ```yaml
-ENTERPRISE_ONLY_SERVICES: |2
+ENTERPRISE_SERVICES: |2
+  openc3-metrics:
+    # ... existing metrics service ...
+
+  openc3-postgresql:
+    # ... existing postgresql service ...
+
+  openc3-keycloak:
+    # ... existing keycloak service ...
+
+  openc3-grafana:
+    # ... existing grafana service ...
+
   openc3-new-service:
     image: "${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-enterprise-new-service:${OPENC3_ENTERPRISE_TAG}"
     restart: "unless-stopped"
 ```
-
-## Version History
-
-- **v1.0** (2025-01-XX): Initial template system with placeholder-based generation
-- Added validation with `--validate` and `--no-validate` flags
-- Integrated with `openc3.sh util compose` command
 
 ## Related Files
 

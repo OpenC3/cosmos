@@ -155,7 +155,6 @@ services:
     env_file:
       - {{ENV_FILE}}
 
-{{ENTERPRISE_SERVICES}}
   openc3-operator:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${{{REGISTRY_VAR}}}/${{{NAMESPACE_VAR}}}/{{IMAGE_PREFIX}}operator${OPENC3_IMAGE_SUFFIX}:${{{TAG_VAR}}}"
@@ -246,7 +245,7 @@ services:
     env_file:
       - {{ENV_FILE}}
 
-{{ENTERPRISE_ONLY_SERVICES}}
+{{ENTERPRISE_SERVICES}}
 volumes:
   # openc3-tsdb-v: {}
   openc3-redis-v: {}
