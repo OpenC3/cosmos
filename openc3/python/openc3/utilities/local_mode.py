@@ -56,14 +56,13 @@ class LocalMode:
         if not os.path.normpath(full_folder_path).startswith(cls.LOCAL_MODE_PATH):
             return
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
-        flags = "w"
-        if isinstance(io_or_string, (bytes, bytearray)):
-            flags += "b"
-        with open(full_folder_path, flags) as file:
+        with open(full_folder_path, "wb") as file:
             if hasattr(io_or_string, "read"):
                 data = io_or_string.read()
-            else:  # str or bytes
+            else:
                 data = io_or_string
+            if isinstance(data, str):
+                data = data.encode('utf-8')
             file.write(data)
 
     @classmethod
