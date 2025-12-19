@@ -744,7 +744,7 @@ case $1 in
     fi
 
     # Detect mode based on OPENC3_ENTERPRISE
-    if [[ "$OPENC3_ENTERPRISE" -eq 1 ];] then
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       MODE="enterprise"
       # Enterprise uses the template from core repo
       SCRIPT_DIR="$(cd "$(dirname -- "$0")" && pwd)"
