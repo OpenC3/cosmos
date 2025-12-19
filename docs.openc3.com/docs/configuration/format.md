@@ -56,7 +56,7 @@ COSMOS uses ERB syntax extensively in a Plugin's [plugin.txt](plugins.md#plugint
 
 ### target_name
 
-Any of the COSMOS configuration files can use the ERB variable `target_name` to refer to the actual name of the target. This allows you to use target name substition in your plugin.txt and then use the correct values throughout your target files (procedures, libraries, etc). This variable is resolved at plugin _install_ time and then remains constant.
+Any of the COSMOS configuration files can use the ERB variable `target_name` to refer to the actual name of the target. This allows you to use target name substitution in your plugin.txt and then use the correct values throughout your target files (procedures, libraries, etc). This variable is resolved at plugin _install_ time and then remains constant.
 
 For example, you have a target definition in the `targets/KEYSIGHT_N6700` directory but you have 3 physical power supplies you want to control. Your plugin.txt might look like the following:
 
