@@ -283,5 +283,6 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-s3-v: {}
+  openc3-s3-v:
+    external: true
   openc3-gems-v: {}

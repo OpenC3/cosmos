@@ -1,18 +1,19 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_VERSION=3.22
-ARG ALPINE_BUILD=0
-ARG OPENC3_VERSITYGW_VERSION=v1.0.20
+ARG ALPINE_BUILD=2
+ARG OPENC3_VERSITYGW_VERSION=1.0.20
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 
 ARG OPENC3_VERSITYGW_VERSION
+ARG TARGETARCH
 
-# Copy both architecture tarballs and install script
-# Tarball naming: versitygw_${VERSION}_Linux_${ARCH}.tar.gz
-# Tarball structure: versitygw_${VERSION}_Linux_${ARCH}/versitygw
-COPY versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_*.tar.gz /tmp/
-COPY versitygw_install.sh /tmp/
-RUN chmod +x /tmp/versitygw_install.sh && /tmp/versitygw_install.sh
+# Copy and extract versitygw binary from local tar.gz files
+COPY versitygw_${OPENC3_VERSITYGW_VERSION}_linux_*.tar.gz /tmp/
+RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") && \
+    tar xzf /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_linux_${ARCH}.tar.gz -C /usr/local/bin versitygw && \
+    chmod +x /usr/local/bin/versitygw && \
+    rm -f /tmp/versitygw_*.tar.gz
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem

@@ -9,13 +9,12 @@
 #
 # Prerequisites:
 # - MINIO (openc3-minio) must be running
-# - mc (MINIO client) must be installed
 # - Docker must be running
+# - openc3-cosmos-init image must be built (contains mc)
 
 set -e
 
 # Configuration
-MINIO_URL="${OPENC3_BUCKET_URL:-http://localhost:9000}"
 MINIO_USER="${OPENC3_BUCKET_USERNAME:-openc3minio}"
 MINIO_PASS="${OPENC3_BUCKET_PASSWORD:-openc3miniopassword}"
 VERSITY_PORT="9002"
@@ -29,6 +28,34 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Auto-detect Docker network and MINIO container
+detect_docker_environment() {
+    # Find the MINIO container first (look for minio in the name)
+    MINIO_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i minio | head -1)
+    if [ -z "$MINIO_CONTAINER" ]; then
+        echo -e "${RED}Error: Could not find running MINIO container${NC}"
+        echo "Make sure COSMOS is running: ./openc3.sh run"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Found MINIO container: ${MINIO_CONTAINER}${NC}"
+
+    # Get the network that the MINIO container is connected to
+    DOCKER_NETWORK=$(docker inspect --format '{{range $net, $config := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}' "$MINIO_CONTAINER" | grep -v '^$' | head -1)
+    if [ -z "$DOCKER_NETWORK" ]; then
+        echo -e "${RED}Error: Could not determine network for MINIO container${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Found Docker network: ${DOCKER_NETWORK}${NC}"
+
+    # Get the service name from container labels (works with docker compose)
+    MINIO_SERVICE=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$MINIO_CONTAINER" 2>/dev/null)
+    if [ -z "$MINIO_SERVICE" ]; then
+        # Fallback: use container name
+        MINIO_SERVICE="$MINIO_CONTAINER"
+    fi
+    echo -e "${GREEN}✓ MINIO service name: ${MINIO_SERVICE}${NC}"
+}
 
 usage() {
     echo "Usage: $0 [start|migrate|status|cleanup|help]"
@@ -56,24 +83,49 @@ usage() {
     exit 0
 }
 
-check_mc() {
-    if ! command -v mc &> /dev/null; then
-        echo -e "${RED}Error: mc (MINIO client) is not installed${NC}"
+# Docker image containing mc
+MC_IMAGE="openc3inc/openc3-cosmos-init:latest"
+
+# Run mc commands via docker (must call detect_docker_environment first)
+run_mc() {
+    docker run --rm \
+        --network "${DOCKER_NETWORK}" \
+        -e "MC_HOST_openc3minio=http://${MINIO_USER}:${MINIO_PASS}@${MINIO_SERVICE}:9000" \
+        -e "MC_HOST_openc3s3=http://${MINIO_USER}:${MINIO_PASS}@openc3-s3-migration:9000" \
+        "${MC_IMAGE}" \
+        mc "$@"
+}
+
+check_mc_image() {
+    if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "openc3inc/openc3-cosmos-init:latest"; then
+        echo -e "${RED}Error: openc3-cosmos-init image not found${NC}"
         echo ""
-        echo "Install mc:"
-        echo "  macOS:  brew install minio/stable/mc"
-        echo "  Linux:  wget https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && sudo mv mc /usr/local/bin/"
+        echo "Build the image first:"
+        echo "  ./openc3.sh build"
         exit 1
     fi
 }
 
 check_minio_running() {
-    if ! curl -sf "${MINIO_URL}/minio/health/live" > /dev/null 2>&1; then
-        echo -e "${RED}Error: MINIO is not running at ${MINIO_URL}${NC}"
-        echo "Start MINIO first with: ./openc3.sh run"
-        exit 1
-    fi
-    echo -e "${GREEN}✓ MINIO is running at ${MINIO_URL}${NC}"
+    # Run health check from inside the Docker network
+    # Try service name first, then container name as fallback
+    # Accept any HTTP response (including 403) as "running"
+    echo "Checking MINIO connectivity..."
+
+    for host in "${MINIO_SERVICE}" "${MINIO_CONTAINER}"; do
+        HTTP_CODE=$(docker run --rm --network "${DOCKER_NETWORK}" "${MC_IMAGE}" \
+            curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://${host}:9000/" 2>/dev/null)
+        if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            echo -e "${GREEN}✓ MINIO is reachable at ${host}:9000 (HTTP ${HTTP_CODE})${NC}"
+            MINIO_SERVICE="${host}"
+            return 0
+        fi
+    done
+
+    echo -e "${RED}Error: MINIO is not responding${NC}"
+    echo "Tried: ${MINIO_SERVICE}:9000 and ${MINIO_CONTAINER}:9000"
+    echo "Make sure COSMOS is running: ./openc3.sh run"
+    exit 1
 }
 
 start_versitygw() {
@@ -110,18 +162,19 @@ start_versitygw() {
     echo "Starting versitygw on port ${VERSITY_PORT}..."
     docker run -d \
         --name openc3-s3-migration \
-        --network openc3-cosmos-network \
+        --network "${DOCKER_NETWORK}" \
         -p "${VERSITY_PORT}:9000" \
         -v "${NEW_VOLUME}:/data" \
         -e "ROOT_ACCESS_KEY=${MINIO_USER}" \
         -e "ROOT_SECRET_KEY=${MINIO_PASS}" \
         openc3inc/openc3-s3:latest
 
-    # Wait for versitygw to be ready
+    # Wait for versitygw to be ready (403 is expected for unauthenticated requests)
     echo "Waiting for versitygw to be ready..."
     for i in {1..30}; do
-        if curl -sf "${VERSITY_URL}/" > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ versitygw is ready at ${VERSITY_URL}${NC}"
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${VERSITY_URL}/" 2>/dev/null)
+        if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            echo -e "${GREEN}✓ versitygw is ready at ${VERSITY_URL} (HTTP ${HTTP_CODE})${NC}"
             return 0
         fi
         sleep 1
@@ -132,18 +185,6 @@ start_versitygw() {
     exit 1
 }
 
-configure_mc() {
-    echo "Configuring mc aliases..."
-
-    # Configure MINIO alias
-    mc alias set openc3-minio "${MINIO_URL}" "${MINIO_USER}" "${MINIO_PASS}" --api S3v4 2>/dev/null || true
-    echo -e "${GREEN}✓ Configured openc3-minio alias${NC}"
-
-    # Configure versitygw alias
-    mc alias set openc3-s3 "${VERSITY_URL}" "${MINIO_USER}" "${MINIO_PASS}" --api S3v4 2>/dev/null || true
-    echo -e "${GREEN}✓ Configured openc3-s3 alias${NC}"
-}
-
 migrate_data() {
     echo ""
     echo "=========================================="
@@ -151,7 +192,7 @@ migrate_data() {
     echo "=========================================="
     echo ""
 
-    check_mc
+    check_mc_image
     check_minio_running
 
     # Check if versitygw migration container is running
@@ -161,16 +202,14 @@ migrate_data() {
         exit 1
     fi
 
-    configure_mc
-
     # List buckets in MINIO
     echo ""
     echo "Buckets in MINIO:"
-    mc ls openc3-minio/
+    run_mc ls openc3minio/
     echo ""
 
     # Get list of buckets
-    BUCKETS=$(mc ls openc3-minio/ --json 2>/dev/null | grep -o '"key":"[^"]*"' | cut -d'"' -f4 | tr -d '/')
+    BUCKETS=$(run_mc ls openc3minio/ --json 2>/dev/null | grep -o '"key":"[^"]*"' | cut -d'"' -f4 | tr -d '/')
 
     if [ -z "$BUCKETS" ]; then
         echo -e "${YELLOW}No buckets found in MINIO${NC}"
@@ -183,17 +222,26 @@ migrate_data() {
         echo -e "${YELLOW}Processing bucket: ${bucket}${NC}"
 
         # Create bucket in versitygw if it doesn't exist
-        if ! mc ls "openc3-s3/${bucket}" > /dev/null 2>&1; then
+        if ! run_mc ls "openc3s3/${bucket}" > /dev/null 2>&1; then
             echo "  Creating bucket: ${bucket}"
-            mc mb "openc3-s3/${bucket}" || true
+            run_mc mb "openc3s3/${bucket}" || true
         fi
 
         # Mirror data
         echo "  Mirroring data..."
-        mc mirror --preserve --overwrite "openc3-minio/${bucket}" "openc3-s3/${bucket}"
+        run_mc mirror --preserve --overwrite "openc3minio/${bucket}" "openc3s3/${bucket}"
 
         echo -e "${GREEN}  ✓ Bucket ${bucket} migrated${NC}"
     done
+
+    # Fix permissions on the new volume to match the host user ID
+    # The openc3.sh script sets OPENC3_USER_ID to `id -u` for rootful Docker
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    echo ""
+    echo "Fixing permissions on ${NEW_VOLUME} for host user ${HOST_UID}:${HOST_GID}..."
+    docker run --rm -v "${NEW_VOLUME}:/data" alpine chown -R "${HOST_UID}:${HOST_GID}" /data
+    echo -e "${GREEN}✓ Permissions fixed${NC}"
 
     echo ""
     echo -e "${GREEN}=========================================="
@@ -201,17 +249,15 @@ migrate_data() {
     echo "==========================================${NC}"
     echo ""
     echo "Next steps:"
-    echo "  1. Verify data: $0 status"
-    echo "  2. Stop all services: ./openc3.sh stop"
-    echo "  3. Cleanup temp container: $0 cleanup"
-    echo "  4. Start with versitygw: ./openc3.sh run"
-    echo ""
-    echo "The compose.yaml is already configured to use the new volume (${NEW_VOLUME})."
+    echo "  1. Stop all services: ./openc3.sh stop"
+    echo "  2. Start COSMOS with versitygw: ./openc3.sh run"
+    echo "  3. Verify everything works and old data is accessible"
+    echo "  4. Cleanup temp container: $0 cleanup"
     echo ""
 }
 
 show_status() {
-    check_mc
+    check_mc_image
 
     echo ""
     echo "=========================================="
@@ -221,12 +267,20 @@ show_status() {
 
     # Check MINIO
     echo "MINIO (source):"
-    if curl -sf "${MINIO_URL}/minio/health/live" > /dev/null 2>&1; then
-        echo -e "  ${GREEN}✓ Running at ${MINIO_URL}${NC}"
-        configure_mc 2>/dev/null
-        echo "  Buckets:"
-        mc ls openc3-minio/ 2>/dev/null | sed 's/^/    /'
-    else
+    MINIO_REACHABLE=false
+    for host in "${MINIO_SERVICE}" "${MINIO_CONTAINER}"; do
+        HTTP_CODE=$(docker run --rm --network "${DOCKER_NETWORK}" "${MC_IMAGE}" \
+            curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://${host}:9000/" 2>/dev/null)
+        if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            echo -e "  ${GREEN}✓ Running at ${host}:9000${NC}"
+            MINIO_SERVICE="${host}"
+            MINIO_REACHABLE=true
+            MINIO_BUCKETS=$(run_mc ls openc3minio/ 2>/dev/null | awk '{print $NF}' | tr '\n' ' ')
+            echo -e "  Buckets: ${MINIO_BUCKETS}"
+            break
+        fi
+    done
+    if [ "$MINIO_REACHABLE" = "false" ]; then
         echo -e "  ${RED}✗ Not running${NC}"
     fi
 
@@ -236,9 +290,16 @@ show_status() {
     echo "versitygw (destination):"
     if docker ps --format '{{.Names}}' | grep -q "^openc3-s3-migration$"; then
         echo -e "  ${GREEN}✓ Migration container running${NC}"
-        if curl -sf "${VERSITY_URL}/" > /dev/null 2>&1; then
-            echo "  Buckets:"
-            mc ls openc3-s3/ 2>/dev/null | sed 's/^/    /'
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${VERSITY_URL}/" 2>/dev/null)
+        if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            VERSITY_BUCKETS=$(run_mc ls openc3s3/ 2>/dev/null | awk '{print $NF}' | tr '\n' ' ')
+            echo -e "  Buckets: ${VERSITY_BUCKETS}"
+            # Compare buckets
+            if [ "$MINIO_REACHABLE" = "true" ] && [ "$MINIO_BUCKETS" = "$VERSITY_BUCKETS" ]; then
+                echo -e "  ${GREEN}✓ All buckets migrated successfully${NC}"
+            elif [ -n "$VERSITY_BUCKETS" ]; then
+                echo -e "  ${YELLOW}○ Bucket list differs from source${NC}"
+            fi
         fi
     else
         echo -e "  ${YELLOW}○ Migration container not running${NC}"
@@ -266,10 +327,6 @@ cleanup() {
         echo "Migration container not found"
     fi
 
-    # Remove mc aliases
-    mc alias rm openc3-minio 2>/dev/null || true
-    mc alias rm openc3-s3 2>/dev/null || true
-
     echo ""
     echo "Note: The new volume '${NEW_VOLUME}' has been preserved with your migrated data."
     echo ""
@@ -285,14 +342,17 @@ cleanup() {
 # Main
 case "${1:-help}" in
     start)
-        check_mc
+        check_mc_image
+        detect_docker_environment
         check_minio_running
         start_versitygw
         ;;
     migrate)
+        detect_docker_environment
         migrate_data
         ;;
     status)
+        detect_docker_environment
         show_status
         ;;
     cleanup)
