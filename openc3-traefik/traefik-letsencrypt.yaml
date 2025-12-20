@@ -3,6 +3,10 @@ entrypoints:
   web:
     address: ":2900"
     http:
+      encodedCharacters:
+        # Allow encoded slashes (%2F) in URL paths
+        # Required for Traefik v3.6.4+ which blocks them by default
+        allowEncodedSlash: true
       redirections:
         entryPoint:
           to: websecure
@@ -11,6 +15,10 @@ entrypoints:
   websecure:
     address: ":2943"
     http:
+      encodedCharacters:
+        # Allow encoded slashes (%2F) in URL paths
+        # Required for Traefik v3.6.4+ which blocks them by default
+        allowEncodedSlash: true
       tls:
         domains:
           - main: "mydomain.com" # Update with your domain
