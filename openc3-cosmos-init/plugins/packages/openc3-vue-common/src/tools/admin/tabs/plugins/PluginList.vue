@@ -29,6 +29,7 @@
         v-bind="plugin"
         :targets="pluginTargets(plugin.name)"
         :is-modified="isModified(plugin.name)"
+        :microservices="microservices"
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
@@ -38,6 +39,7 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import PluginListItem from './PluginListItem.vue'
 
 export default {
@@ -67,7 +69,11 @@ export default {
     return {
       showPluginDetails: false,
       detailPlugin: null,
+      microservices: {},
     }
+  },
+  mounted() {
+    this.fetchMicroservices()
   },
   computed: {
     shownPlugins() {
@@ -123,6 +129,15 @@ export default {
     deletePrompt: function (plugin) {
       this.$emit('delete', plugin)
     },
+    fetchMicroservices: function () {
+      Api.get('/openc3-api/microservices/all')
+        .then((response) => {
+          this.microservices = response.data
+        })
+        .catch((error) => {
+          console.error('Failed to fetch microservices:', error)
+        })
+    },
   },
 }
 </script>
@@ -136,4 +151,3 @@ export default {
   background-color: var(--color-background-base-selected) !important;
 }
 </style>
-
