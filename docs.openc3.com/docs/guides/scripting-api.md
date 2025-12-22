@@ -489,6 +489,11 @@ file.write("this is a Io test")
 file.rewind
 put_target_file("INST/test2.txt", file)
 put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
+
+buf = StringIO.new
+buf.write([0xDEADBEEF].pack('N'))
+buf.seek(0)
+put_target_file("INST/test4.bin", buf)
 ```
 
 </TabItem>
@@ -496,12 +501,19 @@ put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
 <TabItem value="python" label="Python Example">
 
 ```python
+from io import BytesIO
+
 put_target_file("INST/test1.txt", "this is a string test")
 file = tempfile.NamedTemporaryFile(mode="w+t")
 file.write("this is a Io test")
 file.seek(0)
 put_target_file("INST/test2.txt", file)
 put_target_file("INST/test3.bin", b"\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
+
+buf = BytesIO()
+buf.write(b'\xDE\xAD\xBE\xEF')
+buf.seek(0)
+put_target_file("INST/test4.bin", buf)
 ```
 
 </TabItem>
@@ -9666,7 +9678,7 @@ setting of the offline_access_token.
 
 ### initialize_offline_access
 
-Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place. 
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
 
 In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
 
