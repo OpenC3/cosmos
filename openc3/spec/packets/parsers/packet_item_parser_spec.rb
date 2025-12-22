@@ -100,6 +100,22 @@ module OpenC3
           tf.unlink
         end
 
+        it "complains if ARRAY_ITEM name contains brackets" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  ARRAY_ITEM ITEM[0] 0 32 FLOAT 64'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ARRAY items cannot have brackets in their name: ITEM\[0\]/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ARRAY_ITEM DATA[1] 8 UINT 64'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ARRAY items cannot have brackets in their name: DATA\[1\]/)
+          tf.unlink
+        end
+
         it "only allows DERIVED items with offset 0 and size 0" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
@@ -368,6 +384,22 @@ module OpenC3
           tf.puts '  APPEND_ID_PARAMETER ITEM1 0 DERIVED 0 0 0'
           tf.close
           expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED data type not allowed/)
+          tf.unlink
+        end
+
+        it "complains if ARRAY_PARAMETER name contains brackets" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  ARRAY_PARAMETER PARAM[0] 0 32 UINT 64'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ARRAY items cannot have brackets in their name: PARAM\[0\]/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_ARRAY_PARAMETER VALUES[2] 16 INT 64'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ARRAY items cannot have brackets in their name: VALUES\[2\]/)
           tf.unlink
         end
 
