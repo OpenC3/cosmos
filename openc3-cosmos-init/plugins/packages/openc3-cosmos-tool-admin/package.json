@@ -18,7 +18,7 @@
     "single-spa-vue": "3.0.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "5.2.3",
+    "@vitejs/plugin-vue": "6.0.3",
     "@vue/test-utils": "2.4.6",
     "prettier": "3.7.4",
     "sass": "1.97.0",

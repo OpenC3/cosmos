@@ -43,8 +43,8 @@ importers:
         specifier: 1.15.0
         version: 1.15.0
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       prettier:
         specifier: 3.7.4
         version: 3.7.4
@@ -83,8 +83,8 @@ importers:
         version: 3.0.1
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -129,8 +129,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -178,8 +178,8 @@ importers:
         specifier: 1.15.0
         version: 1.15.0
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -242,8 +242,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -285,8 +285,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -331,8 +331,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -377,8 +377,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -426,8 +426,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -472,8 +472,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -518,8 +518,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -570,8 +570,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -616,8 +616,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -668,8 +668,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -723,8 +723,8 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       '@vue/test-utils':
         specifier: 2.4.6
         version: 2.4.6
@@ -830,8 +830,8 @@ importers:
         specifier: 6.15.4
         version: 6.15.4
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       prettier:
         specifier: 3.7.4
         version: 3.7.4
@@ -912,8 +912,8 @@ importers:
         version: 4.1.0(vue@3.5.25)
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 5.2.3
-        version: 5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
+        specifier: 6.0.3
+        version: 6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)
       prettier:
         specifier: 3.7.4
         version: 3.7.4
@@ -1361,6 +1361,9 @@ packages:
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
+  '@rolldown/pluginutils@1.0.0-beta.53':
+    resolution: {integrity: sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ==}
+
   '@rollup/rollup-android-arm-eabi@4.45.1':
     resolution: {integrity: sha512-NEySIFvMY0ZQO+utJkgoMiCAjMrGvnbDLHvcmlA33UXJpYBCvlBEbMMtV837uCkS+plG2umfhn0T5mMAxGrlRA==}
     cpu: [arm]
@@ -1499,11 +1502,11 @@ packages:
   '@types/web-bluetooth@0.0.20':
     resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
 
-  '@vitejs/plugin-vue@5.2.3':
-    resolution: {integrity: sha512-IYSLEQj4LgZZuoVpdSUCw3dIynTWQgPlaRP6iAvMle4My0HdYwr5g5wQAfwOeHQBmYwEkqF70nRpSilr6PoUDg==}
-    engines: {node: ^18.0.0 || >=20.0.0}
+  '@vitejs/plugin-vue@6.0.3':
+    resolution: {integrity: sha512-TlGPkLFLVOY3T7fZrwdvKpjprR3s4fxRln0ORDo1VQ7HHyxJwTlrjKU3kpVWTlaAjIEuCTokmjkZnr8Tpc925w==}
+    engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
-      vite: ^5.0.0 || ^6.0.0
+      vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0
       vue: ^3.2.25
 
   '@vue-flow/background@1.3.2':
@@ -1654,8 +1657,8 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
-  baseline-browser-mapping@2.9.9:
-    resolution: {integrity: sha512-V8fbOCSeOFvlDj7LLChUcqbZrdKD9RU/VR260piF1790vT0mfLSwGc/Qzxv3IqiTukOpNtItePa0HBpMAj7MDg==}
+  baseline-browser-mapping@2.9.11:
+    resolution: {integrity: sha512-Sg0xJUNDU1sJNGdfGWhVHX0kkZ+HWcvmVymJbj6NSgZZmW/8S9Y2HQ5euytnIgakgxN6papOAWiwDo1ctFDcoQ==}
     hasBin: true
 
   binary-search@1.3.6:
@@ -1703,8 +1706,8 @@ packages:
     resolution: {integrity: sha512-xlx1yCK2Oc1APsPXDL2LdlNP6+uu8OCDdhOBSVT279M/S+y75O30C2VuD8T2ogdePBBl7PfPF4504tnLgX3zfw==}
     engines: {node: '>=14.16'}
 
-  caniuse-lite@1.0.30001760:
-    resolution: {integrity: sha512-7AAMPcueWELt1p3mi13HR/LHH0TJLT11cnwDJEs3xA4+CK/PLKeO9Kl1oru24htkyUKtkGCvAx4ohB0Ttry8Dw==}
+  caniuse-lite@1.0.30001761:
+    resolution: {integrity: sha512-JF9ptu1vP2coz98+5051jZ4PwQgd2ni8A+gYSN7EA7dPKIMf0pDlSUxhdmVOaV3/fYK5uWBkgSXJaRLr4+3A6g==}
 
   chalk-template@0.4.0:
     resolution: {integrity: sha512-/ghrgmhfY8RaSdeo43hNXxpoHAtxdbskUHjPpfqUWGttFgycUhYPGx3YZBCnUCvOa7Doivn1IZec3DEGFoMgLg==}
@@ -3136,6 +3139,8 @@ snapshots:
 
   '@pkgr/core@0.2.9': {}
 
+  '@rolldown/pluginutils@1.0.0-beta.53': {}
+
   '@rollup/rollup-android-arm-eabi@4.45.1':
     optional: true
 
@@ -3213,8 +3218,9 @@ snapshots:
 
   '@types/web-bluetooth@0.0.20': {}
 
-  '@vitejs/plugin-vue@5.2.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)':
+  '@vitejs/plugin-vue@6.0.3(vite@6.4.1(sass@1.97.0))(vue@3.5.25)':
     dependencies:
+      '@rolldown/pluginutils': 1.0.0-beta.53
       vite: 6.4.1(sass@1.97.0)
       vue: 3.5.25
 
@@ -3405,7 +3411,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  baseline-browser-mapping@2.9.9: {}
+  baseline-browser-mapping@2.9.11: {}
 
   binary-search@1.3.6: {}
 
@@ -3438,8 +3444,8 @@ snapshots:
 
   browserslist@4.28.1:
     dependencies:
-      baseline-browser-mapping: 2.9.9
-      caniuse-lite: 1.0.30001760
+      baseline-browser-mapping: 2.9.11
+      caniuse-lite: 1.0.30001761
       electron-to-chromium: 1.5.267
       node-releases: 2.0.27
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
@@ -3457,7 +3463,7 @@ snapshots:
 
   camelcase@7.0.1: {}
 
-  caniuse-lite@1.0.30001760: {}
+  caniuse-lite@1.0.30001761: {}
 
   chalk-template@0.4.0:
     dependencies:
