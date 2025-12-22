@@ -25,15 +25,57 @@
     <v-alert v-model="showAlert" closable :type="alertType">{{
       alert
     }}</v-alert>
+    <div class="text-caption text-medium-emphasis mt-2 mb-2 ml-4">
+      <template v-if="hasServiceFilter && filteredServiceCount === 0">
+        No microservices match filter (showing 0 / {{ totalServiceCount }})
+      </template>
+      <template v-else-if="hasServiceFilter">
+        Showing {{ filteredServiceCount }} /
+        {{ totalServiceCount }} microservices
+      </template>
+      <template v-else> {{ totalServiceCount }} microservices </template>
+    </div>
+    <v-row v-if="hasServiceFilter" class="ml-1 mb-1">
+      <v-col cols="auto">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-filter-off"
+          aria-label="Filter applied. Click to clear filter and show all services."
+          @click="clearServiceFilter"
+        >
+          Show All
+        </v-btn>
+      </v-col>
+      <v-col cols="auto">
+        <v-btn
+          color="warning"
+          prepend-icon="mdi-refresh"
+          :disabled="filteredServiceCount === 0"
+          @click="bulkRestartServices"
+        >
+          Restart All
+        </v-btn>
+      </v-col>
+      <v-col cols="auto">
+        <v-btn
+          color="error"
+          prepend-icon="mdi-stop"
+          :disabled="filteredServiceCount === 0"
+          @click="bulkStopServices"
+        >
+          Stop All
+        </v-btn>
+      </v-col>
+    </v-row>
     <v-list class="list" data-test="microserviceList">
-      <div v-for="microservice in microservices" :key="microservice">
+      <div v-for="microservice in filteredMicroservices" :key="microservice">
         <v-list-item>
           <v-list-item-title>{{ microservice.name }}</v-list-item-title>
           <v-list-item-subtitle v-if="microservice_status[microservice.name]">
             Updated:
             {{ formatDate(microservice_status[microservice.name].updated_at) }},
-            State: {{ microservice_status[microservice.name].state }}, Enabled:
-            {{ microservice.enabled === false ? 'False' : 'True' }}, Count:
+            Enabled: {{ microservice.enabled === false ? 'False' : 'True' }},
+            Count:
             {{ microservice_status[microservice.name].count }}
           </v-list-item-subtitle>
 
@@ -44,16 +86,38 @@
               variant="text"
               @click="showMicroserviceError(microservice.name)"
             />
+            <v-chip
+              v-if="microservice_status[microservice.name]"
+              :color="getStateColor(microservice.name)"
+              size="small"
+              label
+            >
+              {{ microservice_status[microservice.name].state }}
+            </v-chip>
             <v-btn
-              aria-label="Start Microservice"
-              icon="mdi-play"
+              :aria-label="
+                isRunning(microservice.name)
+                  ? 'Restart Microservice'
+                  : 'Start Microservice'
+              "
+              :icon="
+                isRestarting(microservice.name)
+                  ? 'mdi-loading'
+                  : isRunning(microservice.name)
+                    ? 'mdi-refresh'
+                    : 'mdi-play'
+              "
+              :class="{ 'rotating-icon': isRestarting(microservice.name) }"
               variant="text"
-              @click="startMicroservice(microservice.name)"
+              :disabled="isOperationInProgress(microservice.name)"
+              @click="startOrRestartMicroservice(microservice.name)"
             />
             <v-btn
               aria-label="Stop Microservice"
-              icon="mdi-stop"
+              :icon="isStopping(microservice.name) ? 'mdi-loading' : 'mdi-stop'"
+              :class="{ 'rotating-icon': isStopping(microservice.name) }"
               variant="text"
+              :disabled="isOperationInProgress(microservice.name)"
               @click="stopMicroservice(microservice.name)"
             />
             <v-btn
@@ -96,7 +160,8 @@ export default {
   },
   data() {
     return {
-      microservices: [],
+      filteredMicroservices: [],
+      allMicroservices: [],
       microservice_status: {},
       microservice_id: null,
       jsonContent: '',
@@ -107,7 +172,33 @@ export default {
       alertType: 'success',
       showAlert: false,
       updater: null,
+      // { service_name:
+      //   { operation: 'stopping' | 'restarting',
+      //     states: []
+      //     time_started: timestamp
+      //   }
+      // }
+      microserviceOperations: {},
     }
+  },
+  computed: {
+    serviceFilter() {
+      const services = this.$route.query.services
+      if (!services) return null
+      return services
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s)
+    },
+    hasServiceFilter() {
+      return this.serviceFilter && this.serviceFilter.length > 0
+    },
+    totalServiceCount() {
+      return this.allMicroservices.length
+    },
+    filteredServiceCount() {
+      return this.filteredMicroservices.length
+    },
   },
   mounted() {
     this.update()
@@ -115,46 +206,174 @@ export default {
       this.update()
     }, 2000)
   },
+  watch: {
+    '$route.query.services': function () {
+      this.applyServiceFilter()
+    },
+  },
   beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
   },
   methods: {
+    isOperationInProgress: function (name) {
+      return !!this.microserviceOperations[name]
+    },
+    isRunning: function (name) {
+      return this.microservice_status[name]?.state === 'RUNNING'
+    },
+    isRestarting: function (name) {
+      return this.microserviceOperations[name]?.operation === 'restarting'
+    },
+    isStopping: function (name) {
+      return this.microserviceOperations[name]?.operation === 'stopping'
+    },
     update: function () {
       Api.get('/openc3-api/microservice_status/all').then((response) => {
         this.microservice_status = response.data
+        this.checkOperationCompletion()
       })
       Api.get('/openc3-api/microservices/all').then((response) => {
         // Convert hash of microservices to array of microservices
         let microservices = []
-        for (const [microservice_name, microservice] of Object.entries(
+        for (const [_microservice_name, microservice] of Object.entries(
           response.data,
         )) {
           microservices.push(microservice)
         }
         microservices.sort((a, b) => a.name.localeCompare(b.name))
-        this.microservices = microservices
+        this.allMicroservices = microservices
+        this.applyServiceFilter()
       })
     },
-    startMicroservice: function (name) {
+    checkOperationCompletion: function () {
+      for (const [name, tracking] of Object.entries(
+        this.microserviceOperations,
+      )) {
+        const status = this.microservice_status[name]
+        if (!status || !status.state) continue
+
+        const currentState = status.state
+        const lastState = tracking.states[tracking.states.length - 1]
+
+        // Only add state if it changed
+        if (currentState !== lastState) {
+          tracking.states.push(currentState)
+        }
+
+        const isComplete = this.isOperationComplete(name, tracking)
+        if (isComplete) {
+          delete this.microserviceOperations[name]
+        }
+      }
+    },
+    isOperationComplete: function (serviceName, tracking) {
+      // Check for timeout (30 seconds)
+      const elapsed = Date.now() - tracking.time_started
+      if (elapsed > 30000) {
+        this.alert = `${serviceName} timed out when ${tracking.operation}.`
+        this.alertType = 'error'
+        this.showAlert = true
+        setTimeout(() => {
+          this.showAlert = false
+        }, 5000)
+        delete this.microserviceOperations[serviceName]
+        return true
+      }
+
+      if (tracking.operation === 'stopping') {
+        return tracking.states.includes('STOPPED')
+      }
+      if (tracking.operation === 'restarting') {
+        // Restarted from RUNNING: must reach RUNNING again
+        if (tracking.states[0] === 'RUNNING') {
+          return tracking.states.filter((item) => item === 'RUNNING').length > 1
+        }
+        // Started from non-RUNNING state: just needs to reach RUNNING
+        return tracking.states.includes('RUNNING')
+      }
+      return false
+    },
+    applyServiceFilter: function () {
+      if (this.hasServiceFilter) {
+        this.filteredMicroservices = this.allMicroservices.filter((ms) =>
+          this.serviceFilter.includes(ms.name),
+        )
+      } else {
+        this.filteredMicroservices = this.allMicroservices
+      }
+    },
+    clearServiceFilter: function () {
+      this.$router.push({ query: {} })
+    },
+    bulkRestartServices: function () {
+      const microserviceNames = this.filteredMicroservices.map((m) => m.name)
+      const microserviceList = microserviceNames.join(', ')
+      const confirmMessage = `Are you sure you want to restart ${microserviceNames.length} microservice(s)? ${microserviceList}`
+
       this.$dialog
-        .confirm(`Are you sure you want to restart microservice: ${name}?`, {
-          okText: 'Start',
+        .confirm(confirmMessage, {
+          okText: 'Restart',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
-          Api.post(`/openc3-api/microservices/${name}/start`)
-            .then((response) => {
-              this.alert = `Started ${name}`
-              this.alertType = 'success'
-              this.showAlert = true
-              setTimeout(() => {
-                this.showAlert = false
-              }, 5000)
-            })
-            .then(() => {
-              this.update()
-            })
+        .then(() => {
+          microserviceNames.forEach((name) => {
+            const currentState = this.microservice_status[name]?.state
+            this.microserviceOperations[name] = {
+              operation: 'restarting',
+              states: currentState ? [currentState] : [],
+              time_started: Date.now(),
+            }
+            Api.post(`/openc3-api/microservices/${name}/start`).catch(
+              (error) => {
+                this.alert = `Start command failed for ${name}: ${error}`
+                this.alertType = 'error'
+                this.showAlert = true
+                setTimeout(() => {
+                  this.showAlert = false
+                }, 5000)
+                delete this.microserviceOperations[name]
+              },
+            )
+          })
+        })
+        .catch(() => {
+          // User cancelled
+        })
+    },
+    bulkStopServices: function () {
+      const microserviceNames = this.filteredMicroservices.map((m) => m.name)
+      const microserviceList = microserviceNames.join(', ')
+      const confirmMessage = `Are you sure you want to stop ${microserviceNames.length} microservice(s)?\n\n${microserviceList}`
+
+      this.$dialog
+        .confirm(confirmMessage, {
+          okText: 'Stop',
+          cancelText: 'Cancel',
+        })
+        .then(() => {
+          microserviceNames.forEach((name) => {
+            const currentState = this.microservice_status[name]?.state
+            this.microserviceOperations[name] = {
+              operation: 'stopping',
+              states: currentState ? [currentState] : [],
+              time_started: Date.now(),
+            }
+            Api.post(`/openc3-api/microservices/${name}/stop`).catch(
+              (error) => {
+                this.alert = `Stop command failed for ${name}: ${error}`
+                this.alertType = 'error'
+                this.showAlert = true
+                setTimeout(() => {
+                  this.showAlert = false
+                }, 5000)
+                delete this.microserviceOperations[name]
+              },
+            )
+          })
+        })
+        .catch(() => {
+          // User cancelled
         })
     },
     stopMicroservice: function (name) {
@@ -163,19 +382,50 @@ export default {
           okText: 'Stop',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
-          Api.post(`/openc3-api/microservices/${name}/stop`)
-            .then((response) => {
-              this.alert = `Stopped ${name}`
-              this.alertType = 'success'
-              this.showAlert = true
-              setTimeout(() => {
-                this.showAlert = false
-              }, 5000)
-            })
-            .then(() => {
-              this.update()
-            })
+        .then((_dialog) => {
+          const currentState = this.microservice_status[name]?.state
+          this.microserviceOperations[name] = {
+            operation: 'stopping',
+            states: currentState ? [currentState] : [],
+            time_started: Date.now(),
+          }
+          Api.post(`/openc3-api/microservices/${name}/stop`).catch((error) => {
+            this.alert = `Stop command failed for ${name}: ${error}`
+            this.alertType = 'error'
+            this.showAlert = true
+            setTimeout(() => {
+              this.showAlert = false
+            }, 5000)
+            delete this.microserviceOperations[name]
+          })
+        })
+    },
+    startOrRestartMicroservice: function (name) {
+      const currentState = this.microservice_status[name]?.state
+      var command = currentState === 'RUNNING' ? 'Restart' : 'Start'
+      this.$dialog
+        .confirm(
+          `Are you sure you want to ${command.toLowerCase()} microservice: ${name}?`,
+          {
+            okText: command,
+            cancelText: 'Cancel',
+          },
+        )
+        .then((_dialog) => {
+          this.microserviceOperations[name] = {
+            operation: 'restarting',
+            states: currentState ? [currentState] : [],
+            time_started: Date.now(),
+          }
+          Api.post(`/openc3-api/microservices/${name}/start`).catch((error) => {
+            this.alert = `${command} command failed for ${name}: ${error}`
+            this.alertType = 'error'
+            this.showAlert = true
+            setTimeout(() => {
+              this.showAlert = false
+            }, 5000)
+            delete this.microserviceOperations[name]
+          })
         })
     },
     showMicroservice: function (name) {
@@ -197,6 +447,18 @@ export default {
         toDate(parseInt(nanoSecs) / 1000000),
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
+    },
+    getStateColor(name) {
+      const status = this.microservice_status[name]
+      if (!status) return 'grey'
+      if (status.error) return 'red'
+      // There might be more states, but it's unclear from API. Here's known ones.
+      if (status.state === 'RUNNING') return 'green'
+      if (status.state === 'STOPPED') return 'yellow'
+      if (status.state === 'SLEEPING') return 'grey'
+      if (status.state === 'FINISHED') return 'grey'
+      if (status.state === 'INITIALIZED') return 'grey'
+      return 'grey'
     },
     dialogCallback: function (content) {
       this.showDialog = false
@@ -235,5 +497,16 @@ export default {
 }
 .v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
   background-color: var(--color-background-base-selected) !important;
+}
+.rotating-icon {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
