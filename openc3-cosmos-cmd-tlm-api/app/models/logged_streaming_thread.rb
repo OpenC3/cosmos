@@ -23,15 +23,10 @@
 require 'pg'
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
-# require 'openc3/script/extract'
-# require 'openc3/utilities/authorization'
-# require 'openc3/api/tlm_api'
 OpenC3.require_file 'openc3/api/api'
 
 module OpenC3
   class LocalApi
-    # include Extract
-    # include Authorization
     include Api
   end
 end
@@ -165,7 +160,8 @@ class LoggedStreamingThread < StreamingThread
       objects.each do |object|
         break if @cancel_thread
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        table_name = "#{object.target_name}__#{object.packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
+        # Must match pattern in tsdb_microservice.py create_table() and read_topics()
+        table_name = "#{object.target_name}__#{object.packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
         tables[table_name] = 1
 
         if object.start_time
@@ -184,7 +180,7 @@ class LoggedStreamingThread < StreamingThread
         item = available[item_index]
         tgt, pkt, item_name, value_type = item.split('__')
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        # NOTE: Semicolon added as it appears invalid
+        # Must match pattern in tsdb_microservice.py read_topics()
         item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
         case value_type
         when 'WITH_UNITS'
@@ -229,8 +225,10 @@ class LoggedStreamingThread < StreamingThread
                                         dbname: 'qdb')
           # Default connection is all strings but we want to map to the correct types
           if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-            # TODO: This doesn't seem to be round tripping UINT64 correctly
-            # Try playback with P_2.2,2 and P(:6;): from the DEMO
+            # Note: QuestDB uses signed int64 (long), so extreme values are clamped during storage:
+            # - MIN_INT64 (-2^63) is treated as NULL by QuestDB, clamped to -(2^63)+1
+            # - MAX_UINT64 (2^64-1) exceeds int64 max, clamped to 2^63-1
+            # Test with DEMO items P_2.2,2 (MIN_INT64) and P(:6;) (MAX_UINT64)
             @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
           end
           # QuestDB only uses the LIMIT keyword as a range
