@@ -39,6 +39,8 @@ HEX_CHECK_REGEX = re.compile(r"\A\s*0[xX][\dabcdefABCDEF]+\s*\Z")
 # Regular expression to identify a String as an Array of numbers
 ARRAY_CHECK_REGEX = re.compile(r"\A\s*\[.*\]\s*\Z")
 
+# Regular expression to identify a String as an Object
+OBJECT_CHECK_REGEX = re.compile(r"\A\s*\{.*\}\s*\Z")
 
 # Pulls all string keyword arguments into the args array.
 def extract_string_kwargs_to_args(args: list, kwargs: dict):
@@ -83,6 +85,13 @@ def is_array(string):
     return False
 
 
+def is_object(string):
+    """Whether the String represents an Object"""
+    if OBJECT_CHECK_REGEX.match(string):
+        return True
+    return False
+
+
 def convert_to_value(string):
     """Converts the String into either a Float, Integer, or Array
     depending on what the String represents. It can successfully convert
@@ -101,8 +110,8 @@ def convert_to_value(string):
         elif is_hex(string):
             # Hex
             return_value = int(string, 0)
-        elif is_array(string):
-            # Array
+        elif is_array(string) or is_object(string):
+            # Array or Object
             return_value = ast.literal_eval(string)
     except Exception:
         # Something went wrong so just return the string as is

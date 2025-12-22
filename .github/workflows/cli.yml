@@ -116,7 +116,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
-          docker exec -it cosmos-openc3-redis-1 sh -c "echo -e 'AUTH openc3 openc3password\nset OPENC3__TOKEN 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' | redis-cli"
+          docker exec -it cosmos-openc3-redis-1 sh -c "echo -e 'AUTH openc3 openc3password\nset OPENC3__TOKEN \"\$argon2id\$v=19\$m=8,t=1,p=1\$KEDp3bRbyFK3lJLMa99kzQ\$INGoDEdgRbAG/wVie/ftzh//If91eeMTQQ5HoyKcfvY\"' | redis-cli"
           # list shows all the available file names
           ./openc3.sh cli script list | tee /dev/tty | grep "INST/procedures/stash.rb"
           # spawning a script prints only a PID

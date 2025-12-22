@@ -315,7 +315,7 @@
 // Putting large data into Vue data section causes lots of overhead
 let dataExtractorRawData = []
 
-import { Cable, OpenC3Api } from '@openc3/js-common/services'
+import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
   Config,
   OpenConfigDialog,
@@ -391,9 +391,13 @@ export default {
       // uniqueIgnoreOptions: ['NO', 'YES'],
       cable: new Cable(),
       subscription: null,
+      enterprise: false,
     }
   },
   computed: {
+    hasCommands: function () {
+      return this.items.some((item) => item.cmdOrTlm === 'CMD')
+    },
     menus: function () {
       return [
         {
@@ -566,6 +570,11 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    await Api.get('/openc3-api/info').then((response) => {
+      if (response.data.enterprise) {
+        this.enterprise = true
+      }
+    })
     let now = new Date()
     this.todaysDate = this.formatDate(now, this.timeZone)
     this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
@@ -846,11 +855,16 @@ export default {
         for (let packet of data) {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
-          this.itemsReceived += packetKeys.length - 2 // Don't count __type and __time
-          this.totalItemsReceived += packetKeys.length - 2
+          // Don't count metadata keys (__type, __time, __extra)
+          let metadataCount = packetKeys.filter((k) =>
+            k.startsWith('__'),
+          ).length
+          this.itemsReceived += packetKeys.length - metadataCount
+          this.totalItemsReceived += packetKeys.length - metadataCount
         }
         keys.delete('__type')
         keys.delete('__time')
+        keys.delete('__extra')
         this.buildHeaders([...keys])
         dataExtractorRawData.push(data)
         this.progress = Math.ceil(
@@ -874,6 +888,14 @@ export default {
         this.columnHeaders.push('TIME')
         this.columnHeaders.push('TARGET')
         this.columnHeaders.push('PACKET')
+        // Only add USERNAME and APPROVER columns for command data
+        if (this.hasCommands) {
+          this.columnHeaders.push('USERNAME')
+          // APPROVER is only available in Enterprise
+          if (this.enterprise) {
+            this.columnHeaders.push('APPROVER')
+          }
+        }
       }
       itemKeys.forEach((item) => {
         if (item.slice(0, 2) === '__') return
@@ -1001,6 +1023,13 @@ export default {
             row[0] = new Date(packet['__time'] / 1000000).toISOString()
             row[1] = targetName
             row[2] = packetName
+            // Add username and approver columns for command data
+            if (this.hasCommands) {
+              row[3] = packet['__extra']?.username || ''
+              if (this.enterprise) {
+                row[4] = packet['__extra']?.approver || ''
+              }
+            }
           }
           outputFile.push(row.join(this.delimiter))
         }

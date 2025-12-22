@@ -54,7 +54,7 @@ All layout widgets must be closed to properly identify where they stop. For exam
 
 
 ## STALE_TIME
-<div class="right">(Since 5.1.0)</div>**Values are marked stale if the packet time is more than Stale Time seconds in the past**
+<span class="badge badge--secondary since-right">Since 5.1.0</span>**Values are marked stale if the packet time is more than Stale Time seconds in the past**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -524,7 +524,7 @@ LABEL "Note: This is only a warning"
 
 
 ### HORIZONTALLINE
-<div class="right">(Since 5.5.1)</div>**Displays a horizontal line on the screen that can be used as a separator**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Displays a horizontal line on the screen that can be used as a separator**
 
 
 Example Usage:
@@ -570,6 +570,20 @@ END
 ```
 ![SPACER](/img/telemetry_viewer/widgets/spacer.png)
 
+
+### FILEDISPLAY
+<span class="badge badge--secondary since-right">Since 6.10.3</span>**Displays the contents of a target file with syntax highlighting**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| File path | Path to the file relative to the target folder (e.g. "INST/procedures/file.rb") | True |
+| Width | Width of the widget in pixels (default = 600) | False |
+| Height | Height of the widget in pixels (default = 300) | False |
+
+Example Usage:
+```ruby
+FILEDISPLAY "INST/data/sample.json" 400 200
+```
 
 ## Telemetry Widgets
 ****
@@ -645,14 +659,14 @@ The following settings apply to ARRAYPLOT. They are applied using the SETTING ke
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Start the graph history at the designated Time**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Display an initial history of data**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1066,14 +1080,14 @@ The following settings apply to LINEGRAPH. They are applied using the SETTING ke
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Start the graph history at the designated Time**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Display an initial history of data**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1142,14 +1156,14 @@ The following settings apply to SPARKLINE. They are applied using the SETTING ke
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Start the graph history at the designated Time**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Display an initial history of data**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1217,14 +1231,14 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Start the graph history at the designated Time**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Display an initial history of data**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1319,7 +1333,7 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 
 
 ### ROLLUP
-<div class="right">(Since 5.17.1)</div>**Displays a notification icon which changes color based on a rollup telemetry**
+<span class="badge badge--secondary since-right">Since 5.17.1</span>**Displays a notification icon which changes color based on a rollup telemetry**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1346,7 +1360,7 @@ ROLLUP antenna "GND 2" "Location"
 
 
 ### SIGNAL
-<div class="right">(Since 5.17.2)</div>**Displays a cellular signal icon which changes based on telemetry value**
+<span class="badge badge--secondary since-right">Since 5.17.2</span>**Displays a cellular signal icon which changes based on telemetry value**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -1787,7 +1801,7 @@ END
 
 The following settings apply to CANVASLINEVALUE. They are applied using the SETTING keyword.
 #### VALUE_EQ
-<div class="right">(Since 5.5.1)</div>**Map a value to a color**
+<span class="badge badge--secondary since-right">Since 5.5.1</span>**Map a value to a color**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

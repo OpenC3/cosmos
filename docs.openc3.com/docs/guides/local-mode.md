@@ -16,7 +16,7 @@ If you check the project directory you should see a `plugins/DEFAULT/openc3-cosm
 ### Editing scripts
 
 :::info Visual Studio Code
-This tutorial will use [VS Code](https://code.visualstudio.com) which is the editor used by the COSMOS developers.
+This tutorial will use [VS Code](https://code.visualstudio.com) which is the editor used by the COSMOS developers. NOTE: There is a VS Code plugin maintained by a member of the COSMOS community at [openc3-vscode](https://github.com/JakeHillHub/openc3-vscode) (search in the Marketplace for 'OpenC3').
 :::
 
 The most common use case for Local Mode is script development. Launch Script Runner and open the `INST/procedures/checks.rb` file. If you run this script you'll notice that it has a few errors (by design) which prevent it from running to completion. Let's fix it! Comment out lines 7 & 9 and save the script. You should now notice that Local Mode has saved a copy of the script to `plugins/targets_modified/INST/procedures/checks.rb`.

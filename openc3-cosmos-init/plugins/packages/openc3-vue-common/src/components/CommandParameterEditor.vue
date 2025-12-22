@@ -77,7 +77,7 @@ export default {
       default: false,
     },
   },
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'hazardous-change'],
   computed: {
     textFieldValue() {
       return this.convertToString(this.modelValue)
@@ -113,6 +113,14 @@ export default {
     },
     stateClass() {
       return this.hazardous ? 'hazardous mr-4' : 'mr-4'
+    },
+  },
+  watch: {
+    hazardous: {
+      immediate: true,
+      handler(newVal) {
+        this.$emit('hazardous-change', newVal)
+      },
     },
   },
   methods: {

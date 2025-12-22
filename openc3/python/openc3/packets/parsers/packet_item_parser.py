@@ -64,6 +64,13 @@ class PacketItemParser:
             self.parser.verify_num_parameters(max_options - 2, max_options, self.usage)
         self.parser.verify_parameter_naming(1)  # Item name is the 1st parameter
 
+        # ARRAY items cannot have brackets in their name because brackets are used
+        # for array indexing in the UI and would cause confusion
+        if "ARRAY" in self.parser.keyword:
+            item_name = self.parser.parameters[0]
+            if "[" in item_name or "]" in item_name:
+                raise self.parser.error(f"ARRAY items cannot have brackets in their name: {item_name}", self.usage)
+
     def create_packet_item(self, packet, cmd_or_tlm):
         try:
             item_name = self.parser.parameters[0].upper()

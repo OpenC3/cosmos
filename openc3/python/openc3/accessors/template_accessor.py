@@ -72,12 +72,16 @@ class TemplateAccessor(Accessor):
                 f"Unexpected number of items found in buffer: {num_items}, Expected: {len(self.item_keys)}"
             )
         else:
+            # Use item.key if set, otherwise use item.name for template placeholder lookup
+            key = item.key if item.key is not None else item.name
             for i, value in enumerate(values):
                 item_key = self.item_keys[i]
-                if item_key == item.key:
+                if item_key == key:
                     return self.__class__.convert_to_type(value, item)
 
-        raise RuntimeError(f"Response does not include key {item.key}: {buffer}")
+        # Use item.key if set, otherwise use item.name for template placeholder lookup
+        key = item.key if item.key is not None else item.name
+        raise RuntimeError(f"Response does not include key {key}: {buffer}")
 
     def read_items(self, items, buffer):
         result = {}
@@ -100,10 +104,13 @@ class TemplateAccessor(Accessor):
                     result[item.name] = None
                     continue
                 try:
-                    index = self.item_keys.index(item.key)
+                    # Use item.key if set, otherwise use item.name for template placeholder lookup
+                    key = item.key if item.key is not None else item.name
+                    index = self.item_keys.index(key)
                     result[item.name] = self.__class__.convert_to_type(values[index], item)
                 except ValueError:
-                    raise RuntimeError(f"Unknown item with key {item.key} requested")
+                    key = item.key if item.key is not None else item.name
+                    raise RuntimeError(f"Unknown item with key {key} requested")
 
         return result
 
@@ -112,10 +119,12 @@ class TemplateAccessor(Accessor):
             return None
         self.configure()
 
-        updated_buffer = buffer.decode().replace(f"{self.left_char}{item.key}{self.right_char}", str(value)).encode()
+        # Use item.key if set, otherwise use item.name for template placeholder lookup
+        key = item.key if item.key is not None else item.name
+        updated_buffer = buffer.decode().replace(f"{self.left_char}{key}{self.right_char}", str(value)).encode()
 
         if buffer == updated_buffer:
-            raise RuntimeError(f"Key {item.key} not found in template")
+            raise RuntimeError(f"Key {key} not found in template")
         buffer[0:] = updated_buffer
         return value
 
@@ -124,12 +133,14 @@ class TemplateAccessor(Accessor):
         for index, item in enumerate(items):
             if item.data_type == "DERIVED":
                 continue
+            # Use item.key if set, otherwise use item.name for template placeholder lookup
+            key = item.key if item.key is not None else item.name
             updated_buffer = (
-                buffer.decode().replace(f"{self.left_char}{item.key}{self.right_char}", str(values[index])).encode()
+                buffer.decode().replace(f"{self.left_char}{key}{self.right_char}", str(values[index])).encode()
             )
 
             if buffer == updated_buffer:
-                raise RuntimeError(f"Key {item.key} not found in template")
+                raise RuntimeError(f"Key {key} not found in template")
             buffer[0:] = updated_buffer
         return values
 

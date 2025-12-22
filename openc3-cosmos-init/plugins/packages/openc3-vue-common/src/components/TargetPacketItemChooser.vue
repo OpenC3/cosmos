@@ -160,9 +160,10 @@
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-3 px-3 align-center">
-      <v-col :cols="colSize" :class="{ 'openc3-yellow': hazardous }">
+      <v-col :cols="colSize" :class="{ 'openc3-yellow': isHazardous }">
+        <v-icon v-if="isHazardous" class="mr-1">mdi-alert</v-icon>
         Description: {{ description }}
-        <template v-if="hazardous"> (HAZARDOUS) </template>
+        <template v-if="isHazardous"> (HAZARDOUS) </template>
       </v-col>
     </v-row>
   </div>
@@ -248,6 +249,10 @@ export default {
     showQueueSelect: {
       type: Boolean,
       default: true,
+    },
+    parameterHazardous: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['on-set', 'addItem'],
@@ -355,6 +360,9 @@ export default {
       } else {
         return true
       }
+    },
+    isHazardous: function () {
+      return this.hazardous || this.parameterHazardous
     },
   },
   watch: {

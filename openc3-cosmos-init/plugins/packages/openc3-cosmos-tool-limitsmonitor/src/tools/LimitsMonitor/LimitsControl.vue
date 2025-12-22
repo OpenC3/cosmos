@@ -345,6 +345,13 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    // Escape brackets in item names so VWidget doesn't interpret them as array indexes
+    escapeBrackets(itemName) {
+      if (itemName.includes('[')) {
+        return itemName.replace(/\[/g, '[[').replace(/\]/g, ']]')
+      }
+      return itemName
+    },
     getCurrentLimitsSet: function () {
       this.api.get_limits_set().then((result) => {
         this.currentLimitsSet = result
@@ -365,7 +372,7 @@ export default {
           this.itemList.push(itemName)
           let itemInfo = {
             key: item.slice(0, 3).join('__'),
-            parameters: item.slice(0, 3),
+            parameters: [item[0], item[1], this.escapeBrackets(item[2])],
             timestamp: this.formatDateTime(new Date(), this.timeZone),
           }
           if (item[3].includes('YELLOW') && this.overallState !== 'RED') {
@@ -492,7 +499,7 @@ export default {
           parameters: [
             message.target_name,
             message.packet_name,
-            message.item_name,
+            this.escapeBrackets(message.item_name),
           ],
         }
         if (

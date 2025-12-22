@@ -156,6 +156,16 @@ The process should loook something like this:
 
 5. Test and verify functionality and commit your changes.
 
+## Migrating From COSMOS 6 to COSMOS 7
+
+### Passwords
+
+If you are using COSMOS Enterprise, you can skip this section. COSOMS 7 Core introduces some security enhancements around the handling of the user password.
+
+First, we have switched the password hashing algorithm from SHA-256 to the industry standard argon2id. Before you can log in using COSMOS 7, you need to migrate the stored password hash used for user authentication. To do this, with Redis running, set the `OPENC3_API_PASSWORD` environment variable to your current password and run `openc3.sh cli migratepassword`. You can do this at any point of the upgrade process while COSMOS is running (e.g. either before tearing down COSMOS 6 or after starting up COSMOS 7).
+
+Second, the JSON API no longer accepts plaintext passwords. You must instead use a session token. Please see the note at the bottom of our [JSON API documentation](../development/json-api#further-debugging) for how to acquire a session token for the API.
+
 ## Migrating From COSMOS 5 to COSMOS 6
 
 :::info Developers Only
@@ -416,4 +426,4 @@ COSMOS 5 (but not COSMOS 6) includes a migration tool for converting an existing
 
 COSMOS 4 was a Qt Desktop based application. COSMOS 5 is a completely new architecture which runs natively in the browser using [Vue.js](https://vuejs.org/) as the Javascript framework and [Vuetify](https://vuetifyjs.com/en/) as the GUI library. We utilize [single-spa](https://single-spa.js.org/) to allow you to write COSMOS tool plugins in any language and provide [templates](https://github.com/OpenC3/cosmos/tree/main/openc3/templates) for Vue.js (recommended), Angular, React and Svelte. Any COSMOS 4 custom tools will have to be completely re-written to run in COSMOS 5. We recommend using the native COSMOS [tools](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages) and finding GUI concepts and functionality that best match the tool you're trying to re-create.
 
-If you need custom development get in touch at sales@openc3.com.
+If you need custom development get in touch at [sales@openc3.com](mailto:sales@openc3.com).

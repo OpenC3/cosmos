@@ -1,0 +1,3 @@
+SCREEN AUTO AUTO 1.0
+
+FILEDISPLAY <%= target_name %>/target.txt 500 500

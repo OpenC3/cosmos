@@ -22,6 +22,7 @@
 
 require 'openc3/packets/binary_accessor'
 require 'openc3/ext/string' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
+require 'yaml'
 
 # OpenC3 specific additions to the Ruby String class
 class String
@@ -40,6 +41,8 @@ class String
   HEX_CHECK_REGEX = /\A\s*0[xX][\dabcdefABCDEF]+\s*\z/
   # Regular expression to identify a String as an Array of numbers
   ARRAY_CHECK_REGEX = /\A\s*\[.*\]\s*\z/
+  # Regular expression to identify a String containing object notation
+  OBJECT_CHECK_REGEX = /\A\s*\{.*\}\s*\z/
 
   # Displays a String containing binary data in a human readable format by
   # converting each byte to the hex representation.
@@ -209,6 +212,11 @@ class String
     if ARRAY_CHECK_REGEX.match?(self) then true else false end
   end
 
+  # @return [Boolean] Whether the String represents an Object
+  def is_object?
+    if OBJECT_CHECK_REGEX.match?(self) then true else false end
+  end
+
   # @return [Boolean] Whether the string contains only printable characters
   def is_printable?
     if NON_PRINTABLE_REGEX.match?(self) then false else true end
@@ -238,9 +246,9 @@ class String
       elsif self.is_hex?
         # Hex
         return_value = Integer(self)
-      elsif self.is_array?
-        # Array
-        return_value = eval(self)
+      elsif self.is_array? or self.is_object?
+        # Array or Object
+        return_value = YAML.safe_load(self)
       end
     rescue Exception
       # Something went wrong so just return the string as is

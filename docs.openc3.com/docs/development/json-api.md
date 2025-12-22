@@ -128,5 +128,5 @@ Note that you will need a valid session token in the `Authorization` header to a
 ```bash
 curl http://localhost:2900/openc3-api/auth/verify \
 -H 'Content-Type: application/json' \
--d '{"token": "your-password-here"}'
+-d '{"password": "your-password-here"}'
 ```

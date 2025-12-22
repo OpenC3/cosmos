@@ -91,13 +91,13 @@ CMD_UNIQUE_ID_MODE:
     Ideally all commands for a target are identified using the exact same bit offset, size,
     and type field in each command. If ANY command identifiers differ then this flag must be set
     to force a brute force identification method.
-  warning: Using this mode significantly slows packet identification
   since: 4.4.0
+  deprecated: Since 6.10.0 this condition is now automatically detected
 TLM_UNIQUE_ID_MODE:
   summary: Telemetry packets identifiers don't all share the same bit offset, size, and type
   description:
     Ideally all telemetry for a target are identified using the exact same bit offset, size,
     and type field in each packet. If ANY telemetry identifiers differ then this flag must be set
     to force a brute force identification method.
-  warning: Using this mode significantly slows packet identification
   since: 4.4.0
+  deprecated: Since 6.10.0 this condition is now automatically detected
