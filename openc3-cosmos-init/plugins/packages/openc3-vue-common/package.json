@@ -83,7 +83,7 @@
     "date-fns-tz": "3.2.0",
     "dompurify": "3.3.1",
     "lodash": "4.17.21",
-    "sass": "1.97.0",
+    "sass": "1.97.1",
     "single-spa": "6.0.3",
     "sortablejs": "1.15.6",
     "splitpanes": "4.0.4",
