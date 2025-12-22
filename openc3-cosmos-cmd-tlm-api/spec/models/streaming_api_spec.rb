@@ -240,10 +240,26 @@ RSpec.describe StreamingApi, type: :model do
         end
 
         context 'from files' do
+          before(:each) do
+            # Reset the class variable to prevent leaking between tests
+            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            # Mock get_tlm_available since the TargetModel isn't populated in mock redis
+            allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
+              items.map { |item| item.gsub('CONVERTED', 'RAW') }
+            end
+          end
+
+          after(:each) do
+            # Clean up the class variable after each test
+            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+          end
+
           it 'has start time and end time within the file time range' do
             mock_conn = instance_double(PG::Connection)
             allow(PG::Connection).to receive(:new).and_return(mock_conn)
-            pg_data = [ [["VALUE1", 10]] ]
+            # Data format: each row is array of [column_name, value] pairs
+            # Query selects item columns plus timestamp as last column
+            pg_data = [ [["VALUE1", 10], ["timestamp", Time.at(@file_start_time / 1_000_000_000)]] ]
             pg_data.define_singleton_method(:ntuples) do
               return 1
             end
@@ -256,7 +272,8 @@ RSpec.describe StreamingApi, type: :model do
               end
               result
             end
-            allow(mock_conn).to receive(:type_map_for_results).and_return(nil)
+            # Return non-TypeMapAllStrings so it doesn't try to set the type map
+            allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
@@ -276,9 +293,20 @@ RSpec.describe StreamingApi, type: :model do
           it 'has start time within the file time range and end time after the file' do
             mock_conn = instance_double(PG::Connection)
             allow(PG::Connection).to receive(:new).and_return(mock_conn)
-            pg_data = [ [["VALUE1", 10]], [["VALUE1", 10]], [["VALUE1", 10]], [["VALUE1", 10]] ]
+            # Data format: each row is array of [column_name, value] pairs
+            # Multiple rows with timestamp values spread across file time range
+            base_time = @file_start_time / 1_000_000_000
+            pg_data = [
+              [["VALUE1", 10], ["timestamp", Time.at(base_time)]],
+              [["VALUE1", 20], ["timestamp", Time.at(base_time + 100)]],
+              [["VALUE1", 30], ["timestamp", Time.at(base_time + 200)]],
+              [["VALUE1", 40], ["timestamp", Time.at(base_time + 300)]],
+              [["VALUE1", 50], ["timestamp", Time.at(base_time + 400)]],
+              [["VALUE1", 60], ["timestamp", Time.at(base_time + 500)]],
+              [["VALUE1", 70], ["timestamp", Time.at(base_time + 600)]]
+            ]
             pg_data.define_singleton_method(:ntuples) do
-              return 1
+              return 7
             end
             $exec_cnt = 0
             allow(mock_conn).to receive(:exec) do
@@ -289,7 +317,8 @@ RSpec.describe StreamingApi, type: :model do
               end
               result
             end
-            allow(mock_conn).to receive(:type_map_for_results).and_return(nil)
+            # Return non-TypeMapAllStrings so it doesn't try to set the type map
+            allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
@@ -301,8 +330,10 @@ RSpec.describe StreamingApi, type: :model do
             data['end_time'] = @start_time.to_i * 1_000_000_000 # now
             @api.add(data)
             sleep 2.65 # Allow the threads to run (files need a long time)
-            # We expect at least 9 messages: 7 from the fixture file, at least one from redis, and the empty one at the end
-            expect(@messages.length).to be >= 9
+            # We expect 2 messages: 1 batch with all 7 DB rows, and the empty completion message
+            # (DB rows are batched into a single message, not sent individually)
+            expect(@messages.length).to eq(2)
+            expect(@messages[0].length).to eq(7) # First message should have 7 items from DB
             expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
         end
