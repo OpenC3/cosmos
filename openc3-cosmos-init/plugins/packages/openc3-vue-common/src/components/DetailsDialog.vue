@@ -166,32 +166,18 @@
               }}</v-col>
               <v-col v-if="key !== 'enabled'">
                 <div class="limits-text">{{ formatLimit(limit) }}</div>
-                <v-tooltip
+                <LimitsBar
                   v-if="limit.red_low !== undefined"
-                  :open-delay="600"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <div
-                      class="limitsbar"
-                      :style="calcLimitsBarStyle(limit)"
-                      v-bind="props"
-                    >
-                      <div class="limitsbar__container">
-                        <div class="limitsbar__redlow" />
-                        <div class="limitsbar__redhigh" />
-                        <div class="limitsbar__yellowlow" />
-                        <div class="limitsbar__yellowhigh" />
-                        <div class="limitsbar__greenlow" />
-                        <div class="limitsbar__greenhigh" />
-                        <div class="limitsbar__blue" />
-                        <div class="limitsbar__line" />
-                        <div class="limitsbar__arrow" />
-                      </div>
-                    </div>
-                  </template>
-                  <span>{{ formatLimit(limit) }}</span>
-                </v-tooltip>
+                  :red-low="limit.red_low"
+                  :yellow-low="limit.yellow_low"
+                  :yellow-high="limit.yellow_high"
+                  :red-high="limit.red_high"
+                  :green-low="limit.green_low"
+                  :green-high="limit.green_high"
+                  :value="convertedValue"
+                  :width="300"
+                  :height="22"
+                />
               </v-col>
             </v-row>
           </div>
@@ -222,8 +208,12 @@
 
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
+import LimitsBar from './LimitsBar.vue'
 
 export default {
+  components: {
+    LimitsBar,
+  },
   props: {
     type: {
       default: 'tlm',
@@ -439,59 +429,6 @@ export default {
         return limit
       }
     },
-    calcLimitsBarStyle(limit) {
-      if (!limit || limit.red_low === undefined) {
-        return {}
-      }
-      // Red zones take 10% each by default
-      const redLow = 10
-      const redHigh = 10
-      const divisor = 80 // 100 - 10 - 10
-      const scale = (limit.red_high - limit.red_low) / divisor
-      const yellowLow = Math.round((limit.yellow_low - limit.red_low) / scale)
-      const yellowHigh = Math.round(
-        (limit.red_high - limit.yellow_high) / scale,
-      )
-
-      let greenLow, greenHigh, blue
-      if (limit.green_low !== undefined) {
-        greenLow = Math.round((limit.green_low - limit.yellow_low) / scale)
-        greenHigh = Math.round((limit.yellow_high - limit.green_high) / scale)
-        blue = Math.round(
-          100 -
-            redLow -
-            yellowLow -
-            greenLow -
-            greenHigh -
-            yellowHigh -
-            redHigh,
-        )
-      } else {
-        greenLow = Math.round(100 - redLow - yellowLow - yellowHigh - redHigh)
-        greenHigh = 0
-        blue = 0
-      }
-
-      // Calculate position for current value
-      let position = 50 // default to middle
-      if (this.convertedValue !== null && !isNaN(this.convertedValue)) {
-        const lowValue = limit.red_low - 10 * scale
-        position = Math.round((this.convertedValue - lowValue) / scale)
-        if (position > 100) position = 100
-        if (position < 0) position = 0
-      }
-
-      return {
-        '--redlow-width': redLow + '%',
-        '--redhigh-width': redHigh + '%',
-        '--yellowlow-width': yellowLow + '%',
-        '--yellowhigh-width': yellowHigh + '%',
-        '--greenlow-width': greenLow + '%',
-        '--greenhigh-width': greenHigh + '%',
-        '--blue-width': blue + '%',
-        '--position': position + '%',
-      }
-    },
   },
 }
 </script>
@@ -513,100 +450,5 @@ export default {
 
 .limits-text {
   margin-bottom: 4px;
-}
-
-.limitsbar {
-  cursor: default;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 5px 0;
-  width: 100%;
-  max-width: 300px;
-}
-.limitsbar__container {
-  position: relative;
-  flex: 1;
-  height: 17px;
-  border: 1px solid black;
-  background-color: white;
-}
-/* The background-colors match the values in LimitscolorWidget.vue */
-.limitsbar__redlow {
-  position: absolute;
-  top: -1px;
-  left: 0px;
-  width: var(--redlow-width);
-  height: 17px;
-  background-color: rgb(255, 45, 45);
-}
-.limitsbar__redhigh {
-  position: absolute;
-  top: -1px;
-  right: 0px;
-  width: var(--redhigh-width);
-  height: 17px;
-  background-color: rgb(255, 45, 45);
-}
-.limitsbar__yellowlow {
-  position: absolute;
-  top: -1px;
-  left: var(--redlow-width);
-  width: var(--yellowlow-width);
-  height: 17px;
-  background-color: rgb(255, 220, 0);
-}
-.limitsbar__yellowhigh {
-  position: absolute;
-  top: -1px;
-  right: var(--redhigh-width);
-  width: var(--yellowhigh-width);
-  height: 17px;
-  background-color: rgb(255, 220, 0);
-}
-.limitsbar__greenlow {
-  position: absolute;
-  top: -1px;
-  left: calc(var(--redlow-width) + var(--yellowlow-width));
-  width: var(--greenlow-width);
-  height: 17px;
-  background-color: rgb(0, 200, 0);
-}
-.limitsbar__greenhigh {
-  position: absolute;
-  top: -1px;
-  right: calc(var(--redhigh-width) + var(--yellowhigh-width));
-  width: var(--greenhigh-width);
-  height: 17px;
-  background-color: rgb(0, 200, 0);
-}
-.limitsbar__blue {
-  position: absolute;
-  top: -1px;
-  left: calc(
-    var(--redlow-width) + var(--yellowlow-width) + var(--greenlow-width)
-  );
-  width: var(--blue-width);
-  height: 17px;
-  background-color: rgb(0, 153, 255);
-}
-.limitsbar__line {
-  position: absolute;
-  left: var(--position);
-  width: 1px;
-  height: 17px;
-  background-color: rgb(128, 128, 128);
-}
-$arrow-size: 5px;
-.limitsbar__arrow {
-  position: absolute;
-  top: -$arrow-size;
-  left: var(--position);
-  width: 0;
-  height: 0;
-  transform: translateX(-$arrow-size); // Transform so it sits over the line
-  border-left: $arrow-size solid transparent;
-  border-right: $arrow-size solid transparent;
-  border-top: $arrow-size solid rgb(128, 128, 128);
 }
 </style>
