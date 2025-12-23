@@ -108,23 +108,7 @@
       "cosmos/openc3/spec/install/config/targets",
       "cosmos/openc3/python/test/install/config/targets",
       "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets",
-      "app-store/openc3-cosmos-clam/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-gems-interface/targets",
-      "Development/openc3-cosmos-fakesat/targets",
-      "Development/openc3-cosmos-geosat/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-apc-switched-pdu/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-scpi-power-supply/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-influx/spec/install/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-proto-target/targets",
-      "Development/tsjordan-enterprise-plugins/openc3-cosmos-prometheus-metrics/targets",
-      "Development/MethaneSat/BCT Spacecraft Bus/BCT Cmd And Tlm Handbook (4 Aug 2022)/87sw0102_a_cosmos_methanesat/config/targets",
-      "Development/openc3-cosmos-bob/targets",
-      "Development/ball_cosmos/autohotkey/config/targets",
-      "Development/ball_cosmos/spec/install/outputs/tmp/config/targets",
-      "Development/ball_cosmos/test/performance/config/targets",
-      "Development/ball_cosmos/spec/install/config/targets",
-      "Development/ball_cosmos/demo/config/targets",
-      "Development/ball_cosmos/install/config/targets"
+      "app-store/openc3-cosmos-clam/targets"
     ]
   }
 }
