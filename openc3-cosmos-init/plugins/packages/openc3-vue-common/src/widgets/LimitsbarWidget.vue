@@ -28,6 +28,7 @@
     :width="width"
     :height="height"
     :computed-style="mergedStyle"
+    :hide-tooltip="!!tooltipText"
   />
 </template>
 

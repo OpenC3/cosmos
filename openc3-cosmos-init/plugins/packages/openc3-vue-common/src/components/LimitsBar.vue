@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-tooltip :open-delay="600" location="top">
+  <v-tooltip v-if="!hideTooltip" :open-delay="600" location="top">
     <template #activator="{ props }">
       <div class="limitsbar" :style="barStyle" v-bind="props">
         <div class="limitsbar__container">
@@ -33,8 +33,21 @@
         </div>
       </div>
     </template>
-    <span>{{ tooltipText }}</span>
+    <span>{{ limitsTooltip }}</span>
   </v-tooltip>
+  <div v-else class="limitsbar" :style="barStyle">
+    <div class="limitsbar__container">
+      <div class="limitsbar__redlow" />
+      <div class="limitsbar__redhigh" />
+      <div class="limitsbar__yellowlow" />
+      <div class="limitsbar__yellowhigh" />
+      <div class="limitsbar__greenlow" />
+      <div class="limitsbar__greenhigh" />
+      <div class="limitsbar__blue" />
+      <div class="limitsbar__line" />
+      <div class="limitsbar__arrow" />
+    </div>
+  </div>
 </template>
 
 <script>
@@ -81,12 +94,17 @@ export default {
       type: Object,
       default: null,
     },
+    // Hide the built-in tooltip (used when parent provides a TOOLTIP setting)
+    hideTooltip: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
     hasGreenLimits() {
       return this.greenLow !== null && this.greenHigh !== null
     },
-    tooltipText() {
+    limitsTooltip() {
       if (this.hasGreenLimits) {
         return `RL/${this.redLow} YL/${this.yellowLow} YH/${this.yellowHigh} RH/${this.redHigh} GL/${this.greenLow} GH/${this.greenHigh}`
       } else {
@@ -106,7 +124,9 @@ export default {
       const scale = (this.redHigh - this.redLow) / divisor
 
       const yellowLowWidth = Math.round((this.yellowLow - this.redLow) / scale)
-      const yellowHighWidth = Math.round((this.redHigh - this.yellowHigh) / scale)
+      const yellowHighWidth = Math.round(
+        (this.redHigh - this.yellowHigh) / scale,
+      )
 
       let greenLowWidth, greenHighWidth, blueWidth
       if (this.hasGreenLimits) {
