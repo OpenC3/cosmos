@@ -53,7 +53,7 @@ saveTar() {
   docker pull $repo/$namespace/openc3-traefik$suffix:$tag
   docker pull $repo/$namespace/openc3-redis$suffix:$tag
   docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
-  docker pull $repo/$namespace/openc3-minio$suffix:$tag
+  docker pull $repo/$namespace/openc3-s3$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
 
   docker save $repo/$namespace/openc3-ruby$suffix:$tag -o tmp/openc3-ruby$suffix-$tag.tar
@@ -65,7 +65,7 @@ saveTar() {
   docker save $repo/$namespace/openc3-traefik$suffix:$tag -o tmp/openc3-traefik$suffix-$tag.tar
   docker save $repo/$namespace/openc3-redis$suffix:$tag -o tmp/openc3-redis$suffix-$tag.tar
   docker save $repo/$namespace/openc3-tsdb$suffix:$tag -o tmp/openc3-tsdb$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-minio$suffix:$tag -o tmp/openc3-minio$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-s3$suffix:$tag -o tmp/openc3-s3$suffix-$tag.tar
   docker save $repo/$namespace/openc3-cosmos-init$suffix:$tag -o tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
@@ -90,7 +90,7 @@ loadTar() {
   docker load -i tmp/openc3-traefik$suffix-$tag.tar
   docker load -i tmp/openc3-redis$suffix-$tag.tar
   docker load -i tmp/openc3-tsdb$suffix-$tag.tar
-  docker load -i tmp/openc3-minio$suffix-$tag.tar
+  docker load -i tmp/openc3-s3$suffix-$tag.tar
   docker load -i tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
@@ -130,7 +130,7 @@ tag() {
   docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-tsdb$suffix:$tag1 $repo2/$namespace2/openc3-tsdb$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-minio$suffix:$tag1 $repo2/$namespace2/openc3-minio$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-s3$suffix:$tag1 $repo2/$namespace2/openc3-s3$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-cosmos-init$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-init$suffix:$tag2
   set +x
 }
@@ -159,7 +159,7 @@ push() {
   docker push $repo/$namespace/openc3-traefik$suffix:$tag
   docker push $repo/$namespace/openc3-redis$suffix:$tag
   docker push $repo/$namespace/openc3-tsdb$suffix:$tag
-  docker push $repo/$namespace/openc3-minio$suffix:$tag
+  docker push $repo/$namespace/openc3-s3$suffix:$tag
   docker push $repo/$namespace/openc3-cosmos-init$suffix:$tag
   set +x
 }

@@ -64,7 +64,7 @@ GOTO :EOF
     docker pull !repo!/!namespace!/openc3-traefik:!tag! || exit /b
     docker pull !repo!/!namespace!/openc3-redis:!tag! || exit /b
     docker pull !repo!/!namespace!/openc3-tsdb:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-minio:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-s3:!tag! || exit /b
     docker pull !repo!/!namespace!/openc3-cosmos-init:!tag! || exit /b
 
     docker save !repo!/!namespace!/openc3-operator:!tag! -o tmp/openc3-operator-!tag!.tar || exit /b
@@ -73,7 +73,7 @@ GOTO :EOF
     docker save !repo!/!namespace!/openc3-traefik:!tag! -o tmp/openc3-traefik-!tag!.tar || exit /b
     docker save !repo!/!namespace!/openc3-redis:!tag! -o tmp/openc3-redis-!tag!.tar || exit /b
     docker save !repo!/!namespace!/openc3-tsdb:!tag! -o tmp/openc3-tsdb-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-minio:!tag! -o tmp/openc3-minio-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-s3:!tag! -o tmp/openc3-s3-!tag!.tar || exit /b
     docker save !repo!/!namespace!/openc3-cosmos-init:!tag! -o tmp/openc3-cosmos-init-!tag!.tar || exit /b
     echo off
   ) else (
@@ -95,7 +95,7 @@ GOTO :EOF
   docker load -i tmp/openc3-traefik-!tag!.tar || exit /b
   docker load -i tmp/openc3-redis-!tag!.tar || exit /b
   docker load -i tmp/openc3-tsdb-!tag!.tar || exit /b
-  docker load -i tmp/openc3-minio-!tag!.tar || exit /b
+  docker load -i tmp/openc3-s3-!tag!.tar || exit /b
   docker load -i tmp/openc3-cosmos-init-!tag!.tar || exit /b
   echo off
 GOTO :EOF
@@ -130,7 +130,7 @@ GOTO :EOF
   docker tag !repo1!/!namespace1!/openc3-traefik:!tag1! !repo2!/!namespace2!/openc3-traefik:!tag2!
   docker tag !repo1!/!namespace1!/openc3-redis:!tag1! !repo2!/!namespace2!/openc3-redis:!tag2!
   docker tag !repo1!/!namespace1!/openc3-tsdb:!tag1! !repo2!/!namespace2!/openc3-tsdb:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-minio:!tag1! !repo2!/!namespace2!/openc3-minio:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-s3:!tag1! !repo2!/!namespace2!/openc3-s3:!tag2!
   docker tag !repo1!/!namespace1!/openc3-cosmos-init:!tag1! !repo2!/!namespace2!/openc3-cosmos-init:!tag2!
   echo off
 GOTO :EOF
@@ -149,7 +149,7 @@ GOTO :EOF
     docker push !repo!/!namespace!/openc3-traefik:!tag!
     docker push !repo!/!namespace!/openc3-redis:!tag!
     docker push !repo!/!namespace!/openc3-tsdb:!tag!
-    docker push !repo!/!namespace!/openc3-minio:!tag!
+    docker push !repo!/!namespace!/openc3-s3:!tag!
     docker push !repo!/!namespace!/openc3-cosmos-init:!tag!
     echo off
   ) else (

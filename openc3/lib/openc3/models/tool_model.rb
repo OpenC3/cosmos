@@ -281,8 +281,13 @@ module OpenC3
       if @folder_name and @folder_name.to_s.length > 0
         bucket = Bucket.getClient
         prefix = "#{@folder_name}/"
-        bucket.list_objects(bucket: ENV['OPENC3_TOOLS_BUCKET'], prefix: prefix).each do |object|
-          bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: object.key)
+        objects = bucket.list_objects(bucket: ENV['OPENC3_TOOLS_BUCKET'], prefix: prefix)
+        keys = objects.map(&:key)
+        if keys.length > 0
+          # Batch delete in chunks of 1000 (S3 limit)
+          keys.each_slice(1000) do |key_batch|
+            bucket.delete_objects(bucket: ENV['OPENC3_TOOLS_BUCKET'], keys: key_batch)
+          end
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
