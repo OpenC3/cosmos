@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OpenC3 COSMOS is an open-source command and control system for embedded systems. It provides a web-based UI for telemetry display, command sending, script execution, logging, and more. The system is designed for testing, operating, and monitoring embedded systems that communicate via TCP/IP, UDP, Serial, etc.
 
+## Documentation
+
+The COSMOS documentation can be found at https://docs.openc3.com/docs. To get started with COSMOS Core reference https://github.com/OpenC3/cosmos-project and to get started with COSMOS Enterprise reference https://github.com/OpenC3/cosmos-enterprise-project.
+
 ## Architecture
 
 ### Microservices (Docker Containers)
