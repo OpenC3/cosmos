@@ -29,7 +29,12 @@ export default createStore({
     return {
       notifyHistory: [],
       namedWidgets: {},
-      playback: { playbackMode: null, playbackDateTime: null, playbackStep: 1 },
+      playback: {
+        playbackMode: null,
+        playbackDateTime: null,
+        playbackStep: 1,
+        playbackLoading: 0, // Counter for number of graphs loading playback data
+      },
     }
   },
   getters: {
