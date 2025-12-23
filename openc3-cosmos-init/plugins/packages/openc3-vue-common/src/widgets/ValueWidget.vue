@@ -22,7 +22,7 @@
 
 <template>
   <div class="value-widget-container" :style="[computedStyle, aging]">
-    <v-tooltip :open-delay="600" location="top">
+    <v-tooltip v-if="!tooltipText" :open-delay="600" location="top">
       <template #activator="{ props }">
         <v-text-field
           variant="solo"
@@ -43,6 +43,22 @@
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
+    <v-text-field
+      v-else
+      variant="solo"
+      density="compact"
+      flat
+      readonly
+      hide-details
+      :model-value="_value"
+      :class="valueClass"
+      data-test="value"
+      @contextmenu="showContextMenu"
+    >
+      <template v-if="astroStatus" #prepend-inner>
+        <rux-status :status="astroStatus" />
+      </template>
+    </v-text-field>
     <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
       <v-list>
         <v-list-item
