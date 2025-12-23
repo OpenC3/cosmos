@@ -1,0 +1,25 @@
+[project]
+name = "openc3-cosmos-migration"
+version = "1.0.0"
+description = "Migration microservice for ingesting historical bin file data into QuestDB"
+authors = [
+  {name = "Support", email = "support@openc3.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "openc3",  # Includes questdb, psycopg, redis, boto3
+]
+
+[project.scripts]
+migration = "migration_microservice:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+lint.select = ["E", "F"]
+lint.ignore = ["E402","E501","F402","F403","F405"]
+line-length = 120
+target-version = "py312"
