@@ -125,6 +125,29 @@ SUBSETTING:
       LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
         SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
     END
+TOOLTIP:
+  summary: Adds a tooltip to the previously defined widget
+  description: TOOLTIP applies a custom hover tooltip to the widget defined immediately before it.
+    This allows you to provide helpful descriptions, mnemonics, or other contextual information
+    that appears when the user hovers over a widget. The tooltip overrides any default tooltip
+    that the widget may have.
+  since: 6.10.3
+  parameters:
+    - name: Tooltip Text
+      required: true
+      description: The text to display in the tooltip when hovering over the widget.
+      values: .+
+    - name: Delay
+      required: false
+      description: The delay in milliseconds before the tooltip appears (default = 600).
+      values: \d+
+  example: |
+    LED INST PARAMS VALUE5 RAW 25 20
+      SETTING LED_COLOR 0 GREEN
+      SETTING LED_COLOR 1 RED
+      TOOLTIP "Mnemonic: ABCDEF. This is the Star Tracker On/Off Status"
+    VALUE INST HEALTH_STATUS TEMP1
+      TOOLTIP "Temperature sensor 1: Primary thermal control" 1000
 NAMED_WIDGET:
   summary: Name a widget to allow access to it via the getNamedWidget method
   description: To programmatically access parts of a telemetry screen you need
