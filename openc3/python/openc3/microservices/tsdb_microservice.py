@@ -257,7 +257,7 @@ class TsdbMicroservice(Microservice):
                 packets = get_all_tlm_names(target_name)
                 for packet_name in packets:
                     self.create_table(target_name, packet_name)
-                    self.topics.append(f"{os.environ.get("OPENC3_SCOPE")}__DECOM__{{{target_name}}}__{packet_name}")
+                    self.topics.append(f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}")
             elif kind == "deleted":
                 self.logger.info(f"Target {target_name} deleted")
                 self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
@@ -304,12 +304,13 @@ class TsdbMicroservice(Microservice):
                             value = base64.b64encode(value).decode("ascii")
 
                         case list():
-                            # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
-                            if not isinstance(value[0], numbers.Number):
-                                # If the list is not numeric, convert to JSON string
-                                value = json.dumps(value)
-                            else:
-                                value = numpy.array(value, dtype=numpy.float64)
+                            if len(value) > 0:
+                                # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+                                if not isinstance(value[0], numbers.Number):
+                                    # If the list is not numeric, convert to JSON string
+                                    value = json.dumps(value)
+                                else:
+                                    value = numpy.array(value, dtype=numpy.float64)
 
                         case dict():
                             if value["json_class"] == "Float":
