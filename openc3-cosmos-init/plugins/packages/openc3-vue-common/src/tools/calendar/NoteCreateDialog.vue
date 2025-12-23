@@ -155,8 +155,10 @@ export default {
     modelValue: Boolean,
     note: {
       type: Object,
+      default: null,
     },
   },
+  emits: ['update:modelValue', 'update'],
   data() {
     return {
       dialogStep: 1,

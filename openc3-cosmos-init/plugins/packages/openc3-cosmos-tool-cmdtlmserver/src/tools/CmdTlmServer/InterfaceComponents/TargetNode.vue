@@ -35,8 +35,12 @@
         top: '164px',
       }"
     />
-    <div style="position:absolute;top:104px;left:8px;color:black;">CMD</div>
-    <div style="position:absolute;top:154px;left:8px;color:black;">TLM</div>
+    <div style="position: absolute; top: 104px; left: 8px; color: black">
+      CMD
+    </div>
+    <div style="position: absolute; top: 154px; left: 8px; color: black">
+      TLM
+    </div>
     <v-icon color="#10b981">mdi-target</v-icon>
     <div class="node-label">{{ data.label }}</div>
     <div class="node-label">Target</div>
@@ -68,8 +72,8 @@ export default {
   padding: 10px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  height:200px;
-  width:200px;
+  height: 200px;
+  width: 200px;
 }
 
 .node-label {

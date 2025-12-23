@@ -205,11 +205,21 @@ export default {
         return ['cmd', 'tlm'].indexOf(value) !== -1
       },
     },
-    targetName: String,
-    packetName: String,
-    itemName: String,
+    targetName: {
+      type: String,
+      default: null,
+    },
+    packetName: {
+      type: String,
+      default: null,
+    },
+    itemName: {
+      type: String,
+      default: null,
+    },
     modelValue: Boolean,
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       details: Object,

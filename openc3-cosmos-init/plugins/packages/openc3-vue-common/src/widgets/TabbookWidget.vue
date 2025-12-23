@@ -57,8 +57,8 @@
             <span>{{ getTooltipText(widget) }}</span>
           </v-tooltip>
           <component
-            v-else
             :is="widget.type"
+            v-else
             v-bind="listeners"
             :target="widget.target"
             :parameters="widget.parameters"
@@ -80,6 +80,7 @@
 import Layout from './Layout'
 export default {
   mixins: [Layout],
+  emits: ['min-max-screen'],
   data: function () {
     return {
       curTab: null,

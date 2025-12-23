@@ -131,6 +131,7 @@
             </v-list>
           </v-menu>
         </template>
+        <!-- eslint-disable-next-line vue/no-unused-vars -->
         <template #item.limits="{ item }">
           <v-spacer></v-spacer>
         </template>
@@ -201,6 +202,7 @@ export default {
       default: 'local',
     },
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       api: null,

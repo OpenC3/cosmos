@@ -87,15 +87,25 @@ import { Api } from '@openc3/js-common/services'
 
 export default {
   props: {
-    uuid: String,
-    cmdUser: String,
-    cmdString: String,
+    uuid: {
+      type: String,
+      default: null,
+    },
+    cmdUser: {
+      type: String,
+      default: null,
+    },
+    cmdString: {
+      type: String,
+      default: null,
+    },
     persistent: {
       type: Boolean,
       default: false,
     },
     modelValue: Boolean, // modelValue is the default prop when using v-model
   },
+  emits: ['update:modelValue', 'status'],
   data() {
     return {
       updater: null,

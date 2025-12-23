@@ -737,7 +737,7 @@ export default {
           }
         })
     },
-    // If "New File" is selected on a definition file, 
+    // If "New File" is selected on a definition file,
     // check to see if the binary exists before overwriting.
     checkAndBuildNewBinary: function (definitionFilename) {
       const binaryFilename = definitionFilename

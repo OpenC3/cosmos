@@ -35,9 +35,11 @@ export default {
   mixins: [Widget],
   props: {
     value: {
+      type: [Number, String],
       default: null,
     },
   },
+  emits: ['addItem', 'deleteItem'],
   data: function () {
     return {
       valueId: null,

@@ -652,8 +652,7 @@ export default {
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
         if (this.screens[def.target].length === 0) {
-          // Must call this.$delete to notify Vue of property deletion
-          this.$delete(this.screens, def.target)
+          delete this.screens[def.target]
         }
       }
     },

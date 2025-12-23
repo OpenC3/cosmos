@@ -53,6 +53,17 @@ export default {
       discrepancy: 0,
     }
   },
+  computed: {
+    approximateDiscrepancySec: function () {
+      return (this.discrepancy / 1000).toFixed()
+    },
+    dialog: function () {
+      return (
+        !this.dismissed &&
+        Math.abs(this.discrepancy) >= ALLOWABLE_DISCREPANCY_MS
+      )
+    },
+  },
   created: function () {
     this.suppress =
       localStorage['suppresswarning__clock_out_of_sync_with_server'] === 'true'
@@ -73,17 +84,6 @@ export default {
       localStorage['suppresswarning__clock_out_of_sync_with_server'] =
         this.suppress
       this.dismissed = true
-    },
-  },
-  computed: {
-    approximateDiscrepancySec: function () {
-      return (this.discrepancy / 1000).toFixed()
-    },
-    dialog: function () {
-      return (
-        !this.dismissed &&
-        Math.abs(this.discrepancy) >= ALLOWABLE_DISCREPANCY_MS
-      )
     },
   },
 }
