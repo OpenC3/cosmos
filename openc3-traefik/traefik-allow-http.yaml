@@ -3,6 +3,11 @@
 entrypoints:
   web:
     address: ":2900"
+    http:
+      encodedCharacters:
+        # Allow encoded slashes (%2F) in URL paths
+        # Required for Traefik v3.6.4+ which blocks them by default
+        allowEncodedSlash: true
 http:
   middlewares:
     # Removes the first part of the url before passing onto the service

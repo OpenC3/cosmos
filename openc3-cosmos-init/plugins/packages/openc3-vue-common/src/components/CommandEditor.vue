@@ -20,11 +20,13 @@
   <v-card>
     <div style="padding: 10px">
       <target-packet-item-chooser
+        ref="targetPacketChooser"
         :initial-target-name="targetName"
         :initial-packet-name="commandName"
         :disabled="sendDisabled"
         :button-text="showCommandButton ? 'Send' : null"
         :show-queue-select="showQueueSelect"
+        :parameter-hazardous="hasHazardousParameter"
         mode="cmd"
         @on-set="commandChanged($event)"
         @add-item="buildCmd($event)"
@@ -68,6 +70,7 @@
               v-model="item.val"
               :states="item.states"
               :states-in-hex="statesInHex"
+              @hazardous-change="onParameterHazardousChange(item, $event)"
             />
           </slot>
         </template>
@@ -177,6 +180,7 @@ export default {
       contextMenuShown: false,
       viewDetails: false,
       parameterName: '',
+      hazardousParameters: {},
       x: 0,
       y: 0,
       contextMenuOptions: [
@@ -190,6 +194,11 @@ export default {
       ],
     }
   },
+  computed: {
+    hasHazardousParameter() {
+      return Object.values(this.hazardousParameters).some((v) => v === true)
+    },
+  },
   created() {
     this.api = new OpenC3Api()
     if (this.cmdString) {
@@ -201,6 +210,9 @@ export default {
     }
   },
   methods: {
+    onParameterHazardousChange(item, isHazardous) {
+      this.hazardousParameters[item.parameter_name] = isHazardous
+    },
     commandChanged(event) {
       if (
         this.targetName !== event.targetName ||
@@ -228,6 +240,7 @@ export default {
     updateCmdParams() {
       this.ignoredParams = []
       this.computedRows = []
+      this.hazardousParameters = {}
       if (this.targetName && this.commandName) {
         this.api
           .get_target(this.targetName)

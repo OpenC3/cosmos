@@ -426,4 +426,4 @@ COSMOS 5 (but not COSMOS 6) includes a migration tool for converting an existing
 
 COSMOS 4 was a Qt Desktop based application. COSMOS 5 is a completely new architecture which runs natively in the browser using [Vue.js](https://vuejs.org/) as the Javascript framework and [Vuetify](https://vuetifyjs.com/en/) as the GUI library. We utilize [single-spa](https://single-spa.js.org/) to allow you to write COSMOS tool plugins in any language and provide [templates](https://github.com/OpenC3/cosmos/tree/main/openc3/templates) for Vue.js (recommended), Angular, React and Svelte. Any COSMOS 4 custom tools will have to be completely re-written to run in COSMOS 5. We recommend using the native COSMOS [tools](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages) and finding GUI concepts and functionality that best match the tool you're trying to re-create.
 
-If you need custom development get in touch at sales@openc3.com.
+If you need custom development get in touch at [sales@openc3.com](mailto:sales@openc3.com).

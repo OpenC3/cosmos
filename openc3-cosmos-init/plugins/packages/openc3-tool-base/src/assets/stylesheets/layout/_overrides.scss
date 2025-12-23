@@ -307,6 +307,7 @@ input {
 // Revert card behavior to Vuetify2 to allow components such as RawDialog to float correctly
 .v-card {
   overflow: initial !important;
+  z-index: initial !important;
 }
 
 // Allow tooltips to be clickable (Packet Viewer uses this)
@@ -316,6 +317,11 @@ input {
 
 .v-list-item-action {
   margin-right: 15px !important;
+}
+
+// Fix spacing between checkbox/radio and label in menu items
+.v-list-item-action .v-selection-control {
+  gap: 24px;
 }
 
 .blink {
@@ -346,4 +352,13 @@ input {
   100% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
+}
+
+// Fix the single spa debug panel so the text is readable
+.imo-modal-container form,
+.imo-modal-container input {
+  color: black;
+}
+.imo-module-dialog tr {
+  background-color: white;
 }

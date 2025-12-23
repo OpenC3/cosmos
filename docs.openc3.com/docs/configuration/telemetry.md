@@ -25,9 +25,25 @@ When defining telemetry items you can choose from the following data types: INT,
 Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
 :::
 
+### Naming Convention
+
+Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+
+* Use underscores
+
+    Packet and Item names like `HEALTH_STATUS` or `GND1_STATUS` are easy to read and understand.
+
+* Be descriptive but succinct
+
+    A packet name like `BUS_FLIGHT_SOFTWARE_ADCS_PACKET` is a valid packet name but makes all the drop downs extra long and is a lot to type. A better choice might be `BFSW_ADCS`. You already know it's a packet and the first three words collapse to an easy to understand acronym.
+
+* Avoid brackets in telemetry and item names
+
+    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double braces. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
+
 ### ID Items
 
-All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry.md#id_item) and [APPEND_ID_ITEM](telemetry.md#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify. If this is not the case, you must set [TLM_UNIQUE_ID_MODE](target.md#tlm_unique_id_mode) in the target.txt file which incurs a performance penalty on every packet identification.
+All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry#id_item) and [APPEND_ID_ITEM](telemetry#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify.
 
 ### Variable Sized Items
 
@@ -41,7 +57,7 @@ COSMOS has a concept of a derived item which is a telemetry item that doesn't ac
 ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
-Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry.md#read_conversion), to generate the value.
+Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry#read_conversion), to generate the value.
 
 ### Received Time and Packet Time
 
@@ -167,13 +183,13 @@ META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**This item is allowed to overlap other items in the packet**
 
 If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the key used to access this raw value in the packet.**
 
 Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
@@ -187,7 +203,7 @@ KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks an item as having its bit size defined by another length item**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -196,7 +212,7 @@ KEY $.book.title
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### OBFUSCATE
-<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+<span class="badge badge--secondary since-right">Since 6.6.0</span>**Hides the item value in the UI, text logs, and raw binary file**
 
 
 #### STATE
@@ -276,7 +292,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 ```python
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return int(value * 1.5) # Convert the value by a scale factor
+    int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 </TabItem>
@@ -284,7 +300,7 @@ APPEND_ITEM ITEM1 32 UINT
 ```ruby
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
+    (value * 1.5).to_i # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 </TabItem>
@@ -433,7 +449,7 @@ APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 ```
 
 ### STRUCTURE
-<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -445,7 +461,7 @@ APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 | Packet Name | Packet Name of the structure packet | True |
 
 ### APPEND_STRUCTURE
-<div class="right">(Since 6.10.0)</div>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -473,7 +489,7 @@ SELECT_TELEMETRY INST HEALTH_STATUS
 ```
 
 ### DELETE_ITEM
-<div class="right">(Since 4.4.1)</div>**Delete an existing telemetry item from the packet definition**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**Delete an existing telemetry item from the packet definition**
 
 Deleting an item from the packet definition does not remove the defined space for that item. Thus unless you redefine a new item, there will be a "hole" in the packet where the data is not accessible. You can use SELECT_TELEMETRY and then ITEM to define a new item.
 
@@ -539,7 +555,7 @@ This packet will not appear in Packet Viewer, Telemetry Grapher and Handbook Cre
 
 
 ### ACCESSOR
-<div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the class used to read and write raw values from the packet**
 
 Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
@@ -548,7 +564,7 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Accessor Class Name | The name of the accessor class | True |
 
 ### SUBPACKETIZER
-<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Defines a class used to break up the packet into subpackets before decom**
 
 Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
 
@@ -558,33 +574,33 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 | Argument | Additional argument passed to the Subpacketizer class constructor | False |
 
 ### TEMPLATE
-<div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template string used to pull telemetry values from a string buffer**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Template | The template string which should be enclosed in quotes | True |
 
 ### TEMPLATE_FILE
-<div class="right">(Since 5.0.10)</div>**Defines a template file used to pull telemetry values from a string buffer**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to pull telemetry values from a string buffer**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
 
 ### IGNORE_OVERLAP
-<div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
+<span class="badge badge--secondary since-right">Since 5.16.0</span>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
 
 
 ### VIRTUAL
-<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks this packet as virtual and not participating in identification**
 
 Used for packet definitions that can be used as structures for items with a given packet.
 
 
 ### SUBPACKET
-<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
 
 Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 

@@ -75,6 +75,14 @@ export default {
     }
   },
   computed: {
+    tooltipText: function () {
+      const setting = this.appliedSettings.find((s) => s[0] === 'TOOLTIP')
+      return setting ? setting[1] : null
+    },
+    tooltipDelay: function () {
+      const setting = this.appliedSettings.find((s) => s[0] === 'TOOLTIP')
+      return setting && setting[2] ? parseInt(setting[2]) : 600
+    },
     computedStyle: function () {
       // Take all the COSMOS settings and create appliedStyle with actual css values
       this.appliedSettings.forEach((setting) => {

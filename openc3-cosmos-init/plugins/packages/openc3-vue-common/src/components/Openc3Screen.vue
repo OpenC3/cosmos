@@ -563,6 +563,23 @@ export default {
                   ] ?? this.currentLayout
                 widget.settings.push(parameters)
                 break
+              case 'TOOLTIP':
+                this.configParser.verify_num_parameters(
+                  1,
+                  2,
+                  `${keyword} <Tooltip Text> <Delay (ms)>`,
+                )
+                // Add TOOLTIP to the previous widget's settings (like SETTING does)
+                const tooltipWidget =
+                  this.currentLayout.widgets[
+                    this.currentLayout.widgets.length - 1
+                  ] ?? this.currentLayout
+                tooltipWidget.settings.push([
+                  'TOOLTIP',
+                  parameters[0],
+                  parameters[1],
+                ])
+                break
               case 'GLOBAL_SUBSETTING':
                 this.configParser.verify_num_parameters(
                   3,

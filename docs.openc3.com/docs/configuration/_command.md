@@ -20,6 +20,22 @@ Command definition files define the command packets that can be sent to COSMOS t
 
 When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
+### Naming Convention
+
+Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+
+* Use underscores
+
+    Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
+
+* Be descriptive but succinct
+
+    A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
+
+* Avoid brackets in commands and parameters
+
+    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
+
 <div style={{"clear": 'both'}}></div>
 
 ## Command Authority (Enterprise)

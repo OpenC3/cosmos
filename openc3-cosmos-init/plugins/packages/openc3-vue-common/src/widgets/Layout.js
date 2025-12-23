@@ -13,10 +13,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -27,6 +27,29 @@ export default {
     widgets: {
       type: Array,
       default: () => [],
+    },
+  },
+  methods: {
+    getTooltipText(widget) {
+      const setting = widget.settings?.find((s) => s[0] === 'TOOLTIP')
+      return setting ? setting[1] : null
+    },
+    getTooltipDelay(widget) {
+      const setting = widget.settings?.find((s) => s[0] === 'TOOLTIP')
+      return setting && setting[2] ? parseInt(setting[2]) : 600
+    },
+    getTooltipActivatorProps(widget) {
+      // Check if widget has explicit width set - if so, don't apply flex grow
+      const hasWidthSetting = widget.settings?.some(
+        (s) =>
+          s[0] === 'WIDTH' ||
+          (s[0]?.startsWith?.('RAW') &&
+            s[1]?.toUpperCase?.().includes('WIDTH')),
+      )
+      // VALUE widget always has a default width
+      const isValueWidget = widget.type === 'ValueWidget'
+      // Only apply flex: 1 1 auto if widget doesn't have explicit width
+      return hasWidthSetting || isValueWidget ? {} : { style: 'flex: 1 1 auto' }
     },
   },
 }
