@@ -2,6 +2,7 @@ SCREEN AUTO AUTO 1.0
 
 VERTICAL
   TITLE Params
+    TOOLTIP "Instrument Parameters"
 
   HORIZONTAL 20
     MATRIXBYCOLUMNS 3
@@ -46,13 +47,16 @@ VERTICAL
       LED <%= target_name %> PARAMS VALUE5 RAW 25 20 # Ellipse
         SETTING LED_COLOR 0 GREEN
         SETTING LED_COLOR 1 RED
+        TOOLTIP "VALUE5: Mnemonic ABCDEF. This is the Star Tracker On/Off Status"
       LED <%= target_name %> PARAMS VALUE4 RAW 20 25 # Ellipse
         SETTING LED_COLOR 0 YELLOW
         SETTING LED_COLOR 1 BLUE
+        TOOLTIP "VALUE4: System health indicator with custom 1000ms delay" 1000
       LED <%= target_name %> PARAMS VALUE3 RAW 20 20
         SETTING LED_COLOR 0 GREEN
         SETTING LED_COLOR 1 RED
         SETTING LED_COLOR ANY ORANGE # All other values are ORANGE
+        TOOLTIP "VALUE3: Shows GREEN for 0, RED for 1, ORANGE for any other value"
       LED <%= target_name %> PARAMS VALUE2 # Default is WITH_UNITS 15 15
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
@@ -71,6 +75,8 @@ VERTICAL
 
   HORIZONTAL
     LABEL "Packet Time"
+      TOOLTIP "Packet time label"
     VALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED WITH_UNITS 25
+      TOOLTIP "Packet time formatted with units"
   END
 END
