@@ -218,20 +218,15 @@ COMMAND <%= target_name %> JSONSTRUCT BIG_ENDIAN "JSON Structure"
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY $.item1
     UNITS CELSIUS C
-    OVERLAP
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY $.more.item2
     FORMAT_STRING "0x%X"
-    OVERLAP
   APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
     KEY $.more.item3
-    OVERLAP
   APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
     KEY $.more.item4
-    OVERLAP
   APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"
     KEY $.more.item5
-    OVERLAP
 
 COMMAND <%= target_name %> CBORSTRUCT BIG_ENDIAN "CBOR Structure"
   VIRTUAL
@@ -242,20 +237,15 @@ COMMAND <%= target_name %> CBORSTRUCT BIG_ENDIAN "CBOR Structure"
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY $.item1
     UNITS CELSIUS C
-    OVERLAP
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY $.more.item2
     FORMAT_STRING "0x%X"
-    OVERLAP
   APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
     KEY $.more.item3
-    OVERLAP
   APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
     KEY $.more.item4
-    OVERLAP
   APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"
     KEY $.more.item5
-    OVERLAP
 
 COMMAND <%= target_name %> HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"
   <%= render "_ccsds_cmd.txt", locals: {id: 14} %>
