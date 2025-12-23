@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-tooltip :open-delay="600" location="top">
+  <v-tooltip v-if="!tooltipText" :open-delay="600" location="top">
     <template #activator="{ props }">
       <div class="limitsbar" :style="[cssProps, computedStyle]" v-bind="props">
         <div class="limitsbar__container">
@@ -36,6 +36,20 @@
     </template>
     <span>{{ limitsRange }}</span>
   </v-tooltip>
+  <div v-else class="limitsbar" :style="[cssProps, computedStyle]">
+    <div class="limitsbar__container">
+      <div class="limitsbar__redlow" />
+      <div class="limitsbar__redhigh" />
+      <div class="limitsbar__yellowlow" />
+      <div class="limitsbar__yellowhigh" />
+      <div class="limitsbar__greenlow" />
+      <div class="limitsbar__greenhigh" />
+      <div class="limitsbar__blue" />
+
+      <div class="limitsbar__line" />
+      <div class="limitsbar__arrow" />
+    </div>
+  </div>
 </template>
 
 <script>
