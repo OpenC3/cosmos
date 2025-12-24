@@ -433,6 +433,9 @@ module OpenC3
       previous_item = nil
       warnings = []
       @sorted_items.each do |item|
+        # Skip items with a parent_item since those are accessor-based items within a structure
+        # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
+        next if item.parent_item
         if expected_next_offset and (item.bit_offset < expected_next_offset) and !item.overlap
           msg = "Bit definition overlap at bit offset #{item.bit_offset} for packet #{@target_name} #{@packet_name} items #{item.name} and #{previous_item.name}"
           Logger.instance.warn(msg)

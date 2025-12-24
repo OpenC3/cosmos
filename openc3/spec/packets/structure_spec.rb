@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -50,6 +50,70 @@ module OpenC3
         expect(s.defined?).to be false
         s.define_item("test1", 0, 8, :UINT)
         expect(s.defined?).to be true
+      end
+    end
+
+    describe "length" do
+      it "returns the length of the buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 16, :UINT)
+        expect(s.length).to eql 2
+      end
+
+      it "allocates buffer if needed" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 32, :UINT)
+        expect(s.length).to eql 4
+      end
+    end
+
+    describe "accessor" do
+      it "returns the accessor" do
+        s = Structure.new(:BIG_ENDIAN)
+        expect(s.accessor).to be_a(BinaryAccessor)
+      end
+    end
+
+    describe "read_items" do
+      it "reads multiple items from buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT)
+        s.append_item("test2", 16, :UINT)
+        items = [s.get_item("test1"), s.get_item("test2")]
+        buffer = "\x01\x02\x03"
+        result = s.read_items(items, :RAW, buffer)
+        expect(result["TEST1"]).to eql 1
+        expect(result["TEST2"]).to eql 0x0203
+      end
+
+      it "allocates buffer if none provided" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT)
+        items = [s.get_item("test1")]
+        result = s.read_items(items, :RAW, nil)
+        expect(result["TEST1"]).to eql 0
+      end
+    end
+
+    describe "write_items" do
+      it "writes multiple items to buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT)
+        s.append_item("test2", 16, :UINT)
+        items = [s.get_item("test1"), s.get_item("test2")]
+        values = [5, 0x0A0B]
+        s.write_items(items, values)
+        expect(s.read("test1")).to eql 5
+        expect(s.read("test2")).to eql 0x0A0B
+      end
+
+      it "allocates buffer if none provided" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT)
+        items = [s.get_item("test1")]
+        values = [10]
+        s.write_items(items, values, :RAW, nil)
+        expect(s.read("test1")).to eql 10
       end
     end
 
@@ -324,6 +388,12 @@ module OpenC3
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 4
       end
+
+      it "appends a DERIVED item at offset zero" do
+        @s.append_item("test1", 8, :UINT)
+        @s.append_item("derived1", 0, :DERIVED)
+        expect(@s.items["DERIVED1"].bit_offset).to eql 0
+      end
     end
 
     describe "append" do
@@ -340,6 +410,13 @@ module OpenC3
         expect(@s.sorted_items[0].name).to eql "TEST1"
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 3
+      end
+
+      it "appends a DERIVED item to the structure" do
+        @s.append_item("test1", 8, :UINT)
+        item = StructureItem.new("derived1", 0, 0, :DERIVED, :BIG_ENDIAN)
+        @s.append(item)
+        expect(@s.items["DERIVED1"].bit_offset).to eql 0
       end
     end
 
@@ -640,6 +717,18 @@ module OpenC3
         expect(s.formatted(:CONVERTED, 0, s.buffer, %w(TEST1 TEST3))).to eq("TEST2: 3456\n")
         expect(s.formatted(:CONVERTED, 0, s.buffer, %w(TEST1 TEST2 TEST3))).to eq("")
       end
+
+      it "skips hidden items" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT)
+        s.write("test1", 5)
+        s.append_item("test2", 8, :UINT)
+        s.write("test2", 10)
+        s.items["TEST2"].hidden = true
+        result = s.formatted
+        expect(result).to include("TEST1: 5")
+        expect(result).not_to include("TEST2")
+      end
     end
 
     describe "buffer" do
@@ -790,6 +879,17 @@ module OpenC3
         s = Structure.new(:BIG_ENDIAN)
         s.enable_method_missing
         expect { s.test1 }.to raise_error(ArgumentError, "Unknown item: test1")
+      end
+    end
+
+    describe "set_item" do
+      it "handles variable_bit_size items" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("length", 8, :UINT)
+        s.append_item("data", 8, :UINT)
+        item = s.get_item("data")
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        s.set_item(item)
       end
     end
   end # describe Structure

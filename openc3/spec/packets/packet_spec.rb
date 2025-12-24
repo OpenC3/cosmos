@@ -1010,6 +1010,25 @@ module OpenC3
         p.define_item("item2", 10, 10, :UINT, nil, :LITTLE_ENDIAN)
         expect(p.check_bit_offsets[0]).to eql "Bit definition overlap at bit offset 12 for packet TGT1 PKT1 items ITEM1 and ITEM2"
       end
+
+      it "does not complain about items with parent_item (accessor-based structure items)" do
+        # Items with parent_item are accessor-based items within a structure (e.g., JSON, CBOR)
+        # that don't have meaningful bit positions - they share the parent's bit_offset
+        p = Packet.new("tgt1", "pkt1")
+        p.define_item("header", 0, 32, :UINT)
+        parent_item = p.define_item("json_struct", 32, 0, :BLOCK)
+
+        # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
+        item1 = p.define_item("json_struct.item1", 32, 0, :UINT)
+        item1.parent_item = parent_item
+        item2 = p.define_item("json_struct.item2", 32, 0, :STRING)
+        item2.parent_item = parent_item
+        item3 = p.define_item("json_struct.item3", 32, 0, :INT)
+        item3.parent_item = parent_item
+
+        # Should not complain about the items with parent_item even though they share bit_offset
+        expect(p.check_bit_offsets).to eq []
+      end
     end
 
     describe "id_items" do
