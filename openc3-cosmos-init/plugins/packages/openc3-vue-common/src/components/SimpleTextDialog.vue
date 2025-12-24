@@ -56,13 +56,20 @@
 export default {
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
-    text: String,
-    title: String,
+    text: {
+      type: String,
+      default: null,
+    },
+    title: {
+      type: String,
+      default: null,
+    },
     width: {
       type: Number,
       default: 800,
     },
   },
+  emits: ['update:modelValue'],
   computed: {
     show: {
       get() {

@@ -220,10 +220,17 @@ export default {
   components: { OutputDialog },
   mixins: [TimeFilters],
   props: {
-    tabId: Number,
-    curTab: Number,
+    tabId: {
+      type: Number,
+      default: null,
+    },
+    curTab: {
+      type: Number,
+      default: null,
+    },
     connectInNewTab: Boolean,
   },
+  emits: ['disconnect', 'close'],
   data() {
     return {
       api: null,

@@ -20,9 +20,9 @@
   <div
     v-if="contextTag.text"
     class="context-tag mr-2 mt-4"
-    :style="{ 
+    :style="{
       color: contextTag.fontColor,
-      backgroundColor: contextTag.backgroundColor
+      backgroundColor: contextTag.backgroundColor,
     }"
   >
     {{ contextTag.text }}
@@ -58,20 +58,21 @@ export default {
   methods: {
     getContextTagSettings() {
       return this.api
-      .get_setting('context_tag')
-      .then((response) => {
-        if (response) {
-          const parsed = JSON.parse(response)
-          this.contextTag = {
-            text: parsed.text,
-            fontColor: parsed.fontColor,
-            backgroundColor: parsed.backgroundColor,
+        .get_setting('context_tag')
+        .then((response) => {
+          if (response) {
+            const parsed = JSON.parse(response)
+            this.contextTag = {
+              text: parsed.text,
+              fontColor: parsed.fontColor,
+              backgroundColor: parsed.backgroundColor,
+            }
           }
-        }
-      })
-      .catch((error) => {
-        console.error(error)
-      })
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error(error)
+        })
     },
     startContextTagAutoRefresh() {
       this.stopContextTagAutoRefresh()
@@ -95,7 +96,7 @@ export default {
   border-radius: 4px;
   height: 38px;
   font-family: var(--font-body-2-font-family);
-  padding: .1875rem .5rem;
+  padding: 0.1875rem 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;

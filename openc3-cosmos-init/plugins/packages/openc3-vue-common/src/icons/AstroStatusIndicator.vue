@@ -42,6 +42,7 @@ export default {
     },
     scale: {
       type: Number,
+      default: 1,
     },
   },
   computed: {

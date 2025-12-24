@@ -63,6 +63,7 @@ export default {
       required: true,
     },
   },
+  emits: ['update:modelValue'],
   computed: {
     show: {
       get() {

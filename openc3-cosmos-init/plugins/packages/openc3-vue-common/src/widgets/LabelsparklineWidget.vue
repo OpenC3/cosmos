@@ -22,7 +22,7 @@
       :parameters="labelName"
       :settings="[...appliedSettings]"
       :line="line"
-      :lineNumber="lineNumber"
+      :line-number="lineNumber"
       :widget-index="0"
     />
     <sparkline-widget
@@ -40,11 +40,11 @@ import LabelWidget from './LabelWidget.vue'
 import SparklineWidget from './SparklineWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     LabelWidget,
     SparklineWidget,
   },
+  mixins: [Widget],
   computed: {
     labelName() {
       // LabelWidget uses index 0 from the parameters prop

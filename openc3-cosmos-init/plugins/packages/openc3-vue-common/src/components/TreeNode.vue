@@ -145,7 +145,7 @@ watch(
   },
 )
 
-const emit = defineEmits(['nodeToggled', 'request'])
+const emit = defineEmits(['nodeToggled', 'request', 'delete'])
 
 const globalTooltip = ref({
   show: false,
@@ -186,6 +186,8 @@ const handleClick = (node) => {
 const toggle = () => {
   if (props.node.children) {
     isOpen.value = !isOpen.value
+    // Note: Intentionally updating node.isOpen for tree state persistence
+    // eslint-disable-next-line vue/no-mutating-props
     props.node.isOpen = isOpen.value
     emit('nodeToggled', props.node.id, isOpen.value)
   }

@@ -96,14 +96,17 @@
             class="overflow-y-auto"
             data-test="news-list"
           >
-            <template v-for="(news, index) in news" :key="`news-${index}`">
+            <template v-for="(newsItem, index) in news" :key="`news-${index}`">
               <hr />
               <v-list-item class="pl-2">
                 <v-list-item-title>
-                  <span class="news-title">{{ news.title }}</span
-                  ><span class="news-date">{{ formatDate(news.date) }}</span>
+                  <span class="news-title">{{ newsItem.title }}</span
+                  ><span class="news-date">{{
+                    formatDate(newsItem.date)
+                  }}</span>
                 </v-list-item-title>
-                <div v-html="sanitizeNews(news.body)"></div>
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <div v-html="sanitizeNews(newsItem.body)"></div>
               </v-list-item>
             </template>
           </v-list>

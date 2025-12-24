@@ -28,16 +28,16 @@
         <v-row dense>
           <v-col>
             <v-select
+              v-model="selectedTargetNames"
               class="ma-0 pa-0"
               label="Select Target(s)"
               density="compact"
               hide-details
               variant="outlined"
               :items="targetNames"
-              v-model="selectedTargetNames"
               multiple
             >
-              <template v-slot:prepend-item>
+              <template #prepend-item>
                 <v-list-item ripple @mousedown.prevent @click="toggleTargets">
                   <v-list-item-title>
                     <v-list-item-action end>
@@ -59,11 +59,11 @@
           </v-col>
           <v-col>
             <v-select
+              v-model="columns"
               label="Item Columns"
               density="compact"
               hide-details
               variant="outlined"
-              v-model="columns"
               :items="columnItems"
             ></v-select>
           </v-col>

@@ -30,6 +30,7 @@ export default {
   props: {
     icon: {
       type: String,
+      default: null,
     },
     size: {
       type: String,

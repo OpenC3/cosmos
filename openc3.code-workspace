@@ -63,8 +63,21 @@
     "eslint.validate": ["vue", "html", "javascript"],
     "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
     "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "explicit"
+      "source.fixAll.eslint": "always"
+    },
+    "[vue]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "explorer.confirmDragAndDrop": true,
     "editor.tabSize": 2,
@@ -94,7 +107,8 @@
       "cosmos/openc3/templates/target/targets",
       "cosmos/openc3/spec/install/config/targets",
       "cosmos/openc3/python/test/install/config/targets",
-      "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets"
+      "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets",
+      "app-store/openc3-cosmos-clam/targets"
     ]
   }
 }
