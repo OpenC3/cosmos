@@ -44,6 +44,7 @@
           label="Store URL"
           :rules="[rules.required, rules.url]"
         />
+        <v-text-field v-model="apiKey" label="API Key" />
       </v-card-text>
       <v-card-actions>
         <v-btn
@@ -61,8 +62,11 @@
 <script>
 import Settings from '@/tools/admin/tabs/settings/settings.js'
 
-const SETTING_NAME = 'store_url'
+const URL_SETTING_NAME = 'store_url'
+const API_KEY_SETTING_NAME = 'store_api_key'
 const SETTING_SCOPE = 'DEFAULT'
+const DEFAULT_STORE_URL = 'https://store.openc3.com'
+
 export default {
   mixins: [Settings],
   props: {
@@ -73,6 +77,7 @@ export default {
     return {
       showDialog: false,
       storeUrl: '',
+      apiKey: '',
       rules: {
         required: (value) => !!value || 'Required',
         url: (value) => {
@@ -99,20 +104,29 @@ export default {
     },
   },
   created: function () {
-    this.loadSetting(SETTING_NAME, { scope: SETTING_SCOPE })
+    this.loadSetting(URL_SETTING_NAME, { scope: SETTING_SCOPE })
+    this.loadSetting(API_KEY_SETTING_NAME, { scope: SETTING_SCOPE })
+    this.$emit('update:storeUrl', this.storeUrl)
   },
   methods: {
     save() {
-      this.saveSetting(SETTING_NAME, this.storeUrl, { scope: SETTING_SCOPE })
+      this.saveSetting(URL_SETTING_NAME, this.storeUrl, {
+        scope: SETTING_SCOPE,
+      })
+      this.saveSetting(API_KEY_SETTING_NAME, this.apiKey, {
+        scope: SETTING_SCOPE,
+      })
       this.$emit('update:storeUrl', this.storeUrl)
       this.showDialog = false
     },
-    parseSetting: function (response) {
-      if (response) {
-        this.storeUrl = response
-      } else {
-        // Default URL if setting is not found
-        this.storeUrl = 'https://store.openc3.com'
+    parseSetting: function (response, { setting }) {
+      switch (setting) {
+        case URL_SETTING_NAME:
+          this.storeUrl = response || DEFAULT_STORE_URL
+          break
+        case API_KEY_SETTING_NAME:
+          this.apiKey = response || ''
+          break
       }
     },
   },

@@ -23,7 +23,7 @@ module OpenC3
   class PluginStoreModel < Model
     PRIMARY_KEY = 'openc3_plugin_store'
     DEFAULT_STORE_URL = 'https://store.openc3.com'
-    JSON_ENDPOINT = '/cosmos_plugins/api/v1.1/json'
+    JSON_ENDPOINT = '/api/v1.1/cosmos_plugins'
 
     def self.set(plugin_store_data)
       Store.set(PRIMARY_KEY, plugin_store_data)
@@ -48,12 +48,19 @@ module OpenC3
     end
 
     def self.update
-      setting = SettingModel.get(name: 'store_url', scope: 'DEFAULT')
-      store_url = setting['data'] if setting
+      url_setting = SettingModel.get(name: 'store_url', scope: 'DEFAULT')
+      store_url = url_setting['data'] if url_setting
       store_url = DEFAULT_STORE_URL if store_url.nil? or store_url.strip.empty?
-      conn = Faraday.new(
-        url: store_url,
-      )
+
+      api_key_setting = SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
+      api_key = api_key_setting['data'] if api_key_setting
+
+      conn = Faraday.new(url: store_url) do |faraday|
+        if api_key && !api_key.strip.empty?
+          faraday.headers['Authorization'] = "Bearer #{api_key}"
+        end
+      end
+
       response = conn.get(JSON_ENDPOINT)
       if response.success?
         self.set(response.body)
