@@ -36,7 +36,7 @@
               />
             </div>
           </template>
-          <span> View at store.openc3.com </span>
+          <span> View at {{ formattedStoreLink }} </span>
         </v-tooltip>
         <v-btn
           icon="mdi-close-box"
@@ -200,6 +200,9 @@ export default {
         this.showDialog = val
         this.$emit('update:modelValue', val)
       },
+    },
+    formattedStoreLink: function () {
+      return this._storeUrl.split('://').at(-1)
     },
   },
   methods: {
