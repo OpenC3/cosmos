@@ -28,7 +28,6 @@ This microservice:
 """
 
 import gzip
-import io
 import json
 import os
 import sys
@@ -36,7 +35,6 @@ import time
 import traceback
 from datetime import datetime, timezone
 
-from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.utilities.questdb_client import QuestDBClient
@@ -238,7 +236,7 @@ class MigrationMicroservice:
                 table_name, _ = QuestDBClient.sanitize_table_name(packet.target_name, packet.packet_name)
 
                 # Convert JSON data to QuestDB columns
-                columns = self.questdb.process_json_data(packet.json_data)
+                columns = self.questdb.process_json_data(packet.json_hash)
 
                 if not columns:
                     continue

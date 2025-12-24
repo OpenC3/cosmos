@@ -8,7 +8,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "openc3",  # Includes questdb, psycopg, redis, boto3
+    "openc3",  # Includes questdb, psycopg, redis, boto3, pytest
 ]
 
 [project.scripts]
@@ -17,6 +17,12 @@ migration = "migration_microservice:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 
 [tool.ruff]
 lint.select = ["E", "F"]
