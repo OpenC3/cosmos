@@ -529,6 +529,7 @@ _openc3() {
                 'run:run the containers'
                 'test:test openc3'
                 'util:various helper commands'
+                'generate_compose:generate compose.yaml from template'
                 'start-ubi:build and run UBI images'
                 'build-ubi:build UBI containers'
                 'run-ubi:run UBI containers'
@@ -601,6 +602,24 @@ _openc3() {
                     # Restore original values
                     words=("${save_words[@]}")
                     CURRENT=$save_current
+                    ;;
+                generate_compose)
+                    # generate_compose accepts --dry-run, --output, --help
+                    if (( CURRENT == 2 )); then
+                        local -a gen_compose_options
+                        gen_compose_options=(
+                            '--dry-run:print output without writing file'
+                            '--output:specify output file path'
+                            '--help:show help message'
+                            '-h:show help message'
+                        )
+                        _describe 'generate_compose options' gen_compose_options
+                    elif (( CURRENT == 3 )); then
+                        # If previous arg was --output, expect a file path
+                        if [[ "${words[2]}" == "--output" ]]; then
+                            _files
+                        fi
+                    fi
                     ;;
                 start|stop|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments
