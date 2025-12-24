@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,6 +23,7 @@
 require 'openc3/utilities/process_manager'
 require 'openc3/models/plugin_store_model'
 require 'openc3/models/plugin_model'
+require 'openc3/models/setting_model'
 require 'down'
 require 'fileutils'
 require 'tmpdir'
@@ -39,9 +40,18 @@ class PluginsController < ModelController
     uri = URI.parse(gem_url)
     return gem_url unless ['localhost', '127.0.0.1'].include? uri.host
 
-    test_url = "http://#{uri.host}:#{uri.port}/cosmos_plugins/api/v1.1/json/#{store_id}"
+    api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
+    api_key = api_key_setting['data'] if api_key_setting
+
+    test_url = "http://#{uri.host}:#{uri.port}/api/v1.1/cosmos_plugins/#{store_id}"
     begin
-      response = Net::HTTP.get_response(URI(test_url))
+      uri_obj = URI(test_url)
+      req = Net::HTTP::Get.new(uri_obj)
+      req['Authorization'] = "Bearer #{api_key}" if api_key && !api_key.strip.empty?
+
+      response = Net::HTTP.start(uri_obj.hostname, uri_obj.port) do |http|
+        http.request(req)
+      end
       return gem_url if response.code.to_i < 400
     rescue
       # localhost not reachable, try host.docker.internal
@@ -50,7 +60,13 @@ class PluginsController < ModelController
     docker_gem_url = gem_url.gsub(uri.host, 'host.docker.internal')
     docker_test_url = test_url.gsub(uri.host, 'host.docker.internal')
     begin
-      response = Net::HTTP.get_response(URI(docker_test_url))
+      uri_obj = URI(docker_test_url)
+      req = Net::HTTP::Get.new(uri_obj)
+      req['Authorization'] = "Bearer #{api_key}" if api_key && !api_key.strip.empty?
+
+      response = Net::HTTP.start(uri_obj.hostname, uri_obj.port) do |http|
+        http.request(req)
+      end
       return docker_gem_url if response.code.to_i < 400
     rescue
       # host.docker.internal not reachable either
@@ -105,7 +121,14 @@ class PluginsController < ModelController
         return
       end
 
-      tempfile = Down.download(adjusted_gem_url)
+      api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
+      api_key = api_key_setting['data'] if api_key_setting
+
+      if api_key && !api_key.strip.empty?
+        tempfile = Down.download(adjusted_gem_url, headers: { 'Authorization' => "Bearer #{api_key}" })
+      else
+        tempfile = Down.download(adjusted_gem_url)
+      end
       checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
       expected = store_data['checksum'].downcase
       unless checksum == expected
