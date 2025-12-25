@@ -222,6 +222,18 @@ Decoration Widgets:
           values: \d+
       example: |
         FILEDISPLAY "INST/data/sample.json" 400 200
+    FILECHECKSUM:
+      summary: Displays SHA-256 checksum of one or more files, with comparison if multiple
+      since: 6.10.3
+      parameters:
+        - name: File path
+          required: true
+          description: Path to a file relative to the target folder (e.g. "INST/procedures/file.rb"). Multiple file paths can be provided to compare checksums.
+          values: .+
+      example: |
+        FILECHECKSUM "INST/data/sample.json"
+        FILECHECKSUM "INST/data/sample.json" "INST2/data/sample.json"
+        FILECHECKSUM "INST/data/file1.bin" "INST/data/file2.bin" "INST/data/file3.bin"
 Telemetry Widgets:
   description: Telemetry widgets are used to display telemetry values.
     The first parameters to each of these widgets is a telemetry mnemonic.

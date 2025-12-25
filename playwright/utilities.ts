@@ -33,6 +33,16 @@ export class Utilities {
     await expect(
       this.page.locator('[data-test="select-target"]'),
     ).not.toBeEmpty()
+    if (packet) {
+      await expect(
+        this.page.locator('[data-test="select-packet"]'),
+      ).not.toBeEmpty()
+    }
+    if (item) {
+      await expect(
+        this.page.locator('[data-test="select-item"]'),
+      ).not.toBeEmpty()
+    }
     await this.page.locator('[data-test=select-target]').click()
     await this.page.getByRole('option', { name: target, exact: true }).click()
     await expect(
