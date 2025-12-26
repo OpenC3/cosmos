@@ -22,32 +22,52 @@
 
 <template>
   <div ref="container" :style="computedStyle" class="overflow-y-auto">
-    <component
-      v-bind="listeners"
-      :is="widget.type"
-      v-for="(widget, index) in widgets"
-      :key="index"
-      :target="widget.target"
-      :parameters="widget.parameters"
-      :settings="widget.settings"
-      :screen-values="screenValues"
-      :screen-time-zone="screenTimeZone"
-      :widgets="widget.widgets"
-      :name="widget.name"
-      :line="widget.line"
-      :line-number="widget.lineNumber"
-    />
+    <template v-for="(widget, index) in widgets" :key="index">
+      <v-tooltip
+        v-if="getTooltipText(widget)"
+        :open-delay="getTooltipDelay(widget)"
+        location="top"
+        :activator-props="getTooltipActivatorProps(widget)"
+      >
+        <template #activator="{ props }">
+          <component
+            :is="widget.type"
+            v-bind="{ ...listeners, ...props }"
+            :target="widget.target"
+            :parameters="widget.parameters"
+            :settings="widget.settings"
+            :screen-values="screenValues"
+            :screen-time-zone="screenTimeZone"
+            :widgets="widget.widgets"
+            :name="widget.name"
+            :line="widget.line"
+            :line-number="widget.lineNumber"
+          />
+        </template>
+        <span>{{ getTooltipText(widget) }}</span>
+      </v-tooltip>
+      <component
+        :is="widget.type"
+        v-else
+        v-bind="listeners"
+        :target="widget.target"
+        :parameters="widget.parameters"
+        :settings="widget.settings"
+        :screen-values="screenValues"
+        :screen-time-zone="screenTimeZone"
+        :widgets="widget.widgets"
+        :name="widget.name"
+        :line="widget.line"
+        :line-number="widget.lineNumber"
+      />
+    </template>
   </div>
 </template>
 
 <script>
 import Layout from './Layout'
-import VerticalWidget from './VerticalWidget.vue'
 
 export default {
-  components: {
-    VerticalWidget,
-  },
   mixins: [Layout],
   created: function () {
     this.setHeight(this.parameters[0], 'px', 200)

@@ -592,6 +592,11 @@ export default {
           // If we are going backwards in time we need to clear the data
           this.clearAllData()
         } else {
+          // Track that we're waiting for playback data
+          // Increment store counter so skip buttons are disabled until all graphs finish loading
+          this.$store.commit('playback', {
+            playbackLoading: this.$store.state.playback.playbackLoading + 1,
+          })
           this.api
             .get_tlm_values(
               this.graphItems,
@@ -627,6 +632,13 @@ export default {
                   }
                 }
               }
+              // Decrement store counter now that playback data has been processed
+              this.$store.commit('playback', {
+                playbackLoading: Math.max(
+                  0,
+                  this.$store.state.playback.playbackLoading - 1,
+                ),
+              })
               this.dataChanged = true
               this.updateGraphData()
             })

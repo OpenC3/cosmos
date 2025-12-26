@@ -71,6 +71,7 @@ export default {
     },
     ignored: {
       type: Object,
+      default: null,
     },
   },
   computed: {

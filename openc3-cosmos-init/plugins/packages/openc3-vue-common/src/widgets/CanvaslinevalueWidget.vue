@@ -34,6 +34,7 @@
 import Widget from './Widget'
 export default {
   mixins: [Widget],
+  emits: ['addItem', 'deleteItem'],
   data() {
     return {
       valueId: 0,

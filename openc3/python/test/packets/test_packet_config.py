@@ -1233,8 +1233,10 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item2 0 2 UINT\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
+        # Items with same bit_offset are sorted by create_index, so item1 comes first
+        # When item2 is checked, it overlaps with item1
         self.assertEqual(
-            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM1 and ITEM2",
+            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
             self.pc.warnings[0],
         )
         tf.close()

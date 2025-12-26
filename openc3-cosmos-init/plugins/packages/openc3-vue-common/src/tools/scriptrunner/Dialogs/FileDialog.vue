@@ -32,7 +32,7 @@
         <div class="pa-2">
           <v-card-text>
             <v-row>
-              <span class="title">{{ title }}</span>
+              <span class="text-h6">{{ title }}</span>
             </v-row>
             <v-row v-if="message">
               <span
@@ -100,6 +100,7 @@ export default {
     },
     modelValue: Boolean,
   },
+  emits: ['update:modelValue', 'response'],
   data() {
     return {
       inputValue: null,

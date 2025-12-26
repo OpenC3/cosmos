@@ -117,11 +117,14 @@ export default {
     modelValue: Boolean,
     target: {
       type: String,
+      default: null,
     },
     screens: {
       type: Object,
+      default: null,
     },
   },
+  emits: ['update:modelValue', 'success'],
   data() {
     return {
       api: null,

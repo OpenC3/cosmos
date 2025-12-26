@@ -110,6 +110,7 @@
                   aria-label="Skip Backward"
                   data-test="playback-skip-backward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackSkipBackward"
                 ></v-btn>
               </template>
@@ -127,6 +128,7 @@
                   aria-label="Step Backward"
                   data-test="playback-step-backward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackStepBackward"
                 ></v-btn>
               </template>
@@ -152,6 +154,7 @@
                   aria-label="Step Forward"
                   data-test="playback-step-forward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackStepForward"
                 ></v-btn>
               </template>
@@ -169,6 +172,7 @@
                   aria-label="Skip Forward"
                   data-test="playback-skip-forward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackSkipForward"
                 ></v-btn>
               </template>
@@ -312,6 +316,9 @@ export default {
     }
   },
   computed: {
+    playbackLoading: function () {
+      return this.$store.state.playback.playbackLoading > 0
+    },
     menus: function () {
       return [
         {
@@ -652,8 +659,7 @@ export default {
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
         if (this.screens[def.target].length === 0) {
-          // Must call this.$delete to notify Vue of property deletion
-          this.$delete(this.screens, def.target)
+          delete this.screens[def.target]
         }
       }
     },

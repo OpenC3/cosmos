@@ -135,12 +135,22 @@ export default {
         return ['open', 'save'].indexOf(value) !== -1
       },
     },
-    apiUrl: String, // Base API URL for use with scripts or cmd-tlm
+    apiUrl: {
+      type: String,
+      default: null,
+    }, // Base API URL for use with scripts or cmd-tlm
     requireTargetParentDir: Boolean, // Require that the save filename be nested in a directory with the name of a target
-    inputFilename: String, // passed if this is a 'save' dialog
+    inputFilename: {
+      type: String,
+      default: null,
+    }, // passed if this is a 'save' dialog
     modelValue: Boolean,
-    customHelpText: String, // Optional custom help text to display
+    customHelpText: {
+      type: String,
+      default: null,
+    }, // Optional custom help text to display
   },
+  emits: ['update:modelValue', 'error', 'clear-temp', 'file', 'filename'],
   data() {
     return {
       tree: [],
