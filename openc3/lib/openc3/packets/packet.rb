@@ -1295,7 +1295,7 @@ module OpenC3
         else
           given_raw = json_hash[item.name]
           json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
+          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
           limits_state = item.limits.state
           json_hash["#{item.name}__L"] = limits_state if limits_state
         end

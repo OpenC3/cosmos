@@ -73,6 +73,8 @@ module CmdTlmApi
       token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
     }
     config.rails_semantic_logger.add_file_appender = false
+    # Disable middleware swap - Rails 8.1 API-only apps don't include Rails::Rack::Logger
+    config.rails_semantic_logger.semantic = false
     config.semantic_logger.add_appender(
       io: $stdout,
       formatter: OpenC3::CosmosRailsFormatter.new,

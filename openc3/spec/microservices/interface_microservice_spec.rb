@@ -104,7 +104,7 @@ module OpenC3
       allow(@interface).to receive(:connected?).and_return(true)
       allow(System).to receive(:targets).and_return({ "INST" => @interface })
 
-      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"])
+      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["OPTIMIZE_THROUGHPUT", "0.1"]])
       model.create
       model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__INTERFACE__INST_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
