@@ -631,7 +631,7 @@ class Packet(Structure):
                         value_type = simple_formatted(value_type)
                     value_type += "..."
                 raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED' or 'FORMATTED'"
+                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
                 )
         return value
 
@@ -701,7 +701,7 @@ class Packet(Structure):
                         value_type = simple_formatted(value_type)
                     value_type += "..."
                 raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED' or 'FORMATTED'"
+                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
                 )
         with self.synchronize():
             self.read_conversion_cache = {}
