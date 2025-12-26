@@ -99,13 +99,49 @@ class BinaryAccessor(Accessor):
             f"{len(buffer)} byte buffer insufficient to {read_write} {data_type} at bit_offset {given_bit_offset} with bit_size {given_bit_size}"
         )
 
+    # Check if an item is completely within the buffer bounds
+    # Returns False if the item extends beyond the buffer,
+    # this is used to return None for out-of-bounds reads
+    #
+    # @param item [StructureItem] The item to check
+    # @param buffer [bytes/bytearray] The binary buffer
+    # @return [bool] True if the item is within buffer bounds, False otherwise
+    @classmethod
+    def item_within_buffer_bounds(cls, item, buffer):
+        if item.data_type == "DERIVED":
+            return True
+
+        bit_offset = item.bit_offset
+        bit_size = item.bit_size
+        buffer_bits = len(buffer) * 8
+
+        # Handle negative bit offsets (offset from end of buffer)
+        if bit_offset < 0:
+            bit_offset = buffer_bits + bit_offset
+            if bit_offset < 0:
+                return False
+
+        # For arrays, use array_size instead of bit_size
+        total_bits = item.array_size if item.array_size is not None else bit_size
+
+        # Handle negative/zero bit sizes (fill to end of buffer)
+        if total_bits <= 0:
+            # These types fill to the end, so they're always "in bounds" if the starting position is valid
+            return bit_offset <= buffer_bits
+
+        # Check if the item's upper bound is within buffer
+        upper_bound_bits = bit_offset + total_bits
+        return upper_bound_bits <= buffer_bits
+
     # Valid endianness
     ENDIANNESS = ["BIG_ENDIAN", "LITTLE_ENDIAN"]
 
     def handle_read_variable_bit_size(self, item, _buffer):
         length_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
         if item.array_size is not None:
-            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size["length_value_bit_offset"]
+            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+                "length_value_bit_offset"
+            ]
         else:
             if item.data_type == "INT" or item.data_type == "UINT":
                 # QUIC encoding is currently assumed for individual variable sized integers
@@ -133,7 +169,7 @@ class BinaryAccessor(Accessor):
             # Structure is used to read items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            return structure.read(item.key, 'RAW', structure_buffer)
+            return structure.read(item.key, "RAW", structure_buffer)
         else:
             if item.variable_bit_size:
                 self.handle_read_variable_bit_size(item, buffer)
@@ -143,6 +179,9 @@ class BinaryAccessor(Accessor):
     @classmethod
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
+            return None
+        # Return None if item is outside the buffer bounds (for undersized packets)
+        if not cls.item_within_buffer_bounds(item, buffer):
             return None
         if item.array_size is not None:
             return cls.read_array(
@@ -291,7 +330,7 @@ class BinaryAccessor(Accessor):
             # Structure is used to write items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            structure.write(item.key, value, 'RAW', structure_buffer)
+            structure.write(item.key, value, "RAW", structure_buffer)
             if item.parent_item.variable_bit_size:
                 self.handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer)
             BinaryAccessor.class_write_item(item.parent_item, structure_buffer, buffer)
@@ -936,9 +975,7 @@ class BinaryAccessor(Accessor):
                             )
                         )
                     else:
-                        raise ValueError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
+                        raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
 
                 else:
                     raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
@@ -1149,9 +1186,7 @@ class BinaryAccessor(Accessor):
                             *values,
                         )
                     else:
-                        raise ValueError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
+                        raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
                 else:
                     raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 

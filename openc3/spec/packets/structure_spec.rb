@@ -892,5 +892,31 @@ module OpenC3
         s.set_item(item)
       end
     end
+
+    describe "short_buffer_allowed" do
+      it "returns nil for items outside buffer bounds when short_buffer_allowed is true" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        s.append_item("item3", 16, :UINT)
+        s.short_buffer_allowed = true
+        # Set a short buffer that only contains data for item1
+        s.buffer = "\x00\x01"
+        # item1 should read successfully
+        expect(s.read("item1")).to eq(1)
+        # item2 and item3 should return nil since they're outside the buffer
+        expect(s.read("item2")).to be_nil
+        expect(s.read("item3")).to be_nil
+        # Buffer should remain at its original size (not padded)
+        expect(s.buffer.length).to eq(2)
+      end
+
+      it "raises error when short_buffer_allowed is false" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        expect { s.buffer = "\x00\x01" }.to raise_error(RuntimeError, /Buffer length less than defined length/)
+      end
+    end
   end # describe Structure
 end
