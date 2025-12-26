@@ -327,27 +327,27 @@ class PacketReadReadItem(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", b"\00")
 
@@ -628,27 +628,27 @@ class PacketWrite(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
 

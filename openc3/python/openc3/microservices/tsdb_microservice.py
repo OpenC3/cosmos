@@ -279,7 +279,7 @@ class TsdbMicroservice(Microservice):
                 packets = get_all_tlm_names(target_name)
                 for packet_name in packets:
                     self.create_table(target_name, packet_name)
-                    self.topics.append(f"{os.environ.get("OPENC3_SCOPE")}__DECOM__{{{target_name}}}__{packet_name}")
+                    self.topics.append(f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}")
             elif kind == "deleted":
                 self.logger.info(f"Target {target_name} deleted")
                 self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
