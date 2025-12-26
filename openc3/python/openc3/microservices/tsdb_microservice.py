@@ -151,12 +151,6 @@ class TsdbMicroservice(Microservice):
             ]:
                 continue
 
-<<<<<<< HEAD
-            # Skip DERIVED items since it's hard to know what type they are
-            # We'll let the Influx Line Protocol writer handle these
-            data_type = item.get("data_type")
-            if data_type == "DERIVED":
-=======
             data_type = item.get("data_type")
 
             # DERIVED items have unpredictable types (could be int, float, array, etc.)
@@ -165,7 +159,6 @@ class TsdbMicroservice(Microservice):
                 column_definitions.append(f'"{item_name}" varchar')
                 # Register for JSON serialization in read_topics
                 self.json_columns[f"{table_name}__{item_name}"] = True
->>>>>>> release/v7.0.0
                 continue
 
             if item.get("array_size"):
@@ -180,10 +173,7 @@ class TsdbMicroservice(Microservice):
                 # can support the full range of the given type. This is tricky because
                 # QuestDB uses the minimum possible value in a given type as NULL.
                 # See https://questdb.com/docs/reference/sql/datatypes for more details.
-<<<<<<< HEAD
-=======
                 bit_size = item.get("bit_size", 0)
->>>>>>> release/v7.0.0
                 if data_type in ["INT", "UINT"]:
                     # Less than 32 bits can fit into a standard INT
                     # Exactly 32 bits doesn't because it can't store -2,147,483,648
@@ -197,11 +187,7 @@ class TsdbMicroservice(Microservice):
                     else:
                         column_type = "varchar"  # Base64 encode larger integers
                 elif data_type == "FLOAT":
-<<<<<<< HEAD
-                    if item["bit_size"] == 32:
-=======
                     if bit_size == 32:
->>>>>>> release/v7.0.0
                         column_type = "float"
                     else:
                         column_type = "double"
