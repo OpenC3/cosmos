@@ -31,6 +31,7 @@
         </v-toolbar>
         <v-card-text class="mt-4 pa-3">
           <v-icon v-if="params.validateText" class="mr-2"> mdi-alert </v-icon>
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <span v-if="params.html" v-html="sanitizedText"></span>
           <span v-else>{{ sanitizedText }}</span>
           <div v-if="params.validateText" class="validate mt-4">

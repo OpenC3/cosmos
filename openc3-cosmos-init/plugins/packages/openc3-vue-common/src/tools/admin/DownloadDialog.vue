@@ -108,6 +108,7 @@ export default {
   props: {
     modelValue: Boolean,
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       url: '',

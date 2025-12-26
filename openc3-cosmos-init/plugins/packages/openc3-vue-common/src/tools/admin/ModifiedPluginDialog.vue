@@ -82,21 +82,22 @@ import { Api } from '@openc3/js-common/services'
 export default {
   props: {
     modelValue: Boolean,
-    plugin: String,
-    targets: Array,
+    plugin: {
+      type: String,
+      default: null,
+    },
+    targets: {
+      type: Array,
+      default: null,
+    },
     pluginDelete: Boolean,
   },
+  emits: ['update:modelValue', 'submit', 'cancel'],
   data() {
     return {
       modifiedTargets: [],
       deleteModified: false,
     }
-  },
-  methods: {
-    cancel() {
-      this.show = false
-      this.$emit('cancel')
-    },
   },
   computed: {
     show: {
@@ -122,6 +123,12 @@ export default {
         },
       )
     }
+  },
+  methods: {
+    cancel() {
+      this.show = false
+      this.$emit('cancel')
+    },
   },
 }
 </script>

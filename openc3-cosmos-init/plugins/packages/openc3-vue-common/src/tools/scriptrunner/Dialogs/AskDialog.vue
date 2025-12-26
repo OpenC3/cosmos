@@ -86,6 +86,7 @@ export default {
     },
     modelValue: Boolean,
   },
+  emits: ['update:modelValue', 'response'],
   data() {
     return {
       inputValue: '',

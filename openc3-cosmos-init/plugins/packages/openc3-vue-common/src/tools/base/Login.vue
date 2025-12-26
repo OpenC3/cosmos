@@ -52,11 +52,11 @@
         <v-btn
           v-if="reset"
           type="submit"
-          @click.prevent="setPassword"
           size="large"
           :color="isSet ? 'warn' : 'success'"
           :disabled="!formValid"
           data-test="set-password"
+          @click.prevent="setPassword"
         >
           Set
         </v-btn>
@@ -79,7 +79,7 @@
         </v-container>
       </v-form>
     </v-card-text>
-    <v-alert :type="alertType" v-model="showAlert" closable>
+    <v-alert v-model="showAlert" :type="alertType" closable>
       {{ alert }}
     </v-alert>
   </v-card>
@@ -150,7 +150,7 @@ export default {
     login: function (response) {
       localStorage.openc3Token = response.data
       const redirect = new URLSearchParams(window.location.search).get(
-        'redirect',
+        'redirect'
       )
       if (redirect?.startsWith('/tools/')) {
         // Valid relative redirect URL

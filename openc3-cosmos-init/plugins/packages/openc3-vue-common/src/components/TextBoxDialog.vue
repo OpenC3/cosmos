@@ -59,9 +59,16 @@
 export default {
   props: {
     modelValue: Boolean,
-    text: String,
-    title: String,
+    text: {
+      type: String,
+      default: null,
+    },
+    title: {
+      type: String,
+      default: null,
+    },
   },
+  emits: ['update:modelValue'],
   computed: {
     dialogText: function () {
       return this.text

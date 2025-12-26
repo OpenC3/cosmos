@@ -369,6 +369,10 @@ class Packet(Structure):
         previous_item = None
         warnings = []
         for item in self.sorted_items:
+            # Skip items with a parent_item since those are accessor-based items within a structure
+            # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
+            if item.parent_item:
+                continue
             if expected_next_offset and (item.bit_offset < expected_next_offset) and not item.overlap:
                 msg = f"Bit definition overlap at bit offset {item.bit_offset} for packet {self.target_name} {self.packet_name} items {item.name} and {previous_item.name}"
                 Logger.warn(msg)

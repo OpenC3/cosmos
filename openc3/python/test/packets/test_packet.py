@@ -1044,6 +1044,25 @@ class PacketCheckBitOffsets(unittest.TestCase):
         else:
             self.fail("No overlap detected")
 
+    def test_does_not_complain_about_items_with_parent_item(self):
+        # Items with parent_item are accessor-based items within a structure (e.g., JSON, CBOR)
+        # that don't have meaningful bit positions - they share the parent's bit_offset
+        p = Packet("tgt1", "pkt1")
+        p.define_item("header", 0, 32, "UINT")
+        parent_item = p.define_item("json_struct", 32, 0, "BLOCK")
+
+        # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
+        item1 = p.define_item("json_struct.item1", 32, 0, "UINT")
+        item1.parent_item = parent_item
+        item2 = p.define_item("json_struct.item2", 32, 0, "STRING")
+        item2.parent_item = parent_item
+        item3 = p.define_item("json_struct.item3", 32, 0, "INT")
+        item3.parent_item = parent_item
+
+        # Should not complain about the items with parent_item even though they share bit_offset
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
+
 
 class PacketIdItems(unittest.TestCase):
     def test_returns_an_array_of_the_identifying_items(self):

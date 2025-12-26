@@ -58,14 +58,21 @@ export default {
       type: String,
       required: true,
     },
-    type: String,
-    name: String,
+    type: {
+      type: String,
+      default: null,
+    },
+    name: {
+      type: String,
+      default: null,
+    },
     modelValue: Boolean,
     filename: {
       type: String,
-      required: false,
+      default: null,
     },
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       editor: null,

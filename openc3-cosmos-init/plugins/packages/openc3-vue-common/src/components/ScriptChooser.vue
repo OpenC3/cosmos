@@ -48,8 +48,12 @@ export default {
   // this was previously handled by Vuetify and the `cache-items` prop on `v-autocomplete`, but that feature was
   // dropped in Vuetify 3
   props: {
-    modelValue: String, // modelValue is the default prop when using v-model
+    modelValue: {
+      type: String,
+      default: null,
+    }, // modelValue is the default prop when using v-model
   },
+  emits: ['file', 'error'],
   data() {
     return {
       loading: false,
