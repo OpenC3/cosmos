@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,6 +24,7 @@ require 'spec_helper'
 require 'openc3'
 require 'openc3/accessors/binary_accessor'
 require 'openc3/packets/packet'
+require 'openc3/packets/structure_item'
 
 module OpenC3
   describe BinaryAccessor, no_ext: true do
@@ -2564,5 +2565,75 @@ module OpenC3
         end
       end
     end # describe "write_array"
+
+    describe "item_within_buffer_bounds?" do
+      it "returns true for items within the buffer bounds" do
+        buffer = "\x00\x01\x02\x03\x04\x05\x06\x07"
+        item = StructureItem.new("TEST", 0, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
+      end
+
+      it "returns false for items that exceed buffer bounds" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
+        item = StructureItem.new("TEST", 0, 64, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be false
+      end
+
+      it "returns false for items with offset outside buffer" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
+        item = StructureItem.new("TEST", 64, 8, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be false
+      end
+
+      it "returns true for derived items regardless of buffer size" do
+        buffer = "\x00"
+        item = StructureItem.new("TEST", 0, 0, :DERIVED, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
+      end
+
+      it "handles negative bit offsets correctly" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
+        item = StructureItem.new("TEST", -8, 8, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
+
+        item2 = StructureItem.new("TEST2", -64, 8, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item2, buffer)).to be false
+      end
+
+      it "handles zero/negative bit sizes (fill to end)" do
+        buffer = "\x00\x01\x02\x03"
+        item = StructureItem.new("TEST", 8, 0, :STRING, :BIG_ENDIAN)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
+      end
+
+      it "handles arrays correctly" do
+        buffer = "\x00\x01\x02\x03\x04\x05\x06\x07"
+        item = StructureItem.new("TEST", 0, 8, :UINT, :BIG_ENDIAN, 32)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
+
+        item2 = StructureItem.new("TEST2", 0, 8, :UINT, :BIG_ENDIAN, 128)
+        expect(BinaryAccessor.item_within_buffer_bounds?(item2, buffer)).to be false
+      end
+    end
+
+    describe "read_item with undersized buffer" do
+      it "returns nil for items outside buffer bounds" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes
+        item = StructureItem.new("TEST", 32, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+
+      it "returns value for items within buffer bounds" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes
+        item = StructureItem.new("TEST", 0, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to eq(0x00010203)
+      end
+
+      it "returns nil for partially out-of-bounds items" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
+        item = StructureItem.new("TEST", 16, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+    end
   end # describe BinaryAccessor
 end

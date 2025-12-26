@@ -605,8 +605,11 @@ class Structure:
         if self.accessor.enforce_length():
             if len(self._buffer) != self.defined_length:
                 if len(self._buffer) < self.defined_length:
-                    self.resize_buffer()
+                    # Only resize if short_buffer_allowed is false
+                    # When short_buffer_allowed is true, keep the buffer short so reads
+                    # of items beyond the buffer return None
                     if not self.short_buffer_allowed:
+                        self.resize_buffer()
                         raise ValueError("Buffer length less than defined length")
                 elif self.fixed_size and self.defined_length != 0:
                     raise ValueError("Buffer length greater than defined length")

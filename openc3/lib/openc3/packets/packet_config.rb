@@ -492,8 +492,8 @@ module OpenC3
           'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER', 'STRUCTURE', 'APPEND_STRUCTURE'
         start_item(parser)
 
-      # Allow this packet to be received with less data than the defined length
-      # without generating a warning.
+      # Allow this packet to be received with less data than the defined length.
+      # Items that are beyond the buffer will return nil when read.
       when 'ALLOW_SHORT'
         @current_packet.short_buffer_allowed = true
 
