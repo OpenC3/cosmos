@@ -54,6 +54,7 @@
             </v-row>
           </template>
 
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -336,6 +337,7 @@ export default {
       default: null,
     },
   },
+  emits: ['update:modelValue', 'update'],
   data() {
     return {
       timeline: null,

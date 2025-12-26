@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -267,12 +267,14 @@ class TestStructureItem(unittest.TestCase):
         self.assertFalse(si1 == si2)
         self.assertFalse(si1 > si2)
 
-    def test_sorts_items_with_0_bit_offset_according_to_bit_size(self):
+    def test_sorts_items_with_same_bit_offset_according_to_create_index(self):
+        # Items with same bit_offset are sorted by create_index (creation order)
         si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
         si2 = StructureItem("si2", 0, 0, "BLOCK", "BIG_ENDIAN", None)
-        self.assertFalse(si1 < si2)
+        # si1 was created first (lower create_index), so si1 < si2
+        self.assertTrue(si1 < si2)
         self.assertFalse(si1 == si2)
-        self.assertTrue(si1 > si2)
+        self.assertFalse(si1 > si2)
 
     def test_sorts_items_according_to_negative_bit_offset(self):
         si1 = StructureItem("si1", -8, 8, "UINT", "BIG_ENDIAN", None)
@@ -310,10 +312,10 @@ class TestStructureItem(unittest.TestCase):
                 "bit_size",
                 "data_type",
                 "endianness",
-                'overflow',
-                'overlap',
-                'create_index',
-                'hidden',
+                "overflow",
+                "overlap",
+                "create_index",
+                "hidden",
                 "array_size",
             ],
         )
@@ -328,3 +330,248 @@ class TestStructureItem(unittest.TestCase):
         self.assertEqual(item["overlap"], False)
         self.assertEqual(item["hidden"], False)
         self.assertEqual(item["array_size"], 16)
+
+    def test_key_setter_complains_about_non_string_key(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(TypeError, "key must be a String but is a int"):
+            si.key = 123
+
+    def test_key_setter_complains_about_empty_key(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(ValueError, "key must contain at least one character"):
+            si.key = ""
+
+    def test_key_setter_allows_none(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si.key = None
+        self.assertIsNone(si.key)
+
+    def test_endianness_complains_about_non_string(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "TEST: endianness must be a String but is a int",
+            StructureItem,
+            "TEST",
+            0,
+            8,
+            "UINT",
+            123,
+            None,
+        )
+
+    def test_data_type_complains_about_non_string(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "TEST: data_type must be a str but 123 is a int",
+            StructureItem,
+            "TEST",
+            0,
+            8,
+            123,
+            "BIG_ENDIAN",
+            None,
+        )
+
+    def test_overflow_complains_about_non_string(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "TEST: overflow type must be a String",
+            StructureItem,
+            "TEST",
+            0,
+            8,
+            "UINT",
+            "BIG_ENDIAN",
+            None,
+            123,
+        )
+
+    def test_string_bit_size_must_be_byte_multiple(self):
+        self.assertRaisesRegex(
+            ValueError,
+            "TEST: bit_size for STRING and BLOCK items must be byte multiples",
+            StructureItem,
+            "TEST",
+            0,
+            10,
+            "STRING",
+            "BIG_ENDIAN",
+            None,
+        )
+
+    def test_variable_bit_size_setter_validates_dict(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(TypeError, "TEST: variable_bit_size must be a dict"):
+            si.variable_bit_size = "not a dict"
+
+    def test_variable_bit_size_setter_validates_length_item_name(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(TypeError, "TEST: variable_bit_size\\['length_item_name'\\] must be a String"):
+            si.variable_bit_size = {"length_item_name": 123, "length_value_bit_offset": 0, "length_bits_per_count": 8}
+
+    def test_variable_bit_size_setter_validates_length_value_bit_offset(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(
+            ValueError, "TEST: variable_bit_size\\['length_value_bit_offset'\\] must be an Integer"
+        ):
+            si.variable_bit_size = {
+                "length_item_name": "LENGTH",
+                "length_value_bit_offset": "not int",
+                "length_bits_per_count": 8,
+            }
+
+    def test_variable_bit_size_setter_validates_length_bits_per_count(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        with self.assertRaisesRegex(
+            ValueError, "TEST: variable_bit_size\\['length_bits_per_count'\\] must be an Integer"
+        ):
+            si.variable_bit_size = {
+                "length_item_name": "LENGTH",
+                "length_value_bit_offset": 0,
+                "length_bits_per_count": "not int",
+            }
+
+    def test_variable_bit_size_setter_accepts_valid_dict(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        self.assertEqual(si.variable_bit_size["length_item_name"], "LENGTH")
+
+    def test_eq_with_derived_items(self):
+        si1 = StructureItem("si1", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        # DERIVED items are compared by create_index, not equal since different create_index
+        self.assertFalse(si1 == si2)
+        # Same item should be equal to itself
+        self.assertTrue(si1 == si1)
+
+    def test_eq_derived_vs_non_derived(self):
+        si1 = StructureItem("si1", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
+        # DERIVED is never equal to non-DERIVED
+        self.assertFalse(si1 == si2)
+        self.assertFalse(si2 == si1)
+
+    def test_lt_with_derived_items(self):
+        si1 = StructureItem("si1", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        # DERIVED items are sorted by create_index
+        self.assertTrue(si1 < si2)
+        self.assertFalse(si2 < si1)
+
+    def test_lt_derived_vs_non_derived(self):
+        si1 = StructureItem("si1", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
+        # DERIVED comes before non-DERIVED
+        self.assertTrue(si1 < si2)
+        self.assertFalse(si2 < si1)
+
+    def test_lt_with_variable_bit_size_same_offset(self):
+        si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si1.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
+        # Variable bit size items come before regular items at same offset
+        self.assertTrue(si1 < si2)
+
+    def test_lt_both_variable_bit_size_same_offset(self):
+        si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si1.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2.variable_bit_size = {
+            "length_item_name": "LENGTH2",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        # Both have variable_bit_size, sorted by create_index
+        self.assertTrue(si1 < si2)
+
+    def test_little_endian_bit_field_returns_false_for_big_endian(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        self.assertFalse(si.little_endian_bit_field())
+
+    def test_little_endian_bit_field_returns_false_for_non_int_types(self):
+        si = StructureItem("test", 0, 32, "FLOAT", "LITTLE_ENDIAN", None)
+        self.assertFalse(si.little_endian_bit_field())
+
+    def test_little_endian_bit_field_returns_true_for_non_byte_aligned(self):
+        si = StructureItem("test", 4, 4, "UINT", "LITTLE_ENDIAN", None)
+        self.assertTrue(si.little_endian_bit_field())
+
+    def test_little_endian_bit_field_returns_true_for_non_byte_multiple(self):
+        # Use bit_offset of 8 so it's byte-aligned but bit_size is not a byte multiple
+        si = StructureItem("test", 8, 12, "UINT", "LITTLE_ENDIAN", None)
+        self.assertTrue(si.little_endian_bit_field())
+
+    def test_little_endian_bit_field_returns_false_for_byte_aligned_byte_multiple(self):
+        si = StructureItem("test", 0, 16, "UINT", "LITTLE_ENDIAN", None)
+        self.assertFalse(si.little_endian_bit_field())
+
+    def test_verify_overall_little_endian_bit_field_error(self):
+        # Create a little-endian bit field that would have a negative lower bound
+        self.assertRaisesRegex(
+            ValueError,
+            "TEST: LITTLE_ENDIAN bitfield with bit_offset 4 and bit_size 12 is invalid",
+            StructureItem,
+            "TEST",
+            4,
+            12,
+            "UINT",
+            "LITTLE_ENDIAN",
+            None,
+        )
+
+    def test_as_json_with_variable_bit_size(self):
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        result = si.as_json()
+        self.assertIn("variable_bit_size", result)
+        self.assertEqual(result["variable_bit_size"]["length_item_name"], "LENGTH")
+
+    def test_as_json_with_parent_item(self):
+        parent = StructureItem("parent", 0, 32, "BLOCK", "BIG_ENDIAN", None)
+        child = StructureItem("child", 0, 8, "UINT", "BIG_ENDIAN", None)
+        child.parent_item = parent
+        result = child.as_json()
+        self.assertIn("parent_item", result)
+        self.assertEqual(result["parent_item"]["name"], "PARENT")
+
+    def test_as_json_with_structure(self):
+        from openc3.packets.packet import Packet
+
+        p = Packet("TGT", "PKT")
+        si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si.structure = p
+        result = si.as_json()
+        self.assertIn("structure", result)
+
+    def test_sorts_items_with_derived_first(self):
+        si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        # DERIVED items should come before non-DERIVED
+        self.assertFalse(si1 < si2)
+        self.assertFalse(si1 == si2)
+        self.assertTrue(si1 > si2)
+
+    def test_sorts_variable_sized_items_before_fixed_at_same_offset(self):
+        si1 = StructureItem("si1", 8, 8, "UINT", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 8, 0, "UINT", "BIG_ENDIAN", None)
+        si2.variable_bit_size = {
+            "length_item_name": "item1_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        # Variable bit size items should come before fixed at same offset
+        self.assertFalse(si1 < si2)
+        self.assertFalse(si1 == si2)
+        self.assertTrue(si1 > si2)
+
+        # Now test the opposite
+        si1 = StructureItem("si1", 8, 0, "UINT", "BIG_ENDIAN", None)
+        si1.variable_bit_size = {
+            "length_item_name": "item1_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        si2 = StructureItem("si2", 8, 8, "UINT", "BIG_ENDIAN", None)
+        self.assertTrue(si1 < si2)
+        self.assertFalse(si1 == si2)
+        self.assertFalse(si1 > si2)

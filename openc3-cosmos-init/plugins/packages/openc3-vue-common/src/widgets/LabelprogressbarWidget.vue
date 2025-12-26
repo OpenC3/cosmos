@@ -44,11 +44,11 @@ import LabelWidget from './LabelWidget.vue'
 import ProgressbarWidget from './ProgressbarWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     LabelWidget,
     ProgressbarWidget,
   },
+  mixins: [Widget],
   computed: {
     labelName() {
       // LabelWidget uses index 0 from the parameters prop

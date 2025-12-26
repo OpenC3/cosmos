@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -38,6 +38,24 @@ module OpenC3
 
       it "complains about blank names" do
         expect { StructureItem.new("", 0, 8, :UINT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "name must contain at least one character")
+      end
+    end
+
+    describe "key=" do
+      it "complains about non String key" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.key = 123 }.to raise_error(ArgumentError, "key must be a String but is a Integer")
+      end
+
+      it "complains about empty key" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.key = "" }.to raise_error(ArgumentError, "key must contain at least one character")
+      end
+
+      it "sets a valid key" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        si.key = "my_key"
+        expect(si.key).to eql "my_key"
       end
     end
 
@@ -126,6 +144,11 @@ module OpenC3
       it "complains about non zero DERIVED bit sizes" do
         expect { StructureItem.new("test", 0, 8, :DERIVED, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: DERIVED items must have bit_size of zero")
       end
+
+      it "complains about STRING and BLOCK bit_size not being byte multiples" do
+        expect { StructureItem.new("test", 0, 10, :STRING, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size for STRING and BLOCK items must be byte multiples")
+        expect { StructureItem.new("test", 0, 10, :BLOCK, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size for STRING and BLOCK items must be byte multiples")
+      end
     end
 
     describe "array_size=" do
@@ -139,6 +162,61 @@ module OpenC3
 
       it "does not complain about array size != multiple of bit size with negative array size" do
         expect { StructureItem.new("test", 0, 32, :UINT, :BIG_ENDIAN, -8) }.not_to raise_error
+      end
+    end
+
+    describe "variable_bit_size=" do
+      it "complains about non Hash variable_bit_size" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.variable_bit_size = "not a hash" }.to raise_error(ArgumentError, "TEST: variable_bit_size must be a Hash")
+      end
+
+      it "complains about non String length_item_name" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.variable_bit_size = {'length_item_name' => 123, 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8} }.to raise_error(ArgumentError, "TEST: variable_bit_size['length_item_name'] must be a String")
+      end
+
+      it "complains about non Integer length_value_bit_offset" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => "not int", 'length_bits_per_count' => 8} }.to raise_error(ArgumentError, "TEST: variable_bit_size['length_value_bit_offset'] must be an Integer")
+      end
+
+      it "complains about non Integer length_bits_per_count" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect { si.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => 0, 'length_bits_per_count' => "not int"} }.to raise_error(ArgumentError, "TEST: variable_bit_size['length_bits_per_count'] must be an Integer")
+      end
+
+      it "accepts valid variable_bit_size hash" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        si.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(si.variable_bit_size['length_item_name']).to eql 'LENGTH'
+      end
+    end
+
+    describe "little_endian_bit_field?" do
+      it "returns false for BIG_ENDIAN items" do
+        si = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect(si.little_endian_bit_field?).to be false
+      end
+
+      it "returns false for non INT/UINT types" do
+        si = StructureItem.new("test", 0, 32, :FLOAT, :LITTLE_ENDIAN, nil)
+        expect(si.little_endian_bit_field?).to be false
+      end
+
+      it "returns true for non byte aligned LITTLE_ENDIAN INT/UINT" do
+        si = StructureItem.new("test", 4, 4, :UINT, :LITTLE_ENDIAN, nil)
+        expect(si.little_endian_bit_field?).to be true
+      end
+
+      it "returns true for non byte multiple LITTLE_ENDIAN INT/UINT" do
+        si = StructureItem.new("test", 8, 12, :UINT, :LITTLE_ENDIAN, nil)
+        expect(si.little_endian_bit_field?).to be true
+      end
+
+      it "returns false for byte aligned byte multiple LITTLE_ENDIAN INT/UINT" do
+        si = StructureItem.new("test", 0, 16, :UINT, :LITTLE_ENDIAN, nil)
+        expect(si.little_endian_bit_field?).to be false
       end
     end
 
@@ -232,6 +310,23 @@ module OpenC3
         expect(hash["overflow"]).to eql 'ERROR'
         expect(hash["hidden"]).to eql false
         expect(hash["overlap"]).to eql false
+      end
+
+      it "includes variable_bit_size when present" do
+        item = StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        hash = item.as_json()
+        expect(hash.keys).to include('variable_bit_size')
+        expect(hash["variable_bit_size"]['length_item_name']).to eql 'LENGTH'
+      end
+
+      it "includes parent_item when present" do
+        parent = StructureItem.new("parent", 0, 32, :BLOCK, :BIG_ENDIAN, nil)
+        child = StructureItem.new("child", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        child.parent_item = parent
+        hash = child.as_json()
+        expect(hash.keys).to include('parent_item')
+        expect(hash["parent_item"]['name']).to eql 'PARENT'
       end
     end
   end

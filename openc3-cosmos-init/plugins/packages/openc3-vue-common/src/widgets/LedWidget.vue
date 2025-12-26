@@ -69,6 +69,7 @@ export default {
     DetailsDialog,
   },
   mixins: [Widget],
+  emits: ['addItem', 'deleteItem'],
   data() {
     return {
       valueId: null,

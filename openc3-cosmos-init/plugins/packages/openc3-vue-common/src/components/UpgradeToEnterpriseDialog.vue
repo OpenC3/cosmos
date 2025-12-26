@@ -60,7 +60,10 @@
 export default {
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
-    reason: String,
+    reason: {
+      type: String,
+      default: null,
+    },
   },
   emits: ['update:modelValue'],
   data() {

@@ -154,7 +154,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
       - name: Run ESLint
-        run: pnpm lint --max-warnings 1
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
 
   cmdtlmserver:
@@ -173,7 +173,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
       - name: Run ESLint
-        run: pnpm lint --max-warnings 46
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
 
   dataextractor:
@@ -230,7 +230,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
       - name: Run ESLint
-        run: pnpm lint --max-warnings 4
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
 
   iframe:
@@ -268,7 +268,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
       - name: Run ESLint
-        run: pnpm lint --max-warnings 3
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
 
   packetviewer:
@@ -325,7 +325,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
       - name: Run ESLint
-        run: pnpm lint --max-warnings 13
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
 
   tlmgrapher:
@@ -363,7 +363,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
       - name: Run ESLint
-        run: pnpm lint --max-warnings 13
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
 
   jscommon:
@@ -382,7 +382,7 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
       - name: Run ESLint
-        run: pnpm lint --max-warnings 22
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
 
   toolbase:
@@ -420,5 +420,5 @@ jobs:
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
       - name: Run ESLint
-        run: pnpm lint --max-warnings 331
+        run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common

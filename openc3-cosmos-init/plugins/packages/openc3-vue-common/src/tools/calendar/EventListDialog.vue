@@ -171,12 +171,14 @@ export default {
     },
     types: {
       type: Array,
+      default: null,
     },
     newMetadata: {
       type: Boolean,
       default: false,
     },
   },
+  emits: ['update:modelValue', 'close', 'update'],
   data() {
     return {
       search: '',

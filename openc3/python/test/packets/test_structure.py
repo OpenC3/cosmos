@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -92,7 +92,12 @@ class TestStructureDefineItem(unittest.TestCase):
         self.s.define_item("test5", -16, 8, "UINT")
         self.assertEqual(self.s.defined_length, 4)
         self.assertFalse(self.s.fixed_size)
-        self.assertEqual(self.s.buffer, b"\x00\x00\x00\x00")
+        self.s.buffer = b"\x12\x34\x56\x78"
+        self.assertEqual(self.s.read("test1"), 0x78)
+        self.assertEqual(self.s.read("test2"), 0x1)
+        self.assertEqual(self.s.read("test3"), 0x2)
+        self.assertEqual(self.s.read("test4"), b"\x56\x78")
+        self.assertEqual(self.s.read("test5"), 0x56)
 
     def test_adds_item_with_negative_offset(self):
         self.assertRaisesRegex(
@@ -460,13 +465,13 @@ class TestStructureRead(unittest.TestCase):
     def test_reads_until_null_byte_for_string_items(self):
         s = Structure()
         s.define_item("test1", 0, 80, "STRING")
-        buffer = b"\x4E\x4F\x4F\x50\x00\x4E\x4F\x4F\x50\x0A"  # NOOP<NULL>NOOP\n
+        buffer = b"\x4e\x4f\x4f\x50\x00\x4e\x4f\x4f\x50\x0a"  # NOOP<NULL>NOOP\n
         self.assertEqual(s.read("test1", "CONVERTED", buffer), "NOOP")
 
     def test_reads_the_entire_buffer_for_block_items(self):
         s = Structure()
         s.define_item("test1", 0, 80, "BLOCK")
-        buffer = b"\x4E\x4F\x4F\x50\x00\x4E\x4F\x4F\x50\x0A"  # NOOP<NULL>NOOP\n
+        buffer = b"\x4e\x4f\x4f\x50\x00\x4e\x4f\x4f\x50\x0a"  # NOOP<NULL>NOOP\n
         self.assertEqual(s.read("test1", "CONVERTED", buffer), b"NOOP\x00NOOP\n")
 
     def test_reads_array_data_from_the_buffer(self):
@@ -538,7 +543,7 @@ class TestStructureFormatted(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
+        s.write("test3", b"\x07\x08\x09\x0a")
         self.assertIn("TEST1: [1, 2]", s.formatted())
         self.assertIn("TEST2: 3456", s.formatted())
         self.assertIn("TEST3", s.formatted())
@@ -671,10 +676,456 @@ class TestStructureBuffer(unittest.TestCase):
         s.write("test3", 0x05060708)
 
         s2 = s.deep_copy()
-        self.assertEqual(s.items["TEST1"].overflow, 'ERROR')
-        self.assertEqual(s2.items["TEST1"].overflow, 'ERROR')
+        self.assertEqual(s.items["TEST1"].overflow, "ERROR")
+        self.assertEqual(s2.items["TEST1"].overflow, "ERROR")
         # Change something about the item in the original
-        s.items["TEST1"].overflow = 'SATURATE'
-        self.assertEqual(s.items["TEST1"].overflow, 'SATURATE')
+        s.items["TEST1"].overflow = "SATURATE"
+        self.assertEqual(s.items["TEST1"].overflow, "SATURATE")
         # Verify the deep_copy didn't change
-        self.assertEqual(s2.items["TEST1"].overflow, 'ERROR')
+        self.assertEqual(s2.items["TEST1"].overflow, "ERROR")
+
+
+class TestStructureLength(unittest.TestCase):
+    def test_returns_length_of_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        self.assertEqual(s.length(), 2)
+
+    def test_allocates_buffer_if_needed(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 32, "UINT")
+        # Buffer is None until accessed
+        self.assertEqual(s.length(), 4)
+
+
+class TestStructureResizeBuffer(unittest.TestCase):
+    def test_resizes_buffer_if_smaller_than_defined_length(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 32, "UINT")
+        s._buffer = bytearray(b"\x00")  # Set buffer smaller than defined
+        s.resize_buffer()
+        self.assertEqual(len(s._buffer), 4)
+
+    def test_allocates_buffer_if_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        s._buffer = None
+        s.resize_buffer()
+        self.assertEqual(len(s._buffer), 2)
+
+
+class TestStructureAccessor(unittest.TestCase):
+    def test_returns_accessor(self):
+        s = Structure("BIG_ENDIAN")
+        from openc3.accessors.binary_accessor import BinaryAccessor
+
+        self.assertIsInstance(s.accessor, BinaryAccessor)
+
+
+class TestStructureReadItems(unittest.TestCase):
+    def test_reads_multiple_items_from_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.append_item("test2", 16, "UINT")
+        items = [s.get_item("test1"), s.get_item("test2")]
+        buffer = b"\x01\x02\x03"
+        result = s.read_items(items, "RAW", buffer)
+        self.assertEqual(result["TEST1"], 1)
+        self.assertEqual(result["TEST2"], 0x0203)
+
+    def test_allocates_buffer_if_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        items = [s.get_item("test1")]
+        result = s.read_items(items, "RAW", None)
+        self.assertEqual(result["TEST1"], 0)
+
+
+class TestStructureWriteItems(unittest.TestCase):
+    def test_writes_multiple_items_to_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.append_item("test2", 16, "UINT")
+        items = [s.get_item("test1"), s.get_item("test2")]
+        values = [5, 0x0A0B]
+        s.write_items(items, values)
+        self.assertEqual(s.read("test1"), 5)
+        self.assertEqual(s.read("test2"), 0x0A0B)
+
+    def test_allocates_buffer_if_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        items = [s.get_item("test1")]
+        values = [10]
+        s._buffer = None
+        s.write_items(items, values, "RAW", None)
+        self.assertEqual(s.read("test1"), 10)
+
+
+class TestStructureAppendItemDerived(unittest.TestCase):
+    def test_appends_derived_item_at_offset_zero(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.append_item("derived1", 0, "DERIVED")
+        # DERIVED item should have bit_offset of 0 regardless of defined_length_bits
+        self.assertEqual(s.items["DERIVED1"].bit_offset, 0)
+
+
+class TestStructureAppendDerived(unittest.TestCase):
+    def test_appends_derived_item_to_structure(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        item = StructureItem("derived1", 0, 0, "DERIVED", "BIG_ENDIAN", None)
+        s.append(item)
+        self.assertEqual(s.items["DERIVED1"].bit_offset, 0)
+
+
+class TestStructureSetItemVariableBitSize(unittest.TestCase):
+    def test_handles_variable_bit_size_uint(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("length", 8, "UINT")
+        s.append_item("data", 8, "UINT")
+        item = s.get_item("data")
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        s.set_item(item)
+
+    def test_handles_variable_bit_size_with_length_value_bit_offset(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("length", 8, "UINT")
+        item = s.append_item("data", 0, "STRING")
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 8,
+            "length_bits_per_count": 8,
+        }
+        original_length = s.defined_length_bits
+        s.set_item(item)
+        # defined_length_bits should increase due to minimum_data_bits
+        self.assertGreater(s.defined_length_bits, original_length)
+
+
+class TestStructureDeleteItemError(unittest.TestCase):
+    def test_complains_if_item_doesnt_exist(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        with self.assertRaises(KeyError):
+            s.delete_item("nonexistent")
+
+
+class TestStructureFormattedHiddenItems(unittest.TestCase):
+    def test_skips_hidden_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.write("test1", 5)
+        s.append_item("test2", 8, "UINT")
+        s.write("test2", 10)
+        s.items["TEST2"].hidden = True
+        result = s.formatted()
+        self.assertIn("TEST1: 5", result)
+        self.assertNotIn("TEST2", result)
+
+    def test_skips_ignored_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.write("test1", 5)
+        s.append_item("test2", 8, "UINT")
+        s.write("test2", 10)
+        result = s.formatted("RAW", 0, None, ["TEST2"])
+        self.assertIn("TEST1: 5", result)
+        self.assertNotIn("TEST2", result)
+
+    def test_handles_non_bytes_block_value(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 32, "BLOCK")
+        # Set buffer directly so block reads back correctly
+        s.buffer = b"\x01\x02\x03\x04"
+        result = s.formatted()
+        self.assertIn("TEST1", result)
+
+
+class TestStructureReadAllBuffer(unittest.TestCase):
+    def test_uses_internal_buffer_if_none_provided(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.write("test1", 42)
+        vals = s.read_all("RAW", None)
+        self.assertEqual(vals[0][1], 42)
+
+
+class TestStructureSynchronize(unittest.TestCase):
+    def test_returns_mutex(self):
+        s = Structure("BIG_ENDIAN")
+        with s.synchronize():
+            pass  # Just test that we can acquire and release the mutex
+
+    def test_synchronize_allow_reads_non_blocking(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.write("test1", 1)
+        # Call with top=False which enters non-blocking path
+        with s.synchronize_allow_reads(False):
+            val = s.read("test1")
+            self.assertEqual(val, 1)
+
+
+class TestStructureCalculateTotalBitSize(unittest.TestCase):
+    def test_calculates_quic_encoded_integer_bit_size(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("length", 2, "UINT")
+        s.append_item("data", 8, "UINT")
+        item = s.get_item("data")
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        # Test different length values for QUIC encoding
+        s.write("length", 0)
+        self.assertEqual(s.calculate_total_bit_size(item), 6)  # case 0
+
+        s.write("length", 1)
+        self.assertEqual(s.calculate_total_bit_size(item), 14)  # case 1
+
+        s.write("length", 2)
+        self.assertEqual(s.calculate_total_bit_size(item), 30)  # case 2
+
+        s.write("length", 3)
+        self.assertEqual(s.calculate_total_bit_size(item), 62)  # case _ (default)
+
+    def test_calculates_variable_string_bit_size(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("length", 8, "UINT")
+        s.append_item("data", 0, "STRING")
+        item = s.get_item("data")
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 8,
+            "length_bits_per_count": 8,
+        }
+        s.write("length", 5)
+        result = s.calculate_total_bit_size(item)
+        # 5 * 8 + 8 = 48
+        self.assertEqual(result, 48)
+
+    def test_calculates_size_for_negative_bit_size_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        item = s.append_item("data", 0, "BLOCK")
+        s.buffer = b"\x00\x01\x02\x03\x04"
+        # Item with original_bit_size == 0 (variable length)
+        result = s.calculate_total_bit_size(item)
+        # (5 * 8) - 8 + 0 = 32 bits
+        self.assertEqual(result, 32)
+
+    def test_calculates_size_for_negative_array_size_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.define_item("data", 8, 8, "UINT", -8)  # negative array_size
+        item = s.get_item("data")
+        s.buffer = b"\x00\x01\x02\x03\x04"
+        result = s.calculate_total_bit_size(item)
+        # (5 * 8) - 8 + (-8) = 24 bits
+        self.assertEqual(result, 24)
+
+    def test_raises_for_non_variable_sized_item(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        item = s.get_item("test1")
+        with self.assertRaisesRegex(RuntimeError, "Unexpected use of calculate_total_bit_size"):
+            s.calculate_total_bit_size(item)
+
+
+class TestStructureRecalculateBitOffsets(unittest.TestCase):
+    def test_skips_parented_items(self):
+        s = Structure("BIG_ENDIAN")
+        parent = s.append_item("parent", 32, "BLOCK")
+        s.append_item("child", 8, "UINT")
+        child = s.get_item("child")
+        child.parent_item = parent
+        # Just verify it doesn't crash when processing parented items
+        s.recalculate_bit_offsets()
+
+    def test_handles_variable_array_size(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("length", 8, "UINT")
+        item = s.define_item("data", 8, 8, "UINT", 0)  # array_size = 0
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        s.append_item("after", 8, "UINT")
+        s.write("length", 2)  # 2 * 8 = 16 bits
+        s.buffer = b"\x02\x00\x00\x00"
+        s.recalculate_bit_offsets()
+
+
+class TestStructureInternalBufferEquals(unittest.TestCase):
+    def test_complains_about_non_bytes_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        with self.assertRaisesRegex(TypeError, "Buffer class is list but must be bytearray"):
+            s.buffer = [1, 2, 3]
+
+
+class TestStructureDefineNegativeArraySize(unittest.TestCase):
+    def test_handles_negative_array_size_in_define(self):
+        s = Structure("BIG_ENDIAN")
+        s.define_item("test1", 0, 8, "UINT", -16)
+        self.assertEqual(s.items["TEST1"].array_size, -16)
+        self.assertFalse(s.fixed_size)
+
+
+class TestStructureWithBytesBuffer(unittest.TestCase):
+    def test_accepts_bytes_buffer_in_constructor(self):
+        s = Structure("BIG_ENDIAN", b"\x01\x02\x03\x04")
+        s.append_item("test1", 32, "UINT")
+        self.assertEqual(s.read("test1"), 0x01020304)
+
+
+class TestStructureReadItemNoBuffer(unittest.TestCase):
+    def test_allocates_buffer_when_both_buffers_are_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s._buffer = None  # Explicitly set internal buffer to None
+        # read_item should allocate buffer when both param and _buffer are None
+        result = s.read_item(s.get_item("test1"), "RAW", None)
+        self.assertEqual(result, 0)
+
+
+class TestStructureWriteItemNoBuffer(unittest.TestCase):
+    def test_allocates_buffer_when_both_buffers_are_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s._buffer = None  # Explicitly set internal buffer to None
+        # write_item should allocate buffer when both param and _buffer are None
+        s.write_item(s.get_item("test1"), 5, "RAW", None)
+        self.assertEqual(s.read("test1"), 5)
+
+
+class TestStructureReadItemsNoBuffer(unittest.TestCase):
+    def test_allocates_buffer_when_both_buffers_are_none(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        items = [s.get_item("test1")]
+        s._buffer = None  # Explicitly set internal buffer to None
+        # read_items should allocate buffer when both param and _buffer are None
+        result = s.read_items(items, "RAW", None)
+        self.assertEqual(result["TEST1"], 0)
+
+
+class TestStructureSynchronizeAllowReadsMutexHeld(unittest.TestCase):
+    def test_yields_when_mutex_already_held(self):
+        import threading
+
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.write("test1", 42)
+        # First acquire mutex with top=True, then call with top=False
+        # This should hit the else branch where mutex_allow_reads is set
+        with s.synchronize_allow_reads(True):
+            # Inside top-level context, call again with top=False
+            with s.synchronize_allow_reads(False):
+                val = s.read("test1")
+                self.assertEqual(val, 42)
+
+
+class TestStructureItemComparison(unittest.TestCase):
+    def test_lt_other_has_variable_bit_size_self_does_not(self):
+        si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        # si2 has variable_bit_size, si1 does not
+        # Variable bit size items should come before regular items, so si2 < si1 is True, si1 < si2 is False
+        self.assertFalse(si1 < si2)
+        self.assertTrue(si2 < si1)
+
+
+class TestStructureDefineItemRecalculateBitOffsets(unittest.TestCase):
+    def test_recalculates_the_bit_offsets_for_0_size(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 40, "BLOCK")
+        s.append_item("test2", 0, "BLOCK")
+        s.define_item("test3", -32, 16, "UINT")
+        s.define_item("test4", -16, 16, "UINT")
+        s.buffer = b"\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        self.assertEqual(s.read("test1"), b"\x01\x02\x03\x04\x05")
+        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66")
+        self.assertEqual(s.read("test3"), 0xAA55)
+        self.assertEqual(s.read("test4"), 0xBB66)
+
+
+class TestStructureWriteFullSize64BitIntegers(unittest.TestCase):
+    def test_writes_full_size_64_bit_integers(self):
+        from openc3.accessors.binary_accessor import BinaryAccessor
+        s = Structure("BIG_ENDIAN")
+        s.define_item("test1", 0, 64, "UINT")
+        s.define_item("test2", 64, 64, "INT")
+        buffer = bytearray(b"\x00" * 16)
+        self.assertEqual(s.read("test1", "RAW", buffer), 0)
+        self.assertEqual(s.read("test2", "RAW", buffer), 0)
+        s.write("test1", BinaryAccessor.MAX_UINT64, "RAW", buffer)
+        self.assertEqual(s.read("test1", "RAW", buffer), BinaryAccessor.MAX_UINT64)
+        s.write("test2", BinaryAccessor.MIN_INT64, "RAW", buffer)
+        self.assertEqual(s.read("test2", "RAW", buffer), BinaryAccessor.MIN_INT64)
+        s.write("test2", BinaryAccessor.MAX_INT64, "RAW", buffer)
+        self.assertEqual(s.read("test2", "RAW", buffer), BinaryAccessor.MAX_INT64)
+
+
+class TestStructureFormattedIndentation(unittest.TestCase):
+    def test_alters_the_indentation_of_the_item(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT", 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 3456)
+        s.append_item("test3", 32, "BLOCK")
+        s.write("test3", b"\x07\x08\x09\x0A")
+        self.assertIn("    TEST1: [1, 2]", s.formatted("CONVERTED", 4))
+        self.assertIn("    TEST2: 3456", s.formatted("CONVERTED", 4))
+        self.assertIn("    TEST3", s.formatted("CONVERTED", 4))
+        self.assertIn("    00000000: 07 08 09 0A", s.formatted("CONVERTED", 4))
+
+    def test_processes_uses_a_different_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT", 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 3456)
+        s.append_item("test3", 32, "BLOCK")
+        s.write("test3", b"\x07\x08\x09\x0A")
+        buffer = b"\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
+        self.assertIn("TEST1: [10, 11]", s.formatted("CONVERTED", 0, buffer))
+        self.assertIn("TEST2: 3085", s.formatted("CONVERTED", 0, buffer))
+        self.assertIn("TEST3", s.formatted("CONVERTED", 0, buffer))
+        self.assertIn("00000000: DE AD BE EF", s.formatted("CONVERTED", 0, buffer))
+
+    def test_ignores_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT", 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 3456)
+        s.append_item("test3", 32, "BLOCK")
+        s.write("test3", b"\x07\x08\x09\x0A")
+        self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST3"]), "TEST2: 3456\n")
+        self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST2", "TEST3"]), "")
+
+
+class TestStructureBufferRecalculateBitOffsets(unittest.TestCase):
+    def test_recalculates_the_bit_offsets_for_0_size(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 80, "BLOCK")
+        s.append_item("test2", 0, "BLOCK")
+        s.define_item("test3", -16, 16, "UINT")
+        s.buffer = (
+            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+            b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
+        )
+        self.assertEqual(s.read("test1"), b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09")
+        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55")
+        self.assertEqual(s.read("test3"), 0xAA55)
