@@ -25,7 +25,7 @@ require 'openc3/accessors/accessor'
 OpenC3.disable_warnings do
   class JsonPath
     def self.process_object(obj_or_str, opts = {})
-      obj_or_str.is_a?(String) ? MultiJson.decode(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
+      obj_or_str.is_a?(String) ? MultiJson.load(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
     end
   end
 end

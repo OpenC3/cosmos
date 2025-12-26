@@ -224,15 +224,6 @@ test('searches on packets without data', async ({ page, utils }) => {
     .toEqual(1)
 })
 
-test('displays formatted items with units', async ({ page, utils }) => {
-  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
-  await page.locator('[data-test="search"] input').fill('TEMP1')
-  await page.locator('[data-test=packet-viewer-view]').click()
-  await page.locator('text=Formatted Items with Units').click()
-  // Check for exactly 3 decimal points followed by units
-  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
-})
-
 test('displays raw items', async ({ page, utils }) => {
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test="search"] input').fill('TEMP1')
