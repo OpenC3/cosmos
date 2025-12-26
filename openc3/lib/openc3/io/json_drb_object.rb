@@ -92,18 +92,36 @@ module OpenC3
           'Content-Type' => 'application/json-rpc',
         }
       end
-      begin
-        @log[0] = "Request: #{@uri.to_s} #{USER_AGENT} #{data.to_s}"
-        STDOUT.puts @log[0] if JsonDRb.debug?
-        resp = @http.post(@uri, data, headers)
-        @log[1] = "Response: #{resp.status} #{resp.headers} #{resp.body}"
-        @response_data = resp.body
-        STDOUT.puts @log[1] if JsonDRb.debug?
-        return resp.body
-      rescue StandardError => e
-        @log[2] = "Exception: #{e.class}, #{e.message}, #{e.backtrace}"
-        return nil
+
+      @log[0] = "Request: #{@uri.to_s} #{USER_AGENT} #{data.to_s}"
+      STDOUT.puts @log[0] if JsonDRb.debug?
+
+      retry_count = 0
+      while retry_count <= RETRY_COUNT
+        begin
+          resp = @http.post(@uri, data, headers)
+          @log[1] = "Response: #{resp.status} #{resp.headers} #{resp.body}"
+          @response_data = resp.body
+          STDOUT.puts @log[1] if JsonDRb.debug?
+          return resp.body
+        rescue Faraday::ConnectionFailed, Errno::ECONNRESET, Errno::EPIPE, IOError => e
+          # Connection errors are retryable - reconnect and try again
+          retry_count += 1
+          @log[2] = "Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+          if retry_count <= RETRY_COUNT
+            Logger.warn("JsonDRbObject: Connection error, retry #{retry_count}/#{RETRY_COUNT}: #{e.class} #{e.message}")
+            disconnect()
+            sleep(RETRY_DELAY)
+            connect()
+          else
+            return nil
+          end
+        rescue StandardError => e
+          @log[2] = "Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+          return nil
+        end
       end
+      return nil
     end
 
     def handle_response(response:)
