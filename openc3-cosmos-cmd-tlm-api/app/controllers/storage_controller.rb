@@ -31,6 +31,128 @@ rescue LoadError
 end
 
 class StorageController < ApplicationController
+  # Check if a bucket requires RBAC (config and logs do, tools does not)
+  def bucket_requires_rbac?(bucket_param)
+    # Tools bucket is accessible to all users with system permission
+    return false if bucket_param == 'OPENC3_TOOLS_BUCKET'
+    # Config and logs buckets require scope-based RBAC
+    return true if bucket_param == 'OPENC3_CONFIG_BUCKET' || bucket_param == 'OPENC3_LOGS_BUCKET'
+    # Default to requiring RBAC for unknown buckets
+    true
+  end
+
+  # Extract the scope from a bucket path (first component)
+  # Returns nil if path is empty or at bucket root
+  def extract_scope_from_path(path)
+    return nil if path.nil? || path.empty? || path == '/'
+    parts = path.split('/').reject(&:empty?)
+    return nil if parts.empty?
+    parts[0]
+  end
+
+  # Directories in the config bucket that contain target subdirectories
+  CONFIG_TARGET_DIRECTORIES = ['targets', 'targets_modified', 'target_archives'].freeze
+
+  # Extract the target name from a bucket path based on known path patterns
+  # Config bucket: {SCOPE}/targets/{TARGET_NAME}/... or {SCOPE}/targets_modified/{TARGET_NAME}/... or {SCOPE}/target_archives/{TARGET_NAME}/...
+  # Logs bucket: {SCOPE}/{decom|raw|reduced_*}_logs/{tlm|cmd}/{TARGET_NAME}/...
+  # Returns nil if target cannot be determined from the path
+  def extract_target_from_path(bucket_param, path)
+    return nil if path.nil? || path.empty?
+    parts = path.split('/').reject(&:empty?)
+    return nil if parts.length < 3 # Need at least scope/folder/target
+
+    if bucket_param == 'OPENC3_CONFIG_BUCKET'
+      # Config bucket: {SCOPE}/targets/{TARGET_NAME}/... or {SCOPE}/targets_modified/{TARGET_NAME}/... or {SCOPE}/target_archives/{TARGET_NAME}/...
+      if CONFIG_TARGET_DIRECTORIES.include?(parts[1])
+        return parts[2] if parts.length >= 3
+      end
+    elsif bucket_param == 'OPENC3_LOGS_BUCKET'
+      # Logs bucket: {SCOPE}/{type}_logs/{tlm|cmd}/{TARGET_NAME}/...
+      # Examples: DEFAULT/decom_logs/tlm/INST/..., DEFAULT/raw_logs/cmd/INST/...
+      if parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
+        return parts[3] if parts.length >= 4
+      end
+    end
+    nil
+  end
+
+  # Get the path depth where targets are listed (for filtering)
+  # Returns the index in the path parts array where target names appear
+  def target_list_depth(bucket_param, path)
+    return nil if path.nil? || path.empty?
+    parts = path.split('/').reject(&:empty?)
+
+    if bucket_param == 'OPENC3_CONFIG_BUCKET'
+      # Targets are listed at depth 2: {SCOPE}/targets/ or {SCOPE}/targets_modified/ or {SCOPE}/target_archives/
+      if parts.length == 2 && CONFIG_TARGET_DIRECTORIES.include?(parts[1])
+        return 2
+      end
+    elsif bucket_param == 'OPENC3_LOGS_BUCKET'
+      # Targets are listed at depth 3: {SCOPE}/{type}_logs/{tlm|cmd}/
+      if parts.length == 3 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
+        return 3
+      end
+    end
+    nil
+  end
+
+  # Authorize access to a bucket path based on scope and optionally target
+  # Returns true if authorized, false otherwise
+  # For tools bucket: always authorized (with basic system permission)
+  # For config/logs buckets: checks if user has access to the scope and target in the path
+  # When a target is in the path, uses 'tlm' permission as the baseline for access
+  def authorize_bucket_path(bucket_param, path, permission: 'system')
+    # Tools bucket doesn't require scope-based RBAC
+    return true unless bucket_requires_rbac?(bucket_param)
+
+    # Extract scope from the path
+    path_scope = extract_scope_from_path(path)
+
+    # If no scope in path (listing root), allow listing - filtering happens in the method
+    return true if path_scope.nil?
+
+    # Extract target from the path (may be nil if not at target level)
+    target_name = extract_target_from_path(bucket_param, path)
+
+    # When accessing target-specific paths, use 'tlm' permission as the baseline
+    # since most bucket files are telemetry-related (logs, configs)
+    effective_permission = target_name ? 'tlm' : permission
+
+    # Check authorization for the specific scope (and target if present) in the path
+    begin
+      authorize(
+        permission: effective_permission,
+        target_name: target_name,
+        scope: path_scope,
+        token: request.headers['HTTP_AUTHORIZATION'],
+      )
+      return true
+    rescue OpenC3::AuthError, OpenC3::ForbiddenError
+      return false
+    end
+  end
+
+  # Filter a list of targets based on user authorization
+  # Uses 'tlm' permission as the baseline for target access since most bucket
+  # files are telemetry-related (logs, configs). Users who can view telemetry
+  # for a target should be able to browse that target's bucket files.
+  def filter_authorized_targets(targets, scope, permission: 'tlm')
+    targets.select do |target_name|
+      begin
+        authorize(
+          permission: permission,
+          target_name: target_name,
+          scope: scope,
+          token: request.headers['HTTP_AUTHORIZATION'],
+        )
+        true
+      rescue OpenC3::AuthError, OpenC3::ForbiddenError
+        false
+      end
+    end
+  end
+
   def buckets
     return unless authorization('system')
     # ENV.map returns a big array of mostly nils which is why we compact
@@ -64,9 +186,52 @@ class StorageController < ApplicationController
       bucket = OpenC3::Bucket.getClient()
       path = sanitize_path(params[:path])
       path = '/' if path.empty?
+
+      # Check scope-based RBAC for config and logs buckets
+      if bucket_requires_rbac?(params[:root])
+        path_scope = extract_scope_from_path(path)
+        if path_scope
+          # Accessing a specific scope - verify authorization
+          unless authorize_bucket_path(params[:root], path)
+            render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+            return
+          end
+        end
+        # If at root level (no scope), we'll filter the results below
+      end
+
       # if user wants metadata returned
       metadata = params[:metadata].present? ? true : false
       results = bucket.list_files(bucket: root, path: path, metadata: metadata)
+
+      # Filter results based on RBAC
+      if bucket_requires_rbac?(params[:root])
+        if path == '/' || path.empty?
+          # At bucket root level - filter to only show scopes the user has access to
+          # results[0] contains directories (scopes at root level)
+          if results[0].is_a?(Array)
+            results[0] = results[0].select do |dir_name|
+              begin
+                authorize(
+                  permission: 'system',
+                  scope: dir_name,
+                  token: request.headers['HTTP_AUTHORIZATION'],
+                )
+                true
+              rescue OpenC3::AuthError, OpenC3::ForbiddenError
+                false
+              end
+            end
+          end
+        else
+          # Check if we're at a target listing level and filter targets
+          target_depth = target_list_depth(params[:root], path)
+          if target_depth && results[0].is_a?(Array)
+            path_scope = extract_scope_from_path(path)
+            results[0] = filter_authorized_targets(results[0], path_scope)
+          end
+        end
+      end
     elsif params[:root].include?('_VOLUME')
       dirs = []
       files = []
@@ -100,6 +265,16 @@ class StorageController < ApplicationController
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
+
+    # Check scope-based RBAC for config and logs buckets
+    if bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path)
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        return
+      end
+    end
+
     bucket = OpenC3::Bucket.getClient()
     # Returns true or false if the object is found
     result = bucket.check_object(bucket: bucket_name,
@@ -123,6 +298,15 @@ class StorageController < ApplicationController
     begin
       storage_type, storage_name = validate_storage_source
       object_id = sanitize_path(params[:object_id])
+
+      # Check scope-based RBAC for bucket downloads
+      if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
+        unless authorize_bucket_path(params[:bucket], object_id)
+          path_scope = extract_scope_from_path(object_id)
+          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+          return
+        end
+      end
 
       filename = if storage_type == :volume
         sanitize_path("/#{storage_name}/#{object_id}")
@@ -165,6 +349,15 @@ class StorageController < ApplicationController
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
 
+      # Check scope-based RBAC for bucket downloads
+      if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
+        unless authorize_bucket_path(params[:bucket], path)
+          path_scope = extract_scope_from_path(path)
+          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+          return
+        end
+      end
+
       # Create zip file with files from storage
       Zip::File.open(zip_path, create: true) do |zipfile|
         if storage_type == :volume
@@ -193,6 +386,16 @@ class StorageController < ApplicationController
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
+
+    # Check scope-based RBAC for config and logs buckets
+    if bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path)
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        return
+      end
+    end
+
     bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: bucket_name,
                                       key: path,
@@ -211,6 +414,16 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
+
+    # Check scope-based RBAC for config and logs buckets
+    if bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        return
+      end
+    end
+
     # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
     if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
       return unless authorization('admin')
@@ -412,6 +625,16 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
+
+    # Check scope-based RBAC for config and logs buckets
+    if bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        return false
+      end
+    end
+
     # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
     authorized = true
     if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
