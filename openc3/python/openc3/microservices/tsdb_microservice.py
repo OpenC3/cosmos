@@ -145,7 +145,8 @@ class TsdbMicroservice(Microservice):
 
             # Skip DERIVED items since it's hard to know what type they are
             # We'll let the Influx Line Protocol writer handle these
-            if item["data_type"] == "DERIVED":
+            data_type = item.get("data_type")
+            if data_type == "DERIVED":
                 continue
 
             if item.get("array_size"):
@@ -160,7 +161,7 @@ class TsdbMicroservice(Microservice):
                 # can support the full range of the given type. This is tricky because
                 # QuestDB uses the minimum possible value in a given type as NULL.
                 # See https://questdb.com/docs/reference/sql/datatypes for more details.
-                if item["data_type"] in ["INT", "UINT"]:
+                if data_type in ["INT", "UINT"]:
                     # Less than 32 bits can fit into a standard INT
                     # Exactly 32 bits doesn't because it can't store -2,147,483,648
                     # (INT min value) since that is NULL in QuestDB
@@ -171,12 +172,12 @@ class TsdbMicroservice(Microservice):
                         column_type = "long"
                     else:
                         column_type = "varchar"  # Base64 encode larger integers
-                elif item["data_type"] == "FLOAT":
+                elif data_type == "FLOAT":
                     if item["bit_size"] == 32:
                         column_type = "float"
                     else:
                         column_type = "double"
-                elif item["data_type"] in ["STRING", "BLOCK"]:
+                elif data_type in ["STRING", "BLOCK"]:
                     column_type = "varchar"
 
                 column_definitions.append(f'"{item_name}" {column_type}')
