@@ -26,7 +26,7 @@ RSpec.describe MicroservicesController, type: :controller do
     @micro1 = {
       "name" => "DEFAULT__MICROSERVICE__MICRO1",
       "prefix" => "PREFIX",
-      "ports" => [8080]
+      "ports" => [[8080, "TCP"]]
     }
 
     microservice_model = OpenC3::MicroserviceModel.from_json(@micro1.to_json, scope: "DEFAULT")
@@ -100,6 +100,40 @@ RSpec.describe MicroservicesController, type: :controller do
       expect(result["http"]).to have_key("routers")
       expect(result["http"]).to have_key("services")
       expect(result["http"]["routers"]).to have_key("DEFAULT__MICROSERVICE__MICRO1")
+    end
+
+    it "uses base operator hostname for shard 0" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
+
+      get :traefik
+
+      expect(response).to have_http_status(:ok)
+      result = JSON.parse(response.body)
+      url = result["http"]["services"]["DEFAULT__MICROSERVICE__MICRO1"]["loadBalancer"]["servers"][0]["url"]
+      expect(url).to eq("http://openc3-operator:8080")
+    end
+
+    it "appends shard number to operator hostname for non-zero shards" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
+
+      # Create a microservice with shard 1
+      micro2 = {
+        "name" => "DEFAULT__MICROSERVICE__MICRO2",
+        "prefix" => "PREFIX2",
+        "ports" => [[8081, "TCP"]],
+        "shard" => 1
+      }
+      microservice_model = OpenC3::MicroserviceModel.from_json(micro2.to_json, scope: "DEFAULT")
+      microservice_model.create
+
+      get :traefik
+
+      expect(response).to have_http_status(:ok)
+      result = JSON.parse(response.body)
+      url = result["http"]["services"]["DEFAULT__MICROSERVICE__MICRO2"]["loadBalancer"]["servers"][0]["url"]
+      expect(url).to eq("http://openc3-operator-1:8081")
     end
   end
 end
