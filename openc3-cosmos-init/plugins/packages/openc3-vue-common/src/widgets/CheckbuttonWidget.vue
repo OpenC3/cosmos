@@ -22,10 +22,10 @@
 
 <template>
   <v-checkbox
+    v-model="value"
     hide-details
     density="compact"
     :label="label"
-    v-model="value"
     :style="computedStyle"
   >
   </v-checkbox>

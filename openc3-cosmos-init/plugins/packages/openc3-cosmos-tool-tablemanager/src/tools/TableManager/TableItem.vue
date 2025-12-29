@@ -65,6 +65,7 @@ export default {
       required: true,
     },
   },
+  emits: ['change'],
   data() {
     return {
       dataItem: this.item,

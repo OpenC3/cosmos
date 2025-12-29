@@ -31,7 +31,7 @@
       </v-toolbar>
       <div class="pa-2">
         <v-card-text>
-          <v-row no-gutters v-for="(line, index) in text" :key="index">
+          <v-row v-for="(line, index) in text" :key="index" no-gutters>
             <span style="white-space: pre" v-text="line" />
           </v-row>
         </v-card-text>
@@ -64,6 +64,7 @@ export default {
       required: true,
     },
   },
+  emits: ['update:modelValue'],
   computed: {
     show: {
       get() {

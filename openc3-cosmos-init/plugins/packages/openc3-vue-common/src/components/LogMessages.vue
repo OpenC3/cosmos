@@ -80,9 +80,9 @@
       :search="search"
       :items-per-page="-1"
       hide-default-footer
-      multi-sort
+      :sort-by="[{ key: 'time', order: 'desc' }]"
       density="compact"
-      sticky
+      fixed-header
       hover
       data-test="log-messages"
     >
@@ -272,6 +272,7 @@ export default {
     },
     downloadLog() {
       const output = this.shownData
+        .sort((a, b) => a.time - b.time)
         .map(
           (entry) =>
             // Other fields are available like container_name, msg_id ... probably not useful

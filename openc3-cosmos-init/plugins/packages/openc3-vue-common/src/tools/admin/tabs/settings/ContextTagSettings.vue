@@ -20,8 +20,8 @@
   <v-card>
     <v-card-title>Context Tag Settings</v-card-title>
     <v-card-subtitle>
-      When enabled this displays a Context Tag on the top right of the screen with custom colors and text. 
-      This can help differentiate environments.
+      When enabled this displays a Context Tag on the top right of the screen
+      with custom colors and text. This can help differentiate environments.
     </v-card-subtitle>
     <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}
@@ -36,8 +36,8 @@
       <v-row dense>
         <v-col>
           <v-text-field
-            label="Text"
             v-model="text"
+            label="Text"
             data-test="context-tag-text"
             :disabled="!displayContextTag"
           />
@@ -46,27 +46,27 @@
       <v-row dense>
         <v-col>
           <v-switch
-            label="Display context tag"
             v-model="displayContextTag"
+            label="Display context tag"
             color="primary"
             data-test="display-context-tag"
           />
         </v-col>
         <v-col>
           <v-select
+            v-model="selectedBackgroundColor"
             label="Background color"
             :items="colors"
             item-title="text"
-            v-model="selectedBackgroundColor"
             data-test="context-tag-background-color"
           >
-            <template v-slot:prepend-inner v-if="selectedBackgroundColor">
+            <template v-if="selectedBackgroundColor" #prepend-inner>
               <v-icon :color="selectedBackgroundColor"> mdi-square </v-icon>
             </template>
-            <template v-slot:item="{ props, item }">
+            <template #item="{ props, item }">
               <v-list-item v-bind="props" :value="item.text">
-                <template v-slot:prepend>
-                  <v-icon :color="item.value" v-if="item.value">
+                <template #prepend>
+                  <v-icon v-if="item.value" :color="item.value">
                     mdi-square
                   </v-icon>
                 </template>
@@ -76,14 +76,14 @@
         </v-col>
         <v-col>
           <v-text-field
+            v-model="customBackgroundColor"
             label="Custom background color"
             :hint="customColorHint"
             :disabled="selectedBackgroundColor !== false"
-            v-model="customBackgroundColor"
             :rules="[rules.customColor]"
             data-test="context-tag-custom-background-color"
           >
-            <template v-slot:prepend-inner>
+            <template #prepend-inner>
               <v-icon
                 v-show="!selectedBackgroundColor"
                 :color="customBackgroundColor"
@@ -95,21 +95,21 @@
         </v-col>
         <v-col>
           <v-select
+            v-model="selectedFontColor"
             label="Font color"
             :items="colors"
             item-title="text"
-            v-model="selectedFontColor"
             data-test="context-tag-font-color"
           >
-            <template v-slot:prepend-inner v-if="selectedFontColor">
+            <template v-if="selectedFontColor" #prepend-inner>
               <v-icon v-show="selectedFontColor" :color="selectedFontColor">
                 mdi-square
               </v-icon>
             </template>
-            <template v-slot:item="{ props, item }">
+            <template #item="{ props, item }">
               <v-list-item v-bind="props" :value="item.text">
-                <template v-slot:prepend>
-                  <v-icon :color="item.value" v-if="item.value">
+                <template #prepend>
+                  <v-icon v-if="item.value" :color="item.value">
                     mdi-square
                   </v-icon>
                 </template>
@@ -119,14 +119,14 @@
         </v-col>
         <v-col>
           <v-text-field
+            v-model="customFontColor"
             label="Custom font color"
             :hint="customColorHint"
             :disabled="selectedFontColor !== false"
-            v-model="customFontColor"
             :rules="[rules.customColor]"
             data-test="context-tag-custom-font-color"
           >
-            <template v-slot:prepend-inner>
+            <template #prepend-inner>
               <v-icon v-show="!selectedFontColor" :color="customFontColor">
                 mdi-square
               </v-icon>
@@ -138,10 +138,10 @@
     <v-card-actions>
       <v-btn
         :disabled="!formValid"
-        @click="save"
         color="success"
         variant="text"
         data-test="save-context-tag"
+        @click="save"
       >
         Save
       </v-btn>
@@ -253,7 +253,9 @@ export default {
         this.text = parsed.text
         this.displayContextTag = !!parsed.text
         if (parsed.backgroundColor) {
-          const colorExists = this.colors.some(color => color.value === parsed.backgroundColor)
+          const colorExists = this.colors.some(
+            (color) => color.value === parsed.backgroundColor,
+          )
           if (colorExists) {
             this.selectedBackgroundColor = parsed.backgroundColor
           } else {
@@ -262,7 +264,9 @@ export default {
           }
         }
         if (parsed.fontColor) {
-          const colorExists = this.colors.some(color => color.value === parsed.fontColor)
+          const colorExists = this.colors.some(
+            (color) => color.value === parsed.fontColor,
+          )
           if (colorExists) {
             this.selectedFontColor = parsed.fontColor
           } else {

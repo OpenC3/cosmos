@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-tooltip :open-delay="600" location="top">
+    <v-tooltip v-if="!tooltipText" :open-delay="600" location="top">
       <template #activator="{ props }">
         <div
           :class="getClass"
@@ -33,6 +33,12 @@
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
+    <div
+      v-else
+      :class="getClass"
+      :style="[cssProps, computedStyle]"
+      @contextmenu="showContextMenu"
+    ></div>
 
     <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
       <v-list>
@@ -63,6 +69,7 @@ export default {
     DetailsDialog,
   },
   mixins: [Widget],
+  emits: ['addItem', 'deleteItem'],
   data() {
     return {
       valueId: null,

@@ -65,8 +65,13 @@ class MicroservicesController < ModelController
       if prefix and ports[0][0]
         port = ports[0][0].to_i
         prefix = '/' + prefix unless prefix[0] == '/'
+        shard = microservice['shard'] || 0
         if ENV['OPENC3_OPERATOR_HOSTNAME']
-          url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+          if shard != 0
+            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}-#{shard}:#{port}"
+          else
+            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+          end
         else
           if ENV['KUBERNETES_SERVICE_HOST']
             url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"

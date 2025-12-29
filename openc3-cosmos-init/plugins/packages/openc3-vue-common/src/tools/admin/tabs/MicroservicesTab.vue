@@ -22,13 +22,9 @@
 
 <template>
   <div>
-    <v-alert
-      v-model="showAlert"
-      dismissible
-      transition="scale-transition"
-      :type="alertType"
-      >{{ alert }}</v-alert
-    >
+    <v-alert v-model="showAlert" closable :type="alertType">{{
+      alert
+    }}</v-alert>
     <v-list class="list" data-test="microserviceList">
       <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
@@ -48,30 +44,24 @@
               variant="text"
               @click="showMicroserviceError(microservice.name)"
             />
-            <v-list-item-icon>
-              <v-btn
-                aria-label="Start Microservice"
-                icon="mdi-play"
-                variant="text"
-                @click="startMicroservice(microservice.name)"
-              />
-            </v-list-item-icon>
-            <v-list-item-icon>
-              <v-btn
-                aria-label="Stop Microservice"
-                icon="mdi-stop"
-                variant="text"
-                @click="stopMicroservice(microservice.name)"
-              />
-            </v-list-item-icon>
-            <v-list-item-icon>
-              <v-btn
-                aria-label="Show Microservice Details"
-                icon="mdi-eye"
-                variant="text"
-                @click="showMicroservice(microservice.name)"
-              />
-            </v-list-item-icon>
+            <v-btn
+              aria-label="Start Microservice"
+              icon="mdi-play"
+              variant="text"
+              @click="startMicroservice(microservice.name)"
+            />
+            <v-btn
+              aria-label="Stop Microservice"
+              icon="mdi-stop"
+              variant="text"
+              @click="stopMicroservice(microservice.name)"
+            />
+            <v-btn
+              aria-label="Show Microservice Details"
+              icon="mdi-eye"
+              variant="text"
+              @click="showMicroservice(microservice.name)"
+            />
           </template>
         </v-list-item>
         <v-divider />

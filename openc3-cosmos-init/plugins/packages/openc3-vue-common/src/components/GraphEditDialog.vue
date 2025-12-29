@@ -279,9 +279,11 @@ export default {
     },
     graphMinY: {
       type: Number,
+      required: true,
     },
     graphMaxY: {
       type: Number,
+      required: true,
     },
     lines: {
       type: Array,
@@ -293,9 +295,11 @@ export default {
     },
     startDateTime: {
       type: Number,
+      default: null,
     },
     endDateTime: {
       type: Number,
+      default: null,
     },
     timeZone: {
       type: String,

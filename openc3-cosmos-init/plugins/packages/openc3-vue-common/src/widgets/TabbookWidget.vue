@@ -29,21 +29,48 @@
     </v-tabs>
     <v-window v-model="curTab">
       <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
-        <component
+        <template
           v-for="(widget, widgetIndex) in tab.widgets"
-          v-bind="listeners"
           :key="`${tabIndex}-${widgetIndex}`"
-          :is="widget.type"
-          :target="widget.target"
-          :parameters="widget.parameters"
-          :settings="widget.settings"
-          :screen-values="screenValues"
-          :screen-time-zone="screenTimeZone"
-          :widgets="widget.widgets"
-          :name="widget.name"
-          :line="widget.line"
-          :line-number="widget.lineNumber"
-        />
+        >
+          <v-tooltip
+            v-if="getTooltipText(widget)"
+            :open-delay="getTooltipDelay(widget)"
+            location="top"
+            :activator-props="getTooltipActivatorProps(widget)"
+          >
+            <template #activator="{ props }">
+              <component
+                :is="widget.type"
+                v-bind="{ ...listeners, ...props }"
+                :target="widget.target"
+                :parameters="widget.parameters"
+                :settings="widget.settings"
+                :screen-values="screenValues"
+                :screen-time-zone="screenTimeZone"
+                :widgets="widget.widgets"
+                :name="widget.name"
+                :line="widget.line"
+                :line-number="widget.lineNumber"
+              />
+            </template>
+            <span>{{ getTooltipText(widget) }}</span>
+          </v-tooltip>
+          <component
+            :is="widget.type"
+            v-else
+            v-bind="listeners"
+            :target="widget.target"
+            :parameters="widget.parameters"
+            :settings="widget.settings"
+            :screen-values="screenValues"
+            :screen-time-zone="screenTimeZone"
+            :widgets="widget.widgets"
+            :name="widget.name"
+            :line="widget.line"
+            :line-number="widget.lineNumber"
+          />
+        </template>
       </v-window-item>
     </v-window>
   </div>
@@ -53,6 +80,7 @@
 import Layout from './Layout'
 export default {
   mixins: [Layout],
+  emits: ['min-max-screen'],
   data: function () {
     return {
       curTab: null,

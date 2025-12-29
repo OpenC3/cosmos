@@ -45,7 +45,10 @@ const {
 const dialog = inject('dialog')
 const api = new OpenC3Api()
 
-const props = defineProps(['interfaceDetails', 'routerDetails'])
+const props = defineProps({
+  interfaceDetails: { type: Array, default: () => [] },
+  routerDetails: { type: Array, default: () => [] },
+})
 const nodes = ref([])
 const edges = ref([])
 
@@ -957,7 +960,7 @@ watch(
     </VueFlow>
 
     <div v-else class="empty-state">
-      <v-icon large color="grey">mdi-lan-disconnect</v-icon>
+      <v-icon size="large" color="grey">mdi-lan-disconnect</v-icon>
       <div class="text-grey mt-2">Nothing to show</div>
     </div>
 

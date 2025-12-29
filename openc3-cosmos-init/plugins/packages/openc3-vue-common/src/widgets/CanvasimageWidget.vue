@@ -39,6 +39,7 @@ import ImageLoader from './ImageLoader'
 
 export default {
   mixins: [Widget, ImageLoader],
+  emits: ['open'],
   data: function () {
     return {
       imageUrl: null,

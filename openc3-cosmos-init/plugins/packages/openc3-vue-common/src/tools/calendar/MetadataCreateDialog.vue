@@ -127,6 +127,7 @@ export default {
       default: null,
     },
   },
+  emits: ['update:modelValue', 'update'],
   data() {
     return {
       dialogStep: 1,
