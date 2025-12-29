@@ -26,8 +26,8 @@
     "@vitejs/plugin-vue": "5.2.3",
     "@vue/test-utils": "2.4.6",
     "prettier": "3.7.4",
-    "sass": "1.97.0",
+    "sass": "1.97.1",
     "vite": "6.4.1",
-    "vue": "3.5.25"
+    "vue": "3.5.26"
   }
 }
