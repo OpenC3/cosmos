@@ -15,8 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import time
 import traceback
 from requests import Session
+from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
 from threading import Lock
 from typing import Optional
 from openc3.environment import *
@@ -24,6 +26,12 @@ from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
 )
+from openc3.utilities.logger import Logger
+
+# Number of times to retry a request when a connection error occurs
+RETRY_COUNT = 3
+# Delay between retries in seconds
+RETRY_DELAY = 0.1
 
 
 class JsonApiError(Exception):
@@ -183,15 +191,39 @@ class JsonApiObject:
 
     def _send_request(self, method, endpoint, kwargs):
         """NOTE: This is a helper method and should not be called directly"""
-        try:
-            kwargs["url"] = f"{self.url}{endpoint}"
-            self.log[0] = f"{method} Request: {kwargs}"
-            resp = getattr(self.http, method)(**kwargs)
-            self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
-            self.response_data = resp.text
-            return resp
-        except Exception:
-            self.log[2] = f"{method} Exception: {traceback.format_exc()}"
-            self.disconnect()
-            error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-            raise RuntimeError(error)
+        kwargs["url"] = f"{self.url}{endpoint}"
+        self.log[0] = f"{method} Request: {kwargs}"
+
+        retry = 0
+        while retry <= RETRY_COUNT:
+            try:
+                resp = getattr(self.http, method)(**kwargs)
+                self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+                self.response_data = resp.text
+                return resp
+            except (
+                ChunkedEncodingError,
+                RequestsConnectionError,
+                ConnectionResetError,
+                BrokenPipeError,
+                OSError,
+            ) as e:
+                # Connection errors are retryable - reconnect and try again
+                retry += 1
+                self.log[2] = f"{method} Exception: {traceback.format_exc()}"
+                if retry <= RETRY_COUNT:
+                    Logger.warn(f"JsonApiObject: Connection error, retry {retry}/{RETRY_COUNT}: {repr(e)}")
+                    self.disconnect()
+                    time.sleep(RETRY_DELAY)
+                    self.connect()
+                else:
+                    error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
+                    raise RuntimeError(error)
+            except Exception:
+                self.log[2] = f"{method} Exception: {traceback.format_exc()}"
+                self.disconnect()
+                error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
+                raise RuntimeError(error)
+        # Should not reach here, but just in case
+        error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
+        raise RuntimeError(error)
