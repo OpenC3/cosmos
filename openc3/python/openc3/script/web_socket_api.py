@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,11 +29,12 @@ from openc3.environment import OPENC3_SCOPE
 # NOTE: For example usage see python/examples/cosmos_web_socket_example.py
 
 
-# Base class - Do not use directly
 class WebSocketApi:
+    """
+    Base class - Do not use directly
+    """
     USER_AGENT = "OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)"
 
-    # Create the WebsocketApi object
     def __init__(
         self,
         url,
@@ -43,6 +44,7 @@ class WebSocketApi:
         authentication=None,
         scope=OPENC3_SCOPE,
     ):
+        """Create the WebsocketApi object"""
         self.scope = scope
         if authentication is None:
             self.authentication = self._generate_auth()
@@ -61,13 +63,21 @@ class WebSocketApi:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
 
-    # Read the next message without filtering / parsing
     def read_message(self):
+        """Read the next message without filtering / parsing"""
         self.subscribe()
         return self.stream.read()
 
-    # Read the next message with json parsing, filtering, and timeout support
     def read(self, ignore_protocol_messages=True, timeout=None):
+        """
+        Read the next message with json parsing, filtering, and timeout support
+
+        Args:
+            ignore_protocol_messages (bool): If True, will ignore protocol messages like ping, welcome,
+                confirm_subscription, reject_subscription, and disconnect. Default is True.
+            timeout (float): If set, will raise TimeoutError if no data is received within the specified
+                number of seconds. Default is None (no timeout).
+        """
         start_time = time.time()
         while True:
             message = self.read_message()
@@ -92,8 +102,8 @@ class WebSocketApi:
                 return json_hash["message"]
             return message
 
-    # Will subscribe to the channel based on @identifier
     def subscribe(self):
+        """Will subscribe to the channel based on @identifier"""
         if not self.subscribed:
             json_hash = {}
             json_hash["command"] = "subscribe"
@@ -101,8 +111,8 @@ class WebSocketApi:
             self.stream.write(json.dumps(json_hash))
             self.subscribed = True
 
-    # Will unsubscribe to the channel based on @identifier
     def unsubscribe(self):
+        """Will unsubscribe to the channel based on @identifier"""
         if self.subscribed:
             json_hash = {}
             json_hash["command"] = "unsubscribe"
@@ -110,21 +120,21 @@ class WebSocketApi:
             self.stream.write(json.dumps(json_hash))
             self.subscribed = False
 
-    # Send an ActionCable command
     def write_action(self, data_hash):
+        """Send an ActionCable command"""
         json_hash = {}
         json_hash["command"] = "message"
         json_hash["identifier"] = json.dumps(self.identifier)
         json_hash["data"] = json.dumps(data_hash)
         self.write(json.dumps(json_hash))
 
-    # General write to the websocket
     def write(self, data):
+        """General write to the websocket"""
         self.subscribe()
         self.stream.write(data)
 
-    # Connect to the websocket with authorization in query params
     def connect(self):
+        """Connect to the websocket with authorization in query params"""
         self.disconnect()
         # Add the token directly in the URL since adding it to the header doesn't seem to work
         # Note in the this case we remove the "Bearer " string which is part of the token
@@ -140,21 +150,21 @@ class WebSocketApi:
         }
         return self.stream.connect()
 
-    # Are we connected?
     def connected(self):
+        """Are we connected?"""
         if hasattr(self, "stream"):
             return self.stream.connected()
         else:
             return False
 
-    # Disconnect from the websocket and attempt to send unsubscribe message
     def disconnect(self):
+        """Disconnect from the websocket and attempt to send unsubscribe message"""
         if self.connected():
             self.unsubscribe()
             self.stream.disconnect()
 
-    # Generate the appropriate token for OpenC3
     def _generate_auth(self):
+        """Generate the appropriate token for OpenC3"""
         if os.environ.get("OPENC3_API_TOKEN") is None and os.environ.get("OPENC3_API_USER") is None:
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
@@ -164,8 +174,9 @@ class WebSocketApi:
             return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
 
 
-# Base class for cmd-tlm-api websockets - Do not use directly
 class CmdTlmWebSocketApi(WebSocketApi):
+    """Base class for cmd-tlm-api websockets - Do not use directly"""
+    
     def __init__(
         self,
         url=None,
@@ -200,8 +211,9 @@ class CmdTlmWebSocketApi(WebSocketApi):
         return f"{schema}://{hostname}:{port}/openc3-api/cable"
 
 
-# Base class for script-runner-api websockets - Do not use directly
 class ScriptWebSocketApi(WebSocketApi):
+    """Base class for script-runner-api websockets - Do not use directly"""
+    
     def __init__(
         self,
         url=None,
@@ -236,8 +248,9 @@ class ScriptWebSocketApi(WebSocketApi):
         return f"{schema}://{hostname}:{port}/script-api/cable"
 
 
-# Running Script WebSocket
 class RunningScriptWebSocketApi(ScriptWebSocketApi):
+    """Running Script WebSocket"""
+    
     def __init__(
         self,
         id,
@@ -259,8 +272,9 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         )
 
 
-# All Scripts WebSocket
 class AllScriptsWebSocketApi(ScriptWebSocketApi):
+    """All Scripts WebSocket"""
+    
     def __init__(
         self,
         url=None,
@@ -281,8 +295,9 @@ class AllScriptsWebSocketApi(ScriptWebSocketApi):
         )
 
 
-# Log Messages WebSocket
 class MessagesWebSocketApi(CmdTlmWebSocketApi):
+    """Log Messages WebSocket"""
+    
     def __init__(
         self,
         history_count=0,
@@ -316,8 +331,9 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Autonomic Events WebSocket (Enterprise Only)
 class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Autonomic Events WebSocket (Enterprise Only)"""
+    
     def __init__(
         self,
         history_count=0,
@@ -342,8 +358,9 @@ class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Calendar Events WebSocket (Enterprise Only)
 class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Calendar Events WebSocket (Enterprise Only)"""
+    
     def __init__(
         self,
         history_count=0,
@@ -368,8 +385,9 @@ class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Config Events WebSocket
 class ConfigEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Config Events WebSocket"""
+    
     def __init__(
         self,
         history_count=0,
@@ -394,8 +412,9 @@ class ConfigEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Limits Events WebSocket
 class LimitsEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Limits Events WebSocket"""
+    
     def __init__(
         self,
         history_count=0,
@@ -420,8 +439,9 @@ class LimitsEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Timeline WebSocket
 class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Timeline WebSocket"""
+    
     def __init__(
         self,
         history_count=0,
@@ -446,8 +466,9 @@ class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Queue WebSocket
 class QueueEventsWebSocketApi(CmdTlmWebSocketApi):
+    """Queue WebSocket"""
+    
     def __init__(
         self,
         history_count=0,
@@ -472,8 +493,9 @@ class QueueEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Streaming API WebSocket
 class StreamingWebSocketApi(CmdTlmWebSocketApi):
+    """Streaming API WebSocket"""
+    
     def __init__(
         self,
         url=None,
@@ -493,28 +515,6 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             scope=scope,
         )
 
-    # Request to add data to the stream
-    #
-    # arguments:
-    # scope: scope name
-    # start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
-    # end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
-    # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
-    #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
-    #   CMDORTLM - CMD or TLM
-    #   TARGET - Target name
-    #   PACKET - Packet name
-    #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
-    #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
-    #   item_key is an optional shortened name to return the data as
-    # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
-    #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
-    #   CMDORTLM - CMD or TLM
-    #   TARGET - Target name
-    #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
-    #
     def add(
         self,
         items=None,
@@ -523,6 +523,29 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         end_time=None,
         scope=OPENC3_SCOPE,
     ):
+        """
+        Request to add data to the stream
+        
+        Args:
+            items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
+                MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
+                CMDORTLM - CMD or TLM
+                TARGET - Target name
+                PACKET - Packet name
+                ITEM - Item Name
+                VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+                REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
+                item_key is an optional shortened name to return the data as
+            packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
+                MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
+                CMDORTLM - CMD or TLM
+                TARGET - Target name
+                PACKET - Packet name
+                VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+            start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
+            end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
+            scope: scope name
+        """
         data_hash = {}
         data_hash["action"] = "add"
         if start_time:
@@ -537,26 +560,27 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
-    # Request to remove data from the stream
-    #
-    # arguments:
-    # scope: scope name
-    # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE] ]
-    #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
-    #   CMDORTLM - CMD or TLM
-    #   TARGET - Target name
-    #   PACKET - Packet name
-    #   ITEM - Item Name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
-    #   REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
-    # packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
-    #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
-    #   CMDORTLM - CMD or TLM
-    #   TARGET - Target name
-    #   PACKET - Packet name
-    #   VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
-    #
     def remove(self, items=None, packets=None, scope=OPENC3_SCOPE):
+        """
+        Request to remove data from the stream
+        
+        Args:
+            items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE] ]
+                MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
+                CMDORTLM - CMD or TLM
+                TARGET - Target name
+                PACKET - Packet name
+                ITEM - Item Name
+                VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+                REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
+            packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
+                MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
+                CMDORTLM - CMD or TLM
+                TARGET - Target name
+                PACKET - Packet name
+                VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+            scope: scope name
+        """
         data_hash = {}
         data_hash["action"] = "remove"
         if items:
@@ -567,8 +591,6 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
-    # Convenience method to read all data until end marker is received.
-    # Warning: DATA IS STORED IN RAM.  Do not use this with large queries
     @classmethod
     def read_all(
         cls,
@@ -579,6 +601,11 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         scope=OPENC3_SCOPE,
         timeout=None,
     ):
+        """
+        Convenience method to read all data until end marker is received.
+        
+        Warning: DATA IS STORED IN RAM. Do not use this with large queries
+        """
         read_all_start_time = time.time()
         data = []
         with cls() as api:
