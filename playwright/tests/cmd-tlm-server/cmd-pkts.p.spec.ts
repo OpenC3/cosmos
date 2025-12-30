@@ -70,6 +70,7 @@ test('displays the command count', async ({ page, utils }) => {
     waitUntil: 'domcontentloaded',
   })
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.selectTargetPacketItem('INST', 'ABORT')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
 
