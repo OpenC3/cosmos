@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from websockets.exceptions import ConnectionClosedOK
 from websockets.sync.client import connect
 
 
@@ -44,6 +45,10 @@ class WebSocketClientStream:
             try:
                 return self.connection.recv(self.recv_timeout)
             except TimeoutError:
+                return None
+            except ConnectionClosedOK:
+                # ConnectionClosedOK is raised when the server closes the connection in a normal way
+                # This happens when the client has read all messages in the requested time range
                 return None
 
     def write(self, data):

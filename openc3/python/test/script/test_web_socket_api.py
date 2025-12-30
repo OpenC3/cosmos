@@ -14,11 +14,61 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import time
 import unittest
 from unittest.mock import Mock, patch
 
-from openc3.script.web_socket_api import WebSocketApi
+from openc3.script.web_socket_api import (
+    WebSocketApi,
+    MessagesWebSocketApi,
+)
+from openc3.utilities.time import to_nsec_from_epoch
+from datetime import datetime, timezone, timedelta
+from websockets.exceptions import ConnectionClosedOK
+
+
+class TestMessagesWebSocketApiConnectionClosed(unittest.TestCase):
+    """Test MessagesWebSocketApi connection closed scenarios"""
+
+    def test_connection_closed_ok_returns_none(self):
+        """Test that ConnectionClosedOK exception is handled and returns None"""
+        from openc3.streams.web_socket_client_stream import WebSocketClientStream
+
+        api = MessagesWebSocketApi(
+            start_time=to_nsec_from_epoch(datetime.now(timezone.utc) - timedelta(minutes=5)),
+            end_time=to_nsec_from_epoch(datetime.now(timezone.utc)),
+        )
+
+        # Create a mock connection that raises ConnectionClosedOK
+        mock_connection = Mock()
+        messages = [{"time": 1000000000, "level": "INFO", "message": "Final message"}]
+        mock_connection.recv.side_effect = [
+            '{"type":"confirm_subscription"}',
+            json.dumps({"message": messages}),
+            ConnectionClosedOK(None, None),  # This should be caught and converted to None
+        ]
+
+        # Create a real WebSocketClientStream and replace its connection
+        api.stream = WebSocketClientStream(
+            url="ws://test.com",
+            write_timeout=10.0,
+            read_timeout=10.0,
+            connect_timeout=5.0,
+        )
+        api.stream.connection = mock_connection
+
+        # Read the data
+        result1 = api.read()
+        self.assertEqual(result1, messages)
+
+        # Next read should return None (connection closed gracefully)
+        result2 = api.read()
+        self.assertIsNone(result2)
+
+        # Verify that ConnectionClosedOK was actually raised (and caught)
+        # by checking that recv was called 3 times
+        self.assertEqual(mock_connection.recv.call_count, 3)
 
 
 class TestWebSocketApiEdgeCases(unittest.TestCase):
