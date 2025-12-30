@@ -30,7 +30,7 @@ if [ "${1:-default}" = "ubi" ]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-12-18T18-30-00Z
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
