@@ -21,7 +21,7 @@
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.28.5",
     "@types/systemjs": "6.15.4",
-    "@vitejs/plugin-vue": "5.2.3",
+    "@vitejs/plugin-vue": "6.0.3",
     "prettier": "3.7.4",
     "sass": "1.97.1",
     "serve": "14.2.5",
