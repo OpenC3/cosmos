@@ -83,7 +83,7 @@ class WebSocketApi:
                             raise RuntimeError("Subscription Rejected")
                         if timeout:
                             end_time = time.time()
-                            if (start_time - end_time) > timeout:
+                            if (end_time - start_time) > timeout:
                                 raise TimeoutError("No Data Timeout")
                         # if defined? RunningScript and RunningScript.instance:
                         #   if RunningScript.instance.stop?:
