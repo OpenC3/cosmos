@@ -676,7 +676,7 @@ module OpenC3
         plaintext = @decipher.update(ciphertext) + @decipher.final
         return plaintext, extra
       rescue OpenSSL::Cipher::CipherError => e
-        Logger.error("Decryption failed: #{e.message}")
+        Logger.error("EncryptionProtocol: Decryption failed: #{e.message}")
         return :DISCONNECT
       end
     end
@@ -791,12 +791,12 @@ INTERFACE ENCRYPTED_INT tcpip_client_interface.rb myhost.com 12345 12345 10.0 ni
 
 OpenSSL supports many encryption algorithms. Common choices include:
 
-| Cipher | Description | Key Size | IV Size |
-|--------|-------------|----------|---------|
+| Cipher      | Description                                    | Key Size | IV Size  |
+| ----------- | ---------------------------------------------- | -------- | -------- |
 | aes-256-gcm | AES-256 in GCM mode (authenticated encryption) | 32 bytes | 12 bytes |
 | aes-128-gcm | AES-128 in GCM mode (authenticated encryption) | 16 bytes | 12 bytes |
-| aes-256-cbc | AES-256 in CBC mode | 32 bytes | 16 bytes |
-| aes-128-cbc | AES-128 in CBC mode | 16 bytes | 16 bytes |
+| aes-256-cbc | AES-256 in CBC mode                            | 32 bytes | 16 bytes |
+| aes-128-cbc | AES-128 in CBC mode                            | 16 bytes | 16 bytes |
 
 :::warning Use Authenticated Encryption
 We recommend using authenticated encryption modes like GCM (Galois/Counter Mode) which provide both confidentiality and integrity. Non-authenticated modes like CBC are vulnerable to certain attacks if not combined with a separate MAC (Message Authentication Code).
