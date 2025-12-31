@@ -945,6 +945,190 @@ end
 
 The base class does nothing as this is special functionality implemented by subclasses.
 
+### read_details
+
+The read_details method returns a hash/dictionary containing diagnostic information about the most recent read operation through the protocol. This method is called by the Interface's `as_json()` method to provide insight into protocol state for debugging and monitoring purposes.
+
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def read_details(self):
+    result = {"name": self.__class__.__name__}
+    if self.read_data_input_time:
+        result["read_data_input_time"] = self.read_data_input_time.strftime(self.DATETIME_FORMAT)
+    else:
+        result["read_data_input_time"] = None
+    result["read_data_input"] = self.read_data_input
+    if self.read_data_output_time:
+        result["read_data_output_time"] = self.read_data_output_time.strftime(self.DATETIME_FORMAT)
+    else:
+        result["read_data_output_time"] = None
+    result["read_data_output"] = self.read_data_output
+    return result
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+def read_details
+  result = {'name' => self.class.name.to_s.split("::")[-1]}
+  if @read_data_input_time
+    result['read_data_input_time'] = @read_data_input_time.iso8601
+  else
+    result['read_data_input_time'] = nil
+  end
+  result['read_data_input'] = @read_data_input
+  if @read_data_output_time
+    result['read_data_output_time'] = @read_data_output_time.iso8601
+  else
+    result['read_data_output_time'] = nil
+  end
+  result['read_data_output'] = @read_data_output
+  return result
+end
+```
+
+</TabItem>
+</Tabs>
+
+The base class implementation returns a hash/dictionary with the following keys:
+
+| Key | Description |
+| --- | ----------- |
+| name | The protocol class name (e.g., "LengthProtocol") |
+| read_data_input_time | ISO8601 timestamp of when data was received by the protocol's `read_data()` method, or nil/None if no data has been received |
+| read_data_input | The raw data that was passed into the protocol's `read_data()` method |
+| read_data_output_time | ISO8601 timestamp of when data was output from the protocol's `read_data()` method, or nil/None if no data has been output |
+| read_data_output | The data that was returned from the protocol's `read_data()` method |
+
+Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
+
+Example from BurstProtocol:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def read_details(self):
+    result = super().read_details()
+    result["discard_leading_bytes"] = self.discard_leading_bytes
+    result["sync_pattern"] = repr(self.sync_pattern)
+    result["fill_fields"] = self.fill_fields
+    return result
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+def read_details
+  result = super()
+  result['discard_leading_bytes'] = @discard_leading_bytes
+  result['sync_pattern'] = @sync_pattern.inspect
+  result['fill_fields'] = @fill_fields
+  return result
+end
+```
+
+</TabItem>
+</Tabs>
+
+### write_details
+
+The write_details method returns a hash/dictionary containing diagnostic information about the most recent write operation through the protocol. This method is called by the Interface's `as_json()` method to provide insight into protocol state for debugging and monitoring purposes.
+
+Base class implementation:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def write_details(self):
+    result = {"name": self.__class__.__name__}
+    if self.write_data_input_time:
+        result["write_data_input_time"] = self.write_data_input_time.strftime(self.DATETIME_FORMAT)
+    else:
+        result["write_data_input_time"] = None
+    result["write_data_input"] = self.write_data_input
+    if self.write_data_output_time:
+        result["write_data_output_time"] = self.write_data_output_time.strftime(self.DATETIME_FORMAT)
+    else:
+        result["write_data_output_time"] = None
+    result["write_data_output"] = self.write_data_output
+    return result
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+def write_details
+  result = {'name' => self.class.name.to_s.split("::")[-1]}
+  if @write_data_input_time
+    result['write_data_input_time'] = @write_data_input_time.iso8601
+  else
+    result['write_data_input_time'] = nil
+  end
+  result['write_data_input'] = @write_data_input
+  if @write_data_output_time
+    result['write_data_output_time'] = @write_data_output_time.iso8601
+  else
+    result['write_data_output_time'] = nil
+  end
+  result['write_data_output'] = @write_data_output
+  return result
+end
+```
+
+</TabItem>
+</Tabs>
+
+The base class implementation returns a hash/dictionary with the following keys:
+
+| Key | Description |
+| --- | ----------- |
+| name | The protocol class name (e.g., "LengthProtocol") |
+| write_data_input_time | ISO8601 timestamp of when data was received by the protocol's `write_data()` method, or nil/None if no data has been received |
+| write_data_input | The raw data that was passed into the protocol's `write_data()` method |
+| write_data_output_time | ISO8601 timestamp of when data was output from the protocol's `write_data()` method, or nil/None if no data has been output |
+| write_data_output | The data that was returned from the protocol's `write_data()` method |
+
+Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
+
+Example from BurstProtocol:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+def write_details(self):
+    result = super().write_details()
+    result["discard_leading_bytes"] = self.discard_leading_bytes
+    result["sync_pattern"] = repr(self.sync_pattern)
+    result["fill_fields"] = self.fill_fields
+    return result
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+def write_details
+  result = super()
+  result['discard_leading_bytes'] = @discard_leading_bytes
+  result['sync_pattern'] = @sync_pattern.inspect
+  result['fill_fields'] = @fill_fields
+  return result
+end
+```
+
+</TabItem>
+</Tabs>
+
 ## Examples
 
 Please see the linked [Ruby Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols) and [Python Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols) code for examples of the above methods in action.
