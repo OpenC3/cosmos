@@ -29,17 +29,17 @@ Most data types can be printed in a COSMOS script simply by doing <code>print(tl
 
 Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
-* Use underscores
+- Use underscores
 
-    Packet and Item names like `HEALTH_STATUS` or `GND1_STATUS` are easy to read and understand.
+  Packet and Item names like `HEALTH_STATUS` or `GND1_STATUS` are easy to read and understand.
 
-* Be descriptive but succinct
+- Be descriptive but succinct
 
-    A packet name like `BUS_FLIGHT_SOFTWARE_ADCS_PACKET` is a valid packet name but makes all the drop downs extra long and is a lot to type. A better choice might be `BFSW_ADCS`. You already know it's a packet and the first three words collapse to an easy to understand acronym.
+  A packet name like `BUS_FLIGHT_SOFTWARE_ADCS_PACKET` is a valid packet name but makes all the drop downs extra long and is a lot to type. A better choice might be `BFSW_ADCS`. You already know it's a packet and the first three words collapse to an easy to understand acronym.
 
-* Avoid brackets in telemetry and item names
+- Avoid brackets in telemetry and item names
 
-    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double braces. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
+  Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double braces. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
 
 ### ID Items
 
@@ -58,6 +58,10 @@ ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
 Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry#read_conversion), to generate the value.
+
+:::info Derived Item Ordering
+When telemetry packets are serialized for API responses (e.g., when generating screens or listing items), derived items are always returned last regardless of where they are defined in the telemetry definition file.
+:::
 
 ### Received Time and Packet Time
 
