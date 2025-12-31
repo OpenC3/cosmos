@@ -84,7 +84,7 @@ class TopicsThread
         @offsets[@offset_index_by_topic[topic]] = msg_id
         msg_hash[:msg_id] = msg_id if @transmit_msg_id
         batch << msg_hash
-        if batch.length > @max_batch_size
+        if batch.length >= @max_batch_size
           transmit_results(batch)
           batch.clear
         end
