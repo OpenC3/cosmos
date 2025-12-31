@@ -19,13 +19,16 @@ from websockets.sync.client import connect
 
 
 class WebSocketClientStream:
-    # @param url [String] The host to connect to
-    # @param write_timeout [Float] Seconds to wait before aborting writes
-    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
-    #   Pass nil to block until the read is complete.
-    # @param connect_timeout [Float|nil] Seconds to wait before aborting connect.
-    #   Pass nil to block until the connection is complete.
     def __init__(self, url, write_timeout, read_timeout, connect_timeout=5.0):
+        """
+        Initialize WebSocketClientStream
+
+        Args:
+            url (str): The host to connect to
+            write_timeout (float): Seconds to wait before aborting writes
+            read_timeout (float|None): Seconds to wait before aborting reads. Pass None to block until the read is complete.
+            connect_timeout (float|None): Seconds to wait before aborting connect. Pass None to block until the connection is complete.
+        """
         self.url = url
         self.recv_timeout = read_timeout
         self.connect_timeout = connect_timeout
