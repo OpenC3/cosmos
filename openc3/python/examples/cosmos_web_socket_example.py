@@ -68,4 +68,3 @@ with MessagesWebSocketApi(
             break
         print(f"\nReceived {len(data)} log messages:")
         print(data)
-        time.sleep(0.1) # Allow for a brief pause between reads to allow PING/PONG communication in order to keep connection alive
