@@ -608,6 +608,207 @@ Source code for [ignore_packet_protocol.rb](https://github.com/OpenC3/cosmos/blo
 </TabItem>
 </Tabs>
 
+## Encryption Protocols
+
+COSMOS supports implementing encryption at the protocol layer using OpenSSL. This allows you to encrypt and decrypt data transparently as it flows through the interface. Encryption protocols are typically placed at the beginning of the protocol chain (for reads) so they can decrypt data before other protocols process it.
+
+:::info Encryption Order
+For reading, the encryption protocol should be first so it decrypts the raw data before other protocols process it. For writing, protocols execute in reverse order, so the encryption protocol (listed first) will encrypt the data last, just before it's sent.
+:::
+
+### Creating an Encryption Protocol
+
+Below is an example of a custom encryption protocol using OpenSSL's AES-256-GCM cipher. This protocol encrypts outgoing data and decrypts incoming data.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+# encryption_protocol.rb
+# Place in targets/TARGET_NAME/lib/encryption_protocol.rb
+
+require 'openssl'
+require 'openc3/interfaces/protocols/protocol'
+
+module OpenC3
+  class EncryptionProtocol < Protocol
+    # @param key_secret_name [String] Name of the secret containing the encryption key
+    # @param iv_secret_name [String] Name of the secret containing the initialization vector
+    # @param allow_empty_data [true/false/nil] See Protocol#initialize
+    def initialize(key_secret_name, iv_secret_name = nil, allow_empty_data = nil)
+      super(allow_empty_data)
+      @key_secret_name = key_secret_name
+      @iv_secret_name = iv_secret_name
+      @key = nil
+      @iv = nil
+      # Create cipher instances once and reuse them
+      @cipher = OpenSSL::Cipher.new('aes-256-gcm')
+      @decipher = OpenSSL::Cipher.new('aes-256-gcm')
+    end
+
+    def connect_reset
+      # Retrieve the encryption key from COSMOS secrets
+      secrets = OpenC3::System.secrets
+      @key = secrets.get(@key_secret_name, scope: @interface.scope)
+      # IV can be from secrets or generated per message
+      if @iv_secret_name
+        @iv = secrets.get(@iv_secret_name, scope: @interface.scope)
+      end
+    end
+
+    def read_data(data, extra = nil)
+      return super(data, extra) if data.empty?
+
+      begin
+        @decipher.reset
+        @decipher.decrypt
+        @decipher.key = @key
+
+        # Extract IV and auth tag from the data
+        # Format: [12-byte IV][16-byte auth tag][ciphertext]
+        iv = data[0..11]
+        auth_tag = data[12..27]
+        ciphertext = data[28..-1]
+
+        @decipher.iv = iv
+        @decipher.auth_tag = auth_tag
+
+        plaintext = @decipher.update(ciphertext) + @decipher.final
+        return plaintext, extra
+      rescue OpenSSL::Cipher::CipherError => e
+        Logger.error("Decryption failed: #{e.message}")
+        return :DISCONNECT
+      end
+    end
+
+    def write_data(data, extra = nil)
+      return super(data, extra) if data.empty?
+
+      @cipher.reset
+      @cipher.encrypt
+      @cipher.key = @key
+
+      # Generate a random IV for each message (recommended for GCM)
+      iv = @iv || @cipher.random_iv
+      @cipher.iv = iv
+
+      ciphertext = @cipher.update(data) + @cipher.final
+      auth_tag = @cipher.auth_tag
+
+      # Prepend IV and auth tag to ciphertext
+      # Format: [12-byte IV][16-byte auth tag][ciphertext]
+      encrypted_data = iv + auth_tag + ciphertext
+      return encrypted_data, extra
+    end
+  end
+end
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+# encryption_protocol.py
+# Place in targets/TARGET_NAME/lib/encryption_protocol.py
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
+from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
+
+class EncryptionProtocol(Protocol):
+    # key_secret_name: Name of the secret containing the encryption key
+    # iv_secret_name: Name of the secret containing the initialization vector (optional)
+    # allow_empty_data: See Protocol.__init__
+    def __init__(self, key_secret_name, iv_secret_name=None, allow_empty_data=None):
+        super().__init__(allow_empty_data)
+        self.key_secret_name = key_secret_name
+        self.iv_secret_name = iv_secret_name
+        self.key = None
+        self.iv = None
+        # AESGCM instance created in connect_reset after key is loaded
+        self.aesgcm = None
+
+    def connect_reset(self):
+        # Retrieve the encryption key from COSMOS secrets
+        secrets = System.secrets
+        self.key = secrets.get(self.key_secret_name, scope=self.interface.scope)
+        # IV can be from secrets or generated per message
+        if self.iv_secret_name:
+            self.iv = secrets.get(self.iv_secret_name, scope=self.interface.scope)
+        # Create the AESGCM instance with the key (reused for encrypt/decrypt)
+        self.aesgcm = AESGCM(self.key)
+
+    def read_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().read_data(data, extra)
+
+        try:
+            # Extract IV and ciphertext from the data
+            # Format: [12-byte IV][ciphertext with auth tag]
+            iv = data[0:12]
+            ciphertext = data[12:]
+
+            plaintext = self.aesgcm.decrypt(iv, ciphertext, None)
+            return (plaintext, extra)
+        except Exception as e:
+            Logger.error(f"Decryption failed: {e}")
+            return "DISCONNECT"
+
+    def write_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().write_data(data, extra)
+
+        # Generate a random IV for each message (recommended for GCM)
+        iv = self.iv if self.iv else os.urandom(12)
+
+        # encrypt() returns ciphertext with auth tag appended
+        ciphertext = self.aesgcm.encrypt(iv, data, None)
+
+        # Prepend IV to ciphertext
+        # Format: [12-byte IV][ciphertext with auth tag]
+        encrypted_data = iv + ciphertext
+        return (encrypted_data, extra)
+```
+
+</TabItem>
+</Tabs>
+
+### Using the Encryption Protocol
+
+To use the encryption protocol, first store your encryption key as a secret in COSMOS Admin under the Secrets tab. Then reference it in your plugin.txt:
+
+```ruby
+INTERFACE ENCRYPTED_INT tcpip_client_interface.rb myhost.com 12345 12345 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 0 nil true
+  # The encryption protocol should be first for reading (decrypts before other protocols)
+  # For writing, it will be last (encrypts after other protocols build the packet)
+  PROTOCOL READ_WRITE encryption_protocol.rb my_encryption_key_secret
+  TARGET ENCRYPTED_TARGET
+```
+
+### Available Ciphers
+
+OpenSSL supports many encryption algorithms. Common choices include:
+
+| Cipher | Description | Key Size | IV Size |
+|--------|-------------|----------|---------|
+| aes-256-gcm | AES-256 in GCM mode (authenticated encryption) | 32 bytes | 12 bytes |
+| aes-128-gcm | AES-128 in GCM mode (authenticated encryption) | 16 bytes | 12 bytes |
+| aes-256-cbc | AES-256 in CBC mode | 32 bytes | 16 bytes |
+| aes-128-cbc | AES-128 in CBC mode | 16 bytes | 16 bytes |
+
+:::warning Use Authenticated Encryption
+We recommend using authenticated encryption modes like GCM (Galois/Counter Mode) which provide both confidentiality and integrity. Non-authenticated modes like CBC are vulnerable to certain attacks if not combined with a separate MAC (Message Authentication Code).
+:::
+
+### Key Management Best Practices
+
+1. **Never hardcode keys**: Always store encryption keys in COSMOS Secrets or an external secrets manager
+2. **Use unique IVs**: For GCM mode, always generate a random IV for each message
+3. **Key rotation**: Implement a key rotation strategy for long-running systems
+4. **Key derivation**: Consider using a Key Derivation Function (KDF) if deriving keys from passwords
+
 ## Custom Protocols
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
