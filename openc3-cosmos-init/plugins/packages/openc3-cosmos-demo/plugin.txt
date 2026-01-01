@@ -3,23 +3,49 @@
 # target per plugin
 
 VARIABLE inst_target_name INST
+VARIABLE_DESCRIPTION inst_target_name "Name for the primary INST target (leave blank to exclude)"
 VARIABLE inst2_target_name INST2
+VARIABLE_DESCRIPTION inst2_target_name "Name for the secondary INST2 target (leave blank to exclude)"
 VARIABLE example_target_name EXAMPLE
+VARIABLE_DESCRIPTION example_target_name "Name for the EXAMPLE target (leave blank to exclude)"
 VARIABLE templated_target_name TEMPLATED
+VARIABLE_DESCRIPTION templated_target_name "Name for the TEMPLATED target (leave blank to exclude)"
 VARIABLE system_target_name SYSTEM
+VARIABLE_DESCRIPTION system_target_name "Name for the SYSTEM target (leave blank to exclude)"
 VARIABLE inst_int_name INST_INT
+VARIABLE_DESCRIPTION inst_int_name "Name for the INST interface"
 VARIABLE inst_router_name INST_ROUTER
+VARIABLE_DESCRIPTION inst_router_name "Name for the INST router"
 VARIABLE inst2_int_name INST2_INT
+VARIABLE_DESCRIPTION inst2_int_name "Name for the INST2 interface"
 VARIABLE example_int_name EXAMPLE_INT
+VARIABLE_DESCRIPTION example_int_name "Name for the EXAMPLE interface"
 VARIABLE templated_int_name TEMPLATED_INT
+VARIABLE_DESCRIPTION templated_int_name "Name for the TEMPLATED interface"
 VARIABLE demo_tool_name Demo
+VARIABLE_DESCRIPTION demo_tool_name "Name shown in the nav bar for the Demo tool"
 VARIABLE example_microservice_name openc3-example
+VARIABLE_DESCRIPTION example_microservice_name "Name for the EXAMPLE microservice"
 VARIABLE templated_microservice_name openc3-templated
+VARIABLE_DESCRIPTION templated_microservice_name "Name for the TEMPLATED microservice"
 VARIABLE example_port 9999
+VARIABLE_DESCRIPTION example_port "Port for EXAMPLE target connection"
 VARIABLE templated_port 5025
+VARIABLE_DESCRIPTION templated_port "Port for TEMPLATED target connection"
 VARIABLE inst_router_port 7779
+VARIABLE_DESCRIPTION inst_router_port "Port for INST router"
 VARIABLE log_retain_time 172800
+VARIABLE_DESCRIPTION log_retain_time "Raw log retention time in seconds (default: 48 hours)"
+VARIABLE_OPTION log_retain_time 86400 "24 hours"
+VARIABLE_OPTION log_retain_time 172800 "48 hours"
+VARIABLE_OPTION log_retain_time 604800 "1 week"
+VARIABLE_OPTION log_retain_time 2592000 "30 days"
 VARIABLE reduced_log_retain_time 2592000
+VARIABLE_DESCRIPTION reduced_log_retain_time "Reduced log retention time in seconds (default: 30 days)"
+VARIABLE_OPTION reduced_log_retain_time 604800 "1 week"
+VARIABLE_OPTION reduced_log_retain_time 2592000 "30 days"
+VARIABLE_OPTION reduced_log_retain_time 7776000 "90 days"
+VARIABLE_OPTION reduced_log_retain_time 31536000 "1 year"
 
 <% include_inst = (inst_target_name.to_s.strip.length > 0) %>
 <% include_inst2 = (inst2_target_name.to_s.strip.length > 0) %>

@@ -13,6 +13,44 @@ VARIABLE:
       required: true
       description: Default value of the variable
       values: .+
+VARIABLE_DESCRIPTION:
+  summary: Add a description to a plugin variable
+  description: The VARIABLE_DESCRIPTION keyword adds a human-readable description to a previously defined VARIABLE. This description appears as hint text below the variable input field during plugin installation. Must follow a VARIABLE definition.
+  since: 7.0.0
+  example: |
+    VARIABLE port 8080
+    VARIABLE_DESCRIPTION port "TCP port for the target connection"
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of the variable to describe. Must match a previously defined VARIABLE name.
+      values: .+
+    - name: Description
+      required: true
+      description: Human-readable description of the variable's purpose
+      values: .+
+VARIABLE_OPTION:
+  summary: Add a selectable option for a plugin variable
+  description: The VARIABLE_OPTION keyword defines a selectable option for a previously defined VARIABLE. When options are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_OPTION keywords can be used to define multiple options. Must follow a VARIABLE definition.
+  since: 7.0.0
+  example: |
+    VARIABLE target_name INST
+    VARIABLE_DESCRIPTION target_name "Select the target name"
+    VARIABLE_OPTION target_name INST "Primary instrument"
+    VARIABLE_OPTION target_name INST2 "Secondary instrument"
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of the variable this option belongs to. Must match a previously defined VARIABLE name.
+      values: .+
+    - name: Option Value
+      required: true
+      description: The value that will be used when this option is selected
+      values: .+
+    - name: Option Description
+      required: false
+      description: Human-readable description of what this option represents. Appears as subtitle in the dropdown.
+      values: .+
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
