@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -28,6 +28,8 @@
     <v-divider />
     <time-zone-settings />
     <v-divider />
+    <time-format-settings />
+    <v-divider />
     <news-feed-settings />
     <v-divider />
     <classification-banner-settings />
@@ -51,6 +53,7 @@ import EditorSettings from './settings/EditorSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
 import ClassificationBannerSettings from './settings/ClassificationBannerSettings.vue'
 import TimeZoneSettings from './settings/TimeZoneSettings.vue'
+import TimeFormatSettings from './settings/TimeFormatSettings.vue'
 import NewsFeedSettings from './settings/NewsFeedSettings.vue'
 import SubtitleSettings from './settings/SubtitleSettings.vue'
 import SourceCodeSettings from './settings/SourceCodeSettings.vue'
@@ -66,6 +69,7 @@ export default {
     AstroSettings,
     ClassificationBannerSettings,
     TimeZoneSettings,
+    TimeFormatSettings,
     NewsFeedSettings,
     SubtitleSettings,
     SourceCodeSettings,
