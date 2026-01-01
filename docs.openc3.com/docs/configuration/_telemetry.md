@@ -39,7 +39,7 @@ Telemetry Packets and Items can be named however you want with very few exceptio
 
 - Avoid brackets in telemetry and item names
 
-  Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double braces. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
+  Array items use brackets to allow indexing into an individual item. Thus if you use brackets in item names it gets confusing as to whether this is a COSMOS [ARRAY_ITEM](telemetry#array_item) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. Note that if you have existing telemetry names with brackets you must escape them in Telemetry Viewer screens by using double brackets. For example from the Demo: `LABELVALUE INST HEALTH_STATUS BRACKET[[0]]`
 
 ### ID Items
 
