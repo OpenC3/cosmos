@@ -544,7 +544,7 @@ class TestTlmApi(unittest.TestCase):
     def test_get_all_tlm_item_names_returns_an_array_of_all_item_names(self):
         items = get_all_tlm_item_names("INST", scope="DEFAULT")
         self.assertEqual(type(items), list)
-        self.assertEqual(len(items), 60)
+        self.assertEqual(len(items), 65)
         self.assertIn(b"ARY", items)
         self.assertIn(b"ATTPROGRESS", items)
         self.assertIn(b"BLOCKTEST", items)
@@ -638,27 +638,27 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[14][1], -100.0)
         self.assertEqual(vals[14][2], "RED_LOW")
         # Derived items are last
-        self.assertEqual(vals[23][0], "PACKET_TIMESECONDS")
-        self.assertGreater(vals[23][1], 0)
-        self.assertIsNone(vals[23][2])
-        self.assertEqual(vals[24][0], "PACKET_TIMEFORMATTED")
-        self.assertEqual(
-            vals[24][1].split(" ")[0],
-            formatted(datetime.now(timezone.utc)).split(" ")[0],
-        )  # Match the date
-        self.assertIsNone(vals[24][2])
-        self.assertEqual(vals[25][0], "RECEIVED_TIMESECONDS")
-        self.assertGreater(vals[25][1], 0)
-        self.assertIsNone(vals[25][2])
-        self.assertEqual(vals[26][0], "RECEIVED_TIMEFORMATTED")
-        self.assertEqual(
-            vals[26][1].split(" ")[0],
-            formatted(datetime.now(timezone.utc)).split(" ")[0],
-        )  # Match the date
-        self.assertIsNone(vals[26][2])
-        self.assertEqual(vals[27][0], "RECEIVED_COUNT")
-        self.assertEqual(vals[27][1], 0)
+        self.assertEqual(vals[27][0], "PACKET_TIMESECONDS")
+        self.assertGreater(vals[27][1], 0)
         self.assertIsNone(vals[27][2])
+        self.assertEqual(vals[28][0], "PACKET_TIMEFORMATTED")
+        self.assertEqual(
+            vals[28][1].split(" ")[0],
+            formatted(datetime.now(timezone.utc)).split(" ")[0],
+        )  # Match the date
+        self.assertIsNone(vals[28][2])
+        self.assertEqual(vals[29][0], "RECEIVED_TIMESECONDS")
+        self.assertGreater(vals[29][1], 0)
+        self.assertIsNone(vals[29][2])
+        self.assertEqual(vals[30][0], "RECEIVED_TIMEFORMATTED")
+        self.assertEqual(
+            vals[30][1].split(" ")[0],
+            formatted(datetime.now(timezone.utc)).split(" ")[0],
+        )  # Match the date
+        self.assertIsNone(vals[30][2])
+        self.assertEqual(vals[31][0], "RECEIVED_COUNT")
+        self.assertEqual(vals[31][1], 0)
+        self.assertIsNone(vals[31][2])
 
     def test_reads_all_telemetry_items_as_raw(self):
         vals = get_tlm_packet("INST   HEALTH_STATUS", type="RAW")
