@@ -42,7 +42,7 @@ test('displays the list of command', async ({ page, utils }) => {
 })
 
 test('displays the command count', async ({ page, utils }) => {
-  // It is important in this test taht we send a command that is not being sent
+  // It is important in this test that we send a command that is not being sent
   // by other tests to ensure the count increments by one. Thus NOT ABORT or COLLECT
   // as those are being sent by background tasks.
   await expect
