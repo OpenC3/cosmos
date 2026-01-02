@@ -154,22 +154,30 @@ else
 fi
 cd ../openc3-redis
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
   --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
   --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
 fi

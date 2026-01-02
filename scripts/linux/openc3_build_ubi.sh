@@ -255,10 +255,11 @@ if should_build "openc3-redis-ubi"; then
   START_TIME=$SECONDS
   cd openc3-redis
   docker build \
+    -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/redis \
-    --build-arg OPENC3_REDIS_IMAGE=redis7 \
-    --build-arg OPENC3_REDIS_VERSION="7.2.5" \
+    --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+    --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+    --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
     --platform linux/amd64 \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}" \
     .
