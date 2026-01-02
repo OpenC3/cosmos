@@ -1491,7 +1491,8 @@ at which point we send the command with the telemetry value we received.
 
 Scripts can be launched from a BUTTON using the `runScript()` method. `runScript()` takes three parameters,
 the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
-environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
+environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`.
+Note: Do not use `PATH` as an environment variable key as it is reserved by the system.
 
 
 | Parameter | Description | Required |
