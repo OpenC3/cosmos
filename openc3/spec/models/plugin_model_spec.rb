@@ -106,16 +106,16 @@ module OpenC3
         })
       end
 
-      it "parses VARIABLE_OPTION" do
+      it "parses VARIABLE_STATE" do
         expect(GemModel).to receive(:put)
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
             file.puts "VARIABLE my_target INST"
             file.puts 'VARIABLE_DESCRIPTION my_target "Select the target"'
-            file.puts 'VARIABLE_OPTION my_target INST "Primary instrument"'
-            file.puts 'VARIABLE_OPTION my_target INST2 "Secondary instrument"'
-            file.puts 'VARIABLE_OPTION my_target INST3'
+            file.puts 'VARIABLE_STATE my_target INST "Primary instrument"'
+            file.puts 'VARIABLE_STATE my_target INST2 "Secondary instrument"'
+            file.puts 'VARIABLE_STATE my_target INST3'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
@@ -143,16 +143,16 @@ module OpenC3
         expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_DESCRIPTION references unknown variable 'unknown'/)
       end
 
-      it "raises error for VARIABLE_OPTION without VARIABLE" do
+      it "raises error for VARIABLE_STATE without VARIABLE" do
         expect(GemModel).to receive(:put)
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
-            file.puts 'VARIABLE_OPTION unknown VALUE'
+            file.puts 'VARIABLE_STATE unknown VALUE'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
-        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_OPTION references unknown variable 'unknown'/)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_STATE references unknown variable 'unknown'/)
       end
 
       it "processes existing plugin.txt lines" do

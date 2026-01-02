@@ -36,16 +36,16 @@ VARIABLE inst_router_port 7779
 VARIABLE_DESCRIPTION inst_router_port "Port for INST router"
 VARIABLE log_retain_time 172800
 VARIABLE_DESCRIPTION log_retain_time "Raw log retention time in seconds (default: 48 hours)"
-VARIABLE_OPTION log_retain_time 86400 "24 hours"
-VARIABLE_OPTION log_retain_time 172800 "48 hours"
-VARIABLE_OPTION log_retain_time 604800 "1 week"
-VARIABLE_OPTION log_retain_time 2592000 "30 days"
+VARIABLE_STATE log_retain_time 86400 "24 hours"
+VARIABLE_STATE log_retain_time 172800 "48 hours"
+VARIABLE_STATE log_retain_time 604800 "1 week"
+VARIABLE_STATE log_retain_time 2592000 "30 days"
 VARIABLE reduced_log_retain_time 2592000
 VARIABLE_DESCRIPTION reduced_log_retain_time "Reduced log retention time in seconds (default: 30 days)"
-VARIABLE_OPTION reduced_log_retain_time 604800 "1 week"
-VARIABLE_OPTION reduced_log_retain_time 2592000 "30 days"
-VARIABLE_OPTION reduced_log_retain_time 7776000 "90 days"
-VARIABLE_OPTION reduced_log_retain_time 31536000 "1 year"
+VARIABLE_STATE reduced_log_retain_time 604800 "1 week"
+VARIABLE_STATE reduced_log_retain_time 2592000 "30 days"
+VARIABLE_STATE reduced_log_retain_time 7776000 "90 days"
+VARIABLE_STATE reduced_log_retain_time 31536000 "1 year"
 
 <% include_inst = (inst_target_name.to_s.strip.length > 0) %>
 <% include_inst2 = (inst2_target_name.to_s.strip.length > 0) %>

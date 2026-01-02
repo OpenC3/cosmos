@@ -29,27 +29,27 @@ VARIABLE_DESCRIPTION:
       required: true
       description: Human-readable description of the variable's purpose
       values: .+
-VARIABLE_OPTION:
-  summary: Add a selectable option for a plugin variable
-  description: The VARIABLE_OPTION keyword defines a selectable option for a previously defined VARIABLE. When options are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_OPTION keywords can be used to define multiple options. Must follow a VARIABLE definition.
+VARIABLE_STATE:
+  summary: Add a selectable state for a plugin variable
+  description: The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE. When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states. Must follow a VARIABLE definition.
   since: 7.0.0
   example: |
     VARIABLE target_name INST
     VARIABLE_DESCRIPTION target_name "Select the target name"
-    VARIABLE_OPTION target_name INST "Primary instrument"
-    VARIABLE_OPTION target_name INST2 "Secondary instrument"
+    VARIABLE_STATE target_name INST "Primary instrument"
+    VARIABLE_STATE target_name INST2 "Secondary instrument"
   parameters:
     - name: Variable Name
       required: true
-      description: Name of the variable this option belongs to. Must match a previously defined VARIABLE name.
+      description: Name of the variable this state belongs to. Must match a previously defined VARIABLE name.
       values: .+
-    - name: Option Value
+    - name: State Value
       required: true
-      description: The value that will be used when this option is selected
+      description: The value that will be used when this state is selected
       values: .+
-    - name: Option Description
+    - name: State Description
       required: false
-      description: Human-readable description of what this option represents. Appears as subtitle in the dropdown.
+      description: Human-readable description of what this state represents. Appears as subtitle in the dropdown.
       values: .+
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable

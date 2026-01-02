@@ -156,12 +156,12 @@ module OpenC3
               raise "VARIABLE_DESCRIPTION references unknown variable '#{variable_name}'. VARIABLE must be defined first."
             end
             variables[variable_name]['description'] = params[1]
-          when 'VARIABLE_OPTION'
-            usage = "#{keyword} <Variable Name> <Option Value> <Option Description (optional)>"
+          when 'VARIABLE_STATE'
+            usage = "#{keyword} <Variable Name> <State Value> <State Description (optional)>"
             parser.verify_num_parameters(2, 3, usage)
             variable_name = params[0]
             unless variables.key?(variable_name)
-              raise "VARIABLE_OPTION references unknown variable '#{variable_name}'. VARIABLE must be defined first."
+              raise "VARIABLE_STATE references unknown variable '#{variable_name}'. VARIABLE must be defined first."
             end
             variables[variable_name]['options'] ||= []
             option = { 'value' => params[1] }
@@ -324,7 +324,7 @@ module OpenC3
             current_model = nil
             parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
               case keyword
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_OPTION', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin

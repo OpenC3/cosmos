@@ -333,7 +333,7 @@ export default {
       ).RubyHighlightRules
 
       // TODO: Grab from code
-      let keywords = ['VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_OPTION']
+      let keywords = ['VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE']
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
       let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
