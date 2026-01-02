@@ -35,8 +35,8 @@
       <v-menu
         v-model="menu"
         :close-on-content-click="false"
-        location="bottom start"
         transition="scale-transition"
+        offset="16"
       >
         <template #activator="{ props: menuProps }">
           <v-icon v-bind="menuProps" class="cursor-pointer">
@@ -144,10 +144,22 @@ export default {
         }
       },
     },
+    inputValue(newVal) {
+      // Immediately emit empty value when input is cleared for instant validation
+      if (newVal === '' && this.modelValue !== '') {
+        this.$emit('update:modelValue', '')
+      }
+    },
     menu(newVal) {
       if (newVal) {
         // When menu opens, initialize tempTime with current value
         this.tempTime = this.modelValue || '00:00:00'
+      }
+    },
+    tempTime(newVal) {
+      // Update input display in real-time when using the time picker
+      if (this.menu && newVal) {
+        this.inputValue = this.formatForDisplay(newVal)
       }
     },
   },
