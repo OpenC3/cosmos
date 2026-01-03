@@ -53,3 +53,62 @@ class TestJsonRpc(unittest.TestCase):
             request["params"],
             [{"DATA": {"json_class": "String", "raw": [240, 40, 140, 40]}}],
         )
+
+    def test_preserves_unicode_characters_as_readable_text(self):
+        """Ensure Unicode characters like µA (micro-Ampères) are preserved as readable strings.
+
+        This is a regression test for the issue where valid UTF-8 Unicode characters
+        were incorrectly encoded as raw byte arrays instead of being preserved as text.
+        See: https://github.com/OpenC3/cosmos/pull/2535
+        """
+        # Test micro sign µ (U+00B5) - common in units like "µA" for micro-Ampères
+        micro_amperes = "0.5 µA".encode("utf-8")
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"UNITS": micro_amperes})
+        request = json_rpc_request.to_hash()
+        self.assertEqual(request["params"], [{"UNITS": "0.5 µA"}])
+
+        # Test degree symbol ° (U+00B0) - common in temperature units
+        degree_celsius = "25 °C".encode("utf-8")
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"TEMP": degree_celsius})
+        request = json_rpc_request.to_hash()
+        self.assertEqual(request["params"], [{"TEMP": "25 °C"}])
+
+        # Test accented characters like in "Ampères"
+        amperes = "Ampères".encode("utf-8")
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"LABEL": amperes})
+        request = json_rpc_request.to_hash()
+        self.assertEqual(request["params"], [{"LABEL": "Ampères"}])
+
+    def test_encodes_binary_data_as_raw_object(self):
+        """Ensure true binary data (invalid UTF-8) is encoded as json_class raw object.
+
+        Binary data from hex strings like 0xDEADBEEF should be encoded as raw byte
+        arrays to support round-trip serialization through JSON.
+        """
+        # Binary data that is NOT valid UTF-8
+        binary_data = bytes([0xDE, 0xAD, 0xBE, 0xEF])
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": binary_data})
+        request = json_rpc_request.to_hash()
+        self.assertEqual(
+            request["params"],
+            [{"DATA": {"json_class": "String", "raw": [222, 173, 190, 239]}}],
+        )
+
+    def test_distinguishes_binary_from_unicode_text(self):
+        """Ensure we correctly distinguish binary data from valid UTF-8 Unicode text.
+
+        Both binary data and Unicode text may contain bytes > 127, but only valid
+        UTF-8 sequences should be preserved as text strings.
+        """
+        # Binary data: invalid UTF-8, should be encoded as raw
+        binary = bytes([0xDE, 0xAD, 0xBE, 0xEF])
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"BIN": binary, "TXT": "Test µ".encode("utf-8")})
+        request = json_rpc_request.to_hash()
+
+        # Binary should be raw object
+        self.assertIsInstance(request["params"][0]["BIN"], dict)
+        self.assertEqual(request["params"][0]["BIN"]["json_class"], "String")
+
+        # Unicode text should be preserved as string
+        self.assertIsInstance(request["params"][0]["TXT"], str)
+        self.assertEqual(request["params"][0]["TXT"], "Test µ")
