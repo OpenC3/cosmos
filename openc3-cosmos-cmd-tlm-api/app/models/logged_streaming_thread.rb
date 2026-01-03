@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,6 +24,7 @@ require 'pg'
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
 OpenC3.require_file 'openc3/api/api'
+OpenC3.require_file 'openc3/utilities/bucket_file_cache'
 
 module OpenC3
   class LocalApi
@@ -281,6 +282,50 @@ class LoggedStreamingThread < StreamingThread
       return true
     else
       return false
+    end
+  end
+
+  def stream_packets(objects_by_topic, topics, offsets)
+    results = []
+
+    # This will read out packets until nothing is left
+    file_reader = StreamingObjectFileReader.new(@collection, scope: @scope)
+    done = file_reader.each do |packet, topic|
+      break if @cancel_thread
+
+      # Get the packet objects that need this topic
+      objects = objects_by_topic[topic]
+
+      if objects
+        objects.each do |object|
+          break if @cancel_thread
+          result_entry = handle_packet(packet, [object])
+          results << result_entry if result_entry
+          # Transmit if we have a full batch or more
+          if results.length >= @max_batch_size
+            @streaming_api.transmit_results(results)
+            results.clear
+          end
+        end
+      end
+
+      break if @cancel_thread
+    end
+    return false if @cancel_thread
+
+    # Transmit less than a batch if we have that
+    @streaming_api.transmit_results(results)
+    results.clear
+
+    return done
+  end
+
+  def handle_packet(packet, objects)
+    first_object = objects[0]
+    if first_object.stream_mode == :RAW
+      return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch)
+    else # @stream_mode == :DECOM or :REDUCED_X
+      return handle_json_packet(packet, objects)
     end
   end
 

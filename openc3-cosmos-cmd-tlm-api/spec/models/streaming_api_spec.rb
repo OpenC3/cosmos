@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -65,6 +65,65 @@ RSpec.describe StreamingApi, type: :model do
 
     @file_start_time = 1614890937274290500 # these are the unix epoch values for the timestamps in the file names in spec/fixtures/files
     @file_end_time = 1614891537276524900
+
+    s3 = double("AwsS3Client").as_null_object
+    allow(Aws::S3::Client).to receive(:new).and_return(s3)
+    allow(s3).to receive(:head_bucket).and_return(true)
+    allow(s3).to receive(:list_objects_v2) do |args|
+      response = Object.new
+      if args[:delimiter]
+        def response.common_prefixes
+          item = Object.new
+          def item.prefix
+            "20210304"
+          end
+          [item]
+        end
+      elsif args[:prefix].split('/')[1].include? 'decom'
+        def response.contents
+          file_1 = Object.new
+          def file_1.key
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin.gz"
+          end
+          def file_1.size
+            4221512
+          end
+          file_2 = Object.new
+          def file_2.key
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx.gz"
+          end
+          def file_2.size
+            86522
+          end
+          [ file_1, file_2 ]
+        end
+      else
+        def response.contents
+          file_1 = Object.new
+          def file_1.key
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin.gz"
+          end
+          def file_1.size
+            1000002
+          end
+          file_2 = Object.new
+          def file_2.key
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx.gz"
+          end
+          def file_2.size
+            571466
+          end
+          [ file_1, file_2 ]
+        end
+      end
+      def response.is_truncated
+        false
+      end
+      response
+    end
+    allow(s3).to receive(:get_object) do |args|
+      FileUtils.cp(file_fixture(File.basename(args[:key])).realpath, args[:response_target])
+    end
 
     @messages = []
     @subscription_key = "streaming_abc123"
@@ -337,6 +396,100 @@ RSpec.describe StreamingApi, type: :model do
             expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
         end
+      end
+    end
+  end
+
+  context 'streaming packets from files' do
+    context 'for packets in raw mode' do
+      let(:data) { { 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT' } }
+
+      it 'streams raw packets from log files' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000 # 1 second of data
+        @api.add(data)
+        sleep 2.5 # Allow the threads to run (files need a long time)
+
+        # Should have received packet messages plus the empty completion message
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([]) # empty message to say we're done
+
+        # Verify packet format - raw packets have buffer field
+        first_packet = @messages[0][0]
+        expect(first_packet['__type']).to eq('PACKET')
+        expect(first_packet['__packet']).to eq('RAW__TLM__INST__PARAMS')
+        expect(first_packet['buffer']).to_not be_nil
+        expect(first_packet['__time']).to_not be_nil
+      end
+
+      it 'streams all raw packets within time range' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_end_time
+        @api.add(data)
+        sleep 3.5 # Allow time for full file read
+
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([])
+
+        # Count total packets received (excluding empty completion message)
+        total_packets = @messages[0..-2].sum { |batch| batch.length }
+        expect(total_packets).to be > 0
+      end
+    end
+
+    context 'for packets in decom mode' do
+      let(:data) { { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT' } }
+
+      it 'streams decom packets from log files' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000 # 1 second of data
+        @api.add(data)
+        sleep 2.5 # Allow the threads to run
+
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([])
+
+        # Verify packet format - decom packets have item values
+        first_packet = @messages[0][0]
+        expect(first_packet['__type']).to eq('PACKET')
+        expect(first_packet['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+        expect(first_packet['__time']).to_not be_nil
+        # Decom packets should NOT have buffer field, they have item values instead
+        expect(first_packet['buffer']).to be_nil
+      end
+
+      it 'streams all decom packets within time range' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_end_time
+        @api.add(data)
+        sleep 3.5 # Allow time for full file read
+
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([])
+
+        # Count total packets received
+        total_packets = @messages[0..-2].sum { |batch| batch.length }
+        expect(total_packets).to be > 0
       end
     end
   end
