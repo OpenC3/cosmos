@@ -101,6 +101,9 @@ if "%1" == "util" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   GOTO util
 )
+if "%1" == "generate_compose" (
+  GOTO generate_compose
+)
 
 GOTO usage
 
@@ -209,6 +212,118 @@ GOTO :EOF
   @echo off
 GOTO :EOF
 
+:generate_compose
+  REM Check for help flag
+  if "%2" == "--help" GOTO generate_compose_help
+  if "%2" == "-h" GOTO generate_compose_help
+
+  REM Check if Python 3 is available
+  python --version >nul 2>&1
+  if errorlevel 1 (
+    echo Error: python is required but not found
+    echo Please install Python 3 to use this command
+    exit /b 1
+  )
+
+  REM Check if PyYAML is installed, install if missing
+  python -c "import yaml" >nul 2>&1
+  if errorlevel 1 (
+    echo PyYAML not found, installing...
+    python -m pip install --user pyyaml >nul 2>&1
+    if errorlevel 1 (
+      echo Error: Failed to install PyYAML automatically
+      echo Please install it manually with: pip install pyyaml
+      exit /b 1
+    )
+    echo * PyYAML installed successfully
+  )
+
+  REM Detect mode based on OPENC3_ENTERPRISE
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    set MODE=enterprise
+    REM Enterprise uses the template from core repo
+    if exist "%~dp0..\cosmos\scripts\release\generate_compose.py" (
+      set GENERATOR=%~dp0..\cosmos\scripts\release\generate_compose.py
+      set TEMPLATE=%~dp0..\cosmos\compose.yaml.template
+    ) else (
+      echo Error: Cannot find generate_compose.py in ..\cosmos\scripts\release\
+      echo Make sure the cosmos repository is checked out in the parent directory.
+      exit /b 1
+    )
+  ) else (
+    set MODE=core
+    set GENERATOR=%~dp0scripts\release\generate_compose.py
+    set TEMPLATE=
+  )
+
+  REM Build arguments for the generator
+  set ARGS=--mode %MODE%
+
+  REM Add template path for enterprise
+  if defined TEMPLATE (
+    set ARGS=%ARGS% --template %TEMPLATE%
+  )
+
+  REM Pass through any additional arguments (like --dry-run, --output)
+  set params=%*
+  call set params=%%params:*%1=%%
+  if not "%params%" == "" (
+    set ARGS=%ARGS% %params%
+  )
+
+  REM Run the generator
+  python %GENERATOR% %ARGS%
+  GOTO :EOF
+
+:generate_compose_help
+  echo Usage: %0 generate_compose [OPTIONS]
+  echo.
+  echo Generate compose.yaml from template and mode-specific overrides.
+  echo.
+  echo This command uses a template-based system to generate compose.yaml files
+  echo for both OpenC3 Core and Enterprise editions. It ensures that shared
+  echo configuration stays in sync while allowing edition-specific customizations.
+  echo.
+  echo Files used:
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    echo   - Template:  ..\cosmos\compose.yaml.template
+    echo   - Overrides: .\compose.enterprise.yaml
+    echo   - Output:    .\compose.yaml
+  ) else (
+    echo   - Template:  .\compose.yaml.template
+    echo   - Overrides: .\compose.core.yaml
+    echo   - Output:    .\compose.yaml
+  )
+  echo.
+  echo How it works:
+  echo   1. The template file contains placeholders like {{REGISTRY_VAR}}, {{IMAGE_PREFIX}}, etc.
+  echo   2. The override file defines the actual values for these placeholders
+  echo   3. The script merges the template with the overrides to produce compose.yaml
+  echo.
+  echo Options:
+  echo   --dry-run             Print output to stdout instead of writing to file
+  echo   --output PATH         Custom output file path (default: .\compose.yaml)
+  echo   -h, --help            Show this help message
+  echo.
+  echo Examples:
+  echo   %0 generate_compose                    # Generate compose.yaml
+  echo   %0 generate_compose --dry-run          # Preview without writing
+  echo   %0 generate_compose --output test.yaml # Write to custom path
+  echo.
+  echo Making changes:
+  echo   - To change shared config:    Edit compose.yaml.template
+  echo   - To change core-specific:    Edit compose.core.yaml
+  echo   - To change enterprise-specific: Edit compose.enterprise.yaml
+  echo.
+  echo After editing, regenerate compose.yaml for both core and enterprise.
+  echo.
+  echo Benefits:
+  echo   - Single source of truth for shared configuration
+  echo   - No manual syncing needed between core and enterprise
+  echo   - Clear visibility of what's different between editions
+  echo   - Automated generation prevents copy-paste errors
+  GOTO :EOF
+
 :usage
   if "%OPENC3_DEVEL%" == "1" (
     if "%OPENC3_ENTERPRISE%" == "1" (
@@ -286,6 +401,10 @@ GOTO :EOF
   @echo. 1>&2
   @echo   util [COMMAND]        Utility commands (encode, hash, etc.) 1>&2
   @echo                         Use '%0 util' to see available utilities. 1>&2
+  @echo. 1>&2
+  @echo   generate_compose      Generate compose.yaml from template 1>&2
+  @echo                         Merges template with core/enterprise overrides. 1>&2
+  @echo                         Use '%0 generate_compose --help' for details. 1>&2
   @echo. 1>&2
   if "%OPENC3_DEVEL%" == "0" (
     @echo   upgrade               Upgrade %COSMOS_NAME% to latest version 1>&2
