@@ -41,7 +41,7 @@ The host computer should ideally be dedicated to running COSMOS and have limited
 
 By default, COSMOS only listens on localhost (127.0.0.1). This configuration keeps COSMOS completely off the network and is only vulnerable to local users of the host computer.
 
-For production use, it is recommended to open COSMOS to the network and run clients from other machines. This removes browser load from the host computer and allows better securing of the host. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
+For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
 
 ### Network Security
 
