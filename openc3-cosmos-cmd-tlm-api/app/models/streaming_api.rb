@@ -109,7 +109,7 @@ class StreamingApi
 
       if start_time
         # Create a thread that will first try to stream from log files for each topic (packet)
-        thread = LoggedStreamingThread.new(self, collection, scope: scope)
+        thread = LoggedStreamingThread.new(self, collection, scope: scope, token: token)
         thread.start
         @logged_threads << thread
       elsif end_time.nil? or end_time > Time.now.to_nsec_from_epoch

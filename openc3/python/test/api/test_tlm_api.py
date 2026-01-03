@@ -637,7 +637,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[14][0], "TEMP4")
         self.assertEqual(vals[14][1], -100.0)
         self.assertEqual(vals[14][2], "RED_LOW")
-        # Derived items are last
+        # Derived items are last (after BRACKET[0], 1BIT, 63BITS, 64BITS)
         self.assertEqual(vals[27][0], "PACKET_TIMESECONDS")
         self.assertGreater(vals[27][1], 0)
         self.assertIsNone(vals[27][2])
