@@ -295,6 +295,26 @@ END
 ![SUBSETTING](/img/telemetry_viewer/widgets/subsetting.png)
 
 
+## TOOLTIP
+<span class="badge badge--secondary since-right">Since 6.10.3</span>**Adds a tooltip to the previously defined widget**
+
+TOOLTIP applies a custom hover tooltip to the widget defined immediately before it. This allows you to provide helpful descriptions, mnemonics, or other contextual information that appears when the user hovers over a widget. The tooltip overrides any default tooltip that the widget may have.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Tooltip Text | The text to display in the tooltip when hovering over the widget. | True |
+| Delay | The delay in milliseconds before the tooltip appears (default = 600). | False |
+
+Example Usage:
+```ruby
+LED INST PARAMS VALUE5 RAW 25 20
+  SETTING LED_COLOR 0 GREEN
+  SETTING LED_COLOR 1 RED
+  TOOLTIP "Mnemonic: ABCDEF. This is the Star Tracker On/Off Status"
+VALUE INST HEALTH_STATUS TEMP1
+  TOOLTIP "Temperature sensor 1: Primary thermal control" 1000
+```
+
 ## NAMED_WIDGET
 **Name a widget to allow access to it via the getNamedWidget method**
 
@@ -583,6 +603,20 @@ END
 Example Usage:
 ```ruby
 FILEDISPLAY "INST/data/sample.json" 400 200
+```
+
+### FILECHECKSUM
+<span class="badge badge--secondary since-right">Since 6.10.3</span>**Displays SHA-256 checksum of one or more files, with comparison if multiple**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| File path | Path to a file relative to the target folder (e.g. "INST/procedures/file.rb"). Multiple file paths can be provided to compare checksums. | True |
+
+Example Usage:
+```ruby
+FILECHECKSUM "INST/data/sample.json"
+FILECHECKSUM "INST/data/sample.json" "INST2/data/sample.json"
+FILECHECKSUM "INST/data/file1.bin" "INST/data/file2.bin" "INST/data/file3.bin"
 ```
 
 ## Telemetry Widgets

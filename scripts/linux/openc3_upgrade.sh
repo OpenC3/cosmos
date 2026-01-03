@@ -97,7 +97,7 @@ if ! git tag | grep -q "^$tag$"; then
 fi
 
 # Get the commit hash for the tag
-hash="$(git ls-remote cosmos refs/tags/v6.9.2 | awk '{print $1}')"
+hash="$(git ls-remote cosmos refs/tags/$tag | awk '{print $1}')"
 
 # If the --preview flag is set, show the diff without applying changes
 if [ "$2" == "--preview" ]; then

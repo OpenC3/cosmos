@@ -60,8 +60,8 @@ import Updater from './Updater'
 export default {
   mixins: [Updater],
   props: {
-    tabId: Number,
-    curTab: Number,
+    tabId: { type: Number, default: null },
+    curTab: { type: Number, default: null },
   },
   data() {
     return {

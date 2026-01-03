@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -75,14 +75,10 @@
                 />
               </v-col>
               <v-col>
-                <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                <v-text-field
+                <OpenC3TimePicker
                   v-model="startTime"
                   label="Start Time"
-                  :name="`time${Date.now()}`"
                   :rules="[rules.time]"
-                  type="time"
-                  step="1"
                 />
               </v-col>
             </v-row>
@@ -101,14 +97,10 @@
                 />
               </v-col>
               <v-col>
-                <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                <v-text-field
+                <OpenC3TimePicker
                   v-model="endTime"
                   label="End Time"
-                  :name="`time${Date.now()}`"
                   :rules="[rules.time]"
-                  type="time"
-                  step="1"
                 />
               </v-col>
             </v-row>
@@ -256,10 +248,12 @@
 
 <script>
 import { TimeFilters } from '@/util'
+import OpenC3TimePicker from './OpenC3TimePicker.vue'
 import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
   components: {
+    OpenC3TimePicker,
     TargetPacketItemChooser,
   },
   mixins: [TimeFilters],
@@ -279,9 +273,11 @@ export default {
     },
     graphMinY: {
       type: Number,
+      required: true,
     },
     graphMaxY: {
       type: Number,
+      required: true,
     },
     lines: {
       type: Array,
@@ -293,9 +289,11 @@ export default {
     },
     startDateTime: {
       type: Number,
+      default: null,
     },
     endDateTime: {
       type: Number,
+      default: null,
     },
     timeZone: {
       type: String,

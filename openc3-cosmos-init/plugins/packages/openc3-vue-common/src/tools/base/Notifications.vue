@@ -56,7 +56,7 @@
                   data-test="clear-notifications"
                   aria-label="Dismiss All Notifications"
                   @click="clearNotifications"
-                  />
+                />
               </div>
             </template>
             <span> Dismiss All Notifications </span>
@@ -194,6 +194,7 @@ export default {
       default: 26,
     },
   },
+  emits: ['ephemeral'],
   data: function () {
     return {
       AstroStatusColors,

@@ -24,7 +24,7 @@ Prometheus::Client.config.data_store = Prometheus::Client::DataStores::DirectFil
 module CmdTlmApi
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 7.0
+    config.load_defaults 8.0
     # Add to hosts to prevent "Blocked host" errors
     config.hosts.clear
 
@@ -73,6 +73,8 @@ module CmdTlmApi
       token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
     }
     config.rails_semantic_logger.add_file_appender = false
+    # Disable middleware swap - Rails 8.1 API-only apps don't include Rails::Rack::Logger
+    config.rails_semantic_logger.semantic = false
     config.semantic_logger.add_appender(
       io: $stdout,
       formatter: OpenC3::CosmosRailsFormatter.new,
