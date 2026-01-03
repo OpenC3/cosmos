@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,20 +17,23 @@
 -->
 
 <template>
-  <v-text-field
+  <OpenC3TimePicker
     v-model="timeValue"
     :label="label"
     :style="computedStyle"
-    type="time"
     hide-details
   />
 </template>
 
 <script>
 import Widget from './Widget'
+import OpenC3TimePicker from '@/components/OpenC3TimePicker.vue'
 import { TimeFilters } from '@/util'
 
 export default {
+  components: {
+    OpenC3TimePicker,
+  },
   mixins: [Widget, TimeFilters],
   data() {
     return {

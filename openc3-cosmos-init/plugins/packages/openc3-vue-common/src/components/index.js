@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -33,6 +33,7 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import LogMessages from './LogMessages.vue'
 import NotFound from './NotFound.vue'
+import OpenC3TimePicker from './OpenC3TimePicker.vue'
 import Openc3Screen from './Openc3Screen.vue'
 import OutputDialog from './OutputDialog.vue'
 import ScriptChooser from './ScriptChooser.vue'
@@ -64,6 +65,7 @@ export {
   GraphEditItemDialog,
   LogMessages,
   NotFound,
+  OpenC3TimePicker,
   Openc3Screen,
   OutputDialog,
   ScriptChooser,

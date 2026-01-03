@@ -54,6 +54,7 @@ data = StreamingWebSocketApi.read_all(
 print(data)
 
 
+import time
 now = datetime.now(timezone.utc)
 with MessagesWebSocketApi(
     history_count=0,
@@ -61,8 +62,8 @@ with MessagesWebSocketApi(
     end_time=to_nsec_from_epoch(now - timedelta(seconds=60)),
 ) as api:
     for _ in range(500):
-        # Note returns batch array
-        data = api.read()
+        # Note returns batch array, default timeout is None, which will wait indefinitely until a new message is available
+        data = api.read(timeout=1)
         if not data or len(data) == 0:
             break
         print(f"\nReceived {len(data)} log messages:")
