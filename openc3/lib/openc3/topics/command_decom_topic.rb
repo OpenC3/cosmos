@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -39,8 +39,9 @@ module OpenC3
         json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED) if item.format_string
         json_hash[item.name + "__U"] = packet.read_item(item, :WITH_UNITS) if item.units
       end
-      json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true)
+      json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)
+      msg_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 

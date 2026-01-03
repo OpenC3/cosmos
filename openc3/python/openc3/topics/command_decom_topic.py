@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,8 +46,11 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
             if item.units:
                 json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS")
-        json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
+        if packet.extra:
+            json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
+        if packet.extra:
+            msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
