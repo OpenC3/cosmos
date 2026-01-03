@@ -528,7 +528,7 @@ def check_tool_base(path, base_pkgs)
           outfile = "public/js/#{package}.global-#{latest}.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
-          old_base_filename = existing.replace('vue.global.prod', 'vue.global').replace('.min.js', '.js')
+          old_base_filename = existing.sub('vue.global.prod', 'vue.global').sub('.min.js', '.js')
           FileUtils.rm old_base_filename
           outfile = "public/js/#{package}.global.prod-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`

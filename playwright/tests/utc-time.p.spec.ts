@@ -127,7 +127,13 @@ test.describe('Data Extractor', () => {
     let startDate = parse(startDateString, 'yyyy-MM-dd', now)
     let startTimeString =
       (await page.inputValue('[data-test=start-time] input'))?.trim() || ''
-    let startTime = parse(startTimeString, 'HH:mm:ss', startDate)
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    let startTime: Date
+    if (/\s*(AM|PM|am|pm)\s*$/.test(startTimeString)) {
+      startTime = parse(startTimeString, 'hh:mm:ss a', startDate)
+    } else {
+      startTime = parse(startTimeString, 'HH:mm:ss', startDate)
+    }
     expect(
       isWithinInterval(startTime, {
         // Start time is automatically 1hr in the past
@@ -140,7 +146,13 @@ test.describe('Data Extractor', () => {
     let endDate = parse(endDateString, 'yyyy-MM-dd', now)
     let endTimeString =
       (await page.inputValue('[data-test=end-time] input'))?.trim() || ''
-    let endTime = parse(endTimeString, 'HH:mm:ss', endDate)
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    let endTime: Date
+    if (/\s*(AM|PM|am|pm)\s*$/.test(endTimeString)) {
+      endTime = parse(endTimeString, 'hh:mm:ss a', endDate)
+    } else {
+      endTime = parse(endTimeString, 'HH:mm:ss', endDate)
+    }
     expect(
       isWithinInterval(endTime, {
         // end time is now
@@ -171,7 +183,12 @@ test.describe('Data Extractor', () => {
     startDate = parse(startDateString, 'yyyy-MM-dd', now)
     startTimeString =
       (await page.inputValue('[data-test=start-time] input'))?.trim() || ''
-    startTime = parse(startTimeString, 'HH:mm:ss', startDate)
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    if (/\s*(AM|PM|am|pm)\s*$/.test(startTimeString)) {
+      startTime = parse(startTimeString, 'hh:mm:ss a', startDate)
+    } else {
+      startTime = parse(startTimeString, 'HH:mm:ss', startDate)
+    }
     expect(
       isWithinInterval(startTime, {
         // Start time is automatically 1hr in the past
@@ -184,7 +201,12 @@ test.describe('Data Extractor', () => {
     endDate = parse(endDateString, 'yyyy-MM-dd', now)
     endTimeString =
       (await page.inputValue('[data-test=end-time] input'))?.trim() || ''
-    endTime = parse(endTimeString, 'HH:mm:ss', endDate)
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    if (/\s*(AM|PM|am|pm)\s*$/.test(endTimeString)) {
+      endTime = parse(endTimeString, 'hh:mm:ss a', endDate)
+    } else {
+      endTime = parse(endTimeString, 'HH:mm:ss', endDate)
+    }
     expect(
       isWithinInterval(endTime, {
         // end time is now
@@ -223,7 +245,13 @@ test.describe('Data Viewer', () => {
     // Verify the local date / time
     let startTimeString =
       (await page.inputValue('[data-test=start-time] input'))?.trim() || ''
-    let startTime = parse(startTimeString, 'HH:mm:ss', now)
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    let startTime: Date
+    if (/\s*(AM|PM|am|pm)\s*$/.test(startTimeString)) {
+      startTime = parse(startTimeString, 'hh:mm:ss a', now)
+    } else {
+      startTime = parse(startTimeString, 'HH:mm:ss', now)
+    }
     expect(
       isWithinInterval(startTime, {
         start: subMinutes(now, 1),
@@ -251,11 +279,20 @@ test.describe('Data Viewer', () => {
       (await page.inputValue('[data-test=start-date] input'))?.trim() || ''
     startTimeString =
       (await page.inputValue('[data-test=start-time] input'))?.trim() || ''
-    startTime = parse(
-      startDateString + ' ' + startTimeString,
-      'yyyy-MM-dd HH:mm:ss',
-      now,
-    )
+    // Handle both 12-hour (with AM/PM) and 24-hour formats
+    if (/\s*(AM|PM|am|pm)\s*$/.test(startTimeString)) {
+      startTime = parse(
+        startDateString + ' ' + startTimeString,
+        'yyyy-MM-dd hh:mm:ss a',
+        now,
+      )
+    } else {
+      startTime = parse(
+        startDateString + ' ' + startTimeString,
+        'yyyy-MM-dd HH:mm:ss',
+        now,
+      )
+    }
     // so subtrack off the timezone offset to get it back to local time
     let localStartTime = subMinutes(startTime, now.getTimezoneOffset())
     expect(

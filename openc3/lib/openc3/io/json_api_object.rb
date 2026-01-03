@@ -34,6 +34,10 @@ require 'faraday'
 
 
 module OpenC3
+  # Number of times to retry a request when a connection error occurs
+  RETRY_COUNT = 3
+  # Delay between retries in seconds
+  RETRY_DELAY = 0.1
 
   class JsonApiError < StandardError; end
 
@@ -200,21 +204,41 @@ module OpenC3
 
     # NOTE: This is a helper method and should not be called directly
     def _send_request(method:, endpoint:, kwargs:)
-      begin
-        uri = URI("#{@url}#{endpoint}")
-        @log[0] = "#{method} Request: #{uri.to_s} #{kwargs}"
-        STDOUT.puts @log[0] if JsonDRb.debug?
-        resp = _http_request(method: method, uri: uri, kwargs: kwargs)
-        @log[1] = "#{method} Response: #{resp.status} #{resp.headers} #{resp.body}"
-        STDOUT.puts @log[1] if JsonDRb.debug?
-        @response_data = resp.body
-        return resp
-      rescue StandardError => e
-        @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
-        disconnect()
-        error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
-        raise error
+      uri = URI("#{@url}#{endpoint}")
+      @log[0] = "#{method} Request: #{uri.to_s} #{kwargs}"
+      STDOUT.puts @log[0] if JsonDRb.debug?
+
+      retry_count = 0
+      while retry_count <= RETRY_COUNT
+        begin
+          resp = _http_request(method: method, uri: uri, kwargs: kwargs)
+          @log[1] = "#{method} Response: #{resp.status} #{resp.headers} #{resp.body}"
+          STDOUT.puts @log[1] if JsonDRb.debug?
+          @response_data = resp.body
+          return resp
+        rescue Faraday::ConnectionFailed, Errno::ECONNRESET, Errno::EPIPE, IOError => e
+          # Connection errors are retryable - reconnect and try again
+          retry_count += 1
+          @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+          if retry_count <= RETRY_COUNT
+            Logger.warn("JsonApiObject: Connection error, retry #{retry_count}/#{RETRY_COUNT}: #{e.class} #{e.message}")
+            disconnect()
+            sleep(RETRY_DELAY)
+            connect()
+          else
+            error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
+            raise error
+          end
+        rescue StandardError => e
+          @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+          disconnect()
+          error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
+          raise error
+        end
       end
+      # Should not reach here, but just in case
+      error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
+      raise error
     end
 
     # NOTE: This is a helper method and should not be called directly

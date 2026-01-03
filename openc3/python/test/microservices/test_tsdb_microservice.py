@@ -270,8 +270,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
-        # Mock get_tlm to return a dummy packet dict
-        mock_get_tlm.return_value = {"items": []}  # Empty items list for test
+        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -367,8 +367,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
-        # Mock get_tlm to return a dummy packet dict
-        mock_get_tlm.return_value = {"items": []}  # Empty items list for test
+        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -1130,19 +1130,20 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.microservices.microservice.System")
     def test_create_table_stores_all_packet_items(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that all items from a packet are stored as columns in the table"""
-        # Create a mock packet dict with items
-        items = [
-            {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
-            {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
-            {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
-            {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
-            {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
-            {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 2048},
-            {"name": "ARY", "data_type": "BLOCK", "bit_size": 80, "array_size": 80},
-            {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
-            {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
-        ]
-        packet = {"items": items}
+        # Create a mock packet with items (dict format as returned by get_tlm)
+        packet = {
+            "items": [
+                {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
+                {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 128},
+                {"name": "ARY", "data_type": "BLOCK", "bit_size": 64, "array_size": 80},
+                {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
+                {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
+            ]
+        }
 
         # Mock get_tlm to return this packet
         mock_get_tlm.return_value = packet
@@ -1183,7 +1184,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Build expected items list from the packet
         expected_items = set()
-        for item in items:
+        for item in packet["items"]:
             # Sanitize item name the same way tsdb_microservice does
             sanitized_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
             expected_items.add(sanitized_name)
@@ -1197,7 +1198,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Create a JSON data dictionary with values for all items
         json_data = {}
-        for item in items:
+        for item in packet["items"]:
             # Use different types to test various data handling
             if "TEMP" in item["name"]:
                 json_data[item["name"]] = -100.0  # float

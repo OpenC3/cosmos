@@ -78,11 +78,12 @@ test('validates dates and times', async ({ page, utils }) => {
   await page
     .locator('[data-test=start-date] input')
     .fill(format(d, 'yyyy-MM-dd'))
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.locator('text=Required')).not.toBeVisible()
-  // Time validation
   await page.locator('[data-test=start-time] input').fill('')
   await expect(page.locator('text=Required')).toBeVisible()
   await page.locator('[data-test=start-time] input').fill('12:15:15')
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.locator('text=Required')).not.toBeVisible()
 })
 
@@ -224,6 +225,7 @@ test('processes commands', async ({ page, utils }) => {
   // Preload an ABORT command
   await page.goto('/tools/cmdsender/INST/ABORT/')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.selectTargetPacketItem('INST', 'ABORT')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('text=cmd("INST ABORT") sent')).toBeVisible()
 
