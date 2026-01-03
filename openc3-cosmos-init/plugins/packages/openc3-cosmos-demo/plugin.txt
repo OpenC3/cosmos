@@ -96,6 +96,8 @@ VARIABLE reduced_log_retain_time 2592000
     # Override the default log time of 600
     LOG_STREAM 60
     OPTION CONNECT_CMD LOG "<%= example_target_name %> START"
+    # Add encryption protocol with shared key (must match example_target.rb)
+    PROTOCOL READ_WRITE encryption_protocol.rb deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 <% end %>
 
 <% if include_templated and include_templated_int %>

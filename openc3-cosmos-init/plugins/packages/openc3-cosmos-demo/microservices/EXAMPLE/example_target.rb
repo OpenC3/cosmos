@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,6 +24,7 @@ require 'openc3'
 require 'openc3/interfaces'
 require 'openc3/microservices/microservice'
 require 'openc3/tools/cmd_tlm_server/interface_thread'
+require 'encryption_protocol'
 
 module OpenC3
   class ExampleTarget < Microservice
@@ -87,6 +88,10 @@ module OpenC3
       end
     end
 
+    # Shared encryption key (64 hex chars = 32 bytes for AES-256)
+    # In production, this would be stored in COSMOS Secrets
+    ENCRYPTION_KEY = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+
     def initialize(name)
       super(name)
       @sleep_period = 1 # 1 second between runs
@@ -97,6 +102,8 @@ module OpenC3
       port = @config["ports"][0][0] # Should only be 1
       # Create interface to receive commands and send telemetry
       @interface = ExampleServerInterface.new(port)
+      # Add encryption protocol - must use same key as client
+      @interface.add_protocol(EncryptionProtocol, [ENCRYPTION_KEY], :READ_WRITE)
       @interface_thread = nil
       @telemetry_thread = nil
     end
