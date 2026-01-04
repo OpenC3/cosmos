@@ -68,7 +68,7 @@ jobs:
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-script-runner-api | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-init | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-operator | grep mine
-          docker image ls | grep localhost:12345/openc3/openc3-minio | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-s3 | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-redis | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-traefik | grep mine
       - name: openc3.sh util generate
@@ -148,14 +148,14 @@ jobs:
       #     ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
       #     ls tmp | grep openc3-cosmos-init-latest.tar
       #     ls tmp | grep openc3-operator-latest.tar
-      #     ls tmp | grep openc3-minio-latest.tar
+      #     ls tmp | grep openc3-s3-latest.tar
       #     ls tmp | grep openc3-redis-latest.tar
       #     ls tmp | grep openc3-traefik-latest.tar
       #     docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
       #     docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
       #     docker image rm openc3inc/openc3-cosmos-init:latest
       #     docker image rm openc3inc/openc3-operator:latest
-      #     docker image rm openc3inc/openc3-minio:latest
+      #     docker image rm openc3inc/openc3-s3:latest
       #     docker image rm openc3inc/openc3-redis:latest
       #     docker image rm openc3inc/openc3-traefik:latest
       #     ./openc3.sh util load
@@ -164,7 +164,7 @@ jobs:
       #     docker image ls | grep openc3-cosmos-script-runner-api
       #     docker image ls | grep openc3-cosmos-init
       #     docker image ls | grep openc3-operator
-      #     docker image ls | grep openc3-minio
+      #     docker image ls | grep openc3-s3
       #     docker image ls | grep openc3-redis
       #     docker image ls | grep openc3-traefik
       - name: Cleanup volumes

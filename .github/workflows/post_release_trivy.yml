@@ -107,18 +107,18 @@ jobs:
       - name: Run Trivy on image minio
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }}"
+          image-ref: "docker.io/openc3inc/openc3-s3:${{ github.event.inputs.version }}"
           format: "json"
-          output: "trivy_results/openc3-minio.json"
+          output: "trivy_results/openc3-s3.json"
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image minio in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }}"
+          image-ref: "docker.io/openc3inc/openc3-s3:${{ github.event.inputs.version }}"
           format: "cyclonedx"
-          output: "sbom/openc3-minio.sbom.json"
+          output: "sbom/openc3-s3.sbom.json"
       - name: Run Trivy on image tsdb
         uses: aquasecurity/trivy-action@master
         with:
