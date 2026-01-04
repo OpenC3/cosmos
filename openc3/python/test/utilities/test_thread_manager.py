@@ -25,6 +25,8 @@ from openc3.utilities.thread_manager import ThreadManager
 class TestThreadManager(unittest.TestCase):
     def setUp(self):
         ThreadManager.MONITOR_SLEEP_SECONDS = 0.01
+        # Clear any existing ThreadManager instance from previous tests
+        ThreadManager.instance_obj = None
 
     def tearDown(self):
         ThreadManager.MONITOR_SLEEP_SECONDS = 0.25

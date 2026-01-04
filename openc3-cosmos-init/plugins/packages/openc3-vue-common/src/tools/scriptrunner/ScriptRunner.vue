@@ -203,7 +203,11 @@
 
             <v-spacer />
             <div v-if="startOrGoButton === 'Start'">
-              <v-tooltip v-if="overridesCount > 0" :open-delay="600" location="top">
+              <v-tooltip
+                v-if="overridesCount > 0"
+                :open-delay="600"
+                location="top"
+              >
                 <template #activator="{ props }">
                   <v-btn
                     v-bind="props"
@@ -215,14 +219,16 @@
                     aria-label="TLM Overrides"
                     @click="showOverrides = !showOverrides"
                   >
-                    <v-badge :content="overridesCount > 99 ? '99+' : overridesCount" floating color="primary">
+                    <v-badge
+                      :content="overridesCount > 99 ? '99+' : overridesCount"
+                      floating
+                      color="primary"
+                    >
                       <v-icon icon="mdi-application-cog-outline" />
                     </v-badge>
                   </v-btn>
                 </template>
-                <span>
-                  TLM Overrides ({{ overridesCount }})
-                </span>
+                <span> TLM Overrides ({{ overridesCount }}) </span>
               </v-tooltip>
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
@@ -2050,9 +2056,13 @@ export default {
             // thus we split and only output if the content is not empty.
             // We also need to ensure it's properly serialized as a string.
             let dataLine = data.line
-            if (dataLine === null || dataLine === undefined) { dataLine = '' }
-            else if (typeof dataLine === 'object') { dataLine = JSON.stringify(dataLine) }
-            else { dataLine = String(dataLine) }
+            if (dataLine === null || dataLine === undefined) {
+              dataLine = ''
+            } else if (typeof dataLine === 'object') {
+              dataLine = JSON.stringify(dataLine)
+            } else {
+              dataLine = String(dataLine)
+            }
             for (const line of dataLine.split('\n')) {
               if (line) {
                 if (this.messagesNewestOnTop) {

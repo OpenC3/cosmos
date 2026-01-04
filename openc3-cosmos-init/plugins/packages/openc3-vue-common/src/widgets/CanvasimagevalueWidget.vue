@@ -24,8 +24,8 @@
   <g>
     <image
       v-for="image in images"
-      :key="image.value"
       v-show="image.value == selectedValue"
+      :key="image.value"
       :href="image.url"
       :x="image.x"
       :y="image.y"
@@ -54,6 +54,7 @@ import ImageLoader from './ImageLoader'
 
 export default {
   mixins: [Widget, ImageLoader],
+  emits: ['addItem', 'deleteItem', 'open'],
   data: function () {
     return {
       images: [],

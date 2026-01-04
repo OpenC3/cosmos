@@ -40,6 +40,10 @@ class TsdbMicroservice(Microservice):
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 
+        # Track columns that need JSON serialization due to type conflicts or DERIVED type
+        # Key is "table__column", value is True
+        self.json_columns = {}
+
         # Build the tables
         for topic in self.topics:
             topic_parts = topic.split("__")

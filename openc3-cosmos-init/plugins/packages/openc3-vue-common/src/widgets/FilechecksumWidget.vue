@@ -163,6 +163,7 @@ export default {
         file.copied = true
         setTimeout(() => (file.copied = false), 2000)
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Failed to copy checksum:', err)
       }
     },

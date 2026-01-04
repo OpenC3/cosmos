@@ -207,15 +207,6 @@ test('changes the polling rate', async ({ page, utils }) => {
 //
 // Test the View menu
 //
-test('displays formatted items with units by default', async ({
-  page,
-  utils,
-}) => {
-  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
-  // Check for exactly 3 decimal points followed by units
-  await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
-})
-
 test('searches on packets without data', async ({ page, utils }) => {
   await page.goto('/tools/packetviewer/EXAMPLE/STATUS/')
   await page.locator('[data-test="search"] input').fill('STRING')

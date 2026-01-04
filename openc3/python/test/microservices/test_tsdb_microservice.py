@@ -271,7 +271,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
         # Mock get_tlm to return a dummy packet dict
-        mock_get_tlm.return_value = {"items": []}  # Empty items list for test
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -368,7 +368,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
         # Mock get_tlm to return a dummy packet dict
-        mock_get_tlm.return_value = {"items": []}  # Empty items list for test
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",

@@ -18,11 +18,11 @@
 
 <template>
   <graph
-    :ref="'graph' + id"
     :id="id"
+    :ref="'graph' + id"
     :state="state"
     :selected-graph-id="id"
-    :startTime="startTime"
+    :start-time="startTime"
     :seconds-graphed="secondsGraphed"
     :points-saved="pointsSaved"
     :points-graphed="pointsGraphed"

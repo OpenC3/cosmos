@@ -37,6 +37,7 @@ export default {
   props: {
     icon: {
       type: String,
+      default: null,
     },
     size: {
       type: String,
@@ -44,7 +45,7 @@ export default {
     },
     color: {
       type: String,
-      default: 'white'
+      default: 'white',
     },
   },
   computed: {

@@ -43,6 +43,12 @@ Clicking New Screen brings up the new screen dialog.
 
 Screens are owned by Targets so Select Target chooses where the screen will be created. Screens can be based on a Packet such that all the items in that particular packet will be generated in a simple vertical screen similar to Packet Viewer. This is a good starting point for customizing a screen. Note that screen names must be unique so the screen name is set to 'adcs2' since an 'ADCS' screen already exists.
 
+:::note Derived Item Placement
+
+When generating a screen based on a packet, [derived items](../configuration/telemetry.md#derived-items) will always appear at the bottom of the generated screen, regardless of where they are defined in the telemetry definition file. If your packet has many items, you may need to scroll down to see derived items like PACKET_TIMESECONDS or custom derived calculations.
+
+:::
+
 ## Edit Screen
 
 Clicking the pencil icon in the title bar of the screen brings up the edit dialog.
@@ -62,6 +68,13 @@ The dash button in the upper right of the title bar minimizes the screen to effe
 ![Float Minimized](/img/telemetry_viewer/float_minimize.png)
 
 The X button closes the screen.
+
+## Performance Considerations
+
+There is no hard limit on the number of telemetry items that can be displayed on a screen. However, screens with a large number of items (hundreds or more) may experience slower rendering and increased browser memory usage. For optimal performance:
+
+- Consider splitting large packets across multiple focused screens
+- Close screens that are not actively being monitored
 
 ## Building Screens
 

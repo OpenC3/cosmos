@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -54,6 +54,7 @@
             </v-row>
           </template>
 
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -117,12 +118,10 @@
                     :rules="[rules.required]"
                     data-test="activity-start-date"
                   />
-                  <v-text-field
+                  <OpenC3TimePicker
                     v-model="startTime"
-                    type="time"
-                    step="1"
                     label="Start Time"
-                    class="mx-1"
+                    text-field-class="mx-1"
                     :rules="[rules.required]"
                     data-test="activity-start-time"
                   />
@@ -136,12 +135,10 @@
                     :rules="[rules.required]"
                     data-test="activity-end-date"
                   />
-                  <v-text-field
+                  <OpenC3TimePicker
                     v-model="endTime"
-                    type="time"
-                    step="1"
                     label="End Time"
-                    class="mx-1"
+                    text-field-class="mx-1"
                     :rules="[rules.required]"
                     data-test="activity-end-time"
                   />
@@ -198,12 +195,10 @@
                       data-test="recurring-end-date"
                   /></v-col>
                   <v-col>
-                    <v-text-field
+                    <OpenC3TimePicker
                       v-model="recurringEndTime"
-                      type="time"
-                      step="1"
                       label="End Time"
-                      class="mx-1"
+                      text-field-class="mx-1"
                       :rules="[rules.required]"
                       :disabled="!!activity"
                       data-test="recurring-end-time"
@@ -314,7 +309,12 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { EnvironmentChooser, ScriptChooser, CommandEditor } from '@/components'
+import {
+  EnvironmentChooser,
+  ScriptChooser,
+  CommandEditor,
+  OpenC3TimePicker,
+} from '@/components'
 import { TimeFilters } from '@/util'
 import CreateDialog from './CreateDialog'
 
@@ -323,6 +323,7 @@ export default {
     EnvironmentChooser,
     ScriptChooser,
     CommandEditor,
+    OpenC3TimePicker,
   },
   mixins: [CreateDialog, TimeFilters],
   props: {
@@ -336,6 +337,7 @@ export default {
       default: null,
     },
   },
+  emits: ['update:modelValue', 'update'],
   data() {
     return {
       timeline: null,

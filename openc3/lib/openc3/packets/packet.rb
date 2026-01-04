@@ -433,6 +433,9 @@ module OpenC3
       previous_item = nil
       warnings = []
       @sorted_items.each do |item|
+        # Skip items with a parent_item since those are accessor-based items within a structure
+        # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
+        next if item.parent_item
         if expected_next_offset and (item.bit_offset < expected_next_offset) and !item.overlap
           msg = "Bit definition overlap at bit offset #{item.bit_offset} for packet #{@target_name} #{@packet_name} items #{item.name} and #{previous_item.name}"
           Logger.instance.warn(msg)
@@ -1294,12 +1297,8 @@ module OpenC3
           json_hash.delete(item.name)
         else
           given_raw = json_hash[item.name]
-          if item.states or (item.read_conversion and item.data_type != :DERIVED)
-            json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw)
-          end
-          if item.format_string or item.units
-            json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw)
-          end
+          json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
+          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
           limits_state = item.limits.state
           if limits_state
             json_hash["#{item.name}__L"] = limits_state

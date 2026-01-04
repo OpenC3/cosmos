@@ -72,6 +72,7 @@ export default {
       required: true,
     },
   },
+  emits: ['update:modelValue', 'environment'],
   data() {
     return {
       selected: [],

@@ -33,9 +33,11 @@ export default {
   mixins: [VWidget],
   props: {
     value: {
+      type: [Number, String],
       default: null,
     },
   },
+  emits: ['open'],
   data: function () {
     return {
       item: null,

@@ -21,8 +21,13 @@ In your plugin.txt file, both [INTERFACE](../configuration/plugins#interface-1) 
 The following code is used internally to let traefik know where to connect to your microservice internally:
 
 ```ruby
+shard = microservice['shard'] || 0
 if ENV['OPENC3_OPERATOR_HOSTNAME']
-  url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+  if shard != 0
+    url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}-#{shard}:#{port}"
+  else
+    url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+  end
 else
   if ENV['KUBERNETES_SERVICE_HOST']
     url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"
@@ -79,7 +84,9 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
 
 :::warning Sharded Operator on Kubernetes (Enterprise)
 
-The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator. In this case, Kubernetes services will NOT be automatically created, and will have to be manually created by a user with permissions in Kubernetes, or through some other authorized method (like a custom framework dashboard or config file).
+The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator.
+
+When using sharded operators, microservices with a non-zero SHARD value will have their Traefik routes automatically configured to point to the appropriate shard-specific operator hostname (e.g., `openc3-operator-1` for shard 1). However, the Kubernetes services for each shard will NOT be automatically created, and will have to be manually created by a user with permissions in Kubernetes, or through some other authorized method (like a custom framework dashboard or config file).
 :::
 
 ## Connecting to microservices from a different INTERFACE in plugin.txt

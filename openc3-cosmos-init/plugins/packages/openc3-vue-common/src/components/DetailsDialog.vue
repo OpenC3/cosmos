@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -164,8 +164,21 @@
               <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
                 key
               }}</v-col>
-              <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
-              <v-col></v-col>
+              <v-col v-if="key !== 'enabled'">
+                <div class="limits-text">{{ formatLimit(limit) }}</div>
+                <LimitsBar
+                  v-if="limit.red_low !== undefined"
+                  :red-low="limit.red_low"
+                  :yellow-low="limit.yellow_low"
+                  :yellow-high="limit.yellow_high"
+                  :red-high="limit.red_high"
+                  :green-low="limit.green_low"
+                  :green-high="limit.green_high"
+                  :value="convertedValue"
+                  :width="300"
+                  :height="22"
+                />
+              </v-col>
             </v-row>
           </div>
           <v-row v-else no-gutters>
@@ -195,8 +208,12 @@
 
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
+import LimitsBar from './LimitsBar.vue'
 
 export default {
+  components: {
+    LimitsBar,
+  },
   props: {
     type: {
       default: 'tlm',
@@ -205,11 +222,21 @@ export default {
         return ['cmd', 'tlm'].indexOf(value) !== -1
       },
     },
-    targetName: String,
-    packetName: String,
-    itemName: String,
+    targetName: {
+      type: String,
+      default: null,
+    },
+    packetName: {
+      type: String,
+      default: null,
+    },
+    itemName: {
+      type: String,
+      default: null,
+    },
     modelValue: Boolean,
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       details: Object,
@@ -416,7 +443,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .label {
   font-weight: bold;
   text-transform: capitalize;
@@ -429,5 +456,9 @@ export default {
 
 :deep(.v-switch .v-selection-control) {
   min-height: 28px;
+}
+
+.limits-text {
+  margin-bottom: 4px;
 }
 </style>
