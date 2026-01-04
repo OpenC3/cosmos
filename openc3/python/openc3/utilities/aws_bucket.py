@@ -18,6 +18,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, WaiterError
 from openc3.utilities.bucket import Bucket
+from openc3.utilities.logger import Logger
 from openc3.environment import *
 import time
 
@@ -28,7 +29,7 @@ if OPENC3_BUCKET_URL:
 elif OPENC3_DEVEL:
     s3_endpoint_url = "http://127.0.0.1:9000"
 else:
-    s3_endpoint_url = "http://openc3-minio:9000"
+    s3_endpoint_url = "http://openc3-s3:9000"
 
 if OPENC3_CLOUD == "local":
     s3_session = boto3.session.Session(
@@ -39,6 +40,7 @@ if OPENC3_CLOUD == "local":
 else:  # AWS
     s3_endpoint_url = f"https://s3.{AWS_REGION}.amazonaws.com"
     s3_session = boto3.session.Session(region_name=AWS_REGION)
+
 
 class AwsBucket(Bucket):
     CREATE_CHECK_COUNT = 100  # 10 seconds
@@ -105,7 +107,10 @@ class AwsBucket(Bucket):
   ]
 }"""
             )
-            self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
+            try:
+                self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
+            except ClientError as e:
+                Logger.warn(f"put_bucket_policy not supported by S3 backend: {e}")
 
     def exist(self, bucket):
         try:
@@ -148,8 +153,8 @@ class AwsBucket(Bucket):
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             # Array  of objects with key and size methods
             return result
-        except ClientError:
-            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.") from exc
 
     # Lists the files under a specified path
     def list_files(self, bucket, path, only_directories=False, metadata=False):
@@ -194,15 +199,15 @@ class AwsBucket(Bucket):
                     break
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             return result
-        except ClientError:
-            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.") from exc
 
     # get metadata for a specific object
     def head_object(self, bucket, key):
         try:
             return self.client.head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.")
+        except ClientError as exc:
+            raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.") from exc
 
     # put_object fires off the request to store but does not confirm
     def put_object(self, bucket, key, body, content_type=None, cache_control=None, metadata=None):

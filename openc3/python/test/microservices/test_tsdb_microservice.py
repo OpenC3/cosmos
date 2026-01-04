@@ -270,7 +270,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
-        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        # Mock get_tlm to return a dummy packet dict
         mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
@@ -333,7 +333,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"63BITS" long', create_table_sql)
         # 64 bits is a long256 because it can't fit in int64
         self.assertIn('"64BITS" long', create_table_sql)
-        self.assertNotIn("DERIVED_GENERIC", create_table_sql)
+        # DERIVED items are now created as VARCHAR to avoid type conflicts
+        self.assertIn('"DERIVED_GENERIC" varchar', create_table_sql)
 
         # Build expected items list from the packet
         expected_items = set()
@@ -366,7 +367,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
-        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        # Mock get_tlm to return a dummy packet dict
         mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
@@ -935,6 +936,68 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.microservices.tsdb_microservice.Sender")
     @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
+    def test_read_topics_handles_array_to_scalar_cast_error(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics handles array-to-scalar cast errors by registering for JSON serialization"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Setup mock to raise IngressError for array-to-scalar conversion
+        error_msg = (
+            "error in line 1: table: INST__HEALTH_STATUS, column: JSON_ITEM; "
+            'cast error from protocol type: DOUBLE[] to column type: INT","line":1'
+        )
+        mock_ingest.row.side_effect = IngressError(1, error_msg)
+        mock_ingest.flush.side_effect = IngressError(1, error_msg)
+
+        # Write test data with array
+        json_data = {"JSON_ITEM": [1.0, 2.0, 3.0]}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        for stdout in capture_io():
+            tsdb.read_topics()
+            # Should have logged warning about array-to-scalar conversion
+            self.assertIn("Will serialize as JSON", stdout.getvalue())
+
+        # Column should be registered for JSON serialization
+        self.assertIn("INST__HEALTH_STATUS__JSON_ITEM", tsdb.json_columns)
+
+    @patch("openc3.microservices.tsdb_microservice.Sender")
+    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_ingress_error(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles non-recoverable IngressError"""
         mock_ingest = Mock()
@@ -1067,20 +1130,19 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.microservices.microservice.System")
     def test_create_table_stores_all_packet_items(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that all items from a packet are stored as columns in the table"""
-        # Create a mock packet with items (dict format as returned by get_tlm)
-        packet = {
-            "items": [
-                {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
-                {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 128},
-                {"name": "ARY", "data_type": "BLOCK", "bit_size": 64, "array_size": 80},
-                {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
-                {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
-            ]
-        }
+        # Create a mock packet dict with items
+        items = [
+            {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
+            {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 2048},
+            {"name": "ARY", "data_type": "BLOCK", "bit_size": 80, "array_size": 80},
+            {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
+            {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
+        ]
+        packet = {"items": items}
 
         # Mock get_tlm to return this packet
         mock_get_tlm.return_value = packet
@@ -1121,7 +1183,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Build expected items list from the packet
         expected_items = set()
-        for item in packet["items"]:
+        for item in items:
             # Sanitize item name the same way tsdb_microservice does
             sanitized_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
             expected_items.add(sanitized_name)
@@ -1135,7 +1197,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Create a JSON data dictionary with values for all items
         json_data = {}
-        for item in packet["items"]:
+        for item in items:
             # Use different types to test various data handling
             if "TEMP" in item["name"]:
                 json_data[item["name"]] = -100.0  # float
