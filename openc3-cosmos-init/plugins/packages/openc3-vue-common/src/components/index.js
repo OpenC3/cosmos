@@ -25,6 +25,8 @@ import CriticalCmdDialog from './CriticalCmdDialog.vue'
 import { DataViewerComponent, DataViewerHistoryComponent } from './dataviewer'
 import DetailsDialog from './DetailsDialog.vue'
 import EditScreenDialog from './EditScreenDialog.vue'
+import ScreenEditor from './ScreenEditor.vue'
+import ScriptEditor from './ScriptEditor.vue'
 import EnvironmentChooser from './EnvironmentChooser.vue'
 import EnvironmentDialog from './EnvironmentDialog.vue'
 import FileOpenSaveDialog from './FileOpenSaveDialog.vue'
@@ -56,6 +58,8 @@ export {
   DataViewerHistoryComponent,
   DetailsDialog,
   EditScreenDialog,
+  ScreenEditor,
+  ScriptEditor,
   EnvironmentChooser,
   EnvironmentDialog,
   FileOpenSaveDialog,

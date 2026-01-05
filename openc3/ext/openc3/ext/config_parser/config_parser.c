@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,6 +33,7 @@ static ID id_ivar_line_number = 0;
 static ID id_ivar_keyword = 0;
 static ID id_ivar_parameters = 0;
 static ID id_ivar_line = 0;
+static ID id_ivar_preserve_lines = 0;
 static ID id_method_readline = 0;
 static ID id_method_close = 0;
 static ID id_method_pos = 0;
@@ -42,6 +43,7 @@ static ID id_method_strip = 0;
 static ID id_method_to_s = 0;
 static ID id_method_upcase = 0;
 static ID id_method_parse_errors = 0;
+static ID id_method_chomp_exclamation = 0;
 
 /*
  * Removes quotes from the given string if present.
@@ -131,53 +133,60 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
       rb_set_errinfo(Qnil);
       break;
     }
-    line = rb_funcall(line, id_method_strip, 0);
-    // Ensure the line length is not 0
-    if (RSTRING_LEN(line) == 0) {
-      continue;
-    }
+    line = rb_funcall(line, id_method_chomp_exclamation, 0);
 
-    if (RTEST(string_concat))
-    {
-      /* Skip comment lines after a string concat */
-      if (RSTRING_PTR(line)[0] == '#')
-      {
+    if (!RTEST(rb_ivar_get(self, id_ivar_preserve_lines))) {
+      line = rb_funcall(line, id_method_strip, 0);
+
+      // Ensure the line length is not 0
+      if (RSTRING_LEN(line) == 0) {
         continue;
       }
-      /* Remove the opening quote if we're continuing the line */
-      line = rb_str_new(RSTRING_PTR(line) + 1, RSTRING_LEN(line) - 1);
-    }
 
-    /* Check for string continuation */
-    if ((RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+') ||
-        (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '\\'))
-    {
-      int newline = 0;
-      if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+')
+      if (RTEST(string_concat))
       {
-        newline = 1;
+        /* Skip comment lines after a string concat */
+        if (RSTRING_PTR(line)[0] == '#')
+        {
+          continue;
+        }
+        /* Remove the opening quote if we're continuing the line */
+        line = rb_str_new(RSTRING_PTR(line) + 1, RSTRING_LEN(line) - 1);
       }
-      rb_str_resize(line, RSTRING_LEN(line) - 1);
-      line = rb_funcall(line, id_method_strip, 0);
-      rb_str_append(ivar_line, line);
-      rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
-      if (newline == 1)
+
+      /* Check for string continuation */
+      if ((RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+') ||
+          (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '\\'))
       {
-        rb_str_cat2(ivar_line, "\n");
+        int newline = 0;
+        if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+')
+        {
+          newline = 1;
+        }
+        rb_str_resize(line, RSTRING_LEN(line) - 1);
+        line = rb_funcall(line, id_method_strip, 0);
+        rb_str_append(ivar_line, line);
+        rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
+        if (newline == 1)
+        {
+          rb_str_cat2(ivar_line, "\n");
+        }
+        rb_ivar_set(self, id_ivar_line, ivar_line);
+        string_concat = Qtrue;
+        continue;
       }
-      rb_ivar_set(self, id_ivar_line, ivar_line);
-      string_concat = Qtrue;
-      continue;
-    }
-    if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '&')
-    {
+      if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '&')
+      {
+        rb_str_append(ivar_line, line);
+        rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
+        rb_ivar_set(self, id_ivar_line, ivar_line);
+        continue;
+      }
       rb_str_append(ivar_line, line);
-      rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
       rb_ivar_set(self, id_ivar_line, ivar_line);
-      continue;
+    } else {
+      rb_ivar_set(self, id_ivar_line, line);
     }
-    rb_str_append(ivar_line, line);
-    rb_ivar_set(self, id_ivar_line, ivar_line);
     string_concat = Qfalse;
 
     data = rb_funcall(ivar_line, id_method_scan, 1, rx);
@@ -284,6 +293,7 @@ void Init_config_parser(void)
   id_ivar_keyword = rb_intern("@keyword");
   id_ivar_parameters = rb_intern("@parameters");
   id_ivar_line = rb_intern("@line");
+  id_ivar_preserve_lines = rb_intern("@preserve_lines");
   id_method_readline = rb_intern("readline");
   id_method_close = rb_intern("close");
   id_method_pos = rb_intern("pos");
@@ -293,6 +303,7 @@ void Init_config_parser(void)
   id_method_to_s = rb_intern("to_s");
   id_method_upcase = rb_intern("upcase");
   id_method_parse_errors = rb_intern("parse_errors");
+  id_method_chomp_exclamation = rb_intern("chomp!");
 
   mOpenC3 = rb_define_module("OpenC3");
 
