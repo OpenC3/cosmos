@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -55,7 +55,7 @@ module OpenC3
       start_time = Time.now
       while true
         message = read_message()
-        if message
+        if message && !message.empty?
           json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
           if ignore_protocol_messages
             type = json_hash['type']
