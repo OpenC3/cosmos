@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -159,9 +159,12 @@ export default {
   methods: {
     async loadKeywords() {
       try {
-        const response = await Api.get('/openc3-api/autocomplete/keywords/screen')
+        const response = await Api.get(
+          '/openc3-api/autocomplete/keywords/screen',
+        )
         this.loadedKeywords = response.data
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Error loading screen keywords:', error)
       }
     },

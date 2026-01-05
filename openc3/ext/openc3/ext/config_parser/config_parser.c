@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -185,7 +185,8 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
       rb_str_append(ivar_line, line);
       rb_ivar_set(self, id_ivar_line, ivar_line);
     } else {
-      rb_ivar_set(self, id_ivar_line, line);
+      ivar_line = line;
+      rb_ivar_set(self, id_ivar_line, ivar_line);
     }
     string_concat = Qfalse;
 
