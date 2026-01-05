@@ -138,6 +138,7 @@ class PacketConfig:
                                 self.converted_bit_size,
                             )
                         self.building_generic_conversion = False
+                        parser.set_preserve_lines(False)
                     # Add the current config.line to the conversion being built
                     case _:
                         if parser.line:
@@ -852,6 +853,7 @@ class PacketConfig:
                 parser.verify_num_parameters(0, 2, usage)
                 self.proc_text = ""
                 self.building_generic_conversion = True
+                parser.set_preserve_lines(True)
                 self.converted_type = None
                 self.converted_bit_size = None
                 if len(params) == 2:
