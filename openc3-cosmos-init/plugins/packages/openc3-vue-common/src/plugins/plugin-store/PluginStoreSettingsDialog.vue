@@ -44,7 +44,7 @@
           label="Store URL"
           :rules="[rules.required, rules.url]"
         />
-        <v-text-field v-model="apiKey" label="API Key" />
+        <v-text-field v-model="apiKey" type="password" label="API Key" />
       </v-card-text>
       <v-card-actions>
         <v-btn
@@ -57,9 +57,41 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <v-dialog v-model="showApiKeyAlert">
+    <v-card class="pa-3">
+      <v-card-text class="pb-0">
+        You're using COSMOS Enterprise, but you haven't set an OpenC3 Store API
+        key yet. You must set this to access Enterprise plugins.
+        <br />
+        <br />
+        Visit the
+        <a :href="accountSettingsUrl" target="_blank">
+          OpenC3 Store account settings<v-icon
+            icon="mdi-open-in-new"
+            size="x-small"
+          />
+        </a>
+        to generate an API key. Then, return here and open the Plugin Store
+        settings with the
+        <v-icon icon="mdi-cog" size="small" /> icon and paste your API key into
+        the API key field.
+      </v-card-text>
+      <v-card-actions>
+        <v-checkbox
+          v-model="suppressApiKeyAlert"
+          class="px-3"
+          label="Don't show this message again"
+          hide-details
+        />
+        <v-btn variant="elevated" text="OK" @click="closeApiKeyAlert" />
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import Settings from '@/tools/admin/tabs/settings/settings.js'
 
 const URL_SETTING_NAME = 'store_url'
@@ -77,7 +109,10 @@ export default {
     return {
       showDialog: false,
       storeUrl: '',
-      apiKey: '',
+      apiKey: null,
+      isEnterprise: false,
+      showApiKeyAlert: false,
+      suppressApiKeyAlert: false,
       rules: {
         required: (value) => !!value || 'Required',
         url: (value) => {
@@ -91,7 +126,25 @@ export default {
       },
     }
   },
+  computed: {
+    accountSettingsUrl: function () {
+      const navigableHost = this.storeUrl.replace(
+        'host.docker.internal',
+        'localhost',
+      )
+      return new URL('account', navigableHost)
+    },
+  },
   watch: {
+    apiKey: function (val) {
+      this.checkEnterpriseKey()
+    },
+    isEnterprise: function (val) {
+      this.checkEnterpriseKey()
+    },
+    suppressApiKeyAlert: function (val) {
+      localStorage.setItem('pluginStore.suppressApiKeyAlert', val)
+    },
     modelValue: function (val) {
       if (val) {
         this.showDialog = val
@@ -104,12 +157,28 @@ export default {
     },
   },
   created: function () {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.isEnterprise = data.enterprise
+    })
     this.loadSetting(URL_SETTING_NAME, { scope: SETTING_SCOPE })
     this.loadSetting(API_KEY_SETTING_NAME, { scope: SETTING_SCOPE })
     this.$emit('update:storeUrl', this.storeUrl)
   },
   methods: {
-    save() {
+    checkEnterpriseKey: function () {
+      if (this.isEnterprise && this.apiKey === '') {
+        this.openApiKeyAlert()
+      }
+    },
+    openApiKeyAlert: function () {
+      if (localStorage.getItem('pluginStore.suppressApiKeyAlert') !== 'true') {
+        this.showApiKeyAlert = true
+      }
+    },
+    closeApiKeyAlert: function () {
+      this.showApiKeyAlert = false
+    },
+    save: function () {
       this.saveSetting(URL_SETTING_NAME, this.storeUrl, {
         scope: SETTING_SCOPE,
       })
