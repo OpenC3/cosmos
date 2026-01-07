@@ -13,7 +13,7 @@ By using the software, you agree to all of the terms and conditions below.
 - Selling, licensing, sublicensing, or distributing the software for a fee
 - Including the software as a component, module, feature, or dependency of any product or service that is sold, licensed, or offered for a fee—regardless of whether the software itself is characterized as "free," "included," "bundled," or "no additional charge"
 - Using the software to provide paid services, including but not limited to consulting, hosting, managed services, support, training, or implementation services
-- Offering the software through any subscription, SaaS, PaaS, or similar service model where users pay for access
+- Offering the software through any subscription, Software as a Service (SaaS), Platform as a Service (PaaS), or similar service model where users pay for access
 - Using the software as a loss-leader, promotional item, or value-add to attract customers to paid products or services
 - Any arrangement where the software's availability or functionality is contingent upon, or associated with, the purchase of other products or services
 
@@ -83,7 +83,6 @@ The following are **NOT permitted** under this license:
 - Including this software in a commercial software suite, even as a "bonus" or "free add-on"
 - Providing paid consulting or implementation services for this software
 - Running a SaaS platform that uses this software, even if the software component is "free"
-- Using this software internally to build products or services that are sold to others
 
 The following **ARE permitted** under this license:
 
