@@ -228,7 +228,7 @@ module OpenC3
   else
     'requirements.txt'
   end
-  s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.txt plugin.txt) + [python_dep_file]
+  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.txt plugin.txt) + [python_dep_file]
 RUBY
         end
         File.write(gemspec_filename, gemspec)
