@@ -19,7 +19,7 @@ importers:
         version: 10.6.2(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))
       eslint-plugin-vuetify:
         specifier: 2.5.3
-        version: 2.5.3(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))(vuetify@3.11.5(vue@3.5.26))
+        version: 2.5.3(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))(vuetify@3.11.6(vue@3.5.26))
       globals:
         specifier: 16.5.0
         version: 16.5.0
@@ -817,8 +817,8 @@ importers:
         specifier: 4.4.4
         version: 4.4.4(vue@3.5.25)
       vuetify:
-        specifier: 3.11.5
-        version: 3.11.5(vue@3.5.26)
+        specifier: 3.11.6
+        version: 3.11.6(vue@3.5.26)
       vuex:
         specifier: 4.1.0
         version: 4.1.0(vue@3.5.25)
@@ -905,8 +905,8 @@ importers:
         specifier: 3.5.26
         version: 3.5.26
       vuetify:
-        specifier: 3.11.5
-        version: 3.11.5(vue@3.5.26)
+        specifier: 3.11.6
+        version: 3.11.6(vue@3.5.26)
       vuex:
         specifier: 4.1.0
         version: 4.1.0(vue@3.5.26)
@@ -1732,8 +1732,8 @@ packages:
     resolution: {integrity: sha512-xlx1yCK2Oc1APsPXDL2LdlNP6+uu8OCDdhOBSVT279M/S+y75O30C2VuD8T2ogdePBBl7PfPF4504tnLgX3zfw==}
     engines: {node: '>=14.16'}
 
-  caniuse-lite@1.0.30001761:
-    resolution: {integrity: sha512-JF9ptu1vP2coz98+5051jZ4PwQgd2ni8A+gYSN7EA7dPKIMf0pDlSUxhdmVOaV3/fYK5uWBkgSXJaRLr4+3A6g==}
+  caniuse-lite@1.0.30001762:
+    resolution: {integrity: sha512-PxZwGNvH7Ak8WX5iXzoK1KPZttBXNPuaOvI2ZYU7NrlM+d9Ov+TUvlLOBNGzVXAntMSMMlJPd+jY6ovrVjSmUw==}
 
   chalk-template@0.4.0:
     resolution: {integrity: sha512-/ghrgmhfY8RaSdeo43hNXxpoHAtxdbskUHjPpfqUWGttFgycUhYPGx3YZBCnUCvOa7Doivn1IZec3DEGFoMgLg==}
@@ -2743,8 +2743,8 @@ packages:
       typescript:
         optional: true
 
-  vuetify@3.11.5:
-    resolution: {integrity: sha512-DAS3M2w3ycZBBwRHVMzHCkxoLodzgH5YFAKPRQtm/C0WsOn+InZl3Erccpp+N+c7TD3uPoo3Xi+ve0ebRlo7Yw==}
+  vuetify@3.11.6:
+    resolution: {integrity: sha512-vaWvEpDSeldRoib1tCKNVBp60paTD2/n0a0TmrVLF9BN4CJJn6/A4VKG2Sg+DE8Yc+SNOtFtipChxSlQxjcUvw==}
     peerDependencies:
       typescript: '>=4.7'
       vite-plugin-vuetify: '>=2.1.0'
@@ -3534,7 +3534,7 @@ snapshots:
   browserslist@4.28.1:
     dependencies:
       baseline-browser-mapping: 2.9.11
-      caniuse-lite: 1.0.30001761
+      caniuse-lite: 1.0.30001762
       electron-to-chromium: 1.5.267
       node-releases: 2.0.27
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
@@ -3552,7 +3552,7 @@ snapshots:
 
   camelcase@7.0.1: {}
 
-  caniuse-lite@1.0.30001761: {}
+  caniuse-lite@1.0.30001762: {}
 
   chalk-template@0.4.0:
     dependencies:
@@ -3796,12 +3796,12 @@ snapshots:
       vue-eslint-parser: 10.2.0(eslint@9.39.2)
       xml-name-validator: 4.0.0
 
-  eslint-plugin-vuetify@2.5.3(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))(vuetify@3.11.5(vue@3.5.26)):
+  eslint-plugin-vuetify@2.5.3(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))(vuetify@3.11.6(vue@3.5.26)):
     dependencies:
       eslint: 9.39.2
       eslint-plugin-vue: 10.6.2(eslint@9.39.2)(vue-eslint-parser@10.2.0(eslint@9.39.2))
       requireindex: 1.2.0
-      vuetify: 3.11.5(vue@3.5.26)
+      vuetify: 3.11.6(vue@3.5.26)
     transitivePeerDependencies:
       - '@stylistic/eslint-plugin'
       - '@typescript-eslint/parser'
@@ -4489,7 +4489,7 @@ snapshots:
       '@vue/server-renderer': 3.5.26(vue@3.5.26)
       '@vue/shared': 3.5.26
 
-  vuetify@3.11.5(vue@3.5.26):
+  vuetify@3.11.6(vue@3.5.26):
     dependencies:
       vue: 3.5.26
 
