@@ -95,7 +95,7 @@ module OpenC3
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
             file.puts "VARIABLE port 8080"
-            file.puts 'VARIABLE_DESCRIPTION port "TCP port for the connection"'
+            file.puts '  VARIABLE_DESCRIPTION "TCP port for the connection"'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
@@ -112,10 +112,9 @@ module OpenC3
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
             file.puts "VARIABLE my_target INST"
-            file.puts 'VARIABLE_DESCRIPTION my_target "Select the target"'
-            file.puts 'VARIABLE_STATE my_target INST "Primary instrument"'
-            file.puts 'VARIABLE_STATE my_target INST2 "Secondary instrument"'
-            file.puts 'VARIABLE_STATE my_target INST3'
+            file.puts '  VARIABLE_DESCRIPTION "Select the target"'
+            file.puts '  VARIABLE_STATE "Primary instrument" INST'
+            file.puts '  VARIABLE_STATE "Secondary instrument" INST2'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
@@ -124,9 +123,8 @@ module OpenC3
           'value' => 'INST',
           'description' => 'Select the target',
           'options' => [
-            { 'value' => 'INST', 'description' => 'Primary instrument' },
-            { 'value' => 'INST2', 'description' => 'Secondary instrument' },
-            { 'value' => 'INST3' }
+            { 'value' => 'INST', 'text' => 'Primary instrument' },
+            { 'value' => 'INST2', 'text' => 'Secondary instrument' }
           ]
         })
       end
@@ -136,11 +134,11 @@ module OpenC3
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
-            file.puts 'VARIABLE_DESCRIPTION unknown "Description"'
+            file.puts 'VARIABLE_DESCRIPTION "Description"'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
-        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_DESCRIPTION references unknown variable 'unknown'/)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_DESCRIPTION must follow a VARIABLE definition/)
       end
 
       it "raises error for VARIABLE_STATE without VARIABLE" do
@@ -148,11 +146,11 @@ module OpenC3
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
-            file.puts 'VARIABLE_STATE unknown VALUE'
+            file.puts 'VARIABLE_STATE "Display Text" VALUE'
           end
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
-        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_STATE references unknown variable 'unknown'/)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_STATE must follow a VARIABLE definition/)
       end
 
       it "processes existing plugin.txt lines" do

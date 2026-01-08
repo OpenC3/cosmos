@@ -125,6 +125,7 @@ module OpenC3
 
         # Phase 1 Gather Variables
         variables = {}
+        current_variable_name = nil
         parser.parse_file(plugin_txt_path,
                           false,
                           true,
@@ -139,6 +140,7 @@ module OpenC3
             end
             value = params[1..-1].join(" ")
             variables[variable_name] = { 'value' => value }
+            current_variable_name = variable_name
             if existing_variables && existing_variables.key?(variable_name)
               existing = existing_variables[variable_name]
               # Handle both old format (string) and new format (hash)
@@ -149,24 +151,21 @@ module OpenC3
               end
             end
           when 'VARIABLE_DESCRIPTION'
-            usage = "#{keyword} <Variable Name> <Description>"
-            parser.verify_num_parameters(2, 2, usage)
-            variable_name = params[0]
-            unless variables.key?(variable_name)
-              raise "VARIABLE_DESCRIPTION references unknown variable '#{variable_name}'. VARIABLE must be defined first."
+            usage = "#{keyword} <Description>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_DESCRIPTION must follow a VARIABLE definition"
             end
-            variables[variable_name]['description'] = params[1]
+            variables[current_variable_name]['description'] = params[0]
           when 'VARIABLE_STATE'
-            usage = "#{keyword} <Variable Name> <State Value> <State Description (optional)>"
-            parser.verify_num_parameters(2, 3, usage)
-            variable_name = params[0]
-            unless variables.key?(variable_name)
-              raise "VARIABLE_STATE references unknown variable '#{variable_name}'. VARIABLE must be defined first."
+            usage = "#{keyword} <Display Text> <Value>"
+            parser.verify_num_parameters(2, 2, usage)
+            unless current_variable_name
+              raise "VARIABLE_STATE must follow a VARIABLE definition"
             end
-            variables[variable_name]['options'] ||= []
-            option = { 'value' => params[1] }
-            option['description'] = params[2] if params[2]
-            variables[variable_name]['options'] << option
+            variables[current_variable_name]['options'] ||= []
+            option = { 'value' => params[1], 'text' => params[0] }
+            variables[current_variable_name]['options'] << option
           end
         end
 

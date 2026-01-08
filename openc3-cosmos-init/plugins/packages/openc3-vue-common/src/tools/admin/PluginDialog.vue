@@ -73,7 +73,7 @@
                     data-test="variable-combobox"
                   >
                     <template #item="{ item, props }">
-                      <v-list-item v-bind="props" :subtitle="item.raw.desc">
+                      <v-list-item v-bind="props">
                         <template #title>
                           {{ item.raw.text }}
                         </template>
@@ -440,9 +440,8 @@ export default {
     getOptionItems(variable) {
       if (!variable.options) return []
       return variable.options.map((opt) => ({
-        text: opt.value,
+        text: opt.text || opt.value,
         value: opt.value,
-        desc: opt.description || '',
       }))
     },
   },
