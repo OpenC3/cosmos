@@ -247,6 +247,36 @@ self.logger.fatal("Fatal message")
 </TabItem>
 </Tabs>
 
+### Alert Notifications
+
+To display a log message as a notification in the COSMOS UI, pass the `type` parameter:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+from openc3.utilities.logger import Logger
+
+# Show as a notification toast in the UI
+self.logger.error("Critical issue detected", type=Logger.ALERT)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+# Show as a notification toast in the UI
+@logger.error("Critical issue detected", type: Logger::ALERT)
+```
+
+</TabItem>
+</Tabs>
+
+The available types are:
+- `LOG` (default) - Standard log message, appears in Log Messages panel
+- `NOTIFICATION` - Appears in the notifications dropdown
+- `ALERT` - Appears as a toast notification and in the notifications dropdown
+
 ## State Management
 
 Update `state` to communicate status to users viewing the Admin Microservices tab.
@@ -367,6 +397,13 @@ self.metric.set(name='processing_seconds', value=elapsed, type='gauge', unit='se
 
 </TabItem>
 </Tabs>
+
+### Metric Types
+
+| Type      | Description                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `counter` | A cumulative value that only increases (e.g., total requests, total errors). Resets to zero when the service restarts. |
+| `gauge`   | A point-in-time value that can increase or decrease (e.g., current temperature, queue depth, memory usage).         |
 
 ## Subscribing to Topics
 
