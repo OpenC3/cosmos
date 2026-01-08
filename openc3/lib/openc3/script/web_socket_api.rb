@@ -70,7 +70,7 @@ module OpenC3
               end
               if timeout
                 end_time = Time.now
-                if (start_time - end_time) > timeout
+                if (end_time - start_time) > timeout
                   raise Timeout::Error, "No Data Timeout"
                 end
               end

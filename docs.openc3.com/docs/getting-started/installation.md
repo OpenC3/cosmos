@@ -90,7 +90,7 @@ Add the locally cloned project directory to your path so you can directly use th
 
 Run `openc3.bat run` (Windows), or `./openc3.sh run` (linux/Mac).
 
-Note, you can edit the .env file and change OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'.
+Note, you can edit the .env file and change OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'. For production deployments, you should also change the default passwords in the `.env` file. See [Security](security) for details.
 
 If you see an error indicating docker daemon is not running ensure Docker and Docker compose is installed and running. If it errors please try to run `docker --version` or `docker-compose --version` and try to run the start command again. If the error continues please include the version in your issue if you choose to create one.
 
@@ -112,7 +112,7 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 
 ### Connect
 
-Connect a web browser to http://localhost:2900. Set the password to whatever you want.
+Connect a web browser to http://localhost:2900. Set the password to whatever you want. This frontend password is separate from the backend service credentials in the `.env` file. See [Security](security) for details on how COSMOS credentials work.
 
 ### Next Steps
 
