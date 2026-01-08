@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -322,10 +322,37 @@ def convert_json_class(object_):
         return object_
 
 
+# Latin range covers Basic Latin (U+0000-U+007F) and Latin-1 Supplement (U+00A0-U+00FF)
+# This includes common characters like µ (U+00B5), ° (U+00B0), ñ (U+00F1), etc.
+# We exclude C1 control characters (U+0080-U+009F) which are non-printable
+LATIN_RANGE_MAX = 0x00FF
+C1_CONTROL_MIN = 0x0080
+C1_CONTROL_MAX = 0x009F
+
+
+def _is_latin_text(text):
+    """Check if all characters in the text are in the expected Latin range.
+
+    This prevents binary data that happens to be valid UTF-8 from being treated as text.
+    For example, \\xDE\\xAD decodes to U+07AD (Thaana script) which should be treated as binary.
+    """
+    for char in text:
+        codepoint = ord(char)
+        if codepoint > LATIN_RANGE_MAX or (C1_CONTROL_MIN <= codepoint <= C1_CONTROL_MAX):
+            return False
+    return True
+
+
 def _convert_bytearray_to_string_raw(object_):
     if isinstance(object_, (bytes, bytearray)):
         try:
-            return object_.decode()
+            decoded = object_.decode()
+            # Check if all characters are in the expected Latin range
+            # This prevents binary data that happens to be valid UTF-8 from being treated as text
+            if _is_latin_text(decoded):
+                return decoded
+            else:
+                return {"json_class": "String", "raw": [byte for byte in object_]}
         except UnicodeDecodeError:
             return {"json_class": "String", "raw": [byte for byte in object_]}
     if isinstance(object_, dict):

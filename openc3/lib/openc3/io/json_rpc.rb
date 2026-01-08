@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -58,6 +58,13 @@ end
 class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
   NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
+  # Latin range covers Basic Latin (U+0000-U+007F) and Latin-1 Supplement (U+00A0-U+00FF)
+  # This includes common characters like µ (U+00B5), ° (U+00B0), ñ (U+00F1), etc.
+  # We exclude C1 control characters (U+0080-U+009F) which are non-printable
+  LATIN_RANGE_MAX = 0x00FF
+  C1_CONTROL_MIN = 0x0080
+  C1_CONTROL_MAX = 0x009F
+
   def as_json(_options = nil)
     # Try to interpret the string as UTF-8
     # This handles both:
@@ -68,9 +75,18 @@ class String
       # Valid UTF-8 - check for non-printable control characters
       if as_utf8 =~ NON_UTF8_PRINTABLE
         return self.to_json_raw_object
-      else
-        return as_utf8
       end
+      # Check if all characters are in the expected Latin range (U+0000-U+00FF)
+      # This prevents binary data that happens to be valid UTF-8 from being treated as text
+      # For example, \xDE\xAD decodes to U+07AD (Thaana script) which should be treated as binary
+      # Also reject C1 control characters (U+0080-U+009F) which are non-printable
+      as_utf8.each_char do |char|
+        codepoint = char.ord
+        if codepoint > LATIN_RANGE_MAX || (codepoint >= C1_CONTROL_MIN && codepoint <= C1_CONTROL_MAX)
+          return self.to_json_raw_object
+        end
+      end
+      return as_utf8
     else
       # Invalid UTF-8 means this is truly binary data, encode as raw object
       return self.to_json_raw_object
