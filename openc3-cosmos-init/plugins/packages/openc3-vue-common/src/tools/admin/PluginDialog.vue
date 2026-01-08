@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -137,8 +137,8 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import AceDiff from '@openc3/ace-diff'
-import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+import AceDiff from 'ace-diff'
+// import 'ace-diff/dist/ace-diff-twilight.min.css'
 import { toRaw } from 'vue'
 import { AceEditorUtils } from '../../components/ace'
 
