@@ -32,7 +32,7 @@
         <template #activator="{ props }">
           <div v-bind="props">
             <v-btn
-              href="https://store.openc3.com"
+              :href="storeUrl"
               target="_blank"
               icon="mdi-open-in-new"
               variant="text"
@@ -40,7 +40,7 @@
             />
           </div>
         </template>
-        <span> Open store.openc3.com </span>
+        <span> Open {{ formattedStoreUrl }} </span>
       </v-tooltip>
 
       <v-btn icon="mdi-close" variant="text" @click="close" />
@@ -67,7 +67,14 @@
     </div>
     <v-spacer />
     <span class=""> Click on a plugin to see more information about it </span>
-    <v-container>
+    <v-alert
+      v-if="storeError"
+      class="mt-6"
+      color="error"
+      :title="storeError.title"
+      :text="storeError.body"
+    />
+    <v-container v-else>
       <v-row>
         <v-col v-for="plugin in filteredPlugins" :key="plugin.id" cols="4">
           <plugin-card v-bind="plugin" @trigger-install="install" />
@@ -86,6 +93,8 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { PluginCard } from '@/plugins/plugin-store'
 import PluginStoreSettingsDialog from './PluginStoreSettingsDialog.vue' // idk why importing from @/plugins/plugin-store isn't working
 
+const DEFAULT_STORE_URL = 'https://store.openc3.com'
+
 export default {
   components: {
     PluginCard,
@@ -99,6 +108,8 @@ export default {
       verifiedOnly: false,
       showSettingsDialog: false,
       plugins: [],
+      storeError: null,
+      storeUrl: DEFAULT_STORE_URL,
     }
   },
   computed: {
@@ -114,6 +125,9 @@ export default {
       }
       return filtered
     },
+    formattedStoreUrl: function () {
+      return this.storeUrl.split('://').at(-1)
+    },
   },
   mounted: function () {
     // Don't call updatePluginStore() here. It should be called in the background before the user opens this store
@@ -123,8 +137,15 @@ export default {
   },
   methods: {
     fetchPluginStoreData: function () {
-      Api.get('/openc3-api/pluginstore').then((response) => {
-        this.plugins = response.data
+      Api.get('/openc3-api/pluginstore').then(({ data }) => {
+        if (data.error) {
+          const { title, body } = data
+          this.storeError = { title, body }
+          this.plugins = []
+        } else {
+          this.storeError = null
+          this.plugins = data
+        }
       })
     },
     close: function () {
@@ -137,7 +158,8 @@ export default {
     openSettings: function () {
       this.showSettingsDialog = true
     },
-    updatePluginStore: function () {
+    updatePluginStore: function (storeUrl) {
+      this.storeUrl = storeUrl
       this.api.update_plugin_store().then((response) => {
         this.fetchPluginStoreData()
       })
