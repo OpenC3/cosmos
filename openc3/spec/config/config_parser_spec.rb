@@ -337,15 +337,18 @@ module OpenC3
       it "optionally yields comment lines" do
         tf = Tempfile.new('unittest')
         tf.puts "KEYWORD1 PARAM1"
-        tf.puts "# This is a comment"
-        tf.puts "KEYWORD2 PARAM1"
+        tf.puts "  # This is a comment"
+        tf.puts "    KEYWORD2 PARAM1"
         tf.close
 
         lines = []
+        @cp.set_preserve_lines(true)
         @cp.parse_file(tf.path, true) do |_keyword, _params|
           lines << @cp.line
         end
-        expect(lines).to include("# This is a comment")
+        expect(lines).to include("KEYWORD1 PARAM1")
+        expect(lines).to include("  # This is a comment")
+        expect(lines).to include("    KEYWORD2 PARAM1")
         tf.unlink
       end
 
