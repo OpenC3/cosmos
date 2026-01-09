@@ -44,7 +44,7 @@
         variant="text"
         density="compact"
         title="Download"
-        data-test="screen-editor-download"
+        data-test="download-screen-icon"
         @click="downloadContent"
       />
     </v-row>
