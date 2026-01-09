@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -327,7 +327,12 @@ class Structure:
                         item.variable_bit_size["length_value_bit_offset"]
                         * item.variable_bit_size["length_bits_per_count"]
                     )
-                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset and item.parent_item is None:
+                if (
+                    minimum_data_bits > 0
+                    and item.bit_offset >= 0
+                    and self.defined_length_bits == item.bit_offset
+                    and item.parent_item is None
+                ):
                     self.defined_length_bits += minimum_data_bits
         else:
             raise ValueError(f"Unknown item: {item.name} - Ensure item name is uppercase")
@@ -609,7 +614,6 @@ class Structure:
                     # When short_buffer_allowed is true, keep the buffer short so reads
                     # of items beyond the buffer return None
                     if not self.short_buffer_allowed:
-                        self.resize_buffer()
                         raise ValueError("Buffer length less than defined length")
                 elif self.fixed_size and self.defined_length != 0:
                     raise ValueError("Buffer length greater than defined length")

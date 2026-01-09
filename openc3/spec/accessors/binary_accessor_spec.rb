@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -366,8 +366,8 @@ module OpenC3
         expect { BinaryAccessor.read(7, 16, :BLOCK, @data, :BIG_ENDIAN) }.to raise_error(ArgumentError, "bit_offset 7 is not byte aligned for data_type BLOCK")
       end
 
-      it "complains if read exceeds the size of the buffer" do
-        expect { BinaryAccessor.read(8, 800, :STRING, @data, :BIG_ENDIAN) }.to raise_error(ArgumentError, "16 byte buffer insufficient to read STRING at bit_offset 8 with bit_size 800")
+      it "returns nil if read exceeds the size of the buffer" do
+        expect(BinaryAccessor.read(8, 800, :STRING, @data, :BIG_ENDIAN)).to be_nil
       end
 
       it "reads aligned 8-bit unsigned integers" do
@@ -815,12 +815,12 @@ module OpenC3
           end
         end
 
-        it "complains about accessing data from a buffer which is too small" do
-          expect { BinaryAccessor.read_array(0, 256, :STRING, 256, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "16 byte buffer insufficient to read STRING at bit_offset 0 with bit_size 256")
+        it "returns nil for accessing data from a buffer which is too small" do
+          expect(BinaryAccessor.read_array(0, 256, :STRING, 256, @data, :LITTLE_ENDIAN)).to be_nil
         end
 
-        it "returns an empty array when passed a zero length buffer" do
-          expect(BinaryAccessor.read_array(0, 8, :UINT, 32, "", :LITTLE_ENDIAN)).to eql([])
+        it "returns nil when reading beyond an empty buffer" do
+          expect(BinaryAccessor.read_array(0, 8, :UINT, 32, "", :LITTLE_ENDIAN)).to be_nil
         end
 
         it "complains about unaligned strings" do
@@ -2565,56 +2565,6 @@ module OpenC3
         end
       end
     end # describe "write_array"
-
-    describe "item_within_buffer_bounds?" do
-      it "returns true for items within the buffer bounds" do
-        buffer = "\x00\x01\x02\x03\x04\x05\x06\x07"
-        item = StructureItem.new("TEST", 0, 32, :UINT, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
-      end
-
-      it "returns false for items that exceed buffer bounds" do
-        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
-        item = StructureItem.new("TEST", 0, 64, :UINT, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be false
-      end
-
-      it "returns false for items with offset outside buffer" do
-        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
-        item = StructureItem.new("TEST", 64, 8, :UINT, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be false
-      end
-
-      it "returns true for derived items regardless of buffer size" do
-        buffer = "\x00"
-        item = StructureItem.new("TEST", 0, 0, :DERIVED, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
-      end
-
-      it "handles negative bit offsets correctly" do
-        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
-        item = StructureItem.new("TEST", -8, 8, :UINT, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
-
-        item2 = StructureItem.new("TEST2", -64, 8, :UINT, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item2, buffer)).to be false
-      end
-
-      it "handles zero/negative bit sizes (fill to end)" do
-        buffer = "\x00\x01\x02\x03"
-        item = StructureItem.new("TEST", 8, 0, :STRING, :BIG_ENDIAN)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
-      end
-
-      it "handles arrays correctly" do
-        buffer = "\x00\x01\x02\x03\x04\x05\x06\x07"
-        item = StructureItem.new("TEST", 0, 8, :UINT, :BIG_ENDIAN, 32)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item, buffer)).to be true
-
-        item2 = StructureItem.new("TEST2", 0, 8, :UINT, :BIG_ENDIAN, 128)
-        expect(BinaryAccessor.item_within_buffer_bounds?(item2, buffer)).to be false
-      end
-    end
 
     describe "read_item with undersized buffer" do
       it "returns nil for items outside buffer bounds" do

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -191,17 +191,8 @@ class TestBinaryAccessorRead(unittest.TestCase):
             "BIG_ENDIAN",
         )
 
-    def test_complains_if_read_exceeds_the_size_of_the_buffer(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "16 byte buffer insufficient to read STRING at bit_offset 8 with bit_size 800",
-            BinaryAccessor.read,
-            8,
-            800,
-            "STRING",
-            self.data,
-            "BIG_ENDIAN",
-        )
+    def test_returns_none_if_read_exceeds_the_size_of_the_buffer(self):
+        self.assertIsNone(BinaryAccessor.read(8, 800, "STRING", self.data, "BIG_ENDIAN"))
 
     def test_reads_aligned_8_bit_unsigned_integers(self):
         for bit_offset in range(0, (len(self.data) - 1) * 8, 8):
@@ -949,12 +940,8 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
         ):
             BinaryAccessor.read_array(-32, 8, "UINT", -8, self.data, "LITTLE_ENDIAN")
 
-    def test_complains_about_accessing_data_from_a_buffer_which_is_too_small(self):
-        with self.assertRaisesRegex(
-            ValueError,
-            "16 byte buffer insufficient to read STRING at bit_offset 0 with bit_size 256",
-        ):
-            BinaryAccessor.read_array(0, 256, "STRING", 256, self.data, "LITTLE_ENDIAN")
+    def test_returns_none_for_accessing_data_from_a_buffer_which_is_too_small(self):
+        self.assertIsNone(BinaryAccessor.read_array(0, 256, "STRING", 256, self.data, "LITTLE_ENDIAN"))
 
     def test_returns_an_empty_array_when_passed_a_zero_length_buffer(self):
         self.assertEqual(BinaryAccessor.read_array(0, 8, "UINT", 32, b"", "LITTLE_ENDIAN"), [])
@@ -1114,56 +1101,6 @@ class TestBinaryAccessorReadArrayBE(unittest.TestCase):
         actual = BinaryAccessor.read_array(0, 64, "FLOAT", 0, self.data, "BIG_ENDIAN")
         for index, val in enumerate(actual):
             self.assertAlmostEqual(val, expected_array[index])
-
-
-class TestBinaryAccessorItemWithinBufferBounds(unittest.TestCase):
-    def test_returns_true_for_items_within_buffer_bounds(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07"
-        item = StructureItem("TEST", 0, 32, "UINT", "BIG_ENDIAN")
-        self.assertTrue(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-    def test_returns_false_for_items_that_exceed_buffer_bounds(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03"  # 4 bytes = 32 bits
-        item = StructureItem("TEST", 0, 64, "UINT", "BIG_ENDIAN")
-        self.assertFalse(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-    def test_returns_false_for_items_with_offset_outside_buffer(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03"  # 4 bytes = 32 bits
-        item = StructureItem("TEST", 64, 8, "UINT", "BIG_ENDIAN")
-        self.assertFalse(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-    def test_returns_true_for_derived_items_regardless_of_buffer_size(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00"
-        item = StructureItem("TEST", 0, 0, "DERIVED", "BIG_ENDIAN")
-        self.assertTrue(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-    def test_handles_negative_bit_offsets_correctly(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03"  # 4 bytes = 32 bits
-        item = StructureItem("TEST", -8, 8, "UINT", "BIG_ENDIAN")
-        self.assertTrue(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-        item2 = StructureItem("TEST2", -64, 8, "UINT", "BIG_ENDIAN")
-        self.assertFalse(BinaryAccessor.item_within_buffer_bounds(item2, buffer))
-
-    def test_handles_zero_negative_bit_sizes_fill_to_end(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03"
-        item = StructureItem("TEST", 8, 0, "STRING", "BIG_ENDIAN")
-        self.assertTrue(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-    def test_handles_arrays_correctly(self):
-        from openc3.packets.structure_item import StructureItem
-        buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07"
-        item = StructureItem("TEST", 0, 8, "UINT", "BIG_ENDIAN", 32)
-        self.assertTrue(BinaryAccessor.item_within_buffer_bounds(item, buffer))
-
-        item2 = StructureItem("TEST2", 0, 8, "UINT", "BIG_ENDIAN", 128)
-        self.assertFalse(BinaryAccessor.item_within_buffer_bounds(item2, buffer))
 
 
 class TestBinaryAccessorReadItemUndersizedBuffer(unittest.TestCase):

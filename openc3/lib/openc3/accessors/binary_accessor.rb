@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -104,40 +104,6 @@ module OpenC3
 
     def self.raise_buffer_error(read_write, buffer, data_type, given_bit_offset, given_bit_size)
       raise ArgumentError, "#{buffer.length} byte buffer insufficient to #{read_write} #{data_type} at bit_offset #{given_bit_offset} with bit_size #{given_bit_size}"
-    end
-
-    # Check if an item is completely within the buffer bounds
-    # Returns false if the item extends beyond the buffer,
-    # this is used to return nil for out-of-bounds reads
-    #
-    # @param item [StructureItem] The item to check
-    # @param buffer [String] The binary buffer
-    # @return [Boolean] true if the item is within buffer bounds, false otherwise
-    def self.item_within_buffer_bounds?(item, buffer)
-      return true if item.data_type == :DERIVED
-
-      bit_offset = item.bit_offset
-      bit_size = item.bit_size
-      buffer_bits = buffer.length * 8
-
-      # Handle negative bit offsets (offset from end of buffer)
-      if bit_offset < 0
-        bit_offset = buffer_bits + bit_offset
-        return false if bit_offset < 0
-      end
-
-      # For arrays, use array_size instead of bit_size
-      total_bits = item.array_size ? item.array_size : bit_size
-
-      # Handle negative/zero bit sizes (fill to end of buffer)
-      if total_bits <= 0
-        # These types fill to the end, so they're always "in bounds" if the starting position is valid
-        return bit_offset <= buffer_bits
-      end
-
-      # Check if the item's upper bound is within buffer
-      upper_bound_bits = bit_offset + total_bits
-      return upper_bound_bits <= buffer_bits
     end
 
     # Store the host endianness so that it only has to be determined once
@@ -328,8 +294,6 @@ module OpenC3
     # Note: do not use directly - use instance read_item
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
-      # Return nil if item is outside the buffer bounds (for undersized packets)
-      return nil unless item_within_buffer_bounds?(item, buffer)
       if item.array_size
         return read_array(item.bit_offset, item.bit_size, item.data_type, item.array_size, buffer, item.endianness)
       else
@@ -375,7 +339,8 @@ module OpenC3
         end
 
         result, lower_bound, upper_bound = check_bounds_and_buffer_size(bit_offset, bit_size, buffer.length, endianness, data_type)
-        raise_buffer_error(:read, buffer, data_type, given_bit_offset, given_bit_size) unless result
+        # Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+        return nil unless result
 
         if (data_type == :STRING) || (data_type == :BLOCK)
           #######################################
@@ -971,6 +936,9 @@ module OpenC3
       # Define bounds of string to access this item
       lower_bound = bit_offset / 8
       upper_bound = (bit_offset + array_size - 1) / 8
+
+      # Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+      return nil if upper_bound >= buffer.length
 
       # Check for byte alignment
       byte_aligned = ((bit_offset % 8) == 0)

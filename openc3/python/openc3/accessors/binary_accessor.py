@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -99,40 +99,6 @@ class BinaryAccessor(Accessor):
             f"{len(buffer)} byte buffer insufficient to {read_write} {data_type} at bit_offset {given_bit_offset} with bit_size {given_bit_size}"
         )
 
-    # Check if an item is completely within the buffer bounds
-    # Returns False if the item extends beyond the buffer,
-    # this is used to return None for out-of-bounds reads
-    #
-    # @param item [StructureItem] The item to check
-    # @param buffer [bytes/bytearray] The binary buffer
-    # @return [bool] True if the item is within buffer bounds, False otherwise
-    @classmethod
-    def item_within_buffer_bounds(cls, item, buffer):
-        if item.data_type == "DERIVED":
-            return True
-
-        bit_offset = item.bit_offset
-        bit_size = item.bit_size
-        buffer_bits = len(buffer) * 8
-
-        # Handle negative bit offsets (offset from end of buffer)
-        if bit_offset < 0:
-            bit_offset = buffer_bits + bit_offset
-            if bit_offset < 0:
-                return False
-
-        # For arrays, use array_size instead of bit_size
-        total_bits = item.array_size if item.array_size is not None else bit_size
-
-        # Handle negative/zero bit sizes (fill to end of buffer)
-        if total_bits <= 0:
-            # These types fill to the end, so they're always "in bounds" if the starting position is valid
-            return bit_offset <= buffer_bits
-
-        # Check if the item's upper bound is within buffer
-        upper_bound_bits = bit_offset + total_bits
-        return upper_bound_bits <= buffer_bits
-
     # Valid endianness
     ENDIANNESS = ["BIG_ENDIAN", "LITTLE_ENDIAN"]
 
@@ -179,9 +145,6 @@ class BinaryAccessor(Accessor):
     @classmethod
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
-            return None
-        # Return None if item is outside the buffer bounds (for undersized packets)
-        if not cls.item_within_buffer_bounds(item, buffer):
             return None
         if item.array_size is not None:
             return cls.read_array(
@@ -394,8 +357,9 @@ class BinaryAccessor(Accessor):
         result, lower_bound, upper_bound = cls.check_bounds_and_buffer_size(
             bit_offset, bit_size, len(buffer), endianness, data_type
         )
+        # Return None for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
         if not result:
-            cls.raise_buffer_error("read", buffer, data_type, given_bit_offset, given_bit_size)
+            return None
 
         if data_type in ["STRING", "BLOCK"]:
             #######################################
@@ -909,6 +873,10 @@ class BinaryAccessor(Accessor):
         # Define bounds of string to access this item
         lower_bound = math.floor(bit_offset / 8)
         upper_bound = math.floor((bit_offset + array_size - 1) / 8)
+
+        # Return None for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+        if upper_bound >= len(buffer):
+            return None
 
         # Check for byte alignment
         byte_aligned = (bit_offset % 8) == 0
