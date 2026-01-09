@@ -58,12 +58,10 @@ end
 class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
   NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
+  # Matches characters outside the Latin range (U+0000-U+00FF) or C1 control characters (U+0080-U+009F)
   # Latin range covers Basic Latin (U+0000-U+007F) and Latin-1 Supplement (U+00A0-U+00FF)
   # This includes common characters like µ (U+00B5), ° (U+00B0), ñ (U+00F1), etc.
-  # We exclude C1 control characters (U+0080-U+009F) which are non-printable
-  LATIN_RANGE_MAX = 0x00FF
-  C1_CONTROL_MIN = 0x0080
-  C1_CONTROL_MAX = 0x009F
+  OUTSIDE_LATIN_RANGE = /[^\u0000-\u007F\u00A0-\u00FF]/
 
   def as_json(_options = nil)
     # Try to interpret the string as UTF-8
@@ -80,11 +78,8 @@ class String
       # This prevents binary data that happens to be valid UTF-8 from being treated as text
       # For example, \xDE\xAD decodes to U+07AD (Thaana script) which should be treated as binary
       # Also reject C1 control characters (U+0080-U+009F) which are non-printable
-      as_utf8.each_char do |char|
-        codepoint = char.ord
-        if codepoint > LATIN_RANGE_MAX || (codepoint >= C1_CONTROL_MIN && codepoint <= C1_CONTROL_MAX)
-          return self.to_json_raw_object
-        end
+      if as_utf8 =~ OUTSIDE_LATIN_RANGE
+        return self.to_json_raw_object
       end
       return as_utf8
     else
