@@ -74,7 +74,7 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "7.27.0",
     "@braintree/sanitize-url": "7.1.1",
-    "ace-diff": "3.2.0",
+    "ace-diff": "3.3.0",
     "@openc3/js-common": "workspace:*",
     "ace-builds": "1.43.5",
     "axios": "1.13.2",

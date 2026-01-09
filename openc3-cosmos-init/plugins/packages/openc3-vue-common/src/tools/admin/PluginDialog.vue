@@ -138,7 +138,7 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from 'ace-diff'
-// import 'ace-diff/dist/ace-diff-twilight.min.css'
+import 'ace-diff/dist/ace-diff-twilight.min.css'
 import { toRaw } from 'vue'
 import { AceEditorUtils } from '../../components/ace'
 
