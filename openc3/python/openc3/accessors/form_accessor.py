@@ -63,7 +63,7 @@ class FormAccessor(Accessor):
 
     # This sets the short_buffer_allowed flag in the Packet class
     # which allows packets that have a buffer shorter than the defined size.
-    # Note that the buffer is still resized to the defined length
+    # Items outside the buffer bounds will return None when read.
     def enforce_short_buffer_allowed(self):
         return True
 

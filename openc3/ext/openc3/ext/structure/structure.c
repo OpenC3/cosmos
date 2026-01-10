@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -520,7 +520,8 @@ static VALUE binary_accessor_read(VALUE self, VALUE param_bit_offset, VALUE para
 
   if (!check_bounds_and_buffer_size(bit_offset, bit_size, (int)buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound))
   {
-    rb_funcall(self, id_method_raise_buffer_error, 5, symbol_read, param_buffer, param_data_type, param_bit_offset, param_bit_size);
+    /* Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT) */
+    return Qnil;
   }
 
   if ((param_data_type == symbol_STRING) || (param_data_type == symbol_BLOCK))

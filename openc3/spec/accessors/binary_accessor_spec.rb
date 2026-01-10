@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,6 +24,7 @@ require 'spec_helper'
 require 'openc3'
 require 'openc3/accessors/binary_accessor'
 require 'openc3/packets/packet'
+require 'openc3/packets/structure_item'
 
 module OpenC3
   describe BinaryAccessor, no_ext: true do
@@ -365,8 +366,8 @@ module OpenC3
         expect { BinaryAccessor.read(7, 16, :BLOCK, @data, :BIG_ENDIAN) }.to raise_error(ArgumentError, "bit_offset 7 is not byte aligned for data_type BLOCK")
       end
 
-      it "complains if read exceeds the size of the buffer" do
-        expect { BinaryAccessor.read(8, 800, :STRING, @data, :BIG_ENDIAN) }.to raise_error(ArgumentError, "16 byte buffer insufficient to read STRING at bit_offset 8 with bit_size 800")
+      it "returns nil if read exceeds the size of the buffer" do
+        expect(BinaryAccessor.read(8, 800, :STRING, @data, :BIG_ENDIAN)).to be_nil
       end
 
       it "reads aligned 8-bit unsigned integers" do
@@ -814,12 +815,12 @@ module OpenC3
           end
         end
 
-        it "complains about accessing data from a buffer which is too small" do
-          expect { BinaryAccessor.read_array(0, 256, :STRING, 256, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "16 byte buffer insufficient to read STRING at bit_offset 0 with bit_size 256")
+        it "returns nil for accessing data from a buffer which is too small" do
+          expect(BinaryAccessor.read_array(0, 256, :STRING, 256, @data, :LITTLE_ENDIAN)).to be_nil
         end
 
-        it "returns an empty array when passed a zero length buffer" do
-          expect(BinaryAccessor.read_array(0, 8, :UINT, 32, "", :LITTLE_ENDIAN)).to eql([])
+        it "returns nil when reading beyond an empty buffer" do
+          expect(BinaryAccessor.read_array(0, 8, :UINT, 32, "", :LITTLE_ENDIAN)).to be_nil
         end
 
         it "complains about unaligned strings" do
@@ -2564,5 +2565,25 @@ module OpenC3
         end
       end
     end # describe "write_array"
+
+    describe "read_item with undersized buffer" do
+      it "returns nil for items outside buffer bounds" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes
+        item = StructureItem.new("TEST", 32, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+
+      it "returns value for items within buffer bounds" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes
+        item = StructureItem.new("TEST", 0, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to eq(0x00010203)
+      end
+
+      it "returns nil for partially out-of-bounds items" do
+        buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
+        item = StructureItem.new("TEST", 16, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+    end
   end # describe BinaryAccessor
 end

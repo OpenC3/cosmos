@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -105,7 +105,9 @@ class BinaryAccessor(Accessor):
     def handle_read_variable_bit_size(self, item, _buffer):
         length_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
         if item.array_size is not None:
-            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size["length_value_bit_offset"]
+            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+                "length_value_bit_offset"
+            ]
         else:
             if item.data_type == "INT" or item.data_type == "UINT":
                 # QUIC encoding is currently assumed for individual variable sized integers
@@ -133,7 +135,7 @@ class BinaryAccessor(Accessor):
             # Structure is used to read items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            return structure.read(item.key, 'RAW', structure_buffer)
+            return structure.read(item.key, "RAW", structure_buffer)
         else:
             if item.variable_bit_size:
                 self.handle_read_variable_bit_size(item, buffer)
@@ -291,7 +293,7 @@ class BinaryAccessor(Accessor):
             # Structure is used to write items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            structure.write(item.key, value, 'RAW', structure_buffer)
+            structure.write(item.key, value, "RAW", structure_buffer)
             if item.parent_item.variable_bit_size:
                 self.handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer)
             BinaryAccessor.class_write_item(item.parent_item, structure_buffer, buffer)
@@ -355,8 +357,9 @@ class BinaryAccessor(Accessor):
         result, lower_bound, upper_bound = cls.check_bounds_and_buffer_size(
             bit_offset, bit_size, len(buffer), endianness, data_type
         )
+        # Return None for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
         if not result:
-            cls.raise_buffer_error("read", buffer, data_type, given_bit_offset, given_bit_size)
+            return None
 
         if data_type in ["STRING", "BLOCK"]:
             #######################################
@@ -871,6 +874,10 @@ class BinaryAccessor(Accessor):
         lower_bound = math.floor(bit_offset / 8)
         upper_bound = math.floor((bit_offset + array_size - 1) / 8)
 
+        # Return None for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+        if upper_bound >= len(buffer):
+            return None
+
         # Check for byte alignment
         byte_aligned = (bit_offset % 8) == 0
 
@@ -936,9 +943,7 @@ class BinaryAccessor(Accessor):
                             )
                         )
                     else:
-                        raise ValueError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
+                        raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
 
                 else:
                     raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
@@ -1149,9 +1154,7 @@ class BinaryAccessor(Accessor):
                             *values,
                         )
                     else:
-                        raise ValueError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
+                        raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
                 else:
                     raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
