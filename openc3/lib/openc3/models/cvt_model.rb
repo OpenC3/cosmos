@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -49,6 +49,20 @@ module OpenC3
     # Set the current value table for a target, packet
     def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
       packet_json = JSON.generate(hash.as_json, allow_nan: true)
+      key = "#{scope}__tlm__#{target_name}"
+      tgt_pkt_key = key + "__#{packet_name}"
+      @@packet_cache[tgt_pkt_key] = [Time.now, hash]
+      if queued
+        StoreQueued.hset(key, packet_name, packet_json)
+      else
+        Store.hset(key, packet_name, packet_json)
+      end
+    end
+
+    # Set the current value table with pre-serialized JSON (avoids double as_json call)
+    # @param packet_json [String] Pre-serialized JSON string
+    # @param hash [Hash] The JSON-safe hash (already had as_json called)
+    def self.set_json(packet_json, hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
