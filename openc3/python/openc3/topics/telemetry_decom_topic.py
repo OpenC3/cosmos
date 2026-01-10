@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -33,6 +33,8 @@ class TelemetryDecomTopic(Topic):
         # __ as separators ITEM1, ITEM1__C, ITEM1__F, ITEM1__U
 
         json_hash = CvtModel.build_json_from_packet(packet)
+        # Serialize JSON once and reuse for both topic write and CVT set
+        json_data = json.dumps(json_hash, cls=JsonEncoder)
         # Write to stream
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
@@ -40,7 +42,7 @@ class TelemetryDecomTopic(Topic):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "json_data": json.dumps(json_hash, cls=JsonEncoder),
+            "json_data": json_data,
         }
         Topic.write_topic(
             f"{scope}__DECOM__{{{packet.target_name}}}__{packet.packet_name}",
@@ -50,7 +52,9 @@ class TelemetryDecomTopic(Topic):
 
         if not packet.stored:
             # Also update the current value table with the latest decommutated data
-            CvtModel.set(
+            # Pass pre-serialized JSON to avoid serializing twice
+            CvtModel.set_json(
+                json_data,
                 json_hash,
                 packet.target_name,
                 packet.packet_name,
