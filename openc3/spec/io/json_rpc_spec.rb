@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -87,6 +87,34 @@ module OpenC3
         utf8_text = "Test µ value".force_encoding(Encoding::ASCII_8BIT)
         expect(utf8_text.as_json).to eql("Test µ value")
         expect(utf8_text.as_json).not_to be_a(Hash)
+      end
+
+      it "treats 2-byte binary data that happens to be valid UTF-8 as binary" do
+        # This is a regression test for the issue where 0xDEAD (2 bytes) was being
+        # interpreted as valid UTF-8 text instead of binary data.
+        # \xDE\xAD happens to be a valid 2-byte UTF-8 sequence (decodes to U+07AD, Thaana script)
+        # but should be treated as binary since Thaana characters are not expected in command data.
+        # See: https://github.com/OpenC3/cosmos/issues/XXXX
+        bytes = "\xDE\xAD".force_encoding(Encoding::ASCII_8BIT)
+        result = bytes.as_json
+        expect(result).to be_a(Hash)
+        expect(result["json_class"]).to eq("String")
+        expect(result["raw"]).to eq([222, 173]) # 0xDE = 222, 0xAD = 173
+
+        # Verify round-trip encoding/decoding
+        json_str = JSON.generate(result, allow_nan: true)
+        decoded = JSON.parse(json_str, allow_nan: true, create_additions: true)
+        expect(decoded).to eq(bytes)
+        expect(decoded.encoding).to eq(Encoding::ASCII_8BIT)
+      end
+
+      it "treats bytes that decode to C1 control characters as binary" do
+        # C1 control characters (U+0080-U+009F) should be treated as binary
+        # U+0080 is encoded as \xC2\x80 in UTF-8
+        c1_control = "\xC2\x80".force_encoding(Encoding::ASCII_8BIT)
+        result = c1_control.as_json
+        expect(result).to be_a(Hash)
+        expect(result["json_class"]).to eq("String")
       end
     end
   end

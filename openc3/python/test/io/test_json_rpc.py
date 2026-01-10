@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+import json
 from unittest.mock import *
 from test.test_helper import *
 from openc3.io.json_rpc import JsonRpcRequest
@@ -36,9 +37,7 @@ class TestJsonRpc(unittest.TestCase):
 
         json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": b"\xc3\x28"})
         request = json_rpc_request.to_hash()
-        self.assertEqual(
-            request["params"], [{"DATA": {"json_class": "String", "raw": [195, 40]}}]
-        )
+        self.assertEqual(request["params"], [{"DATA": {"json_class": "String", "raw": [195, 40]}}])
 
         json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": b"\xe2\x28\xa1"})
         request = json_rpc_request.to_hash()
@@ -112,3 +111,32 @@ class TestJsonRpc(unittest.TestCase):
         # Unicode text should be preserved as string
         self.assertIsInstance(request["params"][0]["TXT"], str)
         self.assertEqual(request["params"][0]["TXT"], "Test µ")
+
+    def test_treats_2_byte_valid_utf8_binary_as_binary(self):
+        """Ensure 2-byte binary data that happens to be valid UTF-8 is treated as binary.
+
+        This is a regression test for the issue where 0xDEAD (2 bytes) was being
+        interpreted as valid UTF-8 text instead of binary data.
+        \\xDE\\xAD happens to be a valid 2-byte UTF-8 sequence (decodes to U+07AD, Thaana script)
+        but should be treated as binary since Thaana characters are not expected in command data.
+        """
+        # 2-byte binary that happens to be valid UTF-8
+        binary_data = bytes([0xDE, 0xAD])  # This is valid UTF-8 (U+07AD)
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": binary_data})
+        request = json_rpc_request.to_hash()
+
+        # Should be encoded as raw binary, not as text
+        self.assertIsInstance(request["params"][0]["DATA"], dict)
+        self.assertEqual(request["params"][0]["DATA"]["json_class"], "String")
+        self.assertEqual(request["params"][0]["DATA"]["raw"], [222, 173])
+
+    def test_treats_c1_control_characters_as_binary(self):
+        """Ensure bytes that decode to C1 control characters (U+0080-U+009F) are treated as binary."""
+        # U+0080 is encoded as \\xC2\\x80 in UTF-8
+        c1_control = bytes([0xC2, 0x80])
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": c1_control})
+        request = json_rpc_request.to_hash()
+
+        # Should be encoded as raw binary
+        self.assertIsInstance(request["params"][0]["DATA"], dict)
+        self.assertEqual(request["params"][0]["DATA"]["json_class"], "String")
