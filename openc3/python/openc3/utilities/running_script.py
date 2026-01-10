@@ -1313,7 +1313,25 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                     )
 
                 if not use_script_engine:
-                    text = "\n".join(text_lines[(line_no - 1) : end_line_no])
+                    # Dedent to handle goto/execute selection on indented lines
+                    # We strip the indentation of the first non-empty line from all lines
+                    # This handles cases where we goto an indented line (e.g., inside an if block)
+                    sliced_lines = text_lines[(line_no - 1) : end_line_no]
+                    first_indent = 0
+                    for line in sliced_lines:
+                        if line.strip():  # Find first non-empty line
+                            first_indent = len(line) - len(line.lstrip())
+                            break
+                    if first_indent > 0:
+                        dedented_lines = []
+                        for line in sliced_lines:
+                            if line and len(line) >= first_indent and line[:first_indent].isspace():
+                                dedented_lines.append(line[first_indent:])
+                            else:
+                                dedented_lines.append(line)
+                        text = "\n".join(dedented_lines)
+                    else:
+                        text = "\n".join(sliced_lines)
 
             if use_script_engine:
                 # Don't instrument if using a script engine

@@ -433,6 +433,9 @@ module OpenC3
       previous_item = nil
       warnings = []
       @sorted_items.each do |item|
+        # Skip items with a parent_item since those are accessor-based items within a structure
+        # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
+        next if item.parent_item
         if expected_next_offset and (item.bit_offset < expected_next_offset) and !item.overlap
           msg = "Bit definition overlap at bit offset #{item.bit_offset} for packet #{@target_name} #{@packet_name} items #{item.name} and #{previous_item.name}"
           Logger.instance.warn(msg)
@@ -906,6 +909,11 @@ module OpenC3
             write_item(item, item.structure.buffer(false), :RAW, buffer)
           end
         elsif not item.default.nil? and not item.parent_item
+          # Skip writing default for accessor-based items when template is used
+          # The template already contains the correct default value
+          # Only skip if key is explicitly set (different from item name) - this distinguishes
+          # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+          next if item.key and item.key != item.name and @template and use_template
           write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
         end
       end
@@ -1234,7 +1242,20 @@ module OpenC3
       # Items with derived items last
       @sorted_items.each do |item|
         if item.data_type != :DERIVED
-          items << item.as_json(*a)
+          item_hash = item.as_json(*a)
+          # For accessor-based items with a template, extract the default from the template
+          # Only extract for items with explicit keys (different from item name) - this distinguishes
+          # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
+          if item.key and item.key != item.name and @template
+            begin
+              template_value = read_item_from_template(item)
+              item_hash['default'] = template_value unless template_value.nil?
+            rescue => e
+              # If we can't read from template, keep the original default
+              Logger.debug("Could not read template default for #{@target_name} #{@packet_name} #{item.name}: #{e.message}")
+            end
+          end
+          items << item_hash
         end
       end
       @sorted_items.each do |item|
@@ -1277,7 +1298,7 @@ module OpenC3
         else
           given_raw = json_hash[item.name]
           json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
+          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
           limits_state = item.limits.state
           json_hash["#{item.name}__L"] = limits_state if limits_state
         end
@@ -1357,6 +1378,56 @@ module OpenC3
     end
 
     protected
+
+    # Read item value from template, handling PythonProxy accessors
+    # For PythonProxy, parse template directly since the proxy's class method returns a string
+    def read_item_from_template(item)
+      accessor_class = @accessor.class
+
+      # For PythonProxy, accessor.class returns the class name as a string
+      # We need to parse the template directly based on the accessor type
+      if accessor_class.is_a?(String)
+        case accessor_class
+        when 'JsonAccessor'
+          return read_json_template_item(item)
+        when 'CborAccessor'
+          return read_cbor_template_item(item)
+        when 'XmlAccessor'
+          return read_xml_template_item(item)
+        else
+          # Unknown accessor type - can't read from template
+          return nil
+        end
+      else
+        # Normal accessor - use the class method
+        return accessor_class.read_item(item, @template)
+      end
+    end
+
+    # Parse JSON template and extract item value using JSONPath key
+    def read_json_template_item(item)
+      require 'json'
+      require 'jsonpath'
+      json_data = JSON.parse(@template.to_s, allow_nan: true, create_additions: true)
+      JsonPath.new(item.key).first(json_data)
+    end
+
+    # Parse CBOR template and extract item value using JSONPath key
+    def read_cbor_template_item(item)
+      require 'cbor'
+      require 'jsonpath'
+      cbor_data = CBOR.decode(@template.to_s)
+      JsonPath.new(item.key).first(cbor_data)
+    end
+
+    # Parse XML template and extract item value using XPath key
+    def read_xml_template_item(item)
+      require 'nokogiri'
+      doc = Nokogiri::XML(@template.to_s)
+      node = doc.xpath(item.key).first
+      return nil unless node
+      node.text
+    end
 
     def handle_limits_states(item, value)
       # Retrieve limits state for the given value

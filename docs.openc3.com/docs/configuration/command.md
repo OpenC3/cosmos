@@ -20,6 +20,22 @@ Command definition files define the command packets that can be sent to COSMOS t
 
 When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
+### Naming Convention
+
+Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+
+* Use underscores
+
+    Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
+
+* Be descriptive but succinct
+
+    A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
+
+* Avoid brackets in commands and parameters
+
+    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
+
 <div style={{"clear": 'both'}}></div>
 
 ## Command Authority (Enterprise)
@@ -147,13 +163,13 @@ META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**This item is allowed to overlap other items in the packet**
 
 If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the key used to access this raw value in the packet.**
 
 Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
@@ -167,7 +183,7 @@ KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks an item as having its bit size defined by another length item**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -176,7 +192,7 @@ KEY $.book.title
 | Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### OBFUSCATE
-<div class="right">(Since 6.6.0)</div>**Hides the item value in the UI, text logs, and raw binary file**
+<span class="badge badge--secondary since-right">Since 6.6.0</span>**Hides the item value in the UI, text logs, and raw binary file**
 
 
 #### REQUIRED
@@ -323,7 +339,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    return int(value * 1.5) # Convert the value by a scale factor
+    int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 </TabItem>
@@ -331,7 +347,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
+    (value * 1.5).to_i # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 </TabItem>
@@ -500,7 +516,7 @@ APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
 ### STRUCTURE
-**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -512,7 +528,7 @@ APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 | Packet Name | Packet Name of the structure packet | True |
 
 ### APPEND_STRUCTURE
-**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Adds and flattens a structure (generally a virtual packet) into the current packet. The specific named item is BLOCK type and hidden.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -540,7 +556,7 @@ SELECT_COMMAND INST COLLECT
 ```
 
 ### DELETE_PARAMETER
-<div class="right">(Since 4.4.1)</div>**Deletes an existing command parameter from the packet definition**
+<span class="badge badge--secondary since-right">Since 4.4.1</span>**Deletes an existing command parameter from the packet definition**
 
 Deleting a parameter from the command definition does not remove the defined space for that parameter. Thus unless you redefine a new parameter, there will be a "hole" in the packet where the data is not accessible. You can use SELECT_COMMAND and then PARAMETER to define a new parameter.
 
@@ -595,7 +611,7 @@ Sending a hazardous command causes a dialog asking for confirmation before sendi
 | Description | Description for why the command is hazardous which must be enclosed with quotes | False |
 
 ### ACCESSOR
-<div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines the class used to read and write raw values from the packet**
 
 Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
@@ -605,7 +621,7 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Argument | Additional argument passed to the accessor class constructor | False |
 
 ### SUBPACKETIZER
-<div class="right">(Since 6.10.0)</div>**Defines a class used to break up the packet into subpackets before decom**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Defines a class used to break up the packet into subpackets before decom**
 
 Defines a class used to break up the packet into subpackets before decom. Defaults to nil/None.
 
@@ -615,7 +631,7 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 | Argument | Additional argument passed to the Subpacketizer class constructor | False |
 
 ### TEMPLATE
-<div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template string used to initialize the command before default values are filled in**
 
 Generally the template string is formatted in JSON or HTML and then values are filled in with command parameters. Must be UTF-8 encoded.
 
@@ -624,7 +640,7 @@ Generally the template string is formatted in JSON or HTML and then values are f
 | Template | The template string which should be enclosed in quotes | True |
 
 ### TEMPLATE_FILE
-<div class="right">(Since 5.0.10)</div>**Defines a template file used to initialize the command before default values are filled in**
+<span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to initialize the command before default values are filled in**
 
 Generally the template file is formatted in JSON or HTML and then values are filled in with command parameters. Can be binary or UTF-8.
 
@@ -633,7 +649,7 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
 
 ### RESPONSE
-<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet response to this command**
+<span class="badge badge--secondary since-right">Since 5.14.0</span>**Indicates the expected telemetry packet response to this command**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -641,7 +657,7 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Packet Name | Packet Name of telemetry response packet | True |
 
 ### ERROR_RESPONSE
-<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet error response to this command**
+<span class="badge badge--secondary since-right">Since 5.14.0</span>**Indicates the expected telemetry packet error response to this command**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -649,7 +665,7 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Packet Name | Packet Name of telemetry error response packet | True |
 
 ### RELATED_ITEM
-<div class="right">(Since 5.14.0)</div>**Defines a related telemetry item to this command**
+<span class="badge badge--secondary since-right">Since 5.14.0</span>**Defines a related telemetry item to this command**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -658,7 +674,7 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Item Name | Item Name of related telemetry item | True |
 
 ### SCREEN
-<div class="right">(Since 5.14.0)</div>**Defines a related telemetry screen to this command**
+<span class="badge badge--secondary since-right">Since 5.14.0</span>**Defines a related telemetry screen to this command**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -666,25 +682,25 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Screen Name | Screen Name of related telemetry screen | True |
 
 ### VIRTUAL
-<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+<span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks this packet as virtual and not participating in identification**
 
 Used for packet definitions that can be used as structures for items with a given packet.
 
 
 ### RESTRICTED
-<div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
+<span class="badge badge--secondary since-right">Since 5.20.0</span>**Marks this packet as restricted and will require approval if critical commanding is enabled**
 
 Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
 
 
 ### SUBPACKET
-<div class="right">(Since 6.10.0)</div>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Marks this packet as as a subpacket which will exclude it from Interface level identification**
 
 Used with a SUBPACKETIZER to breakup up packets into subpackets at decom time
 
 
 ### VALIDATOR
-<div class="right">(Since 5.19.0)</div>**Defines a validator class for a command**
+<span class="badge badge--secondary since-right">Since 5.19.0</span>**Defines a validator class for a command**
 
 Validator class is used to validate the command success or failure with both a pre_check and post_check method.
 

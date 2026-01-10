@@ -141,12 +141,12 @@ GENERIC_WRITE_CONVERSION_START:
   ruby_example: |
     APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
       GENERIC_WRITE_CONVERSION_START
-        return (value * 1.5).to_i # Convert the value by a scale factor
+        (value * 1.5).to_i # Convert the value by a scale factor
       GENERIC_WRITE_CONVERSION_END
   python_example: |
     APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
       GENERIC_WRITE_CONVERSION_START
-        return int(value * 1.5) # Convert the value by a scale factor
+        int(value * 1.5) # Convert the value by a scale factor
       GENERIC_WRITE_CONVERSION_END
 GENERIC_WRITE_CONVERSION_END:
   summary: Complete a generic write conversion

@@ -706,4 +706,331 @@ RSpec.describe StorageController, type: :controller do
       expect(JSON.parse(response.body)["message"]).to eq("Must pass bucket or volume parameter!")
     end
   end
+
+  describe "RBAC enforcement" do
+    describe "bucket_requires_rbac?" do
+      it "returns false for tools bucket" do
+        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_TOOLS_BUCKET')).to be false
+      end
+
+      it "returns true for config bucket" do
+        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_CONFIG_BUCKET')).to be true
+      end
+
+      it "returns true for logs bucket" do
+        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_LOGS_BUCKET')).to be true
+      end
+
+      it "returns true for unknown buckets" do
+        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_UNKNOWN_BUCKET')).to be true
+      end
+    end
+
+    describe "extract_scope_from_path" do
+      it "returns nil for empty path" do
+        expect(controller.send(:extract_scope_from_path, '')).to be_nil
+        expect(controller.send(:extract_scope_from_path, nil)).to be_nil
+        expect(controller.send(:extract_scope_from_path, '/')).to be_nil
+      end
+
+      it "extracts scope from path" do
+        expect(controller.send(:extract_scope_from_path, 'DEFAULT/targets/INST')).to eq('DEFAULT')
+        expect(controller.send(:extract_scope_from_path, '/DEFAULT/targets/INST')).to eq('DEFAULT')
+        expect(controller.send(:extract_scope_from_path, 'SCOPE1/logs/20251220')).to eq('SCOPE1')
+      end
+    end
+
+    describe "extract_target_from_path" do
+      it "returns nil for paths without target" do
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', '')).to be_nil
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT')).to be_nil
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets')).to be_nil
+      end
+
+      it "extracts target from config bucket paths" do
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets/INST')).to eq('INST')
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets/INST/cmd_tlm')).to eq('INST')
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST2/screens')).to eq('INST2')
+        expect(controller.send(:extract_target_from_path, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/target_archives/INST/20251220')).to eq('INST')
+      end
+
+      it "extracts target from logs bucket paths" do
+        expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/decom_logs/tlm/INST')).to eq('INST')
+        expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/raw_logs/cmd/INST/20251220')).to eq('INST')
+        expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/reduced_minute_logs/tlm/INST2')).to eq('INST2')
+      end
+
+      it "returns nil for non-target paths in logs bucket" do
+        expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/text_logs/messages')).to be_nil
+      end
+    end
+
+    describe "target_list_depth" do
+      it "returns 2 for config bucket target directories" do
+        expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets')).to eq(2)
+        expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified')).to eq(2)
+        expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/target_archives')).to eq(2)
+      end
+
+      it "returns 3 for logs bucket target directories" do
+        expect(controller.send(:target_list_depth, 'OPENC3_LOGS_BUCKET', 'DEFAULT/decom_logs/tlm')).to eq(3)
+        expect(controller.send(:target_list_depth, 'OPENC3_LOGS_BUCKET', 'DEFAULT/raw_logs/cmd')).to eq(3)
+      end
+
+      it "returns nil for non-target listing paths" do
+        expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT')).to be_nil
+        expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets/INST')).to be_nil
+        expect(controller.send(:target_list_depth, 'OPENC3_LOGS_BUCKET', 'DEFAULT/text_logs')).to be_nil
+      end
+    end
+
+    describe "GET files with RBAC" do
+      let(:bucket_client) { instance_double(OpenC3::Bucket) }
+
+      before do
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      end
+
+      it "allows access to tools bucket without scope check" do
+        allow(bucket_client).to receive(:list_files).and_return([['dir1'], []])
+
+        get :files, params: {root: "OPENC3_TOOLS_BUCKET", path: "somepath", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "filters scopes at bucket root for config bucket" do
+        # At root level, returns list of scopes
+        allow(bucket_client).to receive(:list_files).and_return([['DEFAULT', 'SCOPE2', 'SCOPE3'], []])
+
+        # Mock authorize to only allow DEFAULT scope
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "/", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+
+        result = JSON.parse(response.body)
+        # Only DEFAULT should be returned
+        expect(result[0]).to eq(['DEFAULT'])
+      end
+
+      it "returns 403 when accessing unauthorized scope in config bucket" do
+        # Mock authorize to reject non-DEFAULT scopes
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "SCOPE2/targets", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)["message"]).to eq("Not authorized for scope: SCOPE2")
+      end
+
+      it "allows access to authorized scope in config bucket" do
+        allow(bucket_client).to receive(:list_files).and_return([['targets', 'targets_modified'], []])
+
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "filters targets when listing target directory" do
+        # Listing DEFAULT/targets/ should filter targets based on authorization
+        allow(bucket_client).to receive(:list_files).and_return([['INST', 'INST2', 'SYSTEM'], []])
+
+        # Mock authorize to only allow INST target with tlm permission
+        allow(controller).to receive(:authorize) do |args|
+          # Allow system permission for scope-level access, tlm permission for INST target only
+          if args[:permission] == 'system' && args[:target_name].nil?
+            'authorized_user'
+          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+          end
+        end
+
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+
+        result = JSON.parse(response.body)
+        # Only INST should be returned
+        expect(result[0]).to eq(['INST'])
+      end
+
+      it "returns 403 when accessing unauthorized target files" do
+        # Mock authorize to reject INST2 target (user only has tlm permission for INST)
+        allow(controller).to receive(:authorize) do |args|
+          if args[:permission] == 'system' && args[:target_name].nil?
+            'authorized_user'
+          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+          end
+        end
+
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets/INST2/cmd_tlm", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "filters targets in logs bucket decom_logs directory" do
+        allow(bucket_client).to receive(:list_files).and_return([['INST', 'INST2'], []])
+
+        # Mock authorize to only allow INST target with tlm permission
+        allow(controller).to receive(:authorize) do |args|
+          if args[:permission] == 'system' && args[:target_name].nil?
+            'authorized_user'
+          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+          end
+        end
+
+        get :files, params: {root: "OPENC3_LOGS_BUCKET", path: "DEFAULT/decom_logs/tlm", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+
+        result = JSON.parse(response.body)
+        expect(result[0]).to eq(['INST'])
+      end
+    end
+
+    describe "GET download_file with RBAC" do
+      it "returns 403 for unauthorized scope in config bucket" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets/INST/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "returns 403 for unauthorized target in config bucket" do
+        # User has tlm permission for INST only
+        allow(controller).to receive(:authorize) do |args|
+          if args[:permission] == 'system' && args[:target_name].nil?
+            'authorized_user'
+          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+          end
+        end
+
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/INST2/cmd_tlm/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "allows download from authorized target" do
+        bucket_client = instance_double(OpenC3::Bucket)
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:get_object)
+        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:read).and_return("file content")
+
+        # Mock authorize to allow INST target with tlm permission
+        allow(controller).to receive(:authorize) do |args|
+          if args[:permission] == 'system' && args[:target_name].nil?
+            'authorized_user'
+          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+          end
+        end
+
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/INST/cmd_tlm/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows download from tools bucket without scope check" do
+        bucket_client = instance_double(OpenC3::Bucket)
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:get_object)
+        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:read).and_return("file content")
+
+        get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    describe "GET exists with RBAC" do
+      it "returns 403 for unauthorized scope in logs bucket" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        get :exists, params: {bucket: "OPENC3_LOGS_BUCKET", object_id: "SCOPE2/20251220/log.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)["message"]).to eq("Not authorized for scope: SCOPE2")
+      end
+    end
+
+    describe "GET get_download_presigned_request with RBAC" do
+      it "returns 403 for unauthorized scope" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        get :get_download_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    describe "POST download_multiple_files with RBAC" do
+      it "returns 403 for unauthorized scope" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "SCOPE2/targets/", files: ["file1.txt"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    describe "DELETE delete with RBAC" do
+      it "returns 403 for unauthorized scope in config bucket" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets_modified/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)["message"]).to eq("Not authorized for scope: SCOPE2")
+      end
+    end
+  end
 end

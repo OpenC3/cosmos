@@ -55,10 +55,18 @@
         top: '162px',
       }"
     />
-    <div style="position:absolute;top:102px;left:8px;color:black;">CMD</div>
-    <div style="position:absolute;top:152px;left:8px;color:black;">TLM</div>
-    <div style="position:absolute;top:102px;right:8px;color:black;">CMD</div>
-    <div style="position:absolute;top:152px;right:8px;color:black;">TLM</div>
+    <div style="position: absolute; top: 102px; left: 8px; color: black">
+      CMD
+    </div>
+    <div style="position: absolute; top: 152px; left: 8px; color: black">
+      TLM
+    </div>
+    <div style="position: absolute; top: 102px; right: 8px; color: black">
+      CMD
+    </div>
+    <div style="position: absolute; top: 152px; right: 8px; color: black">
+      TLM
+    </div>
   </div>
 </template>
 
@@ -76,14 +84,13 @@ export default {
       required: true,
     },
   },
+  data() {
+    return {}
+  },
   computed: {
     routerStyle() {
       return { width: `${this.data.width}px`, height: `${this.data.height}px` }
     },
-  },
-  data() {
-    return {
-    }
   },
 }
 </script>

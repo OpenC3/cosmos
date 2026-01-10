@@ -65,6 +65,15 @@ module OpenC3
         @parser.verify_num_parameters(max_options - 2, max_options, @usage)
       end
       @parser.verify_parameter_naming(1) # Item name is the 1st parameter
+
+      # ARRAY items cannot have brackets in their name because brackets are used
+      # for array indexing in the UI and would cause confusion
+      if @parser.keyword.include?('ARRAY')
+        item_name = @parser.parameters[0]
+        if item_name.include?('[') || item_name.include?(']')
+          raise @parser.error("ARRAY items cannot have brackets in their name: #{item_name}", @usage)
+        end
+      end
     end
 
     def create_packet_item(packet, cmd_or_tlm)

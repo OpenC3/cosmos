@@ -292,3 +292,8 @@ img[alt="CANVASDOT"] {
   max-height: 80vh;
   overflow-y: auto;
 }
+
+.since-right {
+  float: right;
+  font-weight: normal;
+}

@@ -32,8 +32,8 @@
       <v-row dense>
         <v-col>
           <v-text-field
-            label="Text"
             v-model="text"
+            label="Text"
             data-test="classification-banner-text"
           />
         </v-col>
@@ -41,19 +41,19 @@
       <v-row dense>
         <v-col>
           <v-select
+            v-model="selectedBackgroundColor"
             label="Background color"
             :items="colors"
             item-title="text"
-            v-model="selectedBackgroundColor"
             data-test="classification-banner-background-color"
           >
-            <template v-slot:prepend-inner v-if="selectedBackgroundColor">
+            <template v-if="selectedBackgroundColor" #prepend-inner>
               <v-icon :color="selectedBackgroundColor"> mdi-square </v-icon>
             </template>
-            <template v-slot:item="{ props, item }">
+            <template #item="{ props, item }">
               <v-list-item v-bind="props" :value="item.text">
-                <template v-slot:prepend>
-                  <v-icon :color="item.value" v-if="item.value">
+                <template #prepend>
+                  <v-icon v-if="item.value" :color="item.value">
                     mdi-square
                   </v-icon>
                 </template>
@@ -63,14 +63,14 @@
         </v-col>
         <v-col>
           <v-text-field
+            v-model="customBackgroundColor"
             label="Custom background color"
             :hint="customColorHint"
             :disabled="selectedBackgroundColor !== false"
-            v-model="customBackgroundColor"
             :rules="[rules.customColor]"
             data-test="classification-banner-custom-background-color"
           >
-            <template v-slot:prepend-inner>
+            <template #prepend-inner>
               <v-icon
                 v-show="!selectedBackgroundColor"
                 :color="customBackgroundColor"
@@ -82,21 +82,21 @@
         </v-col>
         <v-col>
           <v-select
+            v-model="selectedFontColor"
             label="Font color"
             :items="colors"
             item-title="text"
-            v-model="selectedFontColor"
             data-test="classification-banner-font-color"
           >
-            <template v-slot:prepend-inner v-if="selectedFontColor">
+            <template v-if="selectedFontColor" #prepend-inner>
               <v-icon v-show="selectedFontColor" :color="selectedFontColor">
                 mdi-square
               </v-icon>
             </template>
-            <template v-slot:item="{ props, item }">
+            <template #item="{ props, item }">
               <v-list-item v-bind="props" :value="item.text">
-                <template v-slot:prepend>
-                  <v-icon :color="item.value" v-if="item.value">
+                <template #prepend>
+                  <v-icon v-if="item.value" :color="item.value">
                     mdi-square
                   </v-icon>
                 </template>
@@ -106,14 +106,14 @@
         </v-col>
         <v-col>
           <v-text-field
+            v-model="customFontColor"
             label="Custom font color"
             :hint="customColorHint"
             :disabled="selectedFontColor !== false"
-            v-model="customFontColor"
             :rules="[rules.customColor]"
             data-test="classification-banner-custom-font-color"
           >
-            <template v-slot:prepend-inner>
+            <template #prepend-inner>
               <v-icon v-show="!selectedFontColor" :color="customFontColor">
                 mdi-square
               </v-icon>
@@ -124,37 +124,37 @@
       <v-row dense>
         <v-col>
           <v-switch
-            label="Display top banner"
             v-model="displayTopBanner"
+            label="Display top banner"
             color="primary"
             data-test="display-top-banner"
           />
         </v-col>
         <v-col>
           <v-text-field
+            v-model="topHeight"
             label="Top height"
             :disabled="!displayTopBanner"
             type="number"
             suffix="px"
-            v-model="topHeight"
             data-test="classification-banner-top-height"
           />
         </v-col>
         <v-col>
           <v-switch
-            label="Display bottom banner"
             v-model="displayBottomBanner"
+            label="Display bottom banner"
             color="primary"
             data-test="display-bottom-banner"
           />
         </v-col>
         <v-col>
           <v-text-field
+            v-model="bottomHeight"
             label="Bottom height"
             :disabled="!displayBottomBanner"
             type="number"
             suffix="px"
-            v-model="bottomHeight"
             data-test="classification-banner-bottom-height"
           />
         </v-col>
@@ -163,10 +163,10 @@
     <v-card-actions>
       <v-btn
         :disabled="!formValid"
-        @click="save"
         color="success"
         variant="text"
         data-test="save-classification-banner"
+        @click="save"
       >
         Save
       </v-btn>

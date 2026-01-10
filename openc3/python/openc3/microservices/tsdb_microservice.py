@@ -44,6 +44,10 @@ class TsdbMicroservice(Microservice):
         self.query = None
         self.connect_query()
 
+        # Track columns that need JSON serialization due to type conflicts or DERIVED type
+        # Key is "table__column", value is True
+        self.json_columns = {}
+
         # Build the tables
         for topic in self.topics:
             topic_parts = topic.split("__")
@@ -129,9 +133,13 @@ class TsdbMicroservice(Microservice):
         # Build column definitions for all packet items
         column_definitions = []
 
-        for item in packet["items"]:
+        items = packet.get("items", [])
+        for item in items:
             # Sanitize item name the same way as in read_topics
-            item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
+            name = item.get("name")
+            if not name:
+                continue
+            item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", name)
 
             # Skip standard derived items as they're explicitly created
             if item_name in [
@@ -143,9 +151,14 @@ class TsdbMicroservice(Microservice):
             ]:
                 continue
 
-            # Skip DERIVED items since it's hard to know what type they are
-            # We'll let the Influx Line Protocol writer handle these
-            if item["data_type"] == "DERIVED":
+            data_type = item.get("data_type")
+
+            # DERIVED items have unpredictable types (could be int, float, array, etc.)
+            # Create them as VARCHAR and serialize as JSON to avoid type conflicts
+            if data_type == "DERIVED":
+                column_definitions.append(f'"{item_name}" varchar')
+                # Register for JSON serialization in read_topics
+                self.json_columns[f"{table_name}__{item_name}"] = True
                 continue
 
             if item.get("array_size"):
@@ -160,23 +173,25 @@ class TsdbMicroservice(Microservice):
                 # can support the full range of the given type. This is tricky because
                 # QuestDB uses the minimum possible value in a given type as NULL.
                 # See https://questdb.com/docs/reference/sql/datatypes for more details.
-                if item["data_type"] in ["INT", "UINT"]:
+                bit_size = item.get("bit_size", 0)
+                if data_type in ["INT", "UINT"]:
                     # Less than 32 bits can fit into a standard INT
                     # Exactly 32 bits doesn't because it can't store -2,147,483,648
                     # (INT min value) since that is NULL in QuestDB
-                    if item["bit_size"] < 32:
+                    if bit_size < 32:
                         column_type = "int"
-                    # TODO: This won't work for a min 64 bit value because that is NULL
-                    elif item["bit_size"] <= 64:
+                    # Note: QuestDB treats min int64 (-2^63) as NULL; handled by clamping
+                    # values to -(2^63)+1 in read_topics()
+                    elif bit_size <= 64:
                         column_type = "long"
                     else:
                         column_type = "varchar"  # Base64 encode larger integers
-                elif item["data_type"] == "FLOAT":
-                    if item["bit_size"] == 32:
+                elif data_type == "FLOAT":
+                    if bit_size == 32:
                         column_type = "float"
                     else:
                         column_type = "double"
-                elif item["data_type"] in ["STRING", "BLOCK"]:
+                elif data_type in ["STRING", "BLOCK"]:
                     column_type = "varchar"
 
                 column_definitions.append(f'"{item_name}" {column_type}')
@@ -185,17 +200,20 @@ class TsdbMicroservice(Microservice):
                     # States are stored as a converted string column
                     column_definitions.append(f'"{item_name}__C" varchar')
                 elif item.get("read_conversion"):
-                    rc = item["read_conversion"]
-                    if rc.get("converted_type") == "FLOAT":
-                        if rc.get("converted_bit_size") == 32:
+                    rc = item.get("read_conversion")
+                    converted_type = rc.get("converted_type") if rc else None
+                    converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
+                    if converted_type == "FLOAT":
+                        if converted_bit_size == 32:
                             column_definitions.append(f'"{item_name}__C" float')
                         else:
                             column_definitions.append(f'"{item_name}__C" double')
-                    elif rc.get("converted_type") in ["INT", "UINT"]:
-                        if rc.get("converted_bit_size") < 32:
+                    elif converted_type in ["INT", "UINT"]:
+                        if converted_bit_size < 32:
                             column_definitions.append(f'"{item_name}__C" int')
-                        # TODO: This won't work for a min 64 bit value because that is NULL
-                        elif rc.get("converted_bit_size") <= 64:
+                        # Note: QuestDB treats min int64 (-2^63) as NULL; handled by clamping
+                        # values to -(2^63)+1 in read_topics()
+                        elif converted_bit_size <= 64:
                             column_definitions.append(f'"{item_name}__C" long')
                         else:
                             # Base64 encode larger bit values
@@ -249,8 +267,12 @@ class TsdbMicroservice(Microservice):
         config_data = config[0][1]
 
         if config_data.get(b"type") == b"target":
-            kind = config_data.get(b"kind").decode()
-            target_name = config_data.get(b"name").decode()
+            kind_bytes = config_data.get(b"kind")
+            name_bytes = config_data.get(b"name")
+            if not kind_bytes or not name_bytes:
+                return
+            kind = kind_bytes.decode()
+            target_name = name_bytes.decode()
 
             if kind == "created":
                 self.logger.info(f"New target {target_name} created")
@@ -269,14 +291,19 @@ class TsdbMicroservice(Microservice):
                 if self.cancel_thread:
                     break
 
-                target_name = msg_hash.get(b"target_name").decode()
-                packet_name = msg_hash.get(b"packet_name").decode()
+                target_name_bytes = msg_hash.get(b"target_name")
+                packet_name_bytes = msg_hash.get(b"packet_name")
+                if not target_name_bytes or not packet_name_bytes:
+                    self.logger.warn("QuestDB: Missing target_name or packet_name in message")
+                    continue
+                target_name = target_name_bytes.decode()
+                packet_name = packet_name_bytes.decode()
 
                 try:
-                    json_data = json.loads(msg_hash.get(b"json_data", "{}"))
+                    json_data = json.loads(msg_hash.get(b"json_data", b"{}"))
                 except (json.JSONDecodeError, TypeError):
                     self.logger.error(f"Failed to parse json_data for {target_name}.{packet_name}")
-                    return
+                    continue
 
                 # Replace the following characters with underscore: ?,'"\/:)(+*%~
                 # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
@@ -284,7 +311,11 @@ class TsdbMicroservice(Microservice):
                 table_name = re.sub(r'[?,\'"\\/:)(+*%~]', "_", f"{target_name}__{packet_name}")
 
                 # This is the PACKET_TIMESECONDS as set in telemetry_decom_topic
-                timestamp = int(msg_hash.get(b"time").decode())
+                time_bytes = msg_hash.get(b"time")
+                if not time_bytes:
+                    self.logger.warn(f"QuestDB: Missing time in message for {target_name}.{packet_name}")
+                    continue
+                timestamp = int(time_bytes.decode())
 
                 values = {}
                 for orig_item_name, value in json_data.items():
@@ -336,6 +367,62 @@ class TsdbMicroservice(Microservice):
                     # NOTE: Semicolon added as it messes up queries
                     item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", orig_item_name)
 
+                    # Check if this column needs JSON serialization (DERIVED items or prior type conflicts)
+                    json_key = f"{table_name}__{item_name}"
+                    force_json = json_key in self.json_columns
+
+                    # For DERIVED columns, serialize everything as JSON string to avoid type conflicts
+                    if force_json:
+                        # Convert any value to JSON string for VARCHAR column
+                        if isinstance(value, bytes):
+                            value = base64.b64encode(value).decode("ascii")
+                        elif not isinstance(value, str):
+                            value = json.dumps(value)
+                    else:
+                        # Handle various data types for non-DERIVED columns
+                        match value:
+                            case int():
+                                if value > (2**63 - 1):  # max int64 value
+                                    value = 2**63 - 1
+                                elif value < (-(2**63) + 1):
+                                    # QuestDB treats int64 min value as NULL, so we set it to -2^63 + 1
+                                    value = -(2**63) + 1
+
+                            case float() | str() | None:
+                                pass
+
+                            case bytes():
+                                value = base64.b64encode(value).decode("ascii")
+
+                            case list():
+                                # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+                                if len(value) == 0 or not isinstance(value[0], numbers.Number):
+                                    # If the list is empty or not numeric, convert to JSON string
+                                    value = json.dumps(value)
+                                else:
+                                    value = numpy.array(value, dtype=numpy.float64)
+
+                            case dict():
+                                json_class = value.get("json_class")
+                                raw = value.get("raw")
+                                if json_class == "Float" and raw is not None:
+                                    # We send over NaN and Infinity values as json serialized like:
+                                    #   {'json_class': 'Float', 'raw': 'NaN'}
+                                    value = float(raw)
+                                elif json_class == "String" and isinstance(raw, list):
+                                    # We send over blocks of data as json serialized strings like:
+                                    #   {'json_class': 'String', 'raw': [15, 7, 9, 13, 7, 5, 14, 7 ... ]}
+                                    value = base64.b64encode(bytes(raw)).decode("ascii")
+                                else:
+                                    # Arbitrary dict from OBJECT/ANY type items - serialize as JSON
+                                    value = json.dumps(value)
+                                if isinstance(value, list) and all(isinstance(b, int) and 0 <= b <= 255 for b in value):
+                                    value = base64.b64encode(bytes(value)).decode("ascii")
+
+                            case _:
+                                self.logger.warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
+                                continue
+
                     match item_name:
                         case "PACKET_TIMESECONDS" | "RECEIVED_TIMESECONDS":
                             values[item_name] = TimestampMicros(int(value * 1_000_000))
@@ -367,19 +454,35 @@ class TsdbMicroservice(Microservice):
                         error_message = str(error)
                         table_match = re.search(r"table:\s+(.+?),", error_message)  # .+? is non-greedy
                         column_match = re.search(r"column:\s+(.+?);", error_message)
-                        type_match = re.search(r"protocol type:\s+([A-Z]+)\s", error_message)
+                        type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
+                        to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
 
                         if table_match and column_match and type_match:
                             table_name = table_match.group(1)
                             column_name = column_match.group(1)
-                            column_type = type_match.group(1)
+                            protocol_type = type_match.group(1)
+                            column_type = to_type_match.group(1) if to_type_match else ""
                         else:
                             self.logger.error("QuestDB: Could not parse table, column, or type from error message")
                             return
 
+                        # Check if this is an array-to-scalar conversion (not fixable via ALTER)
+                        if protocol_type.endswith("[]") and not column_type.endswith("[]"):
+                            # Register this column for JSON serialization going forward
+                            json_key = f"{table_name}__{column_name}"
+                            self.json_columns[json_key] = True
+                            self.logger.warn(
+                                f"QuestDB: Column {column_name} in table {table_name} was created as scalar "
+                                f"but received array. Will serialize as JSON going forward."
+                            )
+                            # Don't try to ALTER - it won't work for array-to-scalar conversion
+                            return
+
                         # Try to change the column type to fix the error
                         # We put the table in double quotes to handle special characters
-                        alter = f"""ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE {column_type}"""
+                        # QuestDB SQL expects lowercase types (e.g., double[] not DOUBLE[])
+                        protocol_type = protocol_type.lower()
+                        alter = f"""ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE {protocol_type}"""
                         cur.execute(alter)
                         self.logger.info(f"QuestDB: {alter}")
                         self.connect_ingest()  # reconnect

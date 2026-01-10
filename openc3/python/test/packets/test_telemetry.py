@@ -24,7 +24,7 @@ from openc3.system.system import System
 from openc3.packets.packet import Packet
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
-
+from datetime import datetime, timedelta
 
 class TestTelemetry(unittest.TestCase):
     def setUp(self):
@@ -99,6 +99,135 @@ class TestTelemetry(unittest.TestCase):
         pkt = self.tlm.packet("TGT1", "PKT1")
         self.assertEqual(pkt.target_name, "TGT1")
         self.assertEqual(pkt.packet_name, "PKT1")
+
+    def test_items_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.items("tgtX", "pkt1")
+
+    def test_items_complains_about_non_existent_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+            self.tlm.items("TGT1", "PKTX")
+
+    def test_items_complains_about_the_LATEST_packet(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 LATEST' does not exist"):
+            self.tlm.items("TGT1", "LATEST")
+
+    def test_items_returns_all_items_from_packet_TGT1_PKT1(self):
+        items = self.tlm.items("TGT1", "PKT1")
+        self.assertEqual(len(items), 9)
+        self.assertEqual(items[0].name, "PACKET_TIMESECONDS")
+        self.assertEqual(items[1].name, "PACKET_TIMEFORMATTED")
+        self.assertEqual(items[2].name, "RECEIVED_TIMESECONDS")
+        self.assertEqual(items[3].name, "RECEIVED_TIMEFORMATTED")
+        self.assertEqual(items[4].name, "RECEIVED_COUNT")
+        self.assertEqual(items[5].name, "ITEM1")
+        self.assertEqual(items[6].name, "ITEM2")
+        self.assertEqual(items[7].name, "ITEM3")
+        self.assertEqual(items[8].name, "ITEM4")
+
+    def test_item_names_returns_all_the_items_for_a_given_target_and_packet(self):
+        items = self.tlm.item_names("TGT1", "PKT1")
+        self.assertIn('PACKET_TIMEFORMATTED', items)
+        self.assertIn('PACKET_TIMESECONDS', items)
+        self.assertIn('RECEIVED_TIMEFORMATTED', items)
+        self.assertIn('RECEIVED_TIMESECONDS', items)
+        self.assertIn('RECEIVED_COUNT', items)
+        self.assertIn('ITEM1', items)
+        self.assertIn('ITEM2', items)
+        self.assertIn('ITEM3', items)
+        self.assertIn('ITEM4', items)
+
+        items = self.tlm.item_names("TGT1", "LATEST")
+        self.assertIn('ITEM1', items)
+        self.assertIn('ITEM2', items)
+        self.assertIn('ITEM3', items)
+        self.assertIn('ITEM4', items)
+
+    def test_packet_and_item_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.packet_and_item("tgtX", "pkt1", "item1")
+
+    def test_packet_and_item_complains_about_non_existent_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+            self.tlm.packet_and_item("TGT1", "PKTX", "ITEM1")
+
+    def test_packet_and_item_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+            self.tlm.packet_and_item("TGT1", "PKT1", "ITEMX")
+
+    def test_packet_and_item_returns_the_packet_and_item(self):
+        _, item = self.tlm.packet_and_item("TGT1", "PKT1", "ITEM1")
+        self.assertEqual(item.name, "ITEM1")
+
+    def test_packet_and_item_returns_the_LATEST_packet_and_item_if_it_exists(self):
+        pkt, item = self.tlm.packet_and_item("TGT1", "LATEST", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT2")
+        self.assertEqual(item.name, "ITEM1")
+
+    def test_latest_packets_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.latest_packets("tgtX", "item1")
+
+    def test_latest_packets_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry item 'TGT1 LATEST ITEMX' does not exist"):
+            self.tlm.latest_packets("TGT1", "ITEMX")
+
+    def test_latest_packets_returns_the_packets_that_contain_the_item(self):
+        pkts = self.tlm.latest_packets("TGT1", "ITEM1")
+        self.assertEqual(len(pkts), 2)
+        self.assertEqual(pkts[0].packet_name, "PKT1")
+        self.assertEqual(pkts[1].packet_name, "PKT2")
+
+    def test_newest_packet_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.newest_packet("tgtX", "item1")
+
+    def test_newest_packet_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry item 'TGT1 LATEST ITEMX' does not exist"):
+            self.tlm.newest_packet("TGT1", "ITEMX")
+
+    def test_newest_packet_with_two_valid_timestamps_returns_the_latest_packet(self):
+        time = datetime.now()
+        self.tlm.packet("TGT1", "PKT1").received_time = time + timedelta(seconds=1)
+        self.tlm.packet("TGT1", "PKT2").received_time = time
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT1")
+        self.assertEqual(pkt.received_time, time + timedelta(seconds=1))
+
+    def test_newest_packet_with_two_valid_timestamps_returns_the_latest_packet(self):
+        time = datetime.now()
+        self.tlm.packet("TGT1", "PKT1").received_time = time
+        self.tlm.packet("TGT1", "PKT2").received_time = time + timedelta(seconds=1)
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT2")
+        self.assertEqual(pkt.received_time, time + timedelta(seconds=1))
+
+    def test_newest_packet_with_two_valid_timestamps_returns_the_last_packet_if_timestamps_are_equal(self):
+        time = datetime.now()
+        self.tlm.packet("TGT1", "PKT1").received_time = time
+        self.tlm.packet("TGT1", "PKT2").received_time = time
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT2")
+        self.assertEqual(pkt.received_time, time)
+
+    def test_with_one_or_more_None_timestamps_returns_the_last_packet_if_neither_has_a_timestamp(self):
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT2")
+        self.assertEqual(pkt.received_time, None)
+
+    def test_with_one_or_more_None_timestamps_returns_the_packet_with_a_timestamp(self):
+        time = datetime.now()
+        self.tlm.packet("TGT1", "PKT1").received_time = time
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT1")
+        self.assertEqual(pkt.received_time, time)
+
+    def test_with_one_or_more_None_timestamps_returns_the_packet_with_a_timestamp(self):
+        time = datetime.now()
+        self.tlm.packet("TGT1", "PKT2").received_time = time
+        pkt = self.tlm.newest_packet("TGT1", "ITEM1")
+        self.assertEqual(pkt.packet_name, "PKT2")
+        self.assertEqual(pkt.received_time, time)
 
     def test_identify_returns_None_with_a_None_buffer(self):
         self.assertIsNone(self.tlm.identify_and_set_buffer(None))
@@ -257,6 +386,129 @@ class TestTelemetry(unittest.TestCase):
         self.tlm.packet("TGT2", "PKT1").check_limits()
         callback.assert_called()
 
+    def test_value_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.value("TGTX", "PKT1", "ITEM1")
+
+    def test_value_complains_about_non_existent_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+            self.tlm.value("TGT1", "PKTX", "ITEM1")
+
+    def test_value_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+            self.tlm.value("TGT1", "PKT1", "ITEMX")
+
+    def test_value_returns_the_value(self):
+        self.assertEqual(self.tlm.value("TGT1", "PKT1", "ITEM1"), 0)
+
+    def test_value_returns_the_value_using_LATEST(self):
+        self.assertEqual(self.tlm.value("TGT1", "LATEST", "ITEM1"), 0)
+
+    def test_set_value_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.set_value("TGTX", "PKT1", "ITEM1", 1)
+
+    def test_set_value_complains_about_non_existent_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+            self.tlm.set_value("TGT1", "PKTX", "ITEM1", 1)
+
+    def test_set_value_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+            self.tlm.set_value("TGT1", "PKT1", "ITEMX", 1)
+
+    def test_set_value_sets_the_value(self):
+        self.tlm.set_value("TGT1", "PKT1", "ITEM1", 1)
+        self.assertEqual(self.tlm.value("TGT1", "PKT1", "ITEM1"), 1)
+
+    def test_set_value_sets_the_value_using_LATEST(self):
+        self.tlm.set_value("TGT1", "LATEST", "ITEM1", 1)
+        self.assertEqual(self.tlm.value("TGT1", "PKT1", "ITEM1"), 0)
+        self.assertEqual(self.tlm.value("TGT1", "PKT2", "ITEM1"), 1)
+
+    def test_values_and_limits_states_complains_about_non_existent_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+            self.tlm.values_and_limits_states([["TGTX", "PKT1", "ITEM1"]])
+
+    def test_values_and_limits_states_complains_about_non_existent_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+            self.tlm.values_and_limits_states([["TGT1", "PKTX", "ITEM1"]])
+
+    def test_values_and_limits_states_complains_about_non_existent_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]])
+
+    def test_values_and_limits_states_complains_about_non_existent_value_types(self):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"):
+            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], 'MINE')
+
+    def test_values_and_limits_states_complains_if_passed_a_single_array(self):
+        with self.assertRaisesRegex(ValueError, 'item_array must be a nested array'):
+            self.tlm.values_and_limits_states(["TGT1", "PKT1", "ITEM1"])
+
+    def test_values_and_limits_states_complains_about_the_wrong_number_of_parameters(self):
+        with self.assertRaisesRegex(TypeError, 'takes from 2 to 3 positional arguments but 4 were given'):
+            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], 'RAW', 'RAW')
+
+    def test_values_and_limits_states_reads_all_the_specified_values(self):
+        self.tlm.update("TGT1", "PKT1", b"\x01\x02\x03\x04")
+        self.tlm.update("TGT1", "PKT2", b"\x05\x06")
+        self.tlm.update("TGT2", "PKT1", b"\x07\x08")
+        self.tlm.packet("TGT1", "PKT1").check_limits()
+        self.tlm.packet("TGT1", "PKT2").check_limits()
+        self.tlm.packet("TGT2", "PKT1").check_limits()
+        items = []
+        items.append(['TGT1', 'PKT1', 'ITEM1'])
+        items.append(['TGT1', 'PKT2', 'ITEM2'])
+        items.append(['TGT2', 'PKT1', 'ITEM1'])
+        vals = self.tlm.values_and_limits_states(items)
+        self.assertEqual(vals[0][0], 1)
+        self.assertEqual(vals[0][1], 6)
+        self.assertEqual(vals[0][2], 7)
+        self.assertEqual(vals[1][0], 'RED_LOW')
+        self.assertEqual(vals[1][1], None)
+        self.assertEqual(vals[1][2], None)
+        self.assertEqual(vals[2][0], [1.0, 2.0, 4.0, 5.0])
+        self.assertEqual(vals[2][1], None)
+        self.assertEqual(vals[2][2], None)
+
+    def test_values_and_limits_states_reads_all_the_specified_values_with_specified_value_types(self):
+        self.tlm.update("TGT1", "PKT1", b"\x01\x02\x03\x04")
+        self.tlm.update("TGT1", "PKT2", b"\x05\x06")
+        self.tlm.update("TGT2", "PKT1", b"\x07\x08")
+        self.tlm.packet("TGT1", "PKT1").check_limits()
+        self.tlm.packet("TGT1", "PKT2").check_limits()
+        self.tlm.packet("TGT2", "PKT1").check_limits()
+        items = []
+        items.append(['TGT1', 'PKT1', 'ITEM1'])
+        items.append(['TGT1', 'PKT1', 'ITEM2'])
+        items.append(['TGT1', 'PKT1', 'ITEM3'])
+        items.append(['TGT1', 'PKT1', 'ITEM4'])
+        items.append(['TGT1', 'PKT2', 'ITEM2'])
+        items.append(['TGT2', 'PKT1', 'ITEM1'])
+        formats = ['CONVERTED', 'RAW', 'CONVERTED', 'RAW', 'CONVERTED', 'CONVERTED']
+        vals = self.tlm.values_and_limits_states(items, formats)
+        self.assertEqual(vals[0][0], 1)
+        self.assertEqual(vals[0][1], 2)
+        self.assertEqual(vals[0][2], 6.0)
+        self.assertEqual(vals[0][3], 4)
+        self.assertEqual(vals[0][4], 6)
+        self.assertEqual(vals[0][5], 7)
+        self.assertEqual(vals[1][0], 'RED_LOW')
+        self.assertEqual(vals[1][1], 'YELLOW_LOW')
+        self.assertEqual(vals[1][2], None)
+        self.assertEqual(vals[1][3], None)
+        self.assertEqual(vals[1][4], None)
+        self.assertEqual(vals[1][5], None)
+        self.assertEqual(vals[2][0], [1.0, 2.0, 4.0, 5.0])
+        self.assertEqual(vals[2][1], [1.0, 2.0, 4.0, 5.0])
+        self.assertEqual(vals[2][2], None)
+        self.assertEqual(vals[2][3], None)
+        self.assertEqual(vals[2][4], None)
+        self.assertEqual(vals[2][5], None)
+
+    def test_all_returns_all_packets(self):
+        self.assertEqual(list(self.tlm.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])
+
     def test_reset_resets_all_packets(self):
         for _name, pkt in self.tlm.packets("TGT1").items():
             pkt.received_count = 1
@@ -268,8 +520,28 @@ class TestTelemetry(unittest.TestCase):
         for _name, pkt in self.tlm.packets("TGT2").items():
             self.assertEqual(pkt.received_count, 0)
 
-    def test_all_returns_all_packets(self):
-        self.assertEqual(list(self.tlm.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])
+    def test_all_item_strings_returns_hidden_TGT_PKT_ITEMs_in_the_system(self):
+        self.tlm.packet("TGT1", "PKT1").hidden = True
+        self.tlm.packet("TGT1", "PKT2").disabled = True
+        default = self.tlm.all_item_strings() # Return only those not hidden or disabled
+        strings = self.tlm.all_item_strings(True) # Return everything, even hidden & disabled
+        self.assertNotEqual(default, strings)
+        # Spot check the default
+        self.assertIn("TGT2 PKT1 ITEM1", default)
+        self.assertIn("TGT2 PKT1 ITEM2", default)
+        self.assertNotIn("TGT1 PKT1 ITEM1", default) # hidden
+        self.assertNotIn("TGT1 PKT2 ITEM1", default) # disabled
+
+        items = {}
+        # Built from the before(:each) section
+        items['TGT1 PKT1'] = ['ITEM1', 'ITEM2', 'ITEM3', 'ITEM4']
+        items['TGT1 PKT2'] = ['ITEM1', 'ITEM2']
+        items['TGT2 PKT1'] = ['ITEM1', 'ITEM2']
+        for tgt_pkt, sitems in items.items():
+            for item in Packet.RESERVED_ITEM_NAMES:
+                self.assertIn(f"{tgt_pkt} {item}", strings)
+            for item in sitems:
+                self.assertIn(f"{tgt_pkt} {item}", strings)
 
     def test_identify_with_subpackets_false_excludes_subpackets(self):
         # Create config with normal packet and subpacket

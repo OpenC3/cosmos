@@ -1,0 +1,9 @@
+SCREEN AUTO AUTO 1.0
+
+HORIZONTAL 
+  FILECHECKSUM <%= target_name %>/target.txt 
+  SPACER 15 0
+  FILECHECKSUM <%= target_name %>/target.txt  <%= target_name %>/target.txt
+  SPACER 15 0
+  FILECHECKSUM <%= target_name %>/target.txt  <%= target_name %>/target.txt <%= target_name %>/cmd_tlm/inst_cmds.txt
+END

@@ -205,7 +205,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         with self.assertRaises(ConnectionError) as context:
             TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        self.assertIn("Failed to connect to TSDB", str(context.exception))
+        self.assertIn("Failed to connect to QuestDB", str(context.exception))
 
     @patch("openc3.microservices.tsdb_microservice.Sender")
     @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
@@ -227,7 +227,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         with self.assertRaises(ConnectionError) as context:
             TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        self.assertIn("Failed to connect to TSDB", str(context.exception))
+        self.assertIn("Failed to connect to QuestDB", str(context.exception))
 
     @patch("openc3.microservices.tsdb_microservice.Sender")
     @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
@@ -270,10 +270,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
-        # Mock get_tlm to return a dummy packet
-        mock_packet = Mock()
-        mock_packet.sorted_items = []  # Empty list for test
-        mock_get_tlm.return_value = mock_packet
+        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -368,10 +366,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
-        # Mock get_tlm to return a dummy packet
-        mock_packet = Mock()
-        mock_packet.sorted_items = []  # Empty list for test
-        mock_get_tlm.return_value = mock_packet
+        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -1071,55 +1067,20 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.microservices.microservice.System")
     def test_create_table_stores_all_packet_items(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that all items from a packet are stored as columns in the table"""
-        # Create a mock packet with sorted_items
-        mock_item1 = Mock()
-        mock_item1.name = "TEMP1"
-        mock_item1.data_type = "FLOAT"
-
-        mock_item2 = Mock()
-        mock_item2.name = "TEMP2"
-        mock_item2.data_type = "FLOAT"
-
-        mock_item3 = Mock()
-        mock_item3.name = "TEMP3"
-        mock_item3.data_type = "FLOAT"
-
-        mock_item4 = Mock()
-        mock_item4.name = "TEMP4"
-        mock_item4.data_type = "FLOAT"
-
-        mock_item5 = Mock()
-        mock_item5.name = "COLLECTS"
-        mock_item5.data_type = "UINT"
-
-        mock_item6 = Mock()
-        mock_item6.name = "ASCIICMD"
-        mock_item6.data_type = "STRING"
-
-        mock_item7 = Mock()
-        mock_item7.name = "ARY"
-        mock_item7.data_type = "BLOCK"
-
-        mock_item8 = Mock()
-        mock_item8.name = "GROUND1STATUS"
-        mock_item8.data_type = "UINT"
-
-        mock_item9 = Mock()
-        mock_item9.name = "BLOCKTEST"
-        mock_item9.data_type = "BLOCK"
-
-        packet = Mock()
-        packet.sorted_items = [
-            mock_item1,
-            mock_item2,
-            mock_item3,
-            mock_item4,
-            mock_item5,
-            mock_item6,
-            mock_item7,
-            mock_item8,
-            mock_item9,
-        ]
+        # Create a mock packet with items (dict format as returned by get_tlm)
+        packet = {
+            "items": [
+                {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
+                {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
+                {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 128},
+                {"name": "ARY", "data_type": "BLOCK", "bit_size": 64, "array_size": 80},
+                {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
+                {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
+            ]
+        }
 
         # Mock get_tlm to return this packet
         mock_get_tlm.return_value = packet
@@ -1160,9 +1121,9 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Build expected items list from the packet
         expected_items = set()
-        for item in packet.sorted_items:
+        for item in packet["items"]:
             # Sanitize item name the same way tsdb_microservice does
-            sanitized_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item.name)
+            sanitized_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
             expected_items.add(sanitized_name)
 
         # Verify that key items are in the CREATE TABLE statement
@@ -1174,20 +1135,20 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Create a JSON data dictionary with values for all items
         json_data = {}
-        for item in packet.sorted_items:
+        for item in packet["items"]:
             # Use different types to test various data handling
-            if "TEMP" in item.name:
-                json_data[item.name] = -100.0  # float
-            elif "ARY" in item.name or "BLOCK" in item.name:
-                json_data[item.name] = [1, 2, 3, 4, 5]  # array/block
-            elif "ASCIICMD" in item.name:
-                json_data[item.name] = "TEST COMMAND"  # string
-            elif "STATUS" in item.name:
-                json_data[item.name] = 0  # int
-            elif "TIME" in item.name:
-                json_data[item.name] = int(time.time())  # timestamp
+            if "TEMP" in item["name"]:
+                json_data[item["name"]] = -100.0  # float
+            elif "ARY" in item["name"] or "BLOCK" in item["name"]:
+                json_data[item["name"]] = [1, 2, 3, 4, 5]  # array/block
+            elif "ASCIICMD" in item["name"]:
+                json_data[item["name"]] = "TEST COMMAND"  # string
+            elif "STATUS" in item["name"]:
+                json_data[item["name"]] = 0  # int
+            elif "TIME" in item["name"]:
+                json_data[item["name"]] = int(time.time())  # timestamp
             else:
-                json_data[item.name] = 42  # default int value
+                json_data[item["name"]] = 42  # default int value
 
         # Add PACKET_TIMESECONDS and RECEIVED_TIMESECONDS
         current_time = time.time()

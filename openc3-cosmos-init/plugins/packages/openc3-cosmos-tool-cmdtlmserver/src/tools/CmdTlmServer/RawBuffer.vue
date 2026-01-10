@@ -46,10 +46,20 @@ export default {
     return {
       mode: 'binary',
       textWidth: null,
-      bytesPerLine: 16,
     }
   },
   computed: {
+    bytesPerLine() {
+      if (!this.textWidth) {
+        return 16
+      }
+      if (this.textWidth <= 450) {
+        return 4
+      } else if (this.textWidth <= 770) {
+        return 8
+      }
+      return 16
+    },
     numRows() {
       // This is because v-textarea doesn't behave correctly with really long monospace text
       let lines = this.formattedData.split('\n').length
@@ -58,18 +68,16 @@ export default {
     },
     formattedData() {
       if (this.textWidth) {
-        this.bytesPerLine = 16
-        if (this.textWidth <= 450) {
-          this.bytesPerLine = 4
-        } else if (this.textWidth <= 770) {
-          this.bytesPerLine = 8
-        }
-
         let data = ''
         if (this.mode === 'binary') {
           data =
-            'Address   Data  ' + '   '.repeat(this.bytesPerLine - 2) + ' Ascii\n' +
-            '----------' + '---'.repeat(this.bytesPerLine) + '-'.repeat(this.bytesPerLine) + '-\n'
+            'Address   Data  ' +
+            '   '.repeat(this.bytesPerLine - 2) +
+            ' Ascii\n' +
+            '----------' +
+            '---'.repeat(this.bytesPerLine) +
+            '-'.repeat(this.bytesPerLine) +
+            '-\n'
         }
         data = data + this.formatBuffer(this.modelValue)
         this.$emit('formatted', data)
@@ -101,7 +109,9 @@ export default {
         let bytesView = new Uint8Array(buffer)
         return new TextDecoder().decode(bytesView)
       } else {
-        if (buffer === null) {return 'No Data'}
+        if (buffer === null) {
+          return 'No Data'
+        }
         let string = ''
         let index = 0
         let ascii = ''
@@ -132,7 +142,10 @@ export default {
         // middle of a line. If so we have to print out the final ASCII if
         // requested.
         if (index % this.bytesPerLine != 0) {
-          string += '   '.repeat(this.bytesPerLine - (index % this.bytesPerLine)) + ' ' + ascii
+          string +=
+            '   '.repeat(this.bytesPerLine - (index % this.bytesPerLine)) +
+            ' ' +
+            ascii
         }
         return string
       }

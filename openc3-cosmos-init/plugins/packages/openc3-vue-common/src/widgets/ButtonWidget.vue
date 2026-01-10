@@ -35,10 +35,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" variant="outlined">
+              <v-btn variant="outlined" @click="cancelHazardousCmd">
                 Cancel
               </v-btn>
-              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
+              <v-btn class="bg-primary mx-1" @click="sendHazardousCmd">
                 Send
               </v-btn>
             </v-row>
@@ -47,10 +47,10 @@
       </v-card>
     </v-dialog>
     <critical-cmd-dialog
-      :uuid="criticalCmdUuid"
-      :cmdString="criticalCmdString"
-      :cmdUser="criticalCmdUser"
       v-model="displayCriticalCmd"
+      :uuid="criticalCmdUuid"
+      :cmd-string="criticalCmdString"
+      :cmd-user="criticalCmdUser"
     />
   </div>
 </template>
@@ -61,10 +61,10 @@ import { CriticalCmdDialog } from '@/components'
 import Widget from './Widget'
 
 export default {
-  mixins: [Widget],
   components: {
     CriticalCmdDialog,
   },
+  mixins: [Widget],
   data() {
     return {
       api: null,

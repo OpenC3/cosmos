@@ -123,8 +123,8 @@ export default {
   },
   mixins: [Updater],
   props: {
-    tabId: Number,
-    curTab: Number,
+    tabId: { type: Number, default: null },
+    curTab: { type: Number, default: null },
   },
   data() {
     return {
@@ -228,6 +228,7 @@ export default {
           this.detailsDialog = true
         })
         .catch((error) => {
+          // eslint-disable-next-line no-console
           console.error('Failed to fetch interface details:', error)
           this.interfaceDetails = null
         })

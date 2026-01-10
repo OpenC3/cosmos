@@ -203,6 +203,33 @@
 
             <v-spacer />
             <div v-if="startOrGoButton === 'Start'">
+              <v-tooltip
+                v-if="overridesCount > 0"
+                :open-delay="600"
+                location="top"
+              >
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    class="mr-4"
+                    icon
+                    variant="text"
+                    density="compact"
+                    data-test="tlm-override-button"
+                    aria-label="TLM Overrides"
+                    @click="showOverrides = !showOverrides"
+                  >
+                    <v-badge
+                      :content="overridesCount > 99 ? '99+' : overridesCount"
+                      floating
+                      color="primary"
+                    >
+                      <v-icon icon="mdi-application-cog-outline" />
+                    </v-badge>
+                  </v-btn>
+                </template>
+                <span> TLM Overrides ({{ overridesCount }}) </span>
+              </v-tooltip>
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -809,6 +836,7 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
+      overridesCount: 0,
       commandEditor: {
         show: false,
         targetName: null,
@@ -1174,6 +1202,11 @@ export default {
         }
       }
     },
+    showOverrides: function (newVal, oldVal) {
+      if (oldVal && !newVal) {
+        this.updateOverridesCount()
+      }
+    },
   },
   created: async function () {
     // Ensure Offline Access Is Setup For the Current User
@@ -1189,6 +1222,8 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+
+    this.updateOverridesCount()
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -1355,6 +1390,11 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    updateOverridesCount: function () {
+      this.api.get_overrides().then((result) => {
+        this.overridesCount = result.length
+      })
+    },
     toggleVimMode() {
       AceEditorUtils.toggleVimMode(this.editor)
     },
@@ -1795,6 +1835,8 @@ export default {
       this.envDisabled = false
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
+      // Overrides can be set from a script
+      this.updateOverridesCount()
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -2014,9 +2056,13 @@ export default {
             // thus we split and only output if the content is not empty.
             // We also need to ensure it's properly serialized as a string.
             let dataLine = data.line
-            if (dataLine === null || dataLine === undefined) { dataLine = '' }
-            else if (typeof dataLine === 'object') { dataLine = JSON.stringify(dataLine) }
-            else { dataLine = String(dataLine) }
+            if (dataLine === null || dataLine === undefined) {
+              dataLine = ''
+            } else if (typeof dataLine === 'object') {
+              dataLine = JSON.stringify(dataLine)
+            } else {
+              dataLine = String(dataLine)
+            }
             for (const line of dataLine.split('\n')) {
               if (line) {
                 if (this.messagesNewestOnTop) {

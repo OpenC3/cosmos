@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,10 +46,10 @@
     </v-card-text>
     <v-card-actions>
       <v-btn
-        @click="save"
         color="success"
         variant="text"
         data-test="save-time-zone"
+        @click="save"
       >
         Save
       </v-btn>

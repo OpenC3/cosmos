@@ -1010,6 +1010,25 @@ module OpenC3
         p.define_item("item2", 10, 10, :UINT, nil, :LITTLE_ENDIAN)
         expect(p.check_bit_offsets[0]).to eql "Bit definition overlap at bit offset 12 for packet TGT1 PKT1 items ITEM1 and ITEM2"
       end
+
+      it "does not complain about items with parent_item (accessor-based structure items)" do
+        # Items with parent_item are accessor-based items within a structure (e.g., JSON, CBOR)
+        # that don't have meaningful bit positions - they share the parent's bit_offset
+        p = Packet.new("tgt1", "pkt1")
+        p.define_item("header", 0, 32, :UINT)
+        parent_item = p.define_item("json_struct", 32, 0, :BLOCK)
+
+        # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
+        item1 = p.define_item("json_struct.item1", 32, 0, :UINT)
+        item1.parent_item = parent_item
+        item2 = p.define_item("json_struct.item2", 32, 0, :STRING)
+        item2.parent_item = parent_item
+        item3 = p.define_item("json_struct.item3", 32, 0, :INT)
+        item3.parent_item = parent_item
+
+        # Should not complain about the items with parent_item even though they share bit_offset
+        expect(p.check_bit_offsets).to eq []
+      end
     end
 
     describe "id_items" do
@@ -1655,6 +1674,55 @@ module OpenC3
         end
         json = json_hash.as_json()
         expect(json.length).to eql 204800
+      end
+
+      it "extracts default values from template for accessor-based items" do
+        packet = Packet.new("tgt", "pkt")
+        packet.accessor = JsonAccessor.new(packet)
+        template = '{"id_item":31, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+        packet.template = template
+
+        # Add items with keys
+        item1 = packet.append_item("ID_ITEM", 32, :INT)
+        item1.key = "$.id_item"
+        item1.default = 0  # Placeholder default
+
+        item2 = packet.append_item("ITEM1", 16, :UINT)
+        item2.key = "$.item1"
+        item2.default = 0  # Placeholder default
+
+        item3 = packet.append_item("ITEM5", 8, :UINT, 0)  # Array parameter
+        item3.key = "$.more.item5"
+        item3.default = 0  # Placeholder default
+
+        json = packet.as_json()
+
+        # Verify that defaults are extracted from the template
+        id_item_json = json['items'].find { |i| i['name'] == 'ID_ITEM' }
+        expect(id_item_json['default']).to eql 31
+
+        item1_json = json['items'].find { |i| i['name'] == 'ITEM1' }
+        expect(item1_json['default']).to eql 101
+
+        item5_json = json['items'].find { |i| i['name'] == 'ITEM5' }
+        expect(item5_json['default']).to eql [4, 3, 2, 1]
+      end
+
+      it "keeps original default when template read fails" do
+        packet = Packet.new("tgt", "pkt")
+        packet.accessor = JsonAccessor.new(packet)
+        packet.template = '{"item1":101}'
+
+        # Add an item with a key that doesn't exist in the template
+        item1 = packet.append_item("ITEM1", 16, :UINT)
+        item1.key = "$.nonexistent"
+        item1.default = 99
+
+        json = packet.as_json()
+
+        # Should keep the original default since template read fails
+        item1_json = json['items'].find { |i| i['name'] == 'ITEM1' }
+        expect(item1_json['default']).to eql 99
       end
     end
 

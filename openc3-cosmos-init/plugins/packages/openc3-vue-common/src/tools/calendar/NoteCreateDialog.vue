@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -74,12 +74,10 @@
                     :rules="[rules.required]"
                     data-test="note-start-date"
                   />
-                  <v-text-field
+                  <OpenC3TimePicker
                     v-model="startTime"
-                    type="time"
-                    step="1"
                     label="Start Time"
-                    class="mx-1"
+                    text-field-class="mx-1"
                     :rules="[rules.required]"
                     data-test="note-start-time"
                   />
@@ -93,12 +91,10 @@
                     :rules="[rules.required]"
                     data-test="note-end-date"
                   />
-                  <v-text-field
+                  <OpenC3TimePicker
                     v-model="endTime"
-                    type="time"
-                    step="1"
                     label="End Time"
-                    class="mx-1"
+                    text-field-class="mx-1"
                     :rules="[rules.required]"
                     data-test="note-end-time"
                   />
@@ -143,20 +139,24 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@/util'
+import OpenC3TimePicker from '@/components/OpenC3TimePicker.vue'
 import ColorSelectForm from './ColorSelectForm.vue'
 import CreateDialog from './CreateDialog'
 
 export default {
   components: {
     ColorSelectForm,
+    OpenC3TimePicker,
   },
   mixins: [CreateDialog, TimeFilters],
   props: {
     modelValue: Boolean,
     note: {
       type: Object,
+      default: null,
     },
   },
+  emits: ['update:modelValue', 'update'],
   data() {
     return {
       dialogStep: 1,

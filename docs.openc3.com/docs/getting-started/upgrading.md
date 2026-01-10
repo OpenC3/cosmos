@@ -22,49 +22,52 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
-   ```sh
-   cosmos-project % ./openc3.sh stop
-   ```
+  ```sh
+  cosmos-project % ./openc3.sh stop
+  ```
 </TabItem>
 <TabItem value="windows" label="Windows">
-   ```batch
-   C:\cosmos-project> openc3.bat stop
-   ```
+  ```batch
+  C:\cosmos-project> openc3.bat stop
+  ```
 </TabItem>
 </Tabs>
 
 :::info Upgrade is new since v6.7.0
-Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.7.0, manually download the [`openc3_upgrade.sh`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/linux/openc3_upgrade.sh) or [`openc3_upgrade.bat`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/windows/openc3_upgrade.bat) script and put it at the base of your COSMOS project.
-
-For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACKE74?si=ngoo9tmrmB2O2OgC) video on our [YouTube Channel](https://www.youtube.com/@openc3).
+Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.10.1, simply check out the latest version of the upgrade script.
 
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
-```sh
-cosmos-project % chmod +x openc3_upgrade.sh
-cosmos-project % ./openc3_upgrade.sh
-```
+  ```sh
+  cosmos-project % git checkout main -- openc3.sh scripts/linux/openc3_upgrade.sh
+  ```
 </TabItem>
 <TabItem value="windows" label="Windows">
-   ```batch
-   C:\cosmos-project> openc3_upgrade.bat
-   ```
+  ```batch
+  C:\cosmos-project> git checkout main -- openc3.bat scripts/windows/openc3_upgrade.bat
+  ```
 </TabItem>
 </Tabs>
-:::
 
-2. Apply the upgrade to version vX.Y.Z (e.g. v6.7.0). Note the 'v' because this is a git tag.
+You can also manually download the [`openc3_upgrade.sh`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/linux/openc3_upgrade.sh) or [`openc3_upgrade.bat`](https://github.com/OpenC3/cosmos-project/blob/main/scripts/windows/openc3_upgrade.bat) script and put it in the `scripts/linux` or `scripts/windows` directory of your COSMOS project.
+
+For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACKE74?si=ngoo9tmrmB2O2OgC) video on our [YouTube Channel](https://www.youtube.com/@openc3).
+:::
+&nbsp;
+&nbsp;
+
+2. Apply the upgrade to version vX.Y.Z (e.g. v6.10.3). Note the 'v' because this is a git tag.
 
 <Tabs groupId="script-language">
 <TabItem value="linux" label="Linux">
-   ```sh
-   cosmos-project % ./openc3.sh upgrade vX.Y.Z
-   ```
+  ```sh
+  cosmos-project % ./openc3.sh upgrade vX.Y.Z
+  ```
 </TabItem>
 <TabItem value="windows" label="Windows">
-   ```batch
-   C:\cosmos-project> openc3.bat upgrade vX.Y.Z
-   ```
+  ```batch
+  C:\cosmos-project> openc3.bat upgrade vX.Y.Z
+  ```
 </TabItem>
 </Tabs>
 
@@ -129,32 +132,67 @@ In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _mi
 
 Going from COSMOS Core (open source) to COSMOS Enterprise (OpenC3 customer) is a straight forward process that will preserve all your data collected by COSMOS Core.
 
-:::info Coming Soon
-This process is being simplified in an upcoming release and will be integrated into the `openc3.sh upgrade` command.
-:::
+First ensure you are on the latest version of the Core project by following the upgrade steps above. Next follow the [Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project) to set up your Personal Access Token (this assumes you've already been given access to the project by the OpenC3 team). Finally simply run the upgrade script with the word `enterprise-` before the version.
 
-If you currently are using the `cosmos-project` repo to run COSMOS then you should separately clone the `cosmos-enterprise-project` repo at the same release tag and simply copy over the various files.
+For example:
 
-The process should loook something like this:
-
-1. Clone the `cosmos-enterprise-project` and checkout the equivalent tag. You'll need to ensure you have your Personally Access Token set to clone the repo. See the project [README](https://github.com/OpenC3/cosmos-enterprise-project) for help.
-
-   `git clone https://github.com/OpenC3/cosmos-enterprise-project.git`
-   `git checkout v6.9.2`
+1. You previously cloned `cosmos-project`
 
 2. From your current `cosmos-project` directory, stop the current COSMOS application
 
-   `openc3.sh stop`
+```sh
+openc3.sh stop
+```
 
-3. Copy the project files from the Enterprise project to your current project
+3. Upgrade to the latest version of COSMOS Core
 
-   `cp -r cosmos-enterprise-project/* .`
+```sh
+git checkout main -- openc3.sh scripts/linux/openc3_upgrade.sh
+openc3.sh upgrade v6.10.3
+```
 
-4. Start the new Enterprise application
+4. Start, test and verify functionality
 
-   `openc3.sh run`
+```sh
+openc3.sh run
+```
 
-5. Test and verify functionality and commit your changes.
+5. Stop the current COSMOS application and commit your changes
+
+```sh
+openc3.sh stop
+git add .
+git commit -m "Upgrade to vX.Y.Z"
+```
+
+6. Upgrade to Enterprise (assumes PAT has been created)
+
+```sh
+openc3.sh upgrade enterprise-v6.10.3
+```
+
+7. Start, test and verify functionality. Note your browser may cache COSMOS Core. If you're not seeing Enterprise tools wait a minute and refresh your browser.
+
+```sh
+openc3.sh run
+```
+
+8. Commit your changes
+
+```sh
+git add .
+git commit -m "Upgrade to Enterprise vX.Y.Z"
+```
+
+## Migrating From COSMOS 6 to COSMOS 7
+
+### Passwords
+
+If you are using COSMOS Enterprise, you can skip this section. COSOMS 7 Core introduces some security enhancements around the handling of the user password.
+
+First, we have switched the password hashing algorithm from SHA-256 to the industry standard argon2id. Before you can log in using COSMOS 7, you need to migrate the stored password hash used for user authentication. To do this, with Redis running, set the `OPENC3_API_PASSWORD` environment variable to your current password and run `openc3.sh cli migratepassword`. You can do this at any point of the upgrade process while COSMOS is running (e.g. either before tearing down COSMOS 6 or after starting up COSMOS 7).
+
+Second, the JSON API no longer accepts plaintext passwords. You must instead use a session token. Please see the note at the bottom of our [JSON API documentation](../development/json-api#further-debugging) for how to acquire a session token for the API.
 
 ## Migrating From COSMOS 5 to COSMOS 6
 
@@ -416,4 +454,4 @@ COSMOS 5 (but not COSMOS 6) includes a migration tool for converting an existing
 
 COSMOS 4 was a Qt Desktop based application. COSMOS 5 is a completely new architecture which runs natively in the browser using [Vue.js](https://vuejs.org/) as the Javascript framework and [Vuetify](https://vuetifyjs.com/en/) as the GUI library. We utilize [single-spa](https://single-spa.js.org/) to allow you to write COSMOS tool plugins in any language and provide [templates](https://github.com/OpenC3/cosmos/tree/main/openc3/templates) for Vue.js (recommended), Angular, React and Svelte. Any COSMOS 4 custom tools will have to be completely re-written to run in COSMOS 5. We recommend using the native COSMOS [tools](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages) and finding GUI concepts and functionality that best match the tool you're trying to re-create.
 
-If you need custom development get in touch at sales@openc3.com.
+If you need custom development get in touch at [sales@openc3.com](mailto:sales@openc3.com).

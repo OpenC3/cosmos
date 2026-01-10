@@ -54,6 +54,29 @@ APPEND_ITEM VALUE5 16 UINT "Value 5 setting"
 
 COSMOS uses ERB syntax extensively in a Plugin's [plugin.txt](plugins.md#plugintxt-configuration-file) configuration file.
 
+### target_name
+
+Any of the COSMOS configuration files can use the ERB variable `target_name` to refer to the actual name of the target. This allows you to use target name substitution in your plugin.txt and then use the correct values throughout your target files (procedures, libraries, etc). This variable is resolved at plugin _install_ time and then remains constant.
+
+For example, you have a target definition in the `targets/KEYSIGHT_N6700` directory but you have 3 physical power supplies you want to control. Your plugin.txt might look like the following:
+
+```ruby
+TARGET KEYSIGHT_N6700 PWR_SUPPLY1
+TARGET KEYSIGHT_N6700 PWR_SUPPLY2
+TARGET KEYSIGHT_N6700 PWR_SUPPLY3
+```
+
+If you use our [Target Generator](/docs/getting-started/generators#target-generator) you will have a target library at `targets/KEYSIGHT_N6700/lib/keysight_n6700.py`. To implement commands and telemetry checks in your target library that will work with dynamic target names, you can not hardcode the target name as `KEYSIGHT_N6700`. Instead you should use ERB to make the target name dynamic. For example:
+
+```python
+from openc3.script import *
+
+class KeysightN6700:
+    def power_on(self):
+        cmd("<%= target_name %> POWER_ON")
+        wait_check("<%= target_name %> STATUS POWER == 'ON'", 5)
+```
+
 ### render
 
 COSMOS provides a method used inside ERB called `render` which renders a configuration file into another configuration file. For example:

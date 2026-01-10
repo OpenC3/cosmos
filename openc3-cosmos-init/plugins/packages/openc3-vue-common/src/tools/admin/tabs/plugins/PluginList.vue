@@ -136,4 +136,3 @@ export default {
   background-color: var(--color-background-base-selected) !important;
 }
 </style>
-

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -39,11 +39,9 @@
                 />
               </v-col>
               <v-col>
-                <v-text-field
+                <OpenC3TimePicker
                   v-model="startTime"
                   label="Start Time"
-                  type="time"
-                  step="1"
                   :rules="[rules.required]"
                   data-test="start-time"
                 />
@@ -58,11 +56,9 @@
                 />
               </v-col>
               <v-col>
-                <v-text-field
+                <OpenC3TimePicker
                   v-model="endTime"
                   label="End Time"
-                  type="time"
-                  step="1"
                   :rules="endDate ? [rules.required] : []"
                   data-test="end-time"
                 />
@@ -237,6 +233,7 @@
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
   Config,
+  OpenC3TimePicker,
   OpenConfigDialog,
   SaveConfigDialog,
   TopBar,
@@ -254,6 +251,7 @@ import ValueComponent from '@/tools/DataViewer/ValueComponent'
 export default {
   components: {
     AddComponentDialog,
+    OpenC3TimePicker,
     OpenConfigDialog,
     SaveConfigDialog,
     DynamicComponent,

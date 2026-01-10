@@ -92,10 +92,11 @@ class StructureItem:
 
     @key.setter
     def key(self, key):
-        if not isinstance(key, str):
-            raise TypeError(f"key must be a String but is a {key.__class__.__name__}")
-        if len(key) == 0:
-            raise ValueError("key must contain at least one character")
+        if key is not None:
+            if not isinstance(key, str):
+                raise TypeError(f"key must be a String but is a {key.__class__.__name__}")
+            if len(key) == 0:
+                raise ValueError("key must contain at least one character")
         self.__key = key
 
     @property
@@ -234,32 +235,49 @@ class StructureItem:
             self.verify_overall()
 
     def __eq__(self, other):
-        # Sort by first bit_offset, then bit_size, then create_index
-        if self.bit_offset == other.bit_offset:
-            if self.bit_size == other.bit_size:
-                if self.create_index:
-                    return self.create_index == other.create_index
-            else:
-                return self.bit_size == other.bit_size
-        else:
-            return self.bit_offset == other.bit_offset
+        # Comparison primarily based on bit_offset, matching Ruby behavior
+        # DERIVED items are never equal to non-DERIVED items
+        if self.data_type == "DERIVED":
+            if other.data_type != "DERIVED":
+                return False
+            return self.create_index == other.create_index
+        elif other.data_type == "DERIVED":
+            return False
+
+        # Non-derived items: compare by original_bit_offset and create_index
+        if self.original_bit_offset == other.original_bit_offset:
+            return self.create_index == other.create_index
+        return False
 
     def __lt__(self, other):
-        if self.bit_offset == other.bit_offset:
-            if self.bit_size == other.bit_size:
-                if self.create_index:
-                    return self.create_index < other.create_index
-            else:
-                return self.bit_size < other.bit_size
+        # Comparison primarily based on bit_offset, matching Ruby behavior
+        # Derived items should be first in the list with multiple derived sorted by create_index
+        if self.data_type == "DERIVED":
+            if other.data_type != "DERIVED":
+                return True  # DERIVED comes before non-DERIVED
+            return self.create_index < other.create_index
+        elif other.data_type == "DERIVED":
+            return False  # non-DERIVED comes after DERIVED
+
+        # Handle non-derived items
+        if ((self.original_bit_offset >= 0) and (other.original_bit_offset >= 0)) or (
+            (self.original_bit_offset < 0) and (other.original_bit_offset < 0)
+        ):
+            # Both Have Same Sign
+            if self.original_bit_offset == other.original_bit_offset:
+                # New Variable Bit Size items are before regular items
+                if self.variable_bit_size:
+                    if not other.variable_bit_size:
+                        return True
+                    # If both variable_bit_size use create index
+                elif other.variable_bit_size:
+                    return False
+
+                return self.create_index < other.create_index
+            return self.original_bit_offset < other.original_bit_offset
         else:
-            if ((self.bit_offset >= 0) and (other.bit_offset >= 0)) or (
-                (self.bit_offset < 0) and (other.bit_offset < 0)
-            ):
-                # Both Have Same Sign
-                return self.bit_offset < other.bit_offset
-            else:
-                # Different signs
-                return self.bit_offset > other.bit_offset
+            # Different signs (negative offsets come after positive)
+            return self.original_bit_offset > other.original_bit_offset
 
     # Make a light weight clone of this item
     def clone(self):

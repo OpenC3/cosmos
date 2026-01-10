@@ -115,8 +115,8 @@ Of course with our commercial license, you also get all the extra functionality 
 
 1. How is the COSMOS Enterprise license applied? Per company? Per program?
 
-   COSMOS Enterprise is typically licensed to a named mission or group. We also have site licenses, company licenses, and mission ops center licenses. Please contact us at sales@openc3.com for more information.
+   COSMOS Enterprise is typically licensed to a named mission or group. We also have site licenses, company licenses, and mission ops center licenses. Please contact us at [sales@openc3.com](mailto:sales@openc3.com) for more information.
 
 1. Do you license to foreign companies? How do you handle ITAR or the EAR?
 
-   We have several international customers and are not subject to ITAR export controls. We are export controlled under the EAR via ECCN 5D002c1. We have a detailed writeup explaining this justification as well as a commodity classification document from the Department of Commerce. Please contact us at sales@openc3.com for more information.
+   We have several international customers and are not subject to ITAR export controls. We are export controlled under the EAR via ECCN 5D002c1. We have a detailed writeup explaining this justification as well as a commodity classification document from the Department of Commerce. Please contact us at [sales@openc3.com](mailto:sales@openc3.com) for more information.

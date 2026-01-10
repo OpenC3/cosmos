@@ -97,6 +97,27 @@ class TestPacketItemParserTlm(unittest.TestCase):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
+    def test_complains_if_array_item_name_contains_brackets(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  ARRAY_ITEM ITEM[0] 0 32 FLOAT 64\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: ITEM\[0\]"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  APPEND_ARRAY_ITEM DATA[1] 8 UINT 64\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: DATA\[1\]"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
     def test_only_allows_derived_items_with_offset_0_and_size_0(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -389,6 +410,27 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error, "DERIVED data type not allowed"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+    def test_complains_if_array_parameter_name_contains_brackets(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  ARRAY_PARAMETER PARAM[0] 0 32 UINT 64\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: PARAM\[0\]"
+        ):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("  APPEND_ARRAY_PARAMETER VALUES[2] 16 INT 64\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(
+            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: VALUES\[2\]"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

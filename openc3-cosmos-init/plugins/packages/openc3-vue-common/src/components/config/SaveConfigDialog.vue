@@ -107,9 +107,13 @@ import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {
-    configKey: String,
+    configKey: {
+      type: String,
+      default: null,
+    },
     modelValue: Boolean, // modelValue is the default prop when using v-model
   },
+  emits: ['update:modelValue', 'warning', 'success'],
   data() {
     return {
       configName: '',

@@ -78,11 +78,12 @@ test('validates dates and times', async ({ page, utils }) => {
   await page
     .locator('[data-test=start-date] input')
     .fill(format(d, 'yyyy-MM-dd'))
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.locator('text=Required')).not.toBeVisible()
-  // Time validation
   await page.locator('[data-test=start-time] input').fill('')
   await expect(page.locator('text=Required')).toBeVisible()
   await page.locator('[data-test=start-time] input').fill('12:15:15')
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.locator('text=Required')).not.toBeVisible()
 })
 
@@ -224,6 +225,7 @@ test('processes commands', async ({ page, utils }) => {
   // Preload an ABORT command
   await page.goto('/tools/cmdsender/INST/ABORT/')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.selectTargetPacketItem('INST', 'ABORT')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('text=cmd("INST ABORT") sent')).toBeVisible()
 
@@ -289,6 +291,7 @@ test('outputs full column names', async ({ page, utils }) => {
   let start = sub(new Date(), { minutes: 1 })
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Full Column Names').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
@@ -326,6 +329,7 @@ test('fills values', async ({ page, utils }) => {
     .fill(format(start, 'HH:mm:ss'))
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Full Column Names').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   // Deliberately test with two different packets
   await utils.addTargetPacketItem('INST', 'ADCS', 'CCSDSSEQCNT')
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSSEQCNT')
@@ -377,6 +381,7 @@ test('adds Matlab headers', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 1 })
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Matlab Header').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
@@ -392,6 +397,7 @@ test('outputs unique values only', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 1 })
   await page.locator('[data-test=data-extractor-mode]').click()
   await page.locator('text=Unique Only').click()
+  await page.locator('[data-test=data-extractor-mode]').click()
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))

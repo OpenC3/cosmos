@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -84,15 +84,13 @@
               data-test="playback-date"
               :disabled="playbackPlaying"
             />
-            <v-text-field
+            <OpenC3TimePicker
               v-model="playbackTime"
-              class="mr-4"
+              text-field-class="mr-4"
               density="compact"
               hide-details
               variant="outlined"
               label="Time"
-              type="time"
-              step="1"
               style="max-width: 200px"
               data-test="playback-time"
               :disabled="playbackPlaying"
@@ -110,6 +108,7 @@
                   aria-label="Skip Backward"
                   data-test="playback-skip-backward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackSkipBackward"
                 ></v-btn>
               </template>
@@ -127,6 +126,7 @@
                   aria-label="Step Backward"
                   data-test="playback-step-backward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackStepBackward"
                 ></v-btn>
               </template>
@@ -152,6 +152,7 @@
                   aria-label="Step Forward"
                   data-test="playback-step-forward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackStepForward"
                 ></v-btn>
               </template>
@@ -169,6 +170,7 @@
                   aria-label="Skip Forward"
                   data-test="playback-skip-forward"
                   style="margin-top: -5px"
+                  :disabled="playbackLoading"
                   @click="playbackSkipForward"
                 ></v-btn>
               </template>
@@ -266,6 +268,7 @@ import Muuri from 'muuri'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   Config,
+  OpenC3TimePicker,
   Openc3Screen,
   OpenConfigDialog,
   SaveConfigDialog,
@@ -277,6 +280,7 @@ import { TimeFilters } from '@openc3/vue-common/util'
 export default {
   components: {
     TopBar,
+    OpenC3TimePicker,
     Openc3Screen,
     NewScreenDialog,
     OpenConfigDialog,
@@ -312,6 +316,9 @@ export default {
     }
   },
   computed: {
+    playbackLoading: function () {
+      return this.$store.state.playback.playbackLoading > 0
+    },
     menus: function () {
       return [
         {
@@ -652,8 +659,7 @@ export default {
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
         if (this.screens[def.target].length === 0) {
-          // Must call this.$delete to notify Vue of property deletion
-          this.$delete(this.screens, def.target)
+          delete this.screens[def.target]
         }
       }
     },

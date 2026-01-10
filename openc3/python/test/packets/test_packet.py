@@ -327,27 +327,27 @@ class PacketReadReadItem(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.read("ITEM", b"\00")
 
@@ -628,27 +628,27 @@ class PacketWrite(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
             ValueError,
-            "Unknown value type '.*', must be 'RAW', 'CONVERTED' or 'FORMATTED'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
 
@@ -1043,6 +1043,25 @@ class PacketCheckBitOffsets(unittest.TestCase):
             )
         else:
             self.fail("No overlap detected")
+
+    def test_does_not_complain_about_items_with_parent_item(self):
+        # Items with parent_item are accessor-based items within a structure (e.g., JSON, CBOR)
+        # that don't have meaningful bit positions - they share the parent's bit_offset
+        p = Packet("tgt1", "pkt1")
+        p.define_item("header", 0, 32, "UINT")
+        parent_item = p.define_item("json_struct", 32, 0, "BLOCK")
+
+        # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
+        item1 = p.define_item("json_struct.item1", 32, 0, "UINT")
+        item1.parent_item = parent_item
+        item2 = p.define_item("json_struct.item2", 32, 0, "STRING")
+        item2.parent_item = parent_item
+        item3 = p.define_item("json_struct.item3", 32, 0, "INT")
+        item3.parent_item = parent_item
+
+        # Should not complain about the items with parent_item even though they share bit_offset
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
 
 
 class PacketIdItems(unittest.TestCase):
@@ -1717,6 +1736,57 @@ class PacketJson(unittest.TestCase):
         self.assertEqual(json["items"], [])
         self.assertIn("BinaryAccessor", json["accessor"])
         # self.assertEqual(json['template'], Base64.encode64("\x00\x01\x02\x03"))
+
+    def test_extracts_default_values_from_template_for_accessor_based_items(self):
+        from openc3.accessors.json_accessor import JsonAccessor
+
+        packet = Packet("tgt", "pkt")
+        packet.accessor = JsonAccessor()
+        template = b'{"id_item":31, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+        packet.template = template
+
+        # Add items with keys
+        item1 = packet.append_item("ID_ITEM", 32, "INT")
+        item1.key = "$.id_item"
+        item1.default = 0  # Placeholder default
+
+        item2 = packet.append_item("ITEM1", 16, "UINT")
+        item2.key = "$.item1"
+        item2.default = 0  # Placeholder default
+
+        item3 = packet.append_item("ITEM5", 8, "UINT", 0)  # Array parameter
+        item3.key = "$.more.item5"
+        item3.default = 0  # Placeholder default
+
+        json = packet.as_json()
+
+        # Verify that defaults are extracted from the template
+        id_item_json = next(i for i in json["items"] if i["name"] == "ID_ITEM")
+        self.assertEqual(id_item_json["default"], 31)
+
+        item1_json = next(i for i in json["items"] if i["name"] == "ITEM1")
+        self.assertEqual(item1_json["default"], 101)
+
+        item5_json = next(i for i in json["items"] if i["name"] == "ITEM5")
+        self.assertEqual(item5_json["default"], [4, 3, 2, 1])
+
+    def test_keeps_original_default_when_template_read_fails(self):
+        from openc3.accessors.json_accessor import JsonAccessor
+
+        packet = Packet("tgt", "pkt")
+        packet.accessor = JsonAccessor()
+        packet.template = b'{"item1":101}'
+
+        # Add an item with a key that doesn't exist in the template
+        item1 = packet.append_item("ITEM1", 16, "UINT")
+        item1.key = "$.nonexistent"
+        item1.default = 99
+
+        json = packet.as_json()
+
+        # Should keep the original default since template read fails
+        item1_json = next(i for i in json["items"] if i["name"] == "ITEM1")
+        self.assertEqual(item1_json["default"], 99)
 
 
 class PacketDecom(unittest.TestCase):

@@ -815,9 +815,9 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             self.pc.commands["TGT1"]["PKT99"].buffer,
             # The formatting of this string has to be precise
-            # These are all the defaults from the above definition (note array is [] by definition)
+            # Template values are preserved for accessor-based items with explicit keys
             bytearray(
-                b'{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}'
+                b'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
             ),
         )
         self.pc.commands["TGT1"]["PKT99"].write("item1", 202)
@@ -871,8 +871,8 @@ class TestPacketConfig(unittest.TestCase):
         self.pc.commands["TGT1"]["PKT1"].restore_defaults()
         self.assertEqual(
             loads(self.pc.commands["TGT1"]["PKT1"].buffer),
-            # These are all the defaults from the above definition (note array is [] by definition)
-            {"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}},
+            # Template values are preserved for accessor-based items with explicit keys
+            {"id_item": 2, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]}},
         )
         self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
         self.pc.commands["TGT1"]["PKT1"].write("item2", 333)
@@ -881,7 +881,8 @@ class TestPacketConfig(unittest.TestCase):
         self.pc.commands["TGT1"]["PKT1"].write("item5", [6, 7, 8, 9])
         self.assertEqual(
             loads(self.pc.commands["TGT1"]["PKT1"].buffer),
-            {"id_item": 1, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
+            # id_item remains 2 from template since it wasn't written
+            {"id_item": 2, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
         )
         os.remove(os.path.join(os.getcwd(), "unittest.txt"))
         tf.close()
@@ -1232,8 +1233,10 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item2 0 2 UINT\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
+        # Items with same bit_offset are sorted by create_index, so item1 comes first
+        # When item2 is checked, it overlaps with item1
         self.assertEqual(
-            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM1 and ITEM2",
+            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
             self.pc.warnings[0],
         )
         tf.close()

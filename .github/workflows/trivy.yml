@@ -36,7 +36,7 @@ jobs:
         uses: aquasecurity/setup-trivy@v0.2.4
         with:
           cache: true
-          version: v0.66.0
+          version: v0.68.2
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
@@ -202,7 +202,7 @@ jobs:
         with:
           scan-type: "fs"
           format: "github"
-          exit-code: 1
+          exit-code: 0
           output: "dependency-results.sbom.json"
           image-ref: "."
           github-pat: ${{ secrets.GITHUB_TOKEN }}

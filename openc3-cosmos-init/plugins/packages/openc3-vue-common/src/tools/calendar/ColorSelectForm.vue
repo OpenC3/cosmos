@@ -22,13 +22,13 @@
 
 <template>
   <div>
-    <v-select label="Color" :items="swatches" v-model="color">
-      <template v-slot:prepend-inner>
+    <v-select v-model="color" label="Color" :items="swatches">
+      <template #prepend-inner>
         <v-icon :color="color"> mdi-square </v-icon>
       </template>
-      <template v-slot:item="{ props, item }">
+      <template #item="{ props, item }">
         <v-list-item v-bind="props" :value="item.raw">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon :color="item.raw"> mdi-square </v-icon>
           </template>
         </v-list-item>
@@ -46,6 +46,7 @@ export default {
       required: true,
     },
   },
+  emits: ['update:modelValue'],
   computed: {
     color: {
       get() {
