@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -190,8 +190,11 @@ module OpenC3
       target_upcase = target_name.to_s.upcase
       packet_upcase = packet_name.to_s.upcase
 
-      # Lookup the command and create a light weight copy
-      pkt = packet(target_upcase, packet_upcase)
+      # Lookup the command directly - avoid redundant upcase in packet()/packets()
+      target_packets = @config.commands[target_upcase]
+      raise "Command target '#{target_upcase}' does not exist" unless target_packets
+      pkt = target_packets[packet_upcase]
+      raise "Command packet '#{target_upcase} #{packet_upcase}' does not exist" unless pkt
       command = pkt.clone
 
       # Restore the command's buffer to a zeroed string of defined length
@@ -327,11 +330,11 @@ module OpenC3
           end
         end
 
-        # Update parameter in command
+        # Update parameter in command - use write_item directly to avoid redundant get_item call
         if command.raw
-          command.write(item_upcase, value, :RAW)
+          command.write_item(item, value, :RAW)
         else
-          command.write(item_upcase, value, :CONVERTED)
+          command.write_item(item, value, :CONVERTED)
         end
 
         given_item_names << item_upcase

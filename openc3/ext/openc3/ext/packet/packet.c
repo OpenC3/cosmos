@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -142,7 +142,7 @@ static VALUE received_time_equals(VALUE self, VALUE received_time)
     {
       rb_raise(rb_eArgError, "received_time must be a Time but is a %s", RSTRING_PTR(rb_funcall(rb_funcall(received_time, id_method_class, 0), id_method_to_s, 0)));
     }
-    rb_ivar_set(self, id_ivar_received_time, rb_funcall(rb_funcall(received_time, id_method_clone, 0), id_method_freeze, 0));
+    rb_ivar_set(self, id_ivar_received_time, received_time);
   }
   else
   {

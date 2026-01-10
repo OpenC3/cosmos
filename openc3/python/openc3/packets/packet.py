@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,16 +46,17 @@ from openc3.utilities.string import (
 
 
 class Packet(Structure):
-    RESERVED_ITEM_NAMES = [
+    # Use sets for O(1) membership testing instead of O(n) with lists
+    RESERVED_ITEM_NAMES = {
         "PACKET_TIMESECONDS",
         "PACKET_TIMEFORMATTED",
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
-    ]
+    }
     ANY_STATE = "ANY"
     # Valid format types
-    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
+    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
 
     def __init__(
         self,
