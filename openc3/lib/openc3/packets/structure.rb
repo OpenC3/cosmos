@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -670,7 +670,11 @@ module OpenC3
     def internal_buffer_equals(buffer)
       raise ArgumentError, "Buffer class is #{buffer.class} but must be String" unless String === buffer
 
-      @buffer = buffer.dup
+      if buffer.frozen?
+        @buffer = buffer
+      else
+        @buffer = buffer.dup
+      end
       if @accessor.enforce_encoding
         @buffer.force_encoding(@accessor.enforce_encoding)
       end
