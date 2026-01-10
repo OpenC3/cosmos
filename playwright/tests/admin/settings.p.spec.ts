@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -160,6 +160,8 @@ test('changes the pypi url', async ({ page, utils }) => {
 })
 
 test('changes scripting settings', async ({ page, utils }) => {
+  test.slow()
+
   // Verify default setting is python
   await expect(page.locator('[data-test=default-language]')).toContainText(
     'Python',

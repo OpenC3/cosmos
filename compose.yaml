@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -210,14 +210,14 @@ services:
       # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # By not setting a value it pases the environment variable from the shell
       # straight to the container and doesn't complain if CI is not set
-      - CI
-      - GEM_HOME=/gems
-      - PYTHONUSERBASE=/gems/python_packages
-      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      CI: "true"
+      GEM_HOME: "/gems"
+      PYTHONUSERBASE: "/gems/python_packages"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
     env_file:
       - .env
     extra_hosts:
@@ -277,15 +277,15 @@ services:
       # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # By not setting a value it pases the environment variable from the shell
       # straight to the container and doesn't complain if CI is not set
-      - CI
-      - GEM_HOME=/gems
-      - PYTHONUSERBASE=/gems/python_packages
-      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-      - OPENC3_SR_BUCKET_USERNAME=${OPENC3_SR_BUCKET_USERNAME}
-      - OPENC3_SR_BUCKET_PASSWORD=${OPENC3_SR_BUCKET_PASSWORD}
+      CI: "true"
+      GEM_HOME: "/gems"
+      PYTHONUSERBASE: "/gems/python_packages"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
+      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
     env_file:
       - .env
 

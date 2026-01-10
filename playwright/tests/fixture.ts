@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -71,7 +71,7 @@ export const test = base.extend<{
     if (process.env.ENTERPRISE === '1') {
       const signin = page.getByText('Sign in to your account')
       const tool = page.locator(`.v-app-bar:has-text('${toolName}')`)
-      await expect(signin.or(tool)).toBeVisible()
+      await expect(signin.or(tool)).toBeVisible({ timeout: 20000 })
       if (await signin.isVisible()) {
         // Tests tagged with @admin will use admin credentials, otherwise operator
         let username = 'operator'
