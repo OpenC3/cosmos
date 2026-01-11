@@ -4,14 +4,14 @@ setlocal enabledelayedexpansion
 REM Migration script to transfer data from old MINIO volume to new S3 (versitygw)
 REM
 REM This script:
-REM 1. Starts a temporary MINIO container using the old openc3-bucket-v volume
+REM 1. Starts a temporary MINIO container using the old MINIO volume (OLD_VOLUME)
 REM 2. Uses mc to mirror all data from MINIO to the running openc3-bucket (versitygw)
 REM 3. Provides instructions for completing the migration
 REM
 REM Prerequisites:
 REM - COSMOS 7 must be running with openc3-bucket (versitygw)
 REM - Docker must be running
-REM - The old openc3-bucket-v volume must exist
+REM - The old MINIO volume (OLD_VOLUME) must exist
 REM - openc3-cosmos-init image must be built (contains mc)
 REM
 REM Migration workflow:
@@ -73,7 +73,7 @@ exit /b %errorlevel%
 :usage
 echo Usage: %~nx0 [start^|migrate^|status^|cleanup^|help]
 echo.
-echo Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-bucket-v).
+echo Migrate data from old MINIO volume (%OLD_VOLUME%) to new S3 (%NEW_VOLUME%).
 echo.
 echo Commands:
 echo   start     Start temporary MINIO on port 9002 using old volume for migration
@@ -89,7 +89,7 @@ echo   3. Start temporary MINIO: %~nx0 start
 echo   4. Migrate data: %~nx0 migrate
 echo   5. Verify data: %~nx0 status
 echo   6. Cleanup temp container: %~nx0 cleanup
-echo   7. (Optional) Remove old volume: docker volume rm openc3-bucket-v
+echo   7. (Optional) Remove old volume: docker volume rm %OLD_VOLUME%
 echo.
 exit /b 0
 

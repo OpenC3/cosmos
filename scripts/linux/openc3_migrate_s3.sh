@@ -3,14 +3,14 @@
 # Migration script to transfer data from old MINIO volume to new S3 (versitygw)
 #
 # This script:
-# 1. Starts a temporary MINIO container using the old openc3-bucket-v volume
+# 1. Starts a temporary MINIO container using the old MINIO volume (OLD_VOLUME)
 # 2. Uses mc to mirror all data from MINIO to the running openc3-bucket (versitygw)
 # 3. Provides instructions for completing the migration
 #
 # Prerequisites:
 # - COSMOS 7 must be running with openc3-bucket (versitygw)
 # - Docker must be running
-# - The old openc3-bucket-v volume must exist
+# - The old MINIO volume (OLD_VOLUME) must exist
 # - openc3-cosmos-init image must be built (contains mc)
 #
 # Migration workflow:
@@ -65,7 +65,7 @@ detect_docker_environment() {
 usage() {
     echo "Usage: $0 [start|migrate|status|cleanup|help]"
     echo ""
-    echo "Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-bucket-v)."
+    echo "Migrate data from old MINIO volume ($OLD_VOLUME) to new S3 ($NEW_VOLUME)."
     echo ""
     echo "Commands:"
     echo "  start     Start temporary MINIO on port 9002 using old volume for migration"
@@ -81,7 +81,7 @@ usage() {
     echo "  4. Migrate data: $0 migrate"
     echo "  5. Verify data: $0 status"
     echo "  6. Cleanup temp container: $0 cleanup"
-    echo "  7. (Optional) Remove old volume: docker volume rm openc3-bucket-v"
+    echo "  7. (Optional) Remove old volume: docker volume rm $OLD_VOLUME"
     echo ""
     exit 0
 }

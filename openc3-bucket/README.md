@@ -60,7 +60,7 @@ Use the provided migration script for a safe, side-by-side migration. The script
 
 The migration script:
 
-- Starts a temporary MINIO container on port 9002 that reads the old MINIO-formatted data from the `openc3-bucket-v` volume
+- Starts a temporary MINIO container on port 9002 that reads the old MINIO-formatted data from the old MINIO volume (configured as `OLD_VOLUME` in the script)
 - Uses `mc mirror` to copy all buckets and objects from MINIO to the running versitygw via S3 API
 - Preserves object metadata and timestamps
 - Versitygw stores the data in POSIX format in its own location within the volume
