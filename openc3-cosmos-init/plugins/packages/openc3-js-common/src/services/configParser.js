@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -100,6 +100,7 @@ export class ConfigParserService {
     remove_quotes,
     handler,
   ) {
+    let preserve_lines = false
     let string_concat = false
     this.line = ''
     this.keyword = null
@@ -112,46 +113,59 @@ export class ConfigParserService {
 
     for (let i = 0; i < numLines; i++) {
       this.lineNumber = i + 1
-      let line = lines[i].trim()
-      // Ensure the line length is not 0
-      if (line.length === 0) {
-        if (yield_non_keyword_lines) {
-          handler(null, [], this.line, this.lineNumber)
-        }
-        continue
-      }
+      let line = lines[i]
 
-      if (string_concat === true) {
-        // Skip comment lines after a string concatenation
-        if (line[0] === '#') {
-          continue
-        }
-        // Remove the opening quote if we're continuing the line
-        line = line.substring(1, line.length)
-      }
+      if (!preserve_lines) {
+        line = line.trim()
 
-      // Check for string continuation
-      let last_char = line.charAt(line.length - 1)
-      let newline = false
-      switch (last_char) {
-        case '+': // String concatenation with newlines
-          newline = true
-        // Deliberate fall through
-        case '\\': // String concatenation
-          // Trim off the concat character plus any spaces, e.g. "line" \
-          let trim = line.substring(0, line.length - 1).trim()
-          // Now trim off the last quote so it will flow into the next line
-          this.line += trim.substring(0, trim.length - 1)
-          if (newline) {
-            this.line += '\n'
+        // Ensure the line length is not 0
+        if (line.length === 0) {
+          if (yield_non_keyword_lines) {
+            let handler_result = handler(null, [], this.line, this.lineNumber)
+            if (handler_result === true) {
+              preserve_lines = true
+            }
+            if (handler_result === false) {
+              preserve_lines = false
+            }
           }
-          string_concat = true
           continue
-        case '&': // Line continuation
-          this.line += line.substring(0, line.length - 1)
-          continue
-        default:
-          this.line += line
+        }
+
+        if (string_concat === true) {
+          // Skip comment lines after a string concatenation
+          if (line[0] === '#') {
+            continue
+          }
+          // Remove the opening quote if we're continuing the line
+          line = line.substring(1, line.length)
+        }
+
+        // Check for string continuation
+        let last_char = line.charAt(line.length - 1)
+        let newline = false
+        switch (last_char) {
+          case '+': // String concatenation with newlines
+            newline = true
+          // Deliberate fall through
+          case '\\': // String concatenation
+            // Trim off the concat character plus any spaces, e.g. "line" \
+            let trim = line.substring(0, line.length - 1).trim()
+            // Now trim off the last quote so it will flow into the next line
+            this.line += trim.substring(0, trim.length - 1)
+            if (newline) {
+              this.line += '\n'
+            }
+            string_concat = true
+            continue
+          case '&': // Line continuation
+            this.line += line.substring(0, line.length - 1)
+            continue
+          default:
+            this.line += line
+        }
+      } else {
+        this.line = line
       }
       string_concat = false
 
@@ -172,7 +186,18 @@ export class ConfigParserService {
       // Ignore lines without keywords: comments and blank lines
       if (this.keyword === null) {
         if (yield_non_keyword_lines) {
-          handler(this.keyword, this.parameters, this.line, this.lineNumber)
+          let handler_result = handler(
+            this.keyword,
+            this.parameters,
+            this.line,
+            this.lineNumber,
+          )
+          if (handler_result === true) {
+            preserve_lines = true
+          }
+          if (handler_result === false) {
+            preserve_lines = false
+          }
         }
         this.line = ''
         continue
@@ -195,7 +220,18 @@ export class ConfigParserService {
           }
         }
       }
-      handler(this.keyword, this.parameters, this.line, this.lineNumber)
+      let handler_result = handler(
+        this.keyword,
+        this.parameters,
+        this.line,
+        this.lineNumber,
+      )
+      if (handler_result === true) {
+        preserve_lines = true
+      }
+      if (handler_result === false) {
+        preserve_lines = false
+      }
       this.line = ''
     } // for all the lines
   } // parse_string

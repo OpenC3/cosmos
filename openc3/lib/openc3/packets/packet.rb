@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -1528,6 +1528,7 @@ module OpenC3
         end
         value << ' ' << item.units if item.units
       end
+      value = "#{value} #{item.units}" if value_type == :WITH_UNITS and item.units
       value
     end
 
