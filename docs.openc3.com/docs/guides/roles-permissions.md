@@ -19,6 +19,7 @@ Roles are assigned using the format: `{SCOPE}__{ROLE_NAME}`
 - `ROLE_NAME`: One of the built-in roles or a custom role name
 
 Examples:
+
 - `DEFAULT__operator` - Operator role in the DEFAULT scope
 - `MISSION1__viewer` - Viewer role in the MISSION1 scope
 - `ALLSCOPES__admin` - Admin role across all scopes
@@ -29,9 +30,10 @@ Individual built-in roles in COSMOS Enterprise are scoped to a minimal set of pe
 
 ### Admin
 
-The **Admin** role provides administrative access within a scope. Admins can also manage the files within the MinIO bucket.
+The **Admin** role provides administrative access within a scope. Admins can also manage the files within Bucket Explorer.
 
 **Permissions:**
+
 - `system` - View system information
 - `system_set` - Modify system settings
 - `tlm` - View telemetry data
@@ -40,6 +42,7 @@ The **Admin** role provides administrative access within a scope. Admins can als
 - `admin` - Administrative functions (manage plugins, targets, interfaces, etc.)
 
 **Special Cases:**
+
 - When assigned to `ALLSCOPES`, gains `superadmin` permission for system-wide administration
 - Can release command authority taken by other users in their scope
 
@@ -50,6 +53,7 @@ The **Admin** role provides administrative access within a scope. Admins can als
 The **Operator** role has full access except for administrative functions and approval rights.
 
 **Permissions:**
+
 - `system` - View system information
 - `system_set` - Modify system settings
 - `tlm` - View telemetry data
@@ -68,6 +72,7 @@ The **Operator** role has full access except for administrative functions and ap
 The **Viewer** role provides read-only access to the system.
 
 **Permissions:**
+
 - `system` - View system information
 - `tlm` - View telemetry data
 - `cmd_info` - View command information
@@ -80,6 +85,7 @@ The **Viewer** role provides read-only access to the system.
 The **Approver** role is specifically for command approval workflows.
 
 **Permissions:**
+
 - `approve_hazardous` - Approve hazardous commands
 - `approve_restricted` - Approve restricted commands
 - `approve_normal` - Approve normal commands
@@ -91,6 +97,7 @@ The **Approver** role is specifically for command approval workflows.
 The **Runner** role allows users to execute commands and scripts but cannot create or edit them. Runner does not come with approval rights.
 
 **Permissions:**
+
 - `system` - View system information
 - `system_set` - Modify system settings
 - `tlm` - View telemetry data
@@ -194,13 +201,13 @@ When a user attempts an action, COSMOS Enterprise performs the following checks:
 
 COSMOS Enterprise Keycloak realm includes default test users for each role:
 
-| Username | Password | Default Role | Email |
-|----------|----------|--------------|-------|
-| operator | operator | DEFAULT__operator | operator@openc3.com |
-| runner | runner | DEFAULT__runner | runner@openc3.com |
-| viewer | viewer | DEFAULT__viewer | viewer@openc3.com |
-| admin | admin | ALLSCOPES__admin | admin@openc3.com |
-| approver | approver | DEFAULT__approver | approver@openc3.com |
+| Username | Password | Default Role        | Email               |
+| -------- | -------- | ------------------- | ------------------- |
+| operator | operator | DEFAULT\_\_operator | operator@openc3.com |
+| runner   | runner   | DEFAULT\_\_runner   | runner@openc3.com   |
+| viewer   | viewer   | DEFAULT\_\_viewer   | viewer@openc3.com   |
+| admin    | admin    | ALLSCOPES\_\_admin  | admin@openc3.com    |
+| approver | approver | DEFAULT\_\_approver | approver@openc3.com |
 
 **Note:** These are default development/testing accounts. In production deployments, you should configure proper authentication and remove or change these default credentials.
 

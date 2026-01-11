@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,7 +29,7 @@ class Bucket:
     def getClient(cls):
         if not OPENC3_CLOUD:
             raise RuntimeError("OPENC3_CLOUD environment variable is required")
-        # Base is AwsBucket which works with MINIO, Enterprise implements additional
+        # Base is AwsBucket which works with S3-compatible storage (versitygw), Enterprise implements additional
         bucket_class = OPENC3_CLOUD.capitalize() + "Bucket"
         my_module = None
         try:

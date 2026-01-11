@@ -22,7 +22,7 @@ Proper security is always a matter of trade-offs and layers. This section discus
 
 All COSMOS containers run in a Docker network called `openc3-cosmos-network`. Only the Traefik load balancer is exposed directly to any outside network, with ports for HTTP and HTTPS traffic. If HTTPS is enabled, all HTTP traffic is redirected to HTTPS.
 
-The load balancer routes specific paths to MinIO or the COSMOS APIs, making them available to the outside network through the same hostname as the load balancer. In COSMOS Enterprise, Keycloak is also routed through the load balancer.
+The load balancer routes specific paths to VersityGW or the COSMOS APIs, making them available to the outside network through the same hostname as the load balancer. In COSMOS Enterprise, Keycloak is also routed through the load balancer.
 
 Other COSMOS services such as Redis and all worker microservices have no direct exposure outside of the Docker network.
 
@@ -57,7 +57,7 @@ Environment variables passed to containers can be sourced from host environment 
 
 In both cases, secrets need to be available to the user account starting COSMOS. This account must have sufficient trust to control container lifecycles and all data within the containers.
 
-Most standard containers for databases like MinIO are set up to receive secrets through environment variables. For a thorough discussion of secrets in Docker, see the [official thread](https://github.com/moby/moby/issues/13490).
+Most standard containers for databases like VersityGW are set up to receive secrets through environment variables. For a thorough discussion of secrets in Docker, see the [official thread](https://github.com/moby/moby/issues/13490).
 
 ## Credentials
 
@@ -78,20 +78,20 @@ The `OPENC3_REDIS_*` credentials are used by COSMOS services (cmd-tlm-api, scrip
 
 The `OPENC3_SR_REDIS_*` credentials are passed to **spawned user scripts** when Script Runner executes them. The script-runner-api itself uses the main `OPENC3_REDIS_*` credentials, but when it spawns a user script process, it substitutes the limited `SR` credentials. This prevents user scripts from accessing or modifying data they shouldn't have access to.
 
-### MinIO (S3 Storage) Credentials
+### VersityGW (S3 Storage) Credentials
 
-MinIO provides S3-compatible object storage for logs, configurations, and other files.
+VersityGW provides S3-compatible object storage for logs, configurations, and other files.
 
 | Variable                    | Default Value               | Description                             |
 | --------------------------- | --------------------------- | --------------------------------------- |
-| `OPENC3_BUCKET_USERNAME`    | `openc3minio`               | Root username for MinIO                 |
-| `OPENC3_BUCKET_PASSWORD`    | `openc3miniopassword`       | Root password for MinIO                 |
-| `OPENC3_SR_BUCKET_USERNAME` | `scriptrunnerminio`         | Username passed to spawned user scripts |
-| `OPENC3_SR_BUCKET_PASSWORD` | `scriptrunnerminiopassword` | Password passed to spawned user scripts |
+| `OPENC3_BUCKET_USERNAME`    | `openc3bucket`              | Root username for VersityGW             |
+| `OPENC3_BUCKET_PASSWORD`    | `openc3bucketpassword`      | Root password for VersityGW             |
+| `OPENC3_SR_BUCKET_USERNAME` | `scriptrunnerbucket`        | Username passed to spawned user scripts |
+| `OPENC3_SR_BUCKET_PASSWORD` | `scriptrunnerbucketpassword`| Password passed to spawned user scripts |
 
-The `OPENC3_BUCKET_*` credentials are the MinIO root credentials used by COSMOS services to manage buckets and files.
+The `OPENC3_BUCKET_*` credentials are the VersityGW root credentials used by COSMOS services to manage buckets and files.
 
-The `OPENC3_SR_BUCKET_*` credentials create a separate MinIO user with limited permissions. Similar to the Redis credentials, these are passed to **spawned user scripts** rather than being used by the script-runner-api itself, following the principle of least privilege.
+The `OPENC3_SR_BUCKET_*` credentials create a separate VersityGW user with limited permissions. Similar to the Redis credentials, these are passed to **spawned user scripts** rather than being used by the script-runner-api itself, following the principle of least privilege.
 
 ### Service Authentication
 
@@ -133,7 +133,7 @@ COSMOS Enterprise has additional credentials for Keycloak and PostgreSQL. See th
 
 ## The users.acl File
 
-The `users.acl` file (located at `openc3-redis/users.acl`) configures Redis authentication and authorization. This file is **only for Redis** and has no relation to MinIO or other services.
+The `users.acl` file (located at `openc3-redis/users.acl`) configures Redis authentication and authorization. This file is **only for Redis** and has no relation to VersityGW or other services.
 
 ### ACL File Format
 
@@ -186,7 +186,7 @@ The passwords in `.env` must match the passwords in `users.acl`:
 
 The `admin` user in `users.acl` does not have a corresponding `.env` variable since it's only used for manual Redis administration.
 
-The MinIO credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_SERVICE_PASSWORD` have no corresponding entries in `users.acl` since they are for different services.
+The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_SERVICE_PASSWORD` have no corresponding entries in `users.acl` since they are for different services.
 
 ## Securing Your Deployment
 
@@ -212,7 +212,7 @@ The MinIO credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_SERV
 
 4. Repeat for the `scriptrunner` user if desired.
 
-### Changing MinIO Passwords
+### Changing VersityGW Passwords
 
 Update the values in `.env`:
 
