@@ -139,9 +139,22 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 ## Code Style
 
+### Installing Hooks
+
+After cloning the repository, install git hooks to ensure code quality and consistency:
+
+```bash
+./hooks/install.sh
+```
+
+This installs:
+
+- **pre-commit** - Automatically updates copyright years in modified files to the current year
+
 ### File Headers
 
-- When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2025). Do NOT modify the Ball Aerospace copyright line.
+- When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2026). Do NOT modify the Ball Aerospace copyright line.
+- The pre-commit hook automatically handles this if installed.
 
 ### Ruby
 

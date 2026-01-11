@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -58,21 +58,32 @@ end
 class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
   NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
-  def as_json(_options = nil)
-    # If string is ASCII-8BIT (binary) and has non-ASCII bytes (> 127), encode as binary
-    # This handles data from hex_to_byte_string and other binary sources
-    if self.encoding == Encoding::ASCII_8BIT && self.bytes.any? { |b| b > 127 }
-      return self.to_json_raw_object
-    end
+  # Matches characters outside the Latin range (U+0000-U+00FF) or C1 control characters (U+0080-U+009F)
+  # Latin range covers Basic Latin (U+0000-U+007F) and Latin-1 Supplement (U+00A0-U+00FF)
+  # This includes common characters like µ (U+00B5), ° (U+00B0), ñ (U+00F1), etc.
+  OUTSIDE_LATIN_RANGE = /[^\u0000-\u007F\u00A0-\u00FF]/
 
+  def as_json(_options = nil)
+    # Try to interpret the string as UTF-8
+    # This handles both:
+    # 1. Unicode text in ASCII-8BIT strings (e.g., "µA" for micro-Ampères from config files)
+    # 2. Binary data from hex_to_byte_string (e.g., \xDE\xAD\xBE\xEF) which will fail valid_encoding?
     as_utf8 = self.dup.force_encoding('UTF-8')
     if as_utf8.valid_encoding?
+      # Valid UTF-8 - check for non-printable control characters
       if as_utf8 =~ NON_UTF8_PRINTABLE
         return self.to_json_raw_object
-      else
-        return as_utf8
       end
+      # Check if all characters are in the expected Latin range (U+0000-U+00FF)
+      # This prevents binary data that happens to be valid UTF-8 from being treated as text
+      # For example, \xDE\xAD decodes to U+07AD (Thaana script) which should be treated as binary
+      # Also reject C1 control characters (U+0080-U+009F) which are non-printable
+      if as_utf8 =~ OUTSIDE_LATIN_RANGE
+        return self.to_json_raw_object
+      end
+      return as_utf8
     else
+      # Invalid UTF-8 means this is truly binary data, encode as raw object
       return self.to_json_raw_object
     end
   end #:nodoc:

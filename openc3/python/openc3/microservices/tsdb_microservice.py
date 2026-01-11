@@ -319,8 +319,50 @@ class TsdbMicroservice(Microservice):
 
                 values = {}
                 for orig_item_name, value in json_data.items():
-                    # Replace invalid characters in item names with underscore first
-                    # so we can check json_columns correctly
+                    # Handle various data types
+                    match value:
+                        case int():
+                            if value > (2**63 - 1):  # max int64 value
+                                value = 2**63 - 1
+                            elif value < (-(2**63) + 1):
+                                # QuestDB treats int64 min value as NULL, so we set it to -2^63 + 1
+                                value = -(2**63) + 1
+
+                        case float() | str() | None:
+                            pass
+
+                        case bytes():
+                            value = base64.b64encode(value).decode("ascii")
+
+                        case list():
+                            if len(value) > 0:
+                                # QuestDB 9.0.0 only supports DOUBLE arrays: https://questdb.com/docs/concept/array/
+                                if not isinstance(value[0], numbers.Number):
+                                    # If the list is not numeric, convert to JSON string
+                                    value = json.dumps(value)
+                                else:
+                                    value = numpy.array(value, dtype=numpy.float64)
+
+                        case dict():
+                            if value["json_class"] == "Float":
+                                # We send over NaN and Infinity values as json serialized like:
+                                #   {'json_class': 'Float', 'raw': 'NaN'}
+                                value = float(value["raw"])
+                            elif value["json_class"] == "String" and isinstance(value["raw"], list):
+                                # We send over blocks of data as json serialized strings like:
+                                #   {'json_class': 'String', 'raw': [15, 7, 9, 13, 7, 5, 14, 7 ... ]}
+                                value = base64.b64encode(bytes(value["raw"])).decode("ascii")
+                            else:
+                                print(f"QuestDB: Unknown dict with name:{orig_item_name} value:{value}")
+                                continue
+                            if isinstance(value, list) and all(isinstance(b, int) and 0 <= b <= 255 for b in value):
+                                value = base64.b64encode(bytes(value)).decode("ascii")
+
+                        case _:
+                            self.logger.warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
+                            continue
+
+                    # Replace invalid characters in item names with underscore
                     # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
                     # NOTE: Semicolon added as it messes up queries
                     item_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", orig_item_name)
