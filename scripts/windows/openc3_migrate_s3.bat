@@ -25,7 +25,7 @@ if "%OPENC3_BUCKET_PASSWORD%"=="" (set "MINIO_PASS=openc3miniopassword") else (s
 set "MINIO_PORT=9002"
 set "MINIO_URL=http://localhost:%MINIO_PORT%"
 set "OLD_VOLUME=openc3-bucket-v"
-set "NEW_VOLUME=openc3-bucket-v"
+set "NEW_VOLUME=openc3-block-v"
 set "MC_IMAGE=openc3inc/openc3-cosmos-init:latest"
 
 REM Initialize variables

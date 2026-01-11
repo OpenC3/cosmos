@@ -28,7 +28,7 @@ services:
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-bucket-v:/data"
+      - "openc3-block-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
     restart: "unless-stopped"
     logging:
@@ -285,5 +285,5 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-bucket-v:
+  openc3-block-v:
   openc3-gems-v: {}

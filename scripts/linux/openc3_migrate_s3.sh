@@ -26,7 +26,7 @@ MINIO_PASS="${OPENC3_BUCKET_PASSWORD:-openc3miniopassword}"
 MINIO_PORT="9002"
 MINIO_URL="http://localhost:${MINIO_PORT}"
 OLD_VOLUME="openc3-bucket-v"
-NEW_VOLUME="openc3-bucket-v"
+NEW_VOLUME="openc3-block-v"
 
 # Colors for output
 RED='\033[0;31m'

@@ -7,8 +7,6 @@ module OpenC3
     def self.run
       # Get all scopes
       ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
-        next if scope == 'DEFAULT'
-
         # Get all plugins for this scope
         plugins = PluginModel.all(scope: scope)
         plugins.each do |plugin_name, plugin_data|
