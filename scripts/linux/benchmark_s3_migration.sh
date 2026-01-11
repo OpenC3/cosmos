@@ -53,7 +53,7 @@ run_mc() {
     docker run --rm \
         --network "${DOCKER_NETWORK}" \
         -e "MC_HOST_openc3minio=http://${MINIO_USER}:${MINIO_PASS}@${MINIO_SERVICE}:9000" \
-        -e "MC_HOST_openc3s3=http://${MINIO_USER}:${MINIO_PASS}@openc3-s3-migration:9000" \
+        -e "MC_HOST_openc3s3=http://${MINIO_USER}:${MINIO_PASS}@openc3-bucket-migration:9000" \
         "${MC_IMAGE}" \
         mc "$@"
 }
@@ -311,7 +311,7 @@ check_prerequisites() {
     echo "${GREEN}✓ Docker network: ${DOCKER_NETWORK}${NC}"
 
     # Check migration container
-    if ! docker ps --format '{{.Names}}' | grep -q "^openc3-s3-migration$"; then
+    if ! docker ps --format '{{.Names}}' | grep -q "^openc3-bucket-migration$"; then
         echo "${RED}Error: Migration container is not running${NC}"
         echo "Start it first with: ./openc3_migrate_s3.sh start"
         exit 1

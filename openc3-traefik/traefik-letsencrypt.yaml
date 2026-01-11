@@ -100,7 +100,7 @@ http:
     # Matches any path with a file extension which is assumed to be a static file
     tools-router:
       rule: PathRegexp(`^/tools/.+/.+\.[a-zA-Z0-9]+$`)
-      service: service-minio
+      service: service-bucket
       priority: 6
       tls:
         certResolver: myresolver
@@ -114,7 +114,7 @@ http:
       middlewares:
         # add index.html to the end
         - "addIndexHtml"
-      service: service-minio
+      service: service-bucket
       priority: 5
       tls:
         certResolver: myresolver
@@ -128,19 +128,19 @@ http:
       middlewares:
         # add .html to the end
         - "addDotHtml"
-      service: service-minio
+      service: service-bucket
       priority: 4
       tls:
         certResolver: myresolver
         domains:
           - main: "mydomain.com"
-    # Route to any path in minio
+    # Route to any path in bucket storage
     files-router:
       rule: PathPrefix(`/files`)
       middlewares:
         # remove /files from the beginning
         - "removeFirst"
-      service: service-minio
+      service: service-bucket
       priority: 3
       tls:
         certResolver: myresolver
@@ -153,7 +153,7 @@ http:
       middlewares:
         # add /tools/base to the beginning
         - "addToolsBase"
-      service: service-minio
+      service: service-bucket
       priority: 2
       tls:
         certResolver: myresolver
@@ -164,9 +164,9 @@ http:
     web-router:
       rule: HostRegexp(`.*`)
       middlewares:
-        # Serve /tools/base/index.html from minio
+        # Serve /tools/base/index.html from bucket storage
         - "gotoToolsBaseIndex"
-      service: service-minio
+      service: service-bucket
       priority: 1
       tls:
         certResolver: myresolver
@@ -198,11 +198,11 @@ http:
         servers:
           - url: "http://openc3-cosmos-script-runner-api:2902"
     # The Minio S3 file server
-    service-minio:
+    service-bucket:
       loadBalancer:
         passHostHeader: false
         servers:
-          - url: "http://openc3-s3:9000"
+          - url: "http://openc3-bucket:9000"
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:

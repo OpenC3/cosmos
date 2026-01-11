@@ -64,7 +64,7 @@ http:
     # Matches any path with a valid file extension which is assumed to be a static file
     tools-router:
       rule: PathRegexp(`^/tools/.+/.+\.[a-zA-Z0-9]+$`)
-      service: service-minio
+      service: service-bucket
       priority: 6
     # Route to other tool plugins hosted statically in Minio
     # Where we need to add index.html to the path
@@ -74,7 +74,7 @@ http:
       middlewares:
         # add index.html to the end
         - "addIndexHtml"
-      service: service-minio
+      service: service-bucket
       priority: 5
     # Route to other tool plugins hosted statically in Minio
     # Where we need to add .html to the path
@@ -84,15 +84,15 @@ http:
       middlewares:
         # add .html to the end
         - "addDotHtml"
-      service: service-minio
+      service: service-bucket
       priority: 4
-    # Route to any path in minio
+    # Route to any path in bucket storage
     files-router:
       rule: PathPrefix(`/files`)
       middlewares:
         # remove /files from the beginning
         - "removeFirst"
-      service: service-minio
+      service: service-bucket
       priority: 3
     # Route to base files hosted statically in Minio
     # Matches any path with a valid file extension which is assumed to be a static file
@@ -101,16 +101,16 @@ http:
       middlewares:
         # add /tools/base to the beginning
         - "addToolsBase"
-      service: service-minio
+      service: service-bucket
       priority: 2
     # This is the default route for everything that doesn't match a more specific route
     # It gets us to the base openc3 application
     web-router:
       rule: HostRegexp(`.*`)
       middlewares:
-        # Serve /tools/base/index.html from minio
+        # Serve /tools/base/index.html from bucket storage
         - "gotoToolsBaseIndex"
-      service: service-minio
+      service: service-bucket
       priority: 1
   services:
     # The OpenC3 cmd/tlm api cable service
@@ -138,11 +138,11 @@ http:
         servers:
           - url: "http://openc3-cosmos-script-runner-api:2902"
     # The Minio S3 file server
-    service-minio:
+    service-bucket:
       loadBalancer:
         passHostHeader: false
         servers:
-          - url: "http://openc3-s3:9000"
+          - url: "http://openc3-bucket:9000"
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -90,6 +90,99 @@ module OpenC3
         rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
           Logger.warn("put_bucket_policy not supported by S3 backend: #{e.message}")
         end
+      end
+    end
+
+    # Apply bucket policy to grant ScriptRunner user access to config and logs buckets
+    # This provides reduced permissions compared to the root user for security
+    def ensure_scriptrunner_policy(config_bucket, logs_bucket)
+      sr_username = ENV['OPENC3_SR_BUCKET_USERNAME']
+      return unless sr_username
+      return if sr_username == ENV['OPENC3_BUCKET_USERNAME'] # Same as root, no policy needed
+
+      # Policy for config bucket - read targets, read/write targets_modified
+      # Note: versitygw expects Principal as comma-separated raw usernames
+      config_policy = <<~EOL
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ScriptRunnerListBucket",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:ListBucket",
+              "s3:GetBucketLocation"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}"
+          },
+          {
+            "Sid": "ScriptRunnerReadTargets",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": "s3:GetObject",
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}/*"
+          },
+          {
+            "Sid": "ScriptRunnerWriteTargetsModified",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}/*/targets_modified/*"
+          }
+        ]
+      }
+      EOL
+
+      # Policy for logs bucket - read/write tool_logs/sr
+      logs_policy = <<~EOL
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ScriptRunnerListBucket",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:ListBucket",
+              "s3:GetBucketLocation"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{logs_bucket}"
+          },
+          {
+            "Sid": "ScriptRunnerWriteToolLogs",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{logs_bucket}/*/tool_logs/sr/*"
+          }
+        ]
+      }
+      EOL
+
+      begin
+        Logger.info("Applying ScriptRunner bucket policy to #{config_bucket}")
+        options = { bucket: config_bucket, policy: config_policy }
+        options[:checksum_algorithm] = "SHA256" if @use_checksum
+        @client.put_bucket_policy(options)
+      rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+        Logger.warn("put_bucket_policy for #{config_bucket} not supported by S3 backend: #{e.message}")
+      end
+
+      begin
+        Logger.info("Applying ScriptRunner bucket policy to #{logs_bucket}")
+        options = { bucket: logs_bucket, policy: logs_policy }
+        options[:checksum_algorithm] = "SHA256" if @use_checksum
+        @client.put_bucket_policy(options)
+      rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+        Logger.warn("put_bucket_policy for #{logs_bucket} not supported by S3 backend: #{e.message}")
       end
     end
 

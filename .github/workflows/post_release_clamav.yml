@@ -48,7 +48,7 @@ jobs:
       - name: ClamAV scan image redis
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} pull clamav_results/openc3-redis.txt
         working-directory: scripts/release
-      - name: ClamAV scan image minio
+      - name: ClamAV scan image bucket
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-s3:${{ github.event.inputs.version }} pull clamav_results/openc3-s3.txt
         working-directory: scripts/release
       - name: ClamAV scan image tsdb

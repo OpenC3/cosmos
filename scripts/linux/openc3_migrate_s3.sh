@@ -4,11 +4,11 @@
 #
 # This script:
 # 1. Starts a temporary MINIO container using the old openc3-bucket-v volume
-# 2. Uses mc to mirror all data from MINIO to the running openc3-s3 (versitygw)
+# 2. Uses mc to mirror all data from MINIO to the running openc3-bucket (versitygw)
 # 3. Provides instructions for completing the migration
 #
 # Prerequisites:
-# - COSMOS 7 must be running with openc3-s3 (versitygw)
+# - COSMOS 7 must be running with openc3-bucket (versitygw)
 # - Docker must be running
 # - The old openc3-bucket-v volume must exist
 # - openc3-cosmos-init image must be built (contains mc)
@@ -26,7 +26,7 @@ MINIO_PASS="${OPENC3_BUCKET_PASSWORD:-openc3miniopassword}"
 MINIO_PORT="9002"
 MINIO_URL="http://localhost:${MINIO_PORT}"
 OLD_VOLUME="openc3-bucket-v"
-NEW_VOLUME="openc3-s3-v"
+NEW_VOLUME="openc3-bucket-v"
 
 # Colors for output
 RED='\033[0;31m'
@@ -36,10 +36,10 @@ NC='\033[0m' # No Color
 
 # Auto-detect Docker network and S3 container
 detect_docker_environment() {
-    # Find the openc3-s3 container (versitygw)
-    S3_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E 'openc3-s3|s3' | grep -v migration | head -1)
+    # Find the openc3-bucket container (versitygw)
+    S3_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E 'openc3-bucket|s3' | grep -v migration | head -1)
     if [ -z "$S3_CONTAINER" ]; then
-        echo -e "${RED}Error: Could not find running openc3-s3 container${NC}"
+        echo -e "${RED}Error: Could not find running openc3-bucket container${NC}"
         echo "Make sure COSMOS 7 is running: ./openc3.sh run"
         exit 1
     fi
@@ -65,7 +65,7 @@ detect_docker_environment() {
 usage() {
     echo "Usage: $0 [start|migrate|status|cleanup|help]"
     echo ""
-    echo "Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-s3-v)."
+    echo "Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-bucket-v)."
     echo ""
     echo "Commands:"
     echo "  start     Start temporary MINIO on port 9002 using old volume for migration"

@@ -22,7 +22,7 @@ fi
 date
 
 if [ -z "${OPENC3_BUCKET_URL}" ]; then
-    OPENC3_BUCKET_URL='http://openc3-s3:9000'
+    OPENC3_BUCKET_URL='http://openc3-bucket:9000'
 fi
 
 if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then

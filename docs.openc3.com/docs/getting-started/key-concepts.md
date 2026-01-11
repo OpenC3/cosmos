@@ -35,7 +35,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-traefik-1                  | Provides a reverse proxy and load balancer with routes to the COSMOS endpoints                         |
 | cosmos-openc3-cosmos-cmd-tlm-api-1       | Rails server that provides all the COSMOS API endpoints                                                |
 | cosmos-openc3-cosmos-script-runner-api-1 | Rails server that provides the Script API endpoints                                                    |
-| cosmos-openc3-minio-1                    | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
+| cosmos-openc3-bucket-1                   | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                         |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://redis.io/docs/data-types/streams) containing the raw and decomutated data |
 

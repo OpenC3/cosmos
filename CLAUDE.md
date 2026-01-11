@@ -13,31 +13,37 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 ## Architecture
 
 ### Microservices (Docker Containers)
+
 - **openc3-cosmos-cmd-tlm-api** - Rails 7.2 REST API for command/telemetry operations
 - **openc3-cosmos-script-runner-api** - Rails 7.2 API for script execution
 - **openc3-operator** - Ruby operator managing interfaces and microservices
-- **openc3-minio** - S3-compatible object storage for logs and configurations
+- **openc3-bucket** - S3-compatible object storage for logs and configurations
 - **openc3-redis** - Data store and pub/sub messaging
 - **openc3-traefik** - Reverse proxy (access at http://localhost:2900)
 
 ### Core Library
+
 - **openc3/** - Ruby gem with ~40 C extensions for performance-critical operations
 - **openc3/python/** - Python library (Poetry-managed) with equivalent functionality
 
 ### Frontend (pnpm Workspace)
+
 Located in `openc3-cosmos-init/plugins/packages/`:
+
 - **openc3-tool-base** - Base Vue 3 components for tools
 - **openc3-vue-common** - Shared Vue 3 components (Vuetify 3)
 - **openc3-js-common** - Shared JavaScript utilities
-- **openc3-cosmos-tool-*** - Individual tool packages (cmdsender, scriptrunner, tlmviewer, etc.)
+- **openc3-cosmos-tool-\*** - Individual tool packages (cmdsender, scriptrunner, tlmviewer, etc.)
 - **openc3-cosmos-demo** - Demo plugin with test targets (INST, INST2, EXAMPLE, TEMPLATED)
 
 ### Communication Flow
+
 Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyCable.
 
 ## Common Commands
 
 ### Docker Management (Primary Development Method)
+
 ```bash
 ./openc3.sh build     # Build all containers from source
 ./openc3.sh start     # Build + run (first time setup)
@@ -47,6 +53,7 @@ Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyC
 ```
 
 ### CLI Commands
+
 ```bash
 ./openc3.sh cli help                          # Show CLI help
 ./openc3.sh cli generate plugin MyPlugin      # Generate new plugin
@@ -56,6 +63,7 @@ Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyC
 ```
 
 ### Ruby Tests
+
 ```bash
 cd openc3
 bundle install
@@ -66,6 +74,7 @@ bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 ```
 
 ### Python Tests
+
 ```bash
 cd openc3/python
 poetry install
@@ -76,6 +85,7 @@ poetry run coverage run -m pytest && poetry run coverage report
 ```
 
 ### Frontend (Vue.js/Vuetify)
+
 ```bash
 cd openc3-cosmos-init/plugins
 pnpm install
@@ -84,12 +94,14 @@ pnpm lint                     # ESLint, run from the openc3-cosmos-init/plugins/
 ```
 
 ### API Tests (Rails)
+
 ```bash
 cd openc3-cosmos-cmd-tlm-api && bundle exec rspec
 cd openc3-cosmos-script-runner-api && bundle exec rspec
 ```
 
 ### Playwright E2E Tests
+
 ```bash
 cd playwright
 pnpm install
@@ -105,6 +117,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 ```
 
 ### Test Commands via Docker
+
 ```bash
 ./openc3.sh test rspec        # Run Ruby tests in container
 ./openc3.sh test playwright   # Run Playwright tests
@@ -121,25 +134,29 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 - **Node.js 24** - JavaScript runtime
 - **Docker Compose** - Container orchestration
 - **Redis** - Caching, pub/sub, ephemeral state
-- **MinIO** - S3-compatible object storage
+- **Versitygw** - S3-compatible object storage
 - **Playwright** - E2E testing
 
 ## Code Style
 
 ### File Headers
+
 - When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2025). Do NOT modify the Ball Aerospace copyright line.
 
 ### Ruby
+
 - RuboCop configured in `.rubocop.yml` (many rules disabled)
 - Target Ruby version: 3.4
 
 ### Python
+
 - Ruff for linting (pycodestyle E + Pyflakes F rules)
 - Line length: 120
 - Target Python: 3.12
 - Config in `openc3/python/pyproject.toml`
 
 ### JavaScript/TypeScript
+
 - ESLint 9 with Vue parser
 - Prettier for formatting
 - Config in `openc3-cosmos-init/plugins/eslint.config.mjs`
@@ -149,6 +166,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 Plugins extend COSMOS with new targets, tools, and interfaces. Located in `openc3-cosmos-init/plugins/packages/`.
 
 Each plugin is a Ruby gem containing:
+
 - Target definitions (commands, telemetry, screens)
 - Optional Vue.js tools
 - Interface implementations

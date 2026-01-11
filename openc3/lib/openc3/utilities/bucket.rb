@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,7 +27,7 @@ module OpenC3
 
     def self.getClient
       raise 'OPENC3_CLOUD environment variable is required' unless ENV['OPENC3_CLOUD']
-      # Base is AwsBucket which works with MINIO, Enterprise implements additional
+      # Base is AwsBucket which works with S3-compatible storage (versitygw), Enterprise implements additional
       bucket_class = ENV['OPENC3_CLOUD'].capitalize + 'Bucket'
       klass = OpenC3.require_class('openc3/utilities/'+bucket_class.class_name_to_filename)
       klass.new
@@ -43,6 +43,11 @@ module OpenC3
 
     def ensure_public(bucket)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    # Apply bucket policies for ScriptRunner user (only applicable for local mode)
+    def ensure_scriptrunner_policy(config_bucket, logs_bucket)
+      # No-op by default, implemented by AwsBucket for local mode
     end
 
     def exist?(bucket)
