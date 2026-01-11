@@ -38,38 +38,32 @@ MINIO stores data in a specific internal format that is not directly compatible 
 Use the provided migration script for a safe, side-by-side migration. The script runs `mc` via Docker so no local installation is required.
 
 ```bash
-# 1. Upgrade to COSMOS 7+ to get the migration scripts and openc3-bucket container
-#    (MINIO keeps running until you stop/start)
-./openc3.sh upgrade v7.0.0
-
-# 2. Start temporary versitygw container for migration
-./scripts/linux/openc3_migrate_s3.sh start
-
-# 3. Migrate all data from MINIO to versitygw
-./scripts/linux/openc3_migrate_s3.sh migrate
-
-# 4. Stop all services
+# 1. Stop COSMOS 6
 ./openc3.sh stop
 
-# 5. Start COSMOS with versitygw
+# 2. Upgrade to COSMOS 7+ and start (versitygw will be running)
+./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 
-# 6. Verify everything works and old data is accessible
+# 3. Start temporary MINIO container for migration (reads old data from volume)
+./scripts/linux/openc3_migrate_s3.sh start
 
-# 7. Cleanup migration container
+# 4. Migrate all data from MINIO to versitygw
+./scripts/linux/openc3_migrate_s3.sh migrate
+
+# 5. Verify your data migrated correctly
+./scripts/linux/openc3_migrate_s3.sh status
+
+# 6. Cleanup temporary MINIO container
 ./scripts/linux/openc3_migrate_s3.sh cleanup
-
-# 8. Remove old minio volume
-docker volume rm openc3-minio-v
 ```
 
 The migration script:
 
-- Runs versitygw on a temporary port (9002) alongside MINIO
-- Creates the new volume (`openc3-bucket-v`) for versitygw
-- Uses `mc mirror` to copy all buckets and objects via Docker
+- Starts a temporary MINIO container on port 9002 that reads the old MINIO-formatted data from the `openc3-bucket-v` volume
+- Uses `mc mirror` to copy all buckets and objects from MINIO to the running versitygw via S3 API
 - Preserves object metadata and timestamps
-- Fixes volume permissions to match your host user ID
+- Versitygw stores the data in POSIX format in its own location within the volume
 
 ### Migration Performance
 

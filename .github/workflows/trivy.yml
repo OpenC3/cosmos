@@ -116,7 +116,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-s3:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-bucket:${{ github.sha }}"
           # output: "trivy-bucket.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -124,7 +124,7 @@ jobs:
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
       #   with:
-      #     category: "openc3-s3"
+      #     category: "openc3-bucket"
       #     sarif_file: "trivy-bucket.sarif"
       - name: Run Trivy on image tsdb
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}

@@ -84,14 +84,14 @@ http:
       service: service-script
       priority: 7
       tls: {}
-    # Route to other tool plugins hosted statically in Minio
+    # Route to other tool plugins hosted statically in bucket storage
     # Matches any path with a file extension which is assumed to be a static file
     tools-router:
       rule: PathRegexp(`^/tools/.+/.+\.[a-zA-Z0-9]+$`)
       service: service-bucket
       priority: 6
       tls: {}
-    # Route to other tool plugins hosted statically in Minio
+    # Route to other tool plugins hosted statically in bucket storage
     # Where we need to add index.html to the path
     # Matches any tool name that starts with static and ends with slash
     statictools-index-router:
@@ -102,7 +102,7 @@ http:
       service: service-bucket
       priority: 5
       tls: {}
-    # Route to other tool plugins hosted statically in Minio
+    # Route to other tool plugins hosted statically in bucket storage
     # Where we need to add .html to the path
     # Matches any tool name that starts with static
     statictools-dothtml-router:
@@ -122,7 +122,7 @@ http:
       service: service-bucket
       priority: 3
       tls: {}
-    # Route to base files hosted statically in Minio
+    # Route to base files hosted statically in bucket storage
     # Matches any path with a file extension which is assumed to be a static file
     base-router:
       rule: PathRegexp(`^/.+\.[a-zA-Z0-9]+$`)
@@ -167,7 +167,7 @@ http:
         passHostHeader: false
         servers:
           - url: "http://openc3-cosmos-script-runner-api:2902"
-    # The Minio S3 file server
+    # The bucket file server
     service-bucket:
       loadBalancer:
         passHostHeader: false

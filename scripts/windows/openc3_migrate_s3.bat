@@ -5,11 +5,11 @@ REM Migration script to transfer data from old MINIO volume to new S3 (versitygw
 REM
 REM This script:
 REM 1. Starts a temporary MINIO container using the old openc3-bucket-v volume
-REM 2. Uses mc to mirror all data from MINIO to the running openc3-s3 (versitygw)
+REM 2. Uses mc to mirror all data from MINIO to the running openc3-bucket (versitygw)
 REM 3. Provides instructions for completing the migration
 REM
 REM Prerequisites:
-REM - COSMOS 7 must be running with openc3-s3 (versitygw)
+REM - COSMOS 7 must be running with openc3-bucket (versitygw)
 REM - Docker must be running
 REM - The old openc3-bucket-v volume must exist
 REM - openc3-cosmos-init image must be built (contains mc)
@@ -25,7 +25,7 @@ if "%OPENC3_BUCKET_PASSWORD%"=="" (set "MINIO_PASS=openc3miniopassword") else (s
 set "MINIO_PORT=9002"
 set "MINIO_URL=http://localhost:%MINIO_PORT%"
 set "OLD_VOLUME=openc3-bucket-v"
-set "NEW_VOLUME=openc3-s3-v"
+set "NEW_VOLUME=openc3-bucket-v"
 set "MC_IMAGE=openc3inc/openc3-cosmos-init:latest"
 
 REM Initialize variables
@@ -73,7 +73,7 @@ exit /b %errorlevel%
 :usage
 echo Usage: %~nx0 [start^|migrate^|status^|cleanup^|help]
 echo.
-echo Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-s3-v).
+echo Migrate data from old MINIO volume (openc3-bucket-v) to new S3 (openc3-bucket-v).
 echo.
 echo Commands:
 echo   start     Start temporary MINIO on port 9002 using old volume for migration
@@ -94,14 +94,14 @@ echo.
 exit /b 0
 
 :detect_docker_environment
-REM Find the openc3-s3 container (versitygw)
+REM Find the openc3-bucket container (versitygw)
 set "S3_CONTAINER="
 for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /i "s3" ^| findstr /v "migration"') do (
     if "!S3_CONTAINER!"=="" set "S3_CONTAINER=%%i"
 )
 
 if "%S3_CONTAINER%"=="" (
-    echo Error: Could not find running openc3-s3 container
+    echo Error: Could not find running openc3-bucket container
     echo Make sure COSMOS 7 is running: openc3.bat run
     exit /b 1
 )

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,7 +29,7 @@ if OPENC3_BUCKET_URL:
 elif OPENC3_DEVEL:
     s3_endpoint_url = "http://127.0.0.1:9000"
 else:
-    s3_endpoint_url = "http://openc3-s3:9000"
+    s3_endpoint_url = "http://openc3-bucket:9000"
 
 if OPENC3_CLOUD == "local":
     s3_session = boto3.session.Session(
@@ -37,9 +37,14 @@ if OPENC3_CLOUD == "local":
         aws_secret_access_key=OPENC3_BUCKET_PASSWORD,
         region_name="us-east-1",
     )
+    # Checksums are supported by real AWS S3 but may not be supported by
+    # S3-compatible backends like versitygw. Auto-detect based on
+    # whether a custom endpoint is configured. Can be overridden with ENV var.
+    use_checksum = False  # Local mode uses versitygw which doesn't fully support checksums
 else:  # AWS
     s3_endpoint_url = f"https://s3.{AWS_REGION}.amazonaws.com"
     s3_session = boto3.session.Session(region_name=AWS_REGION)
+    use_checksum = True  # Real AWS S3 supports checksums
 
 
 class AwsBucket(Bucket):
@@ -108,7 +113,10 @@ class AwsBucket(Bucket):
 }"""
             )
             try:
-                self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
+                kw_args = {"Bucket": bucket, "Policy": policy}
+                if use_checksum:
+                    kw_args["ChecksumAlgorithm"] = "SHA256"
+                self.client.put_bucket_policy(**kw_args)
             except ClientError as e:
                 Logger.warn(f"put_bucket_policy not supported by S3 backend: {e}")
 
@@ -215,8 +223,9 @@ class AwsBucket(Bucket):
             "Bucket": bucket,
             "Key": key,
             "Body": body,
-            "ChecksumAlgorithm": "SHA256",
         }
+        if use_checksum:
+            kw_args["ChecksumAlgorithm"] = "SHA256"
         if content_type:
             kw_args["ContentType"] = content_type
         if cache_control:

@@ -87,9 +87,9 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 [Redis](https://redis.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Redis to store both our configuration and data. If you look back at our [container list](/docs/getting-started/key-concepts#containers) you'll notice two redis containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1. The ephemeral container contains all the real-time data pushed into [Redis streams](https://redis.io/docs/data-types/streams/). The other redis container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Redis Cluster](https://redis.io/docs/management/scaling/) to perform horizontal scaling where data is shared across multiple Redis nodes.
 
-### MinIO
+### Versitygw
 
-[MinIO](https://min.io/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
+[Versitygw](https://github.com/versity/versitygw/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
 
 ### Ruby on Rails
 

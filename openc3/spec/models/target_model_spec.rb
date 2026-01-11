@@ -50,7 +50,7 @@ module OpenC3
         @fsys_s3 = true
         Logger.info("No S3 listener - using local_s3 client")
       rescue Errno::EADDRINUSE;
-        Logger.info("Found listener on port 9000; presumably Minio")
+        Logger.info("Found listener on port 9000; presumably versitygw")
       end
 
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e

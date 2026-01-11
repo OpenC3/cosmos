@@ -29,6 +29,15 @@ module OpenC3
       super()
       @client = Aws::S3::Client.new
       @aws_arn = ENV['OPENC3_AWS_ARN_PREFIX'] || 'arn:aws'
+      # Checksums are supported by real AWS S3 but may not be supported by
+      # S3-compatible backends like versitygw. Auto-detect based on
+      # whether a custom endpoint is configured. Can be overridden with ENV var.
+      @use_checksum = if ENV.key?('OPENC3_NO_S3_CHECKSUM')
+        ENV['OPENC3_NO_S3_CHECKSUM'].to_s.empty?  # Empty string means use checksum
+      else
+        # If OPENC3_BUCKET_URL is set, we're using a non-AWS S3 backend
+        !ENV.key?('OPENC3_BUCKET_URL')
+      end
     end
 
     def create(bucket)
@@ -299,9 +308,9 @@ module OpenC3
         body: body,
         content_type: content_type,
         cache_control: cache_control,
-        metadata: metadata,
-        checksum_algorithm: "SHA256"
+        metadata: metadata
       }
+      options[:checksum_algorithm] = "SHA256" if @use_checksum
       @client.put_object(options)
     end
 
