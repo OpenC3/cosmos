@@ -66,6 +66,7 @@ class ConfigParser:
         self.filename: Optional[str] = None
         self.line: Optional[str] = None
         self.line_number: Optional[int] = None
+        self.preserve_lines: bool = False
 
     # self.param message [String] The string to set the Exception message to
     # self.param usage [String] The usage message
@@ -383,6 +384,9 @@ class ConfigParser:
         message += "\n"
         raise ConfigParser.Error(self, message)
 
+    def set_preserve_lines(self, state):
+        self.preserve_lines = state
+
     # Iterates over each line of the io object and yields the keyword and parameters
     def parse_loop(
         self, io: Any, yield_non_keyword_lines: bool, remove_quotes_arg: bool, size: int, rx: str
@@ -400,35 +404,44 @@ class ConfigParser:
         while line := io.readline():
             self.line_number += 1
 
-            line = line.strip()
-            # Ensure the line length is not 0
-            if len(line) == 0:
-                continue
+            if not self.preserve_lines:
+                line = line.strip()
+                # Ensure the line length is not 0
+                if len(line) == 0:
+                    if yield_non_keyword_lines:
+                        try:
+                            yield None, []
+                        except Exception as error:
+                            errors.append(error)
+                    continue
 
-            if string_concat:
-                # Skip comment lines after a string concatenation
-                if line[0] == "#":
-                    continue
-                # Remove the opening quote if we're continuing the line
-                line = line[1:]
+                if string_concat:
+                    # Skip comment lines after a string concatenation
+                    if line[0] == "#":
+                        continue
+                    # Remove the opening quote if we're continuing the line
+                    line = line[1:]
 
-            # Check for string continuation
-            match line[-1]:
-                case "+" | "\\":  # String concatenation
-                    newline = line[-1] == "+"
-                    # Trim off the concat character plus any spaces, e.g. "line" \
-                    trim = line[0:-1].strip()
-                    # Now trim off the last quote so it will flow into the next line
-                    line_buffer += trim[0:-1]
-                    if newline:
-                        line_buffer += "\n"
-                    string_concat = True
-                    continue
-                case "&":  # Line continuation
-                    line_buffer += line[0:-1]
-                    continue
-                case _:
-                    line_buffer += line
+                # Check for string continuation
+                match line[-1]:
+                    case "+" | "\\":  # String concatenation
+                        newline = line[-1] == "+"
+                        # Trim off the concat character plus any spaces, e.g. "line" \
+                        trim = line[0:-1].strip()
+                        # Now trim off the last quote so it will flow into the next line
+                        line_buffer += trim[0:-1]
+                        if newline:
+                            line_buffer += "\n"
+                        string_concat = True
+                        continue
+                    case "&":  # Line continuation
+                        line_buffer += line[0:-1]
+                        continue
+                    case _:
+                        line_buffer += line
+            else:
+                line = line.rstrip("\r\n")
+                line_buffer = line
             string_concat = False
 
             # Update self.line for external access

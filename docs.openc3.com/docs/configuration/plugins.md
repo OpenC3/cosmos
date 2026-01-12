@@ -68,6 +68,41 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 | Variable Name | The name of the variable | True |
 | Default Value | Default value of the variable | True |
 
+## VARIABLE_DESCRIPTION
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a description to a plugin variable**
+
+The VARIABLE_DESCRIPTION keyword adds a human-readable description to a previously defined VARIABLE. This description appears as hint text below the variable input field during plugin installation. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of the variable to describe. Must match a previously defined VARIABLE name. | True |
+| Description | Human-readable description of the variable's purpose | True |
+
+Example Usage:
+```ruby
+VARIABLE port 8080
+VARIABLE_DESCRIPTION port "TCP port for the target connection"
+```
+
+## VARIABLE_STATE
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a selectable state for a plugin variable**
+
+The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE. When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of the variable this state belongs to. Must match a previously defined VARIABLE name. | True |
+| State Value | The value that will be used when this state is selected | True |
+| State Description | Human-readable description of what this state represents. Appears as subtitle in the dropdown. | False |
+
+Example Usage:
+```ruby
+VARIABLE target_name INST
+VARIABLE_DESCRIPTION target_name "Select the target name"
+VARIABLE_STATE target_name INST "Primary instrument"
+VARIABLE_STATE target_name INST2 "Secondary instrument"
+```
+
 ## NEEDS_DEPENDENCIES
 <span class="badge badge--secondary since-right">Since 5.5.0</span>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 

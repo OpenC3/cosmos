@@ -383,9 +383,10 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false, v
           gem_name = full_name.split('-')[0..-2].join('-')
           if file_gem_name == gem_name
             found = true
-            # Upgrade if version changed else do nothing
-            if file_full_name != full_name
-              update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name, force: force)
+            force_install = force || ENV['OPENC3_FORCE_INSTALL']
+            # Upgrade if version changed or force install is set
+            if file_full_name != full_name || force_install
+              update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name, force: force_install)
             else
               puts "No version change detected for: #{plugin_name}"
             end

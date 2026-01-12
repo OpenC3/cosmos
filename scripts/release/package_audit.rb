@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -55,15 +55,15 @@ containers = [
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 
 client = Faraday.new do |f|
@@ -105,7 +105,11 @@ Dir.chdir(File.join(__dir__, '../../openc3/python')) do
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
   puts "\nChecking outdated wheels in openc3-cosmos-demo:"
-  puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
+  if system('which uv > /dev/null 2>&1')
+    puts `uv venv venv; source venv/bin/activate; uv pip install -r requirements.txt; uv pip list --outdated; deactivate; rm -rf venv`
+  else
+    puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
+  end
 end
 
 File.open("openc3_package_report.txt", "w") do |file|
