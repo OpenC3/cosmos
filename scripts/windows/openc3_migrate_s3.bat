@@ -1,37 +1,61 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Migration script to transfer data from old MINIO volume to new S3 (versitygw)
+REM Migration script to transfer data from MINIO (COSMOS 6) to versitygw (COSMOS 7)
 REM
-REM This script:
-REM 1. Starts a temporary MINIO container using the old MINIO volume (OLD_VOLUME)
-REM 2. Uses mc to mirror all data from MINIO to the running openc3-bucket (versitygw)
-REM 3. Provides instructions for completing the migration
+REM This script supports multiple migration scenarios:
+REM 1. Pre-migration while COSMOS 6 is running (uses live MINIO, starts temp versitygw)
+REM 2. Post-migration after COSMOS 6 stopped (starts temp MINIO, starts temp versitygw)
+REM 3. Migration with COSMOS 7 running (starts temp MINIO, uses live versitygw)
+REM
+REM The script is idempotent - mc mirror only copies new/changed files, so it's safe
+REM to run multiple times. This allows users to pre-migrate data while COSMOS 6 is
+REM running, then do a final sync after shutdown to minimize downtime.
 REM
 REM Prerequisites:
-REM - COSMOS 7 must be running with openc3-bucket (versitygw)
 REM - Docker must be running
 REM - The old MINIO volume (OLD_VOLUME) must exist
-REM - openc3-cosmos-init image must be built (contains mc)
+REM - For pre-migration: openc3-bucket image must be available (pulled or built)
 REM
-REM Migration workflow:
-REM 1. Stop COSMOS 6
-REM 2. Upgrade to COSMOS 7 and start: openc3.bat run
-REM 3. Run this migration script to copy data from old volume to new S3
+REM Migration workflow for upgrading from COSMOS 6 to COSMOS 7:
+REM 1. (Optional) While COSMOS 6 is running, run: openc3_migrate_s3.bat start && openc3_migrate_s3.bat migrate
+REM 2. Stop COSMOS 6: openc3.bat stop
+REM 3. Upgrade to COSMOS 7
+REM 4. Run final migration: openc3_migrate_s3.bat migrate
+REM 5. Cleanup: openc3_migrate_s3.bat cleanup
+REM 6. Start COSMOS 7: openc3.bat run
 
-REM Configuration
-if "%OPENC3_BUCKET_USERNAME%"=="" (set "MINIO_USER=openc3minio") else (set "MINIO_USER=%OPENC3_BUCKET_USERNAME%")
-if "%OPENC3_BUCKET_PASSWORD%"=="" (set "MINIO_PASS=openc3miniopassword") else (set "MINIO_PASS=%OPENC3_BUCKET_PASSWORD%")
-set "MINIO_PORT=9002"
-set "MINIO_URL=http://localhost:%MINIO_PORT%"
-set "OLD_VOLUME=openc3-bucket-v"
-set "NEW_VOLUME=openc3-block-v"
-set "MC_IMAGE=openc3inc/openc3-cosmos-init:latest"
+REM Configuration - can be overridden by environment variables
+REM MINIO credentials (source - COSMOS 6 defaults)
+if "%MINIO_ROOT_USER%"=="" (set "MINIO_USER=openc3minio") else (set "MINIO_USER=%MINIO_ROOT_USER%")
+if "%MINIO_ROOT_PASSWORD%"=="" (set "MINIO_PASS=openc3miniopassword") else (set "MINIO_PASS=%MINIO_ROOT_PASSWORD%")
+REM Versitygw credentials (destination - uses COSMOS 7 bucket credentials)
+if "%OPENC3_BUCKET_USERNAME%"=="" (set "VERSITY_USER=openc3bucket") else (set "VERSITY_USER=%OPENC3_BUCKET_USERNAME%")
+if "%OPENC3_BUCKET_PASSWORD%"=="" (set "VERSITY_PASS=openc3bucketpassword") else (set "VERSITY_PASS=%OPENC3_BUCKET_PASSWORD%")
+REM User IDs - must match openc3.bat behavior
+REM On Windows, typically runs as 1001:1001 (no rootless detection needed)
+if "%OPENC3_USER_ID%"=="" set "OPENC3_USER_ID=1001"
+if "%OPENC3_GROUP_ID%"=="" set "OPENC3_GROUP_ID=1001"
+if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-bucket-v"
+if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-block-v"
 
-REM Initialize variables
-set "S3_CONTAINER="
+REM Container/image names
+set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
+set "VERSITY_MIGRATION_CONTAINER=openc3-versity-migration"
+set "MINIO_IMAGE=ghcr.io/openc3/openc3-minio:latest"
+set "MC_IMAGE=ghcr.io/openc3/openc3-cosmos-init:6.10.4"
+if "%OPENC3_REGISTRY%"=="" (set "OPENC3_REGISTRY=docker.io")
+if "%OPENC3_NAMESPACE%"=="" (set "OPENC3_NAMESPACE=openc3inc")
+if "%OPENC3_TAG%"=="" (set "OPENC3_TAG=latest")
+set "VERSITY_IMAGE=%OPENC3_REGISTRY%/%OPENC3_NAMESPACE%/openc3-bucket:%OPENC3_TAG%"
+
+REM Network
+set "MIGRATION_NETWORK=openc3-migration-net"
+
+REM State variables
+set "MINIO_SOURCE="
+set "VERSITY_DEST="
 set "DOCKER_NETWORK="
-set "S3_SERVICE="
 
 REM Parse command
 if "%1"=="" goto :usage
@@ -45,23 +69,32 @@ if "%1"=="cleanup" goto :cmd_cleanup
 goto :usage
 
 :cmd_start
-call :check_mc_image
+call :detect_environment
 if errorlevel 1 exit /b 1
-call :detect_docker_environment
+if "%MINIO_SOURCE%"=="" call :start_temp_minio
 if errorlevel 1 exit /b 1
-call :check_s3_running
+if "%VERSITY_DEST%"=="" call :start_temp_versity
 if errorlevel 1 exit /b 1
-call :start_minio
-exit /b %errorlevel%
+echo.
+echo [INFO] Migration containers ready
+echo   MINIO source: %MINIO_SOURCE%
+echo   versitygw destination: %VERSITY_DEST%
+echo.
+echo Run '%~nx0 migrate' to start migration
+exit /b 0
 
 :cmd_migrate
-call :detect_docker_environment
+call :detect_environment
+if errorlevel 1 exit /b 1
+if "%MINIO_SOURCE%"=="" call :start_temp_minio
+if errorlevel 1 exit /b 1
+if "%VERSITY_DEST%"=="" call :start_temp_versity
 if errorlevel 1 exit /b 1
 call :migrate_data
 exit /b %errorlevel%
 
 :cmd_status
-call :detect_docker_environment
+call :detect_environment
 if errorlevel 1 exit /b 1
 call :show_status
 exit /b %errorlevel%
@@ -73,263 +106,279 @@ exit /b %errorlevel%
 :usage
 echo Usage: %~nx0 [start^|migrate^|status^|cleanup^|help]
 echo.
-echo Migrate data from old MINIO volume (%OLD_VOLUME%) to new S3 (%NEW_VOLUME%).
+echo Migrate data from MINIO (COSMOS 6) to versitygw (COSMOS 7).
+echo.
+echo This script is idempotent and can be run multiple times safely. It supports:
+echo - Pre-migration while COSMOS 6 is running (to minimize downtime)
+echo - Post-migration after COSMOS 6 is stopped
+echo - Incremental sync (only copies new/changed files)
 echo.
 echo Commands:
-echo   start     Start temporary MINIO on port 9002 using old volume for migration
-echo   migrate   Mirror data from MINIO to S3 (versitygw) using mc
-echo   status    Check migration status and bucket contents
-echo   cleanup   Remove temporary MINIO container (after successful migration)
+echo   start     Start temporary containers needed for migration
+echo   migrate   Mirror data from MINIO to versitygw (idempotent)
+echo   status    Check migration status and compare bucket contents
+echo   cleanup   Remove temporary migration containers
 echo   help      Show this help message
 echo.
 echo Migration workflow:
-echo   1. Stop COSMOS 6
-echo   2. Upgrade to COSMOS 7 and start: openc3.bat run
-echo   3. Start temporary MINIO: %~nx0 start
-echo   4. Migrate data: %~nx0 migrate
-echo   5. Verify data: %~nx0 status
-echo   6. Cleanup temp container: %~nx0 cleanup
-echo   7. (Optional) Remove old volume: docker volume rm %OLD_VOLUME%
+echo   1. (Optional) Pre-migrate while COSMOS 6 is running:
+echo      %~nx0 start
+echo      %~nx0 migrate
+echo      (repeat migrate as needed to sync new data)
+echo.
+echo   2. Stop COSMOS 6 and upgrade to COSMOS 7
+echo.
+echo   3. Final migration:
+echo      %~nx0 migrate
+echo.
+echo   4. Cleanup and start COSMOS 7:
+echo      %~nx0 cleanup
+echo      openc3.bat run
+echo.
+echo Configuration (via environment variables):
+echo   OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
+echo   NEW_VOLUME    New versitygw volume name (default: openc3-block-v)
+echo   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
+echo   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
 echo.
 exit /b 0
 
-:detect_docker_environment
-REM Find the openc3-bucket container (versitygw)
-set "S3_CONTAINER="
-for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /i "s3" ^| findstr /v "migration"') do (
-    if "!S3_CONTAINER!"=="" set "S3_CONTAINER=%%i"
-)
+:detect_environment
+echo [==>] Detecting environment...
 
-if "%S3_CONTAINER%"=="" (
-    echo Error: Could not find running openc3-bucket container
-    echo Make sure COSMOS 7 is running: openc3.bat run
-    exit /b 1
-)
-echo Found S3 container: %S3_CONTAINER%
-
-REM Get the network that the S3 container is connected to
-set "DOCKER_NETWORK="
-for /f "tokens=*" %%i in ('docker inspect --format "{{range $net, $config := .NetworkSettings.Networks}}{{$net}} {{end}}" "%S3_CONTAINER%" 2^>nul') do (
-    for %%n in (%%i) do (
-        if "!DOCKER_NETWORK!"=="" set "DOCKER_NETWORK=%%n"
-    )
-)
-
-if "%DOCKER_NETWORK%"=="" (
-    echo Error: Could not determine network for S3 container
-    exit /b 1
-)
-echo Found Docker network: %DOCKER_NETWORK%
-
-REM Get the service name from container labels
-set "S3_SERVICE="
-for /f "tokens=*" %%i in ('docker inspect --format "{{index .Config.Labels \"com.docker.compose.service\"}}" "%S3_CONTAINER%" 2^>nul') do (
-    set "S3_SERVICE=%%i"
-)
-
-REM Fallback to container name if service not found
-if "%S3_SERVICE%"=="" set "S3_SERVICE=%S3_CONTAINER%"
-if "%S3_SERVICE%"=="<no value>" set "S3_SERVICE=%S3_CONTAINER%"
-echo S3 service name: %S3_SERVICE%
-
-exit /b 0
-
-:check_mc_image
-set "IMAGE_FOUND="
-for /f "tokens=*" %%i in ('docker image ls --format "{{.Repository}}:{{.Tag}}" 2^>nul ^| findstr "openc3inc/openc3-cosmos-init:latest"') do (
-    set "IMAGE_FOUND=1"
-)
-
-if "%IMAGE_FOUND%"=="" (
-    echo Error: openc3-cosmos-init image not found
-    echo.
-    echo Build the image first:
-    echo   openc3.bat build
-    exit /b 1
-)
-exit /b 0
-
-:check_s3_running
-echo Checking S3 (versitygw) connectivity...
-
-REM Try S3_SERVICE first, then S3_CONTAINER
-for %%h in (%S3_SERVICE% %S3_CONTAINER%) do (
-    for /f "tokens=*" %%c in ('docker run --rm --network "%DOCKER_NETWORK%" "%MC_IMAGE%" curl -s -o /dev/null -w "%%{http_code}" --connect-timeout 2 "http://%%h:9000/" 2^>nul') do (
-        if not "%%c"=="000" if not "%%c"=="" (
-            echo S3 (versitygw) is reachable at %%h:9000 ^(HTTP %%c^)
-            set "S3_SERVICE=%%h"
-            exit /b 0
-        )
-    )
-)
-
-echo Error: S3 (versitygw) is not responding
-echo Tried: %S3_SERVICE%:9000 and %S3_CONTAINER%:9000
-echo Make sure COSMOS 7 is running: openc3.bat run
-exit /b 1
-
-:check_old_volume_exists
+REM Check for old volume
 set "VOLUME_FOUND="
-for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do (
-    set "VOLUME_FOUND=1"
-)
-
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
 if "%VOLUME_FOUND%"=="" (
-    echo Error: Old MINIO volume '%OLD_VOLUME%' not found
-    echo.
+    REM Check with cosmos_ prefix
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%OLD_VOLUME%"') do (
+        set "OLD_VOLUME=cosmos_%OLD_VOLUME%"
+        set "VOLUME_FOUND=1"
+    )
+)
+if "%VOLUME_FOUND%"=="" (
+    echo [ERROR] Old MINIO volume '%OLD_VOLUME%' not found
     echo This volume should exist from your COSMOS 6 installation.
     echo If you haven't run COSMOS 6 before, there's nothing to migrate.
     exit /b 1
 )
-echo Found old MINIO volume: %OLD_VOLUME%
+echo [INFO] Found old MINIO volume: %OLD_VOLUME%
+
+REM Check for new volume
+set "NEW_VOL_FOUND="
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%NEW_VOLUME%"') do set "NEW_VOL_FOUND=1"
+if "%NEW_VOL_FOUND%"=="" (
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%NEW_VOLUME%"') do (
+        set "NEW_VOLUME=cosmos_%NEW_VOLUME%"
+        set "NEW_VOL_FOUND=1"
+    )
+)
+if "%NEW_VOL_FOUND%"=="" (
+    echo [INFO] New volume '%NEW_VOLUME%' will be created
+) else (
+    echo [INFO] Found new versitygw volume: %NEW_VOLUME%
+)
+
+REM Detect MINIO source
+set "MINIO_SOURCE="
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /i "minio" ^| findstr /v "migration"') do (
+    if "!MINIO_SOURCE!"=="" set "MINIO_SOURCE=%%i"
+)
+if not "%MINIO_SOURCE%"=="" (
+    echo [INFO] Found live MINIO (COSMOS 6): %MINIO_SOURCE%
+    for /f "tokens=*" %%n in ('docker inspect --format "{{range $net, $config := .NetworkSettings.Networks}}{{$net}} {{end}}" "%MINIO_SOURCE%" 2^>nul') do (
+        for %%x in (%%n) do if "!DOCKER_NETWORK!"=="" set "DOCKER_NETWORK=%%x"
+    )
+) else (
+    REM Check for temp container
+    for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do set "MINIO_SOURCE=%%i"
+    if not "!MINIO_SOURCE!"=="" (
+        echo [INFO] Using temp MINIO container: !MINIO_SOURCE!
+    ) else (
+        echo [INFO] No MINIO running - will start temp container
+    )
+)
+
+REM Detect versitygw destination
+set "VERSITY_DEST="
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /i "bucket" ^| findstr /v "migration"') do (
+    if "!VERSITY_DEST!"=="" set "VERSITY_DEST=%%i"
+)
+if not "%VERSITY_DEST%"=="" (
+    echo [INFO] Found live versitygw (COSMOS 7): %VERSITY_DEST%
+    if "%DOCKER_NETWORK%"=="" (
+        for /f "tokens=*" %%n in ('docker inspect --format "{{range $net, $config := .NetworkSettings.Networks}}{{$net}} {{end}}" "%VERSITY_DEST%" 2^>nul') do (
+            for %%x in (%%n) do if "!DOCKER_NETWORK!"=="" set "DOCKER_NETWORK=%%x"
+        )
+    )
+) else (
+    REM Check for temp container
+    for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%VERSITY_MIGRATION_CONTAINER%"') do set "VERSITY_DEST=%%i"
+    if not "!VERSITY_DEST!"=="" (
+        echo [INFO] Using temp versitygw container: !VERSITY_DEST!
+    ) else (
+        echo [INFO] No versitygw running - will start temp container
+    )
+)
+
+REM Ensure network exists
+if "%DOCKER_NETWORK%"=="" (
+    set "NET_EXISTS="
+    for /f "tokens=*" %%i in ('docker network ls --format "{{.Name}}" 2^>nul ^| findstr /x "%MIGRATION_NETWORK%"') do set "NET_EXISTS=1"
+    if "!NET_EXISTS!"=="" (
+        echo [INFO] Creating migration network: %MIGRATION_NETWORK%
+        docker network create "%MIGRATION_NETWORK%" >nul
+    )
+    set "DOCKER_NETWORK=%MIGRATION_NETWORK%"
+)
+echo [INFO] Using Docker network: %DOCKER_NETWORK%
 exit /b 0
 
-:start_minio
-echo Starting temporary MINIO container for migration...
+:start_temp_minio
+REM Check if already running
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do (
+    echo [INFO] Temp MINIO already running
+    set "MINIO_SOURCE=%MINIO_MIGRATION_CONTAINER%"
+    exit /b 0
+)
 
-REM Check if old volume exists
-call :check_old_volume_exists
-if errorlevel 1 exit /b 1
-
-REM Check if container already exists
+REM Check if exists but stopped
 set "CONTAINER_EXISTS="
-for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "openc3-minio-migration"') do (
-    set "CONTAINER_EXISTS=1"
-)
-
+for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
 if "%CONTAINER_EXISTS%"=="1" (
-    echo Migration container already exists. Checking status...
-    set "CONTAINER_RUNNING="
-    for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "openc3-minio-migration"') do (
-        set "CONTAINER_RUNNING=1"
-    )
-    if "!CONTAINER_RUNNING!"=="1" (
-        echo Migration container is already running
-        exit /b 0
-    ) else (
-        echo Starting existing container...
-        docker start openc3-minio-migration
-        timeout /t 2 /nobreak >nul
-        exit /b 0
-    )
+    echo [INFO] Starting existing temp MINIO container...
+    docker start "%MINIO_MIGRATION_CONTAINER%" >nul
+    timeout /t 2 /nobreak >nul
+    set "MINIO_SOURCE=%MINIO_MIGRATION_CONTAINER%"
+    exit /b 0
 )
 
-REM Start MINIO on temporary port using the old volume
-echo Starting MINIO on port %MINIO_PORT% with old volume...
+REM Note: We run as root because the original MINIO volume may have been created
+REM by a container running as a different user. MINIO needs write access to
+REM .minio.sys for internal metadata even when we're only reading data.
+echo [==>] Starting temporary MINIO container...
 docker run -d ^
-    --name openc3-minio-migration ^
+    --name "%MINIO_MIGRATION_CONTAINER%" ^
     --network "%DOCKER_NETWORK%" ^
-    -p "%MINIO_PORT%:9000" ^
+    --user root ^
     -v "%OLD_VOLUME%:/data" ^
     -e "MINIO_ROOT_USER=%MINIO_USER%" ^
     -e "MINIO_ROOT_PASSWORD=%MINIO_PASS%" ^
-    ghcr.io/openc3/openc3-minio:latest ^
-    server --address ":9000" --console-address ":9001" /data
+    "%MINIO_IMAGE%" ^
+    server --address ":9000" --console-address ":9001" /data >nul
 
-REM Wait for MINIO to be ready
-echo Waiting for MINIO to be ready...
+echo [INFO] Waiting for MINIO to be ready...
 set "RETRY_COUNT=0"
-:wait_minio_loop
-if %RETRY_COUNT% geq 30 goto :minio_failed
-
-for /f "tokens=*" %%c in ('curl -s -o nul -w "%%{http_code}" "%MINIO_URL%/" 2^>nul') do (
-    if not "%%c"=="000" if not "%%c"=="" (
-        echo MINIO is ready at %MINIO_URL% ^(HTTP %%c^)
-        exit /b 0
-    )
+:wait_minio
+if %RETRY_COUNT% geq 30 goto :minio_check_running
+REM Use mc admin info to check if MINIO is responding
+docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_MIGRATION_CONTAINER%:9000" "%MC_IMAGE%" mc admin info minio >nul 2>&1
+if %errorlevel%==0 (
+    echo [INFO] MINIO is ready
+    set "MINIO_SOURCE=%MINIO_MIGRATION_CONTAINER%"
+    exit /b 0
 )
-
 timeout /t 1 /nobreak >nul
 set /a RETRY_COUNT+=1
-goto :wait_minio_loop
+goto :wait_minio
+
+:minio_check_running
+REM Check if container is at least running
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do (
+    echo [WARN] MINIO health check timed out, but container is running. Proceeding anyway.
+    set "MINIO_SOURCE=%MINIO_MIGRATION_CONTAINER%"
+    exit /b 0
+)
 
 :minio_failed
-echo Error: MINIO failed to start
-docker logs openc3-minio-migration
+echo [ERROR] MINIO failed to start
+docker logs "%MINIO_MIGRATION_CONTAINER%"
+exit /b 1
+
+:start_temp_versity
+REM Check if already running
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%VERSITY_MIGRATION_CONTAINER%"') do (
+    echo [INFO] Temp versitygw already running
+    set "VERSITY_DEST=%VERSITY_MIGRATION_CONTAINER%"
+    exit /b 0
+)
+
+REM Check if exists but stopped
+set "CONTAINER_EXISTS="
+for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%VERSITY_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
+if "%CONTAINER_EXISTS%"=="1" (
+    echo [INFO] Starting existing temp versitygw container...
+    docker start "%VERSITY_MIGRATION_CONTAINER%" >nul
+    timeout /t 2 /nobreak >nul
+    set "VERSITY_DEST=%VERSITY_MIGRATION_CONTAINER%"
+    exit /b 0
+)
+
+REM Pull image if needed
+docker image inspect "%VERSITY_IMAGE%" >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Pulling versitygw image: %VERSITY_IMAGE%
+    docker pull "%VERSITY_IMAGE%"
+)
+
+REM Run as same user as production (matches compose.yaml)
+echo [==>] Starting temporary versitygw container...
+docker run -d ^
+    --name "%VERSITY_MIGRATION_CONTAINER%" ^
+    --network "%DOCKER_NETWORK%" ^
+    --user "%OPENC3_USER_ID%:%OPENC3_GROUP_ID%" ^
+    -v "%NEW_VOLUME%:/data" ^
+    -e "ROOT_ACCESS_KEY=%VERSITY_USER%" ^
+    -e "ROOT_SECRET_KEY=%VERSITY_PASS%" ^
+    "%VERSITY_IMAGE%" >nul
+
+REM Wait for container to be running
+echo [INFO] Waiting for versitygw to start...
+timeout /t 2 /nobreak >nul
+for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "%VERSITY_MIGRATION_CONTAINER%"') do (
+    echo [INFO] versitygw is ready
+    set "VERSITY_DEST=%VERSITY_MIGRATION_CONTAINER%"
+    exit /b 0
+)
+
+echo [ERROR] versitygw failed to start
+docker logs "%VERSITY_MIGRATION_CONTAINER%"
 exit /b 1
 
 :migrate_data
 echo.
 echo ==========================================
-echo Starting data migration from MINIO to S3
+echo Starting data migration from MINIO to versitygw
 echo ==========================================
+echo   Source: %MINIO_SOURCE% (volume: %OLD_VOLUME%)
+echo   Destination: %VERSITY_DEST% (volume: %NEW_VOLUME%)
 echo.
-
-call :check_mc_image
-if errorlevel 1 exit /b 1
-call :check_s3_running
-if errorlevel 1 exit /b 1
-
-REM Check if MINIO migration container is running
-set "CONTAINER_RUNNING="
-for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "openc3-minio-migration"') do (
-    set "CONTAINER_RUNNING=1"
-)
-
-if not "%CONTAINER_RUNNING%"=="1" (
-    echo Error: Migration MINIO container is not running
-    echo Start it first with: %~nx0 start
-    exit /b 1
-)
 
 REM List buckets in MINIO
-echo.
-echo Buckets in MINIO (source):
-call :run_mc ls openc3minio/
+echo [INFO] Buckets in MINIO (source):
+call :run_mc ls minio/
 echo.
 
-REM Get list of buckets
-set "BUCKETS="
-for /f "tokens=*" %%i in ('docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3minio=http://%MINIO_USER%:%MINIO_PASS%@openc3-minio-migration:9000" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%S3_SERVICE%:9000" "%MC_IMAGE%" mc ls openc3minio/ --json 2^>nul') do (
-    for /f "tokens=2 delims=:," %%k in ("%%i") do (
-        set "KEY=%%~k"
-        REM Extract bucket name from JSON key field
-        if "!KEY:~0,5!"==""key"" (
-            for /f "tokens=2 delims=:" %%v in ("%%i") do (
-                set "BUCKET_RAW=%%~v"
-                set "BUCKET_RAW=!BUCKET_RAW:"=!"
-                set "BUCKET_RAW=!BUCKET_RAW:/=!"
-                set "BUCKET_RAW=!BUCKET_RAW:,=!"
-                if not "!BUCKET_RAW!"=="" if not "!BUCKET_RAW!"==" " (
-                    set "BUCKETS=!BUCKETS! !BUCKET_RAW!"
-                )
-            )
+REM Get list of buckets and migrate each
+for /f "tokens=5" %%b in ('docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" "%MC_IMAGE%" mc ls minio/ 2^>nul') do (
+    set "BUCKET=%%b"
+    set "BUCKET=!BUCKET:/=!"
+    if not "!BUCKET!"=="" (
+        echo.
+        echo [==>] Processing bucket: !BUCKET!
+
+        REM Create bucket if it doesn't exist
+        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc ls "versity/!BUCKET!" >nul 2>&1
+        if errorlevel 1 (
+            echo [INFO] Creating bucket: !BUCKET!
+            docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mb "versity/!BUCKET!" 2>nul
         )
+
+        REM Mirror data
+        echo [INFO] Mirroring data...
+        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mirror --preserve "minio/!BUCKET!" "versity/!BUCKET!"
+        echo [INFO] Bucket !BUCKET! migrated
     )
-)
-
-REM Alternative: Get buckets by parsing ls output directly
-set "BUCKETS="
-for /f "tokens=*" %%i in ('docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3minio=http://%MINIO_USER%:%MINIO_PASS%@openc3-minio-migration:9000" "%MC_IMAGE%" mc ls openc3minio/ 2^>nul') do (
-    for /f "tokens=5" %%b in ("%%i") do (
-        set "BUCKET=%%b"
-        set "BUCKET=!BUCKET:/=!"
-        if not "!BUCKET!"=="" set "BUCKETS=!BUCKETS! !BUCKET!"
-    )
-)
-
-if "%BUCKETS%"=="" (
-    echo No buckets found in MINIO
-    exit /b 0
-)
-
-REM Create buckets and mirror data
-for %%b in (%BUCKETS%) do (
-    echo.
-    echo Processing bucket: %%b
-
-    REM Create bucket in S3 if it doesn't exist
-    docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%S3_SERVICE%:9000" "%MC_IMAGE%" mc ls "openc3s3/%%b" >nul 2>&1
-    if errorlevel 1 (
-        echo   Creating bucket: %%b
-        docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%S3_SERVICE%:9000" "%MC_IMAGE%" mc mb "openc3s3/%%b" 2>nul
-    )
-
-    REM Mirror data
-    echo   Mirroring data...
-    docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3minio=http://%MINIO_USER%:%MINIO_PASS%@openc3-minio-migration:9000" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%S3_SERVICE%:9000" "%MC_IMAGE%" mc mirror --preserve --overwrite "openc3minio/%%b" "openc3s3/%%b"
-
-    echo   Bucket %%b migrated
 )
 
 echo.
@@ -338,9 +387,10 @@ echo Migration complete!
 echo ==========================================
 echo.
 echo Next steps:
-echo   1. Verify your data: %~nx0 status
-echo   2. Cleanup temp container: %~nx0 cleanup
-echo   3. (Optional) Remove old volume: docker volume rm %OLD_VOLUME%
+echo   1. Verify data: %~nx0 status
+echo   2. If COSMOS 6 is still running, you can run '%~nx0 migrate' again to sync new data
+echo   3. When ready, stop COSMOS 6, run final '%~nx0 migrate', then '%~nx0 cleanup'
+echo   4. Start COSMOS 7: openc3.bat run
 echo.
 exit /b 0
 
@@ -351,108 +401,80 @@ echo Migration Status
 echo ==========================================
 echo.
 
-call :check_mc_image
-if errorlevel 1 exit /b 1
+echo Volumes:
+echo   Old (MINIO): %OLD_VOLUME%
+set "VOL_EXISTS="
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOL_EXISTS=1"
+if "%VOL_EXISTS%"=="1" (echo     exists) else (echo     not found)
 
-REM Check S3 (versitygw)
-echo S3/versitygw (destination - COSMOS 7):
-set "S3_REACHABLE=false"
-for %%h in (%S3_SERVICE% %S3_CONTAINER%) do (
-    for /f "tokens=*" %%c in ('docker run --rm --network "%DOCKER_NETWORK%" "%MC_IMAGE%" curl -s -o /dev/null -w "%%{http_code}" --connect-timeout 2 "http://%%h:9000/" 2^>nul') do (
-        if not "%%c"=="000" if not "%%c"=="" (
-            echo   Running at %%h:9000
-            set "S3_SERVICE=%%h"
-            set "S3_REACHABLE=true"
-            echo   Buckets:
-            docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%%h:9000" "%MC_IMAGE%" mc ls openc3s3/ 2>nul
-            goto :s3_check_done
-        )
-    )
-)
-:s3_check_done
-
-if "%S3_REACHABLE%"=="false" (
-    echo   Not running
-    echo   Make sure COSMOS 7 is running: openc3.bat run
-)
+echo   New (versitygw): %NEW_VOLUME%
+set "VOL_EXISTS="
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%NEW_VOLUME%"') do set "VOL_EXISTS=1"
+if "%VOL_EXISTS%"=="1" (echo     exists) else (echo     not found)
 
 echo.
+echo Containers:
+echo   MINIO source: %MINIO_SOURCE%
+if not "%MINIO_SOURCE%"=="" echo     running
 
-REM Check temporary MINIO
-echo MINIO (source - temporary migration container):
-set "CONTAINER_RUNNING="
-for /f "tokens=*" %%i in ('docker ps --format "{{.Names}}" 2^>nul ^| findstr /x "openc3-minio-migration"') do (
-    set "CONTAINER_RUNNING=1"
-)
+echo   versitygw destination: %VERSITY_DEST%
+if not "%VERSITY_DEST%"=="" echo     running
 
-if "%CONTAINER_RUNNING%"=="1" (
-    echo   Migration container running
-    for /f "tokens=*" %%c in ('curl -s -o nul -w "%%{http_code}" "%MINIO_URL%/" 2^>nul') do (
-        if not "%%c"=="000" if not "%%c"=="" (
-            echo   Buckets:
-            docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3minio=http://%MINIO_USER%:%MINIO_PASS%@openc3-minio-migration:9000" "%MC_IMAGE%" mc ls openc3minio/ 2>nul
-        )
-    )
-) else (
-    echo   Migration container not running
-    echo   Start it with: %~nx0 start
-)
-
-echo.
-
-REM Check volumes
-echo Docker volumes:
-echo   %OLD_VOLUME% (old MINIO data):
-set "OLD_VOL_EXISTS="
-for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do (
-    set "OLD_VOL_EXISTS=1"
-)
-if "%OLD_VOL_EXISTS%"=="1" (
-    echo     exists
-) else (
-    echo     not found
+if not "%MINIO_SOURCE%"=="" if not "%VERSITY_DEST%"=="" (
+    echo.
+    echo Bucket sizes (source -^> destination):
+    echo.
+    echo   MINIO (source):
+    call :run_mc du minio/config 2>nul
+    call :run_mc du minio/logs 2>nul
+    call :run_mc du minio/tools 2>nul
+    echo.
+    echo   versitygw (destination):
+    REM versitygw uses POSIX storage, so check disk usage and file count directly
+    docker exec "%VERSITY_DEST%" sh -c "for dir in config logs tools; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf '    %%sMiB\t%%s files\t%%s\n' \"$size\" \"$count\" \"$dir\"; done" 2>nul
+    echo.
+    echo [INFO] If file counts match, migration was successful!
 )
 
-echo   %NEW_VOLUME% (new S3 data):
-set "NEW_VOL_EXISTS="
-for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%NEW_VOLUME%"') do (
-    set "NEW_VOL_EXISTS=1"
-)
-if "%NEW_VOL_EXISTS%"=="1" (
-    echo     exists
-) else (
-    echo     not found
-)
 echo.
 exit /b 0
 
 :cleanup
-echo Cleaning up migration container...
+echo [==>] Cleaning up migration containers...
 
 set "CONTAINER_EXISTS="
-for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "openc3-minio-migration"') do (
-    set "CONTAINER_EXISTS=1"
-)
-
+for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
 if "%CONTAINER_EXISTS%"=="1" (
-    docker stop openc3-minio-migration 2>nul
-    docker rm openc3-minio-migration 2>nul
-    echo Migration container removed
-) else (
-    echo Migration container not found
+    docker stop "%MINIO_MIGRATION_CONTAINER%" 2>nul
+    docker rm "%MINIO_MIGRATION_CONTAINER%" 2>nul
+    echo [INFO] Removed temp MINIO container
+)
+
+set "CONTAINER_EXISTS="
+for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%VERSITY_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
+if "%CONTAINER_EXISTS%"=="1" (
+    docker stop "%VERSITY_MIGRATION_CONTAINER%" 2>nul
+    docker rm "%VERSITY_MIGRATION_CONTAINER%" 2>nul
+    echo [INFO] Removed temp versitygw container
+)
+
+set "NET_EXISTS="
+for /f "tokens=*" %%i in ('docker network ls --format "{{.Name}}" 2^>nul ^| findstr /x "%MIGRATION_NETWORK%"') do set "NET_EXISTS=1"
+if "%NET_EXISTS%"=="1" (
+    docker network rm "%MIGRATION_NETWORK%" 2>nul
+    echo [INFO] Removed migration network
 )
 
 echo.
-echo Migration cleanup complete.
+echo [INFO] Cleanup complete
 echo.
-echo Your data has been migrated to the new S3 volume '%NEW_VOLUME%'.
-echo COSMOS 7 is already using this volume.
+echo Your data has been migrated to volume '%NEW_VOLUME%'.
 echo.
-echo After verifying everything works, you can optionally remove the old MINIO volume:
+echo After verifying COSMOS 7 works correctly, you can remove the old volume:
 echo   docker volume rm %OLD_VOLUME%
 echo.
 exit /b 0
 
 :run_mc
-docker run --rm --network "%DOCKER_NETWORK%" -e "MC_HOST_openc3minio=http://%MINIO_USER%:%MINIO_PASS%@openc3-minio-migration:9000" -e "MC_HOST_openc3s3=http://%MINIO_USER%:%MINIO_PASS%@%S3_SERVICE%:9000" "%MC_IMAGE%" mc %*
+docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc %*
 exit /b %errorlevel%

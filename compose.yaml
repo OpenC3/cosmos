@@ -286,4 +286,5 @@ volumes:
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
   openc3-block-v:
+    name: openc3-block-v  # Fixed name to match migration script (no project prefix)
   openc3-gems-v: {}
