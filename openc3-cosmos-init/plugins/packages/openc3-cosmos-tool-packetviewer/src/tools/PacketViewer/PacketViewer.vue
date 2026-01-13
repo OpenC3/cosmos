@@ -347,6 +347,7 @@ export default {
             {
               radioGroup: true,
               value: this.valueType,
+              default: 'FORMATTED',
               command: (value) => {
                 this.valueType = value
               },

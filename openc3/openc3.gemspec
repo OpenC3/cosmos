@@ -75,6 +75,7 @@ spec = Gem::Specification.new do |s|
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
 
   # Runtime Dependencies
+  s.add_runtime_dependency 'erb',       '~> 6.0'
   s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
