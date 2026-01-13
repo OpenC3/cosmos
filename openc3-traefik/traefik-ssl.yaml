@@ -172,7 +172,7 @@ http:
       loadBalancer:
         passHostHeader: false
         servers:
-          - url: "http://openc3-bucket:9000"
+          - url: "http://openc3-buckets:9000"
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:

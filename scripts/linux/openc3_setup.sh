@@ -61,7 +61,7 @@ fi
 cp ./cacert.pem openc3-ruby/cacert.pem
 cp ./cacert.pem openc3-redis/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
-cp ./cacert.pem openc3-bucket/cacert.pem
+cp ./cacert.pem openc3-buckets/cacert.pem
 cp ./cacert.pem openc3-tsdb/cacert.pem
 
 docker --version

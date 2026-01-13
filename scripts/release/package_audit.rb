@@ -30,7 +30,7 @@ version_tag = ARGV[0] || "latest"
 # Get versions from the Dockerfiles
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 redis_version = get_docker_version("openc3-redis/Dockerfile")
-versitygw_version = get_docker_version("openc3-bucket/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
+versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
@@ -45,7 +45,7 @@ containers = [
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-bucket:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
+  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
 ]
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do

@@ -58,13 +58,13 @@ services:
     depends_on:
       - "openc3-base"
 
-  openc3-bucket:
+  openc3-buckets:
     build:
-      context: "openc3-bucket"
+      context: "openc3-buckets"
       network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-bucket:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets:${OPENC3_TAG}"
 
   openc3-tsdb:
     build:

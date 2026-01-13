@@ -342,7 +342,7 @@ def check_build_files(versitygw_version, traefik_version)
       if line.include?('OPENC3_VERSITYGW_VERSION=')
         parts = line.split('=')
         if parts[1].strip != versitygw_version
-          puts "WARN: Update build_multi_arch.sh to match openc3-bucket Dockerfile: #{versitygw_version}, Current value: #{parts[1].strip}"
+          puts "WARN: Update build_multi_arch.sh to match openc3-buckets Dockerfile: #{versitygw_version}, Current value: #{parts[1].strip}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')
@@ -359,7 +359,7 @@ def check_build_files(versitygw_version, traefik_version)
         parts = line.split('=')
         version = parts[1].strip[0..-2].strip # Removing trailing \
         if version != versitygw_version
-          puts "WARN: Update openc3_build_ubi.sh to match openc3-bucket Dockerfile: #{versitygw_version}, Current value: #{version}"
+          puts "WARN: Update openc3_build_ubi.sh to match openc3-buckets Dockerfile: #{versitygw_version}, Current value: #{version}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')

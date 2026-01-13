@@ -14,7 +14,7 @@
 # Prerequisites:
 # - Docker must be running
 # - The old MINIO volume (OLD_VOLUME) must exist
-# - For pre-migration: openc3-bucket image must be available (pulled or built)
+# - For pre-migration: openc3-buckets image must be available (pulled or built)
 #
 # Migration workflow for upgrading from COSMOS 6 to COSMOS 7:
 # 1. (Optional) While COSMOS 6 is running, run: ./openc3_migrate_s3.sh start && ./openc3_migrate_s3.sh migrate
@@ -33,8 +33,8 @@ MINIO_PASS="${MINIO_ROOT_PASSWORD:-openc3miniopassword}"
 # Versitygw credentials (destination - uses COSMOS 7 bucket credentials)
 VERSITY_USER="${OPENC3_BUCKET_USERNAME:-openc3bucket}"
 VERSITY_PASS="${OPENC3_BUCKET_PASSWORD:-openc3bucketpassword}"
-OLD_VOLUME="${OLD_VOLUME:-openc3-bucket-v}"
-NEW_VOLUME="${NEW_VOLUME:-openc3-block-v}"
+OLD_VOLUME="${OLD_VOLUME:-openc3-buckets-v}"
+NEW_VOLUME="${NEW_VOLUME:-openc3-buckets-v}"
 # User IDs - must match openc3.sh behavior
 # openc3.sh sets these to current user (id -u/id -g) for non-rootless Docker
 if [ -z "$OPENC3_USER_ID" ]; then
@@ -54,7 +54,7 @@ OPENC3_GROUP_ID="${OPENC3_GROUP_ID:-1001}"
 MINIO_MIGRATION_CONTAINER="openc3-minio-migration"
 VERSITY_MIGRATION_CONTAINER="openc3-versity-migration"
 MINIO_IMAGE="ghcr.io/openc3/openc3-minio:latest"
-VERSITY_IMAGE="${OPENC3_REGISTRY:-docker.io}/${OPENC3_NAMESPACE:-openc3inc}/openc3-bucket:${OPENC3_TAG:-latest}"
+VERSITY_IMAGE="${OPENC3_REGISTRY:-docker.io}/${OPENC3_NAMESPACE:-openc3inc}/openc3-buckets:${OPENC3_TAG:-latest}"
 MC_IMAGE="ghcr.io/openc3/openc3-cosmos-init:6.10.4"  # Contains patched mc client
 
 # Network - will be auto-detected or created
@@ -108,8 +108,8 @@ Migration workflow:
      ./openc3.sh run
 
 Configuration (via environment variables):
-  OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
-  NEW_VOLUME    New versitygw volume name (default: openc3-block-v)
+  OLD_VOLUME    Old MINIO volume name (default: openc3-buckets-v)
+  NEW_VOLUME    New versitygw volume name (default: openc3-buckets-v)
   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
 
@@ -171,7 +171,7 @@ ensure_network() {
 
     # Try to find an existing COSMOS network
     local cosmos_container
-    cosmos_container=$(find_container "openc3-bucket|openc3-minio")
+    cosmos_container=$(find_container "openc3-buckets|openc3-minio")
     if [ -n "$cosmos_container" ]; then
         DOCKER_NETWORK=$(get_container_network "$cosmos_container")
         if [ -n "$DOCKER_NETWORK" ]; then
@@ -241,7 +241,7 @@ detect_environment() {
 
     # Detect versitygw destination (COSMOS 7 running or temp container)
     local live_versity
-    live_versity=$(find_container "openc3-bucket")
+    live_versity=$(find_container "openc3-buckets")
     if [ -n "$live_versity" ] && [ "$live_versity" != "$VERSITY_MIGRATION_CONTAINER" ]; then
         VERSITY_DEST="$live_versity"
         USING_TEMP_VERSITY=false

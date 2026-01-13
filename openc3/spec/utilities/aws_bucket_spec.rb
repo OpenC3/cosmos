@@ -27,7 +27,7 @@ module OpenC3
     # access to S3 (versitygw) for testing, change the compose.yaml services stanza to:
     #
     # services:
-    #   openc3-bucket:
+    #   openc3-buckets:
     #     ports:
     #       - "127.0.0.1:9000:9000"
       begin

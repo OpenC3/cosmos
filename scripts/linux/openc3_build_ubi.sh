@@ -5,7 +5,7 @@ AVAILABLE_IMAGES=(
   "openc3-ruby-ubi"
   "openc3-base-ubi"
   "openc3-node-ubi"
-  "openc3-bucket-ubi"
+  "openc3-buckets-ubi"
   "openc3-redis-ubi"
   "openc3-tsdb-ubi"
   "openc3-cosmos-cmd-tlm-api-ubi"
@@ -229,10 +229,10 @@ if should_build "openc3-node-ubi"; then
   record_build "openc3-node-ubi" "$DURATION"
 fi
 
-if should_build "openc3-bucket-ubi"; then
-  echo "Building openc3-bucket-ubi..."
+if should_build "openc3-buckets-ubi"; then
+  echo "Building openc3-buckets-ubi..."
   START_TIME=$SECONDS
-  cd openc3-bucket
+  cd openc3-buckets
   docker build \
     -f Dockerfile-ubi \
     --network host \
@@ -240,12 +240,12 @@ if should_build "openc3-bucket-ubi"; then
     --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
     --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
     --platform linux/amd64 \
-    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-bucket-ubi:${OPENC3_TAG}" \
+    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets-ubi:${OPENC3_TAG}" \
     .
   cd ..
   DURATION=$((SECONDS - START_TIME))
-  echo "✓ openc3-bucket-ubi completed in $(format_duration $DURATION)"
-  record_build "openc3-bucket-ubi" "$DURATION"
+  echo "✓ openc3-buckets-ubi completed in $(format_duration $DURATION)"
+  record_build "openc3-buckets-ubi" "$DURATION"
 fi
 
 if should_build "openc3-redis-ubi"; then

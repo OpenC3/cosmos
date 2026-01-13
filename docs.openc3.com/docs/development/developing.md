@@ -36,7 +36,7 @@ openc3inc/openc3-operator                   latest   223e98129fe9   3 days ago  
 openc3inc/openc3-base                       latest   98df5c0378c2   3 days ago     405MB
 openc3inc/openc3-redis                      latest   5a3003a49199   8 days ago     111MB
 openc3inc/openc3-traefik                    latest   ec13a8d16a2f   8 days ago     104MB
-openc3inc/openc3-bucket                     latest   787f6e3fc0be   8 days ago     238MB
+openc3inc/openc3-buckets                     latest   787f6e3fc0be   8 days ago     238MB
 openc3inc/openc3-node                       latest   b3ee86d3620a   8 days ago     372MB
 openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago     326MB
 ```
@@ -70,7 +70,7 @@ openc3/openc3-cmd-tlm-api:latest         "/sbin/tini -- rails…"   127.0.0.1:29
 openc3/openc3-script-runner-api:latest   "/sbin/tini -- rails…"   127.0.0.1:2902->2902/tcp   cosmos-openc3-script-runner-api-1
 openc3/openc3-traefik:latest             "/entrypoint.sh trae…"   0.0.0.0:2900->80/tcp       cosmos-openc3-traefik-1
 openc3/openc3-operator:latest            "/sbin/tini -- ruby …"                              cosmos-openc3-operator-1
-openc3/openc3-bucket:latest              "/usr/bin/docker-ent…"   127.0.0.1:9000->9000/tcp   cosmos-openc3-bucket-1
+openc3/openc3-buckets:latest              "/usr/bin/docker-ent…"   127.0.0.1:9000->9000/tcp   cosmos-openc3-buckets-1
 openc3/openc3-redis:latest               "docker-entrypoint.s…"   127.0.0.1:6379->6379/tcp   cosmos-openc3-redis-1
 ```
 

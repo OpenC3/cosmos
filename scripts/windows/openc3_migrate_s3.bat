@@ -15,7 +15,7 @@ REM
 REM Prerequisites:
 REM - Docker must be running
 REM - The old MINIO volume (OLD_VOLUME) must exist
-REM - For pre-migration: openc3-bucket image must be available (pulled or built)
+REM - For pre-migration: openc3-buckets image must be available (pulled or built)
 REM
 REM Migration workflow for upgrading from COSMOS 6 to COSMOS 7:
 REM 1. (Optional) While COSMOS 6 is running, run: openc3_migrate_s3.bat start && openc3_migrate_s3.bat migrate
@@ -36,8 +36,8 @@ REM User IDs - must match openc3.bat behavior
 REM On Windows, typically runs as 1001:1001 (no rootless detection needed)
 if "%OPENC3_USER_ID%"=="" set "OPENC3_USER_ID=1001"
 if "%OPENC3_GROUP_ID%"=="" set "OPENC3_GROUP_ID=1001"
-if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-bucket-v"
-if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-block-v"
+if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-buckets-v"
+if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-buckets-v"
 
 REM Container/image names
 set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
@@ -47,7 +47,7 @@ set "MC_IMAGE=ghcr.io/openc3/openc3-cosmos-init:6.10.4"
 if "%OPENC3_REGISTRY%"=="" (set "OPENC3_REGISTRY=docker.io")
 if "%OPENC3_NAMESPACE%"=="" (set "OPENC3_NAMESPACE=openc3inc")
 if "%OPENC3_TAG%"=="" (set "OPENC3_TAG=latest")
-set "VERSITY_IMAGE=%OPENC3_REGISTRY%/%OPENC3_NAMESPACE%/openc3-bucket:%OPENC3_TAG%"
+set "VERSITY_IMAGE=%OPENC3_REGISTRY%/%OPENC3_NAMESPACE%/openc3-buckets:%OPENC3_TAG%"
 
 REM Network
 set "MIGRATION_NETWORK=openc3-migration-net"
@@ -136,8 +136,8 @@ echo      %~nx0 cleanup
 echo      openc3.bat run
 echo.
 echo Configuration (via environment variables):
-echo   OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
-echo   NEW_VOLUME    New versitygw volume name (default: openc3-block-v)
+echo   OLD_VOLUME    Old MINIO volume name (default: openc3-buckets-v)
+echo   NEW_VOLUME    New versitygw volume name (default: openc3-buckets-v)
 echo   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
 echo   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
 echo.

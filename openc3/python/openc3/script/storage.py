@@ -185,7 +185,7 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-bucket:9000")
+                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
                 return f"{bucket_url}{url}"
             case "aws":
                 return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"

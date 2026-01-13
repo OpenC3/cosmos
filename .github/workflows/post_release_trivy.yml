@@ -107,18 +107,18 @@ jobs:
       - name: Run Trivy on image bucket
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-bucket:${{ github.event.inputs.version }}"
+          image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }}"
           format: "json"
-          output: "trivy_results/openc3-bucket.json"
+          output: "trivy_results/openc3-buckets.json"
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image bucket in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-bucket:${{ github.event.inputs.version }}"
+          image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }}"
           format: "cyclonedx"
-          output: "sbom/openc3-bucket.sbom.json"
+          output: "sbom/openc3-buckets.sbom.json"
       - name: Run Trivy on image tsdb
         uses: aquasecurity/trivy-action@master
         with:

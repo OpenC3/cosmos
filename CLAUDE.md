@@ -17,7 +17,7 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 - **openc3-cosmos-cmd-tlm-api** - Rails 7.2 REST API for command/telemetry operations
 - **openc3-cosmos-script-runner-api** - Rails 7.2 API for script execution
 - **openc3-operator** - Ruby operator managing interfaces and microservices
-- **openc3-bucket** - S3-compatible object storage for logs and configurations
+- **openc3-buckets** - S3-compatible object storage for logs and configurations
 - **openc3-redis** - Data store and pub/sub messaging
 - **openc3-traefik** - Reverse proxy (access at http://localhost:2900)
 

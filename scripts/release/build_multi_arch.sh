@@ -53,7 +53,7 @@ cp ./cacert.pem openc3-ruby/cacert.pem
 cp ./cacert.pem openc3-redis/cacert.pem
 cp ./cacert.pem openc3-tsdb/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
-cp ./cacert.pem openc3-bucket/cacert.pem
+cp ./cacert.pem openc3-buckets/cacert.pem
 
 cd openc3-ruby
 docker buildx build \
@@ -197,7 +197,7 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-tsdb${SUFFIX}:latest .
 fi
 
-cd ../openc3-bucket
+cd ../openc3-buckets
 docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
@@ -207,8 +207,8 @@ docker buildx build \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
   --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
   --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-bucket${SUFFIX}:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-bucket${SUFFIX}:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-buckets${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -221,8 +221,8 @@ docker buildx build \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
   --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
   --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-bucket${SUFFIX}:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-bucket${SUFFIX}:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-buckets${SUFFIX}:latest .
 fi
 
 cd ../openc3-cosmos-cmd-tlm-api
