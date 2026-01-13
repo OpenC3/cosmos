@@ -43,5 +43,12 @@ spec = Gem::Specification.new do |s|
   end
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
-  s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt requirements.txt)
+  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt requirements.txt)
+
+  s.metadata = {
+    "openc3_store_title" => "Demo",
+    "openc3_store_description" => "The demo plugin that comes with a fresh COSMOS install",
+    "openc3_store_keywords" => "demo, training, testing",
+    "openc3_cosmos_minimum_version" => "6.10.4"
+  }
 end
