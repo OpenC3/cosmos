@@ -54,7 +54,9 @@ RUN set -eux; \
 	echo "Version 9.0.1 is 8.1 or higher - enabling USE_FAST_FLOAT"; \
 	export BUILD_TLS=yes USE_FAST_FLOAT=yes; \
 	export USE_SYSTEMD=yes; \
-  export MALLOC=libc; \
+	export MALLOC=libc; \
+	export CFLAGS="-fno-lto"; \
+	export LDFLAGS="-fno-lto"; \
 	make -C /usr/src/valkey -j "$(nproc)" all; \
 	make -C /usr/src/valkey install; \
 	\

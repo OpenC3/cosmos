@@ -15,17 +15,14 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 USER root
-# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
-RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
-  apk update; \
-  apk upgrade; \
+RUN apk update && \
+  apk upgrade && \
   # Modify the valkey user and group to be 1001
   # The default alpine redis container uses 999
   # See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
-  apk add shadow bash; \
-  usermod -u 1001 valkey; \
-  groupmod -g 1001 valkey; \
-  fi
+  apk add shadow bash && \
+  usermod -u 1001 valkey && \
+  groupmod -g 1001 valkey
 
 RUN mkdir /config
 COPY redis.conf /config/.

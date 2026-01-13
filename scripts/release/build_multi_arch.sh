@@ -144,34 +144,53 @@ docker buildx build \
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
-if [ "${1:-default}" = "ubi" ]; then
-  OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/redis
-  OPENC3_REDIS_IMAGE=redis7
-  OPENC3_REDIS_VERSION=7.2.5
-else
-  OPENC3_REDIS_IMAGE=redis
-  OPENC3_REDIS_VERSION=7.2-alpine
-fi
 cd ../openc3-redis
-docker buildx build \
-  --platform ${OPENC3_PLATFORMS} \
-  --progress plain \
-  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-  --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
+if [ "${1:-default}" = "ubi" ]; then
+  # UBI build uses Dockerfile-ubi which builds Valkey from source
+  docker buildx build \
+    --file Dockerfile-ubi \
+    --platform ${OPENC3_PLATFORMS} \
+    --progress plain \
+    --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
+    --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+    --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+    --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
-then
-docker buildx build \
-  --platform ${OPENC3_PLATFORMS} \
-  --progress plain \
-  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-  --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
+  if [ $OPENC3_UPDATE_LATEST = true ]
+  then
+  docker buildx build \
+    --file Dockerfile-ubi \
+    --platform ${OPENC3_PLATFORMS} \
+    --progress plain \
+    --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
+    --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+    --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
+    --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
+  fi
+else
+  # Standard build uses Valkey alpine image
+  docker buildx build \
+    --platform ${OPENC3_PLATFORMS} \
+    --progress plain \
+    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
+    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+    --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+    --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
+
+  if [ $OPENC3_UPDATE_LATEST = true ]
+  then
+  docker buildx build \
+    --platform ${OPENC3_PLATFORMS} \
+    --progress plain \
+    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
+    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+    --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
+    --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
+  fi
 fi
 
 if [ "${1:-default}" = "ubi" ]; then
