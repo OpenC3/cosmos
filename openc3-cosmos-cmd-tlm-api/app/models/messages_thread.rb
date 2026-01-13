@@ -159,7 +159,7 @@ class MessagesThread < TopicsThread
       msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)
       results << result_entry if result_entry
-      if results.length > @max_batch_size
+      if results.length >= @max_batch_size
         transmit_results(results)
         results.clear
       end

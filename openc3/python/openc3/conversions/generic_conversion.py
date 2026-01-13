@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,6 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+
+import textwrap
 
 from openc3.conversions.conversion import Conversion
 from openc3.accessors.binary_accessor import BinaryAccessor
@@ -51,7 +53,9 @@ class GenericConversion(Conversion):
         self.params = [code_to_eval, converted_type, converted_bit_size, converted_array_size]
 
         # Setup multiline eval where the last line defines the return value for eval
-        lines = code_to_eval.splitlines()
+        # Use dedent to strip common leading whitespace from config file indentation
+        dedented_code = textwrap.dedent(code_to_eval)
+        lines = dedented_code.splitlines()
         exec_lines = lines[0:(len(lines) - 1)]
         self.exec_lines = compile("\n".join(exec_lines), "<string>", "exec")
         self.eval_line = compile(lines[-1], "<string>", "eval")

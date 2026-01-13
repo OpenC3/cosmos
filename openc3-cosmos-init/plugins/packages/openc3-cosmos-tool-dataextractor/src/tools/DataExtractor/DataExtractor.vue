@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,15 +37,12 @@
             />
           </v-col>
           <v-col>
-            <v-text-field
+            <OpenC3TimePicker
               v-model="startTime"
               label="Start Time"
-              type="time"
-              step="1"
               :rules="[rules.required]"
               data-test="start-time"
-            >
-            </v-text-field>
+            />
           </v-col>
           <v-col>
             <v-text-field
@@ -58,15 +55,12 @@
             />
           </v-col>
           <v-col>
-            <v-text-field
+            <OpenC3TimePicker
               v-model="endTime"
               label="End Time"
-              type="time"
-              step="1"
               :rules="[rules.required]"
               data-test="end-time"
-            >
-            </v-text-field>
+            />
           </v-col>
         </v-row>
         <v-row no-gutters>
@@ -318,6 +312,7 @@ let dataExtractorRawData = []
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
   Config,
+  OpenC3TimePicker,
   OpenConfigDialog,
   SaveConfigDialog,
   TargetPacketItemChooser,
@@ -327,6 +322,7 @@ import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   components: {
+    OpenC3TimePicker,
     OpenConfigDialog,
     SaveConfigDialog,
     TargetPacketItemChooser,

@@ -1,7 +1,16 @@
 queue_create("QUEUEAPI")
 cmd("INST MEMLOAD with DATA 0xDEAD", queue: "QUEUEAPI")
 cmd("INST MEMLOAD with DATA 0xBEEF", queue: "QUEUEAPI")
+cmd(
+    "INST",
+    "MEMLOAD",
+    {"DATA"=>"\x10\x20\x30\x40\xa0\xb0\xc0\xd0\xe0\xf0"},
+    queue: "QUEUEAPI",
+)
 cmd("INST ABORT", queue: "QUEUEAPI")
+cmd("INST MEMLOAD with DATA 0x00B0", queue: "QUEUEAPI") # Unicode degree symbol
+cmd("INST MEMLOAD with DATA 0x20AC", queue: "QUEUEAPI") # Unicode euro symbol
+cmd("INST MEMLOAD with DATA 0x20202020", queue: "QUEUEAPI") # 4 ASCII spaces
 cmd("INST ARYCMD with ARRAY [1,2,3], CRC 0", queue: "QUEUEAPI")
 cmd("INST ASCIICMD with STRING 'NOOP', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'", queue: "QUEUEAPI")
 cmd("INST CLEAR", queue: "QUEUEAPI")
@@ -13,8 +22,10 @@ cmd("INST SLRPNLDEPLOY", queue: "QUEUEAPI")
 cmd("INST SLRPNLRESET", queue: "QUEUEAPI")
 cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS 127.0.0.1", queue: "QUEUEAPI")
 
-queue_remove("QUEUEAPI", 2) # Should remove INST MEMLOAD with DATA 0xBEEF
-queue_exec("QUEUEAPI") # Should execute INST MEMLOAD with DATA 0xDEAD
+queue_remove("QUEUEAPI", 4) # Should remove INST ABORT
+6.times do
+  queue_exec("QUEUEAPI") # Should execute INST MEMLOAD commands
+end
 wait
 
 queue_disable("QUEUEAPI")

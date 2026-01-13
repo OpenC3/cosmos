@@ -312,6 +312,14 @@ export default {
       type: Date,
       default: null,
     },
+    frozen: {
+      type: Boolean,
+      default: false,
+    },
+    frozenValues: {
+      type: Object,
+      default: null,
+    },
   },
   emits: [
     'close-screen',
@@ -418,6 +426,31 @@ export default {
         }
       },
     },
+    frozen: {
+      handler(newValue) {
+        if (newValue) {
+          // Stop updates when frozen
+          if (this.updater) {
+            clearInterval(this.updater)
+            this.updater = null
+          }
+        } else {
+          // Resume updates when unfrozen
+          if (this.playbackMode === 'realtime') {
+            this.updateRefreshInterval()
+          }
+        }
+      },
+    },
+    frozenValues: {
+      immediate: true,
+      handler(newValue) {
+        if (newValue && this.frozen) {
+          // Apply frozen values to screenValues
+          Object.assign(this.screenValues, newValue)
+        }
+      },
+    },
   },
   // Called when an error from any descendent component is captured
   // We need this because an error can occur from any of the children
@@ -450,8 +483,14 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
-    if (this.playbackMode === 'realtime') {
+    if (this.playbackMode === 'realtime' && !this.frozen) {
       this.updateRefreshInterval()
+    }
+    // If frozen with frozenValues, apply them after parsing
+    if (this.frozen && this.frozenValues) {
+      this.$nextTick(() => {
+        Object.assign(this.screenValues, this.frozenValues)
+      })
     }
     if (this.floated) {
       this.$refs.bar.onmousedown = this.dragMouseDown
@@ -876,6 +915,10 @@ export default {
       })
     },
     update: function () {
+      // Don't update if frozen
+      if (this.frozen) {
+        return
+      }
       // Only pass the dateTime if we're in playback mode, null means realtime
       let dateTime =
         this.playbackMode === 'playback' ? this.playbackDateTime : null
@@ -931,6 +974,10 @@ export default {
       }
     },
     debouncedUpdateTlmAvailable: function () {
+      // Skip API calls when frozen - we're using saved values
+      if (this.frozen) {
+        return
+      }
       if (this.tlmAvailableTimeout != null) {
         clearTimeout(this.tlmAvailableTimeout)
       }
@@ -990,13 +1037,24 @@ export default {
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
-      this.screenValues[valueId] = [null, null, 0]
+      // If frozen and we have a saved value for this item, use it
+      // Otherwise initialize to null
+      if (this.frozen && this.frozenValues && this.frozenValues[valueId]) {
+        this.screenValues[valueId] = this.frozenValues[valueId]
+      } else {
+        this.screenValues[valueId] = [null, null, 0]
+      }
       this.debouncedUpdateTlmAvailable()
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)
       this.screenItems.splice(index, 1)
       this.debouncedUpdateTlmAvailable()
+    },
+    // Get current screen values for saving (used by notebooks)
+    getScreenValues: function () {
+      // Return a copy of the current screen values
+      return JSON.parse(JSON.stringify(this.screenValues))
     },
   },
 }

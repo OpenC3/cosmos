@@ -1175,7 +1175,7 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (this.readOnlyUser == false && val == false) {
+      if (this.readOnlyUser == false && val == false && !this.inline) {
         this.editor.setReadOnly(val)
       } else {
         this.editor.setReadOnly(true)
@@ -1197,7 +1197,9 @@ export default {
           this.editor.setReadOnly(true)
           this.editor.renderer.$cursorLayer.element.style.display = 'none'
         } else {
-          this.editor.setReadOnly(false)
+          if (!this.inline) {
+            this.editor.setReadOnly(false)
+          }
           this.editor.renderer.$cursorLayer.element.style.display = null
         }
       }
@@ -1319,7 +1321,7 @@ export default {
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
     this.editor.session.on('tokenizerUpdate', this.onChange)
-    if (this.readOnlyUser) {
+    if (this.readOnlyUser || this.inline) {
       this.editor.setReadOnly(true)
       this.editor.renderer.$cursorLayer.element.style.display = 'none'
     }
@@ -1822,7 +1824,7 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false) {
+      if (this.readOnlyUser == false && !this.inline) {
         this.editor.setReadOnly(false)
       }
 

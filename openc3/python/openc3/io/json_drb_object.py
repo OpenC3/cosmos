@@ -15,7 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import time
+from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
 from openc3.io.json_api_object import JsonApiObject, JsonApiError
+from openc3.utilities.logger import Logger
 from .json_rpc import (
     JsonRpcRequest,
     JsonRpcResponse,
@@ -23,6 +26,11 @@ from .json_rpc import (
     JsonRpcErrorResponse,
 )
 from openc3.top_level import HazardousError, CriticalCmdError, DisabledError  # noqa: F401
+
+# Number of times to retry a request when a connection error occurs
+RETRY_COUNT = 3
+# Delay between retries in seconds
+RETRY_DELAY = 0.1
 
 
 class JsonDrbUnknownError(Exception):
@@ -122,22 +130,42 @@ class JsonDRbObject(JsonApiObject):
                 "User-Agent": self.USER_AGENT,
                 "Content-Type": "application/json-rpc",
             }
-        try:
-            request_kwargs = {
-                "url": self.uri,
-                "data": json.dumps(request.to_hash()),
-                "headers": headers,
-            }
-            self.log[0] = f"Request: {request_kwargs}"
-            # print(self.log[0])
-            resp = self.http.post(**request_kwargs)
-            self.log[1] = f"Response: {resp.status_code} {resp.headers} {resp.text}"
-            # print(self.log[1])
-            self.response_data = resp.json()
-            return resp.json()
-        except Exception as e:  # Typically JSONDecodeError when error in resp.json()
-            self.log[2] = f"Exception: {repr(e)}"
-            return None
+
+        request_kwargs = {
+            "url": self.uri,
+            "data": json.dumps(request.to_hash()),
+            "headers": headers,
+        }
+        self.log[0] = f"Request: {request_kwargs}"
+
+        retry = 0
+        while retry <= RETRY_COUNT:
+            try:
+                resp = self.http.post(**request_kwargs)
+                self.log[1] = f"Response: {resp.status_code} {resp.headers} {resp.text}"
+                self.response_data = resp.json()
+                return resp.json()
+            except (
+                ChunkedEncodingError,
+                RequestsConnectionError,
+                ConnectionResetError,
+                BrokenPipeError,
+                OSError,
+            ) as e:
+                # Connection errors are retryable - reconnect and try again
+                retry += 1
+                self.log[2] = f"Exception: {repr(e)}"
+                if retry <= RETRY_COUNT:
+                    Logger.warn(f"JsonDRbObject: Connection error, retry {retry}/{RETRY_COUNT}: {repr(e)}")
+                    self.disconnect()
+                    time.sleep(RETRY_DELAY)
+                    self.connect()
+                else:
+                    return None
+            except Exception as e:  # Typically JSONDecodeError when error in resp.json()
+                self.log[2] = f"Exception: {repr(e)}"
+                return None
+        return None
 
     def handle_response(self, response: JsonRpcSuccessResponse | JsonRpcErrorResponse):
         # The code below will always either raise or return breaking out of the loop

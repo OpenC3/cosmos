@@ -154,6 +154,9 @@ test('adds a custom component to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=new-tab]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('Quaternion').click()
+  await expect(
+    page.locator('.v-list-item-title').getByText('Quaternion'),
+  ).not.toBeVisible()
   await utils.selectTargetPacketItem('INST', 'ADCS')
   await page.locator('label:has-text("Decom")').click()
   await page.locator('[data-test=select-send]').click() // add the packet to the list
@@ -322,6 +325,7 @@ test('validates start and end time inputs', async ({ page, utils }) => {
   await page.locator('[data-test=start-time] input').fill('')
   await expect(page.getByText('Required')).toBeVisible()
   await page.locator('[data-test=start-time] input').fill('12:15:15')
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.getByText('Required')).not.toBeVisible()
   await expect(page.getByText('Invalid')).not.toBeVisible()
 
@@ -334,6 +338,7 @@ test('validates start and end time inputs', async ({ page, utils }) => {
   await expect(page.getByText('Invalid')).not.toBeVisible()
   // validate end time
   await page.locator('[data-test=end-time] input').fill('12:15:16')
+  await page.keyboard.press('Tab') // Move focus to trigger validation
   await expect(page.getByText('Required')).not.toBeVisible()
   await expect(page.getByText('Invalid')).not.toBeVisible()
 })
@@ -375,6 +380,9 @@ test('adds single packet item', async ({ page, utils }) => {
   await page.locator('[data-test="new-tab"]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('COSMOS Item Value').click()
+  await expect(
+    page.locator('.v-list-item-title').getByText('COSMOS Item Value'),
+  ).not.toBeVisible()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('button:has-text("Add Item")').click()
   await page.locator('[data-test=add-component]').click()
@@ -392,6 +400,9 @@ test('adds multiple packet items', async ({ page, utils }) => {
   await page.locator('[data-test="new-tab"]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('COSMOS Item Value').click()
+  await expect(
+    page.locator('.v-list-item-title').getByText('COSMOS Item Value'),
+  ).not.toBeVisible()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP3')
   await page.locator('button:has-text("Add Item")').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'PACKET_TIME *')
@@ -414,7 +425,9 @@ test('displays event message format', async ({ page, utils }) => {
   await page.locator('[data-test="new-tab"]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('COSMOS Event Message').click()
-  await utils.sleep(500) // wait for the packet/item selector to be clickable
+  await expect(
+    page.locator('.v-list-item-title').getByText('COSMOS Event Message'),
+  ).not.toBeVisible()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSVER')
   await page.locator('button:has-text("Add Item")').click()
   await page.locator('[data-test=add-component]').click()
