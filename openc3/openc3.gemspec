@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -91,7 +91,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
-  s.add_runtime_dependency 'redis',     '~> 5.0'
+  s.add_runtime_dependency 'redis',     '~> 5.4'
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'

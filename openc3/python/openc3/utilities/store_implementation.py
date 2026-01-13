@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,8 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import redis
-from redis.exceptions import TimeoutError
+import valkey
+from valkey.exceptions import TimeoutError
 from openc3.utilities.connection_pool import ConnectionPool
 from contextlib import contextmanager
 import threading
@@ -121,7 +121,7 @@ class Store(metaclass=StoreMeta):
             # NOTE: We can't use decode_response because it tries to decode the binary
             # packet buffer which does not work. Thus strings come back as bytes like
             # b"target_name" and we decode them using b"target_name".decode()
-            return redis.Redis(
+            return valkey.Valkey(
                 host=self.redis_host,
                 port=self.redis_port,
                 username=OPENC3_REDIS_USERNAME,
