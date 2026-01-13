@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -242,7 +242,7 @@ module OpenC3
         folder = "EXAMPLE"
         name = "#{scope}__USER__#{folder}"
         expect(s3).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: "#{scope}/microservices/#{name}/", continuation_token: nil}).and_return(objs)
-        expect(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
+        expect(s3).to receive(:delete_objects).with(bucket: 'config', delete: { objects: [{ key: "blah" }] })
 
         model = MicroserviceModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')
         model.undeploy

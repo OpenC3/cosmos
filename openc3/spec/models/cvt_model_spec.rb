@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -348,6 +348,8 @@ module OpenC3
         model.create()
         names = TargetModel.names(scope:"DEFAULT")
         expect(names.include?("INST"))
+        # Clear the item_map cache to avoid interference from previous tests
+        TargetModel.class_variable_get(:@@item_map_cache)["INST"] = nil
         Store.set("DEFAULT__INST__item_to_packet_map", JSON.generate({"PACKET_ID" => ["PACKET1"]}))
         Store.hset("DEFAULT__tlm__INST", "PACKET1", JSON.generate({"PACKET_TIMESECONDS" => nil}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope:"DEFAULT")
