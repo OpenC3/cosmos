@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -83,7 +83,13 @@ module OpenC3
           ]
         }
         EOL
-        @client.put_bucket_policy({ bucket: bucket, policy: policy, checksum_algorithm: "SHA256" })
+        begin
+          options = { bucket: bucket, policy: policy }
+          options[:checksum_algorithm] = "SHA256" if @use_checksum
+          @client.put_bucket_policy(options)
+        rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+          Logger.warn("put_bucket_policy not supported by S3 backend: #{e.message}")
+        end
       end
     end
 
@@ -194,9 +200,16 @@ module OpenC3
 
     # put_object fires off the request to store but does not confirm
     def put_object(bucket:, key:, body:, content_type: nil, cache_control: nil, metadata: nil)
-      @client.put_object(bucket: bucket, key: key, body: body,
-        content_type: content_type, cache_control: cache_control, metadata: metadata,
-        checksum_algorithm: "SHA256")
+      options = {
+        bucket: bucket,
+        key: key,
+        body: body,
+        content_type: content_type,
+        cache_control: cache_control,
+        metadata: metadata,
+        checksum_algorithm: "SHA256"
+      }
+      @client.put_object(**options)
     end
 
     # @returns [Boolean] Whether the file exists
@@ -222,14 +235,14 @@ module OpenC3
 
     def delete_object(bucket:, key:)
       @client.delete_object(bucket: bucket, key: key)
-    rescue Exception
-      Logger.error("Error deleting object bucket: #{bucket}, key: #{key}")
+    rescue Exception => e
+      Logger.error("Error deleting object bucket: #{bucket}, key: #{key}: #{e.message}")
     end
 
     def delete_objects(bucket:, keys:)
       @client.delete_objects(bucket: bucket, delete: { objects: keys.map {|key| { key: key } } })
-    rescue Exception
-      Logger.error("Error deleting objects bucket: #{bucket}, keys: #{keys}")
+    rescue Exception => e
+      Logger.error("Error deleting objects bucket: #{bucket}, keys: #{keys}: #{e.message}")
     end
 
     def presigned_request(bucket:, key:, method:, internal: true)

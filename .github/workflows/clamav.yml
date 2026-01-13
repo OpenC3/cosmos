@@ -52,7 +52,7 @@ jobs:
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image minio
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.sha }}
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-s3:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image tsdb
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-tsdb:${{ github.sha }}

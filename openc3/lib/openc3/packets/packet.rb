@@ -1534,7 +1534,6 @@ module OpenC3
         end
         value << ' ' << item.units if item.units
       end
-      value = "#{value} #{item.units}" if value_type == :WITH_UNITS and item.units
       value
     end
 

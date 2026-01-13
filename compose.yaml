@@ -14,23 +14,22 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 services:
-  openc3-minio:
+  openc3-s3:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    # Uncomment to run unit tests against the minio server
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-s3${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+    # Uncomment to run unit tests against the S3 server
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-bucket-v:/data"
+      - "openc3-s3-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
-    command: server --address ":9000" --console-address ":9001" /data
     restart: "unless-stopped"
     logging:
       driver: "json-file"
@@ -38,12 +37,8 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      MINIO_ROOT_USER: "${OPENC3_BUCKET_USERNAME}"
-      MINIO_ROOT_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      # Domain doesn't really matter but it's required. We really want the /minio path.
-      # This is handled by our traefik configuration via rule: PathPrefix(`/minio`)
-      # and forwarded on to the console at http://openc3-minio:9001
-      MINIO_BROWSER_REDIRECT_URL: "http://openc3.com/minio"
+      ROOT_ACCESS_KEY: "${OPENC3_BUCKET_USERNAME}"
+      ROOT_SECRET_KEY: "${OPENC3_BUCKET_PASSWORD}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
@@ -117,7 +112,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-s3"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -149,7 +144,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-s3"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -186,7 +181,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-s3"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -218,6 +213,41 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
 
+  # Migration microservice for ingesting historical bin file data into QuestDB
+  # Disabled by default - set MIGRATION_ENABLED=true to enable
+  # openc3-cosmos-migration:
+  #   user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
+  #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-migration${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+  #   restart: "no"  # Run once, don't auto-restart
+  #   depends_on:
+  #     - "openc3-redis"
+  #     - "openc3-s3"
+  #     - "openc3-tsdb"
+  #   volumes:
+  #     - "openc3-gems-v:/gems:ro"
+  #     - "./cacert.pem:/devel/cacert.pem:z"
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   environment:
+  #     - GEM_HOME=/gems
+  #     - PYTHONUSERBASE=/gems/python_packages
+  #     - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+  #     - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+  #     - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+  #     - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+  #     - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+  #     - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+  #     - MIGRATION_ENABLED=${MIGRATION_ENABLED:-false}
+  #     - MIGRATION_BATCH_SIZE=${MIGRATION_BATCH_SIZE:-1000}
+  #     - MIGRATION_SLEEP_SECONDS=${MIGRATION_SLEEP_SECONDS:-0.5}
+  #     - MIGRATION_FILES_BEFORE_PAUSE=${MIGRATION_FILES_BEFORE_PAUSE:-10}
+  #     - MIGRATION_PAUSE_SECONDS=${MIGRATION_PAUSE_SECONDS:-30}
+  #   env_file:
+  #     - .env
+
   openc3-traefik:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
@@ -238,7 +268,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-s3"
     logging:
       driver: "json-file"
       options:
@@ -258,7 +288,7 @@ services:
       - "openc3-traefik"
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-s3"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -288,5 +318,6 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-bucket-v: {}
+  openc3-s3-v:
+    external: true
   openc3-gems-v: {}

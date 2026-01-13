@@ -71,8 +71,8 @@ class TestTsdbMicroservice(unittest.TestCase):
             if var in os.environ:
                 del os.environ[var]
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_initialization_success(self, mock_system, mock_psycopg, mock_sender):
         """Test successful initialization of TsdbMicroservice"""
@@ -100,15 +100,15 @@ class TestTsdbMicroservice(unittest.TestCase):
         tsdb = TsdbMicroservice("DEFAULT__TSDB__INST")
 
         # Verify connections were established
-        self.assertIsNotNone(tsdb.ingest)
-        self.assertIsNotNone(tsdb.query)
+        self.assertIsNotNone(tsdb.questdb.ingest)
+        self.assertIsNotNone(tsdb.questdb.query)
         mock_ingest.establish.assert_called_once()
 
         # Verify table creation was attempted
         mock_cursor.execute.assert_called()
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_missing_hostname_env_var(self, mock_system, mock_psycopg, mock_sender):
         """Test initialization fails with missing OPENC3_TSDB_HOSTNAME"""
@@ -127,8 +127,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("missing env var OPENC3_TSDB_HOSTNAME", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_missing_ingest_port_env_var(self, mock_system, mock_psycopg, mock_sender):
         """Test initialization fails with missing OPENC3_TSDB_INGEST_PORT"""
@@ -147,8 +147,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("missing env var OPENC3_TSDB_INGEST_PORT", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_missing_username_env_var(self, mock_system, mock_psycopg, mock_sender):
         """Test initialization fails with missing OPENC3_TSDB_USERNAME"""
@@ -167,8 +167,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("missing env var OPENC3_TSDB_USERNAME", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_missing_password_env_var(self, mock_system, mock_psycopg, mock_sender):
         """Test initialization fails with missing OPENC3_TSDB_PASSWORD"""
@@ -187,8 +187,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("missing env var OPENC3_TSDB_PASSWORD", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_ingest_connection_failure(self, mock_system, mock_psycopg, mock_sender):
         """Test handling of ingest connection failure"""
@@ -207,8 +207,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("Failed to connect to QuestDB", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_query_connection_failure(self, mock_system, mock_psycopg, mock_sender):
         """Test handling of query connection failure"""
@@ -229,8 +229,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         self.assertIn("Failed to connect to QuestDB", str(context.exception))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_create_table_with_valid_name(self, mock_system, mock_psycopg, mock_sender):
         """Test creating a table with a valid name"""
@@ -257,8 +257,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertTrue(any("INST__HEALTH_STATUS" in str(call) for call in calls))
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_create_table_with_invalid_characters(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test creating a table with invalid characters in the name"""
@@ -270,7 +270,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
-        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        # Mock get_tlm to return a dummy packet dict
         mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
@@ -286,8 +286,8 @@ class TestTsdbMicroservice(unittest.TestCase):
             # Should warn about invalid characters
             self.assertIn("changed to", stdout.getvalue())
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_create_table_creates_all_packet_items(self, mock_system, mock_psycopg, mock_sender):
         """Test that all items from a packet are stored as columns in the table"""
@@ -351,8 +351,8 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.tsdb_microservice.get_all_tlm_names")
     @patch("openc3.microservices.microservice.System")
     def test_sync_topics_creates_new_target(
@@ -367,7 +367,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
-        # Mock get_tlm to return a dummy packet (dict with "items" key)
+        # Mock get_tlm to return a dummy packet dict
         mock_get_tlm.return_value = {"items": []}
 
         model = MicroserviceModel(
@@ -390,8 +390,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertGreater(len(tsdb.topics), initial_topic_count)
         self.assertTrue(any("NEWTARGET" in topic for topic in tsdb.topics))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_sync_topics_deletes_target(self, mock_system, mock_psycopg, mock_sender):
         """Test sync_topics removes topics when target is deleted"""
@@ -422,8 +422,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Should have removed INST topics
         self.assertFalse(any("{INST}" in topic for topic in tsdb.topics))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_integer_values(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles integer values correctly"""
@@ -478,8 +478,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn("TEMP1", call_args[1]["columns"])
         self.assertEqual(call_args[1]["columns"]["TEMP1"], 42)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_large_integers(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics clamps large integers to int64 range"""
@@ -532,8 +532,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertEqual(call_args[1]["columns"]["BIGVAL"], 2**63 - 1)
         self.assertEqual(call_args[1]["columns"]["SMALLVAL"], -(2**63) + 1)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_float_values(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles float values including NaN and Infinity"""
@@ -591,8 +591,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertTrue(math.isnan(call_args[1]["columns"]["TEMP2"]))
         self.assertTrue(math.isinf(call_args[1]["columns"]["TEMP3"]))
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_bytes_values(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics converts bytes to base64"""
@@ -646,8 +646,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         expected = base64.b64encode(bytes(test_bytes)).decode("ascii")
         self.assertEqual(call_args[1]["columns"]["DATA"], expected)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_numeric_arrays(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics converts numeric lists to numpy arrays"""
@@ -704,8 +704,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIsInstance(result, numpy.ndarray)
         self.assertEqual(list(result), [1.0, 2.0, 3.0, 4.0])
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_non_numeric_arrays(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics converts non-numeric lists to JSON strings"""
@@ -757,8 +757,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         call_args = mock_ingest.row.call_args
         self.assertEqual(call_args[1]["columns"]["STRARRAY"], '["a", "b", "c"]')
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_timestamp_columns(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics converts PACKET_TIMESECONDS and RECEIVED_TIMESECONDS"""
@@ -816,8 +816,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIsInstance(call_args[1]["columns"]["PACKET_TIMESECONDS"], TimestampMicros)
         self.assertIsInstance(call_args[1]["columns"]["RECEIVED_TIMESECONDS"], TimestampMicros)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_invalid_item_names(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics sanitizes item names with invalid characters"""
@@ -872,8 +872,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn("VALUE_2", columns)
         self.assertIn("DATA_3", columns)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_cast_error(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles type cast errors by altering table"""
@@ -933,8 +933,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Should have called row twice (failed, then succeeded)
         self.assertEqual(mock_ingest.row.call_count, 2)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_array_to_scalar_cast_error(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles array-to-scalar cast errors by registering for JSON serialization"""
@@ -993,10 +993,10 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("Will serialize as JSON", stdout.getvalue())
 
         # Column should be registered for JSON serialization
-        self.assertIn("INST__HEALTH_STATUS__JSON_ITEM", tsdb.json_columns)
+        self.assertIn("INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_ingress_error(self, mock_system, mock_psycopg, mock_sender):
         """Test read_topics handles non-recoverable IngressError"""
@@ -1049,11 +1049,11 @@ class TestTsdbMicroservice(unittest.TestCase):
             # Should have logged error
             self.assertIn("Error writing to QuestDB", stdout.getvalue())
 
-        # Should have set error
-        self.assertIsNotNone(tsdb.error)
+        # Note: With the refactored code, IngressError is handled gracefully by handle_ingress_error()
+        # and doesn't set self.error. Only unhandled exceptions in run() set self.error.
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_run_loop_handles_exceptions(self, mock_system, mock_psycopg, mock_sender):
         """Test run loop handles exceptions gracefully"""
@@ -1094,8 +1094,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Should have set error
         self.assertIsNotNone(tsdb.error)
 
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_skips_unknown_target(self, mock_system, mock_psycopg, mock_sender):
         """Test initialization skips UNKNOWN target topics"""
@@ -1125,25 +1125,24 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertFalse(any("UNKNOWN" in str(call) for call in calls))
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
-    @patch("openc3.microservices.tsdb_microservice.Sender")
-    @patch("openc3.microservices.tsdb_microservice.psycopg.connect")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_create_table_stores_all_packet_items(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that all items from a packet are stored as columns in the table"""
-        # Create a mock packet with items (dict format as returned by get_tlm)
-        packet = {
-            "items": [
-                {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
-                {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
-                {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 128},
-                {"name": "ARY", "data_type": "BLOCK", "bit_size": 64, "array_size": 80},
-                {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
-                {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
-            ]
-        }
+        # Create a mock packet dict with items
+        items = [
+            {"name": "TEMP1", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP2", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP3", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "TEMP4", "data_type": "FLOAT", "bit_size": 32},
+            {"name": "COLLECTS", "data_type": "UINT", "bit_size": 16},
+            {"name": "ASCIICMD", "data_type": "STRING", "bit_size": 2048},
+            {"name": "ARY", "data_type": "BLOCK", "bit_size": 80, "array_size": 80},
+            {"name": "GROUND1STATUS", "data_type": "UINT", "bit_size": 8},
+            {"name": "BLOCKTEST", "data_type": "BLOCK", "bit_size": 80},
+        ]
+        packet = {"items": items}
 
         # Mock get_tlm to return this packet
         mock_get_tlm.return_value = packet
@@ -1184,7 +1183,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Build expected items list from the packet
         expected_items = set()
-        for item in packet["items"]:
+        for item in items:
             # Sanitize item name the same way tsdb_microservice does
             sanitized_name = re.sub(r'[?\.,\'"\\/:)(+\-*%~;]', "_", item["name"])
             expected_items.add(sanitized_name)
@@ -1198,7 +1197,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Create a JSON data dictionary with values for all items
         json_data = {}
-        for item in packet["items"]:
+        for item in items:
             # Use different types to test various data handling
             if "TEMP" in item["name"]:
                 json_data[item["name"]] = -100.0  # float

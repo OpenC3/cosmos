@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -296,6 +296,7 @@ module OpenC3
           expect(new_microservice.processor.state).to eq('HOLD')
 
           new_microservice.shutdown
+          sleep 0.1 # Allow threads to exit
         end
 
         it 'logs error for unknown options' do

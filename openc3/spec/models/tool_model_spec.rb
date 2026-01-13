@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -276,7 +276,7 @@ module OpenC3
         folder = "DEMO"
         name = "DEMO"
         expect(s3).to receive(:list_objects_v2).with({bucket: 'tools', max_keys: 1000, prefix: "#{name}/", continuation_token: nil}).and_return(objs)
-        expect(s3).to receive(:delete_object).with(bucket: 'tools', key: "blah")
+        expect(s3).to receive(:delete_objects).with(bucket: 'tools', delete: { objects: [{ key: "blah" }] })
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')
         model.undeploy

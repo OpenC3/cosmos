@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -197,7 +197,12 @@ module OpenC3
             break if @microservice_status_sleeper.sleep(@microservice_status_period_seconds)
           end
         rescue Exception => e
-          @logger.error "#{@name} status thread died: #{e.formatted}"
+          begin
+            @logger.error "#{@name} status thread died: #{e.formatted}"
+          rescue Exception
+            # If logging also fails (e.g. Redis unavailable), print to stderr
+            $stderr.puts "#{@name} status thread died: #{e.formatted}"
+          end
           raise e
         end
         ThreadManager.instance.register(@microservice_status_thread)
@@ -211,14 +216,26 @@ module OpenC3
 
     def shutdown(state = 'STOPPED')
       return if @shutdown_complete
-      @logger.info("Shutting down microservice: #{@name}")
+      begin
+        @logger.info("Shutting down microservice: #{@name}")
+      rescue Exception
+        # Ignore logging failures during shutdown (e.g. Redis unavailable)
+      end
       @state = state
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
-      MicroserviceStatusModel.set(as_json(), scope: @scope)
+      begin
+        MicroserviceStatusModel.set(as_json(), scope: @scope)
+      rescue Exception
+        # Ignore Redis failures during shutdown
+      end
       FileUtils.remove_entry_secure(@temp_dir, true)
       @metric.shutdown
-      @logger.debug("Shutting down microservice complete: #{@name}")
+      begin
+        @logger.debug("Shutting down microservice complete: #{@name}")
+      rescue Exception
+        # Ignore logging failures during shutdown
+      end
       @shutdown_complete = true
     end
 
