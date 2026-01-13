@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -438,7 +438,7 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]])
 
     def test_values_and_limits_states_complains_about_non_existent_value_types(self):
-        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED' or 'FORMATTED'"):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], 'MINE')
 
     def test_values_and_limits_states_complains_if_passed_a_single_array(self):
