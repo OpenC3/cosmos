@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -209,7 +209,7 @@ module OpenC3
         metadata: metadata,
         checksum_algorithm: "SHA256"
       }
-      @client.put_object(options)
+      @client.put_object(**options)
     end
 
     # @returns [Boolean] Whether the file exists

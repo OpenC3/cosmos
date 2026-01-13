@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -198,7 +198,7 @@ module OpenC3
           expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
 
           $connect_raise = false
-          sleep 0.01 # Allow it to reconnect successfully
+          sleep 0.1 # Allow it to reconnect successfully
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
           im.shutdown

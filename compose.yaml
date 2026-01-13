@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -215,38 +215,38 @@ services:
 
   # Migration microservice for ingesting historical bin file data into QuestDB
   # Disabled by default - set MIGRATION_ENABLED=true to enable
-  openc3-cosmos-migration:
-    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-migration${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    restart: "no"  # Run once, don't auto-restart
-    depends_on:
-      - "openc3-redis"
-      - "openc3-s3"
-      - "openc3-tsdb"
-    volumes:
-      - "openc3-gems-v:/gems:ro"
-      - "./cacert.pem:/devel/cacert.pem:z"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    environment:
-      - GEM_HOME=/gems
-      - PYTHONUSERBASE=/gems/python_packages
-      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-      - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
-      - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
-      - MIGRATION_ENABLED=${MIGRATION_ENABLED:-false}
-      - MIGRATION_BATCH_SIZE=${MIGRATION_BATCH_SIZE:-1000}
-      - MIGRATION_SLEEP_SECONDS=${MIGRATION_SLEEP_SECONDS:-0.5}
-      - MIGRATION_FILES_BEFORE_PAUSE=${MIGRATION_FILES_BEFORE_PAUSE:-10}
-      - MIGRATION_PAUSE_SECONDS=${MIGRATION_PAUSE_SECONDS:-30}
-    env_file:
-      - .env
+  # openc3-cosmos-migration:
+  #   user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
+  #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-migration${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+  #   restart: "no"  # Run once, don't auto-restart
+  #   depends_on:
+  #     - "openc3-redis"
+  #     - "openc3-s3"
+  #     - "openc3-tsdb"
+  #   volumes:
+  #     - "openc3-gems-v:/gems:ro"
+  #     - "./cacert.pem:/devel/cacert.pem:z"
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   environment:
+  #     - GEM_HOME=/gems
+  #     - PYTHONUSERBASE=/gems/python_packages
+  #     - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+  #     - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+  #     - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+  #     - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+  #     - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+  #     - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+  #     - MIGRATION_ENABLED=${MIGRATION_ENABLED:-false}
+  #     - MIGRATION_BATCH_SIZE=${MIGRATION_BATCH_SIZE:-1000}
+  #     - MIGRATION_SLEEP_SECONDS=${MIGRATION_SLEEP_SECONDS:-0.5}
+  #     - MIGRATION_FILES_BEFORE_PAUSE=${MIGRATION_FILES_BEFORE_PAUSE:-10}
+  #     - MIGRATION_PAUSE_SECONDS=${MIGRATION_PAUSE_SECONDS:-30}
+  #   env_file:
+  #     - .env
 
   openc3-traefik:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"

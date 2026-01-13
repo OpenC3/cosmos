@@ -8,6 +8,9 @@ FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 ARG OPENC3_VERSITYGW_VERSION
 ARG TARGETARCH
 
+# Install tar and gzip for extracting versitygw
+RUN microdnf install -y tar gzip && microdnf clean all
+
 # Copy and extract versitygw binary from local tar.gz files
 COPY versitygw_v${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x86_64") && \
