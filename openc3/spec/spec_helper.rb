@@ -103,6 +103,7 @@ OpenC3::OpenC3Authentication.class_eval do
 end
 
 require 'openc3/utilities/store_queued'
+require 'openc3/models/auth_model'
 
 # Make StoreQueued not queue for unit tests
 $store_queued = false

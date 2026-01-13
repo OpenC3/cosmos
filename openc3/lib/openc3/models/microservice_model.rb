@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,6 +23,7 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/metric_model'
+require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
 
 module OpenC3

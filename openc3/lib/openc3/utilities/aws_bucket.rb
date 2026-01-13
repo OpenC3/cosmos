@@ -311,7 +311,7 @@ module OpenC3
         metadata: metadata
       }
       options[:checksum_algorithm] = "SHA256" if @use_checksum
-      @client.put_object(options)
+      @client.put_object(**options)
     end
 
     # @returns [Boolean] Whether the file exists
