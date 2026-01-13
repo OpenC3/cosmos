@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -75,8 +75,8 @@ ENV['OPENC3_API_PASSWORD'] = 'password'
 ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
 ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
 ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
-ENV['OPENC3_BUCKET_USERNAME'] = 'openc3minio'
-ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3miniopassword'
+ENV['OPENC3_BUCKET_USERNAME'] = 'openc3bucket'
+ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3bucketpassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
 ENV['OPENC3_CLOUD'] = 'local'
 
@@ -103,6 +103,7 @@ OpenC3::OpenC3Authentication.class_eval do
 end
 
 require 'openc3/utilities/store_queued'
+require 'openc3/models/auth_model'
 
 # Make StoreQueued not queue for unit tests
 $store_queued = false

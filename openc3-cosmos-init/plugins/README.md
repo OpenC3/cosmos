@@ -86,14 +86,3 @@ need to serve and override openc3-js-common or openc3-vue-common). This ability 
         openc3-cosmos-cmd-tlm-api> export OPENC3_REDIS_EPHEMERAL_HOSTNAME=127.0.0.1
         openc3-cosmos-cmd-tlm-api> bundle install
         openc3-cosmos-cmd-tlm-api> bundle exec rails s
-
-# MINIO development
-
-Note running OpenC3 COSMOS in development mode (openc3.bat dev) already does this step. This is only necessary to debug a minio container running in production mode.
-
-1.  Run a development version of minio
-
-        > docker ps
-        # Look for the container with name including minio
-        > docker stop cosmos-openc3-minio-1
-        > docker run --name cosmos-openc3-minio-1 --network=openc3-cosmos-network -v cosmos-openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2024-05-01T01-11-10Z server --console-address ":9001" /data

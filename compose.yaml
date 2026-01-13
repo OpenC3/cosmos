@@ -21,14 +21,14 @@
 # if purchased from OpenC3, Inc.
 
 services:
-  openc3-s3:
+  openc3-buckets:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-s3${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     # Uncomment to run unit tests against the S3 server
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-s3-v:/data"
+      - "openc3-buckets-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
     restart: "unless-stopped"
     logging:
@@ -39,6 +39,8 @@ services:
     environment:
       ROOT_ACCESS_KEY: "${OPENC3_BUCKET_USERNAME}"
       ROOT_SECRET_KEY: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
+      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
@@ -112,7 +114,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-s3"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -144,7 +146,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-s3"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -181,7 +183,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-s3"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -221,7 +223,7 @@ services:
   #   restart: "no"  # Run once, don't auto-restart
   #   depends_on:
   #     - "openc3-redis"
-  #     - "openc3-s3"
+  #     - "openc3-buckets"
   #     - "openc3-tsdb"
   #   volumes:
   #     - "openc3-gems-v:/gems:ro"
@@ -268,7 +270,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-s3"
+      - "openc3-buckets"
     logging:
       driver: "json-file"
       options:
@@ -288,7 +290,7 @@ services:
       - "openc3-traefik"
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-s3"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -318,6 +320,6 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-s3-v:
-    external: true
+  openc3-buckets-v:
+    name: openc3-buckets-v  # Fixed name to match migration script (no project prefix)
   openc3-gems-v: {}

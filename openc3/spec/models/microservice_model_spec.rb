@@ -22,6 +22,7 @@
 
 require 'spec_helper'
 require 'openc3/models/microservice_model'
+require 'ostruct'
 
 module OpenC3
   describe MicroserviceModel do
