@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import sys
 import atexit
 import tempfile
 import threading
@@ -196,16 +197,25 @@ class Microservice:
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
-        self.logger.info(f"Shutting down microservice: {self.name}")
+        try:
+            self.logger.info(f"Shutting down microservice: {self.name}")
+        except Exception:
+            pass  # Ignore logging failures during shutdown (e.g. Redis unavailable)
         self.state = state
         self.cancel_thread = True
         if self.microservice_status_sleeper:
             self.microservice_status_sleeper.cancel()
-        MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
+        try:
+            MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
+        except Exception:
+            pass  # Ignore Redis failures during shutdown
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
         self.metric.shutdown()
-        self.logger.debug(f"Shutting down microservice complete: {self.name}")
+        try:
+            self.logger.debug(f"Shutting down microservice complete: {self.name}")
+        except Exception:
+            pass  # Ignore logging failures during shutdown
         self.shutdown_complete = True
 
     def setup_microservice_topic(self):
@@ -239,5 +249,9 @@ class Microservice:
                 if self.microservice_status_sleeper.sleep(self.microservice_status_period_seconds):
                     break
             except Exception as error:
-                self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
+                try:
+                    self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
+                except Exception:
+                    # If logging also fails (e.g. Redis unavailable), print to stderr
+                    print(f"{self.name} status thread died: {traceback.format_exc()}", file=sys.stderr)
                 raise error
