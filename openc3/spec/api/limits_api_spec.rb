@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -47,8 +47,12 @@ module OpenC3
         model.update_store(System.new([target], File.join(SPEC_DIR, 'install', 'config', 'targets')))
       end
 
+      @api = ApiTest.new
+    end
+
+    # Helper to setup DecomMicroservice for tests that need it
+    def with_decom_microservice
       allow_any_instance_of(OpenC3::Interface).to receive(:connected?).and_return(true)
-      @im_shutdown = false
       allow_any_instance_of(OpenC3::Interface).to receive(:read_interface) { sleep(0.01) until @im_shutdown }
 
       model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT", topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ["INST"])
@@ -56,13 +60,10 @@ module OpenC3
       @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
       @dm_thread = Thread.new { @dm.run }
       sleep 0.01 # Allow the threads to run
-
-      @api = ApiTest.new
-    end
-
-    after(:each) do
-      @dm.shutdown
-      @dm_thread.join
+      yield
+    ensure
+      @dm.shutdown if @dm
+      @dm_thread.join if @dm_thread
     end
 
     describe "get_limits" do
@@ -84,13 +85,15 @@ module OpenC3
       end
 
       it "gets limits for a LATEST item" do
-        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
-        packet.received_time = Time.now.sys
-        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
-        sleep 0.01 # Allow the write to happen
+        with_decom_microservice do
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+          packet.received_time = Time.now.sys
+          TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+          sleep 0.01 # Allow the write to happen
 
-        expect(@api.get_limits("INST", "LATEST", "TEMP1")).to \
-          eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+          expect(@api.get_limits("INST", "LATEST", "TEMP1")).to \
+            eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+        end
       end
     end
 
@@ -270,61 +273,65 @@ module OpenC3
 
     describe "get_out_of_limits" do
       it "returns all out of limits items" do
-        capture_io do |stdout|
-          @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 52, TEMP4: 81 }, type: :CONVERTED)
-          sleep 0.05
-          items = @api.get_out_of_limits
-          expect(items[0][0]).to eql "INST"
-          expect(items[0][1]).to eql "HEALTH_STATUS"
-          expect(items[0][2]).to eql "TEMP3"
-          expect(items[0][3]).to eql "YELLOW_HIGH"
+        with_decom_microservice do
+          capture_io do |stdout|
+            @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 52, TEMP4: 81 }, type: :CONVERTED)
+            sleep 0.05
+            items = @api.get_out_of_limits
+            expect(items[0][0]).to eql "INST"
+            expect(items[0][1]).to eql "HEALTH_STATUS"
+            expect(items[0][2]).to eql "TEMP3"
+            expect(items[0][3]).to eql "YELLOW_HIGH"
 
-          expect(items[1][0]).to eql "INST"
-          expect(items[1][1]).to eql "HEALTH_STATUS"
-          expect(items[1][2]).to eql "TEMP4"
-          expect(items[1][3]).to eql "RED_HIGH"
+            expect(items[1][0]).to eql "INST"
+            expect(items[1][1]).to eql "HEALTH_STATUS"
+            expect(items[1][2]).to eql "TEMP4"
+            expect(items[1][3]).to eql "RED_HIGH"
 
-          # These don't come out because we're initializing from nothing
-          expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP1")
-          expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP2")
-          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is YELLOW_HIGH/)
-          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is RED_HIGH/)
+            # These don't come out because we're initializing from nothing
+            expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP1")
+            expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP2")
+            expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is YELLOW_HIGH/)
+            expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is RED_HIGH/)
 
-          @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 70 }, type: :CONVERTED)
-          sleep 0.05
-          items = @api.get_out_of_limits
-          expect(items[0][0]).to eql "INST"
-          expect(items[0][1]).to eql "HEALTH_STATUS"
-          expect(items[0][2]).to eql "TEMP4"
-          expect(items[0][3]).to eql "YELLOW_HIGH"
+            @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 70 }, type: :CONVERTED)
+            sleep 0.05
+            items = @api.get_out_of_limits
+            expect(items[0][0]).to eql "INST"
+            expect(items[0][1]).to eql "HEALTH_STATUS"
+            expect(items[0][2]).to eql "TEMP4"
+            expect(items[0][3]).to eql "YELLOW_HIGH"
 
-          # Now we see a GREEN transition which is INFO because it was coming from YELLOW_HIGH
-          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is GREEN/)
-          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is YELLOW_HIGH/)
+            # Now we see a GREEN transition which is INFO because it was coming from YELLOW_HIGH
+            expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is GREEN/)
+            expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is YELLOW_HIGH/)
+          end
         end
       end
     end
 
     describe "get_overall_limits_state" do
       it "returns the overall system limits state" do
-        @api.inject_tlm("INST", "HEALTH_STATUS",
-                        { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 'CONNECTED', 'GROUND2STATUS' => 'CONNECTED' })
-        sleep 0.05
-        expect(@api.get_overall_limits_state).to eql "GREEN"
-        # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
-        # TEMP2 limits: -60.0 -55.0 30.0 35.0
-        @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 70, 'TEMP2' => 32, 'TEMP3' => 0, 'TEMP4' => 0 }) # Both YELLOW
-        sleep 0.05
-        expect(@api.get_overall_limits_state).to eql "YELLOW"
-        @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => -75, 'TEMP2' => 40, 'TEMP3' => 0, 'TEMP4' => 0 })
-        sleep 0.05
-        expect(@api.get_overall_limits_state).to eql "RED"
-        expect(@api.get_overall_limits_state([])).to eql "RED"
+        with_decom_microservice do
+          @api.inject_tlm("INST", "HEALTH_STATUS",
+                          { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 'CONNECTED', 'GROUND2STATUS' => 'CONNECTED' })
+          sleep 0.05
+          expect(@api.get_overall_limits_state).to eql "GREEN"
+          # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
+          # TEMP2 limits: -60.0 -55.0 30.0 35.0
+          @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 70, 'TEMP2' => 32, 'TEMP3' => 0, 'TEMP4' => 0 }) # Both YELLOW
+          sleep 0.05
+          expect(@api.get_overall_limits_state).to eql "YELLOW"
+          @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => -75, 'TEMP2' => 40, 'TEMP3' => 0, 'TEMP4' => 0 })
+          sleep 0.05
+          expect(@api.get_overall_limits_state).to eql "RED"
+          expect(@api.get_overall_limits_state([])).to eql "RED"
 
-        # Ignoring all now yields GREEN
-        expect(@api.get_overall_limits_state([["INST", "HEALTH_STATUS", nil]])).to eql "GREEN"
-        # Ignoring just TEMP2 yields YELLOW due to TEMP1
-        expect(@api.get_overall_limits_state([["INST", "HEALTH_STATUS", "TEMP2"]])).to eql "YELLOW"
+          # Ignoring all now yields GREEN
+          expect(@api.get_overall_limits_state([["INST", "HEALTH_STATUS", nil]])).to eql "GREEN"
+          # Ignoring just TEMP2 yields YELLOW due to TEMP1
+          expect(@api.get_overall_limits_state([["INST", "HEALTH_STATUS", "TEMP2"]])).to eql "YELLOW"
+        end
       end
 
       it "raise on invalid ignored_items" do

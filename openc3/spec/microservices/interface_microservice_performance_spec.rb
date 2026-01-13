@@ -17,11 +17,11 @@
 # if purchased from OpenC3, Inc.
 
 # Performance and profiling tests for InterfaceMicroservice critical path
-# These tests are gated behind ENV['CI'] and are not run in CI pipelines
+# Only run when PERFORMANCE=1 is set (opt-in)
 #
 # Usage:
 #   # Run benchmarks only:
-#   bundle exec rspec spec/microservices/interface_microservice_performance_spec.rb
+#   PERFORMANCE=1 bundle exec rspec spec/microservices/interface_microservice_performance_spec.rb
 #
 #   # Run with profiling (ruby-prof):
 #   PROFILE=1 bundle exec rspec spec/microservices/interface_microservice_performance_spec.rb
@@ -82,8 +82,8 @@ require 'openc3/interfaces/interface'
 require 'openc3/microservices/interface_microservice'
 require 'openc3/topics/telemetry_decom_topic'
 
-# Skip all tests in CI environment
-RSpec.describe OpenC3::InterfaceMicroservice, unless: ENV['CI'] do
+# Only run when PERFORMANCE=1 is set (opt-in)
+RSpec.describe OpenC3::InterfaceMicroservice, if: ENV['PERFORMANCE'] do
   # Performance test interface that can generate packets at high speed
   # with minimal overhead for accurate benchmarking
   class PerformanceTestInterface < OpenC3::Interface
@@ -495,12 +495,13 @@ RSpec.describe OpenC3::InterfaceMicroservice, unless: ENV['CI'] do
       puts "=" * 70
 
       profile = RubyProf::Profile.new(measure_mode: RubyProf::WALL_TIME)
-      profile.exclude_methods!([Integer, :times, Kernel, :dup])
-      profile.start
-      profile_iterations.times do
-        OpenC3::System.telemetry.identify!(buffer.dup, ['INST'])
+      result = profile.profile do
+        profile_iterations.times do
+          OpenC3::System.telemetry.identify!(buffer.dup, ['INST'])
+        end
       end
-      result = profile.stop
+
+      result.eliminate_methods!([/Integer#times/, /Kernel#dup/])
 
       profile_dir = File.join(SPEC_DIR, '..', 'profile')
       FileUtils.mkdir_p(profile_dir)

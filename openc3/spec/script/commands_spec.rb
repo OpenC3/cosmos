@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -54,7 +54,7 @@ module OpenC3
 
     before(:each) do
       capture_io do |stdout|
-        redis = mock_redis()
+        @redis = mock_redis()
         setup_system()
         local_s3()
 
@@ -70,33 +70,6 @@ module OpenC3
         model = InterfaceStatusModel.new(name: "INST_INT", scope: "DEFAULT", state: "ACTIVE")
         model.create
 
-        # Create an Interface we can use in the InterfaceCmdHandlerThread
-        # It has to have a valid list of target_names as that is what 'receive_commands'
-        # in the Store uses to determine which topics to read
-        @interface = Interface.new
-        @interface.name = "INST_INT"
-        @interface.target_names = %w[INST]
-        @interface.cmd_target_names = %w[INST]
-        @interface.tlm_target_names = %w[INST]
-        @interface.cmd_target_enabled = {"INST" => true}
-        @interface.tlm_target_enabled = {"INST" => true}
-
-        # Stub to make the InterfaceCmdHandlerThread happy
-        @interface_data = ''
-        allow(@interface).to receive(:connected?).and_return(true)
-        allow(@interface).to receive(:write_interface) { |data| @interface_data = data }
-        @thread = InterfaceCmdHandlerThread.new(@interface, nil, scope: 'DEFAULT')
-        @process = true # Allow the command to be processed or not
-        @int_thread = Thread.new { @thread.run }
-        sleep 0.01 # Allow thread to start
-
-        allow(redis).to receive(:xread).and_wrap_original do |m, *args|
-          # Only use the first two arguments as the last argument is keyword block:
-          result = m.call(*args[0..1]) if @process
-          # Create a slight delay to simulate the blocking call
-          sleep 0.001 if result and result.length == 0
-          result
-        end
         initialize_script()
       end
     end
@@ -104,11 +77,44 @@ module OpenC3
     after(:each) do
       local_s3_unset()
       shutdown_script()
-      InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
-      count = 0
-      while (@int_thread.alive? or count < 100) do
-        sleep 0.01
-        count += 1
+      if @interface
+        InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
+        count = 0
+        while (@int_thread&.alive? or count < 100) do
+          sleep 0.01
+          count += 1
+        end
+      end
+    end
+
+    # Helper to setup InterfaceCmdHandlerThread for tests that need it
+    def setup_cmd_handler_thread
+      # Create an Interface we can use in the InterfaceCmdHandlerThread
+      # It has to have a valid list of target_names as that is what 'receive_commands'
+      # in the Store uses to determine which topics to read
+      @interface = Interface.new
+      @interface.name = "INST_INT"
+      @interface.target_names = %w[INST]
+      @interface.cmd_target_names = %w[INST]
+      @interface.tlm_target_names = %w[INST]
+      @interface.cmd_target_enabled = {"INST" => true}
+      @interface.tlm_target_enabled = {"INST" => true}
+
+      # Stub to make the InterfaceCmdHandlerThread happy
+      @interface_data = ''
+      allow(@interface).to receive(:connected?).and_return(true)
+      allow(@interface).to receive(:write_interface) { |data| @interface_data = data }
+      @thread = InterfaceCmdHandlerThread.new(@interface, nil, scope: 'DEFAULT')
+      @process = true # Allow the command to be processed or not
+      @int_thread = Thread.new { @thread.run }
+      sleep 0.01 # Allow thread to start
+
+      allow(@redis).to receive(:xread).and_wrap_original do |m, *args|
+        # Only use the first two arguments as the last argument is keyword block:
+        result = m.call(*args[0..1]) if @process
+        # Create a slight delay to simulate the blocking call
+        sleep 0.001 if result and result.length == 0
+        result
       end
     end
 
@@ -121,6 +127,9 @@ module OpenC3
             expect($api_server).to_not receive(:cmd)
             expect(CommandTopic).to_not receive(:send_command)
             @prefix = "DISCONNECT: "
+          else
+            # Only setup the InterfaceCmdHandlerThread for connected tests
+            setup_cmd_handler_thread
           end
         end
 
@@ -384,41 +393,43 @@ module OpenC3
           end
         end
 
-        describe "build_cmd" do
-          before(:each) do
-            model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
-              topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
-            model.create
-            @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
-            @dm_thread = Thread.new { @dm.run }
-            sleep(0.1)
+        if connect == 'connected'
+          describe "build_cmd" do
+            before(:each) do
+              model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
+                topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
+              model.create
+              @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
+              @dm_thread = Thread.new { @dm.run }
+              sleep(0.1)
+            end
+
+            after(:each) do
+              @dm.shutdown
+              @dm_thread.join
+            end
+
+            it "builds a command" do
+              cmd = build_cmd("INST ABORT")
+              expect(cmd['target_name']).to eql 'INST'
+              expect(cmd['packet_name']).to eql 'ABORT'
+              expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
+            end
+
+            it "builds a command with parameters" do
+              cmd = @api.build_cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
+              expect(cmd['target_name']).to eql 'INST'
+              expect(cmd['packet_name']).to eql 'COLLECT'
+              expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
+            end
           end
 
-          after(:each) do
-            @dm.shutdown
-            sleep(0.1)
-          end
-
-          it "builds a command" do
-            cmd = build_cmd("INST ABORT")
-            expect(cmd['target_name']).to eql 'INST'
-            expect(cmd['packet_name']).to eql 'ABORT'
-            expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
-          end
-
-          it "builds a command with parameters" do
-            cmd = @api.build_cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
-            expect(cmd['target_name']).to eql 'INST'
-            expect(cmd['packet_name']).to eql 'COLLECT'
-            expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
-          end
-        end
-
-        describe "send_raw" do
-          it "sends data to the write_raw interface method" do
-            send_raw('INST_INT', "\x00\x01\x02\x03")
-            sleep 0.1
-            expect(@interface_data).to eql "\x00\x01\x02\x03" if connect == 'connected'
+          describe "send_raw" do
+            it "sends data to the write_raw interface method" do
+              send_raw('INST_INT', "\x00\x01\x02\x03")
+              sleep 0.1
+              expect(@interface_data).to eql "\x00\x01\x02\x03"
+            end
           end
         end
 

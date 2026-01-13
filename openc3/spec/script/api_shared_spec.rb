@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -633,7 +633,7 @@ module OpenC3
       it "logs instead of raises when disconnected" do
         $disconnect = true
         capture_io do |stdout|
-          result = wait_check_expression("true == false", 5)
+          result = wait_check_expression("true == false", 0.1)
           expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: true == false is FALSE/)
         end
