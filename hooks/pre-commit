@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# Pre-commit hook to update Copyright year in modified files
+
+require 'time'
+
+# Get current year
+current_year = Time.now.year
+
+# Get list of staged files
+staged_files = `git diff --cached --name-only --diff-filter=ACM`.split("\n")
+
+# Track if any files were modified
+files_modified = false
+
+staged_files.each do |file|
+  # Skip if file doesn't exist (deleted files)
+  next unless File.exist?(file)
+
+  # Skip files in the hooks directory
+  next if file.start_with?('hooks/')
+
+  # Read file content with encoding handling
+  begin
+    content = File.read(file, encoding: 'UTF-8')
+  rescue ArgumentError, Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+    # Skip binary files or files with invalid encoding
+    next
+  end
+
+  original_content = content.dup
+
+  # Check if file has an OpenC3 copyright header
+  has_copyright = content.match?(/^[#\/\*\s]*Copyright\s+\d{4}\s+OpenC3,\s+Inc\./i) ||
+                  content.match?(/^[#\/\*\s]*All changes Copyright\s+\d{4},\s+OpenC3,\s+Inc\./i)
+
+  # Skip files without copyright headers
+  next unless has_copyright
+
+  # Pattern 1: Single OpenC3 copyright header
+  # Match "Copyright YYYY OpenC3, Inc." and update year
+  content.gsub!(/^([#\/\*\s]*Copyright\s+)(\d{4})(\s+OpenC3,\s+Inc\.)$/i) do |match|
+    prefix = $1
+    year = $2
+    suffix = $3
+
+    if year.to_i != current_year
+      "#{prefix}#{current_year}#{suffix}"
+    else
+      match
+    end
+  end
+
+  # Pattern 2: Dual copyright with Ball Aerospace + OpenC3
+  # Match "All changes Copyright YYYY, OpenC3, Inc." and update year
+  content.gsub!(/^([#\/\*\s]*All changes Copyright\s+)(\d{4})(,\s+OpenC3,\s+Inc\.)$/i) do |match|
+    prefix = $1
+    year = $2
+    suffix = $3
+
+    if year.to_i != current_year
+      "#{prefix}#{current_year}#{suffix}"
+    else
+      match
+    end
+  end
+
+  # If content changed, write it back and re-stage the file
+  if content != original_content
+    File.write(file, content)
+    system("git add #{file}")
+    files_modified = true
+    puts "Updated copyright year in: #{file}"
+  end
+end
+
+if files_modified
+  puts "\nCopyright headers updated to #{current_year}. Changes have been staged."
+end
+
+# Always allow commit to proceed
+exit 0

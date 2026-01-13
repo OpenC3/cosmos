@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -1297,8 +1297,12 @@ module OpenC3
           json_hash.delete(item.name)
         else
           given_raw = json_hash[item.name]
-          json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
+          if item.states or (item.read_conversion and item.data_type != :DERIVED)
+            json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw)
+          end
+          if item.format_string or item.units
+            json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw)
+          end
           limits_state = item.limits.state
           if limits_state
             json_hash["#{item.name}__L"] = limits_state
@@ -1530,6 +1534,7 @@ module OpenC3
         end
         value << ' ' << item.units if item.units
       end
+      value = "#{value} #{item.units}" if value_type == :WITH_UNITS and item.units
       value
     end
 

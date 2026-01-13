@@ -187,7 +187,7 @@ test('displays INST SIMPLE', async ({ page, utils }) => {
     await page.locator('textarea').fill(`SCREEN AUTO AUTO 0.5
 LABEL ${text}
 BIG INST HEALTH_STATUS TEMP2`)
-    await page.locator('button:has-text("Save")').click()
+    await page.locator('[data-test="edit-screen-save"]').click()
     await expect(page.locator(`text=${text}`)).toBeVisible()
     await page.locator('[data-test=edit-screen-icon]').click()
     await expect(

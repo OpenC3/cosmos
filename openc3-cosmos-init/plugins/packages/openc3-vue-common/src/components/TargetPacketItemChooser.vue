@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -28,9 +28,11 @@
     <v-row class="align-center" :no-gutters="!vertical">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
+          ref="targetAutocomplete"
           v-model="selectedTargetName"
           label="Select Target"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || lockTarget"
@@ -38,13 +40,16 @@
           item-title="label"
           item-value="value"
           @update:model-value="targetNameChanged"
+          @focus="selectOnFocus('targetAutocomplete')"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
         <v-autocomplete
+          ref="packetAutocomplete"
           v-model="selectedPacketName"
           label="Select Packet"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="packetsDisabled || autocompleteDisabled || lockPacket"
@@ -52,6 +57,7 @@
           item-title="label"
           item-value="value"
           @update:model-value="packetNameChanged"
+          @focus="selectOnFocus('packetAutocomplete')"
         >
         </v-autocomplete>
       </v-col>
@@ -62,9 +68,11 @@
         data-test="select-queue"
       >
         <v-autocomplete
+          ref="queueAutocomplete"
           v-model="selectedQueueName"
           label="Select Queue"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || queueNames.length === 1"
@@ -72,6 +80,7 @@
           item-title="label"
           item-value="value"
           @update:model-value="queueNameChanged"
+          @focus="selectOnFocus('queueAutocomplete')"
         />
       </v-col>
       <v-col
@@ -81,9 +90,11 @@
         data-test="select-item"
       >
         <v-autocomplete
+          ref="itemAutocomplete"
           v-model="selectedItemName"
           label="Select Item"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="itemsDisabled || autocompleteDisabled"
@@ -91,6 +102,7 @@
           item-title="label"
           item-value="value"
           @update:model-value="itemNameChanged($event)"
+          @focus="selectOnFocus('itemAutocomplete')"
         />
       </v-col>
       <!-- min-width: 105px is enough to display a 2 digit index -->
@@ -102,9 +114,11 @@
         style="min-width: 105px"
       >
         <v-combobox
+          ref="indexCombobox"
           v-model="selectedArrayIndex"
           label="Index"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="itemsDisabled || autocompleteDisabled"
@@ -112,6 +126,7 @@
           item-title="label"
           item-value="value"
           @update:model-value="indexChanged($event)"
+          @focus="selectOnFocus('indexCombobox')"
         />
       </v-col>
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
@@ -128,33 +143,42 @@
     <v-row v-if="selectTypes" class="pt-6 align-center" no-gutters>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
+          ref="valueTypeAutocomplete"
           v-model="selectedValueType"
           label="Value Type"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :items="valueTypes"
+          @focus="selectOnFocus('valueTypeAutocomplete')"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced">
         <v-autocomplete
+          ref="reducedAutocomplete"
           v-model="selectedReduced"
           label="Reduced"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :items="reductionModes"
+          @focus="selectOnFocus('reducedAutocomplete')"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced-type">
         <v-autocomplete
+          ref="reducedTypeAutocomplete"
           v-model="selectedReducedType"
           label="Reduced Type"
           hide-details
+          auto-select-first
           density="compact"
           variant="outlined"
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
+          @focus="selectOnFocus('reducedTypeAutocomplete')"
         />
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
@@ -465,6 +489,17 @@ export default {
     })
   },
   methods: {
+    selectOnFocus: function (refName) {
+      this.$nextTick(() => {
+        const component = this.$refs[refName]
+        if (component) {
+          const input = component.$el.querySelector('input')
+          if (input) {
+            input.select()
+          }
+        }
+      })
+    },
     updatePackets: function () {
       if (this.selectedTargetName === 'UNKNOWN') {
         this.packetNames = [this.UNKNOWN]
