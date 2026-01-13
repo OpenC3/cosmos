@@ -286,6 +286,38 @@ class LoggedStreamingThread < StreamingThread
   end
 
   def stream_packets(objects_by_topic, topics, offsets)
+    # Separate RAW packets (stream from files) from DECOM packets (stream from TSDB)
+    raw_objects_by_topic = {}
+    decom_objects_by_topic = {}
+
+    objects_by_topic.each do |topic, objects|
+      objects.each do |object|
+        if object.stream_mode == :RAW
+          raw_objects_by_topic[topic] ||= []
+          raw_objects_by_topic[topic] << object
+        else
+          decom_objects_by_topic[topic] ||= []
+          decom_objects_by_topic[topic] << object
+        end
+      end
+    end
+
+    done = false
+
+    # Stream RAW packets from files
+    unless raw_objects_by_topic.empty?
+      done = stream_raw_packets_from_files(raw_objects_by_topic)
+    end
+
+    # Stream DECOM packets from TSDB
+    unless decom_objects_by_topic.empty?
+      done = stream_decom_packets_from_tsdb(decom_objects_by_topic)
+    end
+
+    done
+  end
+
+  def stream_raw_packets_from_files(objects_by_topic)
     results = []
 
     # This will read out packets until nothing is left
@@ -317,7 +349,191 @@ class LoggedStreamingThread < StreamingThread
     @streaming_api.transmit_results(results)
     results.clear
 
-    return done
+    done
+  end
+
+  def stream_decom_packets_from_tsdb(objects_by_topic)
+    start_time = nil
+    end_time = nil
+    packet_objects = []
+
+    objects_by_topic.each do |topic, objects|
+      break if @cancel_thread
+      objects.each do |object|
+        break if @cancel_thread
+
+        packet_objects << object
+
+        if object.start_time
+          if start_time.nil? or object.start_time < start_time
+            start_time = object.start_time
+          end
+        end
+        if object.end_time
+          if end_time.nil? or object.end_time > end_time
+            end_time = object.end_time
+          end
+        end
+      end
+    end
+
+    return end_time ? true : false if packet_objects.empty?
+
+    # Group objects by table (target__packet) for efficient querying
+    objects_by_table = {}
+    packet_objects.each do |object|
+      # Same sanitization as tsdb_microservice.py create_table()
+      table_name = "#{object.target_name}__#{object.packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
+      objects_by_table[table_name] ||= []
+      objects_by_table[table_name] << object
+    end
+
+    done = false
+    retry_count = 0
+
+    objects_by_table.each do |table_name, objects|
+      break if @cancel_thread
+
+      first_object = objects[0]
+      value_type = first_object.value_type
+
+      # Build the SQL query - select all columns from the table
+      query = "SELECT * FROM \"#{table_name}\""
+      query += " WHERE timestamp >= #{(start_time / 1000.0).to_i}"
+      if end_time
+        query += " AND timestamp < #{(end_time / 1000.0).to_i}"
+      end
+
+      min = 0
+      max = @max_batch_size
+      table_done = false
+
+      while !table_done and !@cancel_thread
+        begin
+          @@conn_mutex.synchronize do
+            @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                                          port: ENV['OPENC3_TSDB_QUERY_PORT'],
+                                          user: ENV['OPENC3_TSDB_USERNAME'],
+                                          password: ENV['OPENC3_TSDB_PASSWORD'],
+                                          dbname: 'qdb')
+            if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+              @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
+            end
+
+            query_offset = "#{query} LIMIT #{min}, #{max}"
+            puts "QuestDB packet query: #{query_offset}"
+            OpenC3::Logger.debug("QuestDB packet query: #{query_offset}")
+            results = []
+            result = @@conn.exec(query_offset)
+            min += @max_batch_size
+            max += @max_batch_size
+
+            if result.nil? or result.ntuples == 0
+              table_done = true
+            else
+              result.each do |tuples|
+                objects.each do |object|
+                  entry = build_packet_entry(tuples, object, value_type)
+                  results << entry if entry
+                end
+              end
+              @streaming_api.transmit_results(results) unless results.empty?
+              results.clear
+            end
+          end
+        rescue IOError, PG::Error => e
+          retry_count += 1
+          if retry_count > 4
+            raise "Error querying QuestDB for packets: #{e.message}"
+          end
+          OpenC3::Logger.warn("QuestDB: Retrying packet query due to error: #{e.message}")
+          @@conn_mutex.synchronize do
+            if @@conn and !@@conn.finished?
+              @@conn.finish()
+            end
+            @@conn = nil
+          end
+          sleep 0.1
+          retry
+        end
+      end
+
+      done = true if end_time
+    end
+
+    done
+  end
+
+  def build_packet_entry(tuples, object, value_type)
+    entry = {
+      "__type" => "PACKET",
+      "__packet" => object.key
+    }
+
+    # First pass: build a hash of all columns for lookup
+    columns = {}
+    tuples.each do |tuple|
+      column_name = tuple[0]
+      value = tuple[1]
+      columns[column_name] = value
+    end
+
+    # Second pass: process columns based on value_type
+    tuples.each do |tuple|
+      column_name = tuple[0]
+      value = tuple[1]
+
+      # Handle timestamp specially
+      if column_name == 'timestamp'
+        # Convert Ruby time to nanoseconds
+        entry['__time'] = (value.to_f * 1_000_000_000).to_i
+        next
+      end
+
+      # Skip metadata columns
+      next if column_name == 'tag'
+
+      # Map column names based on value_type
+      # TSDB columns: item (RAW), item__C (CONVERTED), item__F (FORMATTED)
+      case value_type
+      when :RAW
+        # Only include base columns (no suffix)
+        next if column_name.end_with?('__C', '__F', '__U')
+        entry[column_name] = value
+      when :CONVERTED
+        # Prefer __C columns, fall back to base
+        if column_name.end_with?('__C')
+          base_name = column_name.sub(/__C$/, '')
+          entry[base_name] = value
+        elsif !column_name.end_with?('__F', '__U') && !columns.key?("#{column_name}__C")
+          entry[column_name] = value
+        end
+      when :FORMATTED
+        # Prefer __F columns, fall back to __C, then base
+        if column_name.end_with?('__F')
+          base_name = column_name.sub(/__F$/, '')
+          entry[base_name] = value
+        elsif column_name.end_with?('__C') && !columns.key?("#{column_name.sub(/__C$/, '')}__F")
+          base_name = column_name.sub(/__C$/, '')
+          entry[base_name] = value
+        elsif !column_name.end_with?('__C', '__F', '__U') && !columns.key?("#{column_name}__F") && !columns.key?("#{column_name}__C")
+          entry[column_name] = value
+        end
+      when :WITH_UNITS
+        # Same as FORMATTED (WITH_UNITS adds units string which isn't stored separately)
+        if column_name.end_with?('__F')
+          base_name = column_name.sub(/__F$/, '')
+          entry[base_name] = value
+        elsif column_name.end_with?('__C') && !columns.key?("#{column_name.sub(/__C$/, '')}__F")
+          base_name = column_name.sub(/__C$/, '')
+          entry[base_name] = value
+        elsif !column_name.end_with?('__C', '__F', '__U') && !columns.key?("#{column_name}__F") && !columns.key?("#{column_name}__C")
+          entry[column_name] = value
+        end
+      end
+    end
+
+    entry
   end
 
   def handle_packet(packet, objects)
