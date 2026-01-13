@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -424,11 +424,12 @@ class TestPacketLogWriterRoundTrip(unittest.TestCase):
 
         plw = PacketLogWriter(self.temp_dir, "test")
 
-        # Write various packets from different targets
-        plw.write("RAW_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec, False, b"\x01\x02\x03\x04", None, "0-0")
-        plw.write("RAW_PACKET", "TLM", "INST", "ADCS", time_nsec + 1000, True, b"\x05\x06", None, "0-0")
-        plw.write("RAW_PACKET", "TLM", "INST2", "HEALTH_STATUS", time_nsec + 2000, False, b"\x07\x08", None, "0-0")
-        plw.write("RAW_PACKET", "CMD", "INST", "COLLECT", time_nsec + 3000, False, b"\x09", None, "0-0")
+        # Use unique target/packet names to avoid conflicts with System definitions
+        # that may be set up by other tests (which would cause buffer size mismatches)
+        plw.write("RAW_PACKET", "TLM", "TEST_TGT1", "TEST_PKT1", time_nsec, False, b"\x01\x02\x03\x04", None, "0-0")
+        plw.write("RAW_PACKET", "TLM", "TEST_TGT1", "TEST_PKT2", time_nsec + 1000, True, b"\x05\x06", None, "0-0")
+        plw.write("RAW_PACKET", "TLM", "TEST_TGT2", "TEST_PKT1", time_nsec + 2000, False, b"\x07\x08", None, "0-0")
+        plw.write("RAW_PACKET", "CMD", "TEST_TGT1", "TEST_CMD1", time_nsec + 3000, False, b"\x09", None, "0-0")
 
         filename = plw.filename
         plw.shutdown()
@@ -439,21 +440,21 @@ class TestPacketLogWriterRoundTrip(unittest.TestCase):
 
         self.assertEqual(len(packets), 4)
 
-        self.assertEqual(packets[0].target_name, "INST")
-        self.assertEqual(packets[0].packet_name, "HEALTH_STATUS")
+        self.assertEqual(packets[0].target_name, "TEST_TGT1")
+        self.assertEqual(packets[0].packet_name, "TEST_PKT1")
         self.assertEqual(packets[0].buffer, b"\x01\x02\x03\x04")
         self.assertEqual(packets[0].cmd_or_tlm, "TLM")
         self.assertFalse(packets[0].stored)
 
-        self.assertEqual(packets[1].target_name, "INST")
-        self.assertEqual(packets[1].packet_name, "ADCS")
+        self.assertEqual(packets[1].target_name, "TEST_TGT1")
+        self.assertEqual(packets[1].packet_name, "TEST_PKT2")
         self.assertTrue(packets[1].stored)
 
-        self.assertEqual(packets[2].target_name, "INST2")
-        self.assertEqual(packets[2].packet_name, "HEALTH_STATUS")
+        self.assertEqual(packets[2].target_name, "TEST_TGT2")
+        self.assertEqual(packets[2].packet_name, "TEST_PKT1")
 
-        self.assertEqual(packets[3].target_name, "INST")
-        self.assertEqual(packets[3].packet_name, "COLLECT")
+        self.assertEqual(packets[3].target_name, "TEST_TGT1")
+        self.assertEqual(packets[3].packet_name, "TEST_CMD1")
         self.assertEqual(packets[3].cmd_or_tlm, "CMD")
 
     def test_roundtrip_json_with_key_compression(self):
