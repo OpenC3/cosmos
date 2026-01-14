@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -139,6 +139,7 @@ module OpenC3
         @line_number = config_parser.line_number
         @usage = usage
         @url = url
+        @preserve_lines = false
       end
     end
 
@@ -389,6 +390,10 @@ module OpenC3
       return value
     end
 
+    def set_preserve_lines(state)
+      @preserve_lines = state
+    end
+
     protected
 
     # Writes the ERB parsed results
@@ -500,39 +505,54 @@ module OpenC3
 
           begin
             line = io.readline
+            line.chomp!
           rescue Exception
             break
           end
 
-          line.strip!
-          # Ensure the line length is not 0
-          next if line.length == 0
+          if not @preserve_lines
+            line.strip!
 
-          if string_concat
-            # Skip comment lines after a string concatenation
-            if (line[0] == '#')
+            # Ensure the line length is not 0
+            if line.length == 0
+              if yield_non_keyword_lines
+                begin
+                  yield(nil, [])
+                rescue => e
+                  errors << e
+                end
+              end
               next
             end
-            # Remove the opening quote if we're continuing the line
-            line = line[1..-1]
-          end
 
-          # Check for string continuation
-          case line[-1]
-          when '+', '\\' # String concatenation
-            newline = line[-1] == '+'
-            # Trim off the concat character plus any spaces, e.g. "line" \
-            trim = line[0..-2].strip()
-            # Now trim off the last quote so it will flow into the next line
-            @line += trim[0..-2]
-            @line += "\n" if newline
-            string_concat = true
-            next
-          when '&' # Line continuation
-            @line += line[0..-2]
-            next
+            if string_concat
+              # Skip comment lines after a string concatenation
+              if (line[0] == '#')
+                next
+              end
+              # Remove the opening quote if we're continuing the line
+              line = line[1..-1]
+            end
+
+            # Check for string continuation
+            case line[-1]
+            when '+', '\\' # String concatenation
+              newline = line[-1] == '+'
+              # Trim off the concat character plus any spaces, e.g. "line" \
+              trim = line[0..-2].strip()
+              # Now trim off the last quote so it will flow into the next line
+              @line += trim[0..-2]
+              @line += "\n" if newline
+              string_concat = true
+              next
+            when '&' # Line continuation
+              @line += line[0..-2]
+              next
+            else
+              @line += line
+            end
           else
-            @line += line
+            @line = line
           end
           string_concat = false
 

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -135,7 +135,7 @@ module OpenC3
       when :STRING, :BLOCK
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value =  value.map { |v| v.to_s }
+          value = value.map { |v| v.to_s }
         else
           value = value.to_s
         end

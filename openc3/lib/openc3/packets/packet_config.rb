@@ -180,6 +180,7 @@ module OpenC3
                                     @converted_type,
                                     @converted_bit_size) if keyword.include? "WRITE"
             @building_generic_conversion = false
+            parser.set_preserve_lines(false)
           # Add the current config.line to the conversion being built
           else
             @proc_text << parser.line << "\n"
@@ -712,6 +713,7 @@ module OpenC3
         parser.verify_num_parameters(0, 2, usage)
         @proc_text = ''
         @building_generic_conversion = true
+        parser.set_preserve_lines(true)
         @converted_type = nil
         @converted_bit_size = nil
         if params[0]

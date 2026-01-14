@@ -35,7 +35,7 @@ else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z
+  OPENC3_MINIO_RELEASE=RELEASE.2025-12-18T18-30-00Z
 fi
 
 # Setup cacert.pem
@@ -303,7 +303,7 @@ if [ "${1:-default}" = "ubi" ]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.6.5
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.5
+  OPENC3_TRAEFIK_RELEASE=v3.6.6
 fi
 cd ../openc3-traefik
 docker buildx build \

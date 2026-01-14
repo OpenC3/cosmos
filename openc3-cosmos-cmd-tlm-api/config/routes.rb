@@ -194,8 +194,13 @@ Rails.application.routes.draw do
     delete '/screen/:target/:screen', to: 'screens#destroy'
 
     get "/notebooks", to: "notebooks#index"
+    get "/notebooks/running", to: "notebooks#running"
+    get "/notebooks/completed", to: "notebooks#completed"
     get "/notebook/:target/:notebook", to: "notebooks#show"
+    get "/notebook/:target/:notebook/:id", to: "notebooks#show"
     post "/notebook", to: "notebooks#create"
+    post "/notebook/run", to: "notebooks#run"
+    post "/notebook/complete/:id", to: "notebooks#complete"
     delete '/notebook/:target/:notebook', to: 'notebooks#destroy'
 
     get "/secrets", to: "secrets#index"

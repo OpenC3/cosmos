@@ -7597,12 +7597,12 @@ script_run("<Script Name>", disconnect=False, environment=None, suite_runner=Non
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                             |
-| ------------ | ----------------------------------------------------------------------- |
-| Script Name  | Full path name of the script starting with the target                   |
-| disconnect   | Whether to run the script in Disconnect mode                            |
-| environment  | Hash / dict of key / value items to set as script environment variables |
-| suite_runner | Hash / dict of suite runner options                                     |
+| Parameter    | Description                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Script Name  | Full path name of the script starting with the target                                                            |
+| disconnect   | Whether to run the script in Disconnect mode                                                                     |
+| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
+| suite_runner | Hash / dict of suite runner options                                                                              |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">

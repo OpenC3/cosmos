@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,7 +85,72 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
-        expect(model['variables']).to include("VAR1" => "10", "VAR2" => "HI THERE")
+        expect(model['variables']['VAR1']).to eq({ 'value' => '10' })
+        expect(model['variables']['VAR2']).to eq({ 'value' => 'HI THERE' })
+      end
+
+      it "parses VARIABLE_DESCRIPTION" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE port 8080"
+            file.puts '  VARIABLE_DESCRIPTION "TCP port for the connection"'
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+        expect(model['variables']['port']).to eq({
+          'value' => '8080',
+          'description' => 'TCP port for the connection'
+        })
+      end
+
+      it "parses VARIABLE_STATE" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE my_target INST"
+            file.puts '  VARIABLE_DESCRIPTION "Select the target"'
+            file.puts '  VARIABLE_STATE "Primary instrument" INST'
+            file.puts '  VARIABLE_STATE "Secondary instrument" INST2'
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+        expect(model['variables']['my_target']).to eq({
+          'value' => 'INST',
+          'description' => 'Select the target',
+          'options' => [
+            { 'value' => 'INST', 'text' => 'Primary instrument' },
+            { 'value' => 'INST2', 'text' => 'Secondary instrument' }
+          ]
+        })
+      end
+
+      it "raises error for VARIABLE_DESCRIPTION without VARIABLE" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts 'VARIABLE_DESCRIPTION "Description"'
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_DESCRIPTION must follow a VARIABLE definition/)
+      end
+
+      it "raises error for VARIABLE_STATE without VARIABLE" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts 'VARIABLE_STATE "Display Text" VALUE'
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_STATE must follow a VARIABLE definition/)
       end
 
       it "processes existing plugin.txt lines" do
@@ -98,21 +163,39 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, existing_plugin_txt_lines: existing, process_existing: true, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
-        expect(model['variables']).to include("VAR1" => "11", "VAR2" => "NOPE")
+        expect(model['variables']['VAR1']).to eq({ 'value' => '11' })
+        expect(model['variables']['VAR2']).to eq({ 'value' => 'NOPE' })
       end
 
-      it "processes existing variables" do
+      it "processes existing variables in new format" do
         expect(GemModel).to receive(:put)
         gem = double("gem")
         # No gem.extract_files because we're using the existing
         existing_plugin_txt = []
         existing_plugin_txt << "VARIABLE VAR1 11"
         existing_plugin_txt << "VARIABLE VAR2 NOPE"
+        existing_vars = { "VAR1" => { 'value' => "12" }, "VAR2" => { 'value' => "YES" } }
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, existing_variables: existing_vars, existing_plugin_txt_lines: existing_plugin_txt, process_existing: true, scope: "DEFAULT")
+        expect(model['name']).to eql File.basename(__FILE__)
+        expect(model['variables']['VAR1']['value']).to eq('12')
+        expect(model['variables']['VAR2']['value']).to eq('YES')
+      end
+
+      it "processes existing variables in old format for backwards compatibility" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        # No gem.extract_files because we're using the existing
+        existing_plugin_txt = []
+        existing_plugin_txt << "VARIABLE VAR1 11"
+        existing_plugin_txt << "VARIABLE VAR2 NOPE"
+        # Old format: simple string values
         existing_vars = { "VAR1" => "12", "VAR2" => "YES" }
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, existing_variables: existing_vars, existing_plugin_txt_lines: existing_plugin_txt, process_existing: true, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
-        expect(model['variables']).to include("VAR1" => "12", "VAR2" => "YES")
+        expect(model['variables']['VAR1']['value']).to eq('12')
+        expect(model['variables']['VAR2']['value']).to eq('YES')
       end
 
       it "does not allow reserved VARIABLE names" do
@@ -159,11 +242,14 @@ module OpenC3
         allow(spec).to receive(:licenses).and_return([])
         allow(spec).to receive(:homepage).and_return(nil)
 
-        variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
+        # Variables in new format with 'value' key
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        # ERB variables are extracted as simple key-value pairs
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables.merge({"scope" => 'DEFAULT'}), validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
