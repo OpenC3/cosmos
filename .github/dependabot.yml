@@ -1,12 +1,11 @@
-# Dependabot configuration file for enabling PRs
-# We have chosen to disable this as we manually update depen
-# version: 2
-# updates:
-#   # Maintain dependencies for GitHub Actions
-#   - package-ecosystem: "github-actions"
-#     directory: "/"
-#     schedule:
-#       interval: "weekly"
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+# Ignore all npm updates as we have a process for uding them with package_audit.rb
 #   - package-ecosystem: "npm"
 #     directories: # Location of package manifests
 #       - "/openc3-cosmos-init/plugins/*"
