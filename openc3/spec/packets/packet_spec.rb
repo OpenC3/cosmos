@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -594,15 +594,15 @@ module OpenC3
         expect(@p.read_item(i, :WITH_UNITS, "\x00\x01")).to eql ["0x0 V", "TRUE"]
         expect(@p.read("ITEM", :WITH_UNITS, "\x02\x03")).to eql ["FALSE", "0x3 V"]
         expect(@p.read_item(i, :WITH_UNITS, "\x02\x03")).to eql ["FALSE", "0x3 V"]
-        expect(@p.read("ITEM", :WITH_UNITS, "\x04")).to eql ["0x4 V"]
-        expect(@p.read_item(i, :WITH_UNITS, "\x04")).to eql ["0x4 V"]
-        expect(@p.read("ITEM", :WITH_UNITS, "\x04")).to eql ["0x4 V"]
-        expect(@p.read_item(i, :WITH_UNITS, "\x04")).to eql ["0x4 V"]
+        expect(@p.read("ITEM", :WITH_UNITS, "\x04\x00")).to eql ["0x4 V", "0x0 V"]
+        expect(@p.read_item(i, :WITH_UNITS, "\x04\x00")).to eql ["0x4 V", "0x0 V"]
+        expect(@p.read("ITEM", :WITH_UNITS, "\x04\x00")).to eql ["0x4 V", "0x0 V"]
+        expect(@p.read_item(i, :WITH_UNITS, "\x04\x00")).to eql ["0x4 V", "0x0 V"]
         i.read_conversion = GenericConversion.new("value / 2")
         expect(@p.read("ITEM", :WITH_UNITS, "\x02\x04")).to eql ["TRUE", "FALSE"]
         expect(@p.read_item(i, :WITH_UNITS, "\x02\x04")).to eql ["TRUE", "FALSE"]
-        expect(@p.read("ITEM", :WITH_UNITS, "\x08")).to eql ["0x4 V"]
-        expect(@p.read_item(i, :WITH_UNITS, "\x08")).to eql ["0x4 V"]
+        expect(@p.read("ITEM", :WITH_UNITS, "\x08\x00")).to eql ["0x4 V", "0x0 V"]
+        expect(@p.read_item(i, :WITH_UNITS, "\x08\x00")).to eql ["0x4 V", "0x0 V"]
         @p.define_item("item2", 0, 0, :DERIVED)
         i = @p.get_item("ITEM2")
         i.units = "V"

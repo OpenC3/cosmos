@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
@@ -47,9 +47,18 @@ static VALUE polynomial_conversion_call(VALUE self, VALUE value, VALUE myself, V
   int index = 0;
   double converted = 0.0;
   double raised_to_power = 1.0;
-  volatile VALUE coeffs = rb_ivar_get(self, id_ivar_coeffs);
-  long coeffs_length = RARRAY_LEN(coeffs);
-  double double_value = RFLOAT_VALUE(rb_funcall(value, id_method_to_f, 0));
+  volatile VALUE coeffs;
+  long coeffs_length;
+  double double_value;
+
+  /* Return nil if value is nil (item outside buffer bounds) */
+  if (NIL_P(value)) {
+    return Qnil;
+  }
+
+  coeffs = rb_ivar_get(self, id_ivar_coeffs);
+  coeffs_length = RARRAY_LEN(coeffs);
+  double_value = RFLOAT_VALUE(rb_funcall(value, id_method_to_f, 0));
 
   /* Handle C0 */
   double coeff = RFLOAT_VALUE(rb_ary_entry(coeffs, 0));

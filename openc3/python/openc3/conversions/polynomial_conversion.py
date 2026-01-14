@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -34,6 +34,10 @@ class PolynomialConversion(Conversion):
     # @param (see Conversion#call)
     # @return [Float] The value with the polynomial applied
     def call(self, value, myself, buffer):
+        # Return None if value is None (item outside buffer bounds)
+        if value is None:
+            return None
+
         value = float(value)
 
         # Handle C0

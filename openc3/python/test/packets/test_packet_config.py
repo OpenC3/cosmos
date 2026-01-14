@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -1011,7 +1011,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  READ_CONVERSION openc3/test_real_conversion.py\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01\x00"
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1"), 2)
         tf.close()
 
@@ -1033,7 +1033,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  POLY_READ_CONVERSION 5 2\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01\x00"
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1"), 7.0)
         tf.close()
 
@@ -1055,9 +1055,9 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SEG_POLY_READ_CONVERSION 5 2 3\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x01\x00"
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1"), 3.0)
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x05"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x05\x00"
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1"), 17.0)
         tf.close()
 
@@ -1141,7 +1141,7 @@ class TestPacketConfig(unittest.TestCase):
         item = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         self.assertEqual(len(item.limits.values), 2)
         # Verify the last defined DEFAULT limits wins
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04\x00"
         self.pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
         self.pc.telemetry["TGT1"]["PKT1"].check_limits()
         self.assertEqual(item.limits.state, "RED_LOW")

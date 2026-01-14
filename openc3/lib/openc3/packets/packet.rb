@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -1048,6 +1048,9 @@ module OpenC3
         if item.limits.enabled
           value = read_item(item)
 
+          # Skip limits checking if value is nil (item outside buffer bounds)
+          next if value.nil?
+
           # Handle state monitoring and value monitoring differently
           if item.states
             handle_limits_states(item, value)
@@ -1520,6 +1523,9 @@ module OpenC3
     end
 
     def apply_format_string_and_units(item, value, value_type)
+      # Return nil as-is - can't format a value that doesn't exist
+      return nil if value.nil?
+
       if value_type == :FORMATTED or value_type == :WITH_UNITS
         if item.format_string && value
           value = sprintf(item.format_string, value)
