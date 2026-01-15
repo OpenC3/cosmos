@@ -931,6 +931,12 @@ export default {
           .then((data) => {
             if (data && data.length > 0) {
               this.updateValues(data)
+              // Clear transient request errors on successful fetch
+              this.errors = this.errors.filter(
+                (error) =>
+                  error.type !== 'error' ||
+                  !error.message.includes('Request error'),
+              )
             }
           })
           .catch((error) => {
