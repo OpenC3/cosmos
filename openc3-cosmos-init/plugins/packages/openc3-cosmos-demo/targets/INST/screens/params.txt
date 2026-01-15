@@ -57,7 +57,7 @@ VERTICAL
         SETTING LED_COLOR 1 RED
         SETTING LED_COLOR ANY ORANGE # All other values are ORANGE
         TOOLTIP "VALUE3: Shows GREEN for 0, RED for 1, ORANGE for any other value"
-      LED <%= target_name %> PARAMS VALUE2 # Default is WITH_UNITS 15 15
+      LED <%= target_name %> PARAMS VALUE2 # Default is CONVERTED 20 20
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
       LED <%= target_name %> PARAMS VALUE1 CONVERTED 10 10
@@ -75,8 +75,7 @@ VERTICAL
 
   HORIZONTAL
     LABEL "Packet Time"
-      TOOLTIP "Packet time label"
-    VALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED WITH_UNITS 25
-      TOOLTIP "Packet time formatted with units"
+    VALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED FORMATTED 25
+      TOOLTIP "Packet time formatted"
   END
 END

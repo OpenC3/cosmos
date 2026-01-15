@@ -22,7 +22,7 @@ fi
 date
 
 if [ -z "${OPENC3_BUCKET_URL}" ]; then
-    OPENC3_BUCKET_URL='http://openc3-minio:9000'
+    OPENC3_BUCKET_URL='http://openc3-buckets:9000'
 fi
 
 if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
@@ -42,10 +42,12 @@ fi
 if [ "${OPENC3_CLOUD}" == "local" ]; then
     RC=1
     while [ $RC -gt 0 ]; do
-        curl -fs ${OPENC3_BUCKET_URL}/minio/health/live -o /dev/null
+        # Check if buckets endpoint is responding (accept any HTTP response, even 403)
+        # Remove -f flag so curl only fails on connection errors, not HTTP errors
+        curl -s ${OPENC3_BUCKET_URL}/ -o /dev/null
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Minio ${OPENC3_BUCKET_URL} RC: ${RC}";
+        echo "${T} waiting for buckets ${OPENC3_BUCKET_URL} RC: ${RC}";
         sleep 1
     done
 fi
@@ -95,15 +97,6 @@ fi
 
 if [ "${OPENC3_CLOUD}" == "local" ]; then
     ruby /openc3/bin/openc3cli initbuckets || exit 1
-    mc alias set openc3minio "${OPENC3_BUCKET_URL}" ${OPENC3_BUCKET_USERNAME} ${OPENC3_BUCKET_PASSWORD} || exit 1
-    # Create new canned policy by name script using script-runner.json policy file.
-    mc admin policy create openc3minio script /openc3/minio/script-runner.json || exit 1
-    # Create a new user scriptrunner on MinIO use mc admin user.
-    mc admin user add openc3minio ${OPENC3_SR_BUCKET_USERNAME} ${OPENC3_SR_BUCKET_PASSWORD} || exit 1
-    # Once the user is successfully created you can now apply the getonly policy for this user.
-    # "|| true" is required on subsequent startups due to the following error that is thrown:
-    # mc: <ERROR> Unable to make user/group policy association. The specified policy change is already in effect. (Specified policy update has no net effect).
-    mc admin policy attach openc3minio script --user=${OPENC3_SR_BUCKET_USERNAME} || true
 fi
 
 ruby /openc3/bin/openc3cli removeenterprise || exit 1

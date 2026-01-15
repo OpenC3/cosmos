@@ -28,6 +28,7 @@ _openc3_script_api_port = "OPENC3_SCRIPT_API_PORT"
 _openc3_script_api_timeout = "OPENC3_SCRIPT_API_TIMEOUT"
 _openc3_scope = "OPENC3_SCOPE"
 _openc3_api_password = "OPENC3_API_PASSWORD"
+_openc3_service_password = "OPENC3_SERVICE_PASSWORD"
 _openc3_log_level = "OPENC3_LOG_LEVEL"
 _openc3_no_store = "OPENC3_NO_STORE"
 _openc3_user_agent = "OPENC3_USER_AGENT"
@@ -152,6 +153,7 @@ OPENC3_LOG_STDERR = get_env_bool(_openc3_log_stderr)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password)
+OPENC3_SERVICE_PASSWORD = os.environ.get(_openc3_service_password)
 OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
 OPENC3_NO_STORE = os.environ.get(_openc3_no_store)
 OPENC3_API_USER = os.environ.get(_openc3_api_user)

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -75,6 +75,7 @@ spec = Gem::Specification.new do |s|
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
 
   # Runtime Dependencies
+  s.add_runtime_dependency 'erb',       '~> 6.0'
   s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
@@ -90,10 +91,11 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
-  s.add_runtime_dependency 'redis',     '~> 5.0'
+  s.add_runtime_dependency 'redis',     '~> 5.4'
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
+  s.add_runtime_dependency 'argon2',    '~> 2.3'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.10'

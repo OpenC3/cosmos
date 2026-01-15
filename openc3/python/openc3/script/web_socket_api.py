@@ -33,6 +33,7 @@ class WebSocketApi:
     """
     Base class - Do not use directly
     """
+
     USER_AGENT = "OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)"
 
     def __init__(
@@ -176,7 +177,7 @@ class WebSocketApi:
 
 class CmdTlmWebSocketApi(WebSocketApi):
     """Base class for cmd-tlm-api websockets - Do not use directly"""
-    
+
     def __init__(
         self,
         url=None,
@@ -213,7 +214,7 @@ class CmdTlmWebSocketApi(WebSocketApi):
 
 class ScriptWebSocketApi(WebSocketApi):
     """Base class for script-runner-api websockets - Do not use directly"""
-    
+
     def __init__(
         self,
         url=None,
@@ -250,7 +251,7 @@ class ScriptWebSocketApi(WebSocketApi):
 
 class RunningScriptWebSocketApi(ScriptWebSocketApi):
     """Running Script WebSocket"""
-    
+
     def __init__(
         self,
         id,
@@ -274,7 +275,7 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
 
 class AllScriptsWebSocketApi(ScriptWebSocketApi):
     """All Scripts WebSocket"""
-    
+
     def __init__(
         self,
         url=None,
@@ -297,7 +298,7 @@ class AllScriptsWebSocketApi(ScriptWebSocketApi):
 
 class MessagesWebSocketApi(CmdTlmWebSocketApi):
     """Log Messages WebSocket"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -333,7 +334,7 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
 
 class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
     """Autonomic Events WebSocket (Enterprise Only)"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -360,7 +361,7 @@ class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
     """Calendar Events WebSocket (Enterprise Only)"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -387,7 +388,7 @@ class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class ConfigEventsWebSocketApi(CmdTlmWebSocketApi):
     """Config Events WebSocket"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -414,7 +415,7 @@ class ConfigEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class LimitsEventsWebSocketApi(CmdTlmWebSocketApi):
     """Limits Events WebSocket"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -441,7 +442,7 @@ class LimitsEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
     """Timeline WebSocket"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -468,7 +469,7 @@ class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class QueueEventsWebSocketApi(CmdTlmWebSocketApi):
     """Queue WebSocket"""
-    
+
     def __init__(
         self,
         history_count=0,
@@ -495,7 +496,7 @@ class QueueEventsWebSocketApi(CmdTlmWebSocketApi):
 
 class StreamingWebSocketApi(CmdTlmWebSocketApi):
     """Streaming API WebSocket"""
-    
+
     def __init__(
         self,
         url=None,
@@ -525,7 +526,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     ):
         """
         Request to add data to the stream
-        
+
         Args:
             items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
                 MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
@@ -533,7 +534,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 TARGET - Target name
                 PACKET - Packet name
                 ITEM - Item Name
-                VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+                VALUETYPE - RAW, CONVERTED, or FORMATTED
                 REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
                 item_key is an optional shortened name to return the data as
             packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
@@ -541,7 +542,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 CMDORTLM - CMD or TLM
                 TARGET - Target name
                 PACKET - Packet name
-                VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+                VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
             start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
             end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
             scope: scope name
@@ -563,7 +564,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     def remove(self, items=None, packets=None, scope=OPENC3_SCOPE):
         """
         Request to remove data from the stream
-        
+
         Args:
             items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE] ]
                 MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
@@ -571,14 +572,14 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 TARGET - Target name
                 PACKET - Packet name
                 ITEM - Item Name
-                VALUETYPE - RAW, CONVERTED, FORMATTED, or WITH_UNITS
+                VALUETYPE - RAW, CONVERTED, or FORMATTED
                 REDUCEDTYPE - MIN, MAX, AVG, STDDEV (only for reduced modes)
             packets: [ MODE__CMDORTLM__TARGET__PACKET__VALUETYPE ]
                 MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
                 CMDORTLM - CMD or TLM
                 TARGET - Target name
                 PACKET - Packet name
-                VALUETYPE - RAW, CONVERTED, FORMATTED, WITH_UNITS, or PURE (pure means all types as stored in log)
+                VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
             scope: scope name
         """
         data_hash = {}
@@ -603,7 +604,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     ):
         """
         Convenience method to read all data until end marker is received.
-        
+
         Warning: DATA IS STORED IN RAM. Do not use this with large queries
         """
         read_all_start_time = time.time()

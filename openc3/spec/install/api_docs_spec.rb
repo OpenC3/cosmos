@@ -22,7 +22,7 @@ require 'find'
 module OpenC3
   describe OpenC3 do
     DEPRECATED_APIS = %w(require_utility check_tolerance_raw wait_raw wait_check_raw wait_tolerance_raw wait_check_tolerance_raw)
-    DEPRECATED_APIS.concat(%w(tlm_variable save_setting))
+    DEPRECATED_APIS.concat(%w(tlm_variable save_setting check_with_units tlm_with_units))
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))

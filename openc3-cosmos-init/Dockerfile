@@ -143,7 +143,5 @@ COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plu
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-workspace.yaml /openc3/plugins/pnpm-workspace.yaml
 # Copy in other necessary code/config for the container
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./mc /bin/mc
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./script-runner.json /openc3/minio/script-runner.json
 
 CMD [ "/openc3/init.sh" ]

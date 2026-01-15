@@ -69,7 +69,7 @@ class StoreQueued(metaclass=StoreMeta):
         self.update_thread.start()
 
     def set_update_interval(self, interval):
-        if interval < self.update_interval and interval > 0.0:
+        if interval > 0.0:
             self.update_interval = interval
 
     def process_queue(self):

@@ -482,14 +482,12 @@ export default class OpenC3Api {
       data = await this.exec('tlm', [target_name])
       // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
     } else if (item_name === undefined) {
-      if (
-        ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'].includes(packet_name)
-      ) {
+      if (['RAW', 'CONVERTED', 'FORMATTED'].includes(packet_name)) {
         data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
         let err = new Error()
         err.name = 'TypeError'
-        err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
+        err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED or FORMATTED.`
         throw err
       }
     } else {

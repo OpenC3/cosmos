@@ -20,7 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'topics_thread'
+require_relative 'topics_thread'
 
 class LimitsEventsApi
   def initialize(subscription_key, history_count = 0, scope:)

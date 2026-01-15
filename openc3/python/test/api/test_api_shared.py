@@ -38,7 +38,7 @@ def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
                 case "CONVERTED":
                     return 10
                 case "FORMATTED":
-                    return "10.000"
+                    return "10.000 C"
                 case "WITH_UNITS":
                     return "10.000 C"
         case "TEMP2":
@@ -144,8 +144,8 @@ class TestApiShared(unittest.TestCase):
         for stdout in capture_io():
             check_raw("INST HEALTH_STATUS TEMP1 == 1")
             self.assertIn("CHECK: INST HEALTH_STATUS TEMP1 == 1 success", stdout.getvalue())
-            check_formatted("INST HEALTH_STATUS TEMP1 == '10.000'")
-            self.assertIn("CHECK: INST HEALTH_STATUS TEMP1 == '10.000' success", stdout.getvalue())
+            check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 C'")
+            self.assertIn("CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success", stdout.getvalue())
             check_with_units("INST HEALTH_STATUS TEMP1 == '10.000 C'")
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success",

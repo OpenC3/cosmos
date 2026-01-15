@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,6 +29,15 @@ module OpenC3
       super()
       @client = Aws::S3::Client.new
       @aws_arn = ENV['OPENC3_AWS_ARN_PREFIX'] || 'arn:aws'
+      # Checksums are supported by real AWS S3 but may not be supported by
+      # S3-compatible backends like versitygw. Auto-detect based on
+      # whether a custom endpoint is configured. Can be overridden with ENV var.
+      @use_checksum = if ENV.key?('OPENC3_NO_S3_CHECKSUM')
+        ENV['OPENC3_NO_S3_CHECKSUM'].to_s.empty?  # Empty string means use checksum
+      else
+        # If OPENC3_BUCKET_URL is set, we're using a non-AWS S3 backend
+        !ENV.key?('OPENC3_BUCKET_URL')
+      end
     end
 
     def create(bucket)
@@ -83,7 +92,106 @@ module OpenC3
           ]
         }
         EOL
-        @client.put_bucket_policy({ bucket: bucket, policy: policy, checksum_algorithm: "SHA256" })
+        begin
+          options = { bucket: bucket, policy: policy }
+          options[:checksum_algorithm] = "SHA256" if @use_checksum
+          @client.put_bucket_policy(options)
+        rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+          Logger.warn("put_bucket_policy not supported by S3 backend: #{e.message}")
+        end
+      end
+    end
+
+    # Apply bucket policy to grant ScriptRunner user access to config and logs buckets
+    # This provides reduced permissions compared to the root user for security
+    def ensure_scriptrunner_policy(config_bucket, logs_bucket)
+      sr_username = ENV['OPENC3_SR_BUCKET_USERNAME']
+      return unless sr_username
+      return if sr_username == ENV['OPENC3_BUCKET_USERNAME'] # Same as root, no policy needed
+
+      # Policy for config bucket - read targets, read/write targets_modified
+      # Note: versitygw expects Principal as comma-separated raw usernames
+      config_policy = <<~EOL
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ScriptRunnerListBucket",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:ListBucket",
+              "s3:GetBucketLocation"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}"
+          },
+          {
+            "Sid": "ScriptRunnerReadTargets",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": "s3:GetObject",
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}/*"
+          },
+          {
+            "Sid": "ScriptRunnerWriteTargetsModified",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{config_bucket}/*/targets_modified/*"
+          }
+        ]
+      }
+      EOL
+
+      # Policy for logs bucket - read/write tool_logs/sr
+      logs_policy = <<~EOL
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ScriptRunnerListBucket",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:ListBucket",
+              "s3:GetBucketLocation"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{logs_bucket}"
+          },
+          {
+            "Sid": "ScriptRunnerWriteToolLogs",
+            "Effect": "Allow",
+            "Principal": ["#{sr_username}"],
+            "Action": [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "#{@aws_arn}:s3:::#{logs_bucket}/*/tool_logs/sr/*"
+          }
+        ]
+      }
+      EOL
+
+      begin
+        Logger.info("Applying ScriptRunner bucket policy to #{config_bucket}")
+        options = { bucket: config_bucket, policy: config_policy }
+        options[:checksum_algorithm] = "SHA256" if @use_checksum
+        @client.put_bucket_policy(options)
+      rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+        Logger.warn("put_bucket_policy for #{config_bucket} not supported by S3 backend: #{e.message}")
+      end
+
+      begin
+        Logger.info("Applying ScriptRunner bucket policy to #{logs_bucket}")
+        options = { bucket: logs_bucket, policy: logs_policy }
+        options[:checksum_algorithm] = "SHA256" if @use_checksum
+        @client.put_bucket_policy(options)
+      rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+        Logger.warn("put_bucket_policy for #{logs_bucket} not supported by S3 backend: #{e.message}")
       end
     end
 
@@ -194,9 +302,16 @@ module OpenC3
 
     # put_object fires off the request to store but does not confirm
     def put_object(bucket:, key:, body:, content_type: nil, cache_control: nil, metadata: nil)
-      @client.put_object(bucket: bucket, key: key, body: body,
-        content_type: content_type, cache_control: cache_control, metadata: metadata,
-        checksum_algorithm: "SHA256")
+      options = {
+        bucket: bucket,
+        key: key,
+        body: body,
+        content_type: content_type,
+        cache_control: cache_control,
+        metadata: metadata
+      }
+      options[:checksum_algorithm] = "SHA256" if @use_checksum
+      @client.put_object(**options)
     end
 
     # @returns [Boolean] Whether the file exists
@@ -222,14 +337,14 @@ module OpenC3
 
     def delete_object(bucket:, key:)
       @client.delete_object(bucket: bucket, key: key)
-    rescue Exception
-      Logger.error("Error deleting object bucket: #{bucket}, key: #{key}")
+    rescue Exception => e
+      Logger.error("Error deleting object bucket: #{bucket}, key: #{key}: #{e.message}")
     end
 
     def delete_objects(bucket:, keys:)
       @client.delete_objects(bucket: bucket, delete: { objects: keys.map {|key| { key: key } } })
-    rescue Exception
-      Logger.error("Error deleting objects bucket: #{bucket}, keys: #{keys}")
+    rescue Exception => e
+      Logger.error("Error deleting objects bucket: #{bucket}, keys: #{keys}: #{e.message}")
     end
 
     def presigned_request(bucket:, key:, method:, internal: true)

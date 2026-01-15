@@ -33,7 +33,20 @@ class AuthController < ApplicationController
 
   def verify
     begin
-      if OpenC3::AuthModel.verify_no_service(params[:token])
+      if OpenC3::AuthModel.verify_no_service(params[:password], no_password: false)
+        render :plain => OpenC3::AuthModel.generate_session()
+      else
+        head :unauthorized
+      end
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
+    end
+  end
+
+  def verify_service
+    begin
+      if OpenC3::AuthModel.verify(params[:password], service_only: true)
         render :plain => OpenC3::AuthModel.generate_session()
       else
         head :unauthorized
@@ -47,7 +60,7 @@ class AuthController < ApplicationController
   def set
     begin
       # Set throws an exception if it fails for any reason
-      OpenC3::AuthModel.set(params[:token], params[:old_token])
+      OpenC3::AuthModel.set(params[:password], params[:old_password])
       OpenC3::Logger.info("Password changed", user: username())
       render :plain => OpenC3::AuthModel.generate_session()
     rescue StandardError => e

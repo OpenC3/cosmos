@@ -64,10 +64,10 @@
           <v-row>
             <v-btn
               type="submit"
+              @click.prevent="() => verify()"
               size="large"
               color="success"
               :disabled="!formValid"
-              @click.prevent="() => verifyPassword()"
             >
               Login
             </v-btn>
@@ -140,7 +140,7 @@ export default {
   },
   mounted: function () {
     if (localStorage.openc3Token) {
-      this.verifyPassword(localStorage.openc3Token, true)
+      this.verify(localStorage.openc3Token, true)
     }
   },
   methods: {
@@ -150,7 +150,7 @@ export default {
     login: function (response) {
       localStorage.openc3Token = response.data
       const redirect = new URLSearchParams(window.location.search).get(
-        'redirect',
+        'redirect'
       )
       if (redirect?.startsWith('/tools/')) {
         // Valid relative redirect URL
@@ -159,12 +159,12 @@ export default {
         window.location = '/'
       }
     },
-    verifyPassword: function (token, noAlert) {
-      token ||= this.password
+    verify: function (password, noAlert) {
+      password ||= this.password
       this.showAlert = false
       Api.post('/openc3-api/auth/verify', {
         data: {
-          token,
+          password,
         },
         ...this.options,
       })
@@ -174,6 +174,11 @@ export default {
         .catch((error) => {
           if (error?.status === 401) {
             this.alert = 'Incorrect password'
+          } else if (
+            error?.response?.data?.message === 'invalid password hash'
+          ) {
+            this.alert =
+              'Please see the migration guide for upgrading to COSMOS 7 in our docs.'
           } else {
             this.alert = error.message || 'Something went wrong...'
           }
@@ -185,8 +190,8 @@ export default {
       this.showAlert = false
       Api.post('/openc3-api/auth/set', {
         data: {
-          old_token: this.oldPassword,
-          token: this.password,
+          old_password: this.oldPassword,
+          password: this.password,
         },
         ...this.options,
       })

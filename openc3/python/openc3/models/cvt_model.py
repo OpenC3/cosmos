@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 try:
     import psycopg
+
     PSYCOPG_AVAILABLE = True
 except ImportError:
     PSYCOPG_AVAILABLE = False
@@ -41,7 +42,7 @@ class CvtModel(Model):
     _conn = None
     _conn_mutex = threading.Lock()
 
-    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
+    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED"}
 
     @classmethod
     def build_json_from_packet(cls, packet):
@@ -99,16 +100,13 @@ class CvtModel(Model):
     ):
         pkt_hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
         match type:
-            case "WITH_UNITS":
-                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
             case "RAW":
                 pkt_hash[item_name] = value
             case "ALL":
-                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
                 pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[item_name] = value
@@ -152,7 +150,7 @@ class CvtModel(Model):
 
     @classmethod
     def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None):
-        """Query historical telemetry data from QuestDB"""
+        """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")
 
@@ -173,7 +171,7 @@ class CvtModel(Model):
             # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
             table_name = target_name + "__" + packet_name
             for char in "?,'\"/:()+*%~":
-                table_name = table_name.replace(char, '_')
+                table_name = table_name.replace(char, "_")
             tables[table_name] = 1
 
             # Find the index of this table
@@ -183,13 +181,11 @@ class CvtModel(Model):
             # NOTE: Semicolon added as it appears invalid
             safe_item_name = item_name
             for char in "?.,'\\/:()+*%~;-":
-                safe_item_name = safe_item_name.replace(char, '_')
+                safe_item_name = safe_item_name.replace(char, "_")
 
-            if value_type == 'WITH_UNITS':
-                names.append(f'"T{index}.{safe_item_name}__U"')
-            elif value_type == 'FORMATTED':
+            if value_type == "FORMATTED" or value_type == "WITH_UNITS":
                 names.append(f'"T{index}.{safe_item_name}__F"')
-            elif value_type == 'CONVERTED':
+            elif value_type == "CONVERTED":
                 names.append(f'"T{index}.{safe_item_name}__C"')
             else:
                 names.append(f'"T{index}.{safe_item_name}"')
@@ -216,11 +212,11 @@ class CvtModel(Model):
                 with cls._conn_mutex:
                     if cls._conn is None:
                         cls._conn = psycopg.connect(
-                            host=os.environ['OPENC3_TSDB_HOSTNAME'],
-                            port=os.environ['OPENC3_TSDB_QUERY_PORT'],
-                            user=os.environ['OPENC3_TSDB_USERNAME'],
-                            password=os.environ['OPENC3_TSDB_PASSWORD'],
-                            dbname='qdb'
+                            host=os.environ["OPENC3_TSDB_HOSTNAME"],
+                            port=os.environ["OPENC3_TSDB_QUERY_PORT"],
+                            user=os.environ["OPENC3_TSDB_USERNAME"],
+                            password=os.environ["OPENC3_TSDB_PASSWORD"],
+                            dbname="qdb",
                         )
 
                     with cls._conn.cursor(binary=True) as cursor:
@@ -241,7 +237,10 @@ class CvtModel(Model):
                                     if "__L" in col_name:
                                         # This is a limits column, add to previous item
                                         if col_index > 0:
-                                            data[row_index][col_index - 1] = [data[row_index][col_index - 1][0], col_value]
+                                            data[row_index][col_index - 1] = [
+                                                data[row_index][col_index - 1][0],
+                                                col_value,
+                                            ]
                                     elif col_name.startswith("__nil"):
                                         data[row_index].append([None, None])
                                         col_index += 1
@@ -259,9 +258,9 @@ class CvtModel(Model):
                 retry_count += 1
                 if retry_count > 4:
                     # After the 5th retry just raise the error
-                    raise RuntimeError(f"Error querying QuestDB: {str(e)}")
-                Logger.warn(f"QuestDB: Retrying due to error: {str(e)}")
-                Logger.warn(f"QuestDB: Last query: {query}")  # Log the last query for debugging
+                    raise RuntimeError(f"Error querying TSDB: {str(e)}")
+                Logger.warn(f"TSDB: Retrying due to error: {str(e)}")
+                Logger.warn(f"TSDB: Last query: {query}")  # Log the last query for debugging
                 with cls._conn_mutex:
                     if cls._conn:
                         cls._conn.close()
@@ -274,7 +273,15 @@ class CvtModel(Model):
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
     @classmethod
-    def get_tlm_values(cls, items: list, stale_time: int = 30, cache_timeout: float = 0.1, start_time: str = None, end_time: str = None, scope: str = OPENC3_SCOPE):
+    def get_tlm_values(
+        cls,
+        items: list,
+        stale_time: int = 30,
+        cache_timeout: float = 0.1,
+        start_time: str = None,
+        end_time: str = None,
+        scope: str = OPENC3_SCOPE,
+    ):
         now = time.time()
         results = []
         lookups = []
@@ -346,9 +353,7 @@ class CvtModel(Model):
                         value_type_key = "R"
                     item["item_name"] = item_name
                     match value_type_key:
-                        case "U":
-                            item["value_type"] = "WITH_UNITS"
-                        case "F":
+                        case "F" | "U":
                             item["value_type"] = "FORMATTED"
                         case "C":
                             item["value_type"] = "CONVERTED"
@@ -371,15 +376,12 @@ class CvtModel(Model):
                 pkt_hash[item_name] = value
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[f"{item_name}__F"] = str(value)
-                pkt_hash[f"{item_name}__U"] = str(value)
             case "RAW":
                 pkt_hash[item_name] = value
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
-            case "WITH_UNITS":
-                pkt_hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
@@ -399,19 +401,15 @@ class CvtModel(Model):
                 pkt_hash.pop(item_name, None)
                 pkt_hash.pop(f"{item_name}__C", None)
                 pkt_hash.pop(f"{item_name}__F", None)
-                pkt_hash.pop(f"{item_name}__U", None)
             case "RAW":
                 if item_name in pkt_hash:
                     pkt_hash.pop(item_name)
             case "CONVERTED":
                 if f"{item_name}__C" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__C")
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 if f"{item_name}__F" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__F")
-            case "WITH_UNITS":
-                if f"{item_name}__U" in pkt_hash:
-                    pkt_hash.pop(f"{item_name}__U")
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
@@ -460,15 +458,7 @@ class CvtModel(Model):
         override_key = item_name
         types = []
         match type:
-            case "WITH_UNITS":
-                types = [
-                    f"{item_name}__U",
-                    f"{item_name}__F",
-                    f"{item_name}__C",
-                    item_name,
-                ]
-                override_key = f"{item_name}__U"
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 types = [f"{item_name}__F", f"{item_name}__C", item_name]
                 override_key = f"{item_name}__F"
             case "CONVERTED":
@@ -518,21 +508,14 @@ class CvtModel(Model):
         target_name, packet_name, item_name, value_type = item
 
         # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-        # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+        # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value
         match str(value_type):
             case "RAW":
                 keys = [item_name]
             case "CONVERTED":
                 keys = [f"{item_name}__C", item_name]
-            case "FORMATTED":
+            case "FORMATTED" | "WITH_UNITS":
                 keys = [f"{item_name}__F", f"{item_name}__C", item_name]
-            case "WITH_UNITS":
-                keys = [
-                    f"{item_name}__U",
-                    f"{item_name}__F",
-                    f"{item_name}__C",
-                    item_name,
-                ]
             case _:
                 raise ValueError(f"Unknown value type '{value_type}'")
 

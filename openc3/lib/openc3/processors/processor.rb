@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -37,7 +37,7 @@ module OpenC3
       @name = self.class.to_s.upcase
       value_type = value_type.to_s.upcase.intern
       @value_type = value_type
-      raise ArgumentError, "value_type must be RAW, CONVERTED, FORMATTED, or WITH_UNITS. Is #{@value_type}" unless Packet::VALUE_TYPES.include?(@value_type)
+      raise ArgumentError, "value_type must be RAW, CONVERTED, or FORMATTED. Is #{@value_type}" unless Packet::VALUE_TYPES.include?(@value_type)
 
       @results = {}
     end
