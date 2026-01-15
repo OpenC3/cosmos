@@ -93,6 +93,7 @@ RUN apk update \
   && pip3 install --upgrade pip setuptools \
   && pip3 install poetry \
   && pip3 install poetry-plugin-export \
+  && pip3 install "jaraco.context>=6.1.0" \
   # Note this is needed to prevent pip disappearing in some build environments
   && cp /openc3/venv/bin/pip* /openc3
 
