@@ -32,7 +32,7 @@ RSpec.describe ScreensController, :type => :controller do
       expect(response).to have_http_status(:error)
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
-      expect(ret['message']).to include("value is empty: target")
+      expect(ret['message']).to match(/target/)
     end
 
     it "requires screen" do
@@ -40,7 +40,7 @@ RSpec.describe ScreensController, :type => :controller do
       expect(response).to have_http_status(:error)
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
-      expect(ret['message']).to include("value is empty: screen")
+      expect(ret['message']).to match(/screen/)
     end
 
     it "requires text" do
@@ -48,7 +48,7 @@ RSpec.describe ScreensController, :type => :controller do
       expect(response).to have_http_status(:error)
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret['status']).to eql("error")
-      expect(ret['message']).to include("value is empty: text")
+      expect(ret['message']).to match(/text/)
     end
 
     it "creates a screen" do

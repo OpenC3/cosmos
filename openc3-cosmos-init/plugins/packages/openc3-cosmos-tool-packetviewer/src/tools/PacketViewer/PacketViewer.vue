@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -214,7 +214,6 @@ import { useTemplateRef } from 'vue'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
-  WITH_UNITS: 'Formatted Items with Units',
   FORMATTED: 'Formatted Items',
   CONVERTED: 'Converted Items',
   RAW: 'Raw Items',
@@ -264,7 +263,7 @@ export default {
       counter: 0,
       targetName: '',
       packetName: '',
-      valueType: 'WITH_UNITS',
+      valueType: 'FORMATTED',
       refreshInterval: 1000,
       staleLimit: 30,
       rows: [],
@@ -348,14 +347,11 @@ export default {
             {
               radioGroup: true,
               value: this.valueType,
+              default: 'FORMATTED',
               command: (value) => {
                 this.valueType = value
               },
               choices: [
-                {
-                  label: valueTypeToRadioGroup['WITH_UNITS'],
-                  value: 'WITH_UNITS',
-                },
                 {
                   label: valueTypeToRadioGroup['FORMATTED'],
                   value: 'FORMATTED',
@@ -759,7 +755,7 @@ export default {
       this.staleLimit = 30
       this.showIgnored = false
       this.derivedLast = false
-      this.valueType = 'WITH_UNITS'
+      this.valueType = 'FORMATTED'
       this.itemsPerPage = 20
       this.pinnedItems = []
     },
@@ -772,7 +768,7 @@ export default {
       this.menus[1].items[0].checked = this.showIgnored
       this.derivedLast = config.derivedLast || false
       this.menus[1].items[1].checked = this.derivedLast
-      this.valueType = config.valueType || 'WITH_UNITS'
+      this.valueType = config.valueType || 'FORMATTED'
       this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
       this.pinnedItems = config.pinnedItems || []

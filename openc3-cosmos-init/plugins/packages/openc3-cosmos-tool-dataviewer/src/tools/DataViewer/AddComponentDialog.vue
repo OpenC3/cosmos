@@ -183,8 +183,8 @@ export default {
       newPacket: null,
       newPacketCmdOrTlm: 'tlm',
       newPacketMode: 'RAW',
-      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
-      newPacketValueType: 'WITH_UNITS',
+      valueTypes: ['CONVERTED', 'RAW', 'FORMATTED'],
+      newPacketValueType: 'FORMATTED',
       chooseItem: false,
       disableRadioOptions: false,
       headers: [

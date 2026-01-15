@@ -42,7 +42,6 @@ module OpenC3
           given_raw = json_hash[item.name]
           json_hash[item.name + "__C"] = packet.read_item(item, :CONVERTED, packet.buffer, given_raw) if item.write_conversion or item.states
           json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED, packet.buffer, given_raw) if item.format_string
-          json_hash[item.name + "__U"] = packet.read_item(item, :WITH_UNITS, packet.buffer, given_raw) if item.units
         end
       end
       json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
@@ -51,7 +50,7 @@ module OpenC3
       EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 
-    def self.get_cmd_item(target_name, packet_name, param_name, type: :WITH_UNITS, scope: $openc3_scope)
+    def self.get_cmd_item(target_name, packet_name, param_name, type: :FORMATTED, scope: $openc3_scope)
       msg_id, msg_hash = Topic.get_newest_message("#{scope}__DECOMCMD__{#{target_name}}__#{packet_name}")
       if msg_id
         if param_name == 'RECEIVED_COUNT'
@@ -60,9 +59,6 @@ module OpenC3
           json = msg_hash['json_data']
           hash = JSON.parse(json, allow_nan: true, create_additions: true)
           # Start from the most complex down to the basic raw value
-          value = hash["#{param_name}__U"]
-          return value if value && type == :WITH_UNITS
-
           value = hash["#{param_name}__F"]
           return value if value && (type == :WITH_UNITS || type == :FORMATTED)
 

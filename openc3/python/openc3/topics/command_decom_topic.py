@@ -46,8 +46,6 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED", packet.buffer, given_raw)
             if item.format_string:
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED", packet.buffer, given_raw)
-            if item.units:
-                json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS", packet.buffer, given_raw)
         if packet.extra:
             json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
@@ -56,18 +54,13 @@ class CommandDecomTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def get_cmd_item(cls, target_name, packet_name, param_name, type="WITH_UNITS", scope=OPENC3_SCOPE):
+    def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):
         msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}")
         if msg_id:
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])
             else:
                 cmd_item = json.loads(msg_hash[b"json_data"])
-                # Start from the most complex down to the basic raw value
-                value = cmd_item.get(f"{param_name}__U")
-                if value is not None and type == "WITH_UNITS":
-                    return value
-
                 value = cmd_item.get(f"{param_name}__F")
                 if value is not None and (type == "WITH_UNITS" or type == "FORMATTED"):
                     return value

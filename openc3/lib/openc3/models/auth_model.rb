@@ -20,83 +20,107 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'digest'
+require 'argon2'
 require 'securerandom'
 require 'openc3/utilities/store'
 
 module OpenC3
   class AuthModel
-    PRIMARY_KEY = 'OPENC3__TOKEN'
-    SESSIONS_KEY = 'OPENC3__SESSIONS'
+    ARGON2_PROFILE = ENV["OPENC3_ARGON2_PROFILE"]&.to_sym || :rfc_9106_low_memory
 
-    TOKEN_CACHE_TIMEOUT = 5
+    # Redis keys
+    PRIMARY_KEY = 'OPENC3__TOKEN' # for argon2 password hash
+    SESSIONS_KEY = 'OPENC3__SESSIONS' # for hash containing session tokens
+
+    # The length of time in minutes to keep redis values in memory
+    PW_HASH_CACHE_TIMEOUT = 5
     SESSION_CACHE_TIMEOUT = 5
-    @@token_cache = nil
-    @@token_cache_time = nil
+
+    # Cached argon2 password hash
+    @@pw_hash_cache = nil
+    @@pw_hash_cache_time = nil
+
+    # Cached session tokens
     @@session_cache = nil
     @@session_cache_time = nil
 
-    MIN_TOKEN_LENGTH = 8
+    MIN_PASSWORD_LENGTH = 8
 
     def self.set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
     end
 
-    def self.verify(token)
+    # Checks whether the provided token is a valid user password, service password, or session token.
+    # @param token [String] the plaintext password or session token to check (required)
+    # @param no_password [Boolean] enforces use of a session token or service password (default: true)
+    # @param service_only [Boolean] enforces use of a service password (default: false)
+    # @return [Boolean] whether the provided password/token is valid
+    def self.verify(token, no_password: true, service_only: false)
       # Handle a service password - Generally only used by ScriptRunner
       # TODO: Replace this with temporary service tokens
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
       return true if service_password and service_password == token
 
-      return verify_no_service(token)
+      return false if service_only
+
+      return verify_no_service(token, no_password: no_password)
     end
 
-    def self.verify_no_service(token)
+    # Checks whether the provided token is a valid user password or session token.
+    # @param token [String] the plaintext password or session token to check (required)
+    # @param no_password [Boolean] enforces use of a session token (default: true)
+    # @return [Boolean] whether the provided password/token is valid
+    def self.verify_no_service(token, no_password: true)
       return false if token.nil? or token.empty?
 
+      # Check cached session tokens and password hash
       time = Time.now
       return true if @@session_cache and (time - @@session_cache_time) < SESSION_CACHE_TIMEOUT and @@session_cache[token]
-      token_hash = hash(token)
-      return true if @@token_cache and (time - @@token_cache_time) < TOKEN_CACHE_TIMEOUT and @@token_cache == token_hash
+      unless no_password
+        return true if @@pw_hash_cache and (time - @@pw_hash_cache_time) < PW_HASH_CACHE_TIMEOUT and Argon2::Password.verify_password(token, @@pw_hash_cache)
+      end
 
-      # Check sessions
+      # Check stored session tokens
       @@session_cache = Store.hgetall(SESSIONS_KEY)
       @@session_cache_time = time
       return true if @@session_cache[token]
 
-      # Check Direct password
-      @@token_cache = Store.get(PRIMARY_KEY)
-      @@token_cache_time = time
-      return true if @@token_cache == token_hash
+      return false if no_password
 
-      return false
+      # Check stored password hash
+      pw_hash = Store.get(PRIMARY_KEY)
+      raise "invalid password hash" unless pw_hash.start_with?("$argon2") # Catch users who didn't run the migration utility when upgrading to COSMOS 7
+      @@pw_hash_cache = pw_hash
+      @@pw_hash_cache_time = time
+      return Argon2::Password.verify_password(token, @@pw_hash_cache)
     end
 
-    def self.set(token, old_token, key = PRIMARY_KEY)
-      raise "token must not be nil or empty" if token.nil? or token.empty?
-      raise "token must be at least 8 characters" if token.length < MIN_TOKEN_LENGTH
+    def self.set(password, old_password, key = PRIMARY_KEY)
+      raise "password must not be nil or empty" if password.nil? or password.empty?
+      raise "password must be at least 8 characters" if password.length < MIN_PASSWORD_LENGTH
 
       if set?(key)
-        raise "old_token must not be nil or empty" if old_token.nil? or old_token.empty?
-        raise "old_token incorrect" unless verify(old_token)
+        raise "old_password must not be nil or empty" if old_password.nil? or old_password.empty?
+        raise "old_password incorrect" unless verify_no_service(old_password, no_password: false)
       end
-      Store.set(key, hash(token))
+      pw_hash = Argon2::Password.create(password, profile: ARGON2_PROFILE)
+      Store.set(key, pw_hash)
+      @@pw_hash_cache = nil
+      @@pw_hash_cache_time = nil
     end
 
+    # Creates a new session token. DO NOT CALL BEFORE VERIFYING.
     def self.generate_session
       token = SecureRandom.urlsafe_base64(nil, false)
       Store.hset(SESSIONS_KEY, token, Time.now.iso8601)
       return token
     end
 
+    # Terminates every session.
     def self.logout
       Store.del(SESSIONS_KEY)
-      @@sessions_cache = nil
-      @@sessions_cache_time = nil
-    end
-
-    def self.hash(token)
-      Digest::SHA2.hexdigest token
+      @@session_cache = nil
+      @@session_cache_time = nil
     end
   end
 end

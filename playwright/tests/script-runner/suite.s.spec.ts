@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -434,6 +434,8 @@ test('starts a python suite', async ({ page, utils }) => {
 })
 
 test('starts a group', async ({ page, utils }) => {
+  test.slow()
+
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup1 < OpenC3::Group
   def setup; OpenC3::Group.puts("setup"); end

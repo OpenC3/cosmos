@@ -1,6 +1,6 @@
 {
   "name": "<%= widget_name %>",
-  "version": "6.10.4-beta0",
+  "version": "6.10.5-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,11 +8,11 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "^7.24.0",
-    "@openc3/vue-common": "6.10.3",
+    "@openc3/vue-common": "6.10.4",
     "vuetify": "^3.7.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.5",
+    "@vitejs/plugin-vue": "^6.0.1",
     "@vue/eslint-config-prettier": "^9.0.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
@@ -20,7 +20,7 @@
     "eslint-plugin-vue": "^9.30.0",
     "prettier": "^3.3.3",
     "sass": "^1.80.4",
-    "vite": "^5.4.11",
+    "vite": "^7.2.1",
     "vue": "^3.5.13",
     "vite-plugin-style-inject": "^0.0.1",
     "vue-eslint-parser": "^9.4.3"

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -104,7 +104,7 @@ module OpenC3
       allow(@interface).to receive(:connected?).and_return(true)
       allow(System).to receive(:targets).and_return({ "INST" => @interface })
 
-      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"])
+      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["OPTIMIZE_THROUGHPUT", "0.1"]])
       model.create
       model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__INTERFACE__INST_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
@@ -147,6 +147,9 @@ module OpenC3
         expect(interface.target_names).to eql ["INST"]
         expect(interface.cmd_target_names).to eql ["INST"]
         expect(interface.tlm_target_names).to eql ["INST"]
+        expect(im.instance_variable_get(:@queued)).to eql true
+        expect(StoreQueued.instance.update_interval).to eql 0.1
+
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["name"]).to eql "INST_INT"
         expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
@@ -195,7 +198,7 @@ module OpenC3
           expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
 
           $connect_raise = false
-          sleep 0.01 # Allow it to reconnect successfully
+          sleep 0.1 # Allow it to reconnect successfully
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
           im.shutdown

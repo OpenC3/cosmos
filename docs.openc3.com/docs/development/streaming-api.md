@@ -59,7 +59,7 @@ Adding items to stream is done as follows:
 ```javascript
 var items = [
   ["DECOM__TLM__INST__ADCS__Q1__RAW", "0"],
-  ["DECOM__CMD__INST__COLLECT__DURATION__WITH_UNITS", "1"],
+  ["DECOM__CMD__INST__COLLECT__DURATION__FORMATTED", "1"],
 ];
 OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
   this.subscription.perform("add", {
@@ -72,7 +72,7 @@ OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
 });
 ```
 
-The values in the item name are separated by double underscores, e.g. `<MODE>__<CMD or TLM>__<TARGET NAME>__<PACKET NAME>__<ITEM NAME>__<VALUE TYPE>__<REDUCED TYPE>`. Mode is either RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY. The next parameter is CMD or TLM followed by the target, packet and item names. The Value Type is one of RAW, CONVERTED, FORMATTED, or WITH_UNITS. The last parameter is optional if you want to use the reduced data types. Reduced Type is one of SAMPLE, MIN, MAX, AVG, or STDDEV.
+The values in the item name are separated by double underscores, e.g. `<MODE>__<CMD or TLM>__<TARGET NAME>__<PACKET NAME>__<ITEM NAME>__<VALUE TYPE>__<REDUCED TYPE>`. Mode is either RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY. The next parameter is CMD or TLM followed by the target, packet and item names. The Value Type is one of RAW, CONVERTED or FORMATTED. The last parameter is optional if you want to use the reduced data types. Reduced Type is one of SAMPLE, MIN, MAX, AVG, or STDDEV.
 
 Adding packets to stream is done as follows:
 
@@ -92,7 +92,7 @@ OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
 });
 ```
 
-The values in the packet name are separated by double underscores, e.g. `<MODE>__<CMD or TLM>__<TARGET NAME>__<PACKET NAME>__<VALUE TYPE>`. Mode is either RAW or DECOM. The next parameter is CMD or TLM followed by the target and packet names. The Value Type is one of RAW, CONVERTED, FORMATTED, or WITH_UNITS.
+The values in the packet name are separated by double underscores, e.g. `<MODE>__<CMD or TLM>__<TARGET NAME>__<PACKET NAME>__<VALUE TYPE>`. Mode is either RAW or DECOM. The next parameter is CMD or TLM followed by the target and packet names. The Value Type is one of RAW, CONVERTED or FORMATTED.
 
 For Raw mode, VALUE TYPE should be set to RAW or omitted (e.g. TLM\_\_INST\_\_ADCS\_\_RAW or TLM\_\_INST\_\_ADCS).
 start_time and end_time are standard COSMOS 64-bit integer timestamps in nanoseconds since the Unix Epoch (midnight January 1st, 1970). If start_time is null, that indicates to start streaming from the current time in realtime, indefinitely until items are removed, or the subscription is unsubscribed. end_time is ignored if start_time is null. If start_time is given and end_time is null, that indicates to playback from the given starttime and then continue indefinitely in realtime. If both start_time and end_time are given, then that indicates a temporary playback of historical data.

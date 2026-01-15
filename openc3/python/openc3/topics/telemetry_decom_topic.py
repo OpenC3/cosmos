@@ -28,9 +28,9 @@ class TelemetryDecomTopic(Topic):
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
         # everything base name is RAW (including DERIVED)
-        # Request for WITH_UNITS, etc will look down until it finds something
+        # Request for FORMATTED, etc will look down until it finds something
         # If nothing - item does not exist - nil
-        # __ as separators ITEM1, ITEM1__C, ITEM1__F, ITEM1__U
+        # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
         json_hash = CvtModel.build_json_from_packet(packet)
         # Serialize JSON once and reuse for both topic write and CVT set

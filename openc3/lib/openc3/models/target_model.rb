@@ -654,8 +654,13 @@ module OpenC3
 
     def undeploy
       prefix = "#{@scope}/targets/#{@name}/"
-      @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
-        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
+      objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
+      keys = objects.map(&:key)
+      if keys.length > 0
+        # Batch delete in chunks of 1000 (S3 limit)
+        keys.each_slice(1000) do |key_batch|
+          @bucket.delete_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], keys: key_batch)
+        end
       end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
@@ -1091,7 +1096,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["python", "quest_microservice.py", microservice_name],
+        cmd: ["python", "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
         topics: topics,
         plugin: @plugin,
