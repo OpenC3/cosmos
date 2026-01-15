@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -126,7 +126,7 @@ def mock_redis(self):
     EphemeralStoreQueued.my_instance = None
     StoreQueued.my_instance = None
     redis = fakeredis.FakeRedis()
-    patcher = patch("redis.Redis", return_value=redis)
+    patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
     self.addCleanup(patcher.stop)
     return redis

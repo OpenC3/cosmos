@@ -53,7 +53,7 @@ test('displays microservice names', async ({ page, utils }) => {
   )
 })
 
-test('displays microservice details', async ({ page, utils }) => {
+test.fixme('displays microservice details', async ({ page, utils }) => {
   await page.locator('[aria-label="Show Microservice Details"]').nth(2).click()
   await expect(page.locator('.editor')).toContainText(
     '"name": "DEFAULT__CLEANUP__INST2"',

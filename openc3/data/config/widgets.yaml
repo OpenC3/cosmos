@@ -274,10 +274,10 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
-        ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
+        ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 FORMATTED
     ARRAYPLOT:
       summary: Plot an array of values.
       description:
@@ -356,7 +356,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
     # FORMATFONTVALUE:
@@ -386,7 +386,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Number of characters
     #       required: false
     #       description: The number of characters wide to make the value box (default = 12)
@@ -429,7 +429,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -456,7 +456,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Width
           required: false
           description: Width of the LED circle (default = 15)
@@ -516,7 +516,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         LABELPROGRESSBAR INST ADCS POSPROGRESS 2 200 RAW
         LABELPROGRESSBAR INST ADCS POSPROGRESS
@@ -538,7 +538,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -570,7 +570,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -601,7 +601,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Number of characters
     #       required: false
     #       description: The number of characters wide to make the value box (default = 12)
@@ -624,7 +624,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -650,7 +650,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -688,7 +688,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -733,7 +733,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Number of characters
     #       required: false
     #       description: The number of characters wide to make the value box (default = 12)
@@ -773,7 +773,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Width
           required: false
           description: Width of the LED circle (default = 20)
@@ -817,7 +817,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Width
           required: false
           description: Width of the range bar (default = 160)
@@ -847,7 +847,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Width
           required: false
           description: Width of the range bar (default = 160)
@@ -878,7 +878,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Radius
           required: false
           description: Radius of the circle (default is 10)
@@ -912,7 +912,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -938,7 +938,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 8)
@@ -976,7 +976,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -1021,7 +1021,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Number of characters
     #       required: false
     #       description: The number of characters wide to make the value box (default = 12)
@@ -1121,7 +1121,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         PROGRESSBAR INST ADCS POSPROGRESS 0.5 200
         PROGRESSBAR INST ADCS POSPROGRESS
@@ -1155,7 +1155,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Width
           required: false
           description: Width of the range bar (default = 100)
@@ -1196,7 +1196,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Width
     #       required: false
     #       description: Width of the range bar (default = 30)
@@ -1313,7 +1313,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Trend Seconds
     #       required: false
     #       description: The number of seconds in the past to display the trend value (default = 60)
@@ -1349,7 +1349,7 @@ Telemetry Widgets:
     #     - name: Value type
     #       required: false
     #       description: The type of the value to display. Default is CONVERTED.
-    #       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    #       values: <%= %w(RAW CONVERTED FORMATTED) %>
     #     - name: Trend Seconds
     #       required: false
     #       description: The number of seconds in the past to display the trend value (default = 60)
@@ -1391,7 +1391,7 @@ Telemetry Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Number of characters
           required: false
           description: The number of characters wide to make the value box (default = 12)
@@ -1642,11 +1642,11 @@ Canvas Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED.
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         CANVAS 200 100
           CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
-          CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue WITH_UNITS
+          CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
         END
     CANVASIMAGE:
       summary: Displays an image on the canvas
@@ -1702,7 +1702,7 @@ Canvas Widgets:
         - name: Value type
           required: true
           description: The type of the value to display
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
         - name: Default image filename
           required: true
           description: The default image to display. The file must be in the targets/TARGET/public directory.
@@ -1835,7 +1835,7 @@ Canvas Widgets:
         - name: Value type
           required: false
           description: The type of the value to display. Default is CONVERTED
-          values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+          values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         CANVAS 120 50
           CANVASLABELVALUE INST HEALTH_STATUS GROUND1STATUS 0 12 12 black

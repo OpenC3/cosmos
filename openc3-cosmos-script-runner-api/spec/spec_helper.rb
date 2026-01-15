@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -78,13 +78,24 @@ ENV['OPENC3_API_PASSWORD'] = 'openc3'
 ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
 ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
 ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
-ENV['OPENC3_BUCKET_USERNAME'] = 'openc3minio'
-ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3miniopassword'
+ENV['OPENC3_BUCKET_USERNAME'] = 'openc3bucket'
+ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3bucketpassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
 ENV['OPENC3_CLOUD'] = 'aws'
 
 $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']
+$openc3_mock_token = 'mock_token'
+
+# Mock the HTTP request for OpenC3Authentication
+require 'openc3/utilities/authentication'
+OpenC3::OpenC3Authentication.class_eval do
+  def _make_auth_request(password)
+    mock_response = Object.new
+    mock_response.define_singleton_method(:body) { $openc3_mock_token }
+    mock_response
+  end
+end
 
 def mock_redis
   require 'redis'

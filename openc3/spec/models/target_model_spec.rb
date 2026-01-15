@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,11 +36,11 @@ module OpenC3
   describe TargetModel, type: :model do
     @fsys_s3 = false
     before(:all) do |example|
-      # These tests work if there's a local S3 or a MINIO service available. To enable
-      # access to MINIO for testing, change the compose.yaml services stanza to:
+      # These tests work if there's a local S3 or a S3 (versitygw) service available. To enable
+      # access to S3 (versitygw) for testing, change the compose.yaml services stanza to:
       #
       # services:
-      #   openc3-minio:
+      #   openc3-buckets:
       #     ports:
       #       - "127.0.0.1:9000:9000"
       begin
@@ -50,7 +50,7 @@ module OpenC3
         @fsys_s3 = true
         Logger.info("No S3 listener - using local_s3 client")
       rescue Errno::EADDRINUSE;
-        Logger.info("Found listener on port 9000; presumably Minio")
+        Logger.info("Found listener on port 9000; presumably versitygw")
       end
 
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
