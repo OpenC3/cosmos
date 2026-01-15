@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -50,7 +50,8 @@ class Secrets:
         raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'delete'")
 
     def setup(self, secrets):
-        for type, key, data, secret_store in secrets:
+        for type, key, data, *extra in secrets:
+            secret_store = extra[0] if extra else None
             match type:
                 case "ENV":
                     self.local_secrets[key] = os.environ.get(data)
