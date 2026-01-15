@@ -60,63 +60,45 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  props: {
-    question: {
-      type: String,
-      required: true,
-    },
-    default: {
-      type: String,
-      default: null,
-    },
-    password: {
-      type: Boolean,
-      default: false,
-    },
-    answerRequired: {
-      type: Boolean,
-      default: true,
-    },
-    modelValue: Boolean,
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  question: {
+    type: String,
+    required: true,
   },
-  emits: ['update:modelValue', 'response'],
-  data() {
-    return {
-      inputValue: '',
-      valid: false,
-      rules: [(v) => !!v || 'Required'],
-    }
+  default: {
+    type: String,
+    default: null,
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
+  password: {
+    type: Boolean,
+    default: false,
   },
-  created() {
-    if (this.default) {
-      this.valid = true
-      this.inputValue = this.default
-    }
-    if (this.answerRequired === false) {
-      this.valid = true
-      this.rules = [(v) => true]
-    }
+  answerRequired: {
+    type: Boolean,
+    default: true,
   },
-  methods: {
-    submitHandler: function () {
-      this.$emit('response', this.inputValue)
-    },
-    cancelHandler: function () {
-      this.$emit('response', 'COSMOS__CANCEL')
-    },
-  },
+})
+
+const emit = defineEmits(['response'])
+
+const show = defineModel({ type: Boolean, required: true })
+
+const inputValue = ref(props.default || '')
+const valid = ref(!!props.default || !props.answerRequired)
+
+const rules = computed(() => {
+  return props.answerRequired ? [(v) => !!v || 'Required'] : [(v) => true]
+})
+
+function submitHandler() {
+  emit('response', inputValue.value)
+}
+
+function cancelHandler() {
+  emit('response', 'COSMOS__CANCEL')
 }
 </script>
 
