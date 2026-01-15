@@ -323,7 +323,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"CCSDSTYPE" int', create_table_sql)
         # TIMESEC is 32 bits so upgraded to long
         self.assertIn('"TIMESEC" long', create_table_sql)
-        self.assertIn('"ARY" array', create_table_sql)
+        self.assertIn('"ARY" DOUBLE[]', create_table_sql)
         # Block of 80 bits becomes encoded varchar
         self.assertIn('"BLOCKTEST" varchar', create_table_sql)
         self.assertIn('"BRACKET[0]" int', create_table_sql)
@@ -965,12 +965,14 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Setup mock to raise IngressError for array-to-scalar conversion
+        # Setup mock to raise IngressError for array-to-scalar conversion on first call,
+        # then succeed on retry after JSON serialization
         error_msg = (
             "error in line 1: table: INST__HEALTH_STATUS, column: JSON_ITEM; "
             'cast error from protocol type: DOUBLE[] to column type: INT","line":1'
         )
-        mock_ingest.row.side_effect = IngressError(1, error_msg)
+        # First call fails (triggers JSON serialization), second call (retry) succeeds
+        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
         mock_ingest.flush.side_effect = IngressError(1, error_msg)
 
         # Write test data with array
@@ -989,11 +991,183 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         for stdout in capture_io():
             tsdb.read_topics()
-            # Should have logged warning about array-to-scalar conversion
-            self.assertIn("Will serialize as JSON", stdout.getvalue())
+            # Should have logged warning about array-to-scalar conversion and retry
+            self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
 
         # Column should be registered for JSON serialization
         self.assertIn("INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_handles_array_to_varchar_cast_error(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics handles ARRAY (no brackets) to VARCHAR cast errors"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Setup mock to raise IngressError for ARRAY (no brackets) to VARCHAR conversion
+        # This matches the error format from QuestDB when sending array to varchar column
+        error_msg = (
+            "error in line 1: table: INST__HEALTH_STATUS, column: ITEM7; "
+            'cast error from protocol type: ARRAY to column type: VARCHAR","line":1'
+        )
+        # First call fails (triggers JSON serialization), second call (retry) succeeds
+        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
+        mock_ingest.flush.side_effect = IngressError(1, error_msg)
+
+        # Write test data with numeric array (will be converted to numpy array, triggering ARRAY type)
+        json_data = {"ITEM7": [1.0, 2.0, 3.0]}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        for stdout in capture_io():
+            tsdb.read_topics()
+            # Should have logged warning about array-to-scalar conversion and retry
+            self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
+
+        # Column should be registered for JSON serialization
+        self.assertIn("INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
+
+    @patch("openc3.microservices.tsdb_microservice.get_tlm")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_create_table_variable_length_array(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
+        """Test that variable-length arrays (array_size=0) create DOUBLE[] columns"""
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        # Mock packet with variable-length array (array_size=0)
+        mock_get_tlm.return_value = {
+            "items": [
+                {"name": "VAR_ARRAY", "data_type": "UINT", "bit_size": 8, "array_size": 0},
+            ]
+        }
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{TEST}__PACKET"],
+            target_names=["TEST"],
+        )
+        model.create()
+
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Verify CREATE TABLE was called
+        create_table_calls = [call for call in mock_cursor.execute.call_args_list if "CREATE TABLE" in str(call)]
+        self.assertTrue(len(create_table_calls) > 0, "CREATE TABLE should have been called")
+
+        # Variable-length numeric arrays should use DOUBLE[] type
+        create_table_sql = str(create_table_calls[0])
+        self.assertIn('"VAR_ARRAY" DOUBLE[]', create_table_sql)
+
+    @patch("openc3.microservices.tsdb_microservice.get_tlm")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_create_table_non_numeric_array(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
+        """Test that non-numeric arrays (data_type=ARRAY) create VARCHAR columns with JSON serialization"""
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        # Mock packet with non-numeric array (data_type="ARRAY")
+        mock_get_tlm.return_value = {
+            "items": [
+                {"name": "MIXED_ARRAY", "data_type": "ARRAY", "bit_size": 8, "array_size": 0},
+                {"name": "STRING_ARRAY", "data_type": "STRING", "bit_size": 64, "array_size": 10},
+            ]
+        }
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{TEST}__PACKET"],
+            target_names=["TEST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Verify CREATE TABLE was called
+        create_table_calls = [call for call in mock_cursor.execute.call_args_list if "CREATE TABLE" in str(call)]
+        self.assertTrue(len(create_table_calls) > 0, "CREATE TABLE should have been called")
+
+        # Non-numeric arrays should use VARCHAR type
+        create_table_sql = str(create_table_calls[0])
+        self.assertIn('"MIXED_ARRAY" varchar', create_table_sql)
+        self.assertIn('"STRING_ARRAY" varchar', create_table_sql)
+
+        # Non-numeric arrays should be registered for JSON serialization
+        self.assertIn("TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
+
+    def test_convert_value_mixed_array_json_serialized(self):
+        """Test that mixed arrays (containing non-numeric elements) are JSON serialized"""
+        from openc3.utilities.questdb_client import QuestDBClient
+
+        client = QuestDBClient()
+
+        # Mixed array with string element should be JSON serialized
+        value, skip = client.convert_value([1, "mixed", 3.14], "ITEM", None)
+        self.assertFalse(skip)
+        self.assertEqual(value, '[1, "mixed", 3.14]')
+
+        # Array with all strings should be JSON serialized
+        value, skip = client.convert_value(["a", "b", "c"], "ITEM", None)
+        self.assertFalse(skip)
+        self.assertEqual(value, '["a", "b", "c"]')
+
+        # Empty array should be JSON serialized
+        value, skip = client.convert_value([], "ITEM", None)
+        self.assertFalse(skip)
+        self.assertEqual(value, "[]")
+
+        # Pure numeric array should become numpy array (not JSON)
+        value, skip = client.convert_value([1.0, 2.0, 3.0], "ITEM", None)
+        self.assertFalse(skip)
+        import numpy
+
+        self.assertIsInstance(value, numpy.ndarray)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
