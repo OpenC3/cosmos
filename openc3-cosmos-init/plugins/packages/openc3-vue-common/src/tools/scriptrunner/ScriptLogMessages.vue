@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -82,83 +82,64 @@
   </v-card>
 </template>
 
-<script>
+<script setup>
+import { ref, watch, inject } from 'vue'
 import { format } from 'date-fns'
 
-export default {
-  props: {
-    modelValue: {
-      type: Array,
-      required: true,
-    },
-  },
-  emits: ['sort', 'update:modelValue'],
-  data() {
-    return {
-      search: '',
-      headers: [{ title: 'Message', value: 'message', sortable: false }],
-      messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
-      messageOrder: 'Newest on Top',
-    }
-  },
-  computed: {
-    messages: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  watch: {
-    messageOrder: function (newValue, oldValue) {
-      this.$emit('sort', newValue)
-    },
-  },
-  methods: {
-    messageClass(message) {
-      if (
-        message.match(/(CHECK|WAIT): .*(success|was within range.*) with value/)
-      ) {
-        return 'openc3-green'
-      } else if (
-        message.match(
-          /(CHECK|WAIT): .*(failed|failed to be within range.*) with value/,
-        )
-      ) {
-        return 'openc3-red'
-      } else {
-        return ''
-      }
-    },
-    downloadLog() {
-      const output = this.messages.map((message) => message.message).join('\n')
-      const blob = new Blob([output], {
-        type: 'text/plain',
-      })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute(
-        'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_sr_message_log.txt',
-      )
-      link.click()
-    },
-    clearLog: function () {
-      this.$dialog
-        .confirm('Are you sure you want to clear the log?', {
-          okText: 'Clear',
-          cancelText: 'Cancel',
-        })
-        .then((dialog) => {
-          this.messages = []
-        })
-        .catch(function (err) {
-          // Canceling the dialog forces catch and sets err to true
-        })
-    },
-  },
+const messages = defineModel({ type: Array, required: true })
+const emit = defineEmits(['sort'])
+
+const $dialog = inject('$dialog')
+
+const search = ref('')
+const headers = [{ title: 'Message', value: 'message', sortable: false }]
+const messageOrderOptions = ['Newest on Top', 'Newest on Bottom']
+const messageOrder = ref('Newest on Top')
+
+watch(messageOrder, (newValue) => {
+  emit('sort', newValue)
+})
+
+function messageClass(message) {
+  if (
+    message.match(/(CHECK|WAIT): .*(success|was within range.*) with value/)
+  ) {
+    return 'openc3-green'
+  } else if (
+    message.match(
+      /(CHECK|WAIT): .*(failed|failed to be within range.*) with value/,
+    )
+  ) {
+    return 'openc3-red'
+  } else {
+    return ''
+  }
+}
+
+function downloadLog() {
+  const output = messages.value.map((message) => message.message).join('\n')
+  const blob = new Blob([output], {
+    type: 'text/plain',
+  })
+  // Make a link and then 'click' on it to start the download
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.setAttribute(
+    'download',
+    format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_sr_message_log.txt',
+  )
+  link.click()
+}
+
+async function clearLog() {
+  try {
+    await $dialog.confirm('Are you sure you want to clear the log?', {
+      okText: 'Clear',
+      cancelText: 'Cancel',
+    })
+    messages.value = []
+  } catch (err) {
+    // Canceling the dialog forces catch and sets err to true
+  }
 }
 </script>
