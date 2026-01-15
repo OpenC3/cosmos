@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -64,10 +64,10 @@
           <v-row>
             <v-btn
               type="submit"
-              @click.prevent="() => verify()"
               size="large"
               color="success"
               :disabled="!formValid"
+              @click.prevent="() => verify()"
             >
               Login
             </v-btn>
@@ -150,7 +150,7 @@ export default {
     login: function (response) {
       localStorage.openc3Token = response.data
       const redirect = new URLSearchParams(window.location.search).get(
-        'redirect'
+        'redirect',
       )
       if (redirect?.startsWith('/tools/')) {
         // Valid relative redirect URL
