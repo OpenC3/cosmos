@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,8 +23,8 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       label="Pause on Error"
@@ -42,8 +42,8 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       label="Manual"
@@ -116,8 +116,8 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       label="Continue after Error"
@@ -136,8 +136,8 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       label="Loop"
@@ -216,8 +216,8 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       label="Abort after Error"
@@ -236,8 +236,8 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <div v-bind="props">
+                <template #activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
                     <v-checkbox
                       v-model="options"
                       :disabled="!options.includes('loop')"
@@ -303,157 +303,148 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    suiteMap: {
-      type: Object,
-      required: true,
-    },
-    disableButtons: {
-      type: Boolean,
-      required: true,
-    },
-    filename: {
-      type: String,
-      required: true,
-    },
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+
+const props = defineProps({
+  suiteMap: {
+    type: Object,
+    required: true,
   },
-  emits: ['button', 'loaded'],
-  data() {
+  disableButtons: {
+    type: Boolean,
+    required: true,
+  },
+  filename: {
+    type: String,
+    required: true,
+  },
+})
+
+const emit = defineEmits(['button', 'loaded'])
+
+const suites = ref([])
+const groups = ref([])
+const scripts = ref([])
+const suite = ref('')
+const group = ref('')
+const script = ref('')
+const options = ref(['pauseOnError', 'manual', 'continueAfterError'])
+const userInfo = ref({})
+
+const checkedManualTooltip = computed(() => {
+  if (props.filename.endsWith('.py')) {
+    return 'Checked sets the RunningScript.manual variable to True'
+  } else {
+    return 'Checked sets the $manual variable to true'
+  }
+})
+
+const uncheckedManualTooltip = computed(() => {
+  if (props.filename.endsWith('.py')) {
+    return 'Unchecked sets the RunningScript.manual variable to False'
+  } else {
+    return 'Unchecked sets the $manual variable to false'
+  }
+})
+
+const setupSuiteEnabled = computed(() => {
+  return !!(suite.value && props.suiteMap[suite.value]?.setup)
+})
+
+const teardownSuiteEnabled = computed(() => {
+  return !!(suite.value && props.suiteMap[suite.value]?.teardown)
+})
+
+const setupGroupEnabled = computed(() => {
+  return !!(
+    suite.value &&
+    group.value &&
+    props.suiteMap[suite.value]?.groups[group.value]?.setup
+  )
+})
+
+const teardownGroupEnabled = computed(() => {
+  return !!(
+    suite.value &&
+    group.value &&
+    props.suiteMap[suite.value]?.groups[group.value]?.teardown
+  )
+})
+
+const scriptNames = computed(() => {
+  return scripts.value.map((name) => {
     return {
-      suites: [],
-      groups: [],
-      scripts: [],
-      suite: '',
-      group: '',
-      script: '',
-      options: ['pauseOnError', 'manual', 'continueAfterError'],
-      userInfo: {},
+      // strip script_ or test_ from the name
+      title: name.replace(/^(script_|test_)/, ''),
+      value: name,
     }
+  })
+})
+
+// Watch the suiteMap so we can recreate the suites and set the initial value
+watch(
+  () => props.suiteMap,
+  () => {
+    updateSuiteMap()
   },
-  computed: {
-    checkedManualTooltip() {
-      if (this.filename.endsWith('.py')) {
-        return 'Checked sets the RunningScript.manual variable to True'
-      } else {
-        return 'Checked sets the $manual variable to true'
-      }
-    },
-    uncheckedManualTooltip() {
-      if (this.filename.endsWith('.py')) {
-        return 'Unchecked sets the RunningScript.manual variable to False'
-      } else {
-        return 'Unchecked sets the $manual variable to false'
-      }
-    },
-    setupSuiteEnabled() {
-      if (this.suite && this.suiteMap[this.suite].setup) {
-        return true
-      } else {
-        return false
-      }
-    },
-    teardownSuiteEnabled() {
-      if (this.suite && this.suiteMap[this.suite].teardown) {
-        return true
-      } else {
-        return false
-      }
-    },
-    setupGroupEnabled() {
-      if (
-        this.suite &&
-        this.group &&
-        this.suiteMap[this.suite].groups[this.group].setup
-      ) {
-        return true
-      } else {
-        return false
-      }
-    },
-    teardownGroupEnabled() {
-      if (
-        this.suite &&
-        this.group &&
-        this.suiteMap[this.suite].groups[this.group].teardown
-      ) {
-        return true
-      } else {
-        return false
-      }
-    },
-    scriptNames() {
-      return this.scripts.map((name) => {
-        return {
-          // strip script_ or test_ from the name
-          title: name.replace(/^(script_|test_)/, ''),
-          value: name,
-        }
-      })
-    },
-  },
-  // Watch the suiteMap so we can recreate the suites and set the initial value
-  watch: {
-    suiteMap: {
-      handler: function (newVal, oldVal) {
-        this.updateSuiteMap()
-      },
-      deep: true, // Deep watcher because suiteMap is a nested Object
-    },
-  },
-  created() {
-    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
-    this.initSuites()
-    this.$emit('loaded')
-  },
-  methods: {
-    updateSuiteMap() {
-      this.suites = Object.keys(this.suiteMap)
-      if (
-        this.suiteMap[this.suite] == undefined ||
-        this.suiteMap[this.suite].groups[this.group] == undefined
-      ) {
-        this.initSuites()
-      } else {
-        this.groups = Object.keys(this.suiteMap[this.suite].groups)
-        this.scripts = this.suiteMap[this.suite].groups[this.group].scripts
-      }
-    },
-    initSuites() {
-      this.suites = Object.keys(this.suiteMap)
-      this.suiteChanged(this.suites[0])
-    },
-    suiteChanged(event) {
-      if (!event || this.suiteMap[event] == undefined) {
-        return
-      }
-      this.suite = event
-      this.group = ''
-      this.script = ''
-      this.groups = Object.keys(this.suiteMap[event].groups)
-      // Make the group default be the first group
-      this.groupChanged(this.groups[0])
-    },
-    groupChanged(event) {
-      if (
-        !event ||
-        this.suiteMap[this.suite] == undefined ||
-        this.suiteMap[this.suite].groups[event] == undefined
-      ) {
-        return
-      }
-      this.group = event
-      this.script = ''
-      this.scripts = this.suiteMap[this.suite].groups[event].scripts
-      // Make the script default be the first
-      this.scriptChanged(this.scripts[0])
-    },
-    scriptChanged(event) {
-      this.script = event
-    },
-  },
+  { deep: true }, // Deep watcher because suiteMap is a nested Object
+)
+
+function updateSuiteMap() {
+  suites.value = Object.keys(props.suiteMap)
+  if (
+    props.suiteMap[suite.value] == undefined ||
+    props.suiteMap[suite.value].groups[group.value] == undefined
+  ) {
+    initSuites()
+  } else {
+    groups.value = Object.keys(props.suiteMap[suite.value].groups)
+    scripts.value = props.suiteMap[suite.value].groups[group.value].scripts
+  }
 }
+
+function initSuites() {
+  suites.value = Object.keys(props.suiteMap)
+  suiteChanged(suites.value[0])
+}
+
+function suiteChanged(event) {
+  if (!event || props.suiteMap[event] == undefined) {
+    return
+  }
+  suite.value = event
+  group.value = ''
+  script.value = ''
+  groups.value = Object.keys(props.suiteMap[event].groups)
+  // Make the group default be the first group
+  groupChanged(groups.value[0])
+}
+
+function groupChanged(event) {
+  if (
+    !event ||
+    props.suiteMap[suite.value] == undefined ||
+    props.suiteMap[suite.value].groups[event] == undefined
+  ) {
+    return
+  }
+  group.value = event
+  script.value = ''
+  scripts.value = props.suiteMap[suite.value].groups[event].scripts
+  // Make the script default be the first
+  scriptChanged(scripts.value[0])
+}
+
+function scriptChanged(event) {
+  script.value = event
+}
+
+onMounted(() => {
+  userInfo.value = JSON.parse(localStorage['script_runner__userinfo'])
+  initSuites()
+  emit('loaded')
+})
 </script>
 
 <style lang="scss" scoped>
