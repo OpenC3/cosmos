@@ -102,6 +102,10 @@ module OpenC3
             file.puts '  VARIABLE_DESCRIPTION "TCP port for the connection"'
           end
         end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
         expect(model['variables']['port']).to eq({
@@ -121,6 +125,10 @@ module OpenC3
             file.puts '  VARIABLE_STATE "Secondary instrument" INST2'
           end
         end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
         expect(model['variables']['my_target']).to eq({
@@ -141,6 +149,10 @@ module OpenC3
             file.puts 'VARIABLE_DESCRIPTION "Description"'
           end
         end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_DESCRIPTION must follow a VARIABLE definition/)
       end
@@ -153,6 +165,10 @@ module OpenC3
             file.puts 'VARIABLE_STATE "Display Text" VALUE'
           end
         end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE_STATE must follow a VARIABLE definition/)
       end
@@ -183,6 +199,10 @@ module OpenC3
         existing_plugin_txt << "VARIABLE VAR1 11"
         existing_plugin_txt << "VARIABLE VAR2 NOPE"
         existing_vars = { "VAR1" => { 'value' => "12" }, "VAR2" => { 'value' => "YES" } }
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
         model = PluginModel.install_phase1(__FILE__, existing_variables: existing_vars, existing_plugin_txt_lines: existing_plugin_txt, process_existing: true, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
