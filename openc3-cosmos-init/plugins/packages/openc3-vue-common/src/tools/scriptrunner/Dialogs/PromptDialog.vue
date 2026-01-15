@@ -99,77 +99,67 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  props: {
-    title: {
-      type: String,
-      default: 'Prompt Dialog',
-    },
-    subtitle: {
-      type: String,
-      default: '',
-    },
-    message: {
-      type: String,
-      required: true,
-    },
-    details: {
-      type: String,
-      default: '',
-    },
-    buttons: {
-      type: Array,
-      default: () => [],
-    },
-    layout: {
-      type: String,
-      default: 'horizontal', // Also 'vertical' or 'combo' when means ComboBox
-    },
-    multiple: {
-      type: Boolean,
-      default: false,
-      required: false,
-    },
-    modelValue: Boolean,
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: 'Prompt Dialog',
   },
-  emits: ['update:modelValue', 'response'],
-  data() {
-    return {
-      selectOkDisabled: true,
-      selectedItem: null,
-    }
+  subtitle: {
+    type: String,
+    default: '',
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    layoutClass() {
-      let layout = 'px-2 d-flex align-start'
-      if (this.layout === 'vertical') {
-        return `${layout} flex-column prompt-buttons-vertical`
-      } else {
-        return `${layout} flex-row flex-wrap prompt-buttons-horizontal`
-      }
-    },
+  message: {
+    type: String,
+    required: true,
   },
-  methods: {
-    submitWrapper: function (output) {
-      this.selectedItem = output
-      this.submitHandler()
-    },
-    submitHandler: function () {
-      this.$emit('response', this.selectedItem)
-    },
-    cancelHandler: function () {
-      this.$emit('response', 'Cancel')
-    },
+  details: {
+    type: String,
+    default: '',
   },
+  buttons: {
+    type: Array,
+    default: () => [],
+  },
+  layout: {
+    type: String,
+    default: 'horizontal', // Also 'vertical' or 'combo' when means ComboBox
+  },
+  multiple: {
+    type: Boolean,
+    default: false,
+    required: false,
+  },
+})
+
+const show = defineModel({ type: Boolean, required: false })
+const emit = defineEmits(['response'])
+
+const selectOkDisabled = ref(true)
+const selectedItem = ref(null)
+
+const layoutClass = computed(() => {
+  const layout = 'px-2 d-flex align-start'
+  if (props.layout === 'vertical') {
+    return `${layout} flex-column prompt-buttons-vertical`
+  } else {
+    return `${layout} flex-row flex-wrap prompt-buttons-horizontal`
+  }
+})
+
+function submitWrapper(output) {
+  selectedItem.value = output
+  submitHandler()
+}
+
+function submitHandler() {
+  emit('response', selectedItem.value)
+}
+
+function cancelHandler() {
+  emit('response', 'Cancel')
 }
 </script>
 
