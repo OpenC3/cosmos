@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -70,14 +70,16 @@
         </v-card>
       </v-col>
       <v-col v-if="screenDefinition" md="auto">
-        <openc3-screen
-          :target="screenTarget"
-          :screen="screenName"
-          :definition="screenDefinition"
-          :keywords="keywords"
-          :count="screenCount"
-          :show-close="false"
-        />
+        <div style="position: relative">
+          <openc3-screen
+            :target="screenTarget"
+            :screen="screenName"
+            :definition="screenDefinition"
+            :keywords="keywords"
+            :count="screenCount"
+            :show-close="false"
+          />
+        </div>
       </v-col>
     </v-row>
     <div style="height: 15px" />
