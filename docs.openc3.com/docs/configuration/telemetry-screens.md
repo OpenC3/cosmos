@@ -637,12 +637,12 @@ Telemetry widgets are used to display telemetry values. The first parameters to 
 | Height | Height of the widget (default = 100) | False |
 | Format string | Format string applied to each array item (default = nil) | False |
 | Items per row | Number of array items per row (default = 4) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
 ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
-ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
+ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 FORMATTED
 ```
 ![ARRAY](/img/telemetry_viewer/widgets/array.png)
 
@@ -749,7 +749,7 @@ The following settings apply to ARRAYPLOT. They are applied using the SETTING ke
 | Bytes per word | Number of bytes per word (default = 4) | False |
 | Words per row | Number of words per row (default = 4 | False |
 | Address format | Format for the address printed at the beginning of each line (default = nil which means do not print an address) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
@@ -769,7 +769,7 @@ Data is formatted by the specified string rather than by a format string given i
 | Packet name | The packet name | True |
 | Item name | The item name | True |
 | Format string | Printf style format string to apply to the telemetry item | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -790,7 +790,7 @@ See the LED widget for more information
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Width | Width of the LED circle (default = 15) | False |
 | Height | Height of the LED circle (default = 15) | False |
 | Justification | How to justify the label and LED together. The default of 'SPLIT' aligns the label to the left and the LED to the right with any additional space going between them. 'CENTER' pushes the label and LED together with any additional space to the left and right. 'LEFT' or 'RIGHT' pushes them to the respective side with the space going on the opposite.<br/><br/>Valid Values: <span class="values">SPLIT, CENTER, LEFT, RIGHT</span> | False |
@@ -822,7 +822,7 @@ The following settings apply to LABELLED. They are applied using the SETTING key
 | Item name | The item name | True |
 | Scale factor | Value to multiply the telemetry item by before displaying in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
 | Width | Width of the progress bar (default = 80 pixels | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
@@ -840,7 +840,7 @@ LABELPROGRESSBAR INST ADCS POSPROGRESS
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -860,7 +860,7 @@ LABELVALUE INST LATEST COLLECT_TYPE
 | Packet name | The packet name | True |
 | Item name | The item name | True |
 | Description | The description to display in the label (default is to display the description text associated with the telemetry item) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -879,7 +879,7 @@ LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 ### LABELVALUELIMITSCOLUMN
@@ -890,7 +890,7 @@ LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -911,7 +911,7 @@ LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Item name | The item name | True |
 | Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
 | High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 | Width | Width of the range bar (default = 160) | False |
 | Height | Height of the range bar (default = 25) | False |
@@ -934,7 +934,7 @@ By default TRUE is green and FALSE is red and all other values are black. Additi
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Width | Width of the LED circle (default = 20) | False |
 | Height | Height of the LED circle (default = 20) | False |
 
@@ -964,7 +964,7 @@ The following settings apply to LED. They are applied using the SETTING keyword.
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Width | Width of the range bar (default = 160) | False |
 | Height | Height of the range bar (default = 25) | False |
 
@@ -984,7 +984,7 @@ LIMITSBAR INST HEALTH_STATUS TEMP1
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Width | Width of the range bar (default = 160) | False |
 | Height | Height of the range bar (default = 25) | False |
 
@@ -1004,7 +1004,7 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Radius | Radius of the circle (default is 10) | False |
 | Item Name Display | Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false. | False |
 
@@ -1028,7 +1028,7 @@ LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -1047,7 +1047,7 @@ VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 8) | False |
 
 Example Usage:
@@ -1068,7 +1068,7 @@ VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Item name | The item name | True |
 | Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
 | High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 | Width | Width of the range bar (default = 160) | False |
 | Height | Height of the range bar (default = 25) | False |
@@ -1334,7 +1334,7 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 | Item name | The item name | True |
 | Scale factor | Value to multiple the telemetry item by before displaying the in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
 | Width | Width of the progress bar (default = 100 pixels) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
@@ -1354,7 +1354,7 @@ PROGRESSBAR INST ADCS POSPROGRESS
 | Item name | The item name | True |
 | Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
 | High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Width | Width of the range bar (default = 100) | False |
 | Height | Height of the range bar (default = 25) | False |
 
@@ -1447,7 +1447,7 @@ The white portion of the box darkens to gray while the value remains stagnant, t
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
@@ -1692,13 +1692,13 @@ END
 | Y Position | Y position of the upper-left corner of the text on the canvas | True |
 | Font Size | Font size of the text (Default = 12) | False |
 | Color | Color of the text | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
 CANVAS 200 100
   CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
-  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue WITH_UNITS
+  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
 END
 ```
 ![CANVASLABELVALUE](/img/telemetry_viewer/widgets/canvaslabelvalue.png)
@@ -1742,7 +1742,7 @@ Use various SETTING values to indicate which images should be displayed based on
 | Target name | The target name | True |
 | Packet name | The packet name | True |
 | Item name | The item name | True |
-| Value type | The type of the value to display<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | True |
+| Value type | The type of the value to display<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | True |
 | Default image filename | The default image to display. The file must be in the targets/TARGET/public directory. | True |
 | X Position | X position of the upper-left corner of the image on the canvas | True |
 | Y Position | Y position of the upper-left corner of the image on the canvas | True |
@@ -1817,7 +1817,7 @@ The line is represented by one of two colors based on the value of the associate
 | End X Position | X position of the end of the line on the canvas | True |
 | End Y Position | Y position of the end of the line on the canvas | True |
 | Width | Width of the line in pixels (default = 3) | False |
-| Value type | The type of the value to display. Default is CONVERTED<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| Value type | The type of the value to display. Default is CONVERTED<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
 ```ruby
