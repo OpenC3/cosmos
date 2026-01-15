@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -256,9 +256,15 @@ class QuestDBClient:
                 self.json_columns[f"{table_name}__{item_name}"] = True
                 continue
 
-            if item.get("array_size"):
-                column_type = "array"
-                column_definitions.append(f'"{item_name}" {column_type}')
+            if item.get("array_size") is not None:
+                # QuestDB only supports DOUBLE[] arrays as of 9.0.0
+                # Numeric arrays can use DOUBLE[], non-numeric must be JSON serialized
+                if data_type in ["INT", "UINT", "FLOAT"]:
+                    column_definitions.append(f'"{item_name}" DOUBLE[]')
+                else:
+                    # Non-numeric arrays (STRING, BLOCK, etc.) must be JSON serialized
+                    column_definitions.append(f'"{item_name}" varchar')
+                    self.json_columns[f"{table_name}__{item_name}"] = True
             else:
                 # Determine the QuestDB column type based on item data type
                 # Default to VARCHAR for flexibility
@@ -383,7 +389,8 @@ class QuestDBClient:
 
             case list():
                 # QuestDB 9.0.0 only supports DOUBLE arrays
-                if len(value) == 0 or not isinstance(value[0], numbers.Number):
+                # Check ALL elements are numeric (not just first) to avoid mixed array errors
+                if len(value) == 0 or not all(isinstance(v, numbers.Number) for v in value):
                     value = json.dumps(value)
                 else:
                     value = numpy.array(value, dtype=numpy.float64)
@@ -509,19 +516,35 @@ class QuestDBClient:
                 protocol_type = type_match.group(1)
                 column_type = to_type_match.group(1) if to_type_match else ""
 
-                # Check if this is an array-to-scalar conversion (not fixable via ALTER)
-                if protocol_type.endswith("[]") and not column_type.endswith("[]"):
+                # Check if this is an array-to-scalar/varchar conversion (not fixable via ALTER)
+                is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
+                is_array_column = column_type.endswith("[]") or column_type.upper() == "ARRAY"
+                if is_array_protocol and not is_array_column:
                     json_key = f"{err_table_name}__{column_name}"
                     self.json_columns[json_key] = True
                     self._log_warn(
                         f"QuestDB: Column {column_name} in table {err_table_name} was created as scalar "
-                        f"but received array. Will serialize as JSON going forward."
+                        f"but received array. Serializing as JSON and retrying."
                     )
+                    # Convert the array value to JSON and retry
+                    if column_name in columns:
+                        value = columns[column_name]
+                        if isinstance(value, numpy.ndarray):
+                            columns[column_name] = json.dumps(value.tolist())
+                        else:
+                            columns[column_name] = json.dumps(value)
+                        self.connect_ingest()  # reconnect
+                        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+                        return True
                     return False
 
                 # Try to change the column type to fix the error
-                protocol_type = protocol_type.lower()
-                alter = f"""ALTER TABLE "{err_table_name}" ALTER COLUMN {column_name} TYPE {protocol_type}"""
+                # Note: QuestDB only supports DOUBLE[] arrays, convert other array types
+                if protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY":
+                    new_type = "DOUBLE[]"
+                else:
+                    new_type = protocol_type.lower()
+                alter = f"""ALTER TABLE "{err_table_name}" ALTER COLUMN {column_name} TYPE {new_type}"""
                 cur.execute(alter)
                 self._log_info(f"QuestDB: {alter}")
                 self.connect_ingest()  # reconnect
