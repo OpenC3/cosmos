@@ -53,8 +53,7 @@ class Secrets:
         for secret in secrets:
             if len(secret) < 3:
                 raise ValueError(f"Secret must have at least 3 items (type, key, data), got {len(secret)}")
-            type, key, data, *extra = secret
-            secret_store = extra[0] if extra else None
+            type, key, data, *extra = secret # *extra would be secret_store, but we don't need that here
             match type:
                 case "ENV":
                     self.local_secrets[key] = os.environ.get(data)
