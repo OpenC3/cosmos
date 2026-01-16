@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,7 +24,7 @@ from openc3.config.config_parser import ConfigParser
 
 class PacketItem(StructureItem):
     # The allowable state colors
-    STATE_COLORS = ["GREEN", "YELLOW", "RED"]
+    VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
 
     def __init__(
         self,

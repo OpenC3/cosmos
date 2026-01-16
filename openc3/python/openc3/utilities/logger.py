@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,6 +29,12 @@ CLASS_ATTRS = [
     "my_instance",
     "scope",
     "__dict__",
+    "DEBUG_VALUE",
+    "INFO_VALUE",
+    "WARN_VALUE",
+    "ERROR_VALUE",
+    "FATAL_VALUE",
+    # Backwards compatibility aliases
     "DEBUG",
     "INFO",
     "WARN",
@@ -90,11 +96,20 @@ class Logger(metaclass=LoggerMeta):
     my_instance = None
     scope = OPENC3_SCOPE
 
-    DEBUG = 0
-    INFO = 1
-    WARN = 2
-    ERROR = 3
-    FATAL = 4
+    # These were renamed from simply DEBUG, INFO, etc. to avoid confusion with the log levels themselves.
+    # The old names are still supported as aliases for backwards compatibility.
+    DEBUG_VALUE = 0
+    INFO_VALUE = 1
+    WARN_VALUE = 2
+    ERROR_VALUE = 3
+    FATAL_VALUE = 4
+
+    # Backwards compatibility aliases for numeric levels
+    DEBUG = DEBUG_VALUE
+    INFO = INFO_VALUE
+    WARN = WARN_VALUE
+    ERROR = ERROR_VALUE
+    FATAL = FATAL_VALUE
 
     DEBUG_LEVEL = "DEBUG"
     INFO_LEVEL = "INFO"
@@ -108,7 +123,7 @@ class Logger(metaclass=LoggerMeta):
     EPHEMERAL = "ephemeral"
 
     # @param level [Integer] The initial logging level
-    def __init__(self, level=INFO):
+    def __init__(self, level=INFO_VALUE):
         self.stdout = True
         self.level = level
         self.detail_string = None
@@ -121,7 +136,7 @@ class Logger(metaclass=LoggerMeta):
 
     # Get the singleton instance
     @classmethod
-    def instance(cls, level=INFO):
+    def instance(cls, level=INFO_VALUE):
         if cls.my_instance:
             return cls.my_instance
 
@@ -135,7 +150,7 @@ class Logger(metaclass=LoggerMeta):
     #   to the log message
     def debug(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.DEBUG:
+        if self.level <= self.DEBUG_VALUE:
             self.log_message(
                 self.DEBUG_LEVEL,
                 message,
@@ -149,7 +164,7 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def info(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.INFO:
+        if self.level <= self.INFO_VALUE:
             self.log_message(
                 self.INFO_LEVEL,
                 message,
@@ -163,7 +178,7 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def warn(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.WARN:
+        if self.level <= self.WARN_VALUE:
             self.log_message(
                 self.WARN_LEVEL,
                 message,
@@ -177,7 +192,7 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def error(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.ERROR:
+        if self.level <= self.ERROR_VALUE:
             self.log_message(
                 self.ERROR_LEVEL,
                 message,
@@ -191,7 +206,7 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def fatal(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.FATAL:
+        if self.level <= self.FATAL_VALUE:
             self.log_message(
                 self.FATAL_LEVEL,
                 message,
@@ -232,7 +247,7 @@ class Logger(metaclass=LoggerMeta):
         with self.instance_mutex:
             data = self.build_log_data(log_level, message, user, type, url, other)
             if self.stdout:
-                if (log_level in ['WARN', 'ERROR', 'FATAL']) and OPENC3_LOG_STDERR:
+                if (log_level in ["WARN", "ERROR", "FATAL"]) and OPENC3_LOG_STDERR:
                     io = sys.stderr
                 else:
                     io = sys.stdout

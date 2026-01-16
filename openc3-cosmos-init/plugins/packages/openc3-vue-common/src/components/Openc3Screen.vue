@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -587,6 +587,7 @@ export default {
                 if (parameters[1] === 'RAW') {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }
+              // falls through
               case 'SETTING':
                 this.configParser.verify_num_parameters(
                   2,
@@ -628,6 +629,7 @@ export default {
                 if (parameters[2] === 'RAW') {
                   parameters[2] = 'RAW__' + parameters[3].toLowerCase()
                 }
+              // falls through
               case 'GLOBAL_SETTING':
                 this.configParser.verify_num_parameters(
                   2,
