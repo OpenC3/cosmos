@@ -32,7 +32,7 @@ module OpenC3
   # Packet adds is the ability to apply formatting to PacketItem values as well
   # as managing PacketItem's limit states.
   class Packet < Structure
-    RESERVED_ITEM_NAMES = ['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze]
+    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze].freeze
     ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with
@@ -219,7 +219,7 @@ module OpenC3
           if !(Time === received_time)
             raise(ArgumentError, "received_time must be a Time but is a #{received_time.class}")
           end
-          @received_time = received_time.clone.freeze
+          @received_time = received_time
         else
           @received_time = nil
         end
@@ -1095,7 +1095,7 @@ module OpenC3
         end
       end
       packet.instance_variable_set("@read_conversion_cache".freeze, nil)
-      packet.extra = JSON.parse(packet.extra.as_json().to_json(allow_nan: true), allow_nan: true, create_additions: true) if packet.extra # Deep copy using JSON
+      packet.extra = packet.extra.deep_dup if packet.extra
       packet
     end
     alias dup clone

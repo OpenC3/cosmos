@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -160,7 +160,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.01)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(10):
+                time.sleep(0.01)
+                if "Bad processor" in stdout.getvalue():
+                    break
             self.assertIn("Bad processor", stdout.getvalue())
         # This is an implementation detail but we want to ensure the error was logged
         self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)

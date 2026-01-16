@@ -32,11 +32,17 @@ module OpenC3
                    packet_name: packet.packet_name,
                    stored: packet.stored.to_s,
                    received_count: packet.received_count }
-      json_hash = {}
+      # Read all RAW values at once - optimized by accessor
+      json_hash = packet.read_items(packet.sorted_items)
+      # Read additional value types using given_raw to avoid re-reading from buffer
       packet.sorted_items.each do |item|
-        json_hash[item.name] = packet.read_item(item, :RAW)
-        json_hash[item.name + "__C"] = packet.read_item(item, :CONVERTED) if item.write_conversion or item.states
-        json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED) if item.format_string
+        if item.hidden
+          json_hash.delete(item.name)
+        else
+          given_raw = json_hash[item.name]
+          json_hash[item.name + "__C"] = packet.read_item(item, :CONVERTED, packet.buffer, given_raw) if item.write_conversion or item.states
+          json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED, packet.buffer, given_raw) if item.format_string
+        end
       end
       json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)

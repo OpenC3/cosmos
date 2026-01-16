@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -183,8 +183,13 @@ class Commands:
         target_upcase = target_name.upper()
         packet_upcase = packet_name.upper()
 
-        # Lookup the command and create a light weight copy
-        pkt = self.packet(target_upcase, packet_upcase)
+        # Inline packet lookup to avoid redundant .upper() calls through method chain
+        target_packets = self.config.commands.get(target_upcase)
+        if target_packets is None:
+            raise RuntimeError(f"Command target '{target_upcase}' does not exist")
+        pkt = target_packets.get(packet_upcase)
+        if pkt is None:
+            raise RuntimeError(f"Command packet '{target_upcase} {packet_upcase}' does not exist")
 
         command = pkt.clone()
 

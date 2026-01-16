@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -224,9 +224,9 @@ module OpenC3
         @interface.connect
         read_result = nil
         $read_buffer = "\x31\x30\xAB\xCD" # ASCII 31, 30 is '10'
-        Thread.new { sleep(0.5); read_result = @interface.read }
+        Thread.new { sleep(0.1); read_result = @interface.read }
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 11, (@1)\xAB\xCD")
         expect(read_result.read("VOLTAGE")).to eql(10)
       end
@@ -263,9 +263,9 @@ module OpenC3
         @interface.connect
         read_result = nil
         $read_buffer = "\x31\x30\xAB\xCD" # ASCII 31, 30 is '10'
-        Thread.new { sleep(0.5); read_result = @interface.read }
+        Thread.new { sleep(0.1); read_result = @interface.read }
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 11, (@1)\xAB\xCD")
         expect(read_result.read("PKT_ID")).to eql(1) # Result ID set to the defined value
         expect(read_result.read("VOLTAGE")).to eql(10)
@@ -309,9 +309,9 @@ module OpenC3
         @interface.connect
         read_result = nil
         $read_buffer = "\x31\x30\xAB\xCD" # ASCII 31, 30 is '10'
-        Thread.new { sleep(0.5); read_result = @interface.read }
+        Thread.new { sleep(0.1); read_result = @interface.read }
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 11, (@1)\xAB\xCD")
         expect(read_result.read("APID")).to eql(10) # ID item set to the defined value
         expect(read_result.read("PKTID")).to eql(20) # ID item set to the defined value
@@ -345,13 +345,13 @@ module OpenC3
         packet.restore_defaults
         @interface.connect
         $read_buffer = "\x31\x30\xAB\xCD" # ASCII 31, 30 is '10'
-        Thread.new { sleep(0.5); @interface.read }
+        Thread.new { sleep(0.1); @interface.read }
         logger = class_double("OpenC3::Logger").as_stubbed_const(:transfer_nested_constants => true)
         expect(logger).to receive(:error) do |arg|
           expect(arg).to match(/Unexpected response: 10/)
         end
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 12, (@2)\xAB\xCD")
       end
 
@@ -383,13 +383,13 @@ module OpenC3
         packet.restore_defaults
         @interface.connect
         $read_buffer = "\x31\x30\x3B\x31\x31\xAB\xCD" # ASCII is '10;11'
-        Thread.new { sleep(0.5); @interface.read }
+        Thread.new { sleep(0.1); @interface.read }
         logger = class_double("OpenC3::Logger").as_stubbed_const(:transfer_nested_constants => true)
         expect(logger).to receive(:error) do |arg|
           expect(arg).to match(/Could not write value 10;11/)
         end
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 12, (@2)\xAB\xCD")
       end
 
@@ -422,7 +422,7 @@ module OpenC3
         @interface.connect
         read_result = nil
         $read_buffer = "\x31\x30\x0A\x31\x32\x0A" # ASCII: 30:'0', 31:'1', etc
-        Thread.new { sleep(0.5); read_result = @interface.read }
+        Thread.new { sleep(0.1); read_result = @interface.read }
         @interface.write(packet)
         expect($write_buffer).to eql("SOUR:VOLT 11, (@20)\xAD")
         expect(read_result.read("VOLTAGE")).to eq 12
@@ -454,7 +454,7 @@ module OpenC3
       @interface.connect
       read_result = nil
       $read_buffer = "\x4F\x70\x65\x0A\x6E\x43\x33\x0A" # ASCII
-      Thread.new { sleep(0.5); read_result = @interface.read }
+      Thread.new { sleep(0.1); read_result = @interface.read }
       @interface.write(packet)
       expect($write_buffer).to eql("GO\xAD")
       expect(read_result.read("STRING")).to eq 'OpenC3'

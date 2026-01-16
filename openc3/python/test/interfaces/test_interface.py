@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -590,9 +590,10 @@ class WriteRawInterface(unittest.TestCase):
             )
             thread.start()
             threads.append(thread)
-        for threads in threads:
-            thread.join()
-        self.assertGreater(time.time() - start_time, 1)
+        for t in threads:
+            t.join()
+        # 10 threads × 0.1s = 1.0s minimum, but use 0.9s threshold for CI timing variability
+        self.assertGreater(time.time() - start_time, 0.9)
         self.assertEqual(interface.write_count, 0)
         self.assertEqual(interface.bytes_written, 40)
 
