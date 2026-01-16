@@ -297,3 +297,25 @@ TELEMETRY <%= target_name %> HYBRIDTLM BIG_ENDIAN "Hybrid Accessor Telemetry"
   APPEND_ITEM CBOR_LENGTH 32 UINT
   APPEND_STRUCTURE CBOR 0 CMD <%= target_name %> CBORSTRUCT
     VARIABLE_BIT_SIZE CBOR_LENGTH
+
+# Throughput Status Telemetry (from external throughput server)
+TELEMETRY <%= target_name %> THROUGHPUT_STATUS BIG_ENDIAN "Throughput statistics from server"
+  <%= render "_ccsds_tlm.txt", locals: {apid: 100} %>
+  APPEND_ITEM CMD_RECV_COUNT 32 UINT "Commands received by server"
+  APPEND_ITEM CMD_RECV_RATE 32 FLOAT "Commands per second"
+    FORMAT_STRING "%.1f"
+    UNITS Hz Hz
+  APPEND_ITEM TLM_SENT_COUNT 32 UINT "Telemetry packets sent by server"
+  APPEND_ITEM TLM_SENT_RATE 32 FLOAT "Telemetry packets per second"
+    FORMAT_STRING "%.1f"
+    UNITS Hz Hz
+  APPEND_ITEM TLM_TARGET_RATE 32 UINT "Configured streaming rate"
+    UNITS Hz Hz
+  APPEND_ITEM BYTES_RECV 64 UINT "Total bytes received by server"
+    UNITS Bytes B
+  APPEND_ITEM BYTES_SENT 64 UINT "Total bytes sent by server"
+    UNITS Bytes B
+  APPEND_ITEM UPTIME_SEC 32 UINT "Server uptime"
+    UNITS Seconds s
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS

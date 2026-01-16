@@ -1,0 +1,38 @@
+SCREEN AUTO AUTO 1.0
+GLOBAL_SETTING LABELVALUE TEXTCOLOR "#bababa"
+
+VERTICAL
+  TITLE "<%= target_name %> Throughput Statistics"
+
+  VERTICALBOX "Server Status"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS UPTIME_SEC
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_TARGET_RATE
+  END
+
+  VERTICALBOX "Command Metrics"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS CMD_RECV_COUNT
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS CMD_RECV_RATE
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS BYTES_RECV
+  END
+
+  VERTICALBOX "Telemetry Metrics"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_SENT_COUNT
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_SENT_RATE
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS BYTES_SENT
+  END
+
+  VERTICALBOX "Controls"
+    HORIZONTAL
+      BUTTON 'Start Stream 10 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 10")'
+      BUTTON 'Start Stream 100 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 100")'
+      BUTTON 'Start Stream 1000 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 1000")'
+    END
+    HORIZONTAL
+      BUTTON 'Stop Stream' 'api.cmd("<%= target_name %> STOP_STREAM")'
+      BUTTON 'Get Stats' 'api.cmd("<%= target_name %> GET_STATS")'
+      BUTTON 'Reset Stats' 'api.cmd("<%= target_name %> RESET_STATS")'
+    END
+  END
+
+  <%= render "_footer.txt" %>
+END
