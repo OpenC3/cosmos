@@ -16,7 +16,7 @@ AVAILABLE_IMAGES=(
 )
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: openc3_build_ubi.sh [IMAGE_NAME...]"
   echo ""
   echo "Builds OpenC3 UBI (Universal Base Image) containers for enterprise deployments."
@@ -61,7 +61,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Parse command line arguments to determine which images to build
 IMAGES_TO_BUILD=()
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
   # No arguments provided, build all images
   IMAGES_TO_BUILD=("${AVAILABLE_IMAGES[@]}")
   echo "No images specified, building all images..."
@@ -99,7 +99,7 @@ fi
 
 # Detect host architecture and set platform flag
 # On ARM Macs, some x86 images use x86-64-v3 which can't be emulated
-if [ "$(uname -m)" = "arm64" ]; then
+if [[ "$(uname -m)" == "arm64" ]]; then
   echo "Detected ARM architecture - building native images"
   PLATFORM_FLAG=""
 else
@@ -109,7 +109,7 @@ fi
 
 # Function to check and perform registry login
 check_registry_login() {
-  if [ -z "$OPENC3_UBI_REGISTRY" ]; then
+  if [[ -z "$OPENC3_UBI_REGISTRY" ]]; then
     echo "Warning: OPENC3_UBI_REGISTRY not set, skipping registry login check"
     return 0
   fi
@@ -117,7 +117,7 @@ check_registry_login() {
   echo "Logging into registry: $OPENC3_UBI_REGISTRY"
 
   # Attempt login with credentials if provided, otherwise prompt
-  if [ -n "$OPENC3_UBI_USERNAME" ] && [ -n "$OPENC3_UBI_PASSWORD" ]; then
+  if [[ -n "$OPENC3_UBI_USERNAME" ]] && [[ -n "$OPENC3_UBI_PASSWORD" ]]; then
     echo "Using provided credentials for login..."
     if echo "$OPENC3_UBI_PASSWORD" | docker login "$OPENC3_UBI_REGISTRY" --username "$OPENC3_UBI_USERNAME" --password-stdin; then
       echo "Successfully authenticated with registry: $OPENC3_UBI_REGISTRY"
@@ -155,7 +155,7 @@ format_duration() {
   local total_seconds=$1
   local minutes=$((total_seconds / 60))
   local seconds=$((total_seconds % 60))
-  if [ $minutes -gt 0 ]; then
+  if [[ $minutes -gt 0 ]]; then
     echo "${minutes}m ${seconds}s"
   else
     echo "${seconds}s"
@@ -416,7 +416,7 @@ echo "       BUILD SUMMARY REPORT"
 echo "========================================"
 echo ""
 
-if [ ${#BUILT_IMAGES[@]} -eq 0 ]; then
+if [[ ${#BUILT_IMAGES[@]} -eq 0 ]]; then
   echo "No images were built."
 else
   echo "Images built: ${#BUILT_IMAGES[@]}"

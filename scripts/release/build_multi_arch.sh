@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # TODO: Can this script be replaced by https://github.com/docker/build-push-action
 
@@ -26,7 +26,7 @@ eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
 
 # check if the first parameter is 'ubi'
-if [ "${1:-default}" = "ubi" ]; then
+if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
@@ -41,7 +41,7 @@ fi
 # Setup cacert.pem
 echo "Downloading cert from curl"
 curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
   echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
   echo "openc3_setup FAILED" 1>&2
   exit 1
@@ -72,7 +72,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -103,7 +103,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -129,7 +129,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -145,7 +145,7 @@ fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 cd ../openc3-redis
-if [ "${1:-default}" = "ubi" ]; then
+if [[ "${1:-default}" == "ubi" ]]; then
   # UBI build uses Dockerfile-ubi which builds Valkey from source
   docker buildx build \
     --file Dockerfile-ubi \
@@ -157,7 +157,7 @@ if [ "${1:-default}" = "ubi" ]; then
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-  if [ $OPENC3_UPDATE_LATEST = true ]
+  if [[ $OPENC3_UPDATE_LATEST == true ]]
   then
   docker buildx build \
     --file Dockerfile-ubi \
@@ -180,7 +180,7 @@ else
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-  if [ $OPENC3_UPDATE_LATEST = true ]
+  if [[ $OPENC3_UPDATE_LATEST == true ]]
   then
   docker buildx build \
     --platform ${OPENC3_PLATFORMS} \
@@ -193,7 +193,7 @@ else
   fi
 fi
 
-if [ "${1:-default}" = "ubi" ]; then
+if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_TSDB_VERSION_EXT="-rhel"
 else
   OPENC3_TSDB_VERSION_EXT=""
@@ -206,7 +206,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-tsdb${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
@@ -229,7 +229,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-buckets${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -256,7 +256,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -282,7 +282,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --file ${DOCKERFILE} \
@@ -307,7 +307,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
@@ -321,7 +321,7 @@ docker buildx build \
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
-if [ "${1:-default}" = "ubi" ]; then
+if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.6.5
 else
@@ -336,7 +336,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
@@ -347,7 +347,7 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik${SUFFIX}:latest .
 fi
 
-if [ "${1:-default}" = "ubi" ]; then
+if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource
 fi
 cd ../openc3-cosmos-init
@@ -365,7 +365,7 @@ docker buildx build \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
-if [ $OPENC3_UPDATE_LATEST = true ]
+if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \

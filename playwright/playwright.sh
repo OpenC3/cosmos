@@ -11,18 +11,18 @@ usage() {
   exit 1
 }
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   usage $0
 fi
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   usage $0
 fi
 
 case $1 in
     install-playwright )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 install-playwright"
             echo ""
             echo "Install Playwright and its dependencies."
@@ -40,8 +40,8 @@ case $1 in
         fi
         # Attempt to clean up downloaded browser binaries
         #   https://playwright.dev/docs/ci#directories-to-cache
-        [ -d $HOME/.cache/ms-playwright ] && rm -rf $HOME/.cache/ms-playwright # linux
-        [ -d $HOME/Library/Caches/ms-playwright ] && rm -rf $HOME/Library/Caches/ms-playwright # mac
+        [[ -d $HOME/.cache/ms-playwright ]] && rm -rf $HOME/.cache/ms-playwright # linux
+        [[ -d $HOME/Library/Caches/ms-playwright ]] && rm -rf $HOME/Library/Caches/ms-playwright # mac
 
         rm -rf node_modules
 
@@ -51,7 +51,7 @@ case $1 in
         ;;
 
     build-plugin )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 build-plugin"
             echo ""
             echo "Build the test plugin used in Playwright tests."
@@ -77,7 +77,7 @@ case $1 in
         ;;
 
     reset-storage-state )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 reset-storage-state"
             echo ""
             echo "Clear out cached Playwright storage state."
@@ -93,7 +93,7 @@ case $1 in
         ;;
 
     run-chromium )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 run-chromium [PLAYWRIGHT_OPTIONS]"
             echo ""
             echo "Run Playwright tests using Chrome against a local OpenC3 instance."
@@ -117,7 +117,7 @@ case $1 in
         ;;
 
     run-enterprise )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 run-enterprise"
             echo ""
             echo "Run enterprise Playwright tests."
@@ -133,7 +133,7 @@ case $1 in
         ;;
 
     run-aws )
-        if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+        if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
             echo "Usage: $0 run-aws"
             echo ""
             echo "Run Playwright tests against AWS-hosted OpenC3."
