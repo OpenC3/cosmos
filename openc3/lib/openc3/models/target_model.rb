@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -53,7 +53,10 @@ module OpenC3
     VALID_TYPES = %i(CMD TLM)
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
+    PACKET_CACHE_TIMEOUT = 10.0
     @@item_map_cache = {}
+    @@packet_cache = {}
+    @@packet_cache_mutex = Mutex.new
     @@sync_packet_count_data = {}
     @@sync_packet_count_time = nil
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
@@ -208,11 +211,41 @@ module OpenC3
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
 
+      # Check cache first
+      cache_key = "#{scope}__#{type}__#{target_name}__#{packet_name}"
+      @@packet_cache_mutex.synchronize do
+        cached = @@packet_cache[cache_key]
+        if cached && (Time.now - cached[:time]) < PACKET_CACHE_TIMEOUT
+          @@packet_cache_hits ||= 0
+          @@packet_cache_hits += 1
+          return cached[:packet]
+        end
+      end
+
       # Assume it exists and just try to get it to avoid an extra call to Store.exist?
       json = Store.hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
 
-      JSON.parse(json, allow_nan: true, create_additions: true)
+      packet = JSON.parse(json, allow_nan: true, create_additions: true)
+
+      # Store in cache
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache[cache_key] = { packet: packet, time: Time.now }
+        @@packet_cache_misses ||= 0
+        @@packet_cache_misses += 1
+      end
+
+      packet
+    end
+
+    def self.packet_cache_stats
+      @@packet_cache_mutex.synchronize do
+        {
+          hits: @@packet_cache_hits || 0,
+          misses: @@packet_cache_misses || 0,
+          size: @@packet_cache.size
+        }
+      end
     end
 
     # @return [Array<Hash>] All packet hashes under the target_name
@@ -235,6 +268,12 @@ module OpenC3
 
     def self.set_packet(target_name, packet_name, packet, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
+
+      # Invalidate cache entry
+      cache_key = "#{scope}__#{type}__#{target_name}__#{packet_name}"
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache.delete(cache_key)
+      end
 
       begin
         Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))

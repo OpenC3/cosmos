@@ -333,6 +333,92 @@ module OpenC3
         expect(pkt['target_name']).to eql "INST"
         expect(pkt['packet_name']).to eql "ABORT"
       end
+
+      it "caches packet lookups" do
+        # Clear cache and stats before test
+        TargetModel.class_variable_set(:@@packet_cache, {})
+        TargetModel.class_variable_set(:@@packet_cache_hits, 0)
+        TargetModel.class_variable_set(:@@packet_cache_misses, 0)
+
+        # First call should miss cache
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        stats = TargetModel.packet_cache_stats
+        expect(stats[:hits]).to eql 0
+        expect(stats[:misses]).to eql 1
+        expect(stats[:size]).to eql 1
+
+        # Second call should hit cache
+        pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        stats = TargetModel.packet_cache_stats
+        expect(stats[:hits]).to eql 1
+        expect(stats[:misses]).to eql 1
+
+        # Both packets should be equivalent
+        expect(pkt1).to eql pkt2
+      end
+
+      it "expires cache after timeout" do
+        # Clear cache before test
+        TargetModel.class_variable_set(:@@packet_cache, {})
+        TargetModel.class_variable_set(:@@packet_cache_hits, 0)
+        TargetModel.class_variable_set(:@@packet_cache_misses, 0)
+
+        # First call populates cache
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:misses]).to eql 1
+
+        # Set timeout to 0 to force expiration
+        timeout = TargetModel::PACKET_CACHE_TIMEOUT
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = 0
+        end
+
+        # Next call should miss cache due to expiration
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:misses]).to eql 2
+        expect(TargetModel.packet_cache_stats[:hits]).to eql 0
+
+        # Restore timeout
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = timeout
+        end
+      end
+
+      it "invalidates cache on set_packet" do
+        # Clear cache before test
+        TargetModel.class_variable_set(:@@packet_cache, {})
+        TargetModel.class_variable_set(:@@packet_cache_hits, 0)
+        TargetModel.class_variable_set(:@@packet_cache_misses, 0)
+
+        # Populate cache
+        pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:size]).to eql 1
+
+        # set_packet should invalidate the cache entry
+        TargetModel.set_packet("INST", "HEALTH_STATUS", pkt, type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:size]).to eql 0
+
+        # Next get should miss cache
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:misses]).to eql 2
+      end
+
+      it "caches different packet types separately" do
+        # Clear cache before test
+        TargetModel.class_variable_set(:@@packet_cache, {})
+
+        # Get telemetry packet
+        tlm_pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:size]).to eql 1
+
+        # Get command packet
+        cmd_pkt = TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
+        expect(TargetModel.packet_cache_stats[:size]).to eql 2
+
+        # Verify they are different packets
+        expect(tlm_pkt['packet_name']).to eql "HEALTH_STATUS"
+        expect(cmd_pkt['packet_name']).to eql "ABORT"
+      end
     end
 
     describe "self.packet_item" do
