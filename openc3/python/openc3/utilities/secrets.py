@@ -50,7 +50,10 @@ class Secrets:
         raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'delete'")
 
     def setup(self, secrets):
-        for type, key, data, *extra in secrets:
+        for secret in secrets:
+            if len(secret) < 3:
+                raise ValueError(f"Secret must have at least 3 items (type, key, data), got {len(secret)}")
+            type, key, data, *extra = secret
             secret_store = extra[0] if extra else None
             match type:
                 case "ENV":
