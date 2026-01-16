@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -116,7 +116,7 @@ from openc3.utilities.target_file import TargetFile
 from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
-from openc3.script.exceptions import StopScript, SkipScript
+from openc3.script.exceptions import StopScript, SkipScript, CheckError
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.script.suite import Group
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
@@ -1120,6 +1120,8 @@ class RunningScript:
 
         if exc_type.__name__ == "DRbConnError":
             Logger.error("Error Connecting to Command and Telemetry Server")
+        elif exc_type == CheckError:
+            Logger.error(str(exc_value))
         else:
             formatted_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
             # Print the last 4 lines to show the exception, the ^^^^ line,

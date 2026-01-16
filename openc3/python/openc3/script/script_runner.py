@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -40,7 +40,9 @@ def script_list(scope=OPENC3_SCOPE):
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/syntax"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
+    # Explicitly set the headers to plain/text so the request.body is set correctly
+    headers = {"Content-Type": "text/plain"}
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, headers=headers, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Script syntax check request failed", scope=scope)
     else:
@@ -120,7 +122,9 @@ def script_unlock(filename, scope=OPENC3_SCOPE):
 
 def script_instrumented(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/instrumented"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
+    # Explicitly set the headers to plain/text so the request.body is set correctly
+    headers = {"Content-Type": "text/plain"}
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, headers=headers, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Script instrumented request failed", scope=scope)
     else:

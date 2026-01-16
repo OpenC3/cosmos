@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -386,10 +386,12 @@ class Script < OpenC3::TargetFile
         tf.close()
         results, status = Open3.capture2e("python -m py_compile #{tf.path}")
         lines = []
-        if results and results.length > 0
+        success = status.respond_to?(:success?) ? status.success? : status == 0
+        if !success || (results and results.length > 0)
           results.each_line do |line|
             lines << line
           end
+          lines << "Syntax Error" if lines.empty?
           return(
             { 'title' => 'Syntax Check Failed', 'description' => lines.as_json().to_json(allow_nan: true) }
           )
