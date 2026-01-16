@@ -33,7 +33,7 @@ export default {
       this.api
         .get_setting(setting, kwparams)
         .then((response) => {
-          this.parseSetting(response)
+          this.parseSetting(response, { setting })
         })
         .catch((error) => {
           this.parseSetting(null)

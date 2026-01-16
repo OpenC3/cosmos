@@ -154,7 +154,11 @@
             >
               Cancel
             </v-btn>
-            <v-btn variant="flat" data-test="edit-submit" @click="submit">
+            <v-btn
+              variant="flat"
+              data-test="edit-submit"
+              @click="checkVersionAndSubmit"
+            >
               Install
             </v-btn>
           </v-card-actions>
@@ -172,7 +176,9 @@ import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from 'ace-diff'
 import 'ace-diff/dist/ace-diff-twilight.min.css'
+import { Api } from '@openc3/js-common/services'
 import { toRaw } from 'vue'
+import * as semver from 'semver'
 import { AceEditorUtils } from '../../components/ace'
 
 export default {
@@ -199,11 +205,17 @@ export default {
       required: false,
       default: null,
     },
+    minCosmosVersion: {
+      type: String,
+      required: false,
+      default: undefined,
+    },
     modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   emits: ['callback', 'update:modelValue'],
   data() {
     return {
+      installedCosmosVersion: null,
       tab: 0,
       localVariables: {},
       localPluginTxt: '',
@@ -248,6 +260,11 @@ export default {
         }
       },
     },
+  },
+  created() {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.installedCosmosVersion = data.version
+    })
   },
   mounted() {
     const pluginMode = this.buildPluginMode()
@@ -367,6 +384,30 @@ export default {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
+    },
+    checkVersionAndSubmit: function () {
+      const versionsAreCompatible =
+        !this.installedCosmosVersion ||
+        !this.minCosmosVersion ||
+        semver.gte(this.installedCosmosVersion, this.minCosmosVersion)
+      if (versionsAreCompatible) {
+        this.submit()
+      } else {
+        this.$dialog
+          .confirm(
+            `This plugin requires a minimum COSMOS version of ${this.minCosmosVersion}, which is greater than your installed version (${this.installedCosmosVersion}). Install anyway?`,
+            {
+              okText: 'Install',
+              cancelText: 'Cancel',
+            },
+          )
+          .then((dialog) => {
+            this.submit()
+          })
+          .catch((error) => {
+            this.close()
+          })
+      }
     },
     submit: function () {
       if (this.existingPluginTxt === null) {

@@ -37,15 +37,15 @@ class CommandDecomTopic(Topic):
             "stored": str(packet.stored),
             "received_count": packet.received_count,
         }
-        json_hash = {}
+        # Read all RAW values at once - optimized by accessor
+        json_hash = packet.read_items(packet.sorted_items)
+        # Read additional value types using given_raw to avoid re-reading from buffer
         for item in packet.sorted_items:
-            json_hash[item.name] = packet.read_item(item, "RAW")
+            given_raw = json_hash[item.name]
             if item.write_conversion or item.states:
-                json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED")
-            if item.format_string or item.units:
-                json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
-            if item.units:
-                json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS")
+                json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED", packet.buffer, given_raw)
+            if item.format_string:
+                json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED", packet.buffer, given_raw)
         if packet.extra:
             json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -35,6 +35,9 @@ module OpenC3
         # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
         json_hash = CvtModel.build_json_from_packet(packet)
+        # Convert to JSON-safe types once and reuse for both topic write and CVT set
+        json_safe_hash = json_hash.as_json
+        json_data = JSON.generate(json_safe_hash, allow_nan: true)
         # Write to stream
         msg_hash = {
           :time => packet.packet_time.to_nsec_from_epoch,
@@ -42,13 +45,14 @@ module OpenC3
           :target_name => packet.target_name,
           :packet_name => packet.packet_name,
           :received_count => packet.received_count,
-          :json_data => JSON.generate(json_hash.as_json, allow_nan: true),
+          :json_data => json_data,
         }
         Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id)
 
         unless packet.stored
           # Also update the current value table with the latest decommutated data
-          CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: scope)
+          # Pass pre-serialized JSON to avoid calling as_json twice
+          CvtModel.set_json(json_data, json_safe_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: scope)
         end
       end
     end

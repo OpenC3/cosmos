@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -60,6 +60,30 @@ class CvtModel(Model):
     def set(cls, hash: dict, target_name: str, packet_name: str, queued: bool = False, scope: str = OPENC3_SCOPE):
         """Set the current value table for a target, packet"""
         packet_json = json.dumps(hash, cls=JsonEncoder)
+        key = f"{scope}__tlm__{target_name}"
+        tgt_pkt_key = key + f"__{packet_name}"
+        CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
+        if queued:
+            StoreQueued.hset(key, packet_name, packet_json)
+        else:
+            Store.hset(key, packet_name, packet_json)
+
+    @classmethod
+    def set_json(
+        cls,
+        packet_json: str,
+        hash: dict,
+        target_name: str,
+        packet_name: str,
+        queued: bool = False,
+        scope: str = OPENC3_SCOPE,
+    ):
+        """Set the current value table with pre-serialized JSON (avoids double serialization)
+
+        Args:
+            packet_json: Pre-serialized JSON string
+            hash: The original dict (for caching)
+        """
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]

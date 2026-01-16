@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -40,7 +40,7 @@ module OpenC3
       # Clean after each so we can check for single log files
       if @stream_log
         @stream_log.shutdown
-        sleep(1)
+        sleep(0.1)
       end
     end
 
@@ -100,9 +100,9 @@ module OpenC3
         @stream_log.write("\x00\x01\x02\x03" * 250) # size 1000
         @stream_log.write("\x00\x01\x02\x03" * 250) # size 2000
         expect(@files.keys.length).to eql 0 # hasn't cycled yet
-        sleep 0.1
+        sleep 0.05
         @stream_log.write("\x00") # size 200001
-        sleep 1
+        sleep 0.2
         expect(@files.keys.length).to eql 1
         threads = @stream_log.stop
         threads.each do |thread|

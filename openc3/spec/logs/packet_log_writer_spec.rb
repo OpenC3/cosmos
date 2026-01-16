@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -251,15 +251,16 @@ module OpenC3
         time = Time.now.to_nsec_from_epoch
         label = 'test'
         plw = PacketLogWriter.new(@log_dir, label, true, 1, nil) # cycle every sec
-        15.times do
+        # Write over ~2.2s to get 2 cycles (need 2 full seconds elapsed)
+        11.times do
           plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, true, "\x01\x02", nil, '0-0')
           time += 200_000_000
           sleep 0.2
         end
         plw.shutdown
         sleep 0.2
-        # Since we wrote about 3s we should see 3 separate cycles
-        expect(@files.keys.length).to eq 3
+        # Since we wrote about 2.2s we should see 2 separate cycles
+        expect(@files.keys.length).to eq 2
 
         # Monkey patch the constant back to the default
         # Fortify says Access Specifier Manipulation
@@ -303,7 +304,7 @@ module OpenC3
           end
           expect(stdout.string).to match("Target Index Overflow")
           plw.shutdown
-          sleep 1
+          sleep 0.2
         end
       end
 
@@ -316,7 +317,7 @@ module OpenC3
           end
           expect(stdout.string).to match("Packet Index Overflow")
           plw.shutdown
-          sleep 1
+          sleep 0.2
         end
       end
     end

@@ -11,6 +11,12 @@ Command Queue provides the ability to see the status of all queues created by th
 
 ![Command Queue](/img/command_queue/command_queue.png)
 
+### Feature Highlight Video of Command Queue
+
+<div style={{textAlign: 'center'}}>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/s86cCHQA2oE" title="COSMOS Feature Highlight - Command Queue" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+</div>
+
 ### Manipulating Queues
 
 You can create a new Command Queue by clicking + and delete one by clicking the trash. Different queues can be selected using the Queue selection. You can change the queue state by clicking the Hold / Release / Disable button group. Note that the current mode is indicated by which button is highlighted.
