@@ -25,7 +25,7 @@ def test_command_throughput(num_commands, description):
     start_time = time.time()
 
     for i in range(num_commands):
-        cmd_no_hazardous_check(f"{TARGET} GET_STATS")
+        cmd(f"{TARGET} GET_STATS_NO_MSG")
 
     elapsed = time.time() - start_time
     rate = num_commands / elapsed

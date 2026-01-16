@@ -22,7 +22,7 @@ def test_command_throughput(num_commands, description)
   start_time = Time.now
 
   num_commands.times do |i|
-    cmd_no_hazardous_check("#{TARGET} GET_STATS")
+    cmd("#{TARGET} GET_STATS_NO_MSG")
   end
 
   elapsed = Time.now - start_time
