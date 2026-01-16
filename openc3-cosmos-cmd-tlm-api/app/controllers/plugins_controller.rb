@@ -78,14 +78,16 @@ class PluginsController < ModelController
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
+      plugins = @model_class.all(scope: params[:scope])
       OpenC3::PluginStoreModel.ensure_exists()
       store_plugins = OpenC3::PluginStoreModel.all()
       store_plugins = JSON.parse(store_plugins)
-      plugins = @model_class.all(scope: params[:scope])
-      plugins.each do |plugin_name, plugin|
-        if plugin['store_id']
-          store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
-          plugin.merge!(store_data) if store_data
+      if store_plugins.is_a?(Array) # as opposed to a Hash, which indicates an error
+        plugins.each do |plugin_name, plugin|
+          if plugin['store_id']
+            store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
+            plugin.merge!(store_data) if store_data
+          end
         end
       end
 
