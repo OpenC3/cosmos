@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,9 +22,22 @@
 
 <template>
   <div ref="container" class="d-flex flex-row" :style="myComputedStyle">
+    <v-tooltip v-if="!tooltipText" :open-delay="600" location="top">
+      <template #activator="{ props }">
+        <div
+          :class="ledClass"
+          :style="cssProps"
+          v-bind="props"
+          @contextmenu="showContextMenu"
+        ></div>
+      </template>
+      <span>{{ fullName }}</span>
+    </v-tooltip>
     <div
-      :class="`led align-self-center ${limitsColor}`"
+      v-else
+      :class="ledClass"
       :style="cssProps"
+      @contextmenu="showContextMenu"
     ></div>
     <label-widget
       v-if="displayLabel"
@@ -33,18 +46,69 @@
       :style="computedStyle"
       :widget-index="1"
     />
+
+    <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in contextMenuOptions"
+          :key="index"
+          @click.stop="item.action"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <details-dialog
+      v-model="viewDetails"
+      :target-name="parameters[0]"
+      :packet-name="parameters[1]"
+      :item-name="parameters[2]"
+    />
   </div>
 </template>
 
 <script>
+import { DetailsDialog } from '@/components'
 import VWidget from './VWidget'
 export default {
+  components: {
+    DetailsDialog,
+  },
   mixins: [VWidget],
   data() {
     return {
       radius: 15,
       fullLabelDisplay: false,
       displayLabel: true,
+      viewDetails: false,
+      contextMenuShown: false,
+      x: 0,
+      y: 0,
+      contextMenuOptions: [
+        {
+          title: 'Details',
+          action: () => {
+            this.contextMenuShown = false
+            this.viewDetails = true
+          },
+        },
+        {
+          title: 'Graph',
+          action: () => {
+            window.open(
+              '/tools/tlmgrapher/' +
+                encodeURIComponent(this.parameters[0]) +
+                '/' +
+                encodeURIComponent(this.parameters[1]) +
+                '/' +
+                encodeURIComponent(this.parameters[2]) +
+                '/',
+              '_blank',
+            )
+          },
+        },
+      ],
     }
   },
   computed: {
@@ -62,6 +126,18 @@ export default {
       } else {
         return [this.parameters[2]]
       }
+    },
+    fullName() {
+      return (
+        this.parameters[0] + ' ' + this.parameters[1] + ' ' + this.parameters[2]
+      )
+    },
+    ledClass() {
+      let result = `led align-self-center ${this.limitsColor}`
+      if (this._limitsState === 'STALE') {
+        result += ' stale'
+      }
+      return result
     },
     cssProps() {
       return {
@@ -100,6 +176,15 @@ export default {
       }
       return type
     },
+    showContextMenu(e) {
+      e.preventDefault()
+      this.contextMenuShown = false
+      this.x = e.clientX
+      this.y = e.clientY
+      this.$nextTick(() => {
+        this.contextMenuShown = true
+      })
+    },
   },
 }
 </script>
@@ -123,5 +208,11 @@ export default {
 }
 .blue {
   background-color: rgb(0, 153, 255);
+}
+.purple {
+  background-color: rgb(200, 0, 200);
+}
+.stale {
+  filter: blur(2px) brightness(0.6);
 }
 </style>
