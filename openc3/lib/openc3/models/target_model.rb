@@ -248,6 +248,14 @@ module OpenC3
       end
     end
 
+    def self.clear_packet_cache
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache.clear
+        @@packet_cache_hits = 0
+        @@packet_cache_misses = 0
+      end
+    end
+
     # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)

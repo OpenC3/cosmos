@@ -142,6 +142,11 @@ class TargetModel(Model):
             raise error
 
     @classmethod
+    def clear_packet_cache(cls):
+        with cls.packet_cache_lock:
+            cls.packet_cache.clear()
+
+    @classmethod
     def packet_item(
         cls,
         target_name: str,
