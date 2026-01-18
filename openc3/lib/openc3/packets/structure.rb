@@ -684,8 +684,12 @@ module OpenC3
       if @accessor.enforce_length
         if @buffer.length != @defined_length
           if @buffer.length < @defined_length
-            resize_buffer()
-            raise "Buffer length less than defined length" unless @short_buffer_allowed
+            # Only resize if short_buffer_allowed is false
+            # When short_buffer_allowed is true, keep the buffer short so reads
+            # of items beyond the buffer return nil
+            unless @short_buffer_allowed
+              raise "Buffer length less than defined length"
+            end
           elsif @fixed_size and @defined_length != 0
             raise "Buffer length greater than defined length"
           end

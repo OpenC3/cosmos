@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -181,7 +181,7 @@ class TestCommands(unittest.TestCase):
             self.assertEqual(pkt.read("item1"), 1)
             self.assertEqual(pkt.read("item2"), 2)
             self.assertEqual(pkt.read("item3"), 3)
-            self.assertEqual(pkt.read("item4"), 0)
+            self.assertIsNone(pkt.read("item4"))
             self.assertIn(
                 "TGT1 PKT1 buffer (<class 'bytes'>) received with actual packet length of 3 but defined length of 4",
                 stdout.getvalue(),

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -339,7 +339,8 @@ module OpenC3
         end
 
         result, lower_bound, upper_bound = check_bounds_and_buffer_size(bit_offset, bit_size, buffer.length, endianness, data_type)
-        raise_buffer_error(:read, buffer, data_type, given_bit_offset, given_bit_size) unless result
+        # Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+        return nil unless result
 
         if (data_type == :STRING) || (data_type == :BLOCK)
           #######################################
@@ -936,6 +937,9 @@ module OpenC3
       lower_bound = bit_offset / 8
       upper_bound = (bit_offset + array_size - 1) / 8
 
+      # Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT)
+      return nil if upper_bound >= buffer.length
+
       # Check for byte alignment
       byte_aligned = ((bit_offset % 8) == 0)
 
@@ -1420,7 +1424,7 @@ module OpenC3
 
     # This sets the short_buffer_allowed flag in the Packet class
     # which allows packets that have a buffer shorter than the defined size.
-    # Note that the buffer is still resized to the defined length
+    # Items outside the buffer bounds will return nil when read.
     def enforce_short_buffer_allowed
       return false
     end

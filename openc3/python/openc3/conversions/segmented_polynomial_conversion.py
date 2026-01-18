@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -92,6 +92,10 @@ class SegmentedPolynomialConversion(Conversion):
     # @param (see Conversion#call)
     # @return [Float] The value with the polynomial applied
     def call(self, value, packet, buffer):
+        # Return None if value is None (item outside buffer bounds)
+        if value is None:
+            return None
+
         # Try to find correct segment
         for segment in self.segments:
             if value >= segment.lower_bound:

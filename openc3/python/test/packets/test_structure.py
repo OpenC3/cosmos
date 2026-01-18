@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -1129,3 +1129,28 @@ class TestStructureBufferRecalculateBitOffsets(unittest.TestCase):
         self.assertEqual(s.read("test1"), b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09")
         self.assertEqual(s.read("test2"), b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55")
         self.assertEqual(s.read("test3"), 0xAA55)
+
+
+class TestStructureShortBufferAllowed(unittest.TestCase):
+    def test_returns_none_for_items_outside_buffer_bounds(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        s.append_item("item3", 16, "UINT")
+        s.short_buffer_allowed = True
+        # Set a short buffer that only contains data for item1
+        s.buffer = b"\x00\x01"
+        # item1 should read successfully
+        self.assertEqual(s.read("item1"), 1)
+        # item2 and item3 should return None since they're outside the buffer
+        self.assertIsNone(s.read("item2"))
+        self.assertIsNone(s.read("item3"))
+        # Buffer should remain at its original size (not padded)
+        self.assertEqual(len(s.buffer), 2)
+
+    def test_raises_error_when_short_buffer_allowed_is_false(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        with self.assertRaisesRegex(ValueError, "Buffer length less than defined length"):
+            s.buffer = b"\x00\x01"
