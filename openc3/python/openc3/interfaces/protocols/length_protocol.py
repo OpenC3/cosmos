@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -168,8 +168,8 @@ class LengthProtocol(BurstProtocol):
             return ("STOP", self.extra)
 
         # Reduce to packet data and setup current_data for next packet
-        packet_data = self.data[0:packet_length]
-        self.data = self.data[packet_length:]
+        packet_data = bytes(self.data[:packet_length])  # Convert slice to immutable bytes
+        del self.data[:packet_length]  # Efficient in-place deletion
 
         return (packet_data, self.extra)
 

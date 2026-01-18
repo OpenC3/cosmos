@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -122,10 +122,10 @@ class PreidentifiedProtocol(BurstProtocol):
             return "STOP"
 
         next_index = string_length + length_num_bytes
-        string = self.data[length_num_bytes:next_index]
+        string = bytes(self.data[length_num_bytes:next_index])
 
         # Remove data from current_data
-        self.data = self.data[next_index:]
+        del self.data[:next_index]  # Efficient in-place deletion
 
         return string
 
@@ -136,7 +136,7 @@ class PreidentifiedProtocol(BurstProtocol):
                 if len(self.data) < len(self.sync_pattern):
                     return ("STOP", self.extra)
 
-                self.data = self.data[(len(self.sync_pattern)) :]
+                del self.data[: len(self.sync_pattern)]  # Efficient in-place deletion
                 self.reduction_state = "SYNC_REMOVED"
         elif self.reduction_state == "START":
             self.reduction_state = "SYNC_REMOVED"
@@ -147,7 +147,7 @@ class PreidentifiedProtocol(BurstProtocol):
                 return ("STOP", self.extra)
 
             flags = self.data[0]  # struct.unpack(">B", self.data[0])  # byte
-            self.data = self.data[1:]
+            del self.data[:1]  # Efficient in-place deletion
             self.read_stored = False
             if (flags & PreidentifiedProtocol.COSMOS4_STORED_FLAG_MASK) != 0:
                 self.read_stored = True
@@ -174,7 +174,7 @@ class PreidentifiedProtocol(BurstProtocol):
             time_seconds = struct.unpack(">I", self.data[0:4])[0]  # UINT32
             time_microseconds = struct.unpack(">I", self.data[4:8])[0]  # UINT32
             self.read_received_time = datetime.fromtimestamp(time_seconds + time_microseconds / 1_000_000, timezone.utc)
-            self.data = self.data[8:]
+            del self.data[:8]  # Efficient in-place deletion
             self.reduction_state = "TIME_REMOVED"
 
         if self.reduction_state == "TIME_REMOVED":

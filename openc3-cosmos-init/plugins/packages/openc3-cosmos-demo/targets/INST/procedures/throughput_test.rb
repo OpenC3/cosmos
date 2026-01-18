@@ -17,19 +17,44 @@ def test_command_throughput(num_commands, description)
 
   # Reset stats before test
   cmd("#{TARGET} RESET_STATS")
-  wait(0.5)
+  wait(1)
 
   start_time = Time.now
-
-  num_commands.times do |i|
-    cmd("#{TARGET} GET_STATS_NO_MSG")
-  end
-
+  num_commands.times { cmd("#{TARGET} GET_STATS") }
   elapsed = Time.now - start_time
   rate = num_commands / elapsed
 
   puts "Completed: #{num_commands} commands in #{elapsed.round(3)} seconds"
-  puts "Command rate: #{rate.round(1)} commands/second"
+  puts "Command rate (message): #{rate.round(1)} commands/second"
+  puts ""
+
+  start_time = Time.now
+  num_commands.times { cmd("#{TARGET} GET_STATS_NO_MSG") }
+  elapsed = Time.now - start_time
+  rate = num_commands / elapsed
+
+  puts "Completed: #{num_commands} commands in #{elapsed.round(3)} seconds"
+  puts "Command rate (no msg): #{rate.round(1)} commands/second"
+  puts ""
+
+  start_time = Time.now
+  num_commands.times { cmd("#{TARGET} GET_STATS_NO_MSG", timeout: 0) }
+  elapsed = Time.now - start_time
+  rate = num_commands / elapsed
+
+  puts "Completed: #{num_commands} commands in #{elapsed.round(3)} seconds"
+  puts "Command rate (no ack): #{rate.round(1)} commands/second"
+  puts ""
+
+  disable_instrumentation do
+    start_time = Time.now
+    num_commands.times { cmd("#{TARGET} GET_STATS_NO_MSG", timeout: 0) }
+    elapsed = Time.now - start_time
+    rate = num_commands / elapsed
+  end
+
+  puts "Completed: #{num_commands} commands in #{elapsed.round(3)} seconds"
+  puts "Command rate (no instrumentation): #{rate.round(1)} commands/second"
   puts ""
 
   rate
@@ -42,9 +67,10 @@ def test_telemetry_throughput(stream_rate, duration, description)
 
   # Reset stats on the server and request fresh telemetry
   cmd("#{TARGET} RESET_STATS")
+  wait(2)
   cmd("#{TARGET} GET_STATS")
   # Wait for fresh packet to arrive with reset values (count is 0 in the packet)
-  wait_check("#{TARGET} THROUGHPUT_STATUS TLM_SENT_COUNT == 0", 2)
+  wait_check("#{TARGET} THROUGHPUT_STATUS TLM_SENT_COUNT == 0", 5)
 
   # Get initial counts - capture packet count FIRST to minimize race
   initial_cosmos_count = get_tlm_cnt("#{TARGET} THROUGHPUT_STATUS")
@@ -143,11 +169,11 @@ def run_throughput_tests
   # Telemetry throughput tests
   puts "\n### TELEMETRY THROUGHPUT TESTS ###\n"
 
-  results[:tlm_10hz] = test_telemetry_throughput(10, 5, "10 Hz for 5 seconds")
   results[:tlm_100hz] = test_telemetry_throughput(100, 5, "100 Hz for 5 seconds")
   results[:tlm_1000hz] = test_telemetry_throughput(1000, 5, "1000 Hz for 5 seconds")
   results[:tlm_2000hz] = test_telemetry_throughput(2000, 5, "2000 Hz for 5 seconds")
   results[:tlm_3000hz] = test_telemetry_throughput(3000, 5, "3000 Hz for 5 seconds")
+  results[:tlm_4000hz] = test_telemetry_throughput(4000, 5, "4000 Hz for 5 seconds")
 
   # Summary
   puts "\n" + "=" * 60
@@ -160,11 +186,11 @@ def run_throughput_tests
   puts "  1000 cmd burst: #{results[:cmd_burst_1000].round(1)} cmd/s"
 
   puts "\nTelemetry Throughput:"
-  puts "  10 Hz target:    #{results[:tlm_10hz][:rate].round(1)} Hz (#{results[:tlm_10hz][:loss_percent]}% loss)"
   puts "  100 Hz target:   #{results[:tlm_100hz][:rate].round(1)} Hz (#{results[:tlm_100hz][:loss_percent]}% loss)"
   puts "  1000 Hz target:  #{results[:tlm_1000hz][:rate].round(1)} Hz (#{results[:tlm_1000hz][:loss_percent]}% loss)"
   puts "  2000 Hz target:  #{results[:tlm_2000hz][:rate].round(1)} Hz (#{results[:tlm_2000hz][:loss_percent]}% loss)"
   puts "  3000 Hz target:  #{results[:tlm_3000hz][:rate].round(1)} Hz (#{results[:tlm_3000hz][:loss_percent]}% loss)"
+  puts "  4000 Hz target:  #{results[:tlm_4000hz][:rate].round(1)} Hz (#{results[:tlm_4000hz][:loss_percent]}% loss)"
 
   puts "\n" + "#" * 60
   puts "# Test Complete"

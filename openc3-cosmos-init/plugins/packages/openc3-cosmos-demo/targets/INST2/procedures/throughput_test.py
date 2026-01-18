@@ -20,18 +20,47 @@ def test_command_throughput(num_commands, description):
 
     # Reset stats before test
     cmd(f"{TARGET} RESET_STATS")
-    wait(0.5)
+    wait(2)
 
     start_time = time.time()
-
     for i in range(num_commands):
-        cmd(f"{TARGET} GET_STATS_NO_MSG")
-
+        cmd(f"{TARGET} GET_STATS")
     elapsed = time.time() - start_time
     rate = num_commands / elapsed
 
     print(f"Completed: {num_commands} commands in {elapsed:.3f} seconds")
-    print(f"Command rate: {rate:.1f} commands/second")
+    print(f"Command rate (msg): {rate:.1f} commands/second")
+    print("")
+
+    start_time = time.time()
+    for i in range(num_commands):
+        cmd(f"{TARGET} GET_STATS_NO_MSG")
+    elapsed = time.time() - start_time
+    rate = num_commands / elapsed
+
+    print(f"Completed: {num_commands} commands in {elapsed:.3f} seconds")
+    print(f"Command rate (no msg): {rate:.1f} commands/second")
+    print("")
+
+    start_time = time.time()
+    for i in range(num_commands):
+        cmd(f"{TARGET} GET_STATS_NO_MSG", timeout=0)
+    elapsed = time.time() - start_time
+    rate = num_commands / elapsed
+
+    print(f"Completed: {num_commands} commands in {elapsed:.3f} seconds")
+    print(f"Command rate (no ack): {rate:.1f} commands/second")
+    print("")
+
+    with disable_instrumentation():
+        start_time = time.time()
+        for i in range(num_commands):
+            cmd(f"{TARGET} GET_STATS_NO_MSG", timeout=0)
+        elapsed = time.time() - start_time
+        rate = num_commands / elapsed
+
+    print(f"Completed: {num_commands} commands in {elapsed:.3f} seconds")
+    print(f"Command rate (no instrumentation): {rate:.1f} commands/second")
     print("")
 
     return rate
@@ -44,9 +73,10 @@ def test_telemetry_throughput(stream_rate, duration, description):
 
     # Reset stats on the server and request fresh telemetry
     cmd(f"{TARGET} RESET_STATS")
+    wait(2)
     cmd(f"{TARGET} GET_STATS")
     # Wait for fresh packet to arrive with reset values (count is 0 in the packet)
-    wait_check(f"{TARGET} THROUGHPUT_STATUS TLM_SENT_COUNT == 0", 2)
+    wait_check(f"{TARGET} THROUGHPUT_STATUS TLM_SENT_COUNT == 0", 5)
 
     # Get initial counts - capture packet count FIRST to minimize race
     initial_cosmos_count = get_tlm_cnt(f"{TARGET} THROUGHPUT_STATUS")
@@ -147,11 +177,11 @@ def run_throughput_tests():
     # Telemetry throughput tests
     print("\n### TELEMETRY THROUGHPUT TESTS ###\n")
 
-    results["tlm_10hz"] = test_telemetry_throughput(10, 5, "10 Hz for 5 seconds")
     results["tlm_100hz"] = test_telemetry_throughput(100, 5, "100 Hz for 5 seconds")
     results["tlm_1000hz"] = test_telemetry_throughput(1000, 5, "1000 Hz for 5 seconds")
     results["tlm_2000hz"] = test_telemetry_throughput(2000, 5, "2000 Hz for 5 seconds")
     results["tlm_3000hz"] = test_telemetry_throughput(3000, 5, "3000 Hz for 5 seconds")
+    results["tlm_4000hz"] = test_telemetry_throughput(4000, 5, "4000 Hz for 5 seconds")
 
     # Summary
     print("\n" + "=" * 60)
@@ -165,9 +195,6 @@ def run_throughput_tests():
 
     print("\nTelemetry Throughput:")
     print(
-        f"  10 Hz target:    {results['tlm_10hz']['rate']:.1f} Hz ({results['tlm_10hz']['loss_percent']}% loss)"
-    )
-    print(
         f"  100 Hz target:   {results['tlm_100hz']['rate']:.1f} Hz ({results['tlm_100hz']['loss_percent']}% loss)"
     )
     print(
@@ -178,6 +205,9 @@ def run_throughput_tests():
     )
     print(
         f"  3000 Hz target:  {results['tlm_3000hz']['rate']:.1f} Hz ({results['tlm_3000hz']['loss_percent']}% loss)"
+    )
+    print(
+        f"  4000 Hz target:  {results['tlm_4000hz']['rate']:.1f} Hz ({results['tlm_4000hz']['loss_percent']}% loss)"
     )
 
     print("\n" + "#" * 60)

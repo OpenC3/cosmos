@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -59,7 +59,7 @@ class TcpipSocketStream(Stream):
         # No read mutex is needed because reads happen serially
         while True:  # Loop until we get some data
             try:
-                data = self.read_socket.recv(4096, socket.MSG_DONTWAIT)
+                data = self.read_socket.recv(65535, socket.MSG_DONTWAIT)
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
             # if there is no data available
             except socket.error as error:
