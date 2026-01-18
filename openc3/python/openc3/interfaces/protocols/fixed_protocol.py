@@ -134,9 +134,8 @@ class FixedProtocol(BurstProtocol):
                 self.packet_name = identified_packet.packet_name
 
                 # Get the data from this packet
-                packet_length = identified_packet.defined_length + self.discard_leading_bytes
-                packet_data = bytes(self.data[:packet_length])
-                del self.data[:packet_length]  # Efficient in-place deletion
+                packet_data = self.data[0:(identified_packet.defined_length + self.discard_leading_bytes)]
+                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes):]
                 break
 
         if identified_packet is None:
@@ -147,8 +146,8 @@ class FixedProtocol(BurstProtocol):
             self.received_time = None
             self.target_name = None
             self.packet_name = None
-            packet_data = bytes(self.data)
-            self.data.clear()  # Efficient clear
+            packet_data = self.data[:]
+            self.data = b""
 
         return (packet_data, self.extra)
 

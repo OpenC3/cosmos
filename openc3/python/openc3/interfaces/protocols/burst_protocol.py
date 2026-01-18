@@ -50,7 +50,7 @@ class BurstProtocol(Protocol):
 
     def reset(self):
         super().reset()
-        self.data = bytearray()  # Use bytearray for efficient appends
+        self.data = b""
         self.sync_state = "SEARCHING"
 
     # Reads from the interface. It can look for a sync pattern before
@@ -64,7 +64,7 @@ class BurstProtocol(Protocol):
     #
     # self.return [String|None] Data for a packet consisting of the bytes read
     def read_data(self, data, extra=None):
-        self.data.extend(data)  # Use extend() for efficient in-place append
+        self.data += data
         if not (len(data) == 0 and extra is None):
             # Maintain extra from last read read_data
             self.extra = extra
@@ -173,19 +173,19 @@ class BurstProtocol(Protocol):
                         if sync_index != 0:
                             self.log_discard(sync_index, True)
                             # Delete Data Before Sync Pattern
-                            del self.data[:sync_index]  # Efficient in-place deletion
+                            self.data = self.data[sync_index:]
                         self.sync_state = "FOUND"
                         return None
 
                     else:  # not found
                         self.log_discard(sync_index, False)
                         # Delete Data Before and including first character of suspected sync Pattern
-                        del self.data[:(sync_index + 1)]  # Efficient in-place deletion
+                        self.data = self.data[(sync_index + 1):]
                         continue
 
                 except ValueError:  # sync_index = None
                     self.log_discard(len(self.data), False)
-                    self.data.clear()  # Efficient clear
+                    self.data = b""
                     return "STOP"
         return None
 
@@ -209,8 +209,8 @@ class BurstProtocol(Protocol):
             return ("STOP", self.extra)
 
         # Reduce to packet data and clear data for next packet
-        packet_data = bytes(self.data)  # Convert to immutable bytes for packet
-        self.data.clear()  # Efficiently clear the bytearray
+        packet_data = self.data[:]
+        self.data = b""
         return (packet_data, self.extra)
 
     def write_details(self):

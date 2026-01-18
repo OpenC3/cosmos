@@ -168,8 +168,8 @@ class LengthProtocol(BurstProtocol):
             return ("STOP", self.extra)
 
         # Reduce to packet data and setup current_data for next packet
-        packet_data = bytes(self.data[:packet_length])  # Convert slice to immutable bytes
-        del self.data[:packet_length]  # Efficient in-place deletion
+        packet_data = self.data[0:packet_length]
+        self.data = self.data[packet_length:]
 
         return (packet_data, self.extra)
 

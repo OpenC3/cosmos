@@ -132,10 +132,10 @@ class SlipProtocol(TerminatedProtocol):
         # Reduce to packet data and setup current_data for next packet
         if index is not None:
             if index > 0:
-                packet_data = bytes(self.data[: (index + len(self.read_termination_characters))])
+                packet_data = self.data[0:(index + len(self.read_termination_characters))]
             else:  # self.data begins with the termination characters
-                packet_data = bytes(self.data[: len(self.read_termination_characters)])
-            del self.data[: (index + len(self.read_termination_characters))]  # Efficient in-place deletion
+                packet_data = self.data[0:(len(self.read_termination_characters))]
+            self.data = self.data[(index + len(self.read_termination_characters)):]
             return (packet_data, self.extra)
         else:
             return ("STOP", self.extra)
