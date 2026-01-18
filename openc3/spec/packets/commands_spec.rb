@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -213,7 +213,7 @@ module OpenC3
             expect(pkt.item1).to eql 1
             expect(pkt.item2).to eql 2
             expect(pkt.item3).to eql 3
-            expect(pkt.item4).to eql 0
+            expect(pkt.item4).to be_nil
             expect(stdout.string).to match(/TGT1 PKT1 received with actual packet length of 3 but defined length of 4/)
           end
         end

@@ -595,8 +595,8 @@ class PacketConfig:
             ):
                 self.start_item(parser)
 
-            # Allow this packet to be received with less data than the defined length
-            # without generating a warning.
+            # Allow this packet to be received with less data than the defined length.
+            # Items that are beyond the buffer will return None when read.
             case "ALLOW_SHORT":
                 usage = keyword
                 parser.verify_num_parameters(0, 0, usage)

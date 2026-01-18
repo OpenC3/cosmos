@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -316,7 +316,7 @@ class TestLimitsParser(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         item = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         self.assertIsNotNone(item.limits.values["DEFAULT"])
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04\x00"
         self.pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
         self.pc.telemetry["TGT1"]["PKT1"].check_limits()
         self.assertEqual(item.limits.state, "GREEN")
@@ -332,7 +332,7 @@ class TestLimitsParser(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         item = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         self.assertIsNotNone(item.limits.values["DEFAULT"])
-        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04"
+        self.pc.telemetry["TGT1"]["PKT1"].buffer = b"\x04\x00"
         self.pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
         self.pc.telemetry["TGT1"]["PKT1"].check_limits()
         self.assertEqual(item.limits.state, "BLUE")

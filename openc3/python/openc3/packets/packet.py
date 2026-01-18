@@ -977,6 +977,10 @@ class Packet(Structure):
             if item.limits.enabled:
                 value = self.read_item(item)
 
+                # Skip limits checking if value is None (item outside buffer bounds)
+                if value is None:
+                    continue
+
                 # Handle state monitoring and value monitoring differently
                 if item.states is not None:
                     self.handle_limits_states(item, value)
@@ -1310,6 +1314,10 @@ class Packet(Structure):
             item.limits.persistence_count = 0
 
     def apply_format_string_and_units(self, item, value, value_type):
+        # Return None as-is - can't format a value that doesn't exist
+        if value is None:
+            return None
+
         if value_type == "FORMATTED" or value_type == "WITH_UNITS":
             if item.format_string and value is not None:
                 value = f"{item.format_string}" % value

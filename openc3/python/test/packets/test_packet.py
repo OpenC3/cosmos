@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -1980,7 +1980,7 @@ class PacketObfuscation(unittest.TestCase):
         i = p.get_item("TEST1")
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
-        p.buffer = b"TESTTESTEST"
+        p.buffer = b"TESTTESTTEST"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
