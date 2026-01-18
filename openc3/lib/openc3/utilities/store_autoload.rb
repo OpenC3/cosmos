@@ -42,11 +42,11 @@ module OpenC3
       else
         with(NO_OPTIONS) do |redis|
           redis.pipelined do |pipeline|
-            Thread.current[:pipeline] = pipeline # NOSONAR - Thread-local used for pipeline context tracking
+            Thread.current[:pipeline] = pipeline
             begin
               yield
             ensure
-              Thread.current[:pipeline] = nil # NOSONAR
+              Thread.current[:pipeline] = nil
             end
           end
         end
@@ -54,7 +54,7 @@ module OpenC3
     end
 
     def with(options = NO_OPTIONS, &block)
-      pipeline = Thread.current[:pipeline] # NOSONAR
+      pipeline = Thread.current[:pipeline]
       if pipeline
         yield pipeline
       else
@@ -152,8 +152,8 @@ module OpenC3
       topics.each do |topic|
         # Normally we will just be grabbing the topic offset
         # this allows xread to get everything past this point
-        Thread.current[:topic_offsets] ||= {} # NOSONAR - Thread-local used for topic offset tracking
-        topic_offsets = Thread.current[:topic_offsets] # NOSONAR
+        Thread.current[:topic_offsets] ||= {}
+        topic_offsets = Thread.current[:topic_offsets]
         last_id = topic_offsets[topic]
         if last_id
           offsets << last_id
@@ -170,8 +170,8 @@ module OpenC3
     unless $openc3_redis_cluster
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
         return {} if topics.empty?
-        Thread.current[:topic_offsets] ||= {} # NOSONAR - Thread-local used for topic offset tracking
-        topic_offsets = Thread.current[:topic_offsets] # NOSONAR
+        Thread.current[:topic_offsets] ||= {}
+        topic_offsets = Thread.current[:topic_offsets]
         begin
           # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
           @redis_pool.with do |redis|

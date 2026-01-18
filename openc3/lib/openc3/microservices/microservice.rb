@@ -241,8 +241,8 @@ module OpenC3
 
     def setup_microservice_topic
       @topics.append(@microservice_topic)
-      Thread.current[:topic_offsets] ||= {} # NOSONAR - Thread-local used for topic offset tracking
-      topic_offsets = Thread.current[:topic_offsets] # NOSONAR
+      Thread.current[:topic_offsets] ||= {}
+      topic_offsets = Thread.current[:topic_offsets]
       topic_offsets[@microservice_topic] = "0-0" # Always get all available
     end
 
