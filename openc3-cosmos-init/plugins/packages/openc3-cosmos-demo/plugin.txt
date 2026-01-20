@@ -47,7 +47,15 @@ VARIABLE reduced_log_retain_time 2592000
   VARIABLE_STATE "90 days" 7776000
   VARIABLE_STATE "1 year" 31536000
 
-# Throughput Server Configuration
+### Throughput Server Configuration ###
+# The throughput server can be used to test the maximum command and telemetry throughput
+# To use it enable the use_throughput_server variable and start the throughput server separately
+# From the base of the cosmos directory, in a separate terminal run:
+#   cd examples/throughput_server/
+#   python throughput_server.py
+# Once the DEMO has been installed (or re-installed with use_throughput_server enabled) it will connect
+# to the throughput server instead of using the built-in simulator. You should see a single packet.
+# Run throughput_test.rb to test INST and throughput_test.py to test INST2 throughput.
 VARIABLE use_throughput_server false
   VARIABLE_DESCRIPTION "Use external throughput server instead of built-in simulator"
   VARIABLE_STATE "No (use simulator)" false

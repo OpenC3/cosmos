@@ -21,18 +21,5 @@ VERTICAL
     LABELVALUE <%= target_name %> THROUGHPUT_STATUS BYTES_SENT
   END
 
-  VERTICALBOX "Controls"
-    HORIZONTAL
-      BUTTON 'Start Stream 10 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 10")'
-      BUTTON 'Start Stream 100 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 100")'
-      BUTTON 'Start Stream 1000 Hz' 'api.cmd("<%= target_name %> START_STREAM with RATE 1000")'
-    END
-    HORIZONTAL
-      BUTTON 'Stop Stream' 'api.cmd("<%= target_name %> STOP_STREAM")'
-      BUTTON 'Get Stats' 'api.cmd("<%= target_name %> GET_STATS")'
-      BUTTON 'Reset Stats' 'api.cmd("<%= target_name %> RESET_STATS")'
-    END
-  END
-
   <%= render "_footer.txt" %>
 END
