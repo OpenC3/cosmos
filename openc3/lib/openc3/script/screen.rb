@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -113,6 +113,10 @@ module OpenC3
     end
 
     def local_screen(screen_name, definition, x = nil, y = nil)
+      # Noop outside of ScriptRunner
+    end
+
+    def open_tab(url)
       # Noop outside of ScriptRunner
     end
   end
