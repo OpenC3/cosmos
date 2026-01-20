@@ -182,6 +182,7 @@ def run_throughput_tests():
     results["tlm_2000hz"] = test_telemetry_throughput(2000, 5, "2000 Hz for 5 seconds")
     results["tlm_3000hz"] = test_telemetry_throughput(3000, 5, "3000 Hz for 5 seconds")
     results["tlm_4000hz"] = test_telemetry_throughput(4000, 5, "4000 Hz for 5 seconds")
+    results["tlm_5000hz"] = test_telemetry_throughput(5000, 5, "5000 Hz for 5 seconds")
 
     # Summary
     print("\n" + "=" * 60)
@@ -208,6 +209,9 @@ def run_throughput_tests():
     )
     print(
         f"  4000 Hz target:  {results['tlm_4000hz']['rate']:.1f} Hz ({results['tlm_4000hz']['loss_percent']}% loss)"
+    )
+    print(
+        f"  5000 Hz target:  {results['tlm_5000hz']['rate']:.1f} Hz ({results['tlm_5000hz']['loss_percent']}% loss)"
     )
 
     print("\n" + "#" * 60)

@@ -174,6 +174,7 @@ def run_throughput_tests
   results[:tlm_2000hz] = test_telemetry_throughput(2000, 5, "2000 Hz for 5 seconds")
   results[:tlm_3000hz] = test_telemetry_throughput(3000, 5, "3000 Hz for 5 seconds")
   results[:tlm_4000hz] = test_telemetry_throughput(4000, 5, "4000 Hz for 5 seconds")
+  results[:tlm_5000hz] = test_telemetry_throughput(5000, 5, "5000 Hz for 5 seconds")
 
   # Summary
   puts "\n" + "=" * 60
@@ -191,6 +192,7 @@ def run_throughput_tests
   puts "  2000 Hz target:  #{results[:tlm_2000hz][:rate].round(1)} Hz (#{results[:tlm_2000hz][:loss_percent]}% loss)"
   puts "  3000 Hz target:  #{results[:tlm_3000hz][:rate].round(1)} Hz (#{results[:tlm_3000hz][:loss_percent]}% loss)"
   puts "  4000 Hz target:  #{results[:tlm_4000hz][:rate].round(1)} Hz (#{results[:tlm_4000hz][:loss_percent]}% loss)"
+  puts "  5000 Hz target:  #{results[:tlm_5000hz][:rate].round(1)} Hz (#{results[:tlm_5000hz][:loss_percent]}% loss)"
 
   puts "\n" + "#" * 60
   puts "# Test Complete"
