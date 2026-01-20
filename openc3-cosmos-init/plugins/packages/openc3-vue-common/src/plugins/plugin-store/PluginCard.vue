@@ -22,13 +22,6 @@
       <v-card v-bind="props" height="350" class="d-flex flex-column">
         <v-card-title class="d-flex align-center justify-content-space-between">
           {{ title }}
-          <v-spacer />
-          <v-badge
-            v-if="verified"
-            inline
-            icon="mdi-shield-check"
-            color="success"
-          />
         </v-card-title>
         <v-card-subtitle
           class="d-flex align-center justify-content-space-between"
