@@ -39,7 +39,7 @@ if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
     echo "Sidecar available. Running the command..."
 fi
 
-if [ "${OPENC3_CLOUD}" == "local" ]; then
+if [ "${OPENC3_CLOUD}" = "local" ]; then
     RC=1
     while [ $RC -gt 0 ]; do
         # Check if buckets endpoint is responding (accept any HTTP response, even 403)
@@ -95,7 +95,7 @@ if [ -z "${OPENC3_NO_MIGRATE}" ]; then
     ruby /openc3/bin/openc3cli runmigrations || exit 1
 fi
 
-if [ "${OPENC3_CLOUD}" == "local" ]; then
+if [ "${OPENC3_CLOUD}" = "local" ]; then
     ruby /openc3/bin/openc3cli initbuckets || exit 1
 fi
 

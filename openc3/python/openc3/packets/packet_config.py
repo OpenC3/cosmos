@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -45,8 +45,8 @@ from openc3.top_level import get_class_from_module
 
 
 class PacketConfig:
-    COMMAND = "Command"
-    TELEMETRY = "Telemetry"
+    COMMAND_STRING = "Command"
+    TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
     CONVERTED_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
 
@@ -152,7 +152,7 @@ class PacketConfig:
                         self.current_packet = PacketParser.parse_command(
                             parser, process_target_name, self.commands, self.warnings
                         )
-                        self.current_cmd_or_tlm = PacketConfig.COMMAND
+                        self.current_cmd_or_tlm = PacketConfig.COMMAND_STRING
 
                     case "TELEMETRY":
                         self.finish_packet()
@@ -163,7 +163,7 @@ class PacketConfig:
                             self.latest_data,
                             self.warnings,
                         )
-                        self.current_cmd_or_tlm = PacketConfig.TELEMETRY
+                        self.current_cmd_or_tlm = PacketConfig.TELEMETRY_STRING
 
                     # Select an existing packet for editing
                     case "SELECT_COMMAND" | "SELECT_TELEMETRY":
@@ -177,11 +177,11 @@ class PacketConfig:
 
                         self.current_packet = None
                         if "COMMAND" in keyword:
-                            self.current_cmd_or_tlm = PacketConfig.COMMAND
+                            self.current_cmd_or_tlm = PacketConfig.COMMAND_STRING
                             if self.commands.get(target_name):
                                 self.current_packet = self.commands[target_name][packet_name]
                         else:
-                            self.current_cmd_or_tlm = PacketConfig.TELEMETRY
+                            self.current_cmd_or_tlm = PacketConfig.TELEMETRY_STRING
                             if self.telemetry.get(target_name):
                                 self.current_packet = self.telemetry[target_name][packet_name]
 
@@ -401,7 +401,7 @@ class PacketConfig:
             warnings = self.current_packet.check_bit_offsets()
             if len(warnings) > 0:
                 self.warnings += warnings
-            if self.current_cmd_or_tlm == PacketConfig.COMMAND:
+            if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
@@ -556,9 +556,9 @@ class PacketConfig:
         match keyword:
             # Select or delete an item in the current packet
             case "SELECT_PARAMETER" | "SELECT_ITEM" | "DELETE_PARAMETER" | "DELETE_ITEM":
-                if (self.current_cmd_or_tlm == PacketConfig.COMMAND) and (keyword.split("_")[1] == "ITEM"):
+                if (self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING) and (keyword.split("_")[1] == "ITEM"):
                     raise parser.error(f"{keyword} only applies to telemetry packets")
-                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY) and (keyword.split("_")[1] == "PARAMETER"):
+                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING) and (keyword.split("_")[1] == "PARAMETER"):
                     raise parser.error(f"{keyword} only applies to command packets")
 
                 usage = f"{keyword} <{keyword.split('_')[1]} NAME>"
@@ -738,14 +738,14 @@ class PacketConfig:
             case "RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
                 parser.verify_num_parameters(2, 2, usage)
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.response = [params[0].upper(), params[1].upper()]
 
             case "ERROR_RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
                 parser.verify_num_parameters(2, 2, usage)
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.error_response = [
                     params[0].upper(),
@@ -755,14 +755,14 @@ class PacketConfig:
             case "SCREEN":
                 usage = f"{keyword} <Target Name> <Screen Name>"
                 parser.verify_num_parameters(2, 2, usage)
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.screen = [params[0].upper(), params[1].upper()]
 
             case "RELATED_ITEM":
                 usage = f"{keyword} <Target Name> <Packet Name> <Item Name>"
                 parser.verify_num_parameters(3, 3, usage)
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command packets")
                 if not self.current_packet.related_items:
                     self.current_packet.related_items = []
@@ -913,14 +913,14 @@ class PacketConfig:
             case "REQUIRED":
                 usage = "REQUIRED"
                 parser.verify_num_parameters(0, 0, usage)
-                if self.current_cmd_or_tlm == PacketConfig.COMMAND:
+                if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING:
                     self.current_item.required = True
                 else:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
             # Update the minimum value for the current command parameter
             case "MINIMUM_VALUE":
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
                 usage = "MINIMUM_VALUE <MINIMUM VALUE>"
@@ -934,7 +934,7 @@ class PacketConfig:
 
             # Update the maximum value for the current command parameter
             case "MAXIMUM_VALUE":
-                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
                 usage = "MAXIMUM_VALUE <MAXIMUM VALUE>"
@@ -1000,7 +1000,7 @@ class PacketConfig:
             if not self.current_packet:
                 raise RuntimeError("Cannot finish item without a current packet")
             self.current_packet.set_item(self.current_item)
-            if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+            if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                 target_latest_data = self.latest_data[self.current_packet.target_name]
                 if not target_latest_data.get(self.current_item.name):
                     target_latest_data[self.current_item.name] = []
