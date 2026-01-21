@@ -37,7 +37,7 @@ OLD_VOLUME="${OLD_VOLUME:-openc3-buckets-v}"
 NEW_VOLUME="${NEW_VOLUME:-openc3-buckets-v}"
 # User IDs - must match openc3.sh behavior
 # openc3.sh sets these to current user (id -u/id -g) for non-rootless Docker
-if [ -z "$OPENC3_USER_ID" ]; then
+if [[ -z "$OPENC3_USER_ID" ]]; then
     if docker info 2>/dev/null | grep -qE "rootless$|rootless: true"; then
         # Rootless - use 0
         OPENC3_USER_ID=0
@@ -165,16 +165,16 @@ get_container_network() {
 
 # Ensure migration network exists
 ensure_network() {
-    if [ -n "$DOCKER_NETWORK" ]; then
+    if [[ -n "$DOCKER_NETWORK" ]]; then
         return 0
     fi
 
     # Try to find an existing COSMOS network
     local cosmos_container
     cosmos_container=$(find_container "openc3-buckets|openc3-minio")
-    if [ -n "$cosmos_container" ]; then
+    if [[ -n "$cosmos_container" ]]; then
         DOCKER_NETWORK=$(get_container_network "$cosmos_container")
-        if [ -n "$DOCKER_NETWORK" ]; then
+        if [[ -n "$DOCKER_NETWORK" ]]; then
             log_info "Using existing Docker network: $DOCKER_NETWORK"
             return 0
         fi
@@ -224,7 +224,7 @@ detect_environment() {
     # Detect MINIO source (COSMOS 6 running or temp container)
     local live_minio
     live_minio=$(find_container "openc3-minio")
-    if [ -n "$live_minio" ] && [ "$live_minio" != "$MINIO_MIGRATION_CONTAINER" ]; then
+    if [[ -n "$live_minio" ]] && [[ "$live_minio" != "$MINIO_MIGRATION_CONTAINER" ]]; then
         MINIO_SOURCE="$live_minio"
         USING_TEMP_MINIO=false
         log_info "Found live MINIO (COSMOS 6): $MINIO_SOURCE"
@@ -242,11 +242,11 @@ detect_environment() {
     # Detect versitygw destination (COSMOS 7 running or temp container)
     local live_versity
     live_versity=$(find_container "openc3-buckets")
-    if [ -n "$live_versity" ] && [ "$live_versity" != "$VERSITY_MIGRATION_CONTAINER" ]; then
+    if [[ -n "$live_versity" ]] && [[ "$live_versity" != "$VERSITY_MIGRATION_CONTAINER" ]]; then
         VERSITY_DEST="$live_versity"
         USING_TEMP_VERSITY=false
         log_info "Found live versitygw (COSMOS 7): $VERSITY_DEST"
-        if [ -z "$DOCKER_NETWORK" ]; then
+        if [[ -z "$DOCKER_NETWORK" ]]; then
             DOCKER_NETWORK=$(get_container_network "$VERSITY_DEST")
         fi
     elif container_running "$VERSITY_MIGRATION_CONTAINER"; then
@@ -384,12 +384,12 @@ cmd_start() {
     detect_environment
 
     # Start temp MINIO if no live MINIO
-    if [ -z "$MINIO_SOURCE" ]; then
+    if [[ -z "$MINIO_SOURCE" ]]; then
         start_temp_minio
     fi
 
     # Start temp versitygw if no live versitygw
-    if [ -z "$VERSITY_DEST" ]; then
+    if [[ -z "$VERSITY_DEST" ]]; then
         start_temp_versity
     fi
 
@@ -406,12 +406,12 @@ cmd_migrate() {
     detect_environment
 
     # Ensure source is available
-    if [ -z "$MINIO_SOURCE" ]; then
+    if [[ -z "$MINIO_SOURCE" ]]; then
         start_temp_minio
     fi
 
     # Ensure destination is available
-    if [ -z "$VERSITY_DEST" ]; then
+    if [[ -z "$VERSITY_DEST" ]]; then
         start_temp_versity
     fi
 
@@ -430,7 +430,7 @@ cmd_migrate() {
     local buckets
     buckets=$(run_mc ls minio/ 2>/dev/null | awk '{print $NF}' | tr -d '/' | grep -v '^$' || true)
 
-    if [ -z "$buckets" ]; then
+    if [[ -z "$buckets" ]]; then
         log_warn "No buckets found in MINIO - nothing to migrate"
         return 0
     fi
@@ -492,16 +492,16 @@ cmd_status() {
     echo ""
     echo "Containers:"
     echo "  MINIO source: ${MINIO_SOURCE:-none}"
-    if [ -n "$MINIO_SOURCE" ]; then
+    if [[ -n "$MINIO_SOURCE" ]]; then
         echo -e "    ${GREEN}running${NC}"
     fi
     echo "  versitygw destination: ${VERSITY_DEST:-none}"
-    if [ -n "$VERSITY_DEST" ]; then
+    if [[ -n "$VERSITY_DEST" ]]; then
         echo -e "    ${GREEN}running${NC}"
     fi
 
     # If both are running, compare bucket sizes
-    if [ -n "$MINIO_SOURCE" ] && [ -n "$VERSITY_DEST" ]; then
+    if [[ -n "$MINIO_SOURCE" ]] && [[ -n "$VERSITY_DEST" ]]; then
         echo ""
         echo "Bucket sizes (source -> destination):"
         echo ""

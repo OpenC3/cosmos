@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -92,7 +92,7 @@ class TestLogger(unittest.TestCase):
         self.verify_output(Logger.FATAL, "fatal")
 
     def test_help(self):
-        help(Logger) # NOSONAR
+        help(Logger)
 
 
 class TestLogMessage(unittest.TestCase):
@@ -291,10 +291,7 @@ class TestLogMessage(unittest.TestCase):
         sys.stdout = StringIO()
 
         logger = Logger()
-        other = {
-            "metadata": "true",
-            "tag": "error"
-        }
+        other = {"metadata": "true", "tag": "error"}
         logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=other)
 
         output = sys.stdout.getvalue()
@@ -338,9 +335,11 @@ class TestLogMessage(unittest.TestCase):
     def test_log_message_stdout_when_stderr_not_enabled(self):
         """Test that all log levels go to stdout when OPENC3_LOG_STDERR is not enabled"""
         from openc3.environment import OPENC3_LOG_STDERR
+
         # Force reload to pick up the environment variable
         import importlib
         import openc3.environment
+
         importlib.reload(openc3.environment)
 
         orig_stdout = sys.stdout
@@ -365,7 +364,7 @@ class TestLogMessage(unittest.TestCase):
         self.assertIn("Fatal", stdout_output)
         self.assertEqual(stderr_output, "")
 
-    @patch('openc3.utilities.logger.OPENC3_LOG_STDERR', True)
+    @patch("openc3.utilities.logger.OPENC3_LOG_STDERR", True)
     def test_log_message_stderr_when_enabled_for_warn(self):
         """Test that WARN goes to stderr when OPENC3_LOG_STDERR is enabled"""
         orig_stdout = sys.stdout
@@ -387,7 +386,7 @@ class TestLogMessage(unittest.TestCase):
         data = json.loads(stderr_output)
         self.assertEqual(data["level"], "WARN")
 
-    @patch('openc3.utilities.logger.OPENC3_LOG_STDERR', True)
+    @patch("openc3.utilities.logger.OPENC3_LOG_STDERR", True)
     def test_log_message_stderr_when_enabled_for_error(self):
         """Test that ERROR goes to stderr when OPENC3_LOG_STDERR is enabled"""
         orig_stdout = sys.stdout
@@ -407,7 +406,7 @@ class TestLogMessage(unittest.TestCase):
         self.assertEqual(stdout_output, "")
         self.assertIn("Error message", stderr_output)
 
-    @patch('openc3.utilities.logger.OPENC3_LOG_STDERR', True)
+    @patch("openc3.utilities.logger.OPENC3_LOG_STDERR", True)
     def test_log_message_stderr_when_enabled_for_fatal(self):
         """Test that FATAL goes to stderr when OPENC3_LOG_STDERR is enabled"""
         orig_stdout = sys.stdout
@@ -427,7 +426,7 @@ class TestLogMessage(unittest.TestCase):
         self.assertEqual(stdout_output, "")
         self.assertIn("Fatal error", stderr_output)
 
-    @patch('openc3.utilities.logger.OPENC3_LOG_STDERR', True)
+    @patch("openc3.utilities.logger.OPENC3_LOG_STDERR", True)
     def test_log_message_stdout_for_info_when_stderr_enabled(self):
         """Test that INFO still goes to stdout when OPENC3_LOG_STDERR is enabled"""
         orig_stdout = sys.stdout
@@ -447,7 +446,7 @@ class TestLogMessage(unittest.TestCase):
         self.assertIn("Info message", stdout_output)
         self.assertEqual(stderr_output, "")
 
-    @patch('openc3.utilities.logger.OPENC3_LOG_STDERR', True)
+    @patch("openc3.utilities.logger.OPENC3_LOG_STDERR", True)
     def test_log_message_stdout_for_debug_when_stderr_enabled(self):
         """Test that DEBUG goes to stdout when OPENC3_LOG_STDERR is enabled"""
         orig_stdout = sys.stdout
@@ -532,6 +531,7 @@ class TestLogMessage(unittest.TestCase):
         self.assertIn("T", timestamp)
         # Should be parseable
         from datetime import datetime
+
         parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         self.assertIsNotNone(parsed)
 
@@ -557,6 +557,7 @@ class TestLogMessage(unittest.TestCase):
     def test_log_message_thread_safety(self):
         """Test that log_message is thread-safe with mutex"""
         import threading
+
         orig_stdout = sys.stdout
         sys.stdout = StringIO()
 

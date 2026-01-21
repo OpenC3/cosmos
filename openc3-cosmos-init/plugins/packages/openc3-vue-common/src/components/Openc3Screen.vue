@@ -585,6 +585,7 @@ export default {
                 if (parameters[1] === 'RAW') {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }
+              // falls through
               case 'SETTING':
                 this.configParser.verify_num_parameters(
                   2,
@@ -626,6 +627,7 @@ export default {
                 if (parameters[2] === 'RAW') {
                   parameters[2] = 'RAW__' + parameters[3].toLowerCase()
                 }
+              // falls through
               case 'GLOBAL_SETTING':
                 this.configParser.verify_num_parameters(
                   2,
