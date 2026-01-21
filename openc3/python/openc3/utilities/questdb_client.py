@@ -257,14 +257,9 @@ class QuestDBClient:
                 continue
 
             if item.get("array_size") is not None:
-                # QuestDB only supports DOUBLE[] arrays as of 9.0.0
-                # Numeric arrays can use DOUBLE[], non-numeric must be JSON serialized
-                if data_type in ["INT", "UINT", "FLOAT"]:
-                    column_definitions.append(f'"{item_name}" DOUBLE[]')
-                else:
-                    # Non-numeric arrays (STRING, BLOCK, etc.) must be JSON serialized
-                    column_definitions.append(f'"{item_name}" varchar')
-                    self.json_columns[f"{table_name}__{item_name}"] = True
+                # Always json encode arrays to avoid QuestDB array type issues
+                column_definitions.append(f'"{item_name}" varchar')
+                self.json_columns[f"{table_name}__{item_name}"] = True
             else:
                 # Determine the QuestDB column type based on item data type
                 # Default to VARCHAR for flexibility
@@ -278,7 +273,7 @@ class QuestDBClient:
                 if data_type in ["INT", "UINT"]:
                     if bit_size < 32:
                         column_type = "int"
-                    elif bit_size <= 64:
+                    elif bit_size < 64:
                         column_type = "long"
                     else:
                         column_type = "varchar"
@@ -322,13 +317,15 @@ class QuestDBClient:
             with self.query.cursor() as cur:
                 sql = f"""
                     CREATE TABLE IF NOT EXISTS "{table_name}" (
-                        timestamp timestamp,
+                        timestamp timestamp_ns,
+                        rx_timestamp timestamp_ns,
                         tag SYMBOL,
-                        PACKET_TIMESECONDS timestamp,
-                        RECEIVED_TIMESECONDS timestamp,
-                        PACKET_TIMEFORMATTED varchar,
-                        RECEIVED_TIMEFORMATTED varchar,
                         RECEIVED_COUNT LONG"""
+                # TODO: Can we calculate these:
+                # PACKET_TIMESECONDS timestamp_ns,
+                # RECEIVED_TIMESECONDS timestamp_ns,
+                # PACKET_TIMEFORMATTED varchar,
+                # RECEIVED_TIMEFORMATTED varchar,
 
                 if columns_sql:
                     sql += f",\n{columns_sql}"
@@ -375,25 +372,14 @@ class QuestDBClient:
 
         # Handle various data types for non-DERIVED columns
         match value:
-            case int():
-                if value > (2**63 - 1):
-                    value = 2**63 - 1
-                elif value < (-(2**63) + 1):
-                    value = -(2**63) + 1
-
-            case float() | str() | None:
+            case int() | float() | str() | None:
                 pass
 
             case bytes():
                 value = base64.b64encode(value).decode("ascii")
 
             case list():
-                # QuestDB 9.0.0 only supports DOUBLE arrays
-                # Check ALL elements are numeric (not just first) to avoid mixed array errors
-                if len(value) == 0 or not all(isinstance(v, numbers.Number) for v in value):
-                    value = json.dumps(value)
-                else:
-                    value = numpy.array(value, dtype=numpy.float64)
+                value = json.dumps(value)
 
             case dict():
                 json_class = value.get("json_class")
@@ -432,7 +418,11 @@ class QuestDBClient:
                 self._log_warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
                 continue
 
-            # Handle timestamp columns specially
+            # TODO: What if there is a packet item named 'timestamp' .. does that collide with the table timestamp?
+
+            # TODO: Could we just store timestamp_ns (we already are) and not store these 2
+            # Could we generate these values on read instead of storing them?
+            # Could we also generate the FORMATTED versions on read instead of storing them? (strings take a lot of space)
             if item_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
                 values[item_name] = TimestampMicros(int(converted * 1_000_000))
             else:

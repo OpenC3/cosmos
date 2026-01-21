@@ -247,6 +247,8 @@ class CvtModel(Model):
                         cursor.execute(query)
                         result = cursor.fetchall()
 
+                        # TODO: We need to convert all the encoded types back to their original types here
+
                         if not result:
                             return {}
                         else:

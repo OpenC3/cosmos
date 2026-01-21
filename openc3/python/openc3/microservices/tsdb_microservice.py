@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -39,10 +39,6 @@ class TsdbMicroservice(Microservice):
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
         self.questdb.connect_ingest()
         self.questdb.connect_query()
-
-        # Track columns that need JSON serialization due to type conflicts or DERIVED type
-        # Key is "table__column", value is True
-        self.json_columns = {}
 
         # Build the tables
         for topic in self.topics:
