@@ -586,9 +586,9 @@ download_file("<File Path>")
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                 |
-| --------- | --------------------------------------------------------------------------- |
-| File Path | File Path to the file to download within the OpenC3 system.                 |
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| File Path | File Path to the file to download within the OpenC3 system. |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -7590,12 +7590,12 @@ script_run("<Script Name>", disconnect=False, environment=None, suite_runner=Non
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Script Name  | Full path name of the script starting with the target                                                            |
-| disconnect   | Whether to run the script in Disconnect mode                                                                     |
+| Parameter    | Description                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Script Name  | Full path name of the script starting with the target                                                               |
+| disconnect   | Whether to run the script in Disconnect mode                                                                        |
 | environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner options                                                                              |
+| suite_runner | Hash / dict of suite runner options                                                                                 |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -10712,4 +10712,51 @@ autonomic_reaction_destroy("REACT1")
 
 </TabItem>
 </Tabs>
-````
+
+## Utilities
+
+Various utilities that can be used in scripts.
+
+### open_tab
+
+Opens a new tab in the browser.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+open_tab(url)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+open_tab(url)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description              |
+| --------- | ------------------------ |
+| url       | URL to open in a new tab |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+open_tab("https://github.com/OpenC3/cosmos")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+open_tab("https://github.com/OpenC3/cosmos")
+```
+
+</TabItem>
+</Tabs>
