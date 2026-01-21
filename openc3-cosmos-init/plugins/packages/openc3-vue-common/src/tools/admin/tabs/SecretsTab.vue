@@ -18,6 +18,10 @@
 
 <template>
   <div>
+    <v-alert v-model="isEnterprise" class="ma-4">
+      Note: This cannot be used for setting Kubernetes secrets. You must use
+      <code>kubectl</code> instead.
+    </v-alert>
     <v-row no-gutters>
       <v-col>
         <v-file-input
@@ -97,7 +101,13 @@ export default {
       alert: '',
       alertType: 'success',
       showAlert: false,
+      isEnterprise: false,
     }
+  },
+  created() {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.isEnterprise = data.enterprise
+    })
   },
   mounted() {
     this.update()
