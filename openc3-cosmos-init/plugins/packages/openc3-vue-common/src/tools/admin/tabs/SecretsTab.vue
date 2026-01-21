@@ -19,8 +19,15 @@
 <template>
   <div>
     <v-alert v-model="isEnterprise" class="ma-4">
-      Note: This cannot be used for setting Kubernetes secrets. You must use
-      <code>kubectl</code> instead.
+      Note: This cannot be used for setting Kubernetes secrets. You must set
+      them in Kubernetes as a
+      <a
+        href="https://kubernetes.io/docs/concepts/configuration/secret/"
+        target="_blank"
+      >
+        Secrets object
+      </a>
+      instead.
     </v-alert>
     <v-row no-gutters>
       <v-col>
