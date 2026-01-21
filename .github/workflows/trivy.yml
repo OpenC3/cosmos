@@ -44,7 +44,7 @@ jobs:
         env:
           OPENC3_TAG: ${{ github.sha }}
       - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@v0.2.4
+        uses: aquasecurity/setup-trivy@v0.2.5
         with:
           cache: true
           version: v0.68.2
