@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -131,7 +131,8 @@ module OpenC3
         @pkt.write("CCSDSSEQFLAGS", seqflag)
       end
       plw.close_file
-      plw.shutdown
+      threads = plw.shutdown
+      threads.each { |t| t.join }
     end
 
     describe "reduce_minute" do
