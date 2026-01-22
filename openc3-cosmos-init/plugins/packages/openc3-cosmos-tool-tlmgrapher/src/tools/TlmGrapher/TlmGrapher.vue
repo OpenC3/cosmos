@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -123,6 +123,7 @@
     v-if="showSettingsDialog"
     v-model="showSettingsDialog"
     :settings="settings"
+    @save="updateSettings"
   />
 </template>
 
@@ -348,6 +349,11 @@ export default {
     this.observer.disconnect()
   },
   methods: {
+    updateSettings(newValues) {
+      for (const key in newValues) {
+        this.settings[key].value = newValues[key]
+      }
+    },
     setup: function () {
       this.grid = new Muuri('.grid', {
         dragEnabled: true,

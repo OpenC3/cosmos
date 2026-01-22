@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -48,25 +48,57 @@
   <div style="height: 15px" />
   <log-messages :time-zone="timeZone" />
 
-  <!-- This dialog updates at time of input, so it does not need to be persistent -->
-  <v-dialog v-model="optionsDialog" max-width="300">
+  <v-dialog
+    v-model="optionsDialog"
+    max-width="300"
+    persistent
+    @keydown.esc="cancelOptions"
+  >
     <v-card>
-      <v-toolbar height="24">
-        <v-spacer />
-        <span>Options</span>
-        <v-spacer />
-      </v-toolbar>
-      <div class="mt-6 pa-3">
-        <v-text-field
-          min="0"
-          max="10000"
-          step="100"
-          type="number"
-          label="Refresh Interval (ms)"
-          :model-value="refreshInterval"
-          @update:model-value="refreshInterval = $event"
-        />
-      </div>
+      <v-form v-model="optionsFormValid" @submit.prevent>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span>Options</span>
+          <v-spacer />
+        </v-toolbar>
+        <v-card-text>
+          <div class="pa-3">
+            <v-row>
+              <v-text-field
+                v-model="optionsRefreshInterval"
+                min="1"
+                max="3600"
+                step="1"
+                type="number"
+                label="Refresh Interval (s)"
+                :rules="[rules.required, rules.min]"
+                data-test="refresh-interval"
+              />
+            </v-row>
+            <v-row class="mt-5">
+              <v-spacer />
+              <v-btn
+                variant="outlined"
+                class="mx-2"
+                data-test="options-cancel-btn"
+                @click="cancelOptions"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                type="submit"
+                color="primary"
+                class="mx-2"
+                :disabled="!optionsFormValid"
+                data-test="options-save-btn"
+                @click="saveOptions"
+              >
+                Save
+              </v-btn>
+            </v-row>
+          </div>
+        </v-card-text>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>
@@ -119,7 +151,13 @@ export default {
       ],
       updater: null,
       refreshInterval: 1000,
+      optionsRefreshInterval: 1,
       optionsDialog: false,
+      optionsFormValid: true,
+      rules: {
+        required: (value) => !!value || 'Required',
+        min: (value) => value >= 1 || 'Must be at least 1',
+      },
       menus: [
         {
           label: 'File',
@@ -128,6 +166,7 @@ export default {
               label: 'Options',
               icon: 'mdi-cog',
               command: () => {
+                this.optionsRefreshInterval = this.refreshInterval / 1000
                 this.optionsDialog = true
               },
             },
@@ -157,6 +196,16 @@ export default {
       })
   },
   methods: {
+    saveOptions() {
+      if (this.optionsRefreshInterval && this.optionsRefreshInterval >= 1) {
+        this.refreshInterval = this.optionsRefreshInterval * 1000
+      }
+      this.optionsDialog = false
+    },
+    cancelOptions() {
+      this.optionsRefreshInterval = this.refreshInterval / 1000
+      this.optionsDialog = false
+    },
     clearCounters() {
       this.api.get_interface_names().then((response) => {
         for (const name of response) {
