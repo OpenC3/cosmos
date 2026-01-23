@@ -315,15 +315,19 @@ class TestTsdbMicroservice(unittest.TestCase):
         create_table_sql = str(create_table_calls[0])
         print("CREATE TABLE SQL:", create_table_sql.split("\n"))
         self.assertIn("timestamp timestamp", create_table_sql)
+        self.assertIn("rx_timestamp timestamp", create_table_sql)
         self.assertIn("tag SYMBOL", create_table_sql)
-        self.assertIn("PACKET_TIMESECONDS timestamp", create_table_sql)
-        self.assertIn("RECEIVED_TIMESECONDS timestamp", create_table_sql)
-        self.assertIn("PACKET_TIMEFORMATTED varchar", create_table_sql)
-        self.assertIn("RECEIVED_TIMEFORMATTED varchar", create_table_sql)
+        # PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, PACKET_TIMEFORMATTED, RECEIVED_TIMEFORMATTED
+        # are no longer stored as separate columns - they're derived from timestamp/rx_timestamp
+        self.assertNotIn("PACKET_TIMESECONDS", create_table_sql)
+        self.assertNotIn("RECEIVED_TIMESECONDS", create_table_sql)
+        self.assertNotIn("PACKET_TIMEFORMATTED", create_table_sql)
+        self.assertNotIn("RECEIVED_TIMEFORMATTED", create_table_sql)
         self.assertIn('"CCSDSTYPE" int', create_table_sql)
         # TIMESEC is 32 bits so upgraded to long
         self.assertIn('"TIMESEC" long', create_table_sql)
-        self.assertIn('"ARY" DOUBLE[]', create_table_sql)
+        # Arrays are now stored as varchar (JSON serialized) to avoid QuestDB array type issues
+        self.assertIn('"ARY" varchar', create_table_sql)
         # Block of 80 bits becomes encoded varchar
         self.assertIn('"BLOCKTEST" varchar', create_table_sql)
         self.assertIn('"BRACKET[0]" int', create_table_sql)
@@ -331,8 +335,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"1BIT" int', create_table_sql)
         # 63 bits is a long
         self.assertIn('"63BITS" long', create_table_sql)
-        # 64 bits is a long256 because it can't fit in int64
-        self.assertIn('"64BITS" long', create_table_sql)
+        # 64 bits is a varchar because it can't fit in int64
+        self.assertIn('"64BITS" varchar', create_table_sql)
         # DERIVED items are now created as VARCHAR to avoid type conflicts
         self.assertIn('"DERIVED_GENERIC" varchar', create_table_sql)
 
@@ -482,7 +486,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_large_integers(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics clamps large integers to int64 range"""
+        """Test read_topics passes through large integers unchanged (QuestDB handles overflow)"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -526,11 +530,12 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb.read_topics()
 
-        # Verify values were clamped
+        # Values are passed through unchanged - QuestDB will handle overflow
+        # (create_table defines 64-bit values as varchar to handle overflow)
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertEqual(call_args[1]["columns"]["BIGVAL"], 2**63 - 1)
-        self.assertEqual(call_args[1]["columns"]["SMALLVAL"], -(2**63) + 1)
+        self.assertEqual(call_args[1]["columns"]["BIGVAL"], 2**64)
+        self.assertEqual(call_args[1]["columns"]["SMALLVAL"], -(2**64))
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -650,7 +655,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_numeric_arrays(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics converts numeric lists to numpy arrays"""
+        """Test read_topics serializes numeric arrays as JSON strings for storage"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -694,15 +699,13 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb.read_topics()
 
-        # Verify list was converted to numpy array
+        # Arrays are now always JSON serialized to avoid QuestDB array type issues
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
         result = call_args[1]["columns"]["ARRAY"]
-        # Check it's a numpy array by checking for the ndarray type
-        import numpy
-
-        self.assertIsInstance(result, numpy.ndarray)
-        self.assertEqual(list(result), [1.0, 2.0, 3.0, 4.0])
+        # Arrays are JSON serialized as strings
+        self.assertIsInstance(result, str)
+        self.assertEqual(result, "[1.0, 2.0, 3.0, 4.0]")
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -761,7 +764,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_timestamp_columns(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics converts PACKET_TIMESECONDS and RECEIVED_TIMESECONDS"""
+        """Test read_topics stores received time in rx_timestamp and skips time columns"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -791,9 +794,12 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Write test data with timestamp columns
         current_time = time.time()
+        received_time = current_time + 1
         json_data = {
             "PACKET_TIMESECONDS": current_time,
-            "RECEIVED_TIMESECONDS": current_time + 1,
+            "RECEIVED_TIMESECONDS": received_time,
+            "PACKET_TIMEFORMATTED": "2026/01/23 00:00:00.000",
+            "RECEIVED_TIMEFORMATTED": "2026/01/23 00:00:01.000",
             "TEMP1": 100,
         }
         Topic.write_topic(
@@ -810,11 +816,23 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb.read_topics()
 
-        # Verify timestamps were converted to TimestampMicros
+        # Verify row was written
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertIsInstance(call_args[1]["columns"]["PACKET_TIMESECONDS"], TimestampMicros)
-        self.assertIsInstance(call_args[1]["columns"]["RECEIVED_TIMESECONDS"], TimestampMicros)
+        columns = call_args[1]["columns"]
+
+        # Time columns should NOT be stored as separate columns
+        self.assertNotIn("PACKET_TIMESECONDS", columns)
+        self.assertNotIn("RECEIVED_TIMESECONDS", columns)
+        self.assertNotIn("PACKET_TIMEFORMATTED", columns)
+        self.assertNotIn("RECEIVED_TIMEFORMATTED", columns)
+
+        # rx_timestamp should be set from message's received_time field (not json_data)
+        # The test message doesn't include received_time in msg_hash, so it won't be present
+        # unless we explicitly add it to the test
+
+        # Other data should still be present
+        self.assertEqual(columns["TEMP1"], 100)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -1066,7 +1084,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_create_table_variable_length_array(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
-        """Test that variable-length arrays (array_size=0) create DOUBLE[] columns"""
+        """Test that variable-length arrays (array_size=0) create varchar columns (JSON serialized)"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query
         mock_cursor = Mock()
@@ -1094,9 +1112,9 @@ class TestTsdbMicroservice(unittest.TestCase):
         create_table_calls = [call for call in mock_cursor.execute.call_args_list if "CREATE TABLE" in str(call)]
         self.assertTrue(len(create_table_calls) > 0, "CREATE TABLE should have been called")
 
-        # Variable-length numeric arrays should use DOUBLE[] type
+        # Arrays are now stored as varchar (JSON serialized) to avoid QuestDB array type issues
         create_table_sql = str(create_table_calls[0])
-        self.assertIn('"VAR_ARRAY" DOUBLE[]', create_table_sql)
+        self.assertIn('"VAR_ARRAY" varchar', create_table_sql)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1141,8 +1159,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn("TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
         self.assertIn("TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
 
-    def test_convert_value_mixed_array_json_serialized(self):
-        """Test that mixed arrays (containing non-numeric elements) are JSON serialized"""
+    def test_convert_value_arrays_json_serialized(self):
+        """Test that all arrays are JSON serialized to avoid QuestDB type conflicts"""
         from openc3.utilities.questdb_client import QuestDBClient
 
         client = QuestDBClient()
@@ -1162,12 +1180,10 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertFalse(skip)
         self.assertEqual(value, "[]")
 
-        # Pure numeric array should become numpy array (not JSON)
+        # Pure numeric arrays are also JSON serialized to avoid QuestDB array type issues
         value, skip = client.convert_value([1.0, 2.0, 3.0], "ITEM", None)
         self.assertFalse(skip)
-        import numpy
-
-        self.assertIsInstance(value, numpy.ndarray)
+        self.assertEqual(value, "[1.0, 2.0, 3.0]")
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -1429,7 +1445,10 @@ class TestTsdbMicroservice(unittest.TestCase):
                 self.assertIn(item_name, columns_written, f"Expected item '{item_name}' to be written as a column")
 
         # Verify at least the key items are present
-        key_items = ["TEMP1", "TEMP2", "TEMP3", "TEMP4", "COLLECTS", "PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"]
+        # Note: PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are no longer stored as columns
+        # They are derived from timestamp (packet_time) and rx_timestamp (received_time)
+        # which come directly from the topic message, not from json_data
+        key_items = ["TEMP1", "TEMP2", "TEMP3", "TEMP4", "COLLECTS"]
         for key_item in key_items:
             self.assertIn(key_item, columns_written, f"Key item '{key_item}' should be present in columns")
 

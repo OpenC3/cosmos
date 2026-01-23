@@ -23,10 +23,9 @@ import os
 import re
 import json
 import base64
-import numbers
 import psycopg
 import numpy
-from questdb.ingress import Sender, IngressError, Protocol, TimestampMicros, TimestampNanos
+from questdb.ingress import Sender, IngressError, Protocol, TimestampNanos
 
 
 class QuestDBClient:
@@ -321,11 +320,6 @@ class QuestDBClient:
                         rx_timestamp timestamp_ns,
                         tag SYMBOL,
                         RECEIVED_COUNT LONG"""
-                # TODO: Can we calculate these:
-                # PACKET_TIMESECONDS timestamp_ns,
-                # RECEIVED_TIMESECONDS timestamp_ns,
-                # PACKET_TIMEFORMATTED varchar,
-                # RECEIVED_TIMEFORMATTED varchar,
 
                 if columns_sql:
                     sql += f",\n{columns_sql}"
@@ -398,6 +392,15 @@ class QuestDBClient:
 
         return value, False
 
+    # Items that are stored in QuestDB's timestamp/rx_timestamp columns rather than as separate columns
+    # These can all be derived from the timestamp and rx_timestamp fields on read
+    SKIP_TIME_ITEMS = {
+        "PACKET_TIMESECONDS",
+        "PACKET_TIMEFORMATTED",
+        "RECEIVED_TIMESECONDS",
+        "RECEIVED_TIMEFORMATTED",
+    }
+
     def process_json_data(self, json_data, table_name=None):
         """
         Process JSON data dict into QuestDB-compatible columns.
@@ -410,38 +413,42 @@ class QuestDBClient:
             Dict of sanitized_column_name -> converted_value
         """
         values = {}
+
         for orig_item_name, value in json_data.items():
             item_name = self.sanitize_column_name(orig_item_name)
+
+            # Skip time-related items - they're stored in timestamp/rx_timestamp columns
+            # (received directly from the topic message, not from json_data).
+            # These values can be calculated on read. This saves significant storage space.
+            # Note: 'TIMESTAMP' is also a reserved item name in Packet.RESERVED_ITEM_NAMES
+            # to prevent collisions with the QuestDB table timestamp column.
+            if item_name in self.SKIP_TIME_ITEMS:
+                continue
 
             converted, skip = self.convert_value(value, item_name, table_name)
             if skip:
                 self._log_warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
                 continue
 
-            # TODO: What if there is a packet item named 'timestamp' .. does that collide with the table timestamp?
-
-            # TODO: Could we just store timestamp_ns (we already are) and not store these 2
-            # Could we generate these values on read instead of storing them?
-            # Could we also generate the FORMATTED versions on read instead of storing them? (strings take a lot of space)
-            if item_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
-                values[item_name] = TimestampMicros(int(converted * 1_000_000))
-            else:
-                values[item_name] = converted
+            values[item_name] = converted
 
         return values
 
-    def write_row(self, table_name, columns, timestamp_ns):
+    def write_row(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
         """
         Write a single row to QuestDB.
 
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Timestamp in nanoseconds
+            timestamp_ns: Packet timestamp in nanoseconds
+            rx_timestamp_ns: Received timestamp in nanoseconds (optional)
         """
+        if rx_timestamp_ns is not None:
+            columns["rx_timestamp"] = TimestampNanos(rx_timestamp_ns)
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
 
-    def write_row_with_schema_protection(self, table_name, columns, timestamp_ns):
+    def write_row_with_schema_protection(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
         """
         Write a single row with schema protection (for migration).
 
@@ -451,12 +458,15 @@ class QuestDBClient:
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Timestamp in nanoseconds
+            timestamp_ns: Packet timestamp in nanoseconds
+            rx_timestamp_ns: Received timestamp in nanoseconds (optional)
 
         Returns:
             Tuple of (success: bool, migrated_columns: list)
         """
         try:
+            if rx_timestamp_ns is not None:
+                columns["rx_timestamp"] = TimestampNanos(rx_timestamp_ns)
             self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
             return True, []
         except IngressError as error:

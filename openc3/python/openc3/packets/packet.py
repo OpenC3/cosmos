@@ -53,6 +53,8 @@ class Packet(Structure):
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
+        "TIMESTAMP",  # Reserved for QuestDB time series database
+        "RX_TIMESTAMP",  # Reserved for QuestDB received time column
     }
     ANY_STATE = "ANY"
     # Valid format types
