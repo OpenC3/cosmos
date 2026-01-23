@@ -158,7 +158,7 @@ class PacketLogReader:
         self.close()
         self._reset()
         self._filename = filename
-        self._file = open(filename, "rb")
+        self._file = open(filename, "rb")  # noqa: SIM115
 
         file_size = self._file.seek(0, 2)  # Seek to end to get size
         self._file.seek(0)  # Seek back to start

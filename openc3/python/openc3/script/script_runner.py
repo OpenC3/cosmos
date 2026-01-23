@@ -74,7 +74,7 @@ def script_run(filename, disconnect=False, environment=None, suite_runner=None, 
         endpoint = f"/script-api/scripts/{filename}/run"
 
     # Encode the environment hash into an array of key values
-    if environment and not len(environment) == 0:
+    if environment and len(environment) != 0:
         env_data = []
         for key, value in environment.items():
             env_data.append({"key": key, "value": value})
@@ -139,7 +139,9 @@ def script_instrumented(script, scope=OPENC3_SCOPE):
             raise result
 
 
-def script_create(filename, script, breakpoints=[], scope=OPENC3_SCOPE):
+def script_create(filename, script, breakpoints=None, scope=OPENC3_SCOPE):
+    if breakpoints is None:
+        breakpoints = []
     endpoint = f"/script-api/scripts/{filename}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post",

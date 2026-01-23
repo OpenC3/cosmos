@@ -20,6 +20,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1957
 
+import contextlib
 import json
 
 from openc3.api import WHITELIST
@@ -297,7 +298,7 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
         try:
             target_name, orig_packet_name, item_name, value_type = item_upcase.split("__")
         except ValueError:
-            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
+            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE") from None
 
         packet_name = orig_packet_name
         if orig_packet_name == "LATEST":
@@ -362,14 +363,14 @@ def get_tlm_values(items, stale_time=30, cache_timeout=0.1, start_time=None, end
         try:
             target_name, packet_name, item_name, value_type = item.upper().split("__")
         except ValueError:
-            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
+            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE") from None
         if packet_name == "LATEST":
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
         # Change packet_name in case of LATEST and ensure upcase
         cvt_items.append([target_name, packet_name, item_name, value_type])
         packets.append([target_name, packet_name])
     # Make the array of arrays unique
-    packets = [list(x) for x in set(tuple(x) for x in packets)]
+    packets = [list(x) for x in {tuple(x) for x in packets}]
     for name in packets:
         authorize(
             permission="tlm",
@@ -521,7 +522,7 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Split the list of topic, ID values and turn it into a hash for easy updates
     items = id.split(SUBSCRIPTION_DELIMITER)
     # Convert it back into a dict to create a lookup
-    lookup = dict(zip(items[::2], items[1::2]))
+    lookup = dict(zip(items[::2], items[1::2], strict=False))
     packets = []
     for topic, topic_id, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
         # # Return the original ID and empty array if we didn't get anything
@@ -589,12 +590,10 @@ def _extract_target_packet_names(method_name, *args):
     packet_name = None
     match len(args):
         case 1:
-            try:
-                target_name, packet_name = args[0].upper().split()
-            except ValueError:
+            with contextlib.suppress(ValueError):
                 # We get ValueError if passing not enough parameters
                 # The check below for None handles this case
-                pass
+                target_name, packet_name = args[0].upper().split()
         case 2:
             target_name = args[0].upper()
             packet_name = args[1].upper()
@@ -614,11 +613,9 @@ def _extract_target_packet_item_names(method_name, *args):
     item_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
+                # Thrown when not enough items given
                 target_name, packet_name, item_name = args[0].upper().split()
-            except ValueError:  # Thrown when not enough items given
-                # Do nothing because below error will catch this
-                pass
         case 3:
             target_name = args[0].upper()
             packet_name = args[1].upper()

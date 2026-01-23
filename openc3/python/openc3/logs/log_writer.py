@@ -248,7 +248,7 @@ class LogWriter:
 
             # Start log file
             self.filename = self.create_unique_filename()
-            self.file = open(self.filename, "bx")
+            self.file = open(self.filename, "bx")  # noqa: SIM115
             self.file_size = 0
 
             self.start_time = datetime.now(timezone.utc)
@@ -320,7 +320,7 @@ class LogWriter:
                 for redis_topic, last_offset in self.last_offsets:
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
-                self.last_offsets.clear
+                self.last_offsets.clear()
                 self.file = None
                 self.file_size = 0
                 self.filename = None

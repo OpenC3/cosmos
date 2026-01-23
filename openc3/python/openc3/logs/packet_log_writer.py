@@ -126,7 +126,7 @@ class PacketLogWriter:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")[:20]
         self._filename = os.path.join(self.log_directory, f"{timestamp}__{self.label}.bin")
 
-        self._file = open(self._filename, "wb")
+        self._file = open(self._filename, "wb")  # noqa: SIM115
         self._file.write(OPENC3_FILE_HEADER)
         self._file_size = len(OPENC3_FILE_HEADER)
 
@@ -231,14 +231,13 @@ class PacketLogWriter:
         self._write_packet_declaration(cmd_or_tlm, target_name, packet_name)
 
         # For JSON packets, write key map if not already done
-        if entry_type == self.JSON_PACKET:
-            if packet_index not in self._key_map_table:
-                parsed = data if isinstance(data, dict) else json.loads(data)
-                keys = list(parsed.keys())
-                key_map = {str(i): key for i, key in enumerate(keys)}
-                reverse_key_map = {key: str(i) for i, key in enumerate(keys)}
-                self._key_map_table[packet_index] = reverse_key_map
-                self._write_key_map(packet_index, key_map)
+        if entry_type == self.JSON_PACKET and packet_index not in self._key_map_table:
+            parsed = data if isinstance(data, dict) else json.loads(data)
+            keys = list(parsed.keys())
+            key_map = {str(i): key for i, key in enumerate(keys)}
+            reverse_key_map = {key: str(i) for i, key in enumerate(keys)}
+            self._key_map_table[packet_index] = reverse_key_map
+            self._write_key_map(packet_index, key_map)
 
         return packet_index
 

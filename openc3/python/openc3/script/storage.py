@@ -118,7 +118,7 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
                     print(f"Reading local {scope}/{part}/{path}")
-                    file = tempfile.NamedTemporaryFile(mode="w+b")
+                    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
                     file.write(local_file.read())
                     file.seek(0)  # Rewind so the file is ready to read
                     return file
@@ -168,7 +168,7 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Create Tempfile to store data
-    file = tempfile.NamedTemporaryFile(mode="w+b")
+    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
     result = _get_presigned_request(endpoint, scope=scope)

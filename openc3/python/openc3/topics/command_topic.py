@@ -42,7 +42,9 @@ class CommandTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def send_command(cls, command, timeout, scope, obfuscated_items=[]):
+    def send_command(cls, command, timeout, scope, obfuscated_items=None):
+        if obfuscated_items is None:
+            obfuscated_items = []
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"

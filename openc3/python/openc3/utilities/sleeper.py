@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import os
 import selectors
 
@@ -34,10 +35,8 @@ class Sleeper:
     def sleep(self, seconds):
         list = self.selector.select(timeout=seconds)
         if list and list[0]:
-            try:
+            with contextlib.suppress(Exception):
                 os.close(self.pipe_reader)
-            except Exception:
-                pass
             return True
         else:
             return False

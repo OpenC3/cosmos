@@ -268,7 +268,7 @@ class TemplateProtocol(TerminatedProtocol):
             self.response_template = None
             self.response_packet = None
             self.response_target_name = None
-            self.response_packets.clear
+            self.response_packets.clear()
         return super().post_write_interface(packet, data, extra)
 
     def handle_error(self, msg):

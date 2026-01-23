@@ -31,11 +31,9 @@ from openc3.utilities.store import EphemeralStore, Store, StoreMeta
 # @param thread The thread to gracefully kill
 # @param timeout Timeout in seconds to wait for it to die gracefully
 def kill_thread(owner, thread, timeout=1.0):
-    if thread:
-        if owner and hasattr(owner, "graceful_kill"):
-            if threading.current_thread() != thread:
-                owner.graceful_kill()
-                thread.join(timeout=timeout)
+    if thread and owner and hasattr(owner, "graceful_kill") and threading.current_thread() != thread:
+        owner.graceful_kill()
+        thread.join(timeout=timeout)
 
 
 class StoreQueued(metaclass=StoreMeta):

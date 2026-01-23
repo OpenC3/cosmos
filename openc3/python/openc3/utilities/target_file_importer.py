@@ -37,14 +37,13 @@ class MyLoader(importlib.abc.Loader):
     # here based on the contents provided by the spec.loader_state.
     def create_module(self, spec):
         if spec.loader_state:
-            file = tempfile.NamedTemporaryFile(mode="w+t", suffix=".py")
-            file.write(spec.loader_state)
-            file.seek(0)  # Rewind so the file is ready to read
-            spec = importlib.util.spec_from_file_location(spec.name, file.name)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            file.close()
-            return module
+            with tempfile.NamedTemporaryFile(mode="w+t", suffix=".py") as file:
+                file.write(spec.loader_state)
+                file.seek(0)  # Rewind so the file is ready to read
+                spec = importlib.util.spec_from_file_location(spec.name, file.name)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                return module
         return None
 
     # Normally this is where the module is executed and populated.

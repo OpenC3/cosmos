@@ -153,9 +153,30 @@ clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
 
-# Build the package
+# Build the package (wheel and sdist)
 build:
     uv build
+
+# Build wheel only
+build-wheel:
+    uv build --wheel
+
+# Build source distribution only
+build-sdist:
+    uv build --sdist
+
+# Build and install the package locally (editable mode)
+install-editable:
+    uv pip install -e .
+
+# Build and show package info
+build-info: build
+    @echo ""
+    @echo "Built packages:"
+    @ls -lh dist/
+    @echo ""
+    @echo "Package contents:"
+    @tar -tzf dist/*.tar.gz 2>/dev/null | head -20 || unzip -l dist/*.whl | head -30
 
 # Show dependency tree
 deps:

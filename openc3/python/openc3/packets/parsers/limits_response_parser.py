@@ -52,4 +52,4 @@ class LimitsResponseParser:
             else:
                 item.limits.response = klass()
         except ModuleNotFoundError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error

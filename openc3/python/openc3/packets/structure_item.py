@@ -309,12 +309,10 @@ class StructureItem:
         if not (self.data_type == "INT" or self.data_type == "UINT"):
             return False
         # If we're not byte aligned we're a bit field
-        if not (self.bit_offset % 8) == 0:
+        if self.bit_offset % 8 != 0:
             return True
         # If we don't have an even number of bytes we're a bit field
-        if not self.even_byte_multiple():
-            return True
-        return False
+        return bool(not self.even_byte_multiple())
 
     # Verifies overall integrity of the StructureItem by checking for correct
     # LITTLE_ENDIAN bit fields
@@ -351,7 +349,4 @@ class StructureItem:
                     )
 
     def even_byte_multiple(self):
-        if self.bit_size in [8, 16, 32, 64]:
-            return True
-        else:
-            return False
+        return self.bit_size in [8, 16, 32, 64]

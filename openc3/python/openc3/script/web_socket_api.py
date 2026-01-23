@@ -88,9 +88,8 @@ class WebSocketApi:
                 if ignore_protocol_messages:
                     msg_type = json_hash.get("type")
                     if msg_type:  # ping, welcome, confirm_subscription, reject_subscription, disconnect
-                        if msg_type == "disconnect":
-                            if json_hash["reason"] == "unauthorized":
-                                raise RuntimeError("Unauthorized")
+                        if msg_type == "disconnect" and json_hash["reason"] == "unauthorized":
+                            raise RuntimeError("Unauthorized")
                         if msg_type == "reject_subscription":
                             raise RuntimeError("Subscription Rejected")
                         if timeout:

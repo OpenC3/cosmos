@@ -59,7 +59,7 @@ class ConfigTopic(Topic):
 
         if offset is not None:
             result = []
-            for topic, msg_id, msg_hash, _ in Topic.read_topics([topic], [offset], None, count):
+            for _topic, msg_id, msg_hash, _ in Topic.read_topics([topic], [offset], None, count):
                 if msg_hash is None:
                     continue
                 result.append((msg_id, msg_hash))

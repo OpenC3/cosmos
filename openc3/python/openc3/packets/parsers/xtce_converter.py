@@ -51,9 +51,9 @@ class XtceConverter:
 
         # Build target list
         targets = set()
-        for target_name in telemetry.keys():
+        for target_name in telemetry:
             targets.add(target_name)
-        for target_name in commands.keys():
+        for target_name in commands:
             targets.add(target_name)
 
         for target_name in targets:
@@ -149,12 +149,12 @@ class XtceConverter:
 
         # ParameterTypeSet
         param_type_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterTypeSet")
-        for item_name, item in unique_items.items():
+        for _item_name, item in unique_items.items():
             self._to_xtce_type(item, "Parameter", param_type_set)
 
         # ParameterSet
         param_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterSet")
-        for item_name, item in unique_items.items():
+        for _item_name, item in unique_items.items():
             self._to_xtce_item(item, "Parameter", param_set)
 
         # ContainerSet
@@ -219,7 +219,7 @@ class XtceConverter:
         # ArgumentTypeSet
         arg_type_set = etree.SubElement(cmd_meta, f"{{{self.XTCE_NAMESPACE}}}ArgumentTypeSet")
         unique_items = self._get_unique(commands[target_name])
-        for arg_name, arg in unique_items.items():
+        for _arg_name, arg in unique_items.items():
             self._to_xtce_type(arg, "Argument", arg_type_set)
 
         # MetaCommandSet
@@ -282,7 +282,7 @@ class XtceConverter:
             dict: Hash of unique items
         """
         unique = {}
-        for packet_name, packet in packets.items():
+        for _packet_name, packet in packets.items():
             for item in packet.sorted_items:
                 if item.data_type == "DERIVED":
                     continue

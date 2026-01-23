@@ -60,7 +60,9 @@ def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
     return _handle_response(response, "Failed to delete timeline")
 
 
-def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOPE):
+def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SCOPE):
+    if data is None:
+        data = {}
     kind = kind.lower()
     kinds = ["command", "script", "reserve"]
     if kind not in kinds:

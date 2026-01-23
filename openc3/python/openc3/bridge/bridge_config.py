@@ -38,46 +38,46 @@ class BridgeConfig:
     def generate_default(filename):
         default_config = """# Write serial port name
 VARIABLE write_port_name COM1
-        
+
 # Read serial port name
 VARIABLE read_port_name COM1
-        
+
 # Baud Rate
 VARIABLE baud_rate 115200
-        
+
 # Parity - NONE, ODD, or EVEN
 VARIABLE parity NONE
-        
+
 # Stop bits - 0, 1, or 2
 VARIABLE stop_bits 1
-        
+
 # Write Timeout
 VARIABLE write_timeout 10.0
-        
+
 # Read Timeout
 VARIABLE read_timeout nil
-        
+
 # Flow Control - NONE, or RTSCTS
 VARIABLE flow_control NONE
-        
+
 # Data bits per word - Typically 8
 VARIABLE data_bits 8
-        
+
 # Port to listen for connections from COSMOS - Plugin must match
 VARIABLE router_port 2950
-        
+
 # Port to listen on for connections from COSMOS. Defaults to localhost for security. Will need to be opened
 # if COSMOS is on another machine.
 VARIABLE router_listen_address 127.0.0.1
-        
+
 INTERFACE SERIAL_INT openc3/interfaces/serial_interface.py <%= write_port_name %> <%= read_port_name %> <%= baud_rate %> <%= parity %> <%= stop_bits %> <%= write_timeout %> <%= read_timeout %>
   OPTION FLOW_CONTROL <%= flow_control %>
   OPTION DATA_BITS <%= data_bits %>
-        
+
 ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port %> <%= router_port %> 10.0 nil BURST
   ROUTE SERIAL_INT
   OPTION LISTEN_ADDRESS <%= router_listen_address %>
-        
+
 """
 
         Logger.info(f"Writing {filename}")
@@ -175,7 +175,7 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
                                 )
                                 current_interface_or_router.add_protocol(protocol_class, params[2:], params[0].upper())
                             except Exception as error:
-                                raise parser.error(str(error), usage)
+                                raise parser.error(str(error), usage) from error
 
                 case "ROUTER":
                     usage = "ROUTER <Name> <Filename> <Specific Parameters>"

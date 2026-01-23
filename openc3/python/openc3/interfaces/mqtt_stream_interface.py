@@ -30,8 +30,10 @@ class MqttStreamInterface(StreamInterface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
     def __init__(
-        self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, protocol_type=None, protocol_args=[]
+        self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, protocol_type=None, protocol_args=None
     ):
+        if protocol_args is None:
+            protocol_args = []
         super().__init__(protocol_type, protocol_args)
         self.hostname = hostname
         self.port = int(port)
@@ -92,19 +94,16 @@ class MqttStreamInterface(StreamInterface):
                 self.password = option_values[0]
             case "CERT":
                 # CERT must be given as a file
-                self.cert = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.cert.write(option_values[0])
-                self.cert.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.cert:
+                    self.cert.write(option_values[0])
             case "KEY":
                 # KEY must be given as a file
-                self.key = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.key.write(option_values[0])
-                self.key.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.key:
+                    self.key.write(option_values[0])
             case "CA_FILE":
                 # CA_FILE must be given as a file
-                self.ca_file = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.ca_file.write(option_values[0])
-                self.ca_file.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.ca_file:
+                    self.ca_file.write(option_values[0])
             case "KEYFILE_PASSWORD":
                 self.keyfile_password = option_values[0]
 

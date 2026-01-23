@@ -163,9 +163,9 @@ def running_script_method(method, *args, **kwargs):
             else:
                 if "open_file" in method:
                     files = []
-                    for theFilename in user_input:
-                        file = _get_storage_file(f"tmp/{theFilename}", scope=RunningScript.instance.scope())
-                        file._filename = theFilename
+                    for the_filename in user_input:
+                        file = _get_storage_file(f"tmp/{the_filename}", scope=RunningScript.instance.scope())
+                        file._filename = the_filename
                         files.append(file)
 
                     def filename(self):
@@ -448,7 +448,7 @@ class RunningScript:
         self.execute_while_paused_info = None
 
     def unique_filename(self):
-        if self.script_status.filename and not self.script_status.filename == "":
+        if self.script_status.filename and self.script_status.filename != "":
             return self.script_status.filename
         else:
             return "Untitled" + str(RunningScript.instance.id())
@@ -499,7 +499,7 @@ class RunningScript:
 
     @classmethod
     def instrument_script(cls, text, filename, line_offset=0, cache=True):
-        if cache and filename and not filename == "":
+        if cache and filename and filename != "":
             cls.file_cache[filename] = text
 
         parsed = ast.parse(text)
@@ -686,8 +686,7 @@ class RunningScript:
                 out_filename = os.path.basename(filename)
 
             # Build each line to write
-            line_count = 0
-            for out_line in string.splitlines():
+            for _line_count, out_line in enumerate(string.splitlines()):
                 out_line = out_line.rstrip()
                 try:
                     json_hash = json.loads(out_line)
@@ -710,7 +709,6 @@ class RunningScript:
                         line_to_write = time_formatted + " (SCRIPTRUNNER): " + out_line
                         color = "BLUE"
                 lines_to_write = lines_to_write + line_to_write + "\n"
-                line_count += 1
 
             if len(lines_to_write) > RunningScript.max_output_characters:
                 # We want the full @@max_output_characters so don't subtract the additional "ERROR: ..." text
@@ -1034,7 +1032,7 @@ class RunningScript:
             self.scriptrunner_puts(f"Script completed: {self.script_status.filename}")
 
         except Exception as error:
-            if isinstance(error, StopScript) or isinstance(error, SkipScript):
+            if isinstance(error, (StopScript, SkipScript)):
                 self.handle_output_io()
                 self.scriptrunner_puts(f"Script stopped: {self.script_status.filename}")
             else:
@@ -1260,9 +1258,8 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
     instrumented_script = None
     instrumented_cache = None
     text = None
-    if line_no == 1 and end_line_no is None:
-        if path in RunningScript.instrumented_cache:
-            instrumented_cache, text = RunningScript.instrumented_cache[path]
+    if line_no == 1 and end_line_no is None and path in RunningScript.instrumented_cache:
+        instrumented_cache, text = RunningScript.instrumented_cache[path]
 
     if instrumented_cache:
         # Use cached instrumentation

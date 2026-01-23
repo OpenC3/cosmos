@@ -199,8 +199,7 @@ class BurstProtocol(Protocol):
             pdata = self.data[:]
             pdata += b"\x00\x00\x00\x00\x00\x00"
         Logger.error(
-            "Starting 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n"
-            % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
+            f"Starting 0x{pdata[0]:02X} 0x{pdata[1]:02X} 0x{pdata[2]:02X} 0x{pdata[3]:02X} 0x{pdata[4]:02X} 0x{pdata[5]:02X}\n"
         )
 
     def reduce_to_single_packet(self):

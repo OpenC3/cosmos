@@ -75,7 +75,7 @@ class CrcProtocol(Protocol):
         try:
             self.bit_offset = int(convert_to_value(bit_offset))
         except TypeError:
-            raise ValueError(f"Invalid bit offset of {bit_offset}. Must be a number.")
+            raise ValueError(f"Invalid bit offset of {bit_offset}. Must be a number.") from None
         if self.bit_offset % 8 != 0:
             raise ValueError(f"Invalid bit offset of {bit_offset}. Must be divisible by 8.")
 
@@ -84,14 +84,14 @@ class CrcProtocol(Protocol):
             if isinstance(poly, str):
                 poly = int(poly, 0)
         except (ValueError, TypeError):
-            raise ValueError(f"Invalid polynomial of {poly}. Must be a number.")
+            raise ValueError(f"Invalid polynomial of {poly}. Must be a number.") from None
 
         seed = ConfigParser.handle_none(seed)
         try:
             if isinstance(seed, str):
                 seed = int(seed, 0)
         except ValueError:
-            raise ValueError(f"Invalid seed of {seed}. Must be a number.")
+            raise ValueError(f"Invalid seed of {seed}. Must be a number.") from None
 
         xor = ConfigParser.handle_true_false_none(xor)
         if xor is not None and xor is not True and xor is not False:
@@ -116,7 +116,7 @@ class CrcProtocol(Protocol):
         try:
             self.bit_size = int(convert_to_value(bit_size))
         except TypeError:
-            raise ValueError(f"Invalid bit size of {bit_size}. Must be a number.")
+            raise ValueError(f"Invalid bit size of {bit_size}. Must be a number.") from None
         endianness = "<"  # LITTLE_ENDIAN
         if self.endianness == "BIG_ENDIAN":
             endianness = ">"

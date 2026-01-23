@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 # XmlAccessor uses lxml.etree
-import lxml.html as HTML
+import lxml.html as HTML  # noqa: N812
 
 from openc3.accessors.xml_accessor import XmlAccessor
 

@@ -18,6 +18,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 
+import contextlib
 import json
 import os
 from contextlib import contextmanager
@@ -392,11 +393,8 @@ def get_cmd_value(
     parameter_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name, parameter_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 3:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -528,11 +526,8 @@ def _extract_target_command_names(method_name, *args):
     command_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 2:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -552,11 +547,8 @@ def _extract_target_command_parameter_names(method_name, *args):
     parameter_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name, parameter_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 3:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -629,8 +621,8 @@ def _cmd_implementation(
     if kwargs.get("timeout") is not None:
         try:
             timeout = float(kwargs["timeout"])
-        except ValueError:
-            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.")
+        except ValueError as e:
+            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.") from e
 
     # Determine if we should log this command
     log_message = True  # Default is True

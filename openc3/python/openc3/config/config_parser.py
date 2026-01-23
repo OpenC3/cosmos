@@ -99,7 +99,7 @@ class ConfigParser:
         yield_non_keyword_lines: bool = False,
         remove_quotes_arg: bool = True,
         run_erb: bool = True,
-        variables: dict[str, Any] = {},
+        variables: dict[str, Any] = None,
     ) -> Generator[tuple[str | None, list[str]], None, None]:
         """Parse a file and call the callback for each line
 
@@ -113,6 +113,8 @@ class ConfigParser:
         Returns:
             Generator yielding (keyword, parameters) tuples
         """
+        if variables is None:
+            variables = {}
         if filename and not os.path.exists(filename):
             raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
 
@@ -480,9 +482,8 @@ class ConfigParser:
                     # KEYWORD PARAM #This is a comment
                     # But still process Ruby string interpolations such as:
                     # KEYWORD PARAM {var}
-                    if (len(string) > 0) and (string[0] == "#"):
-                        if not ((len(string) > 1) and (string[1] == "{")):
-                            break
+                    if (len(string) > 0) and (string[0] == "#") and not ((len(string) > 1) and (string[1] == "{")):
+                        break
 
                     if remove_quotes_arg:
                         self.parameters.append(remove_quotes(string))

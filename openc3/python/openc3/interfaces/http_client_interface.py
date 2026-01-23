@@ -87,10 +87,7 @@ class HttpClientInterface(Interface):
         Returns:
             bool: True if the HTTP client is connected, False otherwise.
         """
-        if self.http:
-            return True
-        else:
-            return False
+        return bool(self.http)
 
     # Disconnects the interface from its target(s)
     def disconnect(self):
@@ -102,7 +99,7 @@ class HttpClientInterface(Interface):
         the response queue to allow the read_interface method to return.
         """
         if self.http:
-            self.http.close
+            self.http.close()
         self.http = None
         while not self.response_queue.empty():
             self.response_queue.get_nowait()

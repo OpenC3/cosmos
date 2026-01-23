@@ -41,5 +41,5 @@ class IpWriteConversion(Conversion):
 
     # @param read_or_write [String] Either 'READ' or 'WRITE'
     # @return [String] Config fragment for this conversion
-    def to_config(read_or_write):
-        return f"{read_or_write}_CONVERSION openc3/conversions/ip_write_conversion.py\n"
+    def to_config(self):
+        return f"{self}_CONVERSION openc3/conversions/ip_write_conversion.py\n"

@@ -45,7 +45,9 @@ class MessageLog:
     #   This will be inserted into the message log filename to help identify it.
     # @param log_dir [String] The filesystem path to store the message log file.
     # @param tags [Array<String>] Array of strings to put into the filename
-    def __init__(self, tool_name, log_dir, tags=["messages"], scope=OPENC3_SCOPE):
+    def __init__(self, tool_name, log_dir, tags=None, scope=OPENC3_SCOPE):
+        if tags is None:
+            tags = ["messages"]
         self.remote_log_directory = f"{scope}/tool_logs/{tool_name}/"
         self.tags = [tool_name] + tags
         self.log_dir = log_dir
@@ -68,7 +70,9 @@ class MessageLog:
                 self.file.flush()
 
     # Closes the message log and marks it read only
-    def stop(self, take_mutex=True, metadata={}):
+    def stop(self, take_mutex=True, metadata=None):
+        if metadata is None:
+            metadata = {}
         bucket_key = None
         if take_mutex:
             self.mutex.acquire()
@@ -104,6 +108,6 @@ class MessageLog:
         timed_filename = self.build_timestamped_filename(self.tags)
         self.start_day = timed_filename[0:10].replace("_", "")  # YYYYMMDD
         self.filename = os.path.join(self.log_dir, timed_filename)
-        self.file = open(self.filename, "a")
+        self.file = open(self.filename, "a")  # noqa: SIM115
         if take_mutex:
             self.mutex.release()

@@ -25,7 +25,7 @@ class JsonEncoder(json.JSONEncoder):
         if isinstance(o, (bytes, bytearray)):
             return {
                 "json_class": "String",
-                "raw": [x for x in o],
+                "raw": list(o),
             }
         return json.JSONEncoder.default(self, o)
 

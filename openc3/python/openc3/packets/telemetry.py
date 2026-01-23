@@ -406,7 +406,7 @@ class Telemetry:
                 if not include_hidden and (packet.hidden or packet.disabled):
                     continue
 
-                for item_name in packet.items.keys():
+                for item_name in packet.items:
                     strings.append(f"{target_name} {packet_name} {item_name}")
             index += 1
         return strings

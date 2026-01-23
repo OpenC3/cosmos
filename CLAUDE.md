@@ -75,6 +75,14 @@ bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 
 ### Python Tests
 
+First install the required tools (macOS):
+
+```bash
+brew install uv ruff just
+```
+
+Then run tests:
+
 ```bash
 cd openc3/python
 uv sync                                          # Install dependencies

@@ -203,7 +203,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
     command["cmd_name"] = cmd_name
     command["cmd_params"] = cmd_params
     if cmd_params:
-        for param_name in cmd_params.keys():
+        for param_name in cmd_params:
             found = False
             if "items" in command:
                 for item in command["items"]:

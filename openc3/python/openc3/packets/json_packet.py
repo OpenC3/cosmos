@@ -269,7 +269,7 @@ class JsonPacket:
             elif value_type == "RAW":
                 postfix = None  # RAW with no reduced type has no suffix
 
-            for key in self.json_hash.keys():
+            for key in self.json_hash:
                 key_split = key.split("__")
                 if postfix is None:
                     # RAW with no reduced: only include keys without suffix
@@ -279,7 +279,7 @@ class JsonPacket:
                     result[key_split[0]] = True
         else:
             # Return all base names
-            for key in self.json_hash.keys():
+            for key in self.json_hash:
                 base_name = key.split("__")[0]
                 result[base_name] = True
 

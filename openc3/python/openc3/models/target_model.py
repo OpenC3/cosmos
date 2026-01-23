@@ -422,11 +422,11 @@ class TargetModel(Model):
         self,
         name: str,
         folder_name=None,
-        requires=[],
-        ignored_parameters=[],
-        ignored_items=[],
-        limits_groups=[],
-        cmd_tlm_files=[],
+        requires=None,
+        ignored_parameters=None,
+        ignored_items=None,
+        limits_groups=None,
+        cmd_tlm_files=None,
         id=None,
         updated_at=None,
         plugin=None,
@@ -449,13 +449,25 @@ class TargetModel(Model):
         reduced_day_log_retain_time=None,
         cleanup_poll_time=600,
         needs_dependencies=False,
-        target_microservices={"REDUCER": [[]]},
+        target_microservices=None,
         reducer_disable=False,
         reducer_max_cpu_utilization=30.0,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
     ):
+        if target_microservices is None:
+            target_microservices = {"REDUCER": [[]]}
+        if cmd_tlm_files is None:
+            cmd_tlm_files = []
+        if limits_groups is None:
+            limits_groups = []
+        if ignored_items is None:
+            ignored_items = []
+        if ignored_parameters is None:
+            ignored_parameters = []
+        if requires is None:
+            requires = []
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

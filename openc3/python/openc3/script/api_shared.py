@@ -203,7 +203,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             try:
                 value = float(args[0])
             except ValueError:
-                raise RuntimeError("Non-numeric wait time specified")
+                raise RuntimeError("Non-numeric wait time specified") from None
 
             start_time = time.time()
             openc3_script_sleep(value)

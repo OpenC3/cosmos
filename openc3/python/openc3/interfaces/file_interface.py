@@ -58,8 +58,10 @@ class FileInterface(Interface):
         file_read_size=65536,
         stored=True,
         protocol_type=None,
-        protocol_args=[],
+        protocol_args=None,
     ):
+        if protocol_args is None:
+            protocol_args = []
         super().__init__()
 
         self.protocol_type = ConfigParser.handle_none(protocol_type)
@@ -144,9 +146,9 @@ class FileInterface(Interface):
             file = self.get_next_telemetry_file()
             if file:
                 if file.endswith(".gz"):
-                    self.file = gzip.open(file, "rb")
+                    self.file = gzip.open(file, "rb")  # noqa: SIM115
                 else:
-                    self.file = open(file, "rb")
+                    self.file = open(file, "rb")  # noqa: SIM115
                 self.file_path = file
                 if self.discard_file_header_bytes is not None:
                     self.file.read(self.discard_file_header_bytes)

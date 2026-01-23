@@ -197,10 +197,8 @@ class Store(metaclass=StoreMeta):
                     if not offsets:
                         offsets = self.update_topic_offsets(topics)
                     streams = {}
-                    index = 0
-                    for topic in topics:
+                    for index, topic in enumerate(topics):
                         streams[topic] = offsets[index]
-                        index += 1
                     result = redis.xread(streams, block=timeout_ms, count=count)
                     if result and len(result) > 0:
                         for topic, messages in result:

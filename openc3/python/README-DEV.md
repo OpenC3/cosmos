@@ -2,6 +2,20 @@
 
 This directory contains the Python implementation of the OpenC3 COSMOS library.
 
+## Development Tools
+
+This project uses modern Python tooling:
+
+- **[UV](https://github.com/astral-sh/uv)** - Fast Python package manager (10-100x faster than pip)
+- **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter
+- **[Just](https://github.com/casey/just)** - Command runner (like Make but better)
+
+### Installing Tools (macOS)
+
+```bash
+brew install uv ruff just
+```
+
 ## Quick Start
 
 ```bash
@@ -17,14 +31,6 @@ just test
 # Verify code before committing
 just verify
 ```
-
-## Development Tools
-
-This project uses modern Python tooling:
-
-- **[UV](https://github.com/astral-sh/uv)** - Fast Python package manager (10-100x faster than pip)
-- **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter
-- **[Just](https://github.com/casey/just)** - Command runner (like Make but better)
 
 ## Available Commands
 
@@ -63,6 +69,15 @@ just add PACKAGE         # Add new dependency
 just add-dev PACKAGE     # Add dev dependency
 just update              # Update all dependencies
 just deps                # Show dependency tree
+```
+
+### Building
+```bash
+just build               # Build wheel and source distribution
+just build-wheel         # Build wheel only
+just build-sdist         # Build source distribution only
+just build-info          # Build and show package info
+just install-editable    # Install package in editable mode
 ```
 
 ### Cleanup

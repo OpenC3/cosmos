@@ -120,7 +120,7 @@ class JsonApiObject:
         try:
             self.http = Session()
         except Exception as error:
-            raise JsonApiError(error)
+            raise JsonApiError(error) from error
 
     def _generate_kwargs(self, keyword_params):
         """NOTE: This is a helper method and should not be called directly"""
@@ -221,12 +221,12 @@ class JsonApiObject:
                     self.connect()
                 else:
                     error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-                    raise RuntimeError(error)
-            except Exception:
+                    raise RuntimeError(error) from e
+            except Exception as e:
                 self.log[2] = f"{method} Exception: {traceback.format_exc()}"
                 self.disconnect()
                 error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-                raise RuntimeError(error)
+                raise RuntimeError(error) from e
         # Should not reach here, but just in case
         error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
         raise RuntimeError(error)

@@ -283,7 +283,7 @@ class CvtModel(Model):
                 retry_count += 1
                 if retry_count > 4:
                     # After the 5th retry just raise the error
-                    raise RuntimeError(f"Error querying TSDB: {str(e)}")
+                    raise RuntimeError(f"Error querying TSDB: {str(e)}") from e
                 Logger.warn(f"TSDB: Retrying due to error: {str(e)}")
                 Logger.warn(f"TSDB: Last query: {query}")  # Log the last query for debugging
                 with cls._conn_mutex:

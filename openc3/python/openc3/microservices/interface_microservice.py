@@ -17,6 +17,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1963
 
+import contextlib
 import json
 import os
 import sys
@@ -52,11 +53,9 @@ from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch
 
 
-try:
-    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
-except ModuleNotFoundError:
+with contextlib.suppress(ModuleNotFoundError):
     # Should never actually be used in COSMOS Core
-    pass
+    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
 
 
 class InterfaceCmdHandlerThread:
@@ -121,9 +120,8 @@ class InterfaceCmdHandlerThread:
 
         if topic == "OPENC3__SYSTEM__EVENTS":
             msg = json.loads(msg_hash[b"event"].decode())
-            if msg["type"] == "scope":
-                if msg["name"] == self.scope:
-                    self.critical_commanding = msg["critical_commanding"]
+            if msg["type"] == "scope" and msg["name"] == self.scope:
+                self.critical_commanding = msg["critical_commanding"]
             return "SUCCESS"
 
         # Check for a raw write to the interface
@@ -319,12 +317,10 @@ class InterfaceCmdHandlerThread:
                 command.extra["approver"] = critical_model.approver
             hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
 
-            if hazardous_check:
-                # Return back the error, description, and the formatted command
-                # This allows the error handler to simply re-send the command
-                if hazardous:
-                    if not release_critical:
-                        return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
+            # Return back the error, description, and the formatted command
+            # This allows the error handler to simply re-send the command
+            if hazardous_check and hazardous and not release_critical:
+                return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
 
             if self.critical_commanding is not None and self.critical_commanding != "OFF" and not release_critical:
                 restricted = command.restricted
@@ -886,11 +882,10 @@ class InterfaceMicroservice(Microservice):
             self.interface.connect()
             self.interface.post_connect()
         except Exception as error:
-            try:
+            with contextlib.suppress(Exception):
+                # We want to report any connect errors, not disconnect in this case
                 self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect
-            except Exception:
-                pass  # We want to report any connect errors, not disconnect in this case
-            raise error
+            raise error from error
 
         self.interface.state = "CONNECTED"
         if self.interface_or_router == "INTERFACE":

@@ -408,12 +408,11 @@ class Packet(Structure):
                 next_offset = item.array_size
         else:
             next_offset = None
-            if item.bit_offset > 0:
-                if item.little_endian_bit_field:
-                    # Bit offset always refers to the most significant bit of a bitfield
-                    bits_remaining_in_last_byte = 8 - (item.bit_offset % 8)
-                    if item.bit_size > bits_remaining_in_last_byte:
-                        next_offset = item.bit_offset + bits_remaining_in_last_byte
+            if item.bit_offset > 0 and item.little_endian_bit_field:
+                # Bit offset always refers to the most significant bit of a bitfield
+                bits_remaining_in_last_byte = 8 - (item.bit_offset % 8)
+                if item.bit_size > bits_remaining_in_last_byte:
+                    next_offset = item.bit_offset + bits_remaining_in_last_byte
             if not next_offset:
                 if item.bit_size > 0:
                     next_offset = item.bit_offset + item.bit_size
@@ -611,7 +610,7 @@ class Packet(Structure):
                             key = item.states_by_value().get(value[index])
                             if key is not None:
                                 value[index] = key
-                            elif Packet.ANY_STATE in item.states_by_value().keys():
+                            elif Packet.ANY_STATE in item.states_by_value():
                                 value[index] = item.states_by_value()[Packet.ANY_STATE]
                             else:
                                 value[index] = self.apply_format_string_and_units(item, val, value_type)
@@ -619,7 +618,7 @@ class Packet(Structure):
                         key = item.states_by_value().get(value)
                         if key is not None:
                             value = key
-                        elif Packet.ANY_STATE in item.states_by_value().keys():
+                        elif Packet.ANY_STATE in item.states_by_value():
                             value = item.states_by_value()[Packet.ANY_STATE]
                         else:
                             value = self.apply_format_string_and_units(item, value, value_type)
@@ -923,7 +922,7 @@ class Packet(Structure):
     def disable_limits(self, name):
         item = self.get_item(name)
         item.limits.enabled = False
-        if not item.limits.state == "STALE":
+        if item.limits.state != "STALE":
             old_limits_state = item.limits.state
             item.limits.state = None
             if self.limits_change_callback is not None:
@@ -934,10 +933,9 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items case
     # checking for limits.
     def update_limits_items_cache(self, item):
-        if item.limits.values or item.state_colors:
-            if not self.limits_items_hash.get(item.name):
-                self.limits_items.append(item)
-                self.limits_items_hash[item.name] = True
+        if (item.limits.values or item.state_colors) and not self.limits_items_hash.get(item.name):
+            self.limits_items.append(item)
+            self.limits_items_hash[item.name] = True
 
     # Add an item to the obfuscate items cache if necessary.
     # You MUST call this after adding obfuscation to an item
@@ -1006,7 +1004,7 @@ class Packet(Structure):
             return
 
         for _, processor in self.processors:
-            processor.reset
+            processor.reset()
 
     # Make a light weight clone of this packet. This only creates a new buffer
     # of data and clones the processors. The defined packet items are the same.
@@ -1089,9 +1087,8 @@ class Packet(Structure):
             if item.data_type != "DERIVED":
                 config += item.to_config(cmd_or_tlm, self.default_endianness)
         for item in self.sorted_items:
-            if item.data_type == "DERIVED":
-                if item.name not in Packet.RESERVED_ITEM_NAMES:
-                    config += item.to_config(cmd_or_tlm, self.default_endianness)
+            if item.data_type == "DERIVED" and item.name not in Packet.RESERVED_ITEM_NAMES:
+                config += item.to_config(cmd_or_tlm, self.default_endianness)
 
         if self.response:
             config += f"  RESPONSE {quote_if_necessary(self.response[0])} {quote_if_necessary(self.response[1])}\n"

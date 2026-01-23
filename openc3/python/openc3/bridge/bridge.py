@@ -34,13 +34,13 @@ class Bridge:
         self.threads = []
 
         # Start Interface Threads
-        for interface_name, interface in self.config.interfaces.items():
+        for _interface_name, interface in self.config.interfaces.items():
             thread = BridgeInterfaceThread(interface)
             self.threads.append(thread)
             thread.start()
 
         # Start Router Threads
-        for router_name, router in self.config.routers.items():
+        for _router_name, router in self.config.routers.items():
             thread = BridgeRouterThread(router)
             self.threads.append(thread)
             thread.start()

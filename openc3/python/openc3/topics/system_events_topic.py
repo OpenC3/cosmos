@@ -33,5 +33,5 @@ class SystemEventsTopic(Topic):
 
     @classmethod
     def read(cls):
-        for topic, msg_id, msg_hash, redis in Topic.read_topics([cls.PRIMARY_KEY]):
+        for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([cls.PRIMARY_KEY]):
             yield json.loads(msg_hash[b"event"].decode())

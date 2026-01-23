@@ -29,8 +29,6 @@ from .target_api import *
 from .tlm_api import *
 
 
-try:
-    from openc3enterprise.api.cmd_authority_api import *
-except ModuleNotFoundError:
+with contextlib.suppress(ModuleNotFoundError):
     # ModuleNotFoundError expected in COSMOS Core
-    pass
+    from openc3enterprise.api.cmd_authority_api import *

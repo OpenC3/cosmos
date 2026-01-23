@@ -176,7 +176,7 @@ class MqttInterface(Interface):
         try:
             topic = self.write_topics.pop(0)
         except IndexError:
-            raise RuntimeError(f"write_interface called with no topics: {self.write_topics}")
+            raise RuntimeError(f"write_interface called with no topics: {self.write_topics}") from None
         info = self.client.publish(topic, data)
         # This more closely matches the ruby implementation
         info.wait_for_publish(timeout=self.ack_timeout)
@@ -200,19 +200,16 @@ class MqttInterface(Interface):
                 self.password = option_values[0]
             case "CERT":
                 # CERT must be given as a file
-                self.cert = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.cert.write(option_values[0])
-                self.cert.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.cert:
+                    self.cert.write(option_values[0])
             case "KEY":
                 # KEY must be given as a file
-                self.key = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.key.write(option_values[0])
-                self.key.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.key:
+                    self.key.write(option_values[0])
             case "CA_FILE":
                 # CA_FILE must be given as a file
-                self.ca_file = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.ca_file.write(option_values[0])
-                self.ca_file.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.ca_file:
+                    self.ca_file.write(option_values[0])
             case "KEYFILE_PASSWORD":
                 self.keyfile_password = option_values[0]
 

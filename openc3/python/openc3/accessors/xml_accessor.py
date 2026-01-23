@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 # HtmlAccessor uses lxml.html
-import lxml.etree as ET
+import lxml.etree as ET  # noqa: N812
 
 from .accessor import Accessor
 

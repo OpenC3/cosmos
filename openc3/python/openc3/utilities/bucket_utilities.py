@@ -55,7 +55,9 @@ class BucketUtilities:
     #     return True
 
     @classmethod
-    def move_log_file_to_bucket_thread(cls, filename, bucket_key, metadata={}):
+    def move_log_file_to_bucket_thread(cls, filename, bucket_key, metadata=None):
+        if metadata is None:
+            metadata = {}
         try:
             client = Bucket.getClient()
 
@@ -97,7 +99,9 @@ class BucketUtilities:
             Logger.error(f"Error saving log file to bucket: {filename}\n{str(err)}")
 
     @classmethod
-    def move_log_file_to_bucket(cls, filename, bucket_key, metadata={}):
+    def move_log_file_to_bucket(cls, filename, bucket_key, metadata=None):
+        if metadata is None:
+            metadata = {}
         thread = threading.Thread(
             target=cls.move_log_file_to_bucket_thread,
             args=[filename, bucket_key, metadata],

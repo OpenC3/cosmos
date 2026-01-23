@@ -518,5 +518,5 @@ class PacketItem(StructureItem):
                     return ConfigParser.handle_true_false(value)
                 case _:
                     return value
-        except ValueError:
-            raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}")
+        except ValueError as error:
+            raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}") from error

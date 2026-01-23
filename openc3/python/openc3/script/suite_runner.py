@@ -230,7 +230,7 @@ class SuiteRunner:
                         else:
                             raise Exception(f"{group_class} does not have a teardown method defined.")
 
-            if not suite.name == "CustomSuite":
+            if suite.name != "CustomSuite":
                 suites[suite.name()] = cur_suite
 
         return suites

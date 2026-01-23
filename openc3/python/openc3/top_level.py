@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import importlib
 import os
 import socket
@@ -137,11 +138,9 @@ def close_socket(socket_to_close):
         except OSError:
             # Oh well we tried
             pass
-        try:
+        with contextlib.suppress(OSError):
+            # Capture the Socket is not connected error
             socket_to_close.close()
-        # Capture the Socket is not connected error
-        except OSError:
-            pass
 
 
 def get_class_from_module(module, class_name):

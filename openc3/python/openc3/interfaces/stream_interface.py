@@ -23,7 +23,9 @@ from openc3.utilities.string import class_name_to_filename
 
 # Base class for interfaces that act read and write from a stream
 class StreamInterface(Interface):
-    def __init__(self, protocol_type=None, protocol_args=[]):
+    def __init__(self, protocol_type=None, protocol_args=None):
+        if protocol_args is None:
+            protocol_args = []
         super().__init__()
         self.stream = None
         self.protocol_type = ConfigParser.handle_none(protocol_type)

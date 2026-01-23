@@ -156,6 +156,12 @@ COSMOS uses Python for scripting and provides a Python library (`openc3`) that m
 - **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter (replaces flake8/black/isort)
 - **[Just](https://github.com/casey/just)** - Command runner for development tasks
 
+### Installing Tools (macOS)
+
+```bash
+brew install uv ruff just
+```
+
 ### Quick Start
 
 1.  Install dependencies:

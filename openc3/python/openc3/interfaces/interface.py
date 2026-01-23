@@ -377,7 +377,7 @@ class Interface:
                 other_interface.set_option(option_name, option_values)
         other_interface.protocol_info = []
         for protocol_class, protocol_args, read_write in self.protocol_info:
-            if not read_write == "PARAMS":
+            if read_write != "PARAMS":
                 other_interface.add_protocol(protocol_class, protocol_args, read_write)
 
     # Set an interface or router specific option

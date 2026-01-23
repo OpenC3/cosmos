@@ -145,20 +145,11 @@ class UdpInterface(Interface):
     #   is used to determine connection.
     def connected(self):
         if self.write_dest_port is not None and self.read_port is not None:
-            if self.write_socket and self.read_socket:
-                return True
-            else:
-                return False
+            return bool(self.write_socket and self.read_socket)
         elif self.write_dest_port is not None:
-            if self.write_socket:
-                return True
-            else:
-                return False
+            return bool(self.write_socket)
         else:
-            if self.read_socket:
-                return True
-            else:
-                return False
+            return bool(self.read_socket)
 
     # Close the active ports (read and/or write) and set the sockets to nil.
     def disconnect(self):

@@ -83,4 +83,4 @@ class TableItemParser(PacketItemParser):
                 item = table.define(item)
             return item
         except Exception as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error

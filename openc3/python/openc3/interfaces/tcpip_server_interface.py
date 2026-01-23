@@ -338,14 +338,14 @@ class TcpipServerInterface(StreamInterface):
         try:
             addr = (self.listen_address, port)
             listen_socket.bind(addr)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Error binding to port {port}.\n"
                 + "Either another application is using this port\n"
                 + "or the operating system is being slow cleaning up.\n"
                 + "Make sure all sockets/streams are closed in all applications,\n"
                 + "wait 1 minute and try again."
-            )
+            ) from e
 
         listen_socket.setblocking(0)
         listen_socket.listen(5)
@@ -439,15 +439,13 @@ class TcpipServerInterface(StreamInterface):
 
             index_to_delete = None
             with self.connection_mutex:
-                index = 0
-                for read_interface_info in self.read_interface_infos:
+                for index, read_interface_info in enumerate(self.read_interface_infos):
                     if interface_info.interface == read_interface_info.interface:
                         index_to_delete = index
                         read_interface_info.interface.disconnect()
                         if read_interface_info.interface.stream_log_pair:
                             read_interface_info.interface.stream_log_pair.stop()
                         break
-                    index += 1
             if index_to_delete:
                 del self.read_interface_infos[index_to_delete]
         except Exception:
@@ -591,8 +589,7 @@ class TcpipServerInterface(StreamInterface):
         with self.connection_mutex:
             # Send data to each client - On error drop the client
             indexes_to_delete = []
-            index = 0
-            for interface_info in self.write_interface_infos:
+            for index, interface_info in enumerate(self.write_interface_infos):
                 need_disconnect = False
                 try:
                     interface_bytes_written = interface_info.interface.bytes_written
@@ -614,11 +611,10 @@ class TcpipServerInterface(StreamInterface):
                     Logger.info(
                         f"{self.name}: Tcpip server lost write connection to {interface_info.hostname}({interface_info.host_ip}):{interface_info.port}"
                     )
-                    interface_info.interface.disconnect
+                    interface_info.interface.disconnect()
                     if interface_info.interface.stream_log_pair:
-                        interface_info.interface.stream_log_pair.stop
+                        interface_info.interface.stream_log_pair.stop()
                     indexes_to_delete.insert(0, index)  # Put later indexes at front of array
-                index += 1
 
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:

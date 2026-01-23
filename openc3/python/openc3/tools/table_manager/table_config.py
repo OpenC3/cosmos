@@ -252,7 +252,7 @@ class TableConfig(PacketConfig):
                 raise parser.error(
                     f"{params[0]} not found in table {self.current_packet.table_name}",
                     "SELECT_PARAMETER <PARAMETER NAME>",
-                )
+                ) from err
             else:
                 raise
 
@@ -320,7 +320,7 @@ class TableConfig(PacketConfig):
                             else:
                                 raise Exception(
                                     f"Unknown DEFAULT {self.defaults[index]} for item {item.name}. Valid states are {', '.join(item.states.keys())}."
-                                )
+                                ) from None
                     elif item.data_type == "FLOAT":
                         item.default = float(self.defaults[index])
                     elif item.data_type in ("STRING", "BLOCK"):

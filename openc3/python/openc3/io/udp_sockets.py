@@ -88,7 +88,7 @@ class UdpReadWriteSocket:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([], [self.socket], [], write_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise TimeoutError
+                        raise TimeoutError from e
             total_bytes_sent += bytes_sent
             if total_bytes_sent >= num_bytes_to_send:
                 break
@@ -106,7 +106,7 @@ class UdpReadWriteSocket:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise TimeoutError
+                        raise TimeoutError from e
                     else:
                         continue
             break

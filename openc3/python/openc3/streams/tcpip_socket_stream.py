@@ -106,7 +106,7 @@ class TcpipSocketStream(Stream):
                         if writeable:
                             continue
                         else:
-                            raise RuntimeError("Write Timeout")
+                            raise RuntimeError("Write Timeout") from error
                 total_bytes_sent += bytes_sent
                 if total_bytes_sent >= num_bytes_to_send:
                     break

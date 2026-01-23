@@ -121,10 +121,7 @@ def limits_enabled(*args, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(args, "limits_enabled", scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-    if item["limits"].get("enabled"):
-        return True
-    else:
-        return False
+    return bool(item["limits"].get("enabled"))
 
 
 # Enable limits checking for a telemetry item

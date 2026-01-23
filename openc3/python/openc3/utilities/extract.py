@@ -60,37 +60,27 @@ def remove_quotes(string: str):
 
 def is_float(string):
     """Returns whether the String represents a floating point number"""
-    if FLOAT_CHECK_REGEX.match(string) or SCIENTIFIC_CHECK_REGEX.match(string):
-        return True
-    return False
+    return bool(FLOAT_CHECK_REGEX.match(string) or SCIENTIFIC_CHECK_REGEX.match(string))
 
 
 def is_int(string):
     """Returns whether the String represents an integer"""
-    if INT_CHECK_REGEX.match(string):
-        return True
-    return False
+    return bool(INT_CHECK_REGEX.match(string))
 
 
 def is_hex(string):
     """Whether the String represents a hexadecimal number"""
-    if HEX_CHECK_REGEX.match(string):
-        return True
-    return False
+    return bool(HEX_CHECK_REGEX.match(string))
 
 
 def is_array(string):
     """Whether the String represents an Array"""
-    if ARRAY_CHECK_REGEX.match(string):
-        return True
-    return False
+    return bool(ARRAY_CHECK_REGEX.match(string))
 
 
 def is_object(string):
     """Whether the String represents an Object"""
-    if OBJECT_CHECK_REGEX.match(string):
-        return True
-    return False
+    return bool(OBJECT_CHECK_REGEX.match(string))
 
 
 def convert_to_value(string):
@@ -176,9 +166,8 @@ def extract_fields_from_cmd_text(text):
                 else:
                     value = item
                     continue
-            if not comma:
-                if item != ",":
-                    raise RuntimeError(f"Missing comma in command parameters: {text:s}")
+            if not comma and item != ",":
+                raise RuntimeError(f"Missing comma in command parameters: {text:s}")
             add_cmd_parameter(keyword, value, cmd_params)
             keyword = None
             value = None

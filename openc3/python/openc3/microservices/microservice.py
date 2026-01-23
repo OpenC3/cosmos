@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import atexit
+import contextlib
 import json
 import os
 import sys
@@ -199,25 +200,22 @@ class Microservice:
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
-        try:
+        with contextlib.suppress(Exception):
+            # Ignore logging failures during shutdown (e.g. Redis unavailable)
             self.logger.info(f"Shutting down microservice: {self.name}")
-        except Exception:
-            pass  # Ignore logging failures during shutdown (e.g. Redis unavailable)
         self.state = state
         self.cancel_thread = True
         if self.microservice_status_sleeper:
             self.microservice_status_sleeper.cancel()
-        try:
+        with contextlib.suppress(Exception):
+            # Ignore Redis failures during shutdown
             MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
-        except Exception:
-            pass  # Ignore Redis failures during shutdown
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
         self.metric.shutdown()
-        try:
+        with contextlib.suppress(Exception):
+            # Ignore Redis failures during shutdown
             self.logger.debug(f"Shutting down microservice complete: {self.name}")
-        except Exception:
-            pass  # Ignore logging failures during shutdown
         self.shutdown_complete = True
 
     def setup_microservice_topic(self):

@@ -59,7 +59,7 @@ class ProcessorParser:
             processor.name = self._get_processor_name()
             packet.processors[processor.name] = processor
         except Exception as err:
-            raise self.parser.error(err, self.usage)
+            raise self.parser.error(err, self.usage) from err
 
     def _get_processor_name(self):
         return self.parser.parameters[0].upper()

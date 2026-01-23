@@ -319,7 +319,7 @@ class PacketConfig:
                 os.remove(filename)
 
             # Write all telemetry packets for this target
-            for packet_name, packet in packets.items():
+            for _packet_name, packet in packets.items():
                 if "../" in filename or "..\\" in filename:
                     raise ValueError(f"Path traversal detected in filename: {filename}")
 
@@ -341,7 +341,7 @@ class PacketConfig:
                 os.remove(filename)
 
             # Write all command packets for this target
-            for packet_name, packet in packets.items():
+            for _packet_name, packet in packets.items():
                 with open(filename, "a") as f:
                     f.write(packet.to_config("COMMAND"))
                     f.write("\n")
@@ -572,12 +572,12 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except Exception:  # Rescue the default exception to provide a nicer error message
+                except Exception as error:  # Rescue the default exception to provide a nicer error message
                     cmd_or_tlm_str = self.current_cmd_or_tlm.lower() if self.current_cmd_or_tlm else "unknown"
                     raise parser.error(
                         f"{params[0]} not found in {cmd_or_tlm_str} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
                         usage,
-                    )
+                    ) from error
 
             # Start a new telemetry item in the current packet
             case (
@@ -710,10 +710,10 @@ class PacketConfig:
                             raise parser.error(
                                 f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
                             )
-                    except ModuleNotFoundError:
+                    except ModuleNotFoundError as error:
                         raise parser.error(
                             f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
-                        )
+                        ) from error
 
                 if not klass:
                     raise parser.error(f"Failed to load class for {keyword}")
@@ -736,7 +736,7 @@ class PacketConfig:
                 try:
                     self.current_packet.template = parser.read_file(params[0])
                 except OSError as error:
-                    raise parser.error(error)
+                    raise parser.error(error) from error
 
             case "RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
@@ -813,7 +813,7 @@ class PacketConfig:
                     #     self.warnings.append(msg)
                     #     Logger.warn(self.warnings[-1])
                 except Exception as error:
-                    raise parser.error(error)
+                    raise parser.error(error) from error
 
             # Apply a polynomial conversion to the current item
             case "POLY_READ_CONVERSION" | "POLY_WRITE_CONVERSION":

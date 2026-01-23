@@ -108,7 +108,7 @@ class LimitsEventTopic(Topic):
         final_result = []
         topic = f"{scope}__openc3_limits_events"
         if offset is not None:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics([topic], [offset], None, count):
+            for _topic, msg_id, msg_hash, _redis in Topic.read_topics([topic], [offset], None, count):
                 # result = Topic.read_topics([topic], [offset], None, count)
                 # if len(result) != 0:
                 # result is a hash with the topic key followed by an array of results

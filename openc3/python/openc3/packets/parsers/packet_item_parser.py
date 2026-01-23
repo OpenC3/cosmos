@@ -117,7 +117,7 @@ class PacketItemParser:
                 packet.structurize_item(item, structure)
             return item
         except Exception as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _append(self):
         return "APPEND" in self.parser.keyword
@@ -136,7 +136,7 @@ class PacketItemParser:
         try:
             return int(self.parser.parameters[1], 0)
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_bit_size(self, check_structure=False):
         index = 1 if self._append() else 2
@@ -151,7 +151,7 @@ class PacketItemParser:
                 return structure.defined_length_bits
 
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_array_size(self):
         if "ARRAY" not in self.parser.keyword:
@@ -172,7 +172,7 @@ class PacketItemParser:
                 self.warnings.append(warning)
             return array_bit_size
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_endianness(self, packet):
         params = self.parser.parameters
@@ -273,8 +273,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            except Exception as error:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from error
             if isinstance(value, list):
                 return value
             else:
@@ -283,8 +283,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            except Exception as error:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from error
             if isinstance(value, dict):
                 return value
             else:
@@ -331,8 +331,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            except Exception as error:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from error
             if isinstance(value, list):
                 return value
             else:
@@ -341,8 +341,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            except Exception as error:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from error
             if isinstance(value, dict):
                 return value
             else:

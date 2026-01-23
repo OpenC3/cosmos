@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import queue
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -41,11 +42,9 @@ class Handler(BaseHTTPRequestHandler):
 
             for packet in packets:
                 # Build the Response
-                try:
-                    status = int(packet.read("HTTP_STATUS"))
-                except Exception:
+                with contextlib.suppress(Exception):
                     # No HTTP_STATUS - Leave at default
-                    pass
+                    status = int(packet.read("HTTP_STATUS"))
 
                 self.send_response(status)
 
@@ -61,11 +60,10 @@ class Handler(BaseHTTPRequestHandler):
 
                 # Save the Request
                 packet_name = None
-                try:
-                    packet_name = packet.read("HTTP_PACKET")
-                except Exception:
+                with contextlib.suppress(Exception):
                     # No packet name means don't save the request as telemetry
-                    pass
+                    packet_name = packet.read("HTTP_PACKET")
+
                 if packet_name:
                     data = b""
                     if self.headers.get("content-length") and self.rfile:
@@ -143,10 +141,7 @@ class HttpServerInterface(Interface):
         super().connect()
 
     def connected(self):
-        if self.server:
-            return True
-        else:
-            return False
+        return bool(self.server)
 
     # Disconnects the interface from its target(s)
     def disconnect(self):

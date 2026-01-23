@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import threading
 import time
 
@@ -105,10 +106,8 @@ class Metric:
 
     def shutdown(self):
         with Metric.mutex:
-            try:
+            with contextlib.suppress(ValueError):
                 Metric.instances.remove(self)
-            except ValueError:
-                pass
             if len(Metric.instances) <= 0:
                 if Metric.update_sleeper:
                     Metric.update_sleeper.cancel()
