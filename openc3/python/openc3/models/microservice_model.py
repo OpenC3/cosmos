@@ -17,7 +17,6 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
-from typing import Optional
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
@@ -32,11 +31,11 @@ class MicroserviceModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope: Optional[str] = None):
+    def get(cls, name, scope: str | None = None):
         return super().get(MicroserviceModel.PRIMARY_KEY, name)
 
     @classmethod
-    def names(cls, scope: Optional[str] = None):
+    def names(cls, scope: str | None = None):
         scoped = []
         unscoped = super().names(MicroserviceModel.PRIMARY_KEY)
         for name in unscoped:
@@ -45,7 +44,7 @@ class MicroserviceModel(Model):
         return scoped
 
     @classmethod
-    def all(cls, scope: Optional[str] = None):
+    def all(cls, scope: str | None = None):
         scoped = {}
         unscoped = super().all(MicroserviceModel.PRIMARY_KEY)
         for name, json in unscoped.items():
@@ -58,19 +57,19 @@ class MicroserviceModel(Model):
         self,
         name: str,
         folder_name: str = None,
-        cmd: Optional[list] = None,
+        cmd: list | None = None,
         work_dir: str = ".",
-        ports: Optional[list] = None,
-        env: Optional[dict] = None,
-        topics: Optional[list] = None,
-        target_names: Optional[list] = None,
-        options: Optional[list] = None,
+        ports: list | None = None,
+        env: dict | None = None,
+        topics: list | None = None,
+        target_names: list | None = None,
+        options: list | None = None,
         parent=None,
         container=None,
-        updated_at: Optional[float] = None,
+        updated_at: float | None = None,
         plugin=None,
         needs_dependencies=False,
-        secrets: Optional[list] = None,
+        secrets: list | None = None,
         prefix=None,
         disable_erb=None,
         ignore_changes=None,

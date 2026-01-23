@@ -14,9 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.accessors.xml_accessor import XmlAccessor
 # XmlAccessor uses lxml.etree
 import lxml.html as HTML
+
+from openc3.accessors.xml_accessor import XmlAccessor
 
 
 class HtmlAccessor(XmlAccessor):

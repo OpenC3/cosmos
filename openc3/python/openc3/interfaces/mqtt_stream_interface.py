@@ -19,8 +19,9 @@
 # You can also test against encrypted and authenticated servers at https://test.mosquitto.org/
 
 import tempfile
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.mqtt_stream import MqttStream
 
 
@@ -28,7 +29,9 @@ from openc3.streams.mqtt_stream import MqttStream
 class MqttStreamInterface(StreamInterface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def __init__(self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, protocol_type=None, protocol_args=[]):
+    def __init__(
+        self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, protocol_type=None, protocol_args=[]
+    ):
         super().__init__(protocol_type, protocol_args)
         self.hostname = hostname
         self.port = int(port)
@@ -53,7 +56,9 @@ class MqttStreamInterface(StreamInterface):
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect(self):
-        self.stream = MqttStream(self.hostname, self.port, self.ssl, self.write_topic, self.read_topic, self.ack_timeout)
+        self.stream = MqttStream(
+            self.hostname, self.port, self.ssl, self.write_topic, self.read_topic, self.ack_timeout
+        )
         if self.username:
             self.stream.username = self.username
         if self.password:
@@ -105,28 +110,28 @@ class MqttStreamInterface(StreamInterface):
 
     def details(self):
         result = super().details()
-        result['hostname'] = self.hostname
-        result['port'] = self.port
-        result['ssl'] = self.ssl
-        result['write_topic'] = self.write_topic
-        result['read_topic'] = self.read_topic
-        result['ack_timeout'] = self.ack_timeout
-        result['username'] = self.username
+        result["hostname"] = self.hostname
+        result["port"] = self.port
+        result["ssl"] = self.ssl
+        result["write_topic"] = self.write_topic
+        result["read_topic"] = self.read_topic
+        result["ack_timeout"] = self.ack_timeout
+        result["username"] = self.username
         if self.password:
-            result['password'] = 'Set'
+            result["password"] = "Set"
         if self.cert:
-            result['cert'] = 'Set'
+            result["cert"] = "Set"
         if self.key:
-            result['key'] = 'Set'
+            result["key"] = "Set"
         if self.ca_file:
-            result['ca_file'] = 'Set'
+            result["ca_file"] = "Set"
         # Remove sensitive options from the options dict
-        if 'PASSWORD' in result['options']:
-            del result['options']['PASSWORD']
-        if 'CERT' in result['options']:
-            del result['options']['CERT']
-        if 'KEY' in result['options']:
-            del result['options']['KEY']
-        if 'CA_FILE' in result['options']:
-            del result['options']['CA_FILE']
+        if "PASSWORD" in result["options"]:
+            del result["options"]["PASSWORD"]
+        if "CERT" in result["options"]:
+            del result["options"]["CERT"]
+        if "KEY" in result["options"]:
+            del result["options"]["KEY"]
+        if "CA_FILE" in result["options"]:
+            del result["options"]["CA_FILE"]
         return result

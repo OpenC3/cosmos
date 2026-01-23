@@ -13,8 +13,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
 import ast
+import re
 
 
 SCANNING_REGULAR_EXPRESSION = re.compile(
@@ -41,6 +41,7 @@ ARRAY_CHECK_REGEX = re.compile(r"\A\s*\[.*\]\s*\Z")
 
 # Regular expression to identify a String as an Object
 OBJECT_CHECK_REGEX = re.compile(r"\A\s*\{.*\}\s*\Z")
+
 
 # Pulls all string keyword arguments into the args array.
 def extract_string_kwargs_to_args(args: list, kwargs: dict):
@@ -146,14 +147,14 @@ def add_cmd_parameter(keyword, value, cmd_params):
 def extract_fields_from_cmd_text(text):
     split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=2)
     if len(split_string) == 1 and SPLIT_WITH_REGEX.match(text):
-        raise RuntimeError("ERROR: 'with' must be followed by parameters : {:s}".format(text))
+        raise RuntimeError(f"ERROR: 'with' must be followed by parameters : {text:s}")
 
     # Extract target_name and cmd_name
     first_half = split_string[0].split(" ")
     if len(first_half) < 2:
-        raise RuntimeError("ERROR: Both Target Name and Command Name must be given : {:s}".format(text))
+        raise RuntimeError(f"ERROR: Both Target Name and Command Name must be given : {text:s}")
     if len(first_half) > 2:
-        raise RuntimeError("ERROR: Only Target Name and Command Name must be given before 'with' : {:s}".format(text))
+        raise RuntimeError(f"ERROR: Only Target Name and Command Name must be given before 'with' : {text:s}")
     target_name = first_half[0]
     cmd_name = first_half[1]
     cmd_params = {}
@@ -177,7 +178,7 @@ def extract_fields_from_cmd_text(text):
                     continue
             if not comma:
                 if item != ",":
-                    raise RuntimeError("Missing comma in command parameters: {:s}".format(text))
+                    raise RuntimeError(f"Missing comma in command parameters: {text:s}")
             add_cmd_parameter(keyword, value, cmd_params)
             keyword = None
             value = None
@@ -186,7 +187,7 @@ def extract_fields_from_cmd_text(text):
             if value:
                 add_cmd_parameter(keyword, value, cmd_params)
             else:
-                raise RuntimeError("Missing value for last command parameter: {:s}".format(text))
+                raise RuntimeError(f"Missing value for last command parameter: {text:s}")
 
     return target_name, cmd_name, cmd_params
 

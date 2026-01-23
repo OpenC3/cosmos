@@ -15,10 +15,12 @@
 # if purchased from OpenC3, Inc.:
 
 import json
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
 from openc3.models.tool_config_model import ToolConfigModel
+from openc3.utilities.authorization import authorize
+
 
 WHITELIST.extend(["config_tool_names", "list_configs", "load_config", "save_config", "delete_config"])
 

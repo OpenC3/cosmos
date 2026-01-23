@@ -19,6 +19,7 @@ from openc3.packets.parsers.packet_item_parser import PacketItemParser
 from openc3.tools.table_manager.table_item import TableItem
 from openc3.utilities.logger import Logger
 
+
 class TableItemParser(PacketItemParser):
     """
     This class parses the PARAMETER, APPEND_PARAMETER, etc. keywords and creates the
@@ -56,7 +57,7 @@ class TableItemParser(PacketItemParser):
                 Logger.warn(msg)
                 self.warnings.append(msg)
 
-            if table.type == 'ROW_COLUMN':
+            if table.type == "ROW_COLUMN":
                 item_name = f"{item_name}0"
                 table.num_columns += 1
 

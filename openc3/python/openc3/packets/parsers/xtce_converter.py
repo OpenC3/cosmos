@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import os
+
 from lxml import etree  # type: ignore[import]
+
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 
 

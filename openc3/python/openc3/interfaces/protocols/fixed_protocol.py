@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import traceback
-from openc3.system.system import System
+from datetime import datetime, timezone
+
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
+from openc3.system.system import System
 from openc3.utilities.extract import convert_to_value
 
 

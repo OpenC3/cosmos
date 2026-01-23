@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import threading
+import time
+
 from openc3.models.metric_model import MetricModel
-from openc3.utilities.sleeper import Sleeper
 from openc3.top_level import kill_thread
+from openc3.utilities.sleeper import Sleeper
 
 
 class Metric:

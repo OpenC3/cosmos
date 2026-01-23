@@ -18,16 +18,17 @@
 # docker run -it -p 1883:1883 eclipse-mosquitto:2.0.15 mosquitto -c /mosquitto-no-auth.conf
 # You can also test against encrypted and authenticated servers at https://test.mosquitto.org/
 
-from time import sleep
 import queue
 import tempfile
-from openc3.interfaces.interface import Interface
-from openc3.system.system import System
-from openc3.utilities.logger import Logger
-from openc3.config.config_parser import ConfigParser
+from time import sleep
 
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
+
+from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import Interface
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
 
 
 # Base class for interfaces that send and receive messages over MQTT
@@ -217,27 +218,27 @@ class MqttInterface(Interface):
 
     def details(self):
         result = super().details()
-        result['hostname'] = self.hostname
-        result['port'] = self.port
-        result['ssl'] = self.ssl
-        result['ack_timeout'] = self.ack_timeout
-        result['username'] = self.username
+        result["hostname"] = self.hostname
+        result["port"] = self.port
+        result["ssl"] = self.ssl
+        result["ack_timeout"] = self.ack_timeout
+        result["username"] = self.username
         if self.password:
-            result['password'] = 'Set'
+            result["password"] = "Set"
         if self.cert:
-            result['cert'] = 'Set'
+            result["cert"] = "Set"
         if self.key:
-            result['key'] = 'Set'
+            result["key"] = "Set"
         if self.ca_file:
-            result['ca_file'] = 'Set'
+            result["ca_file"] = "Set"
         # Remove sensitive options from the options dict
-        if 'PASSWORD' in result['options']:
-            del result['options']['PASSWORD']
-        if 'CERT' in result['options']:
-            del result['options']['CERT']
-        if 'KEY' in result['options']:
-            del result['options']['KEY']
-        if 'CA_FILE' in result['options']:
-            del result['options']['CA_FILE']
-        result['read_packets_by_topic'] = self.read_packets_by_topic
+        if "PASSWORD" in result["options"]:
+            del result["options"]["PASSWORD"]
+        if "CERT" in result["options"]:
+            del result["options"]["CERT"]
+        if "KEY" in result["options"]:
+            del result["options"]["KEY"]
+        if "CA_FILE" in result["options"]:
+            del result["options"]["CA_FILE"]
+        result["read_packets_by_topic"] = self.read_packets_by_topic
         return result

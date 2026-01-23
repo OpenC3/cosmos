@@ -15,9 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 
+from datetime import datetime
+
 from openc3.api import *
 from openc3.config.config_parser import ConfigParser
-from datetime import datetime
 
 
 # Base class for all OpenC3 protocols which defines a framework which must be

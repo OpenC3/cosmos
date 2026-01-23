@@ -17,38 +17,40 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1963
 
+import json
 import os
 import sys
-import time
-import json
 import threading
+import time
 import traceback
 import uuid
 from datetime import datetime, timezone
-from openc3.microservices.microservice import Microservice
+
+from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import WriteRejectError
 from openc3.microservices.interface_decom_common import handle_inject_tlm
-from openc3.system.system import System
-from openc3.models.scope_model import ScopeModel
+from openc3.microservices.microservice import Microservice
+from openc3.models.cvt_model import CvtModel
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
-from openc3.models.cvt_model import CvtModel
+from openc3.models.scope_model import ScopeModel
 from openc3.models.target_model import TargetModel
+from openc3.system.system import System
+from openc3.top_level import kill_thread
+from openc3.topics.command_decom_topic import CommandDecomTopic
+from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.router_topic import RouterTopic
-from openc3.topics.command_topic import CommandTopic
-from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
-from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import WriteRejectError
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.time import from_nsec_from_epoch
-from openc3.utilities.json import JsonDecoder, JsonEncoder
-from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.top_level import kill_thread
+from openc3.utilities.time import from_nsec_from_epoch
+
 
 try:
     from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
@@ -220,7 +222,9 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
                 # Note: intentional fall through below this point
-                critical_model = CriticalCmdModel.get_model(name=msg_hash[b"release_critical"].decode(), scope=self.scope)
+                critical_model = CriticalCmdModel.get_model(
+                    name=msg_hash[b"release_critical"].decode(), scope=self.scope
+                )
                 if critical_model is not None:
                     msg_hash = critical_model.cmd_hash
                     release_critical = True
@@ -250,7 +254,9 @@ class InterfaceCmdHandlerThread:
                             f"{self.interface.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
                         )
                 except Exception as e:
-                    self.logger.error(f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}")
+                    self.logger.error(
+                        f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}"
+                    )
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"interface_details"):
@@ -544,7 +550,9 @@ class RouterTlmHandlerThread:
                             )
                         result = "SUCCESS"
                     except Exception as e:
-                        self.logger.error(f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}")
+                        self.logger.error(
+                            f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}"
+                        )
                         result = str(e)
                 elif msg_hash.get(b"router_details"):
                     result = json.dumps(self.router.details(), cls=JsonEncoder)

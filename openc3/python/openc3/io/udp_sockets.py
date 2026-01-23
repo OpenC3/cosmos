@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import socket
-import select
 import ipaddress
+import select
+import socket
 
 
 class UdpReadWriteSocket:
@@ -84,11 +84,11 @@ class UdpReadWriteSocket:
         while True:
             try:
                 bytes_sent = self.socket.send(data_to_send)
-            except socket.error as e:
+            except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([], [self.socket], [], write_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise socket.timeout
+                        raise TimeoutError
             total_bytes_sent += bytes_sent
             if total_bytes_sent >= num_bytes_to_send:
                 break
@@ -102,11 +102,11 @@ class UdpReadWriteSocket:
         while True:
             try:
                 data, _ = self.socket.recvfrom(65536, socket.MSG_DONTWAIT)
-            except socket.error as e:
+            except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise socket.timeout
+                        raise TimeoutError
                     else:
                         continue
             break

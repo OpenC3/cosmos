@@ -14,8 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.system.system import System
 from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
 
 
 # Ignore a specific packet by not letting it through the protocol

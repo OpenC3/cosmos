@@ -15,8 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import os
+
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_class_name
+
 
 if os.getenv("OPENC3_SECRET_BACKEND") is None:
     os.environ["OPENC3_SECRET_BACKEND"] = "redis"
@@ -53,7 +55,7 @@ class Secrets:
         for secret in secrets:
             if len(secret) < 3:
                 raise ValueError(f"Secret must have at least 3 items (type, key, data), got {len(secret)}")
-            type, key, data, *extra = secret # *extra would be secret_store, but we don't need that here
+            type, key, data, *extra = secret  # *extra would be secret_store, but we don't need that here
             match type:
                 case "ENV":
                     self.local_secrets[key] = os.environ.get(data)

@@ -77,11 +77,13 @@ bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 
 ```bash
 cd openc3/python
-poetry install
-poetry run ruff check openc3                     # Lint
-poetry run pytest                                # Run all tests
-poetry run pytest test/path/to/test.py           # Run single test file
-poetry run coverage run -m pytest && poetry run coverage report
+uv sync                                          # Install dependencies
+uv run ruff check openc3                         # Lint
+uv run ruff format openc3                        # Format
+uv run ruff check openc3 --fix                   # Lint and auto-fix
+uv run pytest                                    # Run all tests
+uv run pytest test/path/to/test.py               # Run single test file
+uv run coverage run -m pytest && uv run coverage report
 ```
 
 ### Frontend (Vue.js/Vuetify)
@@ -127,7 +129,9 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 - **Ruby 3.4** - Backend APIs and core library
 - **Rails 7.2** - REST APIs with AnyCable for WebSockets
-- **Python 3.10-3.12** - Alternative scripting language
+- **Python 3.10-3.14** - Alternative scripting language
+- **UV** - Python package manager (fast Rust-based replacement for pip/poetry)
+- **Ruff** - Python linter and formatter (fast Rust-based replacement for flake8/black)
 - **Vue.js 3 + Vuetify 3** - Frontend UI framework
 - **Vite** - Frontend build tool
 - **pnpm 10** - Frontend package management (monorepo workspace)
@@ -163,10 +167,12 @@ This installs:
 
 ### Python
 
-- Ruff for linting (pycodestyle E + Pyflakes F rules)
-- Line length: 120
-- Target Python: 3.12
-- Config in `openc3/python/pyproject.toml`
+- **Package Manager**: UV (fast Rust-based replacement for pip/poetry)
+- **Linter & Formatter**: Ruff (replaces flake8, black, isort)
+- **Active Rules**: E, F, I, N, UP, B, W, C4, SIM (pycodestyle, Pyflakes, isort, naming, pyupgrade, bugbear, simplify)
+- **Line Length**: 120
+- **Target Python**: 3.10 (minimum supported version for compatibility across 3.10-3.14)
+- **Config**: `openc3/python/pyproject.toml`
 
 ### JavaScript/TypeScript
 

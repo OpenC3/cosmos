@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -17,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from openc3.environment import OPENC3_SCOPE
+
 import openc3.script
+from openc3.environment import OPENC3_SCOPE
 
 
 # Group Methods

@@ -32,7 +32,7 @@ class SimulatedTarget:
         # Set defaults, template, and id values
         for name, packet in self.tlm_packets.items():
             packet.restore_defaults()
-            setattr(packet, "packet_rate", 0)
+            packet.packet_rate = 0
             for item in packet.id_items:
                 packet.write_item(item, item.id_value)
 

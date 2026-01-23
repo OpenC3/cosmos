@@ -15,13 +15,15 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import zlib
-import time
 import threading
+import time
+import zlib
+
+from openc3.environment import OPENC3_LOGS_BUCKET
+from openc3.models.reducer_model import ReducerModel
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
-from openc3.models.reducer_model import ReducerModel
-from openc3.environment import OPENC3_LOGS_BUCKET
+
 
 class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
@@ -109,17 +111,16 @@ class BucketUtilities:
         zipped = f"{filename}.gz"
 
         obj = zlib.compressobj()
-        with open(zipped, "wb") as zip_file:
-            with open(filename, "rb") as file:
-                while True:
-                    chunk = file.read(chunk_size)
-                    if chunk:
-                        compressed = obj.compress(chunk)
+        with open(zipped, "wb") as zip_file, open(filename, "rb") as file:
+            while True:
+                chunk = file.read(chunk_size)
+                if chunk:
+                    compressed = obj.compress(chunk)
+                    zip_file.write(compressed)
+                else:
+                    compressed = obj.flush()
+                    if compressed:
                         zip_file.write(compressed)
-                    else:
-                        compressed = obj.flush()
-                        if compressed:
-                            zip_file.write(compressed)
-                        break
+                    break
 
         return zipped

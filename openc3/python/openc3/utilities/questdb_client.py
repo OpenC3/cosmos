@@ -19,14 +19,15 @@ Shared QuestDB client for connection management, table creation, and data ingest
 Used by both TsdbMicroservice (real-time) and MigrationMicroservice (historical data).
 """
 
+import base64
+import json
+import numbers
 import os
 import re
-import json
-import base64
-import numbers
-import psycopg
+
 import numpy
-from questdb.ingress import Sender, IngressError, Protocol, TimestampMicros, TimestampNanos
+import psycopg
+from questdb.ingress import IngressError, Protocol, Sender, TimestampMicros, TimestampNanos
 
 
 class QuestDBClient:

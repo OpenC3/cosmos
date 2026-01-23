@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
 import json
-from openc3.topics.topic import Topic
+import re
+
 from openc3.system.system import System
+from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.store import Store
-from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 # LimitsEventTopic keeps track of not only the <SCOPE>__openc3_limits_events topic

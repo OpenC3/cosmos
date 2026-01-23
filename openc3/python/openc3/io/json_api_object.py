@@ -17,16 +17,19 @@
 import json
 import time
 import traceback
-from requests import Session
-from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
 from threading import Lock
-from typing import Optional
+
+from requests import Session
+from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ConnectionError as RequestsConnectionError
+
 from openc3.environment import *
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
 )
 from openc3.utilities.logger import Logger
+
 
 # Number of times to retry a request when a connection error occurs
 RETRY_COUNT = 3
@@ -57,7 +60,7 @@ class JsonApiObject:
         self,
         url: str,
         timeout: float = 1.0,
-        authentication: Optional[OpenC3Authentication] = None,
+        authentication: OpenC3Authentication | None = None,
     ):
         """
         Args:

@@ -16,6 +16,7 @@
 
 import copy
 from functools import total_ordering
+
 from openc3.accessors.binary_accessor import BinaryAccessor
 
 
@@ -108,9 +109,7 @@ class StructureItem:
         if not isinstance(endianness, str):
             raise TypeError(f"{self.name}: endianness must be a String but is a {endianness.__class__.__name__}")
         if endianness not in BinaryAccessor.ENDIANNESS:
-            raise ValueError(
-                f"{self.name}: unknown endianness: {endianness} - Must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
-            )
+            raise ValueError(f"{self.name}: unknown endianness: {endianness} - Must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'")
         self.__endianness = endianness
         if self.structure_item_constructed:
             self.verify_overall()
@@ -126,9 +125,7 @@ class StructureItem:
 
         byte_aligned = (bit_offset % 8) == 0
         if (self.data_type == "FLOAT" or self.data_type == "STRING" or self.data_type == "BLOCK") and not byte_aligned:
-            raise ValueError(
-                f"{self.name}: bit_offset for 'FLOAT', 'STRING', and 'BLOCK' items must be byte aligned"
-            )
+            raise ValueError(f"{self.name}: bit_offset for 'FLOAT', 'STRING', and 'BLOCK' items must be byte aligned")
 
         if self.data_type == "DERIVED" and bit_offset != 0:
             raise ValueError(f"{self.name}: DERIVED items must have bit_offset of zero")
@@ -167,13 +164,9 @@ class StructureItem:
     @data_type.setter
     def data_type(self, data_type):
         if not isinstance(data_type, str):
-            raise TypeError(
-                f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}"
-            )
+            raise TypeError(f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}")
         if data_type not in self.DATA_TYPES:
-            raise ValueError(
-                f"{self.name}: unknown data_type: {data_type} - Must be {', '.join(self.DATA_TYPES)}"
-            )
+            raise ValueError(f"{self.name}: unknown data_type: {data_type} - Must be {', '.join(self.DATA_TYPES)}")
 
         self.__data_type = data_type
         if self.structure_item_constructed:

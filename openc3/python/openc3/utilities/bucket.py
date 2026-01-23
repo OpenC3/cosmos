@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import inspect
 import importlib
+import inspect
+
 from openc3.environment import *
 
 

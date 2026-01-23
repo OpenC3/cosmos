@@ -14,8 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
 import datetime
+import json
 
 
 class JsonEncoder(json.JSONEncoder):

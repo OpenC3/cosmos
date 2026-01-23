@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
+import time
+
+from openc3.top_level import CriticalCmdError, HazardousError
 from openc3.topics.topic import Topic
-from openc3.utilities.store_queued import EphemeralStoreQueued
-from openc3.top_level import HazardousError, CriticalCmdError
-from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder
+from openc3.utilities.store_queued import EphemeralStoreQueued
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class CommandTopic(Topic):

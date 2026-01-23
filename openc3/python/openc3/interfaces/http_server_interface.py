@@ -15,11 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import queue
-from threading import Thread
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import traceback
-from openc3.interfaces.interface import Interface
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+
 from openc3.accessors.http_accessor import HttpAccessor
+from openc3.interfaces.interface import Interface
 from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.utilities.logger import Logger
@@ -190,10 +191,10 @@ class HttpServerInterface(Interface):
 
     def details(self):
         result = super().details()
-        result['listen_address'] = self.listen_address
-        result['port'] = self.port
+        result["listen_address"] = self.listen_address
+        result["port"] = self.port
         if self.server is not None:
-            result['request_queue_length'] = self.server.request_queue.qsize()
+            result["request_queue_length"] = self.server.request_queue.qsize()
         else:
-            result['request_queue_length'] = 0
+            result["request_queue_length"] = 0
         return result

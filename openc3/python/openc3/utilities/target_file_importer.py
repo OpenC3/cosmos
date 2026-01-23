@@ -14,13 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import tempfile
 import importlib
-import sys
 import os
+import sys
+import tempfile
+
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.target_file import TargetFile
-from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
+
 
 # The last item in the sys.meta_path is the PathFinder
 # PathFinder locates modules according to a path like structure

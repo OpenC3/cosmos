@@ -16,15 +16,17 @@
 
 
 import threading
-import schedule
-import traceback
 import time
+import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
+
+import schedule
+
 from openc3.api import *
+from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.utilities.logger import Logger
 from openc3.utilities.secrets import Secrets
-from openc3.logs.stream_log_pair import StreamLogPair
 
 
 class WriteRejectError(RuntimeError):

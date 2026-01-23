@@ -14,14 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import importlib
 import os
+import socket
 import sys
 import threading
-import importlib
 import time
-import socket
 import traceback
+
 from openc3.utilities.logger import Logger
+
 
 openc3_chdir_mutex = threading.RLock()
 

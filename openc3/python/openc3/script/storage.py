@@ -14,15 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 import io
-import os
 import json
+import os
 import tempfile
 import traceback
+
 import requests
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 from openc3.utilities.local_mode import LocalMode
+
 
 OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 

@@ -14,12 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import threading
+from contextlib import contextmanager
+
 import valkey
 from valkey.exceptions import TimeoutError
-from openc3.utilities.connection_pool import ConnectionPool
-from contextlib import contextmanager
-import threading
+
 from openc3.environment import *
+from openc3.utilities.connection_pool import ConnectionPool
+
 
 if OPENC3_REDIS_CLUSTER:
     openc3_redis_cluster = True

@@ -14,13 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.protocol import Protocol
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.packet import Packet
+from openc3.utilities.extract import convert_to_value, hex_to_byte_string
 from openc3.utilities.logger import Logger
-from openc3.utilities.extract import hex_to_byte_string
-from openc3.utilities.extract import convert_to_value
 
 
 # Reads all data available on the interface and creates a packet

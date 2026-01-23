@@ -16,9 +16,10 @@
 
 import json
 import traceback
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 
 
 def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):

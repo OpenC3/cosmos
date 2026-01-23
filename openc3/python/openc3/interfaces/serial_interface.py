@@ -14,30 +14,31 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from typing import Optional, List, Any
+from typing import Any
 
+from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.serial_stream import SerialStream
-from openc3.config.config_parser import ConfigParser
 
 
 class SerialInterface(StreamInterface):
     """Provides a base class for interfaces that use serial ports"""
-    
-    
-    def __init__(self,
-                 write_port_name: Optional[str],
-                 read_port_name: Optional[str],
-                 baud_rate: int,
-                 parity: str,
-                 stop_bits: int,
-                 write_timeout: Optional[float],
-                 read_timeout: Optional[float],
-                 protocol_type: Optional[str] = None,
-                 *protocol_args):
+
+    def __init__(
+        self,
+        write_port_name: str | None,
+        read_port_name: str | None,
+        baud_rate: int,
+        parity: str,
+        stop_bits: int,
+        write_timeout: float | None,
+        read_timeout: float | None,
+        protocol_type: str | None = None,
+        *protocol_args,
+    ):
         """
         Creates a serial interface which uses the specified stream protocol.
-        
+
         Args:
             write_port_name: [String] The name of the serial port to write
             read_port_name: [String] The name of the serial port to read
@@ -53,7 +54,7 @@ class SerialInterface(StreamInterface):
             protocol_args: [List] Arguments to pass to the protocol constructor
         """
         super().__init__(protocol_type, list(protocol_args))
-        
+
         self.write_port_name = ConfigParser.handle_none(write_port_name)
         self.read_port_name = ConfigParser.handle_none(read_port_name)
         self.baud_rate = baud_rate
@@ -61,32 +62,32 @@ class SerialInterface(StreamInterface):
         self.stop_bits = stop_bits
         self.write_timeout = write_timeout
         self.read_timeout = read_timeout
-        
+
         # Set interface capabilities based on port configuration
         if not self.write_port_name:
             self.write_allowed = False
             self.write_raw_allowed = False
         if not self.read_port_name:
             self.read_allowed = False
-            
+
         # Default serial settings
-        self.flow_control = 'NONE'
+        self.flow_control = "NONE"
         self.data_bits = 8
-    
+
     def connection_string(self) -> str:
-        type_str = ''
+        type_str = ""
         if self.write_port_name and self.read_port_name:
             port = self.write_port_name
-            type_str = 'R/W'
+            type_str = "R/W"
         elif self.write_port_name:
             port = self.write_port_name
-            type_str = 'write only'
+            type_str = "write only"
         else:
             port = self.read_port_name
-            type_str = 'read only'
-        
+            type_str = "read only"
+
         return f"{port} ({type_str}) {self.baud_rate} {self.parity} {self.stop_bits}"
-    
+
     def connect(self):
         """Creates a new SerialStream using the parameters passed in the constructor"""
         self.stream = SerialStream(
@@ -98,39 +99,39 @@ class SerialInterface(StreamInterface):
             write_timeout=self.write_timeout,
             read_timeout=self.read_timeout,
             flow_control=self.flow_control,
-            data_bits=self.data_bits
+            data_bits=self.data_bits,
         )
         super().connect()
-    
-    def set_option(self, option_name: str, option_values: List[Any]):
+
+    def set_option(self, option_name: str, option_values: list[Any]):
         """
         Set interface options
-        
+
         Supported Options:
         - FLOW_CONTROL: Flow control method NONE or RTSCTS. Defaults to NONE
         - DATA_BITS: Number of data bits 5, 6, 7, or 8. Defaults to 8
-        
+
         Args:
             option_name: Name of the option to set
             option_values: List of values for the option
         """
         super().set_option(option_name, option_values)
-        
+
         option_name_upper = option_name.upper()
-        if option_name_upper == 'FLOW_CONTROL':
+        if option_name_upper == "FLOW_CONTROL":
             self.flow_control = option_values[0]
-        elif option_name_upper == 'DATA_BITS':
+        elif option_name_upper == "DATA_BITS":
             self.data_bits = int(option_values[0])
 
     def details(self):
         result = super().details()
-        result['write_port_name'] = self.write_port_name
-        result['read_port_name'] = self.read_port_name
-        result['baud_rate'] = self.baud_rate
-        result['parity'] = self.parity
-        result['stop_bits'] = self.stop_bits
-        result['write_timeout'] = self.write_timeout
-        result['read_timeout'] = self.read_timeout
-        result['flow_control'] = self.flow_control
-        result['data_bits'] = self.data_bits
+        result["write_port_name"] = self.write_port_name
+        result["read_port_name"] = self.read_port_name
+        result["baud_rate"] = self.baud_rate
+        result["parity"] = self.parity
+        result["stop_bits"] = self.stop_bits
+        result["write_timeout"] = self.write_timeout
+        result["read_timeout"] = self.read_timeout
+        result["flow_control"] = self.flow_control
+        result["data_bits"] = self.data_bits
         return result

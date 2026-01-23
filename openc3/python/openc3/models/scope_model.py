@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+
 from openc3.models.model import Model
 
 

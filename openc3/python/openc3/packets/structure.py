@@ -17,6 +17,7 @@
 import copy
 import threading
 from contextlib import contextmanager
+
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.structure_item import StructureItem
 from openc3.utilities.string import formatted

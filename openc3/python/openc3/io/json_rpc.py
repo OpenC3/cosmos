@@ -291,7 +291,7 @@ class JsonRpcError(dict):
             return cls(code, hash["message"], hash["data"])
         except ValueError as err:
             error = "Invalid JSON-RPC 2.0"
-            raise RuntimeError("{} {}: {}".format(error, type(err), err)) from err
+            raise RuntimeError(f"{error} {type(err)}: {err}") from err
 
 
 def convert_json_class(object_):

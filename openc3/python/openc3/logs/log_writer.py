@@ -17,8 +17,9 @@
 import os
 import tempfile
 import threading
-from datetime import datetime, timezone, timedelta
 import traceback
+from datetime import datetime, timedelta, timezone
+
 from openc3.config.config_parser import ConfigParser
 from openc3.top_level import kill_thread
 from openc3.topics.topic import Topic
@@ -256,7 +257,7 @@ class LogWriter:
             self.last_time = None
             self.previous_time_nsec_since_epoch = None
             Logger.debug(f"Log File Opened : {self.filename}")
-        except IOError:
+        except OSError:
             Logger.error(f"Error starting new log file {traceback.format_exc()}")
             self.logging_enabled = False
             # TODO: handle_critical_exception(err)

@@ -17,6 +17,7 @@
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
 
+
 # This file implements the SLIP protocol as documented in RFC 1055
 # https://datatracker.ietf.org/doc/html/rfc1055
 

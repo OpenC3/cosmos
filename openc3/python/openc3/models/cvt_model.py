@@ -16,9 +16,10 @@
 
 import json
 import os
-import time
 import threading
-from typing import Any, Optional
+import time
+from typing import Any
+
 
 try:
     import psycopg
@@ -27,13 +28,13 @@ try:
 except ImportError:
     PSYCOPG_AVAILABLE = False
 
-from openc3.utilities.store import Store
-from openc3.utilities.store_queued import StoreQueued
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
-from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.json import JsonEncoder, JsonDecoder
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store
+from openc3.utilities.store_queued import StoreQueued
 
 
 class CvtModel(Model):
@@ -173,7 +174,7 @@ class CvtModel(Model):
             return None
 
     @classmethod
-    def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None):
+    def tsdb_lookup(cls, items: list, start_time: str, end_time: str | None = None):
         """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")

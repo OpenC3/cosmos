@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime
-import openc3.script
 import json
+from datetime import datetime
+
+import openc3.script
 from openc3.environment import OPENC3_SCOPE
-from openc3.top_level import HazardousError, CriticalCmdError
-from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
+from openc3.top_level import CriticalCmdError, HazardousError
+from openc3.utilities.extract import *
 
 
 def cmd(*args, **kwargs):
@@ -109,7 +110,7 @@ def build_cmd(*args, **kwargs):
     build_command("TGT CMD with PARAM1 val, PARAM2 val")
     build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "build_cmd")(*args)
+    return openc3.script.API_SERVER.build_cmd(*args)
 
 
 # build_command is DEPRECATED
@@ -119,12 +120,12 @@ build_command = build_cmd
 def get_cmd_hazardous(*args, **kwargs):
     """Returns whether a command is hazardous (true or false)"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "get_cmd_hazardous")(*args)
+    return openc3.script.API_SERVER.get_cmd_hazardous(*args)
 
 
 # Returns the time the most recent command was sent
 def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
-    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(target_name, command_name, scope=scope)
+    results = openc3.script.API_SERVER.get_cmd_time(target_name, command_name, scope=scope)
     results = list(results)
     if results[2] and results[3]:
         results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)

@@ -28,20 +28,20 @@ class ConfigTopic(Topic):
             config (dict): Hash with required keys 'kind', 'name', 'type'
             scope (str): Scope for the topic
         """
-        if 'kind' not in config:
+        if "kind" not in config:
             raise ValueError("ConfigTopic error, required key kind: not given")
 
-        if config['kind'] not in ['created', 'deleted']:
+        if config["kind"] not in ["created", "deleted"]:
             raise ValueError(f"ConfigTopic error unknown kind: {config['kind']}")
 
-        if 'name' not in config:
+        if "name" not in config:
             raise ValueError("ConfigTopic error, required key name: not given")
 
-        if 'type' not in config:
+        if "type" not in config:
             raise ValueError("ConfigTopic error, required key type: not given")
 
         # Limit the configuration topics to 1000 entries
-        Topic.write_topic(f"{scope}{cls.PRIMARY_KEY}", config, '*', 1000)
+        Topic.write_topic(f"{scope}{cls.PRIMARY_KEY}", config, "*", 1000)
 
     @classmethod
     def read(cls, offset=None, count=100, scope=None):

@@ -17,13 +17,15 @@
 import sys
 import time
 import traceback
+
 from openc3.api.tlm_api import tlm
+from openc3.environment import OPENC3_SCOPE
 from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
 )
-from openc3.environment import OPENC3_SCOPE
+
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 

@@ -21,24 +21,26 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import json
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
-from openc3.topics.topic import Topic
-from openc3.topics.interface_topic import InterfaceTopic
-from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.models.cvt_model import CvtModel
-from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
+from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
+from openc3.topics.decom_interface_topic import DecomInterfaceTopic
+from openc3.topics.interface_topic import InterfaceTopic
+from openc3.topics.topic import Topic
+from openc3.utilities.authorization import authorize
 from openc3.utilities.extract import *
+
 
 WHITELIST.extend(
     [
         "tlm",
         "tlm_raw",
         "tlm_formatted",
-        "tlm_with_units", # DEPRECATED
+        "tlm_with_units",  # DEPRECATED
         "set_tlm",
         "inject_tlm",
         "override_tlm",
@@ -111,7 +113,9 @@ def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 # @param args [String|Array<String>] See the description for calling style
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", cache_timeout=cache_timeout, scope=scope)
+    target_name, packet_name, item_name, value = _set_tlm_process_args(
+        args, "set_tlm", cache_timeout=cache_timeout, scope=scope
+    )
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -143,11 +147,11 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
         item_hash = {k.upper(): v for k, v in item_hash.items()}
         # Check that the items exist ... exceptions are raised if not
         items = TargetModel.packet_items(target_name, packet_name, item_hash.keys(), scope=scope)
-        if type == 'CONVERTED':
+        if type == "CONVERTED":
             # If the type is converted, check that the item states are valid
             for item_name, item_value in item_hash.items():
-                item = next((i for i in items if i['name'] == item_name.upper()), None)
-                if item and item.get('states') and item_value not in item['states']:
+                item = next((i for i in items if i["name"] == item_name.upper()), None)
+                if item and item.get("states") and item_value not in item["states"]:
                     raise RuntimeError(
                         f"Unknown state '{item_value}' for {item['name']}, must be one of {', '.join(item['states'].keys())}"
                     )
@@ -291,45 +295,47 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
     for item in items:
         item_upcase = str(item).upper()
         try:
-            target_name, orig_packet_name, item_name, value_type = item_upcase.split('__')
+            target_name, orig_packet_name, item_name, value_type = item_upcase.split("__")
         except ValueError:
             raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
 
         packet_name = orig_packet_name
-        if orig_packet_name == 'LATEST':
+        if orig_packet_name == "LATEST":
             # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
-            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout=1, scope=scope)
+            packet_name = CvtModel.determine_latest_packet_for_item(
+                target_name, item_name, cache_timeout=1, scope=scope
+            )
 
-        authorize(permission='tlm', target_name=target_name, packet_name=packet_name, scope=scope)
+        authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
 
         try:
             item_config = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
             if item_name in Packet.RESERVED_ITEM_NAMES:
-                value_type = 'RAW'  # Must request the raw value when dealing with the reserved items
+                value_type = "RAW"  # Must request the raw value when dealing with the reserved items
 
             # Arrays must be accessed as RAW since there's no conversion
-            if item_config.get('array_size') is not None:
-                value_type = 'RAW'
+            if item_config.get("array_size") is not None:
+                value_type = "RAW"
 
             # Determine the best available value type based on item configuration
-            if value_type == 'FORMATTED' or value_type == 'WITH_UNITS':
-                if item_config.get('format_string') or item_config.get('units'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'FORMATTED'])
-                elif item_config.get('read_conversion') or item_config.get('states'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
+            if value_type == "FORMATTED" or value_type == "WITH_UNITS":
+                if item_config.get("format_string") or item_config.get("units"):
+                    result_item = "__".join([target_name, orig_packet_name, item_name, "FORMATTED"])
+                elif item_config.get("read_conversion") or item_config.get("states"):
+                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
                 else:
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
-            elif value_type == 'CONVERTED':
-                if item_config.get('read_conversion') or item_config.get('states'):
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'CONVERTED'])
+                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
+            elif value_type == "CONVERTED":
+                if item_config.get("read_conversion") or item_config.get("states"):
+                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
                 else:
-                    result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
             else:  # RAW or unknown
-                result_item = '__'.join([target_name, orig_packet_name, item_name, 'RAW'])
+                result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
 
             # Tack on __LIMITS to notify that we have an available limits value
-            if item_config.get('limits', {}).get('DEFAULT'):
-                result_item += '__LIMITS'
+            if item_config.get("limits", {}).get("DEFAULT"):
+                result_item += "__LIMITS"
 
             results.append(result_item)
         except Exception:
@@ -410,6 +416,7 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
                 names.append(packet["packet_name"])
     return names
 
+
 def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE):
     """Returns an array of all the item names for every packet in a target
 
@@ -425,6 +432,7 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
     except Exception:
         items = []
     return items
+
 
 # get_all_telemetry_names is DEPRECATED
 get_all_telemetry_names = get_all_tlm_names
@@ -458,8 +466,10 @@ def get_item(*args, scope: str = OPENC3_SCOPE, cache_timeout=0.1):
         (dict) Telemetry packet hash
     """
     target_name, packet_name, item_name = _extract_target_packet_item_names("get_item", *args)
-    if packet_name == 'LATEST':
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout=cache_timeout, scope=scope)
+    if packet_name == "LATEST":
+        packet_name = CvtModel.determine_latest_packet_for_item(
+            target_name, item_name, cache_timeout=cache_timeout, scope=scope
+        )
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
@@ -557,6 +567,7 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
     return TargetModel.get_telemetry_counts(target_packets, scope=scope)
 
+
 def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
     """Get the list of derived telemetry items for a packet
 
@@ -634,7 +645,7 @@ def _validate_tlm_type(tlm_type):
 
 
 def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    match (len(args)):
+    match len(args):
         case 1:
             target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         case 3:

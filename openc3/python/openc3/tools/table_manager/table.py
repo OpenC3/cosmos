@@ -17,6 +17,7 @@
 from openc3.packets.packet import Packet
 from openc3.tools.table_manager.table_item import TableItem
 
+
 class Table(Packet):
     """
     Table extends Packet by adding more attributes relative to
@@ -24,7 +25,7 @@ class Table(Packet):
     """
 
     # Define the target for tables as 'TABLE' since there is no target
-    TARGET = 'TABLE'
+    TARGET = "TABLE"
 
     def __init__(self, name, endianness, type_param, description, filename):
         """
@@ -37,7 +38,7 @@ class Table(Packet):
             description: Description of the table
             filename: File which contains the table definition
         """
-        super().__init__(self.TARGET, name, endianness, description, b'', item_class=TableItem)
+        super().__init__(self.TARGET, name, endianness, description, b"", item_class=TableItem)
         # ONE_DIMENSIONAL and TWO_DIMENSIONAL are deprecated so translate
         if type_param == "ONE_DIMENSIONAL":
             type_param = "KEY_VALUE"
@@ -56,12 +57,12 @@ class Table(Packet):
     def table_name(self):
         """Table name"""
         return self.packet_name
-        
+
     @property
     def endianness(self):
         """Get the table's endianness"""
         return self.default_endianness
-        
+
     @property
     def length(self):
         """Returns the length of the table in bytes"""

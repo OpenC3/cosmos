@@ -32,7 +32,7 @@ class IpWriteConversion(Conversion):
     # @param buffer [String] The packet buffer
     # @return The converted value
     def call(self, value, _packet, _buffer):
-        octets = value.split('.')
+        octets = value.split(".")
         return (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
 
     # @return [String] The conversion class

@@ -16,6 +16,7 @@
 
 
 from datetime import datetime, timezone
+
 from openc3.conversions.conversion import Conversion
 
 
@@ -27,7 +28,7 @@ class UnixTimeConversion(Conversion):
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type='RAW', microseconds_type='RAW'):
+    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type="RAW", microseconds_type="RAW"):
         super().__init__()
         self.seconds_item_name = seconds_item_name
         self.microseconds_item_name = microseconds_item_name

@@ -17,11 +17,13 @@
 import os
 import sys
 import traceback
+
 from openc3.microservices.interface_microservice import InterfaceMicroservice
-from openc3.system.system import System
 from openc3.models.router_status_model import RouterStatusModel
+from openc3.system.system import System
 from openc3.topics.router_topic import RouterTopic
 from openc3.utilities.thread_manager import ThreadManager
+
 
 class RouterMicroservice(InterfaceMicroservice):
     def handle_packet(self, packet):

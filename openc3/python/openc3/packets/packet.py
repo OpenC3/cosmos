@@ -17,14 +17,12 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
-import copy
 import base64
-import hashlib
+import copy
 import datetime
+import hashlib
 import traceback
-from .structure import Structure
-from .packet_item import PacketItem
-from .packet_item_limits import PacketItemLimits
+
 from openc3.conversions.packet_time_formatted_conversion import (
     PacketTimeFormattedConversion,
 )
@@ -40,9 +38,13 @@ from openc3.conversions.received_time_seconds_conversion import (
 )
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
-    simple_formatted,
     quote_if_necessary,
+    simple_formatted,
 )
+
+from .packet_item import PacketItem
+from .packet_item_limits import PacketItemLimits
+from .structure import Structure
 
 
 class Packet(Structure):

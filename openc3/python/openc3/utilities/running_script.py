@@ -14,21 +14,23 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import glob
-from openc3.script.suite_runner import SuiteRunner
-from openc3.utilities.string import build_timestamped_filename
-from openc3.utilities.bucket_utilities import BucketUtilities
-from openc3.script.storage import (
-    _get_storage_file,
-    _get_download_url,
-)
+import os
+
 from openc3.models.script_status_model import ScriptStatusModel
-from openc3.top_level import get_class_from_module, add_to_search_path
-from openc3.utilities.string import (
-    filename_to_module,
-    filename_to_class_name,
+from openc3.script.storage import (
+    _get_download_url,
+    _get_storage_file,
 )
+from openc3.script.suite_runner import SuiteRunner
+from openc3.top_level import add_to_search_path, get_class_from_module
+from openc3.utilities.bucket_utilities import BucketUtilities
+from openc3.utilities.string import (
+    build_timestamped_filename,
+    filename_to_class_name,
+    filename_to_module,
+)
+
 
 SCRIPT_API = "script-api"
 
@@ -94,33 +96,37 @@ def _openc3_script_sleep(sleep_time=None):
 
 import openc3.script.api_shared
 
-setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
-from io import StringIO
+openc3.script.api_shared.openc3_script_sleep = _openc3_script_sleep
+
 import ast
 import json
-import uuid
 import re
-import time
 import sys
-import traceback
 import threading
-from datetime import datetime as cdatetime, timezone
+import time
+import traceback
+import uuid
+from datetime import datetime as cdatetime
+from datetime import timezone
+from io import StringIO
 from threading import Lock
-from openc3.environment import *
-from openc3.utilities.store import Store
-from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.message_log import MessageLog
-from openc3.utilities.logger import Logger
-from openc3.utilities.target_file import TargetFile
-from openc3.io.stdout import Stdout
-from openc3.io.stderr import Stderr
-from openc3.top_level import kill_thread
-from openc3.script.exceptions import StopScript, SkipScript, CheckError
-from openc3.tools.test_runner.test import SkipTestCase
-from openc3.script.suite import Group
-from openc3.utilities.script_instrumentor import ScriptInstrumentor
+
 import openc3.utilities.target_file_importer  # DO NOT REMOVE - Makes import target lib work
+from openc3.environment import *
+from openc3.io.stderr import Stderr
+from openc3.io.stdout import Stdout
+from openc3.script.exceptions import CheckError, SkipScript, StopScript
+from openc3.script.suite import Group
+from openc3.tools.test_runner.test import SkipTestCase
+from openc3.top_level import kill_thread
+from openc3.utilities.logger import Logger
+from openc3.utilities.message_log import MessageLog
+from openc3.utilities.script_instrumentor import ScriptInstrumentor
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
+from openc3.utilities.target_file import TargetFile
+
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
 # Note: This list matches the list in run_script.rb:151
@@ -187,6 +193,7 @@ for method in SCRIPT_METHODS:
     setattr(openc3.script, method, globals()[method])
 
 from openc3.script import *
+
 
 rails_root = os.getenv("RAILS_ROOT")
 if rails_root is not None:
@@ -1222,14 +1229,14 @@ def step_mode():
     RunningScript.instance.do_step()
 
 
-setattr(openc3.script, "step_mode", step_mode)
+openc3.script.step_mode = step_mode
 
 
 def run_mode():
     RunningScript.instance.do_go()
 
 
-setattr(openc3.script, "run_mode", run_mode)
+openc3.script.run_mode = run_mode
 
 
 def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, complete=False):
@@ -1396,7 +1403,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
     return not cached
 
 
-setattr(openc3.script, "start", start)
+openc3.script.start = start
 
 
 def goto(line_no_or_procedure_name, line_no=None):
@@ -1411,7 +1418,7 @@ def goto(line_no_or_procedure_name, line_no=None):
         start(line_no_or_procedure_name, line_no=line_no, bind_variables=True, complete=True)
 
 
-setattr(openc3.script, "goto", goto)
+openc3.script.goto = goto
 
 
 # Load an additional python file
@@ -1439,8 +1446,8 @@ def load_utility(procedure_name):
 ###########################################################################
 
 
-setattr(openc3.script, "load_utility", load_utility)
-setattr(openc3.script, "require_utility", load_utility)
+openc3.script.load_utility = load_utility
+openc3.script.require_utility = load_utility
 
 
 def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
@@ -1458,7 +1465,7 @@ def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE)
     )
 
 
-setattr(openc3.script, "display_screen", display_screen)
+openc3.script.display_screen = display_screen
 
 
 def clear_screen(target_name, screen_name):
@@ -1472,7 +1479,7 @@ def clear_screen(target_name, screen_name):
     )
 
 
-setattr(openc3.script, "clear_screen", clear_screen)
+openc3.script.clear_screen = clear_screen
 
 
 def clear_all_screens():
@@ -1482,7 +1489,7 @@ def clear_all_screens():
     )
 
 
-setattr(openc3.script, "clear_all_screens", clear_all_screens)
+openc3.script.clear_all_screens = clear_all_screens
 
 
 def local_screen(screen_name, definition, x=None, y=None):
@@ -1499,7 +1506,7 @@ def local_screen(screen_name, definition, x=None, y=None):
     )
 
 
-setattr(openc3.script, "local_screen", local_screen)
+openc3.script.local_screen = local_screen
 
 
 def download_file(path, scope=OPENC3_SCOPE):
@@ -1510,7 +1517,7 @@ def download_file(path, scope=OPENC3_SCOPE):
     )
 
 
-setattr(openc3.script, "download_file", download_file)
+openc3.script.download_file = download_file
 
 
 def open_tab(url):
@@ -1520,4 +1527,4 @@ def open_tab(url):
     )
 
 
-setattr(openc3.script, "open_tab", open_tab)
+openc3.script.open_tab = open_tab

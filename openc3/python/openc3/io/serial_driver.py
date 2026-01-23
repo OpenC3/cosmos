@@ -14,43 +14,46 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import threading
-from typing import Optional, Union
+import time
+
 import serial
+
 
 class SerialDriver:
     """A platform independent serial driver"""
 
     # Parity constants
-    EVEN = 'EVEN'
-    ODD = 'ODD'
-    NONE = 'NONE'
+    EVEN = "EVEN"
+    ODD = "ODD"
+    NONE = "NONE"
     VALID_PARITY = [EVEN, ODD, NONE]
 
-    def __init__(self,
-                 port_name: str,
-                 baud_rate: int,
-                 parity: str = 'NONE',
-                 stop_bits: int = 1,
-                 write_timeout: float = 10.0,
-                 read_timeout: Optional[float] = None,
-                 flow_control: str = 'NONE',
-                 data_bits: int = 8,
-                 read_polling_period: float = 0.01,
-                 read_max_length: int = 1000):
+    def __init__(
+        self,
+        port_name: str,
+        baud_rate: int,
+        parity: str = "NONE",
+        stop_bits: int = 1,
+        write_timeout: float = 10.0,
+        read_timeout: float | None = None,
+        flow_control: str = "NONE",
+        data_bits: int = 8,
+        read_polling_period: float = 0.01,
+        read_max_length: int = 1000,
+    ):
         """
-          port_name: [String] Name of the serial port
-          baud_rate: [Integer] Serial port baud rate
-          parity: [String] Must be one of 'EVEN', 'ODD' or 'NONE'
-          stop_bits: [Integer] Number of stop bits
-          write_timeout: [Float] Seconds to wait before aborting writes
-          read_timeout: [Float | None] Seconds to wait before aborting reads.
-                        Pass None to block until the read is complete.
-          flow_control: [String] Currently supported 'NONE' and 'RTSCTS' (default 'NONE')
-          data_bits: [Integer] Number of data bits (default 8)
-          read_polling_period: [Float] Sleep time between read attempts (default 0.01)
-          read_max_length: [Integer] Maximum bytes to read at once (default 1000)
+        port_name: [String] Name of the serial port
+        baud_rate: [Integer] Serial port baud rate
+        parity: [String] Must be one of 'EVEN', 'ODD' or 'NONE'
+        stop_bits: [Integer] Number of stop bits
+        write_timeout: [Float] Seconds to wait before aborting writes
+        read_timeout: [Float | None] Seconds to wait before aborting reads.
+                      Pass None to block until the read is complete.
+        flow_control: [String] Currently supported 'NONE' and 'RTSCTS' (default 'NONE')
+        data_bits: [Integer] Number of data bits (default 8)
+        read_polling_period: [Float] Sleep time between read attempts (default 0.01)
+        read_max_length: [Integer] Maximum bytes to read at once (default 1000)
         """
 
         if parity not in self.VALID_PARITY:
@@ -63,18 +66,14 @@ class SerialDriver:
             raise ValueError(f"Invalid stop bits: {stop_bits}")
 
         # Convert parity to pyserial constants
-        parity_map = {
-            'ODD': serial.PARITY_ODD,
-            'EVEN': serial.PARITY_EVEN,
-            'NONE': serial.PARITY_NONE
-        }
+        parity_map = {"ODD": serial.PARITY_ODD, "EVEN": serial.PARITY_EVEN, "NONE": serial.PARITY_NONE}
         serial_parity = parity_map[parity]
 
         # Convert stop bits to pyserial constants
         serial_stopbits = serial.STOPBITS_TWO if stop_bits == 2 else serial.STOPBITS_ONE
 
         # Configure flow control
-        rtscts = (flow_control == 'RTSCTS')
+        rtscts = flow_control == "RTSCTS"
 
         self.write_timeout = write_timeout
         self.read_timeout = read_timeout
@@ -90,14 +89,14 @@ class SerialDriver:
             stopbits=serial_stopbits,
             timeout=None,  # We'll handle timeouts manually
             write_timeout=write_timeout,
-            rtscts=rtscts
+            rtscts=rtscts,
         )
 
         self.mutex = threading.Lock()
 
     def close(self) -> None:
         """Disconnects the driver from the comm port"""
-        if hasattr(self, 'handle') and self.handle and self.handle.is_open:
+        if hasattr(self, "handle") and self.handle and self.handle.is_open:
             with self.mutex:
                 self.handle.close()
                 self.handle = None
@@ -107,15 +106,15 @@ class SerialDriver:
         Returns:
             [Boolean] Whether the serial port has been closed
         """
-        return not (hasattr(self, 'handle') and self.handle and self.handle.is_open)
+        return not (hasattr(self, "handle") and self.handle and self.handle.is_open)
 
-    def write(self, data: Union[str, bytes]) -> None:
+    def write(self, data: str | bytes) -> None:
         """
         Args:
             data: [String | bytes] Binary data to write to the serial port
         """
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
 
         start_time = time.time()
         bytes_to_write = len(data)
@@ -129,9 +128,11 @@ class SerialDriver:
             total_bytes_written += bytes_written
 
             # Check for write timeout
-            if (self.write_timeout and
-                (time.time() - start_time > self.write_timeout) and
-                total_bytes_written < bytes_to_write):
+            if (
+                self.write_timeout
+                and (time.time() - start_time > self.write_timeout)
+                and total_bytes_written < bytes_to_write
+            ):
                 raise TimeoutError("Write Timeout")
 
     def read(self) -> bytes:
@@ -139,7 +140,7 @@ class SerialDriver:
         Returns:
             [bytes] Binary data read from the serial port
         """
-        data = b''
+        data = b""
         sleep_time = 0.0
 
         while True:
@@ -161,10 +162,7 @@ class SerialDriver:
                     break
 
                 data += buffer
-                if (len(buffer) <= 0 or
-                    len(data) >= self.read_max_length or
-                    not self.handle or
-                    not self.handle.is_open):
+                if len(buffer) <= 0 or len(data) >= self.read_max_length or not self.handle or not self.handle.is_open:
                     break
 
             # Break if we have data or handle is closed
@@ -186,7 +184,7 @@ class SerialDriver:
         Returns:
             [bytes] Binary data read from the serial port
         """
-        data = b''
+        data = b""
 
         while True:
             available = self.handle.in_waiting

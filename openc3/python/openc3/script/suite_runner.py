@@ -14,14 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from .suite import Suite, Group, ScriptStatus
-from openc3.tools.test_runner.test import TestSuite, Test
-from .suite_results import SuiteResults
-from openc3.script.exceptions import StopScript
 import inspect
+
+from openc3.script.exceptions import StopScript
+from openc3.tools.test_runner.test import Test, TestSuite
+
+from .suite import Group, ScriptStatus, Suite
+from .suite_results import SuiteResults
+
 
 class UnassignedSuite(Suite):
     """Placeholder for all Groups discovered without assigned Suites"""
+
     pass
 
 

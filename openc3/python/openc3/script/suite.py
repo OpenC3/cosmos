@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
 import copy
 import re
+import sys
 from io import StringIO
-from openc3.script.exceptions import StopScript, SkipScript
+
 import openc3.script
-from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
+from openc3.io.stdout import Stdout
+from openc3.script.exceptions import SkipScript, StopScript
 
 
 class Suite:

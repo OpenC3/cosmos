@@ -14,13 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
+
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, WaiterError
+
+from openc3.environment import *
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
-from openc3.environment import *
-import time
+
 
 aws_arn = OPENC3_AWS_ARN_PREFIX
 s3_config = Config(s3={"addressing_style": "path"})

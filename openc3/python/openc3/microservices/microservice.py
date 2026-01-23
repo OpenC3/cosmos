@@ -14,14 +14,19 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import atexit
+import json
 import os
 import sys
-import atexit
 import tempfile
 import threading
 import traceback
-import json
+
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.microservice_status_model import MicroserviceStatusModel
 from openc3.system.system import System
+from openc3.topics.topic import Topic
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.utilities.metric import Metric
@@ -29,10 +34,7 @@ from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.topics.topic import Topic
-from openc3.environment import OPENC3_CONFIG_BUCKET
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.models.microservice_status_model import MicroserviceStatusModel
+
 
 # TODO:
 # OpenC3.require_file 'openc3/utilities/open_telemetry'

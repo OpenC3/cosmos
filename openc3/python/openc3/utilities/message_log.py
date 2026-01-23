@@ -18,9 +18,10 @@ import os
 import time
 from datetime import datetime, timezone
 from threading import Lock
+
+from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.utilities.logger import Logger
-from openc3.environment import OPENC3_SCOPE
 
 
 # Handles writing message logs to a file

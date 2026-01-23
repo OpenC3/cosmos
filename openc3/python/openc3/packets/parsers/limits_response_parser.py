@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import filename_to_module, filename_to_class_name
+from openc3.utilities.string import filename_to_class_name, filename_to_module
 
 
 class LimitsResponseParser:

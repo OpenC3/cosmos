@@ -14,16 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import os
 import time
-import json
+
+from openc3.environment import OPENC3_SCOPE
 from openc3.streams.web_socket_client_stream import WebSocketClientStream
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
 )
 from openc3.utilities.time import to_nsec_from_epoch
-from openc3.environment import OPENC3_SCOPE
 
 
 # NOTE: For example usage see python/examples/cosmos_web_socket_example.py

@@ -20,28 +20,29 @@
 import os
 import tempfile
 import traceback
+
 from openc3.config.config_parser import ConfigParser
-from openc3.packets.packet import Packet
-from openc3.packets.parsers.packet_parser import PacketParser
-from openc3.packets.parsers.packet_item_parser import PacketItemParser
-from openc3.packets.parsers.state_parser import StateParser
-from openc3.packets.parsers.limits_parser import LimitsParser
-from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
-from openc3.packets.parsers.format_string_parser import FormatStringParser
-from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 from openc3.conversions.segmented_polynomial_conversion import (
     SegmentedPolynomialConversion,
 )
+from openc3.packets.packet import Packet
+from openc3.packets.parsers.format_string_parser import FormatStringParser
+from openc3.packets.parsers.limits_parser import LimitsParser
+from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
+from openc3.packets.parsers.packet_item_parser import PacketItemParser
+from openc3.packets.parsers.packet_parser import PacketParser
+from openc3.packets.parsers.processor_parser import ProcessorParser
+from openc3.packets.parsers.state_parser import StateParser
+from openc3.top_level import get_class_from_module
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
-    filename_to_module,
-    filename_to_class_name,
     class_name_to_filename,
+    filename_to_class_name,
+    filename_to_module,
 )
-from openc3.top_level import get_class_from_module
 
 
 class PacketConfig:
@@ -116,7 +117,7 @@ class PacketConfig:
         else:
             raise ValueError("process_target_name is required (XTCE parsing not yet implemented)")
         parser = ConfigParser("https://docs.openc3.com/docs")
-        setattr(parser, "target_name", process_target_name)
+        parser.target_name = process_target_name
         for keyword, params in parser.parse_file(filename):
             if self.building_generic_conversion:
                 match keyword:
@@ -558,7 +559,9 @@ class PacketConfig:
             case "SELECT_PARAMETER" | "SELECT_ITEM" | "DELETE_PARAMETER" | "DELETE_ITEM":
                 if (self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING) and (keyword.split("_")[1] == "ITEM"):
                     raise parser.error(f"{keyword} only applies to telemetry packets")
-                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING) and (keyword.split("_")[1] == "PARAMETER"):
+                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING) and (
+                    keyword.split("_")[1] == "PARAMETER"
+                ):
                     raise parser.error(f"{keyword} only applies to command packets")
 
                 usage = f"{keyword} <{keyword.split('_')[1]} NAME>"

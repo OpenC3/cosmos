@@ -23,35 +23,36 @@ This is a port of the Ruby PacketLogReader class.
 
 import json
 import struct
+from collections.abc import Iterator
 from datetime import datetime, timezone
-from typing import Optional, Iterator, Union
+
 import cbor2
 
 from openc3.logs.packet_log_constants import (
     COSMOS2_FILE_HEADER,
     COSMOS4_FILE_HEADER,
+    OPENC3_CBOR_FLAG_MASK,
+    OPENC3_CMD_FLAG_MASK,
+    OPENC3_ENTRY_TYPE_MASK,
+    OPENC3_EXTRA_FLAG_MASK,
+    OPENC3_EXTRA_LENGTH_FIXED_SIZE,
     OPENC3_FILE_HEADER,
     OPENC3_HEADER_LENGTH,
-    OPENC3_ENTRY_TYPE_MASK,
-    OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK,
-    OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK,
-    OPENC3_RAW_PACKET_ENTRY_TYPE_MASK,
-    OPENC3_JSON_PACKET_ENTRY_TYPE_MASK,
-    OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK,
-    OPENC3_KEY_MAP_ENTRY_TYPE_MASK,
-    OPENC3_CMD_FLAG_MASK,
-    OPENC3_STORED_FLAG_MASK,
-    OPENC3_ID_FLAG_MASK,
-    OPENC3_CBOR_FLAG_MASK,
-    OPENC3_EXTRA_FLAG_MASK,
-    OPENC3_RECEIVED_TIME_FLAG_MASK,
-    OPENC3_PRIMARY_FIXED_SIZE,
-    OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE,
-    OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE,
-    OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE,
     OPENC3_ID_FIXED_SIZE,
+    OPENC3_ID_FLAG_MASK,
+    OPENC3_JSON_PACKET_ENTRY_TYPE_MASK,
+    OPENC3_KEY_MAP_ENTRY_TYPE_MASK,
+    OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE,
+    OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK,
+    OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK,
+    OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE,
+    OPENC3_PRIMARY_FIXED_SIZE,
+    OPENC3_RAW_PACKET_ENTRY_TYPE_MASK,
     OPENC3_RECEIVED_TIME_FIXED_SIZE,
-    OPENC3_EXTRA_LENGTH_FIXED_SIZE,
+    OPENC3_RECEIVED_TIME_FLAG_MASK,
+    OPENC3_STORED_FLAG_MASK,
+    OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK,
+    OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE,
 )
 from openc3.packets.json_packet import JsonPacket
 from openc3.packets.packet import Packet
@@ -83,7 +84,7 @@ class PacketLogReader:
         self._last_offsets = {}
 
     @property
-    def redis_offset(self) -> Optional[str]:
+    def redis_offset(self) -> str | None:
         """The Redis offset from the log file."""
         return self._redis_offset
 
@@ -93,7 +94,7 @@ class PacketLogReader:
         return self._last_offsets
 
     @property
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str | None:
         """The currently open filename."""
         return self._filename
 
@@ -101,9 +102,9 @@ class PacketLogReader:
         self,
         filename: str,
         identify_and_define: bool = True,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-    ) -> Iterator[Union[Packet, JsonPacket]]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> Iterator[Packet | JsonPacket]:
         """
         Iterate over each packet in the log file.
 
@@ -171,7 +172,7 @@ class PacketLogReader:
             self._file.close()
         self._file = None
 
-    def read(self, identify_and_define: bool = True) -> Optional[Union[Packet, JsonPacket]]:
+    def read(self, identify_and_define: bool = True) -> Packet | JsonPacket | None:
         """
         Read a packet from the log file.
 

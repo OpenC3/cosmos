@@ -17,14 +17,16 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional
+
 
 # TYPE_CHECKING is False at runtime but True during type checking.
 # This allows us to import types for type hints without causing circular import errors.
 # These imports are only used for static type checking by tools like Pylance/mypy.
 if TYPE_CHECKING:
-    from openc3.packets.packet_config import PacketConfig
     from openc3.packets.packet import Packet
+    from openc3.packets.packet_config import PacketConfig
     from openc3.packets.packet_item import PacketItem
     from openc3.system.system import System
 
@@ -95,7 +97,7 @@ class Telemetry:
     # @return [Array<PacketItem>] The telemetry item names for the given target and packet name
     def item_names(self, target_name, packet_name):
         upcase_packet_name = packet_name.upper()
-        if self.LATEST_PACKET_NAME == upcase_packet_name:
+        if upcase_packet_name == self.LATEST_PACKET_NAME:
             target_upcase = target_name.upper()
             target_latest_data = self.config.latest_data.get(target_upcase)
             if target_latest_data is None:
@@ -116,7 +118,7 @@ class Telemetry:
     # @param item_name (see #packet_and_item)
     # @param value The value to set in the packet
     # @param value_type (see #tlm)
-    def set_value(self, target_name, packet_name, item_name, value, value_type = 'CONVERTED'):
+    def set_value(self, target_name, packet_name, item_name, value, value_type="CONVERTED"):
         packet, _ = self.packet_and_item(target_name, packet_name, item_name)
         return packet.write(item_name, value, value_type)
 
@@ -133,7 +135,9 @@ class Telemetry:
 
         packets = self.config.latest_data[target_upcase].get(item_upcase)
         if packets is None:
-            raise RuntimeError(f"Telemetry item '{target_upcase} {self.LATEST_PACKET_NAME} {item_upcase}' does not exist")
+            raise RuntimeError(
+                f"Telemetry item '{target_upcase} {self.LATEST_PACKET_NAME} {item_upcase}' does not exist"
+            )
 
         return packets
 
@@ -205,7 +209,9 @@ class Telemetry:
     # @return [List, List, List] The first list contains the item values, the
     #   second their limits state, and the third their limits settings which includes
     #   the red, yellow, and green (if given) limits values.
-    def values_and_limits_states(self, item_array: list[list[str]], value_types: Union[str, list[str]] = "CONVERTED") -> tuple[list[Any], list[Any], list[Any]]:
+    def values_and_limits_states(
+        self, item_array: list[list[str]], value_types: str | list[str] = "CONVERTED"
+    ) -> tuple[list[Any], list[Any], list[Any]]:
         items = []
         states = []
         settings = []
@@ -257,7 +263,9 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet with its data set to the given
     #   packet_data buffer. Returns nil if no packet could be identified.
-    def identify_and_set_buffer(self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify_and_set_buffer(
+        self, packet_data: bytes, target_names: list[str] | None = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         identified_packet = self.identify(packet_data, target_names, subpackets=subpackets)
         if identified_packet:
             identified_packet.buffer = packet_data
@@ -270,7 +278,9 @@ class Telemetry:
     # @param target_names [Array<String>] List of target names to limit the search. The
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
-    def identify(self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify(
+        self, packet_data: bytes, target_names: list[str] | None = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         if target_names is None:
             target_names = self.target_names()
 
@@ -325,7 +335,9 @@ class Telemetry:
 
         return None
 
-    def identify_and_define_packet(self, packet: "Packet", target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify_and_define_packet(
+        self, packet: "Packet", target_names: list[str] | None = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         if not packet.identified():
             identified_packet = self.identify(packet.buffer_no_copy(), target_names, subpackets=subpackets)
             if not identified_packet:
@@ -384,7 +396,7 @@ class Telemetry:
                 packet.reset()
 
     # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system
-    def all_item_strings(self, include_hidden = False, _splash = None):
+    def all_item_strings(self, include_hidden=False, _splash=None):
         strings = []
         tnames = self.target_names()
         index = 0
@@ -408,8 +420,8 @@ class Telemetry:
     def dynamic_add_packet(self, packet: "Packet", affect_ids: bool = False) -> None:
         self.config.dynamic_add_packet(packet, "TELEMETRY", affect_ids=affect_ids)
 
-    def tlm_unique_id_mode(self, target_name: str) -> Optional[bool]:
+    def tlm_unique_id_mode(self, target_name: str) -> bool | None:
         return self.config.tlm_unique_id_mode.get(target_name.upper())
 
-    def tlm_subpacket_unique_id_mode(self, target_name: str) -> Optional[bool]:
+    def tlm_subpacket_unique_id_mode(self, target_name: str) -> bool | None:
         return self.config.tlm_subpacket_unique_id_mode.get(target_name.upper())

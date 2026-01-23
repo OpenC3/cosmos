@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.environment import OPENC3_LOCAL_MODE, OPENC3_CONFIG_BUCKET
-from openc3.utilities.local_mode import LocalMode
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_LOCAL_MODE
 from openc3.utilities.bucket import Bucket
+from openc3.utilities.local_mode import LocalMode
 
 
 class TargetFile:

@@ -26,8 +26,12 @@ class BridgeInterfaceThread(InterfaceThread):
                     try:
                         router.write(packet)
                     except Exception as err:
-                        Logger.error(f"Error routing telemetry from {self.interface.name} to router {router.name}: {err}")
+                        Logger.error(
+                            f"Error routing telemetry from {self.interface.name} to router {router.name}: {err}"
+                        )
                 else:
                     Logger.warn(f"Router {router.name} writing not allowed for packet from {self.interface.name}")
             else:
-                Logger.error(f"Attempted to route telemetry from {self.interface.name} to disconnected router {router.name}")
+                Logger.error(
+                    f"Attempted to route telemetry from {self.interface.name} to disconnected router {router.name}"
+                )

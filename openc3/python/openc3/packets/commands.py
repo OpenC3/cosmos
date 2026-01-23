@@ -18,7 +18,9 @@
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
+
 from openc3.utilities.cmd_log import _build_cmd_output_string
+
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -146,7 +148,6 @@ class Commands:
                         identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
-
                 identified_packet = identified_packet.clone()
                 identified_packet.received_time = None
                 identified_packet.stored = False
@@ -230,7 +231,6 @@ class Commands:
         cmd_name = "UNKNOWN" if not cmd_name else cmd_name
         packet_hash = packet.as_json() if packet else {}
         return _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
-
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states

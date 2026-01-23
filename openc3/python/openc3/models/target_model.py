@@ -21,19 +21,19 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import json
-import time
 import threading
+import time
 from typing import Any
-from openc3.environment import OPENC3_SCOPE
-from openc3.topics.topic import Topic
-from openc3.models.model import Model
+
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
 from openc3.models.microservice_model import MicroserviceModel
-from openc3.utilities.json import JsonEncoder
-from openc3.utilities.store import Store, openc3_redis_cluster
-from openc3.utilities.logger import Logger
-from openc3.utilities.bucket import Bucket
+from openc3.models.model import Model
 from openc3.system.system import System
-from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.topics.topic import Topic
+from openc3.utilities.bucket import Bucket
+from openc3.utilities.json import JsonEncoder
+from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store, openc3_redis_cluster
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -50,7 +50,7 @@ class TargetModel(Model):
     item_map_cache = {}
     sync_packet_count_data = {}
     sync_packet_count_time = None
-    sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -289,15 +289,17 @@ class TargetModel(Model):
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                 update_packet = System.telemetry.packet(target_name, packet_name.decode())
                 update_packet.received_count = int(count)
-        for packet_name, count in TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope).items():
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+        for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
+            update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
             update_packet.received_count = int(count)
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
         if cls.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
             # Perfect but slow method
-            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
+            packet.received_count = TargetModel.increment_telemetry_count(
+                packet.target_name, packet.packet_name, 1, scope=scope
+            )
         else:
             # Eventually consistent method
             # Only sync every period (default 1 second) to avoid hammering Redis
@@ -315,7 +317,10 @@ class TargetModel(Model):
             packet.received_count = update_packet.received_count
 
             # Check if we need to sync the packet counts
-            if cls.sync_packet_count_time is None or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds:
+            if (
+                cls.sync_packet_count_time is None
+                or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
+            ):
                 cls.sync_packet_count_time = time.time()
 
                 result = []
@@ -336,7 +341,7 @@ class TargetModel(Model):
                         # Get all the packet counts with the global counters
                         for target_name in tlm_target_names:
                             TargetModel.get_all_telemetry_counts(target_name, scope=scope)
-                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope)
+                        TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope)
 
                         result = pipeline.execute()
                     finally:
@@ -347,7 +352,7 @@ class TargetModel(Model):
                         update_packet.received_count = int(count)
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+                    update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
                     update_packet.received_count = int(count)
 
     @classmethod
@@ -508,7 +513,7 @@ class TargetModel(Model):
         packet_hash = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not packet_hash.get(target_name, None):
+            if not packet_hash.get(target_name):
                 packet_hash[target_name] = {}
             packet_name = packet.packet_name.upper()
             packet_hash[target_name][packet_name] = packet
@@ -524,7 +529,7 @@ class TargetModel(Model):
         configs = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not configs.get(target_name, None):
+            if not configs.get(target_name):
                 configs[target_name] = ""
             config = configs[target_name]
             config += packet.to_config(cmd_or_tlm)
