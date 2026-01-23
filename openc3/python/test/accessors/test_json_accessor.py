@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import unittest
-from unittest.mock import *
-from test.test_helper import *
-from openc3.accessors.json_accessor import JsonAccessor
 from collections import namedtuple
+
+from openc3.accessors.json_accessor import JsonAccessor
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
+
 
 class TestJsonAccessor(unittest.TestCase):
     def setUp(self):
@@ -38,7 +39,7 @@ class TestJsonAccessor(unittest.TestCase):
 
     def test_should_return_None_for_an_item_that_does_not_exist(self):
         item = self.Json("item", "$.packet.nope", "INT", None)
-        self.assertEqual(JsonAccessor.class_read_item(item, self.hash_data), None)
+        self.assertIsNone(JsonAccessor.class_read_item(item, self.hash_data))
 
     def test_should_write_into_a_packet(self):
         p = Packet("tgt", "pkt")
@@ -75,9 +76,7 @@ class TestJsonAccessor(unittest.TestCase):
         self.assertEqual(
             p.buffer,
             # The formatting of this string has to be precise
-            bytearray(
-                b'{"id_item":1,"item1":5,"more":{"item2":888,"item3":1.23,"item4":"JSON","item5":[1,2,3,4]}}'
-            ),
+            bytearray(b'{"id_item":1,"item1":5,"more":{"item2":888,"item3":1.23,"item4":"JSON","item5":[1,2,3,4]}}'),
         )
 
     def test_should_read_a_top_level_hash(self):
@@ -91,7 +90,7 @@ class TestJsonAccessor(unittest.TestCase):
     def test_should_write_json(self):
         data = b'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
         item = self.Json("item", "$.packet.item1", "DERIVED", None)
-        self.assertEqual(JsonAccessor.class_write_item(item, 3, data), None)
+        self.assertIsNone(JsonAccessor.class_write_item(item, 3, data))
 
     def test_should_write_into_empty_array(self):
         data = bytearray(b'{"params": []}')
@@ -236,9 +235,9 @@ class TestJsonAccessor(unittest.TestCase):
     def test_should_write_different_types(self):
         # DERIVED items aren't actually written
         item = self.Json("item", "$.packet.item1", "DERIVED", None)
-        self.assertEqual(JsonAccessor.class_write_item(item, 3, self.data1), None)
+        self.assertIsNone(JsonAccessor.class_write_item(item, 3, self.data1))
         # Reading DERIVED items always returns None
-        self.assertEqual(JsonAccessor.class_read_item(item, self.data1), None)
+        self.assertIsNone(JsonAccessor.class_read_item(item, self.data1))
         json_data = json.loads(self.data1)
         self.assertEqual(json_data["packet"]["item1"], 1)
 
@@ -446,3 +445,32 @@ class TestJsonAccessor(unittest.TestCase):
         )
         self.assertEqual(JsonAccessor.class_read_item(item13, self.data2), "art")
         self.assertEqual(JsonAccessor.class_read_item(item14, self.data2), 14)
+
+    def test_should_raise_error_when_writing_to_empty_buffer(self):
+        # This test demonstrates the error that occurs when using inject_tlm with type="RAW"
+        # on a telemetry packet with JsonAccessor but no TEMPLATE defined.
+        # Without a TEMPLATE, the buffer is empty, causing json.loads() to fail.
+        empty_buffer = bytearray(b"")
+        item = self.Json("item", "$.item1", "UINT", None)
+
+        with self.assertRaises(json.JSONDecodeError) as context:
+            JsonAccessor.class_write_item(item, 123, empty_buffer)
+
+        # Verify it's the expected "Expecting value" error from parsing empty string
+        self.assertIn("Expecting value", str(context.exception))
+
+    def test_should_write_to_packet_without_template_using_dict_buffer(self):
+        # This test shows how JsonAccessor can work without a TEMPLATE
+        # when the buffer is already a dict (not a bytearray), which is what
+        # happens internally when using type="CONVERTED"
+        dict_buffer = {}
+        item = self.Json("item", "$.item1", "UINT", None)
+
+        # When buffer is a dict (not bytearray), it works fine
+        JsonAccessor.class_write_item(item, 123, dict_buffer)
+        self.assertEqual(dict_buffer["item1"], 123)
+
+        # Nested paths also work
+        item2 = self.Json("item2", "$.more.item2", "UINT", None)
+        JsonAccessor.class_write_item(item2, 456, dict_buffer)
+        self.assertEqual(dict_buffer["more"]["item2"], 456)
