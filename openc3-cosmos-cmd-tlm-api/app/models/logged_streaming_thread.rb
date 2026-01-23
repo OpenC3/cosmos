@@ -25,6 +25,7 @@ require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
 OpenC3.require_file 'openc3/api/api'
 OpenC3.require_file 'openc3/utilities/bucket_file_cache'
+OpenC3.require_file 'openc3/utilities/questdb_client'
 
 module OpenC3
   class LocalApi
@@ -255,7 +256,8 @@ class LoggedStreamingThread < StreamingThread
                   # tuple[1] is a Ruby time object which we convert to nanoseconds
                   entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
                 else
-                  entry[item_keys[index]] = tuple[1]
+                  # Decode JSON-encoded arrays/objects from QuestDB
+                  entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(tuple[1])
                 end
               end
               results << entry
@@ -485,17 +487,20 @@ class LoggedStreamingThread < StreamingThread
     # Second pass: process columns based on value_type
     tuples.each do |tuple|
       column_name = tuple[0]
-      value = tuple[1]
+      raw_value = tuple[1]
 
       # Handle timestamp specially
       if column_name == 'timestamp'
         # Convert Ruby time to nanoseconds
-        entry['__time'] = (value.to_f * 1_000_000_000).to_i
+        entry['__time'] = (raw_value.to_f * 1_000_000_000).to_i
         next
       end
 
       # Skip metadata columns
       next if column_name == 'tag'
+
+      # Decode JSON-encoded arrays/objects from QuestDB
+      value = OpenC3::QuestDBClient.decode_value(raw_value)
 
       # Map column names based on value_type
       # TSDB columns: item (RAW), item__C (CONVERTED), item__F (FORMATTED)

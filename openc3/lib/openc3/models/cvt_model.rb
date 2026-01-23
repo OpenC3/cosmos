@@ -24,6 +24,7 @@ require 'pg'
 require 'thread'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
+require 'openc3/utilities/questdb_client'
 require 'openc3/models/target_model'
 
 module OpenC3
@@ -214,7 +215,9 @@ module OpenC3
                   data[index][row_index] = [nil, nil]
                   row_index += 1
                 else
-                  data[index][row_index] = [tuple[1], nil]
+                  # Decode JSON-encoded arrays/objects from QuestDB
+                  decoded_value = QuestDBClient.decode_value(tuple[1])
+                  data[index][row_index] = [decoded_value, nil]
                   row_index += 1
                 end
               end

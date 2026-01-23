@@ -45,6 +45,75 @@ class QuestDBClient:
     TABLE_NAME_INVALID_CHARS = r'[?,\'"\\/:)(+*%~]'
     COLUMN_NAME_INVALID_CHARS = r'[?\.,\'"\\/:)(+\-*%~;]'
 
+    @staticmethod
+    def decode_value(value, block_encoded=False):
+        """
+        Decode a value retrieved from QuestDB back to its original Python type.
+
+        QuestDB stores certain COSMOS types as encoded strings:
+        - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
+        - Objects/Dicts are JSON-encoded: '{"key": "value"}'
+        - Binary data (BLOCK) is base64-encoded (requires block_encoded hint)
+
+        Args:
+            value: The value to decode
+            block_encoded: If True, treat string as base64-encoded binary
+
+        Returns:
+            The decoded value
+        """
+        # Non-strings don't need decoding (already handled by psycopg type mapping)
+        if not isinstance(value, str):
+            return value
+
+        # Empty strings stay as empty strings
+        if not value:
+            return value
+
+        # Handle base64-encoded binary data (BLOCK type items)
+        if block_encoded:
+            try:
+                return base64.b64decode(value)
+            except Exception:
+                # Not valid base64, return as-is
+                return value
+
+        # Try to decode JSON arrays and objects
+        first_char = value[0]
+        if first_char == '[' or first_char == '{':
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                # Not valid JSON, return as-is
+                return value
+
+        # Return plain strings as-is
+        return value
+
+    @staticmethod
+    def decode_dict(data, block_columns=None):
+        """
+        Decode all values in a dict retrieved from QuestDB.
+
+        Args:
+            data: Dict of column_name => value
+            block_columns: List of column names that contain base64-encoded data
+
+        Returns:
+            Dict with decoded values
+        """
+        if not isinstance(data, dict):
+            return data
+
+        if block_columns is None:
+            block_columns = []
+
+        decoded = {}
+        for key, value in data.items():
+            block_encoded = str(key) in block_columns
+            decoded[key] = QuestDBClient.decode_value(value, block_encoded=block_encoded)
+        return decoded
+
     def __init__(self, logger=None, name=None):
         """
         Initialize QuestDB client.

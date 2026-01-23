@@ -29,6 +29,7 @@ except ImportError:
 
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import StoreQueued
+from openc3.utilities.questdb_client import QuestDBClient
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
@@ -271,7 +272,9 @@ class CvtModel(Model):
                                         data[row_index].append([None, None])
                                         col_index += 1
                                     else:
-                                        data[row_index].append([col_value, None])
+                                        # Decode JSON-encoded arrays/objects from QuestDB
+                                        decoded_value = QuestDBClient.decode_value(col_value)
+                                        data[row_index].append([decoded_value, None])
                                         col_index += 1
 
                             # If we only have one row then we return a single array
