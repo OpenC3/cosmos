@@ -19,6 +19,9 @@ brew install uv ruff just
 ## Quick Start
 
 ```bash
+# Create virtual environment (automatically installs Python 3.12 if needed)
+uv venv
+
 # Install dependencies
 uv sync
 
@@ -31,6 +34,11 @@ just test
 # Verify code before committing
 just verify
 ```
+
+**Note:** UV will automatically:
+- Create a `.venv` virtual environment
+- Install Python 3.12 (specified in `.python-version`) if not already installed
+- Install all project dependencies
 
 ## Available Commands
 
@@ -171,8 +179,9 @@ just check
 If you prefer not to use Just:
 
 ```bash
-# Install
-uv sync
+# Setup
+uv venv                  # Create virtual environment
+uv sync                  # Install dependencies
 
 # Test
 uv run pytest
