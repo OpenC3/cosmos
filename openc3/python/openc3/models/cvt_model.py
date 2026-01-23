@@ -174,7 +174,7 @@ class CvtModel(Model):
             return None
 
     @classmethod
-    def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None):
+    def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None, scope: str = OPENC3_SCOPE):
         """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")
@@ -182,6 +182,10 @@ class CvtModel(Model):
         tables = {}
         names = []
         nil_count = 0
+        # Cache packet definitions to avoid repeated lookups
+        packet_cache = {}
+        # Map column names to item type info for decoding
+        item_types = {}
 
         for item in items:
             target_name, packet_name, item_name, value_type, limits = item
@@ -205,15 +209,52 @@ class CvtModel(Model):
             # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
             # NOTE: Semicolon added as it appears invalid
             safe_item_name = item_name
-            for char in "?.,'\\/:()+*%~;-":
+            for char in "?.,'\\/:()+*%~;-=!@#$^&":
                 safe_item_name = safe_item_name.replace(char, "_")
 
+            # Look up item type info from packet definition
+            cache_key = (target_name, packet_name)
+            if cache_key not in packet_cache:
+                try:
+                    packet_cache[cache_key] = TargetModel.packet(target_name, packet_name, scope=scope)
+                except RuntimeError:
+                    packet_cache[cache_key] = None
+
+            packet_def = packet_cache[cache_key]
+            item_def = None
+            if packet_def:
+                for pkt_item in packet_def.get("items", []):
+                    if pkt_item.get("name") == item_name:
+                        item_def = pkt_item
+                        break
+
             if value_type == "FORMATTED" or value_type == "WITH_UNITS":
-                names.append(f'"T{index}.{safe_item_name}__F"')
+                col_name = f"T{index}.{safe_item_name}__F"
+                names.append(f'"{col_name}"')
+                # Formatted values are always strings, no special decoding needed
+                item_types[col_name] = {"data_type": "STRING", "array_size": None}
             elif value_type == "CONVERTED":
-                names.append(f'"T{index}.{safe_item_name}__C"')
+                col_name = f"T{index}.{safe_item_name}__C"
+                names.append(f'"{col_name}"')
+                # Converted values may have different types based on read_conversion
+                if item_def:
+                    rc = item_def.get("read_conversion")
+                    if rc and rc.get("converted_type"):
+                        item_types[col_name] = {"data_type": rc.get("converted_type"), "array_size": item_def.get("array_size")}
+                    elif item_def.get("states"):
+                        # State values are strings
+                        item_types[col_name] = {"data_type": "STRING", "array_size": None}
+                    else:
+                        item_types[col_name] = {"data_type": item_def.get("data_type"), "array_size": item_def.get("array_size")}
+                else:
+                    item_types[col_name] = {"data_type": None, "array_size": None}
             else:
-                names.append(f'"T{index}.{safe_item_name}"')
+                col_name = f"T{index}.{safe_item_name}"
+                names.append(f'"{col_name}"')
+                if item_def:
+                    item_types[col_name] = {"data_type": item_def.get("data_type"), "array_size": item_def.get("array_size")}
+                else:
+                    item_types[col_name] = {"data_type": None, "array_size": None}
 
             if limits:
                 names.append(f'"T{index}.{safe_item_name}__L"')
@@ -248,8 +289,6 @@ class CvtModel(Model):
                         cursor.execute(query)
                         result = cursor.fetchall()
 
-                        # TODO: We need to convert all the encoded types back to their original types here
-
                         if not result:
                             return {}
                         else:
@@ -272,8 +311,13 @@ class CvtModel(Model):
                                         data[row_index].append([None, None])
                                         col_index += 1
                                     else:
-                                        # Decode JSON-encoded arrays/objects from QuestDB
-                                        decoded_value = QuestDBClient.decode_value(col_value)
+                                        # Decode value using item type info
+                                        type_info = item_types.get(col_name, {})
+                                        decoded_value = QuestDBClient.decode_value(
+                                            col_value,
+                                            data_type=type_info.get("data_type"),
+                                            array_size=type_info.get("array_size"),
+                                        )
                                         data[row_index].append([decoded_value, None])
                                         col_index += 1
 

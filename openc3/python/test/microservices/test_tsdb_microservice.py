@@ -530,12 +530,12 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb.read_topics()
 
-        # Values are passed through unchanged - QuestDB will handle overflow
-        # (create_table defines 64-bit values as varchar to handle overflow)
+        # Values outside signed 64-bit range are converted to strings
+        # (create_table defines 64-bit columns as VARCHAR to handle this)
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertEqual(call_args[1]["columns"]["BIGVAL"], 2**64)
-        self.assertEqual(call_args[1]["columns"]["SMALLVAL"], -(2**64))
+        self.assertEqual(call_args[1]["columns"]["BIGVAL"], str(2**64))
+        self.assertEqual(call_args[1]["columns"]["SMALLVAL"], str(-(2**64)))
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")

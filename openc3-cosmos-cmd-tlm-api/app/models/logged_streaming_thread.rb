@@ -140,6 +140,10 @@ class LoggedStreamingThread < StreamingThread
     names = []
     item_keys = []
     items = []
+    # Cache packet definitions to avoid repeated lookups
+    packet_cache = {}
+    # Map column index to item type info for decoding
+    item_types = []
 
     start_time = nil
     end_time = nil
@@ -180,19 +184,60 @@ class LoggedStreamingThread < StreamingThread
         table_index = tables.find_index {|k,v| k == table_name }
         item_keys << object.item_key
         item = available[item_index]
-        tgt, pkt, item_name, value_type = item.split('__')
+        tgt, pkt, orig_item_name, value_type = item.split('__')
+
+        # Look up item type info from packet definition
+        cache_key = [tgt, pkt]
+        unless packet_cache.key?(cache_key)
+          begin
+            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, scope: @scope)
+          rescue RuntimeError
+            packet_cache[cache_key] = nil
+          end
+        end
+
+        packet_def = packet_cache[cache_key]
+        item_def = nil
+        if packet_def
+          packet_def['items']&.each do |pkt_item|
+            if pkt_item['name'] == orig_item_name
+              item_def = pkt_item
+              break
+            end
+          end
+        end
+
         # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
         # Must match pattern in tsdb_microservice.py read_topics()
-        item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
+        safe_item_name = orig_item_name.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
         case value_type
         when 'WITH_UNITS'
-          names << "\"T#{table_index}.#{item_name}__U\""
+          names << "\"T#{table_index}.#{safe_item_name}__U\""
+          item_types << { 'data_type' => 'STRING', 'array_size' => nil }
         when 'FORMATTED'
-          names << "\"T#{table_index}.#{item_name}__F\""
+          names << "\"T#{table_index}.#{safe_item_name}__F\""
+          item_types << { 'data_type' => 'STRING', 'array_size' => nil }
         when 'CONVERTED'
-          names << "\"T#{table_index}.#{item_name}__C\""
+          names << "\"T#{table_index}.#{safe_item_name}__C\""
+          if item_def
+            rc = item_def['read_conversion']
+            if rc && rc['converted_type']
+              item_types << { 'data_type' => rc['converted_type'], 'array_size' => item_def['array_size'] }
+            elsif item_def['states']
+              item_types << { 'data_type' => 'STRING', 'array_size' => nil }
+            else
+              item_types << { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
+            end
+          else
+            item_types << { 'data_type' => nil, 'array_size' => nil }
+          end
         else
-          names << "\"T#{table_index}.#{item_name}\""
+          names << "\"T#{table_index}.#{safe_item_name}\""
+          if item_def
+            item_types << { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
+          else
+            item_types << { 'data_type' => nil, 'array_size' => nil }
+          end
         end
         item_index += 1
       end
@@ -256,8 +301,13 @@ class LoggedStreamingThread < StreamingThread
                   # tuple[1] is a Ruby time object which we convert to nanoseconds
                   entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
                 else
-                  # Decode JSON-encoded arrays/objects from QuestDB
-                  entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(tuple[1])
+                  # Decode value using item type info
+                  type_info = item_types[index] || {}
+                  entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(
+                    tuple[1],
+                    data_type: type_info['data_type'],
+                    array_size: type_info['array_size']
+                  )
                 end
               end
               results << entry
@@ -403,6 +453,14 @@ class LoggedStreamingThread < StreamingThread
       first_object = objects[0]
       value_type = first_object.value_type
 
+      # Look up packet definition for type info during decoding
+      packet_def = nil
+      begin
+        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, scope: @scope)
+      rescue RuntimeError
+        # Packet not found, will use heuristic decoding
+      end
+
       # Build the SQL query - select all columns from the table
       query = "SELECT * FROM \"#{table_name}\""
       query += " WHERE timestamp >= #{(start_time / 1000.0).to_i}"
@@ -439,7 +497,7 @@ class LoggedStreamingThread < StreamingThread
             else
               result.each do |tuples|
                 objects.each do |object|
-                  entry = build_packet_entry(tuples, object, value_type)
+                  entry = build_packet_entry(tuples, object, value_type, packet_def)
                   results << entry if entry
                 end
               end
@@ -470,11 +528,21 @@ class LoggedStreamingThread < StreamingThread
     done
   end
 
-  def build_packet_entry(tuples, object, value_type)
+  def build_packet_entry(tuples, object, value_type, packet_def = nil)
     entry = {
       "__type" => "PACKET",
       "__packet" => object.key
     }
+
+    # Build mapping from column name to item definition for type-aware decoding
+    item_defs = {}
+    if packet_def
+      packet_def['items']&.each do |item|
+        # Sanitize item name same way as TSDB storage
+        safe_name = item['name'].gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
+        item_defs[safe_name] = item
+      end
+    end
 
     # First pass: build a hash of all columns for lookup
     columns = {}
@@ -499,8 +567,38 @@ class LoggedStreamingThread < StreamingThread
       # Skip metadata columns
       next if column_name == 'tag'
 
-      # Decode JSON-encoded arrays/objects from QuestDB
-      value = OpenC3::QuestDBClient.decode_value(raw_value)
+      # Determine the base item name (remove __C, __F, __U suffixes)
+      base_name = column_name.sub(/(__C|__F|__U)$/, '')
+      item_def = item_defs[base_name]
+
+      # Determine data_type and array_size based on column suffix and item definition
+      if column_name.end_with?('__F', '__U')
+        # Formatted values are always strings
+        data_type = 'STRING'
+        array_size = nil
+      elsif column_name.end_with?('__C') && item_def
+        # Converted values - check read_conversion
+        rc = item_def['read_conversion']
+        if rc && rc['converted_type']
+          data_type = rc['converted_type']
+          array_size = item_def['array_size']
+        elsif item_def['states']
+          data_type = 'STRING'
+          array_size = nil
+        else
+          data_type = item_def['data_type']
+          array_size = item_def['array_size']
+        end
+      elsif item_def
+        data_type = item_def['data_type']
+        array_size = item_def['array_size']
+      else
+        data_type = nil
+        array_size = nil
+      end
+
+      # Decode value using type info
+      value = OpenC3::QuestDBClient.decode_value(raw_value, data_type: data_type, array_size: array_size)
 
       # Map column names based on value_type
       # TSDB columns: item (RAW), item__C (CONVERTED), item__F (FORMATTED)

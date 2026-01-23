@@ -18,6 +18,7 @@
 
 require 'json'
 require 'base64'
+require 'bigdecimal'
 
 module OpenC3
   # Utility class for QuestDB data encoding and decoding.
@@ -29,40 +30,86 @@ module OpenC3
     # QuestDB stores certain COSMOS types as encoded strings:
     # - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
     # - Objects/Hashes are JSON-encoded: '{"key": "value"}'
-    # - Binary data (BLOCK) is base64-encoded (requires block_encoded hint)
+    # - Binary data (BLOCK) is base64-encoded
+    # - Large integers (64-bit) are stored as DECIMAL
     #
     # @param value [Object] The value to decode
-    # @param block_encoded [Boolean] If true, treat string as base64-encoded binary
+    # @param data_type [String] COSMOS data type (INT, UINT, FLOAT, STRING, BLOCK, DERIVED, etc.)
+    # @param array_size [Integer, nil] If not nil, indicates this is an array item
     # @return [Object] The decoded value
-    def self.decode_value(value, block_encoded: false)
+    def self.decode_value(value, data_type: nil, array_size: nil)
+      # Handle BigDecimal values from QuestDB DECIMAL columns (used for 64-bit integers)
+      if value.is_a?(BigDecimal)
+        return value.to_i if data_type == 'INT' || data_type == 'UINT'
+        return value
+      end
+
       # Non-strings don't need decoding (already handled by PG type mapping)
       return value unless value.is_a?(String)
 
       # Empty strings stay as empty strings
       return value if value.empty?
 
-      # Handle base64-encoded binary data (BLOCK type items)
-      if block_encoded
+      # Handle based on data type if provided
+      if data_type == 'BLOCK'
         begin
           return Base64.strict_decode64(value)
         rescue ArgumentError
-          # Not valid base64, return as-is
           return value
         end
       end
 
-      # Try to decode JSON arrays and objects
-      first_char = value[0]
-      if first_char == '[' || first_char == '{'
+      # Arrays are JSON-encoded
+      if array_size
         begin
           return JSON.parse(value, allow_nan: true, create_additions: true)
         rescue JSON::ParserError
-          # Not valid JSON, return as-is
           return value
         end
       end
 
-      # Return plain strings as-is
+      # Integer values stored as strings (fallback path, normally DECIMAL)
+      if data_type == 'INT' || data_type == 'UINT'
+        begin
+          return Integer(value)
+        rescue ArgumentError
+          return value
+        end
+      end
+
+      # DERIVED items are JSON-encoded (could be any type)
+      if data_type == 'DERIVED'
+        begin
+          return JSON.parse(value, allow_nan: true, create_additions: true)
+        rescue JSON::ParserError
+          # Could be a plain string from DERIVED
+          return value
+        end
+      end
+
+      # No data_type provided - fall back to heuristic decoding
+      if data_type.nil?
+        first_char = value[0]
+        # Try JSON for arrays/objects
+        if first_char == '[' || first_char == '{'
+          begin
+            return JSON.parse(value, allow_nan: true, create_additions: true)
+          rescue JSON::ParserError
+            # Not valid JSON
+          end
+        # Try integer conversion for numeric strings
+        elsif first_char == '-' || first_char =~ /\d/
+          if value =~ /\A-?\d+\z/
+            begin
+              return Integer(value)
+            rescue ArgumentError
+              # Not a valid integer
+            end
+          end
+        end
+      end
+
+      # Return as-is (STRING type or unknown)
       value
     end
 
@@ -97,8 +144,9 @@ module OpenC3
     #
     # @param item_name [String] Item name
     # @return [String] Sanitized column name
+    # ILP protocol special characters that must be sanitized in column names
     def self.sanitize_column_name(item_name)
-      item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
+      item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
     end
   end
 end
