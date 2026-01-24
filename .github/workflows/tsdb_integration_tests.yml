@@ -76,7 +76,14 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: false
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+          working-directory: openc3
+
+      - name: Rake build
+        run: bundle exec rake build
+        working-directory: openc3
+        env:
+          OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
