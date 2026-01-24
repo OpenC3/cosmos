@@ -253,9 +253,9 @@ class LoggedStreamingThread < StreamingThread
         query += "ASOF JOIN #{table_name} as T#{index} "
       end
     end
-    query += "WHERE T0.timestamp >= #{(start_time / 1000.0).to_i}"
+    query += "WHERE T0.timestamp >= #{start_time}"
     if end_time
-      query += " AND T0.timestamp < #{(end_time / 1000.0).to_i}"
+      query += " AND T0.timestamp < #{end_time}"
     end
 
     done = false
@@ -463,9 +463,9 @@ class LoggedStreamingThread < StreamingThread
 
       # Build the SQL query - select all columns from the table
       query = "SELECT * FROM \"#{table_name}\""
-      query += " WHERE timestamp >= #{(start_time / 1000.0).to_i}"
+      query += " WHERE timestamp >= #{start_time}"
       if end_time
-        query += " AND timestamp < #{(end_time / 1000.0).to_i}"
+        query += " AND timestamp < #{end_time}"
       end
 
       min = 0

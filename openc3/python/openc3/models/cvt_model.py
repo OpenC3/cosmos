@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 try:
     import psycopg
+    from psycopg.rows import dict_row
 
     PSYCOPG_AVAILABLE = True
 except ImportError:
@@ -285,7 +286,7 @@ class CvtModel(Model):
                             dbname="qdb",
                         )
 
-                    with cls._conn.cursor(binary=True) as cursor:
+                    with cls._conn.cursor(binary=True, row_factory=dict_row) as cursor:
                         cursor.execute(query)
                         result = cursor.fetchall()
 
@@ -312,7 +313,16 @@ class CvtModel(Model):
                                         col_index += 1
                                     else:
                                         # Decode value using item type info
+                                        # QuestDB may return column names without table alias prefix
+                                        # Try both the raw column name and prefixed versions
                                         type_info = item_types.get(col_name, {})
+                                        if not type_info:
+                                            # Try with table prefixes T0, T1, etc.
+                                            for prefix in [f"T{i}." for i in range(len(tables))]:
+                                                prefixed_name = prefix + col_name
+                                                type_info = item_types.get(prefixed_name, {})
+                                                if type_info:
+                                                    break
                                         decoded_value = QuestDBClient.decode_value(
                                             col_value,
                                             data_type=type_info.get("data_type"),

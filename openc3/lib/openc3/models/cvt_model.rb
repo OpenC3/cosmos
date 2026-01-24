@@ -269,7 +269,17 @@ module OpenC3
                   row_index += 1
                 else
                   # Decode value using item type info
-                  type_info = item_types[col_name] || {}
+                  # QuestDB may return column names without table alias prefix
+                  # Try both the raw column name and prefixed versions
+                  type_info = item_types[col_name]
+                  unless type_info
+                    tables.length.times do |i|
+                      prefixed_name = "T#{i}.#{col_name}"
+                      type_info = item_types[prefixed_name]
+                      break if type_info
+                    end
+                    type_info ||= {}
+                  end
                   decoded_value = QuestDBClient.decode_value(
                     col_value,
                     data_type: type_info['data_type'],

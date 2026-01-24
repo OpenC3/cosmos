@@ -77,16 +77,19 @@ class QuestDBClient:
         if not isinstance(value, str):
             return value
 
-        # Empty strings stay as empty strings
-        if not value:
-            return value
-
         # Handle based on data type if provided
         if data_type == "BLOCK":
+            # Empty string should be empty bytes for BLOCK type
+            if not value:
+                return b""
             try:
                 return base64.b64decode(value)
             except Exception:
                 return value
+
+        # Empty strings stay as empty strings (for non-BLOCK types)
+        if not value:
+            return value
 
         # Arrays are JSON-encoded
         if array_size is not None:
