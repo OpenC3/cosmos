@@ -544,7 +544,7 @@ export default {
         this.refreshInterval = this.optionsRefreshInterval * 1000
       }
       if (this.optionsStaleLimit && this.optionsStaleLimit >= 1) {
-        this.staleLimit = parseInt(this.optionsStaleLimit)
+        this.staleLimit = Number.parseInt(this.optionsStaleLimit)
       }
       this.optionsDialog = false
     },

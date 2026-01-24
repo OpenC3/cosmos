@@ -562,7 +562,7 @@ export default {
         (keyword, parameters, line, lineNumber) => {
           if (keyword) {
             switch (keyword) {
-              case 'SCREEN':
+              case 'SCREEN': {
                 this.configParser.verify_num_parameters(
                   3,
                   4,
@@ -571,8 +571,8 @@ export default {
                 // Validate width - must be numeric or 'AUTO'
                 if (parameters[0].toUpperCase() === 'AUTO') {
                   this.width = null
-                } else if (!isNaN(parseInt(parameters[0]))) {
-                  this.width = parseInt(parameters[0])
+                } else if (Number.isFinite(parseInt(parameters[0]))) {
+                  this.width = Number.parseInt(parameters[0])
                 } else {
                   throw new ConfigParserError(
                     this.configParser,
@@ -583,8 +583,8 @@ export default {
                 // Validate height - must be numeric or 'AUTO'
                 if (parameters[1].toUpperCase() === 'AUTO') {
                   this.height = null
-                } else if (!isNaN(parseInt(parameters[1]))) {
-                  this.height = parseInt(parameters[1])
+                } else if (Number.isFinite(parseInt(parameters[1]))) {
+                  this.height = Number.parseInt(parameters[1])
                 } else {
                   throw new ConfigParserError(
                     this.configParser,
@@ -593,9 +593,9 @@ export default {
                   )
                 }
                 // Validate polling period - must be numeric (0 means no polling)
-                const pollingValue = parseFloat(parameters[2])
+                const pollingValue = Number.parseFloat(parameters[2])
                 if (
-                  isNaN(pollingValue) ||
+                  Number.isNaN(pollingValue) ||
                   pollingValue < 0 ||
                   (pollingValue > 0 && pollingValue < 0.1)
                 ) {
@@ -607,6 +607,7 @@ export default {
                 }
                 this.pollingPeriod = pollingValue
                 break
+              }
               case 'END':
                 this.configParser.verify_num_parameters(0, 0, `${keyword}`)
                 this.layoutStack.pop()
@@ -619,7 +620,7 @@ export default {
                   1,
                   `${keyword} <Time (s)>`,
                 )
-                this.staleTime = parseInt(parameters[0])
+                this.staleTime = Number.parseInt(parameters[0])
                 if (isNaN(this.staleTime)) {
                   throw new ConfigParserError(
                     this.configParser,
@@ -638,7 +639,7 @@ export default {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }
               // falls through
-              case 'SETTING':
+              case 'SETTING': {
                 this.configParser.verify_num_parameters(
                   2,
                   null,
@@ -653,13 +654,14 @@ export default {
                   ] ?? this.currentLayout
                 widget.settings.push(parameters)
                 break
-              case 'TOOLTIP':
+              }
+              case 'TOOLTIP': {
                 this.configParser.verify_num_parameters(
                   1,
                   2,
                   `${keyword} <Tooltip Text> <Delay (ms)>`,
                 )
-                let delay = parseInt(parameters[1])
+                let delay = Number.parseInt(parameters[1])
                 if (isNaN(delay)) {
                   throw new ConfigParserError(
                     this.configParser,
@@ -675,6 +677,7 @@ export default {
                   ] ?? this.currentLayout
                 tooltipWidget.settings.push(['TOOLTIP', parameters[0], delay])
                 break
+              }
               case 'GLOBAL_SUBSETTING':
                 this.configParser.verify_num_parameters(
                   3,
