@@ -1,0 +1,119 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# TSDB Integration Tests
+# Runs end-to-end tests against a real QuestDB instance to verify
+# data roundtrip through both Python and Ruby implementations.
+
+name: TSDB Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'openc3/python/openc3/utilities/questdb_client.py'
+      - 'openc3/python/openc3/models/cvt_model.py'
+      - 'openc3/lib/openc3/models/cvt_model.rb'
+      - 'openc3/lib/openc3/utilities/questdb_client.rb'
+      - 'openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb'
+      - 'openc3/test/integration/tsdb/**'
+      - '.github/workflows/tsdb_integration_tests.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'openc3/python/openc3/utilities/questdb_client.py'
+      - 'openc3/python/openc3/models/cvt_model.py'
+      - 'openc3/lib/openc3/models/cvt_model.rb'
+      - 'openc3/lib/openc3/utilities/questdb_client.rb'
+      - 'openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb'
+      - 'openc3/test/integration/tsdb/**'
+      - '.github/workflows/tsdb_integration_tests.yml'
+  workflow_dispatch:
+
+jobs:
+  tsdb-integration-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      questdb:
+        image: questdb/questdb:9.3.0
+        ports:
+          - 9000:9000
+          - 8812:8812
+        env:
+          QDB_PG_USER: admin
+          QDB_PG_PASSWORD: admin
+          QDB_HTTP_USER: admin
+          QDB_HTTP_PASSWORD: admin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      OPENC3_TSDB_HOSTNAME: localhost
+      OPENC3_TSDB_INGEST_PORT: "9000"
+      OPENC3_TSDB_QUERY_PORT: "8812"
+      OPENC3_TSDB_USERNAME: admin
+      OPENC3_TSDB_PASSWORD: admin
+      OPENC3_SCOPE: DEFAULT
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: false
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install Python dependencies
+        working-directory: openc3/python
+        run: poetry install
+
+      - name: Install Ruby dependencies
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: bundle install
+
+      - name: Wait for QuestDB
+        run: |
+          echo "Waiting for QuestDB to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:9000/ > /dev/null; then
+              echo "QuestDB is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run Python integration tests
+        working-directory: openc3/python
+        run: |
+          poetry run pytest ../test/integration/tsdb/python/ -v --tb=short
+
+      - name: Run Ruby CvtModel integration tests
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: |
+          bundle exec rspec cvt_model_tsdb_spec.rb -fd
+
+      - name: Run Ruby Streaming integration tests
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: |
+          bundle exec rspec logged_streaming_thread_tsdb_spec.rb -fd
