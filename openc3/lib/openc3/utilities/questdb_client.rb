@@ -25,6 +25,41 @@ module OpenC3
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
+    # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
+    # QuestDB stores these as NULL, so we use sentinel values near float max instead.
+
+    # 64-bit double sentinels (for FLOAT 64-bit columns)
+    FLOAT64_POS_INF_SENTINEL = 1.7976931348623155e308
+    FLOAT64_NEG_INF_SENTINEL = -1.7976931348623155e308
+    FLOAT64_NAN_SENTINEL = -1.7976931348623153e308
+
+    # 32-bit float sentinels (what we read back after 32-bit storage)
+    FLOAT32_POS_INF_STORED = 3.4028232635611926e38
+    FLOAT32_NEG_INF_STORED = -3.4028232635611926e38
+    FLOAT32_NAN_STORED = -3.4028230607370965e38
+
+    # Decode sentinel values back to float special values (inf, -inf, nan).
+    # Checks against both 32-bit and 64-bit sentinel values since we may not
+    # know the original column type at read time.
+    #
+    # @param value [Float] The float value to potentially decode
+    # @return [Float] The value with sentinels replaced by special values
+    def self.decode_float_special_values(value)
+      return value unless value.is_a?(Float)
+
+      # Check 64-bit sentinels
+      return Float::INFINITY if value == FLOAT64_POS_INF_SENTINEL
+      return -Float::INFINITY if value == FLOAT64_NEG_INF_SENTINEL
+      return Float::NAN if value == FLOAT64_NAN_SENTINEL
+
+      # Check 32-bit sentinels (stored values after precision loss)
+      return Float::INFINITY if value == FLOAT32_POS_INF_STORED
+      return -Float::INFINITY if value == FLOAT32_NEG_INF_STORED
+      return Float::NAN if value == FLOAT32_NAN_STORED
+
+      value
+    end
+
     # Decode a value retrieved from QuestDB back to its original Ruby type.
     #
     # QuestDB stores certain COSMOS types as encoded strings:
@@ -43,6 +78,9 @@ module OpenC3
         return value.to_i if data_type == 'INT' || data_type == 'UINT'
         return value
       end
+
+      # Decode float sentinel values back to inf/nan
+      return decode_float_special_values(value) if value.is_a?(Float)
 
       # Non-strings don't need decoding (already handled by PG type mapping)
       return value unless value.is_a?(String)

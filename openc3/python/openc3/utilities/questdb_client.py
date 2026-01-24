@@ -22,12 +22,94 @@ Used by both TsdbMicroservice (real-time) and MigrationMicroservice (historical 
 import os
 import re
 import json
+import math
 import base64
 from decimal import Decimal
 from datetime import datetime, timezone
 import psycopg
 import numpy
 from questdb.ingress import Sender, IngressError, Protocol, TimestampNanos
+
+# Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
+# QuestDB stores these as NULL, so we use sentinel values near float max instead.
+# 64-bit double sentinels (for FLOAT 64-bit columns)
+FLOAT64_POS_INF_SENTINEL = 1.7976931348623155e308
+FLOAT64_NEG_INF_SENTINEL = -1.7976931348623155e308
+FLOAT64_NAN_SENTINEL = -1.7976931348623153e308
+
+# 32-bit float sentinels (for FLOAT 32-bit columns)
+# These are the values to write; they'll be truncated to 32-bit precision on storage
+FLOAT32_POS_INF_SENTINEL = 3.4028233e38
+FLOAT32_NEG_INF_SENTINEL = -3.4028233e38
+FLOAT32_NAN_SENTINEL = -3.4028231e38
+
+# What we'll read back after 32-bit storage (for comparison on read)
+FLOAT32_POS_INF_STORED = 3.4028232635611926e38
+FLOAT32_NEG_INF_STORED = -3.4028232635611926e38
+FLOAT32_NAN_STORED = -3.4028230607370965e38
+
+
+def encode_float_special_values(value, bit_size=64):
+    """
+    Convert float special values (inf, -inf, nan) to sentinel values for QuestDB storage.
+
+    Args:
+        value: The float value to potentially encode
+        bit_size: 32 for single precision, 64 for double precision
+
+    Returns:
+        The value with special values replaced by sentinels
+    """
+    if not isinstance(value, float):
+        return value
+
+    if bit_size == 32:
+        if math.isinf(value):
+            return FLOAT32_POS_INF_SENTINEL if value > 0 else FLOAT32_NEG_INF_SENTINEL
+        if math.isnan(value):
+            return FLOAT32_NAN_SENTINEL
+    else:
+        if math.isinf(value):
+            return FLOAT64_POS_INF_SENTINEL if value > 0 else FLOAT64_NEG_INF_SENTINEL
+        if math.isnan(value):
+            return FLOAT64_NAN_SENTINEL
+
+    return value
+
+
+def decode_float_special_values(value):
+    """
+    Convert sentinel values back to float special values (inf, -inf, nan).
+
+    Checks against both 32-bit and 64-bit sentinel values since we may not
+    know the original column type at read time.
+
+    Args:
+        value: The float value to potentially decode
+
+    Returns:
+        The value with sentinels replaced by special values
+    """
+    if not isinstance(value, float):
+        return value
+
+    # Check 64-bit sentinels
+    if value == FLOAT64_POS_INF_SENTINEL:
+        return float("inf")
+    if value == FLOAT64_NEG_INF_SENTINEL:
+        return float("-inf")
+    if value == FLOAT64_NAN_SENTINEL:
+        return float("nan")
+
+    # Check 32-bit sentinels (stored values after precision loss)
+    if value == FLOAT32_POS_INF_STORED:
+        return float("inf")
+    if value == FLOAT32_NEG_INF_STORED:
+        return float("-inf")
+    if value == FLOAT32_NAN_STORED:
+        return float("nan")
+
+    return value
 
 
 class QuestDBClient:
@@ -72,6 +154,10 @@ class QuestDBClient:
             if data_type in ("INT", "UINT"):
                 return int(value)
             return value
+
+        # Decode float sentinel values back to inf/nan
+        if isinstance(value, float):
+            return decode_float_special_values(value)
 
         # Non-strings don't need decoding (already handled by psycopg type mapping)
         if not isinstance(value, str):
@@ -177,6 +263,9 @@ class QuestDBClient:
         # (QuestDB casts strings to DECIMAL for pre-created DECIMAL columns)
         # Key is "table__column", value is True
         self.decimal_int_columns = {}
+        # Track FLOAT column bit sizes for proper inf/nan sentinel encoding
+        # Key is "table__column", value is bit_size (32 or 64)
+        self.float_bit_sizes = {}
 
     def _log_info(self, msg):
         if self.logger:
@@ -401,8 +490,10 @@ class QuestDBClient:
                 elif data_type == "FLOAT":
                     if bit_size == 32:
                         column_type = "float"
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 32
                     else:
                         column_type = "double"
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 64
                 elif data_type in ["STRING", "BLOCK"]:
                     column_type = "varchar"
 
@@ -417,8 +508,10 @@ class QuestDBClient:
                     if converted_type == "FLOAT":
                         if converted_bit_size == 32:
                             column_definitions.append(f'"{item_name}__C" float')
+                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 32
                         else:
                             column_definitions.append(f'"{item_name}__C" double')
+                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 64
                     elif converted_type in ["INT", "UINT"]:
                         if converted_bit_size < 32:
                             column_definitions.append(f'"{item_name}__C" int')
@@ -505,7 +598,16 @@ class QuestDBClient:
                 elif value > 9223372036854775807 or value < -9223372036854775808:
                     value = str(value)
 
-            case float() | str() | None:
+            case float():
+                # Encode inf/nan as sentinel values (QuestDB stores these as NULL)
+                if table_name:
+                    float_key = f"{table_name}__{item_name}"
+                    bit_size = self.float_bit_sizes.get(float_key, 64)
+                else:
+                    bit_size = 64
+                value = encode_float_special_values(value, bit_size)
+
+            case str() | None:
                 pass
 
             case bytes():
