@@ -48,7 +48,6 @@ class MockStreamingObject
     @end_time = end_time
     @stream_mode = :DECOM
     @offset = '0-0'
-    # Build key like StreamingObject does
     @key = "DECOM__TLM__#{target}__#{packet}__#{item}__#{value_type}"
     @item_key = "#{target}__#{packet}__#{item}__#{value_type}"
     @topic = "DEFAULT__DECOM__{#{target}}__#{packet}"
@@ -120,12 +119,56 @@ RSpec.describe LoggedStreamingThread, :questdb do
   def create_thread(objects)
     collection = MockCollection.new(objects)
     thread = LoggedStreamingThread.new(streaming_api, collection, 100, scope: scope, token: token)
-    # Reset the connection to ensure clean state
     thread.class.class_variable_set(:@@conn, nil) if thread.class.class_variable_defined?(:@@conn)
     thread
   end
 
-  # Reset connection before each test
+  # Helper method to run a streaming roundtrip test
+  # @param write_options [Hash] Options passed to write_test_data
+  # @param value_type [Symbol] :RAW, :CONVERTED, or :FORMATTED
+  # @param expected_key [String] Key in test_params for expected values
+  # @param comparator [Proc] Optional custom comparison block (receives expected, actual, index)
+  def run_streaming_test(write_options, value_type: :RAW, expected_key: 'expected_values', &comparator)
+    test_params = write_test_data(**write_options)
+    expect(test_params['success']).to be true
+
+    obj = MockStreamingObject.new(
+      target: test_params['target_name'],
+      packet: test_params['packet_name'],
+      item: 'VALUE',
+      value_type: value_type,
+      start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+      end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+    )
+
+    thread = create_thread([obj])
+
+    allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+    available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__#{value_type}"]
+    allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+    objects_by_topic = { obj.topic => [obj] }
+    thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
+
+    expected = if expected_key == 'expected_values'
+      decode_expected_values(test_params[expected_key])
+    else
+      test_params[expected_key]
+    end
+
+    expect(streaming_api.transmitted_results.length).to eq(expected.length)
+    expected.each_with_index do |exp_val, i|
+      result = streaming_api.transmitted_results[i]
+      expect(result['__type']).to eq('items')
+      actual = result[obj.item_key]
+      if comparator
+        comparator.call(exp_val, actual, i)
+      else
+        expect(actual).to eq(exp_val), "Value mismatch at index #{i}: expected #{exp_val}, got #{actual}"
+      end
+    end
+  end
+
   before(:each) do
     if LoggedStreamingThread.class_variable_defined?(:@@conn)
       conn = LoggedStreamingThread.class_variable_get(:@@conn)
@@ -143,315 +186,251 @@ RSpec.describe LoggedStreamingThread, :questdb do
     end
   end
 
-  describe '#stream_items' do
-    it 'streams INT values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'INT_PKT',
-        data_type: 'INT',
-        bit_size: 32,
-        values: [-100, 0, 100, 12345]
+  describe 'INT (signed integer) streaming' do
+    it 'streams INT 8-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'INT8', data_type: 'INT', bit_size: 8,
+        values: [-128, -64, -1, 0, 1, 64, 127]
       )
-      expect(test_params['success']).to be true
+    end
 
-      # Create streaming object for this item
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+    it 'streams INT 16-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'INT16', data_type: 'INT', bit_size: 16,
+        values: [-32768, -16384, -1, 0, 1, 16384, 32767]
       )
+    end
 
-      thread = create_thread([obj])
+    it 'streams INT 32-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'INT32', data_type: 'INT', bit_size: 32,
+        values: [-2147483647, -1073741824, -1, 0, 1, 1073741824, 2147483647]
+      )
+    end
 
-      # Mock TargetModel.packet
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+    it 'streams INT 64-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'INT64', data_type: 'INT', bit_size: 64,
+        values: [-9223372036854775807, -4611686018427387904, -1, 0, 1, 4611686018427387904, 9223372036854775807]
+      )
+    end
+  end
 
-      # Mock LocalApi.get_tlm_available to return available items
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+  describe 'UINT (unsigned integer) streaming' do
+    it 'streams UINT 8-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'UINT8', data_type: 'UINT', bit_size: 8,
+        values: [0, 1, 64, 127, 128, 192, 255]
+      )
+    end
 
-      # Build objects_by_topic for stream_items
-      objects_by_topic = { obj.topic => [obj] }
+    it 'streams UINT 16-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'UINT16', data_type: 'UINT', bit_size: 16,
+        values: [0, 1, 16384, 32767, 32768, 49152, 65535]
+      )
+    end
 
-      # Call stream_items
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
+    it 'streams UINT 32-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'UINT32', data_type: 'UINT', bit_size: 32,
+        values: [0, 1, 1073741824, 2147483647, 2147483648, 3221225472, 4294967295]
+      )
+    end
 
-      # Verify results
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_values'].length)
-      test_params['expected_values'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
+    it 'streams UINT 64-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'UINT64', data_type: 'UINT', bit_size: 64,
+        values: [0, 1, 4611686018427387904, 9223372036854775807]
+      )
+    end
+  end
+
+  describe 'FLOAT streaming' do
+    it 'streams FLOAT 32-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'FLOAT32', data_type: 'FLOAT', bit_size: 32,
+        values: [-3.4028235e38, -1.0, 0.0, 1.0, 3.4028235e38]
+      ) do |exp_val, actual, i|
+        if exp_val == 0.0
+          expect(actual).to eq(0.0)
+        else
+          expect((exp_val - actual).abs).to be < (exp_val.abs * 1e-6),
+            "Float mismatch at index #{i}: expected #{exp_val}, got #{actual}"
+        end
       end
     end
 
-    it 'streams FLOAT values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'FLOAT_PKT',
-        data_type: 'FLOAT',
-        bit_size: 64,
-        values: [-1.5, 0.0, 1.5, 3.14159]
-      )
-      expect(test_params['success']).to be true
-
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
-      )
-
-      thread = create_thread([obj])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
-
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_values'].length)
-      test_params['expected_values'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to be_within(1e-10).of(expected)
+    it 'streams FLOAT 64-bit values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'FLOAT64', data_type: 'FLOAT', bit_size: 64,
+        values: [-1.7976931348623157e308, -1.0, 0.0, 1.0, 1.7976931348623157e308]
+      ) do |exp_val, actual, i|
+        if exp_val == 0.0
+          expect(actual).to eq(0.0)
+        else
+          expect((exp_val - actual).abs).to be < (exp_val.abs * 1e-14),
+            "Float mismatch at index #{i}: expected #{exp_val}, got #{actual}"
+        end
       end
     end
+  end
 
+  describe 'STRING streaming' do
     it 'streams STRING values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'STRING_PKT',
-        data_type: 'STRING',
-        values: ['hello', 'world', 'test123']
+      run_streaming_test(
+        target: 'STREAM', packet: 'STRING', data_type: 'STRING',
+        values: ['', 'hello', 'Hello World!', 'CONNECTED', '0x1234ABCD', "with\nnewline", 'unicode: éèêë']
       )
-      expect(test_params['success']).to be true
+    end
+  end
 
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+  describe 'BLOCK (binary) streaming' do
+    it 'streams BLOCK binary data correctly' do
+      test_binaries = [
+        '',
+        "\x00",
+        "\x00\x01\x02\x03",
+        "\xff\xfe\xfd",
+        (0..255).to_a.pack('C*'),
+        'ASCII text as bytes'
+      ]
+      base64_values = test_binaries.map { |b| Base64.strict_encode64(b) }
+
+      run_streaming_test(
+        target: 'STREAM', packet: 'BLOCK', data_type: 'BLOCK',
+        values: base64_values
+      ) do |exp_val, actual, i|
+        actual = actual.force_encoding('ASCII-8BIT') if actual.is_a?(String)
+        exp_val = exp_val.force_encoding('ASCII-8BIT') if exp_val.is_a?(String)
+        expect(actual).to eq(exp_val), "Binary mismatch at index #{i}"
+      end
+    end
+  end
+
+  describe 'DERIVED streaming' do
+    it 'streams DERIVED integer values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'DERIVED_INT', data_type: 'DERIVED',
+        values: [42, -100, 0, 999999]
       )
+    end
 
-      thread = create_thread([obj])
+    it 'streams DERIVED float values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'DERIVED_FLOAT', data_type: 'DERIVED',
+        values: [3.14159, -2.71828, 0.0, 1e10]
+      )
+    end
 
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+    it 'streams DERIVED string values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'DERIVED_STR', data_type: 'DERIVED',
+        values: ['hello', 'world', 'CONNECTED']
+      )
+    end
+  end
 
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
+  describe 'Array streaming' do
+    it 'streams numeric arrays correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'ARRAY_NUM', data_type: 'FLOAT', array_size: 10,
+        values: [
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [-1.5, 0.0, 1.5],
+          [1e10, 1e-10, 0.0],
+          [100, 200, 300]
+        ]
+      )
+    end
 
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_values'].length)
-      test_params['expected_values'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
+    it 'streams string arrays correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'ARRAY_STR', data_type: 'STRING', array_size: 10,
+        values: [
+          ['a', 'b', 'c'],
+          ['CONNECTED', 'DISCONNECTED', 'UNKNOWN'],
+          ['hello', 'world']
+        ]
+      )
+    end
+
+    it 'streams mixed-type arrays correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'ARRAY_MIX', data_type: 'DERIVED', array_size: 10,
+        values: [
+          [1, 'two', 3.0, true],
+          [nil, 'hello', 42],
+          [true, false, 'yes', 'no']
+        ]
+      )
+    end
+  end
+
+  describe 'Object streaming' do
+    it 'streams simple OBJECT values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'OBJ_SIMPLE', data_type: 'DERIVED',
+        values: [
+          {},
+          { 'key' => 'value' },
+          { 'name' => 'test', 'count' => 42 },
+          { 'nested' => { 'inner' => 'value' } }
+        ]
+      ) do |exp_val, actual, i|
+        actual = JSON.parse(actual) if actual.is_a?(String)
+        expect(actual).to eq(exp_val), "Object mismatch at index #{i}"
       end
     end
 
-    it 'streams DERIVED values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'DERIVED_PKT',
-        data_type: 'DERIVED',
-        values: [42, 3.14, 'status_ok']
-      )
-      expect(test_params['success']).to be true
-
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
-      )
-
-      thread = create_thread([obj])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
-
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_values'].length)
-      test_params['expected_values'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
+    it 'streams complex OBJECT values correctly' do
+      run_streaming_test(
+        target: 'STREAM', packet: 'OBJ_COMPLEX', data_type: 'DERIVED',
+        values: [
+          { 'int' => 42, 'float' => 3.14, 'string' => 'hello', 'bool' => true, 'null' => nil },
+          { 'array' => [1, 2, 3], 'nested' => { 'a' => 1, 'b' => 2 } },
+          { 'mixed_array' => [1, 'two', 3.0, true] }
+        ]
+      ) do |exp_val, actual, i|
+        actual = JSON.parse(actual) if actual.is_a?(String)
+        expect(actual).to eq(exp_val), "Object mismatch at index #{i}"
       end
     end
+  end
 
-    it 'streams array values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'ARRAY_PKT',
-        data_type: 'FLOAT',
-        array_size: 5,
-        values: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
-      )
-      expect(test_params['success']).to be true
-
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
-      )
-
-      thread = create_thread([obj])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
-
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_values'].length)
-      test_params['expected_values'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
-      end
-    end
-
+  describe 'Value types (CONVERTED, FORMATTED)' do
     it 'streams CONVERTED values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'CONV_PKT',
-        data_type: 'INT',
-        bit_size: 16,
-        values: [100, 200, 300],
-        converted_values: [10.0, 20.0, 30.0],
-        read_conversion: { 'converted_type' => 'FLOAT', 'converted_bit_size' => 64 }
-      )
-      expect(test_params['success']).to be true
-
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
+      run_streaming_test(
+        {
+          target: 'STREAM', packet: 'CONVERTED', data_type: 'INT', bit_size: 16,
+          values: [100, 200, 300],
+          converted_values: [1.0, 2.0, 3.0],
+          read_conversion: { 'converted_type' => 'FLOAT', 'converted_bit_size' => 64 }
+        },
         value_type: :CONVERTED,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+        expected_key: 'expected_converted'
       )
-
-      thread = create_thread([obj])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__CONVERTED"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
-
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_converted'].length)
-      test_params['expected_converted'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
-      end
     end
 
     it 'streams FORMATTED values correctly' do
-      test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'FMT_PKT',
-        data_type: 'INT',
-        bit_size: 16,
-        values: [100, 200, 300],
-        formatted_values: ['100 V', '200 V', '300 V'],
-        format_string: '%d',
-        units: 'V'
-      )
-      expect(test_params['success']).to be true
-
-      obj = MockStreamingObject.new(
-        target: test_params['target_name'],
-        packet: test_params['packet_name'],
-        item: 'VALUE',
+      run_streaming_test(
+        {
+          target: 'STREAM', packet: 'FORMATTED', data_type: 'INT', bit_size: 16,
+          values: [100, 200, 300],
+          formatted_values: ['100 units', '200 units', '300 units'],
+          format_string: '%d',
+          units: 'units'
+        },
         value_type: :FORMATTED,
-        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+        expected_key: 'expected_formatted'
       )
-
-      thread = create_thread([obj])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
-      available_items = ["#{obj.target_name}__#{obj.packet_name}__VALUE__FORMATTED"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj.topic => [obj] }
-      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
-
-      expect(streaming_api.transmitted_results.length).to eq(test_params['expected_formatted'].length)
-      test_params['expected_formatted'].each_with_index do |expected, i|
-        result = streaming_api.transmitted_results[i]
-        expect(result['__type']).to eq('items')
-        expect(result[obj.item_key]).to eq(expected)
-      end
     end
+  end
 
-    it 'streams multiple items from the same packet' do
-      # Write data with multiple items - we'll write two separate packets
-      # and query both items together
-      test_params1 = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'MULTI_PKT',
-        data_type: 'INT',
-        bit_size: 32,
-        values: [1, 2, 3]
-      )
-      expect(test_params1['success']).to be true
-
-      obj1 = MockStreamingObject.new(
-        target: test_params1['target_name'],
-        packet: test_params1['packet_name'],
-        item: 'VALUE',
-        value_type: :RAW,
-        start_time: Time.parse(test_params1['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params1['end_time']).to_i * 1_000_000_000
-      )
-
-      thread = create_thread([obj1])
-
-      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params1['packet_def'])
-      available_items = ["#{obj1.target_name}__#{obj1.packet_name}__VALUE__RAW"]
-      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
-
-      objects_by_topic = { obj1.topic => [obj1] }
-      thread.send(:stream_items, objects_by_topic, [obj1.topic], [obj1.offset])
-
-      # Should have 3 results with timestamps
-      expect(streaming_api.transmitted_results.length).to eq(3)
-      streaming_api.transmitted_results.each do |result|
-        expect(result['__type']).to eq('items')
-        expect(result['__time']).to be_a(Integer)
-        expect(result['__time']).to be > 0
-      end
-    end
-
+  describe 'Streaming behavior' do
     it 'includes timestamp in results' do
       test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'TIME_PKT',
-        data_type: 'INT',
-        bit_size: 32,
+        target: 'STREAM', packet: 'TIME_PKT', data_type: 'INT', bit_size: 32,
         values: [42]
       )
       expect(test_params['success']).to be true
@@ -477,16 +456,12 @@ RSpec.describe LoggedStreamingThread, :questdb do
       expect(streaming_api.transmitted_results.length).to eq(1)
       result = streaming_api.transmitted_results[0]
       expect(result['__time']).to be_a(Integer)
-      # Timestamp should be in nanoseconds and within reasonable range
-      expect(result['__time']).to be > Time.now.to_i * 1_000_000_000 - 60_000_000_000  # within last minute
+      expect(result['__time']).to be > Time.now.to_i * 1_000_000_000 - 60_000_000_000
     end
 
     it 'returns true when end_time is specified (indicating completion)' do
       test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'DONE_PKT',
-        data_type: 'INT',
-        bit_size: 32,
+        target: 'STREAM', packet: 'DONE_PKT', data_type: 'INT', bit_size: 32,
         values: [1, 2]
       )
       expect(test_params['success']).to be true
@@ -509,16 +484,12 @@ RSpec.describe LoggedStreamingThread, :questdb do
       objects_by_topic = { obj.topic => [obj] }
       done = thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
 
-      # Should return true because end_time was specified
       expect(done).to be true
     end
 
     it 'returns false when end_time is nil (indicating more data may come)' do
       test_params = write_test_data(
-        target: 'STREAM_TEST',
-        packet: 'CONT_PKT',
-        data_type: 'INT',
-        bit_size: 32,
+        target: 'STREAM', packet: 'CONT_PKT', data_type: 'INT', bit_size: 32,
         values: [1, 2]
       )
       expect(test_params['success']).to be true
@@ -529,7 +500,7 @@ RSpec.describe LoggedStreamingThread, :questdb do
         item: 'VALUE',
         value_type: :RAW,
         start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: nil  # No end time - streaming continues
+        end_time: nil
       )
 
       thread = create_thread([obj])
@@ -541,7 +512,6 @@ RSpec.describe LoggedStreamingThread, :questdb do
       objects_by_topic = { obj.topic => [obj] }
       done = thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
 
-      # Should return false because no end_time was specified
       expect(done).to be false
     end
   end
