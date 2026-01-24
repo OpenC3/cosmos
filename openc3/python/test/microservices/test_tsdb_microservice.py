@@ -335,8 +335,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"1BIT" int', create_table_sql)
         # 63 bits is a long
         self.assertIn('"63BITS" long', create_table_sql)
-        # 64 bits is a varchar because it can't fit in int64
-        self.assertIn('"64BITS" varchar', create_table_sql)
+        # 64 bits uses DECIMAL(20, 0) for full 64-bit integer support
+        self.assertIn('"64BITS" DECIMAL(20, 0)', create_table_sql)
         # DERIVED items are now created as VARCHAR to avoid type conflicts
         self.assertIn('"DERIVED_GENERIC" varchar', create_table_sql)
 

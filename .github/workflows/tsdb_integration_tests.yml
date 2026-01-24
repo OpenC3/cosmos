@@ -50,12 +50,10 @@ jobs:
           QDB_PG_PASSWORD: admin
           QDB_HTTP_USER: admin
           QDB_HTTP_PASSWORD: admin
+        # Note: QuestDB image doesn't include curl, so we can't use --health-cmd with curl.
+        # Instead we rely on the "Wait for QuestDB" step below which uses curl from the host.
         options: >-
           --ulimit nofile=262144:262144
-          --health-cmd "curl -f http://localhost:9000/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     env:
       OPENC3_TSDB_HOSTNAME: localhost
@@ -101,11 +99,13 @@ jobs:
           for i in {1..30}; do
             if curl -s http://localhost:9000/ > /dev/null; then
               echo "QuestDB is ready!"
-              break
+              exit 0
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
+          echo "ERROR: QuestDB failed to start within 60 seconds"
+          exit 1
 
       - name: Run Python integration tests
         working-directory: openc3/python
