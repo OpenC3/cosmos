@@ -58,8 +58,8 @@ module OpenC3
           plw = PacketLogWriter.new(@log_dir, 'test')
           plw.write(:BLAH, :CMD, 'TGT', 'CMD', 0, true, "\x01\x02", nil, '0-0')
           expect(stdout.string).to match("Unknown entry_type: BLAH")
-          plw.shutdown
-          sleep 0.1
+          threads = plw.shutdown
+          threads.each { |t| t.join }
         end
       end
 
@@ -75,8 +75,8 @@ module OpenC3
         plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', first_time, true, "\x01\x02", nil, '0-0')
         expect(plw.instance_variable_get(:@file_size)).to_not eq 0
         plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', last_time, false, "\x03\x04", nil, '0-0')
-        plw.shutdown
-        sleep 0.1 # Allow for shutdown thread "copy" to S3
+        threads = plw.shutdown
+        threads.each { |t| t.join }
 
         # Files copied to S3 are named via the first_time, last_time, label
         expect(@files.keys).to contain_exactly("#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz")
@@ -131,8 +131,8 @@ module OpenC3
         plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', first_time2, false, "\x03\x04", nil, '0-0')
         expect(plw.instance_variable_get(:@file_size)).to_not eq 0
         plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', last_time2, true, "\x01\x02", nil, '0-0')
-        plw.shutdown
-        sleep 0.2 # Allow for shutdown thread "copy" to S3
+        threads = plw.shutdown
+        threads.each { |t| t.join }
 
         # Files copied to S3 are named via the first_time, last_time, label
         expect(@files.keys).to contain_exactly(
@@ -235,8 +235,8 @@ module OpenC3
         sleep 0.2
         expect(@files.keys.length).to eq 1 # Initial files
 
-        plw.shutdown
-        sleep 0.2
+        threads = plw.shutdown
+        threads.each { |t| t.join }
         expect(@files.keys.length).to eq 2
       end
 
@@ -257,8 +257,8 @@ module OpenC3
           time += 200_000_000
           sleep 0.2
         end
-        plw.shutdown
-        sleep 0.2
+        threads = plw.shutdown
+        threads.each { |t| t.join }
         # Since we wrote about 2.2s we should see 2 separate cycles
         expect(@files.keys.length).to eq 2
 
@@ -277,8 +277,8 @@ module OpenC3
           sleep 0.1
           plw.stop
           expect(stdout.string).to include("ERROR")
-          plw.shutdown
-          sleep 0.1
+          threads = plw.shutdown
+          threads.each { |t| t.join }
         end
       end
 
@@ -290,8 +290,8 @@ module OpenC3
           sleep 0.1
           plw.stop
           expect(stdout.string).to match("Error closing")
-          plw.shutdown
-          sleep 0.1
+          threads = plw.shutdown
+          threads.each { |t| t.join }
         end
       end
 
@@ -303,8 +303,8 @@ module OpenC3
             plw.write(:RAW_PACKET, :TLM, "TGT#{i}", "PKT", Time.now.to_nsec_from_epoch, true, "\x01\x02", nil, '0-0')
           end
           expect(stdout.string).to match("Target Index Overflow")
-          plw.shutdown
-          sleep 0.2
+          threads = plw.shutdown
+          threads.each { |t| t.join }
         end
       end
 
@@ -316,8 +316,8 @@ module OpenC3
             plw.write(:RAW_PACKET, :TLM, "TGT", "PKT#{i}", Time.now.to_nsec_from_epoch, true, "\x01\x02", nil, '0-0')
           end
           expect(stdout.string).to match("Packet Index Overflow")
-          plw.shutdown
-          sleep 0.2
+          threads = plw.shutdown
+          threads.each { |t| t.join }
         end
       end
     end
@@ -332,8 +332,8 @@ module OpenC3
         plw.write(:RAW_PACKET, :CMD, 'TGT', 'CMD', Time.now.to_nsec_from_epoch, true, "\x01\x02", nil, '0-0')
         expect(plw.instance_variable_get(:@file_size)).to_not eq 0
 
-        plw.shutdown
-        sleep 0.1
+        threads = plw.shutdown
+        threads.each { |t| t.join }
         expect(@files.keys.length).to eq 1
       end
     end
@@ -344,8 +344,8 @@ module OpenC3
         plw.write(:RAW_PACKET, :CMD, 'TGT', 'CMD', Time.now.to_nsec_from_epoch, true, "\x01\x02", nil, '0-0')
         expect(plw.instance_variable_get(:@file_size)).to_not eq 0
 
-        plw.shutdown
-        sleep 0.1
+        threads = plw.shutdown
+        threads.each { |t| t.join }
         expect(plw.instance_variable_get(:@file_size)).to eq 0
         expect(@files.keys.length).to eq 1
       end
@@ -355,13 +355,13 @@ module OpenC3
         plw.start_new_file
         expect(plw.instance_variable_get(:@file_size)).to eq PacketLogWriter::OPENC3_FILE_HEADER.length
         capture_io do |stdout|
-          plw.shutdown
+          threads = plw.shutdown
+          threads.each { |t| t.join }
           expect(stdout.string).to include("Log File Closed :")
           # No error even though no packets were written
           expect(stdout.string).to_not include("Error closing")
         end
         expect(@files.keys.length).to eq 0
-        sleep 0.1
       end
     end
   end

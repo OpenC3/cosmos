@@ -20,3 +20,4 @@ paths-ignore:
   - openc3/templates
   # Generated code
   - docs/assets
+  - docs/docs

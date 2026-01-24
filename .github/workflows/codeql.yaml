@@ -28,9 +28,13 @@ on:
       - "**"
 
 permissions:
+  # only required for workflows in private repositories
   actions: read
   contents: read
+  # require for all code scanning workflows
   security-events: write
+  # required to fetch internal or private CodeQL packs
+  packages: read
 
 jobs:
   analyze:
@@ -40,11 +44,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["javascript", "ruby", "python"]
-        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby' ]
-        # Use only 'java' to analyze code written in Java, Kotlin or both
-        # Use only 'javascript' to analyze code written in JavaScript, TypeScript or both
-        # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: ruby
+            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -55,6 +63,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql-config.yml
           # If you wish to specify custom queries, you can do so here or in a config file.
           # By default, queries listed here will override any specified in a config file.

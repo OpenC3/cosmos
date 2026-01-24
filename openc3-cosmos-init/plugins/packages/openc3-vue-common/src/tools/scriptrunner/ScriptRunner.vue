@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -2148,6 +2148,9 @@ export default {
             link.href = window.location.origin + data.url
             link.setAttribute('download', data.filename)
             link.click()
+            break
+          case 'opentab':
+            window.open(data.url, '_blank')
             break
           default:
             // console.log('Unexpected ActionCable message')

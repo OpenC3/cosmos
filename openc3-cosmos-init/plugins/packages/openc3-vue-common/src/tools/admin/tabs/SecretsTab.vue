@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,6 +18,17 @@
 
 <template>
   <div>
+    <v-alert v-model="isEnterprise" class="ma-4">
+      Note: This cannot be used for setting Kubernetes secrets. You must set
+      them in Kubernetes as a
+      <a
+        href="https://kubernetes.io/docs/concepts/configuration/secret/"
+        target="_blank"
+      >
+        Secrets object
+      </a>
+      instead.
+    </v-alert>
     <v-row no-gutters>
       <v-col>
         <v-file-input
@@ -97,7 +108,13 @@ export default {
       alert: '',
       alertType: 'success',
       showAlert: false,
+      isEnterprise: false,
     }
+  },
+  created() {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.isEnterprise = data.enterprise
+    })
   },
   mounted() {
     this.update()

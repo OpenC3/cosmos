@@ -1511,3 +1511,13 @@ def download_file(path, scope=OPENC3_SCOPE):
 
 
 setattr(openc3.script, "download_file", download_file)
+
+
+def open_tab(url):
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id()}",
+        {"type": "opentab", "url": url},
+    )
+
+
+setattr(openc3.script, "open_tab", open_tab)
