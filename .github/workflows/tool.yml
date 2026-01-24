@@ -28,6 +28,9 @@ on:
 env:
   OPENC3_API_PASSWORD: password
 
+permissions:
+  contents: read
+
 jobs:
   frontend-generators:
     if: ${{ github.actor != 'dependabot[bot]' }}

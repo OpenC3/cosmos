@@ -28,6 +28,9 @@ on:
 env:
   OPENC3_CLOUD: local
 
+permissions:
+  contents: read
+
 jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}

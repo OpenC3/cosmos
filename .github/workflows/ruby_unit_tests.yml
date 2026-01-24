@@ -29,6 +29,9 @@ env:
   RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
 
+permissions:
+  contents: read
+
 jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}

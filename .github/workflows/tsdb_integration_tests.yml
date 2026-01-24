@@ -12,25 +12,28 @@ on:
     branches:
       - main
     paths:
-      - 'openc3/python/openc3/utilities/questdb_client.py'
-      - 'openc3/python/openc3/models/cvt_model.py'
-      - 'openc3/lib/openc3/models/cvt_model.rb'
-      - 'openc3/lib/openc3/utilities/questdb_client.rb'
-      - 'openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb'
-      - 'openc3/test/integration/tsdb/**'
-      - '.github/workflows/tsdb_integration_tests.yml'
+      - "openc3/python/openc3/utilities/questdb_client.py"
+      - "openc3/python/openc3/models/cvt_model.py"
+      - "openc3/lib/openc3/models/cvt_model.rb"
+      - "openc3/lib/openc3/utilities/questdb_client.rb"
+      - "openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb"
+      - "openc3/test/integration/tsdb/**"
+      - ".github/workflows/tsdb_integration_tests.yml"
   pull_request:
     branches:
       - main
     paths:
-      - 'openc3/python/openc3/utilities/questdb_client.py'
-      - 'openc3/python/openc3/models/cvt_model.py'
-      - 'openc3/lib/openc3/models/cvt_model.rb'
-      - 'openc3/lib/openc3/utilities/questdb_client.rb'
-      - 'openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb'
-      - 'openc3/test/integration/tsdb/**'
-      - '.github/workflows/tsdb_integration_tests.yml'
+      - "openc3/python/openc3/utilities/questdb_client.py"
+      - "openc3/python/openc3/models/cvt_model.py"
+      - "openc3/lib/openc3/models/cvt_model.rb"
+      - "openc3/lib/openc3/utilities/questdb_client.rb"
+      - "openc3-cosmos-cmd-tlm-api/app/models/logged_streaming_thread.rb"
+      - "openc3/test/integration/tsdb/**"
+      - ".github/workflows/tsdb_integration_tests.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   tsdb-integration-tests:
@@ -48,6 +51,7 @@ jobs:
           QDB_HTTP_USER: admin
           QDB_HTTP_PASSWORD: admin
         options: >-
+          --ulimit nofile=262144:262144
           --health-cmd "curl -f http://localhost:9000/ || exit 1"
           --health-interval 10s
           --health-timeout 5s
@@ -68,12 +72,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
+          ruby-version: "3.4"
           bundler-cache: false
 
       - name: Install Poetry

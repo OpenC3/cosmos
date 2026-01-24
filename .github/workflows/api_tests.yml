@@ -36,6 +36,9 @@ env:
   OPENC3_REDIS_EPHEMERAL_PORT: 6380
   OPENC3_SERVICE_PASSWORD: openc3service
 
+permissions:
+  contents: read
+
 jobs:
   cmd-tlm-api:
     if: ${{ github.actor != 'dependabot[bot]' }}

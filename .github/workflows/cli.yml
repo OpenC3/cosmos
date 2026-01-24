@@ -29,6 +29,9 @@ env:
   OPENC3_API_PASSWORD: password
   OPENC3_API_PORT: 2900
 
+permissions:
+  contents: read
+
 jobs:
   openc3-cli:
     if: ${{ github.actor != 'dependabot[bot]' }}

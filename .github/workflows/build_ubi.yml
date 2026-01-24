@@ -25,6 +25,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 jobs:
   openc3-build-ubi:
     if: ${{ github.actor != 'dependabot[bot]' }}

@@ -28,6 +28,9 @@ on:
 env:
   OPENC3_ARGON2_PROFILE: "unsafe_cheapest"
 
+permissions:
+  contents: read
+
 jobs:
   openc3-build-test:
     if: ${{ github.actor != 'dependabot[bot]' }}

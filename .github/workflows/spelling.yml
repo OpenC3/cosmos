@@ -25,6 +25,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 jobs:
   spelling:
     name: Codespell

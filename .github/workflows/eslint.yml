@@ -27,11 +27,12 @@ on:
     paths:
       - "openc3-cosmos-init/plugins/packages/**"
 
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
     outputs:
       plugins: ${{ steps.filter.outputs.plugins }}
       demo: ${{ steps.filter.outputs.demo }}

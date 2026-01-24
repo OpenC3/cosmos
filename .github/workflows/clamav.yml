@@ -25,6 +25,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 jobs:
   openc3-clamav-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}

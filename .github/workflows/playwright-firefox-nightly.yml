@@ -27,6 +27,9 @@ on:
   #   - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
   workflow_dispatch: # Allow manual triggering
 
+permissions:
+  contents: read
+
 jobs:
   openc3-firefox-test:
     runs-on: ubuntu-latest
