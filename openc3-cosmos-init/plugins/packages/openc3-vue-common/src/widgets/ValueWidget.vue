@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -120,7 +120,7 @@ export default {
     // Note: TYPE is parameters[3]
     // This works because NaN selects the default width
     this.setWidth(
-      parseInt(this.parameters[4]) + INPUT_PADDING,
+      Number.parseInt(this.parameters[4]) + INPUT_PADDING,
       'ch',
       this.width,
     )

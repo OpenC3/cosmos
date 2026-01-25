@@ -234,7 +234,12 @@
 
 <script>
 import { uniqueId } from 'lodash'
-import { Api, ConfigParserService, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  ConfigParserError,
+  ConfigParserService,
+  OpenC3Api,
+} from '@openc3/js-common/services'
 import WidgetComponents from '@/widgets/WidgetComponents'
 import EditScreenDialog from './EditScreenDialog.vue'
 
@@ -521,10 +526,15 @@ export default {
       this.errors = []
     },
     updateRefreshInterval: function () {
-      let refreshInterval = this.pollingPeriod * 1000
       if (this.updater) {
         clearInterval(this.updater)
+        this.updater = null
       }
+      // If pollingPeriod is 0, don't poll the screen
+      if (this.pollingPeriod === 0) {
+        return
+      }
+      let refreshInterval = this.pollingPeriod * 1000
       this.updater = setInterval(() => {
         this.update()
       }, refreshInterval)
@@ -552,16 +562,52 @@ export default {
         (keyword, parameters, line, lineNumber) => {
           if (keyword) {
             switch (keyword) {
-              case 'SCREEN':
+              case 'SCREEN': {
                 this.configParser.verify_num_parameters(
                   3,
                   4,
                   `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`,
                 )
-                this.width = parseInt(parameters[0])
-                this.height = parseInt(parameters[1])
-                this.pollingPeriod = parseFloat(parameters[2])
+                // Validate width - must be numeric or 'AUTO'
+                if (parameters[0].toUpperCase() === 'AUTO') {
+                  this.width = null
+                } else if (Number.isFinite(Number.parseInt(parameters[0]))) {
+                  this.width = Number.parseInt(parameters[0])
+                } else {
+                  throw new ConfigParserError(
+                    this.configParser,
+                    `SCREEN width must be a number or AUTO, got '${parameters[0]}'`,
+                    `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`,
+                  )
+                }
+                // Validate height - must be numeric or 'AUTO'
+                if (parameters[1].toUpperCase() === 'AUTO') {
+                  this.height = null
+                } else if (Number.isFinite(Number.parseInt(parameters[1]))) {
+                  this.height = Number.parseInt(parameters[1])
+                } else {
+                  throw new ConfigParserError(
+                    this.configParser,
+                    `SCREEN height must be a number or AUTO, got '${parameters[1]}'`,
+                    `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`,
+                  )
+                }
+                // Validate polling period - must be numeric (0 means no polling)
+                const pollingValue = Number.parseFloat(parameters[2])
+                if (
+                  Number.isNaN(pollingValue) ||
+                  pollingValue < 0 ||
+                  (pollingValue > 0 && pollingValue < 0.1)
+                ) {
+                  throw new ConfigParserError(
+                    this.configParser,
+                    `SCREEN polling period must be a number 0 or >= 0.1, got '${parameters[2]}'`,
+                    `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`,
+                  )
+                }
+                this.pollingPeriod = pollingValue
                 break
+              }
               case 'END':
                 this.configParser.verify_num_parameters(0, 0, `${keyword}`)
                 this.layoutStack.pop()
@@ -574,7 +620,14 @@ export default {
                   1,
                   `${keyword} <Time (s)>`,
                 )
-                this.staleTime = parseInt(parameters[0])
+                this.staleTime = Number.parseInt(parameters[0])
+                if (Number.isNaN(this.staleTime)) {
+                  throw new ConfigParserError(
+                    this.configParser,
+                    `SCREEN stale time must be a number, got '${parameters[0]}'`,
+                    `${keyword} <Time (s)>`,
+                  )
+                }
                 break
               case 'SUBSETTING':
                 this.configParser.verify_num_parameters(
@@ -586,7 +639,7 @@ export default {
                   parameters[1] = 'RAW__' + parameters[2].toLowerCase()
                 }
               // falls through
-              case 'SETTING':
+              case 'SETTING': {
                 this.configParser.verify_num_parameters(
                   2,
                   null,
@@ -601,23 +654,33 @@ export default {
                   ] ?? this.currentLayout
                 widget.settings.push(parameters)
                 break
-              case 'TOOLTIP':
+              }
+              case 'TOOLTIP': {
                 this.configParser.verify_num_parameters(
                   1,
                   2,
                   `${keyword} <Tooltip Text> <Delay (ms)>`,
                 )
+                let delay = 600 // Default delay in ms
+                if (parameters[1] !== undefined) {
+                  delay = Number.parseInt(parameters[1])
+                  if (Number.isNaN(delay)) {
+                    throw new ConfigParserError(
+                      this.configParser,
+                      `SCREEN tooltip delay must be a number, got '${parameters[1]}'`,
+                      `${keyword} <Tooltip Text> <Delay (ms)>`,
+                    )
+                  }
+                }
+
                 // Add TOOLTIP to the previous widget's settings (like SETTING does)
                 const tooltipWidget =
                   this.currentLayout.widgets[
                     this.currentLayout.widgets.length - 1
                   ] ?? this.currentLayout
-                tooltipWidget.settings.push([
-                  'TOOLTIP',
-                  parameters[0],
-                  parameters[1],
-                ])
+                tooltipWidget.settings.push(['TOOLTIP', parameters[0], delay])
                 break
+              }
               case 'GLOBAL_SUBSETTING':
                 this.configParser.verify_num_parameters(
                   3,

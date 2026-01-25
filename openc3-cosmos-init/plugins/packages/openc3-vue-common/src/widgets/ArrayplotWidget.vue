@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -93,8 +93,8 @@ export default {
           break
         case 'X_AXIS':
           this.xAxis = {
-            start: parseFloat(setting[1]),
-            step: parseFloat(setting[2]),
+            start: Number.parseFloat(setting[1]),
+            step: Number.parseFloat(setting[2]),
           }
           break
       }
@@ -108,7 +108,7 @@ export default {
         stroke: item.color,
         width: 2,
         value: (self, rawValue) => {
-          if (typeof rawValue === 'string' || isNaN(rawValue)) {
+          if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
           } else {
             return rawValue == null ? '--' : rawValue.toFixed(3)

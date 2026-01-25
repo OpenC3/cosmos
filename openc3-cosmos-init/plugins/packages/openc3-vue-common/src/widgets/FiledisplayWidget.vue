@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -86,10 +86,10 @@ export default {
       this.filePath = this.parameters[0]
     }
     if (this.parameters[1]) {
-      this.width = parseInt(this.parameters[1])
+      this.width = Number.parseInt(this.parameters[1])
     }
     if (this.parameters[2]) {
-      this.height = parseInt(this.parameters[2])
+      this.height = Number.parseInt(this.parameters[2])
     }
   },
   mounted() {

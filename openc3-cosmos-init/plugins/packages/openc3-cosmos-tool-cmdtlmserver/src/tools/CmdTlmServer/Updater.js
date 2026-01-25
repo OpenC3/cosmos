@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,11 +23,16 @@
 import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
+  props: {
+    refreshInterval: {
+      type: Number,
+      default: 1000,
+    },
+  },
   data() {
     return {
       updater: null,
       api: null,
-      refreshInterval: 1000,
     }
   },
   created() {

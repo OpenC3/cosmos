@@ -1,5 +1,5 @@
 <!--
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -254,40 +254,49 @@
       @keydown.esc="cancelChangeRefreshInterval"
     >
       <v-card>
-        <v-toolbar height="24">
-          <v-spacer />
-          <span>Options</span>
-          <v-spacer />
-        </v-toolbar>
-        <v-card-text>
-          <div class="pa-3">
-            <v-text-field
-              v-model="refreshInterval"
-              min="1"
-              max="3600"
-              step="100"
-              type="number"
-              label="Refresh Interval (s)"
-              data-test="refresh-interval"
-            />
-          </div>
-        </v-card-text>
-        <v-card-actions class="px-2">
-          <v-btn
-            data-test="options-close-btn"
-            variant="outlined"
-            @click="saveRefreshInterval"
-          >
-            Save
-          </v-btn>
-          <v-btn
-            data-test="options-close-btn"
-            variant="outlined"
-            @click="cancelChangeRefreshInterval"
-          >
-            Cancel
-          </v-btn>
-        </v-card-actions>
+        <v-form v-model="optionsFormValid" @submit.prevent>
+          <v-toolbar height="24">
+            <v-spacer />
+            <span>Options</span>
+            <v-spacer />
+          </v-toolbar>
+          <v-card-text>
+            <div class="pa-3">
+              <v-row>
+                <v-text-field
+                  v-model="refreshInterval"
+                  min="1"
+                  max="3600"
+                  step="1"
+                  type="number"
+                  label="Refresh Interval (s)"
+                  :rules="[rules.required, rules.min]"
+                  data-test="refresh-interval"
+              /></v-row>
+              <v-row class="mt-5">
+                <v-spacer />
+                <v-btn
+                  variant="outlined"
+                  class="mx-2"
+                  data-test="options-cancel-btn"
+                  @click="cancelChangeRefreshInterval"
+                >
+                  Cancel
+                </v-btn>
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  class="mx-2"
+                  :disabled="!optionsFormValid"
+                  data-test="options-save-btn"
+                  @click="saveRefreshInterval"
+                >
+                  Save
+                </v-btn>
+              </v-row>
+            </div>
+          </v-card-text>
+        </v-form>
       </v-card>
     </v-dialog>
     <output-dialog
@@ -328,6 +337,7 @@ export default {
       volumes: [],
       uploadPathDialog: false,
       optionsDialog: false,
+      optionsFormValid: true,
       refreshInterval,
       refreshIntervalKey,
       updater: null,
@@ -384,6 +394,10 @@ export default {
           ],
         },
       ],
+      rules: {
+        required: (value) => !!value || 'Required',
+        min: (value) => value >= 1 || 'Must be at least 1',
+      },
     }
   },
   computed: {
