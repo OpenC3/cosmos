@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'pg'
+require 'set'
 require 'thread'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
@@ -141,6 +142,11 @@ module OpenC3
       packet_cache = {}
       # Map column names to item type info for decoding
       item_types = {}
+      # Track calculated timestamp items: { position => { source:, format:, table_index: } }
+      calculated_items = {}
+      # Track which timestamp columns we need per table
+      needed_timestamps = {} # { table_index => Set of column names }
+      current_position = 0
 
       items.each do |item|
         target_name, packet_name, orig_item_name, value_type, limits = item
@@ -150,15 +156,29 @@ module OpenC3
           # We know timestamp always exists so we can use it to fill in the nil value
           names << "timestamp as __nil#{nil_count}"
           nil_count += 1
+          current_position += 1
           next
         end
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        table_name = "#{target_name}__#{packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
+        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name)
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        # NOTE: Semicolon added as it appears invalid
-        safe_item_name = orig_item_name.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
+
+        # Check if this is a calculated timestamp item
+        if QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
+          ts_info = QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
+          calculated_items[current_position] = {
+            source: ts_info[:source],
+            format: ts_info[:format],
+            table_index: index
+          }
+          # Track that we need this timestamp column for this table
+          needed_timestamps[index] ||= Set.new
+          needed_timestamps[index] << ts_info[:source]
+          current_position += 1
+          next
+        end
+
+        safe_item_name = QuestDBClient.sanitize_column_name(orig_item_name)
 
         # Look up item type info from packet definition
         cache_key = [target_name, packet_name]
@@ -213,8 +233,21 @@ module OpenC3
             item_types[col_name] = { 'data_type' => nil, 'array_size' => nil }
           end
         end
+        current_position += 1
         if limits
           names << "\"T#{index}.#{safe_item_name}__L\""
+        end
+      end
+
+      # Add needed timestamp columns to the SELECT
+      # Track which column alias maps to which timestamp source for result processing
+      # Note: We use underscores in the alias name to avoid needing quotes, which QuestDB includes in returned field names
+      timestamp_columns = {} # { "T0___ts_timestamp" => { table_index: 0, source: 'timestamp' } }
+      needed_timestamps.each do |table_index, ts_columns|
+        ts_columns.each do |ts_col|
+          alias_name = "T#{table_index}___ts_#{ts_col}"
+          names << "T#{table_index}.#{ts_col} as #{alias_name}"
+          timestamp_columns[alias_name] = { table_index: table_index, source: ts_col }
         end
       end
 
@@ -256,17 +289,24 @@ module OpenC3
             # Build up a results set that is an array of arrays
             # Each nested array is a set of 2 items: [value, limits state]
             # If the item does not have limits the limits state is nil
-            result.each_with_index do |tuples, index|
-              data[index] ||= []
+            result.each_with_index do |tuples, row_num|
+              data[row_num] ||= []
               row_index = 0
+              # Store timestamp values for this row: { "T0.timestamp" => Time, "T0.rx_timestamp" => Time }
+              row_timestamps = {}
               tuples.each do |tuple|
                 col_name = tuple[0]
                 col_value = tuple[1]
                 if col_name.include?("__L")
-                  data[index][row_index - 1][1] = col_value
+                  data[row_num][row_index - 1][1] = col_value
                 elsif col_name =~ /^__nil/
-                  data[index][row_index] = [nil, nil]
+                  data[row_num][row_index] = [nil, nil]
                   row_index += 1
+                elsif col_name =~ /^T(\d+)___ts_(.+)$/
+                  # This is a timestamp column for calculated items
+                  table_idx = $1.to_i
+                  ts_source = $2
+                  row_timestamps["T#{table_idx}.#{ts_source}"] = col_value
                 else
                   # Decode value using item type info
                   # QuestDB may return column names without table alias prefix
@@ -285,9 +325,20 @@ module OpenC3
                     data_type: type_info['data_type'],
                     array_size: type_info['array_size']
                   )
-                  data[index][row_index] = [decoded_value, nil]
+                  data[row_num][row_index] = [decoded_value, nil]
                   row_index += 1
                 end
+              end
+
+              # Insert calculated timestamp items at their positions
+              # Insert in ascending order so positions remain valid after each insert
+              calculated_items.keys.sort.each do |position|
+                calc_info = calculated_items[position]
+                ts_key = "T#{calc_info[:table_index]}.#{calc_info[:source]}"
+                ts_value = row_timestamps[ts_key]
+                ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
+                calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info[:format])
+                data[row_num].insert(position, [calculated_value, nil])
               end
             end
             # If we only have one row then we return a single array

@@ -25,6 +25,16 @@ module OpenC3
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
+    # Special timestamp items that are calculated from timestamp/rx_timestamp columns
+    # rather than stored as separate columns. These items can be derived from the
+    # timestamp and rx_timestamp fields on read.
+    TIMESTAMP_ITEMS = {
+      'PACKET_TIMESECONDS' => { source: 'timestamp', format: :seconds },
+      'PACKET_TIMEFORMATTED' => { source: 'timestamp', format: :formatted },
+      'RECEIVED_TIMESECONDS' => { source: 'rx_timestamp', format: :seconds },
+      'RECEIVED_TIMEFORMATTED' => { source: 'rx_timestamp', format: :formatted }
+    }.freeze
+
     # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
     # QuestDB stores these as NULL, so we use sentinel values near float max instead.
 
@@ -151,22 +161,6 @@ module OpenC3
       value
     end
 
-    # Decode all values in a hash retrieved from QuestDB.
-    #
-    # @param hash [Hash] Hash of column_name => value
-    # @param block_columns [Array<String>] List of column names that contain base64-encoded data
-    # @return [Hash] Hash with decoded values
-    def self.decode_hash(hash, block_columns: [])
-      return hash unless hash.is_a?(Hash)
-
-      decoded = {}
-      hash.each do |key, value|
-        block_encoded = block_columns.include?(key.to_s)
-        decoded[key] = decode_value(value, block_encoded: block_encoded)
-      end
-      decoded
-    end
-
     # Sanitize a table name for QuestDB.
     # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
     #
@@ -185,6 +179,53 @@ module OpenC3
     # ILP protocol special characters that must be sanitized in column names
     def self.sanitize_column_name(item_name)
       item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
+    end
+
+    # Get the column suffix for a given value type.
+    # Used when building SQL queries to select the appropriate column.
+    #
+    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'
+    # @return [String, nil] Column suffix ('__C', '__F', '__U') or nil for RAW
+    def self.column_suffix_for_value_type(value_type)
+      case value_type
+      when 'WITH_UNITS'
+        '__U'
+      when 'FORMATTED'
+        '__F'
+      when 'CONVERTED'
+        '__C'
+      else
+        nil
+      end
+    end
+
+    # Convert a PG timestamp to UTC.
+    # PG driver returns timestamps as naive Time objects that need UTC treatment.
+    # QuestDB stores timestamps in UTC, but the PG driver applies local timezone.
+    #
+    # @param pg_time [Time] Timestamp from PG query result
+    # @return [Time] UTC timestamp
+    def self.pg_timestamp_to_utc(pg_time)
+      return nil unless pg_time
+      Time.utc(pg_time.year, pg_time.month, pg_time.day,
+               pg_time.hour, pg_time.min, pg_time.sec, pg_time.usec)
+    end
+
+    # Format a UTC timestamp according to the specified format.
+    #
+    # @param utc_time [Time] UTC timestamp
+    # @param format [Symbol] :seconds for Unix seconds (float), :formatted for ISO 8601
+    # @return [Float, String, nil] Formatted timestamp or nil if utc_time is nil
+    def self.format_timestamp(utc_time, format)
+      return nil unless utc_time
+      case format
+      when :seconds
+        utc_time.to_f
+      when :formatted
+        utc_time.strftime('%Y-%m-%dT%H:%M:%S.%6NZ')
+      else
+        nil
+      end
     end
   end
 end

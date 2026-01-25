@@ -124,6 +124,16 @@ class QuestDBClient:
     - Schema-safe ingestion with error handling
     """
 
+    # Special timestamp items that are calculated from timestamp/rx_timestamp columns
+    # rather than stored as separate columns. These items can be derived from the
+    # timestamp and rx_timestamp fields on read.
+    TIMESTAMP_ITEMS = {
+        "PACKET_TIMESECONDS": {"source": "timestamp", "format": "seconds"},
+        "PACKET_TIMEFORMATTED": {"source": "timestamp", "format": "formatted"},
+        "RECEIVED_TIMESECONDS": {"source": "rx_timestamp", "format": "seconds"},
+        "RECEIVED_TIMEFORMATTED": {"source": "rx_timestamp", "format": "formatted"},
+    }
+
     # QuestDB name restrictions - characters that need to be replaced
     # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
     TABLE_NAME_INVALID_CHARS = r'[?,\'"\\/:)(+*%~]'
@@ -218,30 +228,6 @@ class QuestDBClient:
 
         # Return as-is (STRING type or unknown)
         return value
-
-    @staticmethod
-    def decode_dict(data, block_columns=None):
-        """
-        Decode all values in a dict retrieved from QuestDB.
-
-        Args:
-            data: Dict of column_name => value
-            block_columns: List of column names that contain base64-encoded data
-
-        Returns:
-            Dict with decoded values
-        """
-        if not isinstance(data, dict):
-            return data
-
-        if block_columns is None:
-            block_columns = []
-
-        decoded = {}
-        for key, value in data.items():
-            block_encoded = str(key) in block_columns
-            decoded[key] = QuestDBClient.decode_value(value, block_encoded=block_encoded)
-        return decoded
 
     def __init__(self, logger=None, name=None):
         """
@@ -411,6 +397,66 @@ class QuestDBClient:
             Sanitized column name
         """
         return re.sub(cls.COLUMN_NAME_INVALID_CHARS, "_", item_name)
+
+    @staticmethod
+    def column_suffix_for_value_type(value_type):
+        """
+        Get the column suffix for a given value type.
+        Used when building SQL queries to select the appropriate column.
+
+        Args:
+            value_type: Value type: 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'
+
+        Returns:
+            Column suffix ('__C', '__F', '__U') or None for RAW
+        """
+        if value_type == "WITH_UNITS":
+            return "__U"
+        elif value_type == "FORMATTED":
+            return "__F"
+        elif value_type == "CONVERTED":
+            return "__C"
+        else:
+            return None
+
+    @staticmethod
+    def pg_timestamp_to_utc(pg_time):
+        """
+        Convert a psycopg timestamp to UTC.
+        psycopg returns timestamps as naive datetime objects that need UTC treatment.
+        QuestDB stores timestamps in UTC, but the psycopg driver may return naive datetimes.
+
+        Args:
+            pg_time: Timestamp from psycopg query result (datetime)
+
+        Returns:
+            UTC-aware datetime
+        """
+        if pg_time is None:
+            return None
+        # Replace timezone info with UTC (psycopg may return naive datetimes)
+        return pg_time.replace(tzinfo=timezone.utc)
+
+    @staticmethod
+    def format_timestamp(utc_time, format_type):
+        """
+        Format a UTC timestamp according to the specified format.
+
+        Args:
+            utc_time: UTC datetime
+            format_type: 'seconds' for Unix seconds (float), 'formatted' for ISO 8601
+
+        Returns:
+            Formatted timestamp (float or string) or None if utc_time is None
+        """
+        if utc_time is None:
+            return None
+        if format_type == "seconds":
+            return utc_time.timestamp()
+        elif format_type == "formatted":
+            return utc_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            return None
 
     def create_table(self, target_name, packet_name, packet):
         """

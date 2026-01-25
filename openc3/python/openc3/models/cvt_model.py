@@ -16,6 +16,7 @@
 
 import json
 import os
+import re
 import time
 import threading
 from typing import Any, Optional
@@ -187,6 +188,11 @@ class CvtModel(Model):
         packet_cache = {}
         # Map column names to item type info for decoding
         item_types = {}
+        # Track calculated timestamp items: { position: { source:, format:, table_index: } }
+        calculated_items = {}
+        # Track which timestamp columns we need per table
+        needed_timestamps = {}  # { table_index: set of column names }
+        current_position = 0
 
         for item in items:
             target_name, packet_name, item_name, value_type, limits = item
@@ -196,22 +202,31 @@ class CvtModel(Model):
                 # We know timestamp always exists so we can use it to fill in the None value
                 names.append(f"timestamp as __nil{nil_count}")
                 nil_count += 1
+                current_position += 1
                 continue
 
-            # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-            table_name = target_name + "__" + packet_name
-            for char in "?,'\"/:()+*%~":
-                table_name = table_name.replace(char, "_")
+            table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
             tables[table_name] = 1
 
             # Find the index of this table
             index = list(tables.keys()).index(table_name)
 
-            # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-            # NOTE: Semicolon added as it appears invalid
-            safe_item_name = item_name
-            for char in "?.,'\\/:()+*%~;-=!@#$^&":
-                safe_item_name = safe_item_name.replace(char, "_")
+            # Check if this is a calculated timestamp item
+            if item_name in QuestDBClient.TIMESTAMP_ITEMS:
+                ts_info = QuestDBClient.TIMESTAMP_ITEMS[item_name]
+                calculated_items[current_position] = {
+                    "source": ts_info["source"],
+                    "format": ts_info["format"],
+                    "table_index": index,
+                }
+                # Track that we need this timestamp column for this table
+                if index not in needed_timestamps:
+                    needed_timestamps[index] = set()
+                needed_timestamps[index].add(ts_info["source"])
+                current_position += 1
+                continue
+
+            safe_item_name = QuestDBClient.sanitize_column_name(item_name)
 
             # Look up item type info from packet definition
             cache_key = (target_name, packet_name)
@@ -257,8 +272,19 @@ class CvtModel(Model):
                 else:
                     item_types[col_name] = {"data_type": None, "array_size": None}
 
+            current_position += 1
             if limits:
                 names.append(f'"T{index}.{safe_item_name}__L"')
+
+        # Add needed timestamp columns to the SELECT
+        # Track which column alias maps to which timestamp source for result processing
+        # Note: We use underscores in the alias name to avoid needing quotes, which psycopg includes in returned field names
+        timestamp_columns = {}  # { "T0___ts_timestamp": { table_index: 0, source: 'timestamp' } }
+        for table_index, ts_columns in needed_timestamps.items():
+            for ts_col in ts_columns:
+                alias_name = f"T{table_index}___ts_{ts_col}"
+                names.append(f"T{table_index}.{ts_col} as {alias_name}")
+                timestamp_columns[alias_name] = {"table_index": table_index, "source": ts_col}
 
         # Build the SQL query
         query = f"SELECT {', '.join(names)} FROM "
@@ -300,6 +326,8 @@ class CvtModel(Model):
                             for row_index, row in enumerate(result):
                                 data.append([])
                                 col_index = 0
+                                # Store timestamp values for this row: { "T0.timestamp": datetime, ... }
+                                row_timestamps = {}
                                 for col_name, col_value in row.items():
                                     if "__L" in col_name:
                                         # This is a limits column, add to previous item
@@ -311,6 +339,12 @@ class CvtModel(Model):
                                     elif col_name.startswith("__nil"):
                                         data[row_index].append([None, None])
                                         col_index += 1
+                                    elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
+                                        # This is a timestamp column for calculated items
+                                        match = re.match(r"^T(\d+)___ts_(.+)$", col_name)
+                                        table_idx = int(match.group(1))
+                                        ts_source = match.group(2)
+                                        row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
                                     else:
                                         # Decode value using item type info
                                         # QuestDB may return column names without table alias prefix
@@ -330,6 +364,16 @@ class CvtModel(Model):
                                         )
                                         data[row_index].append([decoded_value, None])
                                         col_index += 1
+
+                                # Insert calculated timestamp items at their positions
+                                # Insert in ascending order so positions remain valid after each insert
+                                for position in sorted(calculated_items.keys()):
+                                    calc_info = calculated_items[position]
+                                    ts_key = f"T{calc_info['table_index']}.{calc_info['source']}"
+                                    ts_value = row_timestamps.get(ts_key)
+                                    ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
+                                    calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info["format"])
+                                    data[row_index].insert(position, [calculated_value, None])
 
                             # If we only have one row then we return a single array
                             if len(result) == 1:

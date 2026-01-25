@@ -466,5 +466,167 @@ class TestObjectRoundtrip:
         )
 
 
+@requires_questdb
+class TestTimestampItemsRoundtrip:
+    """Tests for calculated timestamp items (PACKET_TIMESECONDS, etc.)."""
+
+    def run_timestamp_test(
+        self, questdb_client, clean_table, wait_for_data, item_name, format_type
+    ):
+        """Helper to run timestamp item tests."""
+        target_name = "ROUNDTRIP"
+        packet_name = f"TS_{item_name}"
+        clean_table(f"{target_name}__{packet_name}")
+
+        # Build a simple packet definition
+        packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
+        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+
+        # Insert test values with known timestamps
+        base_ts = int(time.time() * 1e9)
+        test_values = [1, 2, 3]
+
+        for i, val in enumerate(test_values):
+            columns = questdb_client.process_json_data({"VALUE": val}, table_name)
+            columns["RECEIVED_COUNT"] = i
+            # Each row is 1 second apart
+            row_ts = base_ts + i * 1_000_000_000
+            questdb_client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+        questdb_client.flush()
+        wait_for_data(questdb_client, table_name, len(test_values))
+
+        # Request the calculated timestamp item
+        items = [(target_name, packet_name, item_name, "RAW", False)]
+        start_time = ts_to_iso(base_ts)
+        end_time = ts_to_iso(base_ts + len(test_values) * 1_000_000_000)
+
+        with patch("openc3.models.cvt_model.TargetModel") as mock_target:
+            mock_target.packet.return_value = packet_def
+            result = CvtModel.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+
+        assert len(result) == len(
+            test_values
+        ), f"Expected {len(test_values)} results, got {len(result)}"
+
+        for i in range(len(test_values)):
+            actual = result[i][0][0]
+            # Each row is 1 second apart
+            expected_ts_seconds = base_ts / 1e9 + i
+
+            if format_type == "seconds":
+                assert isinstance(
+                    actual, float
+                ), f"Expected float at index {i}, got {type(actual)}"
+                assert (
+                    abs(actual - expected_ts_seconds) < 0.001
+                ), f"Timestamp seconds mismatch at index {i}: expected {expected_ts_seconds}, got {actual}"
+            elif format_type == "formatted":
+                assert isinstance(
+                    actual, str
+                ), f"Expected string at index {i}, got {type(actual)}"
+                # Verify it's ISO 8601 format with Z timezone suffix
+                import re
+                assert re.match(
+                    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$", actual
+                ), f"Expected ISO 8601 format at index {i}, got {actual}"
+                # Verify the formatted string can be parsed back to approximately the same time
+                parsed = datetime.strptime(actual, "%Y-%m-%dT%H:%M:%S.%fZ")
+                parsed_ts = parsed.replace(tzinfo=timezone.utc).timestamp()
+                assert (
+                    abs(parsed_ts - expected_ts_seconds) < 0.001
+                ), f"Timestamp formatted mismatch at index {i}: expected {expected_ts_seconds}, got {actual}"
+
+    def test_packet_timeseconds(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """PACKET_TIMESECONDS returns correct Unix timestamp in seconds."""
+        self.run_timestamp_test(
+            questdb_client, clean_table, wait_for_data, "PACKET_TIMESECONDS", "seconds"
+        )
+
+    def test_packet_timeformatted(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """PACKET_TIMEFORMATTED returns correct formatted timestamp string."""
+        self.run_timestamp_test(
+            questdb_client,
+            clean_table,
+            wait_for_data,
+            "PACKET_TIMEFORMATTED",
+            "formatted",
+        )
+
+    def test_received_timeseconds(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """RECEIVED_TIMESECONDS returns correct Unix timestamp in seconds."""
+        self.run_timestamp_test(
+            questdb_client,
+            clean_table,
+            wait_for_data,
+            "RECEIVED_TIMESECONDS",
+            "seconds",
+        )
+
+    def test_received_timeformatted(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """RECEIVED_TIMEFORMATTED returns correct formatted timestamp string."""
+        self.run_timestamp_test(
+            questdb_client,
+            clean_table,
+            wait_for_data,
+            "RECEIVED_TIMEFORMATTED",
+            "formatted",
+        )
+
+    def test_timestamp_items_with_regular_items(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """Timestamp items work correctly alongside regular items."""
+        target_name = "ROUNDTRIP"
+        packet_name = "TS_MIXED"
+        clean_table(f"{target_name}__{packet_name}")
+
+        packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
+        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+
+        base_ts = int(time.time() * 1e9)
+        test_values = [100, 200]
+
+        for i, val in enumerate(test_values):
+            columns = questdb_client.process_json_data({"VALUE": val}, table_name)
+            columns["RECEIVED_COUNT"] = i
+            row_ts = base_ts + i * 1_000_000_000
+            questdb_client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+        questdb_client.flush()
+        wait_for_data(questdb_client, table_name, len(test_values))
+
+        # Request both regular item and timestamp items
+        items = [
+            (target_name, packet_name, "PACKET_TIMESECONDS", "RAW", False),
+            (target_name, packet_name, "VALUE", "RAW", False),
+            (target_name, packet_name, "PACKET_TIMEFORMATTED", "RAW", False),
+        ]
+        start_time = ts_to_iso(base_ts)
+        end_time = ts_to_iso(base_ts + len(test_values) * 1_000_000_000)
+
+        with patch("openc3.models.cvt_model.TargetModel") as mock_target:
+            mock_target.packet.return_value = packet_def
+            result = CvtModel.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+
+        assert len(result) == 2
+
+        # First row
+        assert isinstance(result[0][0][0], float)  # PACKET_TIMESECONDS
+        assert result[0][1][0] == 100  # VALUE
+        assert isinstance(result[0][2][0], str)  # PACKET_TIMEFORMATTED
+
+        # Second row
+        assert isinstance(result[1][0][0], float)  # PACKET_TIMESECONDS
+        assert result[1][1][0] == 200  # VALUE
+        assert isinstance(result[1][2][0], str)  # PACKET_TIMEFORMATTED
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

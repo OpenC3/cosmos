@@ -201,7 +201,9 @@ def cmd_write(args):
             fmt_val = formatted_values[i]
             columns["VALUE__F"] = fmt_val
 
-        client.write_row(table_name, columns, ts + i * 1_000_000_000)
+        row_ts = ts + i * 1_000_000_000
+        # Pass rx_timestamp_ns so the RECEIVED_TIME* items can be tested
+        client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
 
     client.flush()
 

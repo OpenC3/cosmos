@@ -144,6 +144,10 @@ class LoggedStreamingThread < StreamingThread
     packet_cache = {}
     # Map column index to item type info for decoding
     item_types = []
+    # Track calculated timestamp items: { item_key => { source:, format:, table_index: } }
+    calculated_timestamp_items = {}
+    # Track which source timestamp columns we need to add (column name => index in names array)
+    timestamp_source_columns = {}
 
     start_time = nil
     end_time = nil
@@ -165,9 +169,7 @@ class LoggedStreamingThread < StreamingThread
 
       objects.each do |object|
         break if @cancel_thread
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        # Must match pattern in tsdb_microservice.py create_table() and read_topics()
-        table_name = "#{object.target_name}__#{object.packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
+        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name)
         tables[table_name] = 1
 
         if object.start_time
@@ -182,9 +184,26 @@ class LoggedStreamingThread < StreamingThread
         end
 
         table_index = tables.find_index {|k,v| k == table_name }
-        item_keys << object.item_key
         item = available[item_index]
         tgt, pkt, orig_item_name, value_type = item.split('__')
+
+        # Check if this is a calculated timestamp item
+        if OpenC3::QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
+          # Track this as a calculated item - store the item_key separately
+          calc_info = OpenC3::QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
+          calculated_timestamp_items[object.item_key] = {
+            source: calc_info[:source],
+            format: calc_info[:format],
+            table_index: table_index
+          }
+          # Track that we need this source column
+          source_col = "T#{table_index}.#{calc_info[:source]}"
+          timestamp_source_columns[source_col] ||= nil  # Will be set to actual index later
+          item_index += 1
+          next
+        end
+
+        item_keys << object.item_key
 
         # Look up item type info from packet definition
         cache_key = [tgt, pkt]
@@ -207,9 +226,7 @@ class LoggedStreamingThread < StreamingThread
           end
         end
 
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        # Must match pattern in tsdb_microservice.py read_topics()
-        safe_item_name = orig_item_name.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
+        safe_item_name = OpenC3::QuestDBClient.sanitize_column_name(orig_item_name)
         case value_type
         when 'WITH_UNITS'
           names << "\"T#{table_index}.#{safe_item_name}__U\""
@@ -243,6 +260,24 @@ class LoggedStreamingThread < StreamingThread
       end
     end
     names << "T0.timestamp"
+
+    # Add any additional timestamp source columns needed for calculated items (rx_timestamp if needed)
+    timestamp_source_columns.each_key do |source_col|
+      # T0.timestamp is already added above, but rx_timestamp needs to be added explicitly
+      if source_col.include?('rx_timestamp')
+        timestamp_source_columns[source_col] = names.length
+        names << source_col
+      else
+        # T0.timestamp was already added
+        timestamp_source_columns[source_col] = names.length - 1  # timestamp is always the last item before this loop
+      end
+    end
+
+    # Update calculated_timestamp_items with actual source column indices
+    calculated_timestamp_items.each do |item_key, info|
+      source_col = "T#{info[:table_index]}.#{info[:source]}"
+      info[:source_column_index] = timestamp_source_columns[source_col]
+    end
 
     # Build the SQL query
     query = "SELECT #{names.join(", ")} FROM "
@@ -296,11 +331,17 @@ class LoggedStreamingThread < StreamingThread
           else
             result.each do |tuples|
               entry = { "__type" => "items" }
+              timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
-                if tuple[0] == 'timestamp'
+                col_name = tuple[0]
+                if col_name == 'timestamp'
                   # tuple[1] is a Ruby time object which we convert to nanoseconds
                   entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
-                else
+                  timestamp_values['timestamp'] = tuple[1]
+                elsif col_name == 'rx_timestamp'
+                  # Store for calculated items, don't add to entry
+                  timestamp_values['rx_timestamp'] = tuple[1]
+                elsif index < item_keys.length
                   # Decode value using item type info
                   type_info = item_types[index] || {}
                   entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(
@@ -310,6 +351,15 @@ class LoggedStreamingThread < StreamingThread
                   )
                 end
               end
+
+              # Calculate timestamp items
+              calculated_timestamp_items.each do |item_key, info|
+                ts_value = timestamp_values[info[:source]]
+                ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(ts_value)
+                calculated_value = OpenC3::QuestDBClient.format_timestamp(ts_utc, info[:format])
+                entry[item_key] = calculated_value if calculated_value
+              end
+
               results << entry
             end
             @streaming_api.transmit_results(results)
@@ -615,19 +665,8 @@ class LoggedStreamingThread < StreamingThread
         elsif !column_name.end_with?('__F', '__U') && !columns.key?("#{column_name}__C")
           entry[column_name] = value
         end
-      when :FORMATTED
+      when :FORMATTED, :WITH_UNITS
         # Prefer __F columns, fall back to __C, then base
-        if column_name.end_with?('__F')
-          base_name = column_name.sub(/__F$/, '')
-          entry[base_name] = value
-        elsif column_name.end_with?('__C') && !columns.key?("#{column_name.sub(/__C$/, '')}__F")
-          base_name = column_name.sub(/__C$/, '')
-          entry[base_name] = value
-        elsif !column_name.end_with?('__C', '__F', '__U') && !columns.key?("#{column_name}__F") && !columns.key?("#{column_name}__C")
-          entry[column_name] = value
-        end
-      when :WITH_UNITS
-        # Same as FORMATTED (WITH_UNITS adds units string which isn't stored separately)
         if column_name.end_with?('__F')
           base_name = column_name.sub(/__F$/, '')
           entry[base_name] = value

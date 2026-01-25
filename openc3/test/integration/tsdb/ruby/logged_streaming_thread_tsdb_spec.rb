@@ -188,70 +188,70 @@ RSpec.describe LoggedStreamingThread, :questdb do
 
   describe 'INT (signed integer) streaming' do
     it 'streams INT 8-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'INT8', data_type: 'INT', bit_size: 8,
         values: [-128, -64, -1, 0, 1, 64, 127]
-      )
+      })
     end
 
     it 'streams INT 16-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'INT16', data_type: 'INT', bit_size: 16,
         values: [-32768, -16384, -1, 0, 1, 16384, 32767]
-      )
+      })
     end
 
     it 'streams INT 32-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'INT32', data_type: 'INT', bit_size: 32,
         values: [-2147483647, -1073741824, -1, 0, 1, 1073741824, 2147483647]
-      )
+      })
     end
 
     it 'streams INT 64-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'INT64', data_type: 'INT', bit_size: 64,
         values: [-9223372036854775807, -4611686018427387904, -1, 0, 1, 4611686018427387904, 9223372036854775807]
-      )
+      })
     end
   end
 
   describe 'UINT (unsigned integer) streaming' do
     it 'streams UINT 8-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'UINT8', data_type: 'UINT', bit_size: 8,
         values: [0, 1, 64, 127, 128, 192, 255]
-      )
+      })
     end
 
     it 'streams UINT 16-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'UINT16', data_type: 'UINT', bit_size: 16,
         values: [0, 1, 16384, 32767, 32768, 49152, 65535]
-      )
+      })
     end
 
     it 'streams UINT 32-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'UINT32', data_type: 'UINT', bit_size: 32,
         values: [0, 1, 1073741824, 2147483647, 2147483648, 3221225472, 4294967295]
-      )
+      })
     end
 
     it 'streams UINT 64-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'UINT64', data_type: 'UINT', bit_size: 64,
         values: [0, 1, 4611686018427387904, 9223372036854775807]
-      )
+      })
     end
   end
 
   describe 'FLOAT streaming' do
     it 'streams FLOAT 32-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'FLOAT32', data_type: 'FLOAT', bit_size: 32,
         values: [-3.4028235e38, -1.0, 0.0, 1.0, 3.4028235e38]
-      ) do |exp_val, actual, i|
+      }) do |exp_val, actual, i|
         if exp_val == 0.0
           expect(actual).to eq(0.0)
         else
@@ -262,10 +262,10 @@ RSpec.describe LoggedStreamingThread, :questdb do
     end
 
     it 'streams FLOAT 64-bit values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'FLOAT64', data_type: 'FLOAT', bit_size: 64,
         values: [-1.7976931348623157e308, -1.0, 0.0, 1.0, 1.7976931348623157e308]
-      ) do |exp_val, actual, i|
+      }) do |exp_val, actual, i|
         if exp_val == 0.0
           expect(actual).to eq(0.0)
         else
@@ -278,10 +278,10 @@ RSpec.describe LoggedStreamingThread, :questdb do
 
   describe 'STRING streaming' do
     it 'streams STRING values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'STRING', data_type: 'STRING',
         values: ['', 'hello', 'Hello World!', 'CONNECTED', '0x1234ABCD', "with\nnewline", 'unicode: éèêë']
-      )
+      })
     end
   end
 
@@ -297,10 +297,10 @@ RSpec.describe LoggedStreamingThread, :questdb do
       ]
       base64_values = test_binaries.map { |b| Base64.strict_encode64(b) }
 
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'BLOCK', data_type: 'BLOCK',
         values: base64_values
-      ) do |exp_val, actual, i|
+      }) do |exp_val, actual, i|
         actual = actual.force_encoding('ASCII-8BIT') if actual.is_a?(String)
         exp_val = exp_val.force_encoding('ASCII-8BIT') if exp_val.is_a?(String)
         expect(actual).to eq(exp_val), "Binary mismatch at index #{i}"
@@ -310,30 +310,30 @@ RSpec.describe LoggedStreamingThread, :questdb do
 
   describe 'DERIVED streaming' do
     it 'streams DERIVED integer values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'DERIVED_INT', data_type: 'DERIVED',
         values: [42, -100, 0, 999999]
-      )
+      })
     end
 
     it 'streams DERIVED float values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'DERIVED_FLOAT', data_type: 'DERIVED',
         values: [3.14159, -2.71828, 0.0, 1e10]
-      )
+      })
     end
 
     it 'streams DERIVED string values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'DERIVED_STR', data_type: 'DERIVED',
         values: ['hello', 'world', 'CONNECTED']
-      )
+      })
     end
   end
 
   describe 'Array streaming' do
     it 'streams numeric arrays correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'ARRAY_NUM', data_type: 'FLOAT', array_size: 10,
         values: [
           [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -341,35 +341,35 @@ RSpec.describe LoggedStreamingThread, :questdb do
           [1e10, 1e-10, 0.0],
           [100, 200, 300]
         ]
-      )
+      })
     end
 
     it 'streams string arrays correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'ARRAY_STR', data_type: 'STRING', array_size: 10,
         values: [
           ['a', 'b', 'c'],
           ['CONNECTED', 'DISCONNECTED', 'UNKNOWN'],
           ['hello', 'world']
         ]
-      )
+      })
     end
 
     it 'streams mixed-type arrays correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'ARRAY_MIX', data_type: 'DERIVED', array_size: 10,
         values: [
           [1, 'two', 3.0, true],
           [nil, 'hello', 42],
           [true, false, 'yes', 'no']
         ]
-      )
+      })
     end
   end
 
   describe 'Object streaming' do
     it 'streams simple OBJECT values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'OBJ_SIMPLE', data_type: 'DERIVED',
         values: [
           {},
@@ -377,21 +377,21 @@ RSpec.describe LoggedStreamingThread, :questdb do
           { 'name' => 'test', 'count' => 42 },
           { 'nested' => { 'inner' => 'value' } }
         ]
-      ) do |exp_val, actual, i|
+      }) do |exp_val, actual, i|
         actual = JSON.parse(actual) if actual.is_a?(String)
         expect(actual).to eq(exp_val), "Object mismatch at index #{i}"
       end
     end
 
     it 'streams complex OBJECT values correctly' do
-      run_streaming_test(
+      run_streaming_test({
         target: 'STREAM', packet: 'OBJ_COMPLEX', data_type: 'DERIVED',
         values: [
           { 'int' => 42, 'float' => 3.14, 'string' => 'hello', 'bool' => true, 'null' => nil },
           { 'array' => [1, 2, 3], 'nested' => { 'a' => 1, 'b' => 2 } },
           { 'mixed_array' => [1, 'two', 3.0, true] }
         ]
-      ) do |exp_val, actual, i|
+      }) do |exp_val, actual, i|
         actual = JSON.parse(actual) if actual.is_a?(String)
         expect(actual).to eq(exp_val), "Object mismatch at index #{i}"
       end
@@ -424,6 +424,130 @@ RSpec.describe LoggedStreamingThread, :questdb do
         value_type: :FORMATTED,
         expected_key: 'expected_formatted'
       )
+    end
+  end
+
+  describe 'Calculated timestamp items' do
+    # Helper to run timestamp streaming tests
+    def run_timestamp_stream_test(item_name, format_type)
+      test_params = write_test_data(
+        target: 'STREAM', packet: "TS_#{item_name}", data_type: 'INT', bit_size: 32,
+        values: [1, 2, 3]
+      )
+      expect(test_params['success']).to be true
+
+      obj = MockStreamingObject.new(
+        target: test_params['target_name'],
+        packet: test_params['packet_name'],
+        item: item_name,
+        value_type: :RAW,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+      )
+      # Update the item_key to match the timestamp item name
+      obj.item_key = "#{obj.target_name}__#{obj.packet_name}__#{item_name}__RAW"
+
+      thread = create_thread([obj])
+
+      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+      available_items = ["#{obj.target_name}__#{obj.packet_name}__#{item_name}__RAW"]
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      objects_by_topic = { obj.topic => [obj] }
+      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
+
+      expect(streaming_api.transmitted_results.length).to eq(3)
+
+      expected_start = Time.parse(test_params['start_time'])
+
+      streaming_api.transmitted_results.each_with_index do |result, i|
+        expect(result['__type']).to eq('items')
+        actual = result[obj.item_key]
+        expected_time = expected_start + i
+
+        case format_type
+        when :seconds
+          expect(actual).to be_a(Float), "Expected Float at index #{i}, got #{actual.class}"
+          expect(actual).to be_within(0.001).of(expected_time.to_f),
+            "Timestamp seconds mismatch at index #{i}: expected #{expected_time.to_f}, got #{actual}"
+        when :formatted
+          expect(actual).to be_a(String), "Expected String at index #{i}, got #{actual.class}"
+          # Verify it's ISO 8601 format with Z timezone suffix
+          expect(actual).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
+            "Expected ISO 8601 format at index #{i}, got #{actual}"
+          parsed = Time.parse(actual)
+          expect(parsed.to_f).to be_within(0.001).of(expected_time.to_f),
+            "Timestamp formatted mismatch at index #{i}: expected #{expected_time}, got #{actual}"
+        end
+      end
+    end
+
+    it 'streams PACKET_TIMESECONDS correctly' do
+      run_timestamp_stream_test('PACKET_TIMESECONDS', :seconds)
+    end
+
+    it 'streams PACKET_TIMEFORMATTED correctly' do
+      run_timestamp_stream_test('PACKET_TIMEFORMATTED', :formatted)
+    end
+
+    it 'streams RECEIVED_TIMESECONDS correctly' do
+      run_timestamp_stream_test('RECEIVED_TIMESECONDS', :seconds)
+    end
+
+    it 'streams RECEIVED_TIMEFORMATTED correctly' do
+      run_timestamp_stream_test('RECEIVED_TIMEFORMATTED', :formatted)
+    end
+
+    it 'streams timestamp items alongside regular items' do
+      test_params = write_test_data(
+        target: 'STREAM', packet: 'TS_MIXED_STREAM', data_type: 'INT', bit_size: 32,
+        values: [100, 200]
+      )
+      expect(test_params['success']).to be true
+
+      # Create streaming objects for both regular and timestamp items
+      obj_ts = MockStreamingObject.new(
+        target: test_params['target_name'],
+        packet: test_params['packet_name'],
+        item: 'PACKET_TIMESECONDS',
+        value_type: :RAW,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+      )
+      obj_ts.item_key = "#{obj_ts.target_name}__#{obj_ts.packet_name}__PACKET_TIMESECONDS__RAW"
+
+      obj_val = MockStreamingObject.new(
+        target: test_params['target_name'],
+        packet: test_params['packet_name'],
+        item: 'VALUE',
+        value_type: :RAW,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+      )
+
+      thread = create_thread([obj_ts, obj_val])
+
+      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+      available_items = [
+        "#{obj_ts.target_name}__#{obj_ts.packet_name}__PACKET_TIMESECONDS__RAW",
+        "#{obj_val.target_name}__#{obj_val.packet_name}__VALUE__RAW"
+      ]
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      objects_by_topic = { obj_ts.topic => [obj_ts, obj_val] }
+      thread.send(:stream_items, objects_by_topic, [obj_ts.topic], [obj_ts.offset])
+
+      expect(streaming_api.transmitted_results.length).to eq(2)
+
+      # First row
+      result = streaming_api.transmitted_results[0]
+      expect(result[obj_ts.item_key]).to be_a(Float)
+      expect(result[obj_val.item_key]).to eq(100)
+
+      # Second row
+      result = streaming_api.transmitted_results[1]
+      expect(result[obj_ts.item_key]).to be_a(Float)
+      expect(result[obj_val.item_key]).to eq(200)
     end
   end
 
