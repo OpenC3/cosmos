@@ -23,13 +23,12 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-
 jobs:
   build-and-commit:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # 'environment: Release' is required to access the secrets.QA_PAT
     # See https://github.com/OpenC3/cosmos/settings/secrets/actions
     environment: Release

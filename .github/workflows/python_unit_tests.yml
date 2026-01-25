@@ -28,9 +28,6 @@ on:
 env:
   OPENC3_CLOUD: local
 
-permissions:
-  contents: read
-
 jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -38,6 +35,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6

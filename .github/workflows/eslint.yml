@@ -27,6 +27,7 @@ on:
     paths:
       - "openc3-cosmos-init/plugins/packages/**"
 
+# All jobs need permission to read repo contents
 permissions:
   contents: read
 

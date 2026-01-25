@@ -32,12 +32,11 @@ on:
       - ".github/workflows/tsdb_integration_tests.yml"
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   tsdb-integration-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     services:
       questdb:

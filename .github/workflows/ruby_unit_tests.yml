@@ -29,9 +29,6 @@ env:
   RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
 
-permissions:
-  contents: read
-
 jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -39,6 +36,8 @@ jobs:
     strategy:
       matrix:
         ruby-version: ["3.4"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6

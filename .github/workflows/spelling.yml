@@ -25,13 +25,12 @@ on:
     branches:
       - "**"
 
-permissions:
-  contents: read
-
 jobs:
   spelling:
     name: Codespell
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: codespell-project/actions-codespell@v2

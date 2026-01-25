@@ -25,13 +25,12 @@ on:
     branches:
       - "**"
 
-permissions:
-  contents: read
-
 jobs:
   openc3-clamav-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - name: Set up Ruby 3.4
