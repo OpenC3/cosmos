@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -650,15 +650,15 @@ export default {
       this.dataChanged = true
     },
     graphMinY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
         this.graphMinY = val
       }
       this.setGraphRange()
     },
     graphMaxY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
         this.graphMaxY = val
       }
       this.setGraphRange()
@@ -793,7 +793,7 @@ export default {
           },
           width: 2,
           value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || isNaN(rawValue)) {
+            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
               return 'NaN'
             } else {
               return rawValue == null ? '--' : rawValue.toFixed(3)
@@ -1598,7 +1598,7 @@ export default {
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
         width: 2,
         value: (self, rawValue) => {
-          if (typeof rawValue === 'string' || isNaN(rawValue)) {
+          if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
           } else if (rawValue == null) {
             return '--'

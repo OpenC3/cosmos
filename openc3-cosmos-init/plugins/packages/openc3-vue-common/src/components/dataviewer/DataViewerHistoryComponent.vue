@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -220,7 +220,7 @@ export default {
         required: (value) => !!value || 'Required.',
         min: (value) => value >= 1 || 'Minimum: 1',
         max: (value) =>
-          parseInt(value) <= this.currentConfig.history ||
+          Number.parseInt(value) <= this.currentConfig.history ||
           `Maximum: ${this.currentConfig.history}`,
       },
     }
@@ -242,7 +242,7 @@ export default {
           packet.buffer = atob(packet.buffer)
         }
         this.historyPointer = ++this.historyPointer % this.currentConfig.history
-        if (isNaN(this.historyPointer)) {
+        if (Number.isNaN(this.historyPointer)) {
           this.historyPointer = 0
         }
         this.history[this.historyPointer] = packet

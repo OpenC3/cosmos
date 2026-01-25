@@ -207,9 +207,9 @@ export default {
       // Try to parse 24-hour format: HH:mm:ss or HH:mm
       const time24Match = input.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
       if (time24Match) {
-        const hours = parseInt(time24Match[1], 10)
-        const minutes = parseInt(time24Match[2], 10)
-        const seconds = time24Match[3] ? parseInt(time24Match[3], 10) : 0
+        const hours = Number.parseInt(time24Match[1], 10)
+        const minutes = Number.parseInt(time24Match[2], 10)
+        const seconds = time24Match[3] ? Number.parseInt(time24Match[3], 10) : 0
         if (
           hours >= 0 &&
           hours <= 23 &&
@@ -227,9 +227,9 @@ export default {
         /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)$/i,
       )
       if (time12Match) {
-        let hours = parseInt(time12Match[1], 10)
-        const minutes = parseInt(time12Match[2], 10)
-        const seconds = time12Match[3] ? parseInt(time12Match[3], 10) : 0
+        let hours = Number.parseInt(time12Match[1], 10)
+        const minutes = Number.parseInt(time12Match[2], 10)
+        const seconds = time12Match[3] ? Number.parseInt(time12Match[3], 10) : 0
         const period = time12Match[4].toUpperCase()
 
         if (
@@ -265,7 +265,7 @@ export default {
       if (!time24) return ''
       const parts = time24.split(':')
       if (parts.length < 2) return time24
-      let hours = parseInt(parts[0], 10)
+      let hours = Number.parseInt(parts[0], 10)
       const minutes = parts[1]
       const seconds = parts.length > 2 ? parts[2] : '00'
       const ampm = hours >= 12 ? 'PM' : 'AM'

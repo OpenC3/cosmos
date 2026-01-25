@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -72,9 +72,9 @@ export default {
 
         // Override the values where we switch icons
         case 'VALUES':
-          this.oneBar = parseFloat(setting[1])
-          this.twoBar = parseFloat(setting[2])
-          this.threeBar = parseFloat(setting[3])
+          this.oneBar = Number.parseFloat(setting[1])
+          this.twoBar = Number.parseFloat(setting[2])
+          this.threeBar = Number.parseFloat(setting[3])
           break
       }
     })

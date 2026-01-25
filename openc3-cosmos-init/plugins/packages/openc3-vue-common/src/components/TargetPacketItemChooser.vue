@@ -379,7 +379,7 @@ export default {
       let i = this.itemNames.findIndex(
         (item) => item.value === this.selectedItemName,
       )
-      if (i === -1 || isNaN(this.itemNames[i].array)) {
+      if (i === -1 || Number.isNaN(this.itemNames[i].array)) {
         return false
       } else {
         return true
