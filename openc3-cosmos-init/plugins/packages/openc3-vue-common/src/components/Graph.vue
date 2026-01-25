@@ -793,7 +793,7 @@ export default {
           },
           width: 2,
           value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || Number.isNan(rawValue)) {
+            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
               return 'NaN'
             } else {
               return rawValue == null ? '--' : rawValue.toFixed(3)
@@ -1598,7 +1598,7 @@ export default {
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
         width: 2,
         value: (self, rawValue) => {
-          if (typeof rawValue === 'string' || Number.isNan(rawValue)) {
+          if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
           } else if (rawValue == null) {
             return '--'

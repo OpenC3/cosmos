@@ -242,7 +242,7 @@ export default {
           packet.buffer = atob(packet.buffer)
         }
         this.historyPointer = ++this.historyPointer % this.currentConfig.history
-        if (isNaN(this.historyPointer)) {
+        if (Number.isNaN(this.historyPointer)) {
           this.historyPointer = 0
         }
         this.history[this.historyPointer] = packet

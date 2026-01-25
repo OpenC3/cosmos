@@ -53,7 +53,7 @@ export default {
       if (value === null) {
         value = this.screenValues[this.valueId][0]
       }
-      return Number.parseInt(parseFloat(value) * this.scaleFactor)
+      return Number.parseInt(Number.parseFloat(value) * this.scaleFactor)
     },
   },
   created: function () {

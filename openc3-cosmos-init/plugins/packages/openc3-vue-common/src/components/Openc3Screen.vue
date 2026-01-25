@@ -571,7 +571,7 @@ export default {
                 // Validate width - must be numeric or 'AUTO'
                 if (parameters[0].toUpperCase() === 'AUTO') {
                   this.width = null
-                } else if (Number.isFinite(parseInt(parameters[0]))) {
+                } else if (Number.isFinite(Number.parseInt(parameters[0]))) {
                   this.width = Number.parseInt(parameters[0])
                 } else {
                   throw new ConfigParserError(
@@ -583,7 +583,7 @@ export default {
                 // Validate height - must be numeric or 'AUTO'
                 if (parameters[1].toUpperCase() === 'AUTO') {
                   this.height = null
-                } else if (Number.isFinite(parseInt(parameters[1]))) {
+                } else if (Number.isFinite(Number.parseInt(parameters[1]))) {
                   this.height = Number.parseInt(parameters[1])
                 } else {
                   throw new ConfigParserError(
@@ -621,7 +621,7 @@ export default {
                   `${keyword} <Time (s)>`,
                 )
                 this.staleTime = Number.parseInt(parameters[0])
-                if (isNaN(this.staleTime)) {
+                if (Number.isNaN(this.staleTime)) {
                   throw new ConfigParserError(
                     this.configParser,
                     `SCREEN stale time must be a number, got '${parameters[0]}'`,
@@ -661,13 +661,16 @@ export default {
                   2,
                   `${keyword} <Tooltip Text> <Delay (ms)>`,
                 )
-                let delay = Number.parseInt(parameters[1])
-                if (isNaN(delay)) {
-                  throw new ConfigParserError(
-                    this.configParser,
-                    `SCREEN tooltip delay must be a number, got '${parameters[1]}'`,
-                    `${keyword} <Tooltip Text> <Delay (ms)>`,
-                  )
+                let delay = 600 // Default delay in ms
+                if (parameters[1] !== undefined) {
+                  delay = Number.parseInt(parameters[1])
+                  if (Number.isNaN(delay)) {
+                    throw new ConfigParserError(
+                      this.configParser,
+                      `SCREEN tooltip delay must be a number, got '${parameters[1]}'`,
+                      `${keyword} <Tooltip Text> <Delay (ms)>`,
+                    )
+                  }
                 }
 
                 // Add TOOLTIP to the previous widget's settings (like SETTING does)

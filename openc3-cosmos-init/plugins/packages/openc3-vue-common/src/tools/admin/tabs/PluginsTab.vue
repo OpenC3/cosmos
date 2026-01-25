@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -325,7 +325,7 @@ export default {
     },
     formatDate(nanoSecs) {
       return format(
-        toDate(parseInt(nanoSecs) / 1000000),
+        toDate(Number.parseInt(nanoSecs) / 1000000),
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },

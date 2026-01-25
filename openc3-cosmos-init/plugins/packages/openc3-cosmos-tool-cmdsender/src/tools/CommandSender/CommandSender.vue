@@ -438,7 +438,7 @@ export default {
           let jstr = { json_class: 'String', raw: [] }
           for (let i = 0; i < hexStr.length; i += 2) {
             let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
-            jstr.raw.push(parseInt(nibble, 16))
+            jstr.raw.push(Number.parseInt(nibble, 16))
           }
           return jstr
         } else {
