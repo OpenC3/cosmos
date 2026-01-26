@@ -90,7 +90,7 @@ def _openc3_script_sleep(sleep_time=None):
                 return True
 
             if RunningScript.instance.stop:
-                raise StopScript
+                raise StopScriptError
     return False
 
 
@@ -116,7 +116,7 @@ import openc3.utilities.target_file_importer  # DO NOT REMOVE - Makes import tar
 from openc3.environment import *
 from openc3.io.stderr import Stderr
 from openc3.io.stdout import Stdout
-from openc3.script.exceptions import CheckError, SkipScript, StopScript
+from openc3.script.exceptions import CheckError, SkipScriptError, StopScriptError
 from openc3.script.suite import Group
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.top_level import kill_thread
@@ -519,7 +519,7 @@ class RunningScript:
 
             # Handle stopping mid-script if necessary
             if self.stop:
-                raise StopScript
+                raise StopScriptError
 
             self.handle_potential_tab_change(filename)
 
@@ -550,8 +550,8 @@ class RunningScript:
     def exception_instrumentation(self, filename, line_number):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         if (
-            exc_type == StopScript
-            or exc_type == SkipScript
+            exc_type == StopScriptError
+            or exc_type == SkipScriptError
             or exc_type == SkipTestCase  # DEPRECATED but still valid
             or not self.use_instrumentation
         ):
@@ -763,7 +763,7 @@ class RunningScript:
         self.go = False
         self.mark_running()
         if self.stop:
-            raise StopScript
+            raise StopScriptError
         if error and not self.continue_after_error:
             raise error
 
@@ -787,7 +787,7 @@ class RunningScript:
         self.go = False
         self.mark_running()
         if self.stop:
-            raise StopScript
+            raise StopScriptError
         if error and not self.continue_after_error:
             raise error
 
@@ -1032,7 +1032,7 @@ class RunningScript:
             self.scriptrunner_puts(f"Script completed: {self.script_status.filename}")
 
         except Exception as error:
-            if isinstance(error, (StopScript, SkipScript)):
+            if isinstance(error, (StopScriptError, SkipScriptError)):
                 self.handle_output_io()
                 self.scriptrunner_puts(f"Script stopped: {self.script_status.filename}")
             else:
@@ -1394,7 +1394,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         )
         RunningScript.instance.script_status.update(queued=True)
-        raise StopScript
+        raise StopScriptError
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached

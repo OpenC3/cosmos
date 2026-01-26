@@ -23,7 +23,7 @@ from openc3.logs.stream_log import StreamLog
 class TestStreamLog(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()

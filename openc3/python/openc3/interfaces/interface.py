@@ -75,7 +75,7 @@ class Interface:
         self.config_params = []
         self.interfaces = []
         self.stream_log_pair = None
-        self.secrets = Secrets.getClient()
+        self.secrets = Secrets.get_client()
         self.name = self.__class__.__name__
         self.scheduler = None
         self.scheduler_thread = None

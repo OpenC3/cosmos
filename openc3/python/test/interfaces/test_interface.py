@@ -123,7 +123,7 @@ class Initialize(unittest.TestCase):
 
 class ReadInterface(unittest.TestCase):
     def setUp(self):
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()
@@ -379,7 +379,7 @@ class ReadInterface(unittest.TestCase):
 class WriteInterface(unittest.TestCase):
     def setUp(self):
         self.packet = Packet("TGT", "PKT", "BIG_ENDIAN", "Packet", b"\x01\x02\x03\x04")
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()

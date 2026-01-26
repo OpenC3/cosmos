@@ -548,7 +548,7 @@ class TargetModel(Model):
             config += "\n"
         for target_name, config in configs.items():
             bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
-            client = Bucket.getClient()
+            client = Bucket.get_client()
             client.put_object(
                 # Use targets_modified to save modifications
                 # This keeps the original target clean (read-only)

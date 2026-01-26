@@ -29,7 +29,7 @@ class Secrets:
         self.local_secrets = {}
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         if os.getenv("OPENC3_SECRET_BACKEND") is None:
             raise RuntimeError("OPENC3_SECRET_BACKEND environment variable is required")
         secrets_file = os.getenv("OPENC3_SECRET_BACKEND").lower() + "_secrets"

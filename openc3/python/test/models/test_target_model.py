@@ -274,7 +274,7 @@ class TestTargetModelDynamic(unittest.TestCase):
         setup_system()
         self.model = TargetModel(folder_name=self.target, name="INST", scope=self.scope)
         self.model.create()
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.models.target_model.Bucket", BucketMock)
         self.patcher.start()

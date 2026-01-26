@@ -16,7 +16,7 @@
 
 import inspect
 
-from openc3.script.exceptions import StopScript
+from openc3.script.exceptions import StopScriptError
 from openc3.tools.test_runner.test import Test, TestSuite
 
 from .suite import Group, ScriptStatus, Suite
@@ -62,17 +62,17 @@ class SuiteRunner:
                 result = suite.run_script(group_class, script)
                 SuiteRunner.suite_results.process_result(result)
                 if (result.exceptions and SuiteRunner.settings["Abort After Error"]) or result.stopped:
-                    raise StopScript
+                    raise StopScriptError
             elif group_class:
                 for result in suite.run_group(group_class):
                     SuiteRunner.suite_results.process_result(result)
                     if result.stopped:
-                        raise StopScript
+                        raise StopScriptError
             else:
                 for result in suite.run():
                     SuiteRunner.suite_results.process_result(result)
                     if result.stopped:
-                        raise StopScript
+                        raise StopScriptError
 
     @classmethod
     def setup(cls, suite_class, group_class=None):
@@ -85,7 +85,7 @@ class SuiteRunner:
             if result:
                 SuiteRunner.suite_results.process_result(result)
                 if result.stopped:
-                    raise StopScript
+                    raise StopScriptError
 
     @classmethod
     def teardown(cls, suite_class, group_class=None):
@@ -98,7 +98,7 @@ class SuiteRunner:
             if result:
                 SuiteRunner.suite_results.process_result(result)
                 if result.stopped:
-                    raise StopScript
+                    raise StopScriptError
 
     # Build list of Suites and Groups
     @classmethod

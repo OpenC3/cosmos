@@ -33,7 +33,7 @@ from openc3.models.script_status_model import ScriptStatusModel
 start_time = time.time()
 
 # Load the bucket client code to ensure we authenticate outside ENV vars
-Bucket.getClient()
+Bucket.get_client()
 
 del os.environ["OPENC3_BUCKET_USERNAME"]
 del os.environ["OPENC3_BUCKET_PASSWORD"]

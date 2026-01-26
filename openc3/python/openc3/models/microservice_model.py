@@ -119,7 +119,7 @@ class MicroserviceModel(Model):
         self.enabled = enabled
         if self.enabled is None:
             self.enabled = True
-        self.bucket = Bucket.getClient()
+        self.bucket = Bucket.get_client()
 
     def as_json(self):
         return {

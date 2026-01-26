@@ -142,7 +142,7 @@ class BucketMock:
         self.objs = {}
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         if cls.instance:
             return cls.instance
         cls.instance = cls()

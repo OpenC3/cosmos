@@ -17,17 +17,17 @@
 import importlib
 import inspect
 
-from openc3.environment import *
+from openc3.environment import OPENC3_CLOUD
 
 
 # Interface class implemented by each cloud provider: AWS, GCS, Azure
 class Bucket:
     # Raised when the underlying bucket does not exist
-    class NotFound(Exception):
+    class NotFoundError(Exception):
         pass
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         if not OPENC3_CLOUD:
             raise RuntimeError("OPENC3_CLOUD environment variable is required")
         # Base is AwsBucket which works with S3-compatible storage (versitygw), Enterprise implements additional

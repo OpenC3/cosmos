@@ -111,7 +111,7 @@ class Microservice:
         self.logger = Logger()
         self.logger.scope = self.scope
         self.logger.microservice_name = self.name
-        self.secrets = Secrets.getClient()
+        self.secrets = Secrets.get_client()
 
         # OpenC3.setup_open_telemetry(self.name, False)
 
@@ -155,7 +155,7 @@ class Microservice:
             # Get Microservice files from bucket storage
             temp_dir = tempfile.TemporaryDirectory()
             bucket = OPENC3_CONFIG_BUCKET
-            client = Bucket.getClient()
+            client = Bucket.get_client()
 
             prefix = f"{self.scope}/microservices/{self.name}/"
             file_count = 0

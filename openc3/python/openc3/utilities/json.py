@@ -32,7 +32,7 @@ class JsonEncoder(json.JSONEncoder):
 
 class JsonDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)  # noqa: B026
 
     def object_hook(self, dct):
         if dct.get("json_class") == "String":

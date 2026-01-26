@@ -171,7 +171,7 @@ class System(metaclass=SystemMeta):
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
         if not System.instance_obj:  # type: ignore[has-type]
             os.makedirs(f"{base_dir}/targets", exist_ok=True)
-            bucket = Bucket.getClient()
+            bucket = Bucket.get_client()
             for target_name in target_names:
                 # Retrieve bucket/targets/target_name/<TARGET>_current.zip
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"

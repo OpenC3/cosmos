@@ -31,7 +31,7 @@ class Helper:
 """.encode()
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         class FakeBucket:
             def list_files(
                 self, bucket, prefix=None, max_request=1000, max_total=100_000
@@ -47,7 +47,7 @@ class Helper:
     # Seems like this creates a mock which allows us to import target_file_importer
     # but then the mock that actually gets passed into the method is a different
     # mock which we don't have control on so I'm not sure how to install methods on it
-    with patch("openc3.utilities.bucket.Bucket.getClient") as mock_method:
+    with patch("openc3.utilities.bucket.Bucket.get_client") as mock_method:
         import openc3.utilities.bucket
         import openc3.utilities.target_file
         import openc3.utilities.target_file_importer
@@ -56,7 +56,7 @@ class Helper:
         # mock_method.list_files = [1, 2]
 
     @patch.object(openc3.utilities.target_file.TargetFile, "body", new_body)
-    @patch.object(openc3.utilities.bucket.Bucket, "getClient", getClient)
+    @patch.object(openc3.utilities.bucket.Bucket, "get_client", get_client)
     def test_import(self):
         pass
         # from INST2.lib.helper import Helper

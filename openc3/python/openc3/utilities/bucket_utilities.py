@@ -59,7 +59,7 @@ class BucketUtilities:
         if metadata is None:
             metadata = {}
         try:
-            client = Bucket.getClient()
+            client = Bucket.get_client()
 
             orig_filename = None
             if os.path.splitext(filename)[1] != ".txt":

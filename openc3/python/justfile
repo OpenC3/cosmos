@@ -80,6 +80,10 @@ lint-stats:
 test:
     uv run pytest
 
+# Run tests that failed in the last run
+test-failed:
+    uv run pytest --last-failed
+
 # Run tests with coverage report
 test-cov:
     uv run coverage run -m pytest && uv run coverage report

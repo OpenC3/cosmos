@@ -263,7 +263,7 @@ class TestSystem(unittest.TestCase):
 
         # Mock the bucket client
         mock_bucket = MagicMock()
-        mock_bucket_class.getClient.return_value = mock_bucket
+        mock_bucket_class.get_client.return_value = mock_bucket
         mock_bucket.list_files.return_value = (None, [])
 
         # Create a temporary directory for testing

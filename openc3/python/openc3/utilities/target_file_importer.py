@@ -28,7 +28,7 @@ from openc3.utilities.target_file import TargetFile
 # PathFinder locates modules according to a path like structure
 # which is what we're doing with target file imports
 _real_pathfinder = sys.meta_path[-1]
-_bucket_client = Bucket.getClient()
+_bucket_client = Bucket.get_client()
 
 
 class MyLoader(importlib.abc.Loader):

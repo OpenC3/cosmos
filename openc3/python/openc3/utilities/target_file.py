@@ -29,7 +29,7 @@ class TargetFile:
             if local_file:
                 return local_file.read()
 
-        bucket = Bucket.getClient()
+        bucket = Bucket.get_client()
         resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
         if not resp:
             # Now try the original
