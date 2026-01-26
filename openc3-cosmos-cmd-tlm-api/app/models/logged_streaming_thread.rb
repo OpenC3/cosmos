@@ -42,6 +42,7 @@ class LoggedStreamingThread < StreamingThread
     @scope = scope
     @token = token
     @@conn_mutex = Mutex.new
+    @@conn = nil unless defined?(@@conn)
     @local_api = OpenC3::LocalApi.new
   end
 
