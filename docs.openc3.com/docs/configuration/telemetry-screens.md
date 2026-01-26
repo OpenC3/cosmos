@@ -123,7 +123,7 @@ The SCREEN keyword is the first keyword in any telemetry screen definition. It d
 |-----------|-------------|----------|
 | Width | Width in pixels or AUTO to let Telemetry Viewer automatically layout the screen | True |
 | Height | Height in pixels or AUTO to let Telemetry Viewer automatically layout the screen | True |
-| Polling Period | Number of seconds between screen updates | True |
+| Polling Period | Number of seconds between screen updates. 0 means disable polling. | True |
 
 Example Usage:
 ```ruby
