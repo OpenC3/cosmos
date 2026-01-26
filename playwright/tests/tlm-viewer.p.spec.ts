@@ -293,7 +293,7 @@ test('opens SCREEN documentation from context menu', async ({
   })
 })
 
-test.only('plays back to a screen', async ({ page, utils }) => {
+test('plays back to a screen', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'ADCS', async function () {
     // Helper to parse timestamp string to epoch seconds
     const parseTime = (timeStr: string): number => {
@@ -330,8 +330,8 @@ test.only('plays back to a screen', async ({ page, utils }) => {
     const [time, period] = timeValue.split(' ')
     const [hours, minutes, seconds] = time.split(':')
     // Playback defaults to 1 hr in the past so add 1 hr and subtract 2 min
-    const newHours = String(parseInt(hours) + 1).padStart(2, '0')
-    const newMinutes = String(parseInt(minutes) - 2).padStart(2, '0')
+    const newHours = String(Number.parseInt(hours) + 1).padStart(2, '0')
+    const newMinutes = String(Number.parseInt(minutes) - 2).padStart(2, '0')
     const newTime = `${newHours}:${newMinutes}:${seconds} ${period}`
     await page.getByRole('textbox', { name: 'Time' }).fill(newTime)
 

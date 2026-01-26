@@ -271,7 +271,11 @@ export default {
       const minutes = Number.parseInt(parts[1], 10)
       // Strip milliseconds from seconds (e.g., "45.123" -> 45)
       const seconds = parts.length > 2 ? Number.parseInt(parts[2], 10) : 0
-      if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) {
+      if (
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes) ||
+        Number.isNaN(seconds)
+      ) {
         return ''
       }
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
@@ -285,7 +289,11 @@ export default {
       // Strip milliseconds from seconds (e.g., "45.123" -> 45)
       const seconds = parts.length > 2 ? Number.parseInt(parts[2], 10) : 0
       // Validate all parts are valid numbers
-      if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) {
+      if (
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes) ||
+        Number.isNaN(seconds)
+      ) {
         return time24 // Return original if parsing fails
       }
       const ampm = hours >= 12 ? 'PM' : 'AM'
