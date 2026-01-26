@@ -57,24 +57,24 @@ S3/MinIO Logs Bucket          Migration Microservice              QuestDB
 
 - Python 3.10+
 - Docker (for QuestDB integration testing)
-- Poetry
+- UV (Python package manager)
 
 ## Installation
 
-The migration microservice depends on the `openc3` Python package. Install using Poetry:
+The migration microservice depends on the `openc3` Python package. Install using UV:
 
 ```bash
-# From the cosmos repository root, install the openc3 package
+# From the cosmos repository root, install the openc3 package with dev dependencies
 cd openc3/python
-poetry install
+uv sync  # Installs all dependencies including dev group (pytest, coverage, etc.)
 
-# Install test dependencies (pytest, psycopg, questdb are included in openc3)
-# Tests are run from the openc3/python poetry environment
+# Tests are run from the openc3/python UV environment
+# Note: pytest, psycopg, and questdb dependencies are included in the openc3 package
 ```
 
 ## Running Tests
 
-All tests are run using the `openc3/python` Poetry environment.
+All tests are run using the `openc3/python` UV environment.
 
 ### Unit Tests (No QuestDB Required)
 
@@ -82,7 +82,7 @@ Run the bin file processor tests:
 
 ```bash
 cd openc3/python
-poetry run pytest ../../openc3-cosmos-migration/tests/test_bin_file_processor.py -v
+uv run pytest ../../openc3-cosmos-migration/tests/test_bin_file_processor.py -v
 ```
 
 ### Integration Tests (Requires QuestDB)
@@ -105,7 +105,7 @@ docker compose -f docker-compose.test.yml ps
 
 ```bash
 cd openc3/python
-poetry run pytest ../../openc3-cosmos-migration/tests/test_questdb_integration.py -v
+uv run pytest ../../openc3-cosmos-migration/tests/test_questdb_integration.py -v
 ```
 
 4. Stop QuestDB when done:
@@ -125,7 +125,7 @@ sleep 10
 
 # Run all tests from openc3/python
 cd ../openc3/python
-poetry run pytest ../../openc3-cosmos-migration/ -v
+uv run pytest ../../openc3-cosmos-migration/ -v
 
 # Stop QuestDB
 cd ../../openc3-cosmos-migration
