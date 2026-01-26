@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -52,6 +52,19 @@ async function showScreen(
   await page.locator('[data-test=close-screen-icon]').click()
   await expect(
     page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+  ).not.toBeVisible()
+}
+
+async function deleteScreen(page, utils, target, screen) {
+  await expect(
+    page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+  ).toBeVisible()
+  await page.locator('[data-test=edit-screen-icon]').click()
+  await page.locator('[data-test=delete-screen-icon]').click()
+  await page.locator('button:has-text("Delete")').click()
+  await page.locator('[data-test="select-screen"]').click()
+  await expect(
+    page.locator(`.v-list-item__title:text-is("${screen}")`),
   ).not.toBeVisible()
 }
 
@@ -280,15 +293,101 @@ test('opens SCREEN documentation from context menu', async ({
   })
 })
 
-async function deleteScreen(page, utils, target, screen) {
-  await expect(
-    page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
-  ).toBeVisible()
-  await page.locator('[data-test=edit-screen-icon]').click()
-  await page.locator('[data-test=delete-screen-icon]').click()
-  await page.locator('button:has-text("Delete")').click()
-  await page.locator('[data-test="select-screen"]').click()
-  await expect(
-    page.locator(`.v-list-item__title:text-is("${screen}")`),
-  ).not.toBeVisible()
-}
+test.only('plays back to a screen', async ({ page, utils }) => {
+  await showScreen(page, utils, 'INST', 'ADCS', async function () {
+    // Helper to parse timestamp string to epoch seconds
+    const parseTime = (timeStr: string): number => {
+      // Format: "2026-01-26 15:16:13.116"
+      return Math.floor(new Date(timeStr).getTime() / 1000)
+    }
+
+    // Define the locator for the PACKET_TIMEFORMATTED value
+    const packetTimeInput = page
+      .locator('[data-test="label"]:has-text("PACKET_TIMEFORMATTED")')
+      .locator('..')
+      .locator('[data-test="value"] input')
+
+    // Wait for it to have a valid timestamp value before entering playback mode
+    await expect(packetTimeInput).toHaveValue(
+      /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,
+    )
+
+    await page.locator('[data-test="telemetry-viewer-file"]').click()
+    await page.getByRole('checkbox', { name: 'Playback Mode' }).check()
+    await page.keyboard.press('Escape') // Close the file menu
+
+    // Open and close the time dialog
+    await page
+      .locator('[data-test="playback-time"]')
+      .getByRole('button')
+      .click()
+    await utils.sleep(500)
+    await page.keyboard.press('Escape')
+
+    const timeValue = await page
+      .getByRole('textbox', { name: 'Time' })
+      .inputValue()
+    const [time, period] = timeValue.split(' ')
+    const [hours, minutes, seconds] = time.split(':')
+    // Playback defaults to 1 hr in the past so add 1 hr and subtract 2 min
+    const newHours = String(parseInt(hours) + 1).padStart(2, '0')
+    const newMinutes = String(parseInt(minutes) - 2).padStart(2, '0')
+    const newTime = `${newHours}:${newMinutes}:${seconds} ${period}`
+    await page.getByRole('textbox', { name: 'Time' }).fill(newTime)
+
+    // Click play, wait for time to increment, then pause
+    await page.getByRole('button', { name: 'Play / Pause' }).click()
+    await utils.sleep(1100)
+    // Get time after starting playback
+    let previousTime = parseTime(await packetTimeInput.inputValue())
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBeGreaterThan(previousTime)
+    await page.getByRole('button', { name: 'Play / Pause' }).click()
+    await utils.sleep(500)
+
+    // Verify step forward increments by 1s
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-step-forward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime + 1)
+
+    // Verify step backward decrements by 1s
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-step-backward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime - 1)
+
+    // Verify skip forward increments by 15s
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-skip-forward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime + 10)
+
+    // Verify skip backward decrements by 15s
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-skip-backward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime - 10)
+
+    // Change step value to 2 and verify step forward increments by 2s
+    await page.getByRole('spinbutton', { name: 'Step (Speed)' }).fill('2')
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-step-forward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime + 2)
+
+    // Change skip value to 15 and verify skip forward increments by 15s
+    await page.getByRole('spinbutton', { name: 'Skip' }).fill('15')
+    previousTime = parseTime(await packetTimeInput.inputValue())
+    await page.locator('[data-test="playback-skip-forward"]').click()
+    await expect
+      .poll(async () => parseTime(await packetTimeInput.inputValue()))
+      .toBe(previousTime + 15)
+  })
+})
