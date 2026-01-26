@@ -14,6 +14,7 @@
 # if purchased from OpenC3, Inc.
 
 import functools
+
 import requests
 
 
@@ -31,7 +32,7 @@ def request_wrapper(func):
             raise RuntimeError(err) from exc
         except requests.HTTPError as exc:
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
-            if 400 >= exc.response.status_code:
+            if exc.response.status_code <= 400:
                 raise RuntimeError(err) from exc
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."

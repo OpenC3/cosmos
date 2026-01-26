@@ -14,8 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
 import datetime
+import json
 
 
 class JsonEncoder(json.JSONEncoder):
@@ -25,14 +25,14 @@ class JsonEncoder(json.JSONEncoder):
         if isinstance(o, (bytes, bytearray)):
             return {
                 "json_class": "String",
-                "raw": [x for x in o],
+                "raw": list(o),
             }
         return json.JSONEncoder.default(self, o)
 
 
 class JsonDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)  # noqa: B026
 
     def object_hook(self, dct):
         if dct.get("json_class") == "String":

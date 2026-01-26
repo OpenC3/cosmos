@@ -17,9 +17,9 @@
 
 import textwrap
 
-from openc3.conversions.conversion import Conversion
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
+from openc3.conversions.conversion import Conversion
 
 
 # Performs a generic conversion by evaluating Ruby code
@@ -56,7 +56,7 @@ class GenericConversion(Conversion):
         # Use dedent to strip common leading whitespace from config file indentation
         dedented_code = textwrap.dedent(code_to_eval)
         lines = dedented_code.splitlines()
-        exec_lines = lines[0:(len(lines) - 1)]
+        exec_lines = lines[0 : (len(lines) - 1)]
         self.exec_lines = compile("\n".join(exec_lines), "<string>", "exec")
         self.eval_line = compile(lines[-1], "<string>", "eval")
 

@@ -19,14 +19,16 @@ Shared QuestDB client for connection management, table creation, and data ingest
 Used by both TsdbMicroservice (real-time) and MigrationMicroservice (historical data).
 """
 
+import base64
+import contextlib
+import json
+import numbers
 import os
 import re
-import json
-import base64
-import numbers
-import psycopg
+
 import numpy
-from questdb.ingress import Sender, IngressError, Protocol, TimestampMicros, TimestampNanos
+import psycopg
+from questdb.ingress import IngressError, Protocol, Sender, TimestampMicros, TimestampNanos
 
 
 class QuestDBClient:
@@ -116,7 +118,7 @@ class QuestDBClient:
             self.ingest = Sender(Protocol.Http, host, ingest_port, username=username, password=password)
             self.ingest.establish()
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to QuestDB: {e}")
+            raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
     def connect_query(self):
         """
@@ -161,21 +163,17 @@ class QuestDBClient:
                 autocommit=True,  # Important for QuestDB
             )
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to QuestDB: {e}")
+            raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
     def close(self):
         """Close all connections."""
         if self.ingest:
-            try:
+            with contextlib.suppress(Exception):
                 self.ingest.close()
-            except Exception:
-                pass
             self.ingest = None
         if self.query:
-            try:
+            with contextlib.suppress(Exception):
                 self.query.close()
-            except Exception:
-                pass
             self.query = None
 
     @classmethod

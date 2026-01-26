@@ -14,16 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.interfaces.interface import Interface
 from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import Interface
+from openc3.top_level import get_class_from_module
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import class_name_to_filename
-from openc3.top_level import get_class_from_module
 
 
 # Base class for interfaces that act read and write from a stream
 class StreamInterface(Interface):
-    def __init__(self, protocol_type=None, protocol_args=[]):
+    def __init__(self, protocol_type=None, protocol_args=None):
+        if protocol_args is None:
+            protocol_args = []
         super().__init__()
         self.stream = None
         self.protocol_type = ConfigParser.handle_none(protocol_type)
@@ -35,7 +37,7 @@ class StreamInterface(Interface):
             self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
-        super().connect() # Reset the protocols
+        super().connect()  # Reset the protocols
         if self.stream:
             self.stream.connect()
 

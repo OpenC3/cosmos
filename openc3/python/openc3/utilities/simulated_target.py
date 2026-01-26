@@ -30,9 +30,9 @@ class SimulatedTarget:
             self.tlm_packets[name] = packet.clone()
 
         # Set defaults, template, and id values
-        for name, packet in self.tlm_packets.items():
+        for _name, packet in self.tlm_packets.items():
             packet.restore_defaults()
-            setattr(packet, "packet_rate", 0)
+            packet.packet_rate = 0
             for item in packet.id_items:
                 packet.write_item(item, item.id_value)
 
@@ -62,10 +62,9 @@ class SimulatedTarget:
         pending_packets = []
 
         # Determine if packets are due to be sent and add to pending
-        for name, packet in self.tlm_packets.items():
-            if packet.packet_rate > 0:
-                if (count_100hz % packet.packet_rate) == 0:
-                    pending_packets.append(packet)
+        for _name, packet in self.tlm_packets.items():
+            if packet.packet_rate > 0 and (count_100hz % packet.packet_rate) == 0:
+                pending_packets.append(packet)
 
         return pending_packets
 

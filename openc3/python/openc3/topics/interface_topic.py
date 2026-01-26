@@ -16,9 +16,11 @@
 
 import json
 import time
-from openc3.topics.topic import Topic
+
 from openc3.environment import OPENC3_SCOPE
+from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder
+
 
 class InterfaceTopic(Topic):
     COMMAND_ACK_TIMEOUT_S = 30
@@ -48,7 +50,7 @@ class InterfaceTopic(Topic):
                     Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
 
     @classmethod
-    def write_raw(cls, interface_name, data, scope, timeout = None):
+    def write_raw(cls, interface_name, data, scope, timeout=None):
         interface_name = interface_name.upper()
 
         if timeout is None:
@@ -221,7 +223,7 @@ class InterfaceTopic(Topic):
         )
 
     @classmethod
-    def interface_details(cls, interface_name, scope=OPENC3_SCOPE, timeout = None):
+    def interface_details(cls, interface_name, scope=OPENC3_SCOPE, timeout=None):
         interface_name = interface_name.upper()
 
         if timeout is None:

@@ -1,5 +1,5 @@
-from openc3.utilities.simulated_target import SimulatedTarget
 from openc3.packets.packet import Packet
+from openc3.utilities.simulated_target import SimulatedTarget
 
 
 class SimTgtInst(SimulatedTarget):

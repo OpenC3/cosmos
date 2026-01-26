@@ -64,7 +64,7 @@ class MigrationMicroservice:
     def __init__(self):
         self.logger = Logger()
         self.logger.scope = MIGRATION_SCOPE
-        self.bucket = Bucket.getClient()
+        self.bucket = Bucket.get_client()
         self.questdb = QuestDBClient(logger=self.logger)
         self.bin_processor = BinFileProcessor(logger=self.logger)
 

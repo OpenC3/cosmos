@@ -14,16 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import json
+import os
 import struct
-from datetime import datetime, timezone, timedelta
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.interfaces.protocols.preidentified_protocol import PreidentifiedProtocol
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.stream import Stream
+from test.test_helper import *
 
 
 class TestPreidentifiedProtocol(unittest.TestCase):

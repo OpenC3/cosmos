@@ -17,20 +17,21 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1957
 
-import time
-from datetime import datetime, timezone, timedelta
-import unittest
-import threading
-from unittest.mock import *
 import re
-from test.test_helper import mock_redis, setup_system, System
+import threading
+import time
+import unittest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import *
+
 from openc3.api.tlm_api import *
+from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.models.interface_model import InterfaceModel
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.models.interface_model import InterfaceModel
-from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.utilities.time import formatted
+from test.test_helper import System, mock_redis, setup_system
 
 
 class TestTlmApi(unittest.TestCase):

@@ -14,13 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import datetime
 import json
 import time
-import datetime
-from typing import Optional
 
-from openc3.utilities.store import Store, EphemeralStore
-from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
+from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 
 
 class Model:
@@ -106,10 +105,10 @@ class Model:
     def __init__(self, primary_key: str, **kw_args):
         """Store the primary key and keyword arguments"""
         self.primary_key: str = primary_key
-        self.name: Optional[str] = kw_args.get("name")
-        self.updated_at: Optional[float] = kw_args.get("updated_at")
-        self.plugin: Optional[str] = kw_args.get("plugin")
-        self.scope: Optional[str] = kw_args.get("scope")
+        self.name: str | None = kw_args.get("name")
+        self.updated_at: float | None = kw_args.get("updated_at")
+        self.plugin: str | None = kw_args.get("plugin")
+        self.scope: str | None = kw_args.get("scope")
         self.destroyed: bool = False
 
     def create(self, update=False, force=False, queued=False, isoformat=False):

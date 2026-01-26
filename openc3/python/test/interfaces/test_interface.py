@@ -14,14 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import threading
 import time
 import unittest
-import threading
 from unittest.mock import patch
+
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet
 from test.test_helper import BucketMock
+
 
 gvPacket = None
 gvData = None
@@ -123,7 +125,7 @@ class Initialize(unittest.TestCase):
 
 class ReadInterface(unittest.TestCase):
     def setUp(self):
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()
@@ -379,7 +381,7 @@ class ReadInterface(unittest.TestCase):
 class WriteInterface(unittest.TestCase):
     def setUp(self):
         self.packet = Packet("TGT", "PKT", "BIG_ENDIAN", "Packet", b"\x01\x02\x03\x04")
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()

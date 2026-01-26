@@ -17,11 +17,13 @@
 import os
 import sys
 import traceback
+
 from openc3.microservices.interface_microservice import InterfaceMicroservice
-from openc3.system.system import System
 from openc3.models.router_status_model import RouterStatusModel
+from openc3.system.system import System
 from openc3.topics.router_topic import RouterTopic
 from openc3.utilities.thread_manager import ThreadManager
+
 
 class RouterMicroservice(InterfaceMicroservice):
     def handle_packet(self, packet):
@@ -32,16 +34,15 @@ class RouterMicroservice(InterfaceMicroservice):
             if identified_packet:
                 packet = identified_packet
 
-        if not packet.defined():
-            if packet.target_name and packet.packet_name:
-                try:
-                    defined_packet = System.commands.packet(packet.target_name, packet.packet_name)
-                    defined_packet.received_time = packet.received_time
-                    defined_packet.stored = packet.stored
-                    defined_packet.buffer = packet.buffer
-                    packet = defined_packet
-                except Exception:
-                    self.logger.warn(f"Error defining packet of {len(packet)} bytes")
+        if not packet.defined() and packet.target_name and packet.packet_name:
+            try:
+                defined_packet = System.commands.packet(packet.target_name, packet.packet_name)
+                defined_packet.received_time = packet.received_time
+                defined_packet.stored = packet.stored
+                defined_packet.buffer = packet.buffer
+                packet = defined_packet
+            except Exception:
+                self.logger.warn(f"Error defining packet of {len(packet)} bytes")
 
         target_name = packet.target_name
         if not target_name:

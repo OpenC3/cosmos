@@ -16,6 +16,7 @@
 
 import math
 import statistics
+
 from openc3.processors.processor import Processor
 
 

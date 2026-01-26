@@ -14,13 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
-import typing
+import time
 
-from openc3.utilities.extract import *
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 
 
 def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
@@ -40,7 +39,7 @@ def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
-def metadata_get(start: typing.Optional[int] = None, scope: str = OPENC3_SCOPE):
+def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     """Gets metadata, default is latest if start is None
 
     Args:
@@ -59,9 +58,7 @@ def metadata_get(start: typing.Optional[int] = None, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
-def metadata_set(
-    metadata: dict, start: typing.Optional[int] = None, color: typing.Optional[str] = None, scope: str = OPENC3_SCOPE
-):
+def metadata_set(metadata: dict, start: int | None = None, color: str | None = None, scope: str = OPENC3_SCOPE):
     """Create a new metadata entry at the given start time or now if no start given
 
     Args:
@@ -89,9 +86,7 @@ def metadata_set(
     return json.loads(response.text)
 
 
-def metadata_update(
-    metadata: dict, start: typing.Optional[int] = None, color: typing.Optional[str] = None, scope: str = OPENC3_SCOPE
-):
+def metadata_update(metadata: dict, start: int | None = None, color: str | None = None, scope: str = OPENC3_SCOPE):
     """Updates existing metadata. If no start is given, updates latest metadata.
 
     Args:

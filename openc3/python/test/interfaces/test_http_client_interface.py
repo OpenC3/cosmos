@@ -15,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from test.test_helper import mock_redis, setup_system
+
 from openc3.interfaces.http_client_interface import HttpClientInterface
+from test.test_helper import mock_redis, setup_system
 
 
 class TestHttpClientInterface(unittest.TestCase):
@@ -49,7 +50,7 @@ class TestHttpClientInterface(unittest.TestCase):
         # HTTP on port 80 should not include port in URL
         i = HttpClientInterface("example.com", 80, "http")
         self.assertEqual(i.url, "http://example.com")
-        
+
         # HTTPS on port 443 should not include port in URL
         i = HttpClientInterface("example.com", 443, "https")
         self.assertEqual(i.url, "https://example.com")
@@ -58,7 +59,7 @@ class TestHttpClientInterface(unittest.TestCase):
         # HTTP on non-80 port should include port
         i = HttpClientInterface("example.com", 8080, "http")
         self.assertEqual(i.url, "http://example.com:8080")
-        
+
         # HTTPS on non-443 port should include port
         i = HttpClientInterface("example.com", 8443, "https")
         self.assertEqual(i.url, "https://example.com:8443")
@@ -70,10 +71,10 @@ class TestHttpClientInterface(unittest.TestCase):
     def test_details(self):
         i = HttpClientInterface("api.example.com", 8080, "https", None, 30.0, 10.0, True)
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check that it includes the expected keys specific to HttpClientInterface
         self.assertIn('url', details)
         self.assertIn('write_timeout', details)
@@ -81,7 +82,7 @@ class TestHttpClientInterface(unittest.TestCase):
         self.assertIn('connect_timeout', details)
         self.assertIn('include_request_in_response', details)
         self.assertIn('request_queue_length', details)
-        
+
         # Verify the specific values are correct
         self.assertEqual(details['url'], "https://api.example.com:8080")
         self.assertIsNone(details['write_timeout'])  # Python version doesn't use write_timeout
@@ -93,10 +94,10 @@ class TestHttpClientInterface(unittest.TestCase):
     def test_details_with_defaults(self):
         i = HttpClientInterface("localhost")
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check default values
         self.assertEqual(details['url'], "http://localhost")
         self.assertIsNone(details['write_timeout'])
@@ -108,10 +109,10 @@ class TestHttpClientInterface(unittest.TestCase):
     def test_details_with_none_timeouts(self):
         i = HttpClientInterface("example.com", 80, "http", None, "None", "None", False)
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check None values are preserved
         self.assertEqual(details['url'], "http://example.com")
         self.assertIsNone(details['write_timeout'])
@@ -125,9 +126,9 @@ class TestHttpClientInterface(unittest.TestCase):
         i.response_queue.put("item1")
         i.response_queue.put("item2")
         i.response_queue.put("item3")
-        
+
         details = i.details()
-        
+
         # Verify queue length is reported correctly
         self.assertEqual(details['request_queue_length'], 3)
 

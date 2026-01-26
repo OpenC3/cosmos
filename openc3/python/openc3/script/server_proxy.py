@@ -16,17 +16,17 @@
 
 import os
 import re
-from openc3.environment import *
-from openc3.utilities.authentication import (
-    OpenC3Authentication,
-    OpenC3KeycloakAuthentication,
-)
-from openc3.io.json_drb_object import JsonDRbObject
-from openc3.io.json_api_object import JsonApiObject
 
 # TODO: ImportError: cannot import name 'DISCONNECT' from partially initialized module 'openc3.script' (most likely due to a circular import) (/usr/lib/python3.11/site-packages/openc3/script/__init__.py)
 # from openc3.script import DISCONNECT
 import openc3.script
+from openc3.environment import *
+from openc3.io.json_api_object import JsonApiObject
+from openc3.io.json_drb_object import JsonDRbObject
+from openc3.utilities.authentication import (
+    OpenC3Authentication,
+    OpenC3KeycloakAuthentication,
+)
 
 
 class ApiServerProxy:

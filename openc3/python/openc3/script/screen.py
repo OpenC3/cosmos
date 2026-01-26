@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import json
+import os
 import traceback
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 
 
 def get_screen_list(scope: str = OPENC3_SCOPE):

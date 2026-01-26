@@ -26,8 +26,12 @@ class BridgeRouterThread(InterfaceThread):
                     try:
                         interface.write(packet)
                     except Exception as err:
-                        Logger.error(f"Error routing command from {self.interface.name} to interface {interface.name}: {err}")
+                        Logger.error(
+                            f"Error routing command from {self.interface.name} to interface {interface.name}: {err}"
+                        )
                 else:
                     Logger.warn(f"Interface {interface.name} writing not allowed for packet from {self.interface.name}")
             else:
-                Logger.error(f"Attempted to route command from {self.interface.name} to disconnected interface {interface.name}")
+                Logger.error(
+                    f"Attempted to route command from {self.interface.name} to disconnected interface {interface.name}"
+                )

@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.processors.processor import Processor
+from test.test_helper import *
 
 
 class TestProcessor(unittest.TestCase):

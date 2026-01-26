@@ -18,6 +18,7 @@ import atexit
 import signal
 import sys
 import time
+
 from openc3.bridge.bridge_config import BridgeConfig
 from openc3.bridge.bridge_interface_thread import BridgeInterfaceThread
 from openc3.bridge.bridge_router_thread import BridgeRouterThread
@@ -28,18 +29,18 @@ class Bridge:
     def __init__(self, filename, existing_variables=None):
         if existing_variables is None:
             existing_variables = {}
-            
+
         self.config = BridgeConfig(filename, existing_variables)
         self.threads = []
 
         # Start Interface Threads
-        for interface_name, interface in self.config.interfaces.items():
+        for _interface_name, interface in self.config.interfaces.items():
             thread = BridgeInterfaceThread(interface)
             self.threads.append(thread)
             thread.start()
 
-        # Start Router Threads  
-        for router_name, router in self.config.routers.items():
+        # Start Router Threads
+        for _router_name, router in self.config.routers.items():
             thread = BridgeRouterThread(router)
             self.threads.append(thread)
             thread.start()

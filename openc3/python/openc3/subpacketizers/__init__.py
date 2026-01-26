@@ -16,4 +16,5 @@
 
 from openc3.subpacketizers.subpacketizer import Subpacketizer
 
+
 __all__ = ["Subpacketizer"]

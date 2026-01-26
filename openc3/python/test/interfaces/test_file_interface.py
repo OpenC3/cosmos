@@ -14,16 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import gzip
 import os
 import shutil
 import tempfile
-import unittest
-import time
-import gzip
 import threading
-from unittest.mock import patch, MagicMock
-from openc3.interfaces.interface import Interface
+import time
+import unittest
+from unittest.mock import MagicMock, patch
+
 from openc3.interfaces.file_interface import FileInterface
+from openc3.interfaces.interface import Interface
 from openc3.packets.packet import Packet
 
 
@@ -400,10 +401,10 @@ class TestFileInterface(unittest.TestCase):
         self.interface.set_option('RECURSIVE', ['TRUE'])
         self.interface.set_option('THROTTLE', ['100'])
         details = self.interface.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check that it includes the expected keys specific to FileInterface
         self.assertIn('command_write_folder', details)
         self.assertIn('telemetry_read_folder', details)
@@ -418,7 +419,7 @@ class TestFileInterface(unittest.TestCase):
         self.assertIn('recursive', details)
         self.assertIn('throttle', details)
         self.assertIn('discard_file_header_bytes', details)
-        
+
         # Verify the specific values are correct
         self.assertEqual(details['command_write_folder'], "/cmd")
         self.assertEqual(details['telemetry_read_folder'], "/tlm")
@@ -438,10 +439,10 @@ class TestFileInterface(unittest.TestCase):
         """Test details with None folder values"""
         self.interface = FileInterface(None, None, None)
         details = self.interface.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check None values are preserved
         self.assertIsNone(details['command_write_folder'])
         self.assertIsNone(details['telemetry_read_folder'])
@@ -454,11 +455,11 @@ class TestFileInterface(unittest.TestCase):
         filename = os.path.join(self.telemetry_dir, 'test.bin')
         with open(filename, 'wb') as file:
             file.write(b'\x01\x02\x03\x04')
-            
+
         self.interface = FileInterface(self.command_dir, self.telemetry_dir, self.archive_dir)
         self.interface.file_path = filename
         details = self.interface.details()
-        
+
         # Verify the filename is included
         self.assertEqual(details['filename'], filename)
 

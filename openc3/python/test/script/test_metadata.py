@@ -15,11 +15,13 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime, timezone
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.script.metadata import *
+from test.test_helper import *
+
 
 global gData
 
@@ -87,9 +89,7 @@ class TestMetadata(unittest.TestCase):
         # The day field is two characters long and is space padded if the day is a single digit
         # e.g.: 'Wed Jun  9 04:26:40 1993'.
         # So we have to create this format string in order to do the day formatting :-/
-        formatted = "{dt:%a} {dt:%b} {day:2d} {dt:%H}:{dt:%M}:{dt:%S} {dt:%Y}".format(
-            dt=start, day=start.day
-        )
+        formatted = f"{start:%a} {start:%b} {start.day:2d} {start:%H}:{start:%M}:{start:%S} {start:%Y}"
         self.assertEqual(gData["start"], formatted)
 
     def test_metadata_update(self):
@@ -114,9 +114,7 @@ class TestMetadata(unittest.TestCase):
         start = datetime.now(timezone.utc)
         meta["key1"] = "value4"
         metadata_update(meta, start=start.timestamp())
-        formatted = "{dt:%a} {dt:%b} {day:2d} {dt:%H}:{dt:%M}:{dt:%S} {dt:%Y}".format(
-            dt=start, day=start.day
-        )
+        formatted = f"{start:%a} {start:%b} {start.day:2d} {start:%H}:{start:%M}:{start:%S} {start:%Y}"
         self.assertEqual(gData["start"], formatted)
 
     def test_metadata_input(self):

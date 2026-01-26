@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import json
+import os
+
 from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 
@@ -62,7 +63,7 @@ class LocalMode:
             else:
                 data = io_or_string
             if isinstance(data, str):
-                data = data.encode('utf-8')
+                data = data.encode("utf-8")
             file.write(data)
 
     @classmethod

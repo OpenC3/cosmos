@@ -15,8 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 from io import StringIO
+
 from openc3.tools.table_manager.table_config import TableConfig
 from openc3.utilities.string import simple_formatted
+
 
 class TableManagerCore:
     """
@@ -25,10 +27,12 @@ class TableManagerCore:
 
     class CoreError(Exception):
         """Generic error raised when a more specific error doesn't work"""
+
         pass
 
     class MismatchError(CoreError):
         """Raised when opening a file that is either larger or smaller than its definition"""
+
         pass
 
     @classmethod
@@ -91,7 +95,7 @@ class TableManagerCore:
 
             # Write the column headers
             if table.type == "ROW_COLUMN":
-                columns = ['Item']
+                columns = ["Item"]
 
                 # Remove the '0' from the 'itemname0'
                 for x in range(table.num_columns):
@@ -135,7 +139,7 @@ class TableManagerCore:
             Binary string representing the defined table(s)
         """
         config = TableConfig.process_file(definition_filename)
-        binary = b''
+        binary = b""
         for _table_name, table in config.tables.items():
             table.restore_defaults()
             binary += table.buffer
@@ -155,17 +159,17 @@ class TableManagerCore:
         """
         config = TableConfig.process_file(definition_filename)
         for table in tables:
-            table_def = config.tables[table['name']]
-            for row in table['rows']:
+            table_def = config.tables[table["name"]]
+            for row in table["rows"]:
                 for item in row:
                     # TODO: I don't know how the frontend could edit an item like this:
                     # item:{"name"=>"BINARY", "value"=>{"json_class"=>"String", "raw"=>[222, 173, 190, 239]} }
-                    if isinstance(item['value'], dict):
+                    if isinstance(item["value"], dict):
                         continue
                     print("table_def:", table_def)
-                    table_def.write(item['name'], item['value'])
+                    table_def.write(item["name"], item["value"])
 
-        binary = b''
+        binary = b""
         for _table_name, table in config.tables.items():
             binary += table.buffer
         return binary
@@ -188,16 +192,18 @@ class TableManagerCore:
         try:
             cls.load_binary(config, binary)
         except cls.CoreError as e:
-            json_hash['errors'] = str(e)
+            json_hash["errors"] = str(e)
 
         for table_name, table in config.tables.items():
-            tables.append({
-                "name": table_name,
-                "numRows": table.num_rows,
-                "numColumns": table.num_columns,
-                "headers": [],
-                "rows": [],
-            })
+            tables.append(
+                {
+                    "name": table_name,
+                    "numRows": table.num_rows,
+                    "numColumns": table.num_columns,
+                    "headers": [],
+                    "rows": [],
+                }
+            )
 
             col = 0
             row = 0
@@ -209,15 +215,17 @@ class TableManagerCore:
                     if row == 0:
                         tables[-1]["headers"] = ["INDEX", "NAME", "VALUE"]
 
-                    tables[-1]["rows"].append([
-                        {
-                            "index": row + 1,
-                            "name": item.name,
-                            "value": table.read(item.name, "FORMATTED"),
-                            "states": item.states,
-                            "editable": item.editable,
-                        },
-                    ])
+                    tables[-1]["rows"].append(
+                        [
+                            {
+                                "index": row + 1,
+                                "name": item.name,
+                                "value": table.read(item.name, "FORMATTED"),
+                                "states": item.states,
+                                "editable": item.editable,
+                            },
+                        ]
+                    )
                 else:
                     if row == 0 and col == 0:
                         tables[-1]["headers"].append("INDEX")
@@ -229,13 +237,15 @@ class TableManagerCore:
                         # Each row is an array of items
                         tables[-1]["rows"].append([])
 
-                    tables[-1]["rows"][row].append({
-                        "index": row + 1,
-                        "name": item.name,
-                        "value": table.read(item.name, "FORMATTED"),
-                        "states": item.states,
-                        "editable": item.editable,
-                    })
+                    tables[-1]["rows"][row].append(
+                        {
+                            "index": row + 1,
+                            "name": item.name,
+                            "value": table.read(item.name, "FORMATTED"),
+                            "states": item.states,
+                            "editable": item.editable,
+                        }
+                    )
 
                 col += 1
                 if col == table.num_columns:
@@ -269,7 +279,7 @@ class TableManagerCore:
                     f"The remaining table definition (starting with byte {len(data) - binary_data_index} in {table.table_name}) will be filled with 0."
                 )
 
-            table.buffer = data[binary_data_index:binary_data_index + table.length]
+            table.buffer = data[binary_data_index : binary_data_index + table.length]
             binary_data_index += table.length
 
         if binary_data_index < len(data):

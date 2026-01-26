@@ -14,15 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
+import glob
 import json
 import os
-import glob
+import sys
+
 import openc3.utilities.target_file_importer
-from openc3.top_level import  add_to_search_path
-from openc3.script.suite_runner import SuiteRunner
-from openc3.utilities.target_file import TargetFile
 from openc3.script import *
+from openc3.script.suite_runner import SuiteRunner
+from openc3.top_level import add_to_search_path
+from openc3.utilities.target_file import TargetFile
+
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
 path = sys.argv[2]
@@ -48,8 +50,8 @@ def load_utility(procedure_name):
     return False
 
 
-setattr(openc3.script, "load_utility", load_utility)
-setattr(openc3.script, "require_utility", load_utility)
+openc3.script.load_utility = load_utility
+openc3.script.require_utility = load_utility
 
 data = None
 with open(path) as file:

@@ -18,24 +18,27 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 
-import os
+import contextlib
 import json
+import os
 from contextlib import contextmanager
+
 from openc3.api import WHITELIST
 from openc3.api.interface_api import get_interface
-from openc3.top_level import DisabledError
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
-from openc3.models.target_model import TargetModel
 from openc3.models.queue_model import QueueModel
-from openc3.utilities.extract import *
-from openc3.utilities.cmd_log import _build_cmd_output_string
-from openc3.topics.topic import Topic
-from openc3.topics.command_topic import CommandTopic
-from openc3.topics.interface_topic import InterfaceTopic
-from openc3.topics.decom_interface_topic import DecomInterfaceTopic
-from openc3.topics.command_decom_topic import CommandDecomTopic
+from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet  # noqa: F401
+from openc3.top_level import DisabledError
+from openc3.topics.command_decom_topic import CommandDecomTopic
+from openc3.topics.command_topic import CommandTopic
+from openc3.topics.decom_interface_topic import DecomInterfaceTopic
+from openc3.topics.interface_topic import InterfaceTopic
+from openc3.topics.topic import Topic
+from openc3.utilities.authorization import authorize
+from openc3.utilities.cmd_log import _build_cmd_output_string
+from openc3.utilities.extract import *
+
 
 WHITELIST.extend(
     [
@@ -390,11 +393,8 @@ def get_cmd_value(
     parameter_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name, parameter_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 3:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -526,11 +526,8 @@ def _extract_target_command_names(method_name, *args):
     command_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 2:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -550,11 +547,8 @@ def _extract_target_command_parameter_names(method_name, *args):
     parameter_name = None
     match len(args):
         case 1:
-            try:
+            with contextlib.suppress(ValueError):
                 target_name, command_name, parameter_name = args[0].upper().split()
-            except ValueError:
-                # Do nothing because we catch it below
-                pass
         case 3:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -627,8 +621,8 @@ def _cmd_implementation(
     if kwargs.get("timeout") is not None:
         try:
             timeout = float(kwargs["timeout"])
-        except ValueError:
-            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.")
+        except ValueError as e:
+            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.") from e
 
     # Determine if we should log this command
     log_message = True  # Default is True
@@ -682,7 +676,7 @@ def _cmd_implementation(
 
     # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
     # At which point ALL commands will go to that queue unless they specifically opt out with queue=False
-    queue = kwargs.get("queue", None)
+    queue = kwargs.get("queue")
     if os.environ.get("OPENC3_DEFAULT_QUEUE", False) and queue is None:
         queue = os.environ["OPENC3_DEFAULT_QUEUE"]
     if queue:

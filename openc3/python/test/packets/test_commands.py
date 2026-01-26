@@ -17,11 +17,12 @@
 import tempfile
 import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.system.target import Target
-from openc3.packets.packet import Packet
+
 from openc3.packets.commands import Commands
+from openc3.packets.packet import Packet
 from openc3.packets.packet_config import PacketConfig
+from openc3.system.target import Target
+from test.test_helper import *
 
 
 class TestCommands(unittest.TestCase):

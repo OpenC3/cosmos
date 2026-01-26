@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.conversion import Conversion
+from test.test_helper import *
 
 
 class TestConversion(unittest.TestCase):

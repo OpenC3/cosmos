@@ -28,7 +28,7 @@ class UnixTimeFormattedConversion(UnixTimeConversion):
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type='RAW', microseconds_type='RAW'):
+    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type="RAW", microseconds_type="RAW"):
         # self.params is set by the parent class in super()
         super().__init__(seconds_item_name, microseconds_item_name, seconds_type, microseconds_type)
         self.converted_type = "STRING"

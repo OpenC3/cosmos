@@ -16,6 +16,7 @@
 
 from openc3.models.model import Model
 
+
 # Note: This model is locked to the DEFAULT scope
 class OfflineAccessModel(Model):
     PRIMARY_KEY = "DEFAULT__openc3__offline_access"
@@ -34,10 +35,8 @@ class OfflineAccessModel(Model):
     def all(cls, scope: str):
         return super().all(OfflineAccessModel.PRIMARY_KEY)
 
-    def __init__(
-        self, name: str, offline_access_token: str = None, updated_at: float = None, scope: str = 'DEFAULT'
-    ):
-        super().__init__(OfflineAccessModel.PRIMARY_KEY, name=name, updated_at=updated_at, scope='DEFAULT')
+    def __init__(self, name: str, offline_access_token: str = None, updated_at: float = None, scope: str = "DEFAULT"):
+        super().__init__(OfflineAccessModel.PRIMARY_KEY, name=name, updated_at=updated_at, scope="DEFAULT")
         self.offline_access_token = offline_access_token
 
     # @return [Hash] JSON encoding of this model

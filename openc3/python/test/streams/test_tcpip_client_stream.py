@@ -17,8 +17,9 @@
 import socketserver
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.streams.tcpip_client_stream import TcpipClientStream
+from test.test_helper import *
 
 
 class TestTcpipClientStream(unittest.TestCase):

@@ -17,9 +17,11 @@
 import os
 import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.script import *
+
 from openc3.io.json_drb_object import JsonDRbError
+from openc3.script import *
+from test.test_helper import *
+
 
 cancel = False
 count = True

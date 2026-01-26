@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.polynomial_conversion import PolynomialConversion
+from test.test_helper import *
 
 
 class TestPolynomialConversion(unittest.TestCase):

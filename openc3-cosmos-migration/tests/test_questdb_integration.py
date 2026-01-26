@@ -28,9 +28,7 @@ Run with:
 
 import base64
 import json
-import math
 import time
-import pytest
 import numpy as np
 from questdb.ingress import TimestampNanos
 

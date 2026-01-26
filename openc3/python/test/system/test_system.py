@@ -16,13 +16,14 @@
 
 import os
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from test.test_helper import *
-from openc3.system.system import System, SystemMeta
+from unittest.mock import MagicMock, Mock, patch
+
 from openc3.packets.commands import Commands
-from openc3.packets.telemetry import Telemetry
 from openc3.packets.limits import Limits
 from openc3.packets.packet_config import PacketConfig
+from openc3.packets.telemetry import Telemetry
+from openc3.system.system import System, SystemMeta
+from test.test_helper import *
 
 
 class TestSystemMeta(unittest.TestCase):
@@ -263,7 +264,7 @@ class TestSystem(unittest.TestCase):
 
         # Mock the bucket client
         mock_bucket = MagicMock()
-        mock_bucket_class.getClient.return_value = mock_bucket
+        mock_bucket_class.get_client.return_value = mock_bucket
         mock_bucket.list_files.return_value = (None, [])
 
         # Create a temporary directory for testing

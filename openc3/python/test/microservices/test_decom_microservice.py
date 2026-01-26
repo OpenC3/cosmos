@@ -15,22 +15,23 @@
 # if purchased from OpenC3, Inc.
 
 import re
+import threading
 import time
 import unittest
-import threading
-from unittest.mock import patch
 from datetime import datetime, timezone
-from test.test_helper import Mock, mock_redis, setup_system, capture_io
+from unittest.mock import patch
+
 from openc3.api.tlm_api import tlm
-from openc3.system.system import System
-from openc3.packets.limits_response import LimitsResponse
-from openc3.models.target_model import TargetModel
-from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
-from openc3.topics.limits_event_topic import LimitsEventTopic
-from openc3.topics.topic import Topic
-from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.target_model import TargetModel
+from openc3.packets.limits_response import LimitsResponse
 from openc3.processors.processor import Processor
+from openc3.system.system import System
+from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.topics.topic import Topic
+from test.test_helper import Mock, capture_io, mock_redis, setup_system
 
 
 class TestDecomMicroservice(unittest.TestCase):

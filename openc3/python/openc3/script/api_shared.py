@@ -16,15 +16,18 @@
 
 import sys
 import time
-from contextlib import contextmanager
 import traceback
+from contextlib import contextmanager
+
 import openc3.script
-from .exceptions import CheckError
+from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import (
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
 )
-from openc3.environment import OPENC3_SCOPE
+
+from .exceptions import CheckError
+
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 
@@ -121,7 +124,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         expected_value,
         tolerance,
     ) = _check_tolerance_process_args(args)
-    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
+    value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "check_tolerance"
@@ -200,7 +203,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             try:
                 value = float(args[0])
             except ValueError:
-                raise RuntimeError("Non-numeric wait time specified")
+                raise RuntimeError("Non-numeric wait time specified") from None
 
             start_time = time.time()
             openc3_script_sleep(value)
@@ -280,7 +283,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_tolerance")
     start_time = time.time()
-    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
+    value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_tolerance"
@@ -422,7 +425,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_check_tolerance")
     start_time = time.time()
-    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
+    value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_check_tolerance"
@@ -584,7 +587,8 @@ def start(procedure_name):
     with open(procedure_name) as f:
         exec(f.read())
 
-def goto(line_no_or_procedure_name, line_no = None):
+
+def goto(line_no_or_procedure_name, line_no=None):
     raise RuntimeError("goto is not supported outside of ScriptRunner")
 
 
@@ -615,7 +619,7 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     caller to allow the return of the value through various telemetry calls.
     This method should not be called directly by application code."""
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, "check")
-    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
+    value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if comparison_to_eval:
         return _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
     else:
@@ -688,7 +692,7 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
-    initial_count = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
+    initial_count = openc3.script.API_SERVER.tlm(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
     # If the packet has not been received the initial_count could be None
     if initial_count is None:
         initial_count = 0
@@ -875,9 +879,7 @@ def _openc3_script_wait(
     try:
         while True:
             work_start = time.time()
-            value = getattr(openc3.script.API_SERVER, "tlm")(
-                target_name, packet_name, item_name, type=value_type, scope=scope
-            )
+            value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=value_type, scope=scope)
             try:
                 if eval(exp_to_eval):
                     return True, value
@@ -898,9 +900,7 @@ def _openc3_script_wait(
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                value = getattr(openc3.script.API_SERVER, "tlm")(
-                    target_name, packet_name, item_name, type=value_type, scope=scope
-                )
+                value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=value_type, scope=scope)
                 try:
                     if eval(exp_to_eval):
                         return True, value

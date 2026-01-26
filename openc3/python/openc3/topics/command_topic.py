@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
+import time
+
+from openc3.top_level import CriticalCmdError, HazardousError
 from openc3.topics.topic import Topic
-from openc3.utilities.store_queued import EphemeralStoreQueued
-from openc3.top_level import HazardousError, CriticalCmdError
-from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder
+from openc3.utilities.store_queued import EphemeralStoreQueued
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class CommandTopic(Topic):
@@ -41,7 +42,9 @@ class CommandTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def send_command(cls, command, timeout, scope, obfuscated_items=[]):
+    def send_command(cls, command, timeout, scope, obfuscated_items=None):
+        if obfuscated_items is None:
+            obfuscated_items = []
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"

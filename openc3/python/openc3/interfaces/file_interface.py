@@ -14,19 +14,20 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import queue
+import gzip
 import os
 import pathlib
-import gzip
+import queue
+
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
-from openc3.top_level import get_class_from_module
-from openc3.interfaces.interface import Interface
+
 from openc3.config.config_parser import ConfigParser
-from openc3.utilities.string import class_name_to_filename
-from openc3.utilities.string import build_timestamped_filename
+from openc3.interfaces.interface import Interface
+from openc3.top_level import get_class_from_module
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.string import build_timestamped_filename, class_name_to_filename
 
 
 class NewFileEventHandler(FileSystemEventHandler):
@@ -57,8 +58,10 @@ class FileInterface(Interface):
         file_read_size=65536,
         stored=True,
         protocol_type=None,
-        protocol_args=[],
+        protocol_args=None,
     ):
+        if protocol_args is None:
+            protocol_args = []
         super().__init__()
 
         self.protocol_type = ConfigParser.handle_none(protocol_type)
@@ -96,7 +99,7 @@ class FileInterface(Interface):
         self.sleeper = None
 
     def connect(self):
-        super().connect() # Reset the protocols
+        super().connect()  # Reset the protocols
 
         if self.telemetry_read_folder:
             event_handler = NewFileEventHandler(self)
@@ -143,9 +146,9 @@ class FileInterface(Interface):
             file = self.get_next_telemetry_file()
             if file:
                 if file.endswith(".gz"):
-                    self.file = gzip.open(file, 'rb')
+                    self.file = gzip.open(file, "rb")  # noqa: SIM115
                 else:
-                    self.file = open(file, 'rb')
+                    self.file = open(file, "rb")  # noqa: SIM115
                 self.file_path = file
                 if self.discard_file_header_bytes is not None:
                     self.file.read(self.discard_file_header_bytes)
@@ -236,17 +239,17 @@ class FileInterface(Interface):
 
     def details(self):
         result = super().details()
-        result['command_write_folder'] = self.command_write_folder
-        result['telemetry_read_folder'] = self.telemetry_read_folder
-        result['telemetry_archive_folder'] = self.telemetry_archive_folder
-        result['file_read_size'] = self.file_read_size
-        result['stored'] = self.stored
-        result['filename'] = self.file_path if self.file_path else ''
-        result['extension'] = self.extension
-        result['label'] = self.label
-        result['queue_length'] = self.queue.qsize()
-        result['polling'] = self.polling
-        result['recursive'] = self.recursive
-        result['throttle'] = self.throttle
-        result['discard_file_header_bytes'] = self.discard_file_header_bytes
+        result["command_write_folder"] = self.command_write_folder
+        result["telemetry_read_folder"] = self.telemetry_read_folder
+        result["telemetry_archive_folder"] = self.telemetry_archive_folder
+        result["file_read_size"] = self.file_read_size
+        result["stored"] = self.stored
+        result["filename"] = self.file_path if self.file_path else ""
+        result["extension"] = self.extension
+        result["label"] = self.label
+        result["queue_length"] = self.queue.qsize()
+        result["polling"] = self.polling
+        result["recursive"] = self.recursive
+        result["throttle"] = self.throttle
+        result["discard_file_header_bytes"] = self.discard_file_header_bytes
         return result

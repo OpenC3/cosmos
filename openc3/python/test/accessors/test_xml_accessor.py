@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
-from openc3.accessors.xml_accessor import XmlAccessor
 from collections import namedtuple
+from unittest.mock import *
+
+from openc3.accessors.xml_accessor import XmlAccessor
+from test.test_helper import *
 
 
 class TestXmlAccessor(unittest.TestCase):

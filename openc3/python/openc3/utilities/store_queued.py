@@ -14,12 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.utilities.store import StoreMeta, Store, EphemeralStore
-from openc3.utilities.sleeper import Sleeper
-import time
-import threading
-import queue
 import atexit
+import queue
+import threading
+import time
+
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import EphemeralStore, Store, StoreMeta
+
 
 # Updated from top_level to remove circular dependency
 
@@ -29,11 +31,9 @@ import atexit
 # @param thread The thread to gracefully kill
 # @param timeout Timeout in seconds to wait for it to die gracefully
 def kill_thread(owner, thread, timeout=1.0):
-    if thread:
-        if owner and hasattr(owner, "graceful_kill"):
-            if threading.current_thread() != thread:
-                owner.graceful_kill()
-                thread.join(timeout=timeout)
+    if thread and owner and hasattr(owner, "graceful_kill") and threading.current_thread() != thread:
+        owner.graceful_kill()
+        thread.join(timeout=timeout)
 
 
 class StoreQueued(metaclass=StoreMeta):
@@ -75,11 +75,10 @@ class StoreQueued(metaclass=StoreMeta):
     def process_queue(self):
         if not self.store_queue.empty():
             # Pipeline the requests to redis to improve performance
-            with self.store.redis_pool.get():
-                with self.store.redis_pool.pipelined():
-                    while not self.store_queue.empty():
-                        action = self.store_queue.get()
-                        getattr(self.store, action[0])(*action[1], **action[2])
+            with self.store.redis_pool.get(), self.store.redis_pool.pipelined():
+                while not self.store_queue.empty():
+                    action = self.store_queue.get()
+                    getattr(self.store, action[0])(*action[1], **action[2])
 
     def store_thread_body(self):
         while True:

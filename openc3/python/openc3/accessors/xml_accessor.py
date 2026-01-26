@@ -14,9 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from .accessor import Accessor
 # HtmlAccessor uses lxml.html
-import lxml.etree as ET
+import lxml.etree as ET  # noqa: N812
+
+from .accessor import Accessor
 
 
 class XmlAccessor(Accessor):
@@ -65,7 +66,7 @@ class XmlAccessor(Accessor):
 
     @classmethod
     def _buffer_to_doc(cls, buffer):
-        return ET.fromstring(bytes(buffer)) # Works better with bytes than decoded
+        return ET.fromstring(bytes(buffer))  # Works better with bytes than decoded
 
     @classmethod
     def _doc_to_buffer(cls, doc):
@@ -82,7 +83,7 @@ class XmlAccessor(Accessor):
         # Determine what the selector was trying to set
         if "@" in parts[-1]:
             node.attrib[parts[-1][1:]] = str(value)
-        elif "text()" == parts[-1]:
+        elif parts[-1] == "text()":
             node.text = str(value)
         else:
             raise RuntimeError(f"Unknown selector: {item.key}")

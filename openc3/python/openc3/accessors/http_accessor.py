@@ -18,9 +18,11 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import re
-from .accessor import Accessor
+
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import class_name_to_filename, filename_to_module, filename_to_class_name
+from openc3.utilities.string import class_name_to_filename, filename_to_class_name, filename_to_module
+
+from .accessor import Accessor
 
 
 class HttpAccessor(Accessor):

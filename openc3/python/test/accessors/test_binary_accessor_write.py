@@ -18,9 +18,10 @@ import math
 import struct
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.packet import Packet
+from test.test_helper import *
 
 
 class TestBinaryAccessorWrite(unittest.TestCase):

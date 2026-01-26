@@ -15,12 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import glob
-import pathlib
 import os
-from typing import Optional
+import pathlib
+
+from openc3.config.config_parser import ConfigParser
 from openc3.top_level import add_to_search_path
 from openc3.utilities.logger import Logger
-from openc3.config.config_parser import ConfigParser
 
 
 class Target:
@@ -28,7 +28,7 @@ class Target:
     accessed through interfaces and have command and telemetry definition files
     which define their access."""
 
-    def __init__(self, target_name: str, path: os.PathLike[str], gem_path: Optional[str] = None):
+    def __init__(self, target_name: str, path: os.PathLike[str], gem_path: str | None = None):
         """Creates a new target by processing the target.txt file in the directory
         given by the path joined with the target_name. Records all the command
         and telemetry definition files found in the targets cmd_tlm directory.
@@ -41,9 +41,9 @@ class Target:
         self.routers = []
         self.cmd_cnt = 0
         self.tlm_cnt = 0
-        self.dir: Optional[str] = None
-        self.id: Optional[str] = None
-        self.filename: Optional[str] = None
+        self.dir: str | None = None
+        self.id: str | None = None
+        self.filename: str | None = None
         self.name = target_name.upper()
 
         self.get_target_dir(path, gem_path)
@@ -108,7 +108,7 @@ class Target:
         }
         return config
 
-    def get_target_dir(self, path: os.PathLike[str], gem_path: Optional[str]):
+    def get_target_dir(self, path: os.PathLike[str], gem_path: str | None):
         """Get the target directory and add the target's lib folder to the
         search path if it exists
         Args:

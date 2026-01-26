@@ -16,11 +16,13 @@
 
 import tempfile
 import unittest
-from test.test_helper import mock_redis, setup_system
-from openc3.system.system import System
+
 from openc3.packets.limits import Limits
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
+from openc3.system.system import System
+from test.test_helper import mock_redis, setup_system
+
 
 class TestLimits(unittest.TestCase):
     def setUp(self):

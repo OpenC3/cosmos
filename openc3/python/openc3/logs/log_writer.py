@@ -17,8 +17,9 @@
 import os
 import tempfile
 import threading
-from datetime import datetime, timezone, timedelta
 import traceback
+from datetime import datetime, timedelta, timezone
+
 from openc3.config.config_parser import ConfigParser
 from openc3.top_level import kill_thread
 from openc3.topics.topic import Topic
@@ -247,7 +248,7 @@ class LogWriter:
 
             # Start log file
             self.filename = self.create_unique_filename()
-            self.file = open(self.filename, "bx")
+            self.file = open(self.filename, "bx")  # noqa: SIM115
             self.file_size = 0
 
             self.start_time = datetime.now(timezone.utc)
@@ -256,7 +257,7 @@ class LogWriter:
             self.last_time = None
             self.previous_time_nsec_since_epoch = None
             Logger.debug(f"Log File Opened : {self.filename}")
-        except IOError:
+        except OSError:
             Logger.error(f"Error starting new log file {traceback.format_exc()}")
             self.logging_enabled = False
             # TODO: handle_critical_exception(err)
@@ -319,7 +320,7 @@ class LogWriter:
                 for redis_topic, last_offset in self.last_offsets:
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
-                self.last_offsets.clear
+                self.last_offsets.clear()
                 self.file = None
                 self.file_size = 0
                 self.filename = None

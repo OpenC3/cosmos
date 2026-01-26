@@ -15,12 +15,14 @@
 # if purchased from OpenC3, Inc.
 
 import copy
-from datetime import datetime, timezone
 import traceback
-from .log_writer import LogWriter
+from datetime import datetime, timezone
+
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.logger import Logger
+from openc3.utilities.time import to_nsec_from_epoch
+
+from .log_writer import LogWriter
 
 
 # Creates a log file of stream data for either reads or writes. Can automatically

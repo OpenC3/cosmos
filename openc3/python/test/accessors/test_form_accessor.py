@@ -15,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from test.test_helper import Mock
+
 from openc3.accessors.form_accessor import FormAccessor
+from test.test_helper import Mock
 
 
 class TestFormAccessor(unittest.TestCase):

@@ -82,13 +82,41 @@ Code coverage reports can be found at `cosmos/openc3/coverage/index.html`
 
 ## Python Unit Tests
 
-1. Navigate to **cosmos/openc3/python** folder. Run the command:
+### Using Just (Recommended)
+
+1. Navigate to **cosmos/openc3/python** folder and run tests with coverage:
 
    ```bash
-   cosmos/openc3/python % python -m pip install poetry
-   cosmos/openc3/python % poetry install
-   cosmos/openc3/python % poetry run coverage run -m pytest
-   cosmos/openc3/python % poetry run coverage html
+   cosmos/openc3/python % just test-cov-html
    ```
 
-Code coverage reports can be found at `cosmos/openc3/python/coverage/index.html`
+   See all available commands:
+
+   ```bash
+   cosmos/openc3/python % just
+   ```
+
+   Common commands:
+   - `just test` - Run all tests
+   - `just test-cov` - Run tests with coverage report
+   - `just test-cov-html` - Run tests with HTML coverage report
+   - `just lint` - Check code quality
+   - `just format` - Format code
+   - `just verify` - Format, lint, and test (pre-commit check)
+
+### Manual Testing
+
+1. Navigate to **cosmos/openc3/python** folder and install dependencies:
+
+   ```bash
+   cosmos/openc3/python % uv sync
+   ```
+
+2. Run tests with coverage:
+
+   ```bash
+   cosmos/openc3/python % uv run coverage run -m pytest
+   cosmos/openc3/python % uv run coverage html
+   ```
+
+Code coverage reports can be found at `cosmos/openc3/python/htmlcov/index.html`

@@ -17,10 +17,12 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
+from openc3.models.target_model import TargetModel
 from openc3.script.commands import *
 from openc3.top_level import HazardousError
-from openc3.models.target_model import TargetModel
+from test.test_helper import *
+
 
 gArgs = []
 gKwargs = {}

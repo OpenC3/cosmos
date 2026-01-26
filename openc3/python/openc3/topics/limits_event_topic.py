@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
 import json
-from openc3.topics.topic import Topic
+import re
+
 from openc3.system.system import System
+from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.store import Store
-from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 # LimitsEventTopic keeps track of not only the <SCOPE>__openc3_limits_events topic
@@ -107,7 +108,7 @@ class LimitsEventTopic(Topic):
         final_result = []
         topic = f"{scope}__openc3_limits_events"
         if offset is not None:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics([topic], [offset], None, count):
+            for _topic, msg_id, msg_hash, _redis in Topic.read_topics([topic], [offset], None, count):
                 # result = Topic.read_topics([topic], [offset], None, count)
                 # if len(result) != 0:
                 # result is a hash with the topic key followed by an array of results

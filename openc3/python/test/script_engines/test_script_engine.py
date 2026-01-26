@@ -16,8 +16,10 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.script_engines.script_engine import ScriptEngine
+from test.test_helper import *
+
 
 class TestScriptEngine(unittest.TestCase):
     def setUp(self):

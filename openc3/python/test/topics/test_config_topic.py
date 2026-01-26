@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.topics.config_topic import ConfigTopic
+from test.test_helper import *
 
 
 class TestConfigTopic(unittest.TestCase):

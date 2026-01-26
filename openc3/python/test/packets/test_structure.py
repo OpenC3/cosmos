@@ -16,6 +16,7 @@
 
 import unittest
 from unittest.mock import *
+
 from openc3.packets.structure import Structure
 from openc3.packets.structure_item import StructureItem
 
@@ -1020,7 +1021,6 @@ class TestStructureReadItemsNoBuffer(unittest.TestCase):
 
 class TestStructureSynchronizeAllowReadsMutexHeld(unittest.TestCase):
     def test_yields_when_mutex_already_held(self):
-        import threading
 
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 8, "UINT")

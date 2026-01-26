@@ -14,17 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import multiprocessing
 import queue
 import select
 import socket
 import threading
-import multiprocessing
 import traceback
+
+from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
-from openc3.config.config_parser import ConfigParser
+from openc3.top_level import close_socket, kill_thread
 from openc3.utilities.logger import Logger
-from openc3.top_level import kill_thread, close_socket
 
 
 # Data class which stores the interface and associated information
@@ -337,14 +338,14 @@ class TcpipServerInterface(StreamInterface):
         try:
             addr = (self.listen_address, port)
             listen_socket.bind(addr)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Error binding to port {port}.\n"
                 + "Either another application is using this port\n"
                 + "or the operating system is being slow cleaning up.\n"
                 + "Make sure all sockets/streams are closed in all applications,\n"
                 + "wait 1 minute and try again."
-            )
+            ) from e
 
         listen_socket.setblocking(0)
         listen_socket.listen(5)
@@ -438,15 +439,13 @@ class TcpipServerInterface(StreamInterface):
 
             index_to_delete = None
             with self.connection_mutex:
-                index = 0
-                for read_interface_info in self.read_interface_infos:
+                for index, read_interface_info in enumerate(self.read_interface_infos):
                     if interface_info.interface == read_interface_info.interface:
                         index_to_delete = index
                         read_interface_info.interface.disconnect()
                         if read_interface_info.interface.stream_log_pair:
                             read_interface_info.interface.stream_log_pair.stop()
                         break
-                    index += 1
             if index_to_delete:
                 del self.read_interface_infos[index_to_delete]
         except Exception:
@@ -479,7 +478,7 @@ class TcpipServerInterface(StreamInterface):
                 if packet:
                     self._write_to_clients("write", packet)
 
-        except Exception :
+        except Exception:
             self._shutdown_interfaces(self.write_interface_infos)
             Logger.error(f"{self.name}: Tcpip server write thread unexpectedly died")
             Logger.error(traceback.format_exc())
@@ -562,7 +561,7 @@ class TcpipServerInterface(StreamInterface):
                     if interface_info.interface.stream_log_pair:
                         interface_info.interface.stream_log_pair.stop()
                     indexes_to_delete.insert(0, index)  # Put later indexes at front of array
-            except socket.error as error:
+            except OSError as error:
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                     # Client is still cleanly connected as far as we can tell without writing to the socket
                     pass
@@ -590,8 +589,7 @@ class TcpipServerInterface(StreamInterface):
         with self.connection_mutex:
             # Send data to each client - On error drop the client
             indexes_to_delete = []
-            index = 0
-            for interface_info in self.write_interface_infos:
+            for index, interface_info in enumerate(self.write_interface_infos):
                 need_disconnect = False
                 try:
                     interface_bytes_written = interface_info.interface.bytes_written
@@ -600,22 +598,23 @@ class TcpipServerInterface(StreamInterface):
                     self.written_raw_data_time = interface_info.interface.written_raw_data_time
                     self.written_raw_data = interface_info.interface.written_raw_data
                     self.bytes_written += diff
-                except IOError:
+                except OSError:
                     # Client has normally disconnected
                     need_disconnect = True
                 except Exception as error:
-                    Logger.error(f"{self.name}: Error sending to client: {error.__class__.__name__} {traceback.format_exc()}")
+                    Logger.error(
+                        f"{self.name}: Error sending to client: {error.__class__.__name__} {traceback.format_exc()}"
+                    )
                     need_disconnect = True
 
                 if need_disconnect:
                     Logger.info(
                         f"{self.name}: Tcpip server lost write connection to {interface_info.hostname}({interface_info.host_ip}):{interface_info.port}"
                     )
-                    interface_info.interface.disconnect
+                    interface_info.interface.disconnect()
                     if interface_info.interface.stream_log_pair:
-                        interface_info.interface.stream_log_pair.stop
+                        interface_info.interface.stream_log_pair.stop()
                     indexes_to_delete.insert(0, index)  # Put later indexes at front of array
-                index += 1
 
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:
@@ -623,9 +622,9 @@ class TcpipServerInterface(StreamInterface):
 
     def details(self):
         result = super().details()
-        result['write_port'] = self.write_port
-        result['read_port'] = self.read_port
-        result['write_timeout'] = self.write_timeout
-        result['read_timeout'] = self.read_timeout
-        result['listen_address'] = self.listen_address
+        result["write_port"] = self.write_port
+        result["read_port"] = self.read_port
+        result["write_timeout"] = self.write_timeout
+        result["read_timeout"] = self.read_timeout
+        result["listen_address"] = self.listen_address
         return result

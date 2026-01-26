@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.top_level import get_class_from_module
-from openc3.utilities.string import filename_to_module, filename_to_class_name
 from openc3.processors.processor import Processor
+from openc3.top_level import get_class_from_module
+from openc3.utilities.string import filename_to_class_name, filename_to_module
 
 
 class ProcessorParser:
@@ -59,7 +59,7 @@ class ProcessorParser:
             processor.name = self._get_processor_name()
             packet.processors[processor.name] = processor
         except Exception as err:
-            raise self.parser.error(err, self.usage)
+            raise self.parser.error(err, self.usage) from err
 
     def _get_processor_name(self):
         return self.parser.parameters[0].upper()

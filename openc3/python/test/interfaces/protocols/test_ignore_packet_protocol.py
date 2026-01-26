@@ -14,16 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
-from datetime import datetime, timezone
 import threading
+import time
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.interfaces.protocols.ignore_packet_protocol import IgnorePacketProtocol
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
+from test.test_helper import *
 
 
 class TestIgnorePacketProtocol(unittest.TestCase):

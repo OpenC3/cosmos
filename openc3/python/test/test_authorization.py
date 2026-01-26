@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.script.authorization import CosmosAuthorization
 
 

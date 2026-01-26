@@ -15,8 +15,8 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.packet import Packet
-from openc3.utilities.string import simple_formatted
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.string import simple_formatted
 
 
 def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet):

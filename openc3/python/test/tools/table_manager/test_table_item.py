@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.tools.table_manager.table_item import TableItem
+
 
 class TestTableItem(unittest.TestCase):
     def test_initialize(self):

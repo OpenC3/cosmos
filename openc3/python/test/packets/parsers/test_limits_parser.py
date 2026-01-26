@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
+from test.test_helper import *
 
 
 class TestLimitsParser(unittest.TestCase):
@@ -187,7 +188,7 @@ class TestLimitsParser(unittest.TestCase):
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
             tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
-            limits = "LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5".split(" ")
+            limits = ["LIMITS", "DEFAULT", "3", "ENABLED", "1", "2", "6", "7", "3", "5"]
             limits[index] = "X"
             tf.write(" ".join(limits))
             tf.seek(0)

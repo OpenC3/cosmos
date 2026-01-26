@@ -14,14 +14,14 @@
 # if purchased from OpenC3, Inc.
 
 import time
-from typing import Optional
+
 import openc3.script
-from openc3.script.api_shared import openc3_script_sleep
 from openc3.environment import OPENC3_SCOPE
+from openc3.script.api_shared import openc3_script_sleep
 
 
 def get_packets(
-    id: str, block: Optional[float] = None, block_delay: float = 0.1, count: int = 1000, scope: str = OPENC3_SCOPE
+    id: str, block: float | None = None, block_delay: float = 0.1, count: int = 1000, scope: str = OPENC3_SCOPE
 ):
     """Get packets based on ID returned from subscribe_packet.
 
@@ -37,7 +37,7 @@ def get_packets(
     """
     start_time = time.time()
     while True:
-        id, packets = getattr(openc3.script.API_SERVER, "get_packets")(id, count=count, scope=scope)
+        id, packets = openc3.script.API_SERVER.get_packets(id, count=count, scope=scope)
         if block and time.time() < (start_time + block) and not packets:
             openc3_script_sleep(block_delay)
         else:
@@ -53,7 +53,7 @@ def inject_tlm(
     target_name: str, packet_name: str, item_hash: dict = None, type: str = "CONVERTED", scope: str = OPENC3_SCOPE
 ):
     print(f'inject_tlm("{target_name}", "{packet_name}", {item_hash}, type="{type}")')
-    getattr(openc3.script.API_SERVER, "inject_tlm")(target_name, packet_name, item_hash, type=type, scope=scope)
+    openc3.script.API_SERVER.inject_tlm(target_name, packet_name, item_hash, type=type, scope=scope)
 
 
 def set_tlm(*args, type: str = "CONVERTED", scope: str = OPENC3_SCOPE):
@@ -65,7 +65,7 @@ def set_tlm(*args, type: str = "CONVERTED", scope: str = OPENC3_SCOPE):
         else:
             value = args[3]
         print(f'set_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
-    getattr(openc3.script.API_SERVER, "set_tlm")(*args, type=type, scope=scope)
+    openc3.script.API_SERVER.set_tlm(*args, type=type, scope=scope)
 
 
 def override_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
@@ -77,7 +77,7 @@ def override_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
         else:
             value = args[3]
         print(f'override_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
-    getattr(openc3.script.API_SERVER, "override_tlm")(*args, type=type, scope=scope)
+    openc3.script.API_SERVER.override_tlm(*args, type=type, scope=scope)
 
 
 def normalize_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
@@ -89,4 +89,4 @@ def normalize_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
         else:
             value = args[3]
         print(f'normalize_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
-    getattr(openc3.script.API_SERVER, "normalize_tlm")(*args, type=type, scope=scope)
+    openc3.script.API_SERVER.normalize_tlm(*args, type=type, scope=scope)
