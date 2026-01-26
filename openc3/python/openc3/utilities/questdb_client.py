@@ -213,14 +213,14 @@ class QuestDBClient:
         if data_type is None:
             first_char = value[0]
             # Try JSON for arrays/objects
-            if first_char == '[' or first_char == '{':
+            if first_char == "[" or first_char == "{":
                 try:
                     return json.loads(value)
                 except json.JSONDecodeError:
                     pass
             # Try integer conversion for numeric strings
-            elif first_char == '-' or first_char.isdigit():
-                if value.lstrip('-').isdigit():
+            elif first_char == "-" or first_char.isdigit():
+                if value.lstrip("-").isdigit():
                     try:
                         return int(value)
                     except (ValueError, OverflowError):
@@ -405,14 +405,12 @@ class QuestDBClient:
         Used when building SQL queries to select the appropriate column.
 
         Args:
-            value_type: Value type: 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'
+            value_type: Value type: 'RAW', 'CONVERTED', 'FORMATTED'
 
         Returns:
-            Column suffix ('__C', '__F', '__U') or None for RAW
+            Column suffix ('__C', '__F') or None for RAW
         """
-        if value_type == "WITH_UNITS":
-            return "__U"
-        elif value_type == "FORMATTED":
+        if value_type == "FORMATTED":
             return "__F"
         elif value_type == "CONVERTED":
             return "__C"
@@ -636,12 +634,10 @@ class QuestDBClient:
         match value:
             case int():
                 # 64-bit integer columns are stored as DECIMAL - send as string via ILP
-                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns
-                if is_decimal_int:
-                    value = str(value)
+                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns.
                 # QuestDB Python client uses C long internally (signed 64-bit).
                 # Values outside this range must be strings for DECIMAL columns.
-                elif value > 9223372036854775807 or value < -9223372036854775808:
+                if is_decimal_int or value > 9223372036854775807 or value < -9223372036854775808:
                     value = str(value)
 
             case float():

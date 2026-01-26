@@ -83,7 +83,9 @@ def ts_to_iso(ts_ns: int) -> str:
     """Convert nanosecond timestamp to ISO string for QuestDB queries."""
     ts_us = ts_ns // 1000
     ts_s = ts_us / 1_000_000
-    return datetime.fromtimestamp(ts_s, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return datetime.fromtimestamp(ts_s, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%S.%fZ"
+    )
 
 
 def create_packet_def(items):
@@ -91,8 +93,16 @@ def create_packet_def(items):
     return {"items": items}
 
 
-def create_item(name, data_type, bit_size=None, array_size=None, states=None, read_conversion=None,
-                format_string=None, units=None):
+def create_item(
+    name,
+    data_type,
+    bit_size=None,
+    array_size=None,
+    states=None,
+    read_conversion=None,
+    format_string=None,
+    units=None,
+):
     """Create an item definition for a packet."""
     item = {"name": name, "data_type": data_type}
     if bit_size is not None:
@@ -145,8 +155,12 @@ def cmd_write(args):
 
     # Parse values
     values = json.loads(args.values)
-    converted_values = json.loads(args.converted_values) if args.converted_values else None
-    formatted_values = json.loads(args.formatted_values) if args.formatted_values else None
+    converted_values = (
+        json.loads(args.converted_values) if args.converted_values else None
+    )
+    formatted_values = (
+        json.loads(args.formatted_values) if args.formatted_values else None
+    )
 
     # Build item definition
     item_kwargs = {
@@ -254,7 +268,7 @@ def cmd_cleanup(args):
     print(json.dumps(result))
 
 
-def cmd_check(args):
+def cmd_check():
     """Check if QuestDB is available."""
     try:
         import psycopg
@@ -275,22 +289,40 @@ def cmd_check(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="QuestDB writer helper for cross-language testing")
+    parser = argparse.ArgumentParser(
+        description="QuestDB writer helper for cross-language testing"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # Write command
     write_parser = subparsers.add_parser("write", help="Write test data to QuestDB")
     write_parser.add_argument("--target", required=True, help="Target name")
     write_parser.add_argument("--packet", required=True, help="Packet name")
-    write_parser.add_argument("--data_type", required=True, help="COSMOS data type (INT, UINT, FLOAT, STRING, BLOCK, DERIVED)")
+    write_parser.add_argument(
+        "--data_type",
+        required=True,
+        help="COSMOS data type (INT, UINT, FLOAT, STRING, BLOCK, DERIVED)",
+    )
     write_parser.add_argument("--bit_size", type=int, help="Bit size for numeric types")
-    write_parser.add_argument("--array_size", type=int, help="Array size (if array item)")
-    write_parser.add_argument("--values", required=True, help="JSON array of values to write")
-    write_parser.add_argument("--converted_values", help="JSON array of converted values")
-    write_parser.add_argument("--formatted_values", help="JSON array of formatted values")
+    write_parser.add_argument(
+        "--array_size", type=int, help="Array size (if array item)"
+    )
+    write_parser.add_argument(
+        "--values", required=True, help="JSON array of values to write"
+    )
+    write_parser.add_argument(
+        "--converted_values", help="JSON array of converted values"
+    )
+    write_parser.add_argument(
+        "--formatted_values", help="JSON array of formatted values"
+    )
     write_parser.add_argument("--states", help="JSON object of state definitions")
-    write_parser.add_argument("--read_conversion", help="JSON object for read conversion")
-    write_parser.add_argument("--format_string", help="Format string for formatted values")
+    write_parser.add_argument(
+        "--read_conversion", help="JSON object for read conversion"
+    )
+    write_parser.add_argument(
+        "--format_string", help="Format string for formatted values"
+    )
     write_parser.add_argument("--units", help="Units string")
 
     # Cleanup command
@@ -307,7 +339,7 @@ def main():
     elif args.command == "cleanup":
         cmd_cleanup(args)
     elif args.command == "check":
-        cmd_check(args)
+        cmd_check()
     else:
         parser.print_help()
         sys.exit(1)

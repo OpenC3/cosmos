@@ -146,13 +146,11 @@ module OpenC3
             # Not valid JSON
           end
         # Try integer conversion for numeric strings
-        elsif first_char == '-' || first_char =~ /\d/
-          if value =~ /\A-?\d+\z/
-            begin
-              return Integer(value)
-            rescue ArgumentError
-              # Not a valid integer
-            end
+        elsif value =~ /\A-?\d+\z/
+          begin
+            return Integer(value)
+          rescue ArgumentError
+            # Not a valid integer
           end
         end
       end
@@ -184,12 +182,10 @@ module OpenC3
     # Get the column suffix for a given value type.
     # Used when building SQL queries to select the appropriate column.
     #
-    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'
-    # @return [String, nil] Column suffix ('__C', '__F', '__U') or nil for RAW
+    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED'
+    # @return [String, nil] Column suffix ('__C', '__F') or nil for RAW
     def self.column_suffix_for_value_type(value_type)
       case value_type
-      when 'WITH_UNITS'
-        '__U'
       when 'FORMATTED'
         '__F'
       when 'CONVERTED'

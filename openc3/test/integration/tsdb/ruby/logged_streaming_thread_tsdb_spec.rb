@@ -478,6 +478,8 @@ RSpec.describe LoggedStreamingThread, :questdb do
           parsed = Time.parse(actual)
           expect(parsed.to_f).to be_within(0.001).of(expected_time.to_f),
             "Timestamp formatted mismatch at index #{i}: expected #{expected_time}, got #{actual}"
+        else
+          raise "Unknown format_type: #{format_type}"
         end
       end
     end

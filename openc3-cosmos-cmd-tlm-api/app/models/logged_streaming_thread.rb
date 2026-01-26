@@ -306,9 +306,6 @@ class LoggedStreamingThread < StreamingThread
                                         password: ENV['OPENC3_TSDB_PASSWORD'],
                                         dbname: 'qdb')
 
-          # TODO: Somewhere in here we need to set up type mapping for results
-          # I don't think the BasicTypeMapForResults is cutting it!
-
           # Default connection is all strings but we want to map to the correct types
           if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
             # Note: QuestDB uses signed int64 (long), so extreme values are clamped during storage:

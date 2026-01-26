@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -77,7 +77,9 @@ module OpenC3
         end
       end
       if reduced_type
-        raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported" if value_type == :FORMATTED or value_type == :WITH_UNITS
+        if value_type == :FORMATTED or value_type == :WITH_UNITS
+          raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported"
+        end
         if value_type == :CONVERTED
           case reduced_type
           when :AVG
