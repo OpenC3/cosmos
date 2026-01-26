@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
+from test.test_helper import *
 
 
 class TestStateParser(unittest.TestCase):

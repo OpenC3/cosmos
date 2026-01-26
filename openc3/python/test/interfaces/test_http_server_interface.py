@@ -15,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from test.test_helper import mock_redis, setup_system
+
 from openc3.interfaces.http_server_interface import HttpServerInterface
+from test.test_helper import mock_redis, setup_system
 
 
 class TestHttpServerInterface(unittest.TestCase):

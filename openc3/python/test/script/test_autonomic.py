@@ -1,4 +1,3 @@
-# encoding: utf-8
 
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
@@ -17,27 +16,28 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 from openc3.script.autonomic import (
-    autonomic_group_list,
     autonomic_group_create,
-    autonomic_group_show,
     autonomic_group_destroy,
-    autonomic_trigger_list,
-    autonomic_trigger_create,
-    autonomic_trigger_show,
-    autonomic_trigger_enable,
-    autonomic_trigger_disable,
-    autonomic_trigger_update,
-    autonomic_trigger_destroy,
-    autonomic_reaction_list,
+    autonomic_group_list,
+    autonomic_group_show,
     autonomic_reaction_create,
-    autonomic_reaction_show,
-    autonomic_reaction_enable,
-    autonomic_reaction_disable,
-    autonomic_reaction_execute,
-    autonomic_reaction_update,
     autonomic_reaction_destroy,
+    autonomic_reaction_disable,
+    autonomic_reaction_enable,
+    autonomic_reaction_execute,
+    autonomic_reaction_list,
+    autonomic_reaction_show,
+    autonomic_reaction_update,
+    autonomic_trigger_create,
+    autonomic_trigger_destroy,
+    autonomic_trigger_disable,
+    autonomic_trigger_enable,
+    autonomic_trigger_list,
+    autonomic_trigger_show,
+    autonomic_trigger_update,
 )
 
 

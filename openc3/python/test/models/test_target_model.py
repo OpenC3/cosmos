@@ -19,12 +19,13 @@
 
 import unittest
 import unittest.mock
-from test.test_helper import BucketMock, mock_redis, setup_system, capture_io
 from unittest.mock import patch
+
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
-from openc3.models.microservice_model import MicroserviceModel
 from openc3.utilities.store import Store
+from test.test_helper import BucketMock, capture_io, mock_redis, setup_system
 
 
 class TestTargetModel(unittest.TestCase):

@@ -14,23 +14,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import base64
+import json
+import math
 import os
 import re
-import json
-import base64
+import time
 import unittest
 from datetime import datetime, timezone
-import time
-import math
 from unittest.mock import Mock, patch
-from test.test_helper import mock_redis, setup_system, capture_io, System
-from openc3.models.target_model import TargetModel
-from openc3.models.microservice_model import MicroserviceModel
+
+from questdb.ingress import IngressError, TimestampMicros
+
 from openc3.microservices.tsdb_microservice import TsdbMicroservice
-from openc3.topics.topic import Topic
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.target_model import TargetModel
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from questdb.ingress import IngressError, TimestampMicros, TimestampNanos
+from openc3.topics.topic import Topic
+from test.test_helper import System, capture_io, mock_redis, setup_system
 
 
 class TestTsdbMicroservice(unittest.TestCase):

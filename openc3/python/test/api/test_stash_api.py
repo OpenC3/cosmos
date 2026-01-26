@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.stash_api import *
+from test.test_helper import *
 
 
 class TestStashApi(unittest.TestCase):

@@ -25,19 +25,20 @@ For profiling:
 """
 
 import os
+import sys
 import time
 import unittest
-import sys
+
 
 # Skip all tests in CI environment
 if os.environ.get("CI"):
     raise unittest.SkipTest("Skipping performance tests in CI")
 
-from test.test_helper import mock_redis, setup_system
+from openc3.models.cvt_model import CvtModel
 from openc3.system.system import System
 from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from openc3.models.cvt_model import CvtModel
+from test.test_helper import mock_redis, setup_system
 
 
 class TestCommandPerformance(unittest.TestCase):
@@ -61,7 +62,7 @@ class TestCommandPerformance(unittest.TestCase):
         iterations = int(os.environ.get("PERF_ITERATIONS", 10000))
 
         print(f"\n{'='*70}")
-        print(f"Performance Benchmark: build_cmd")
+        print("Performance Benchmark: build_cmd")
         print(f"Python Version: {sys.version}")
         print(f"Iterations: {iterations}")
         print(f"{'='*70}")
@@ -79,7 +80,7 @@ class TestCommandPerformance(unittest.TestCase):
         cmds_per_second = iterations / elapsed
         usec_per_cmd = (elapsed * 1_000_000) / iterations
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Total time:        {elapsed:.4f} seconds")
         print(f"  Commands/second:   {cmds_per_second:.2f}")
         print(f"  Microseconds/cmd:  {usec_per_cmd:.2f}")
@@ -93,7 +94,7 @@ class TestCommandPerformance(unittest.TestCase):
         cmd = System.commands.build_cmd("INST", "COLLECT", {"TYPE": "NORMAL", "DURATION": 1.0})
 
         print(f"\n{'='*70}")
-        print(f"Performance Benchmark: CommandDecomTopic.write_packet")
+        print("Performance Benchmark: CommandDecomTopic.write_packet")
         print(f"Python Version: {sys.version}")
         print(f"Iterations: {iterations}")
         print(f"{'='*70}")
@@ -111,7 +112,7 @@ class TestCommandPerformance(unittest.TestCase):
         writes_per_second = iterations / elapsed
         usec_per_write = (elapsed * 1_000_000) / iterations
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Total time:        {elapsed:.4f} seconds")
         print(f"  Writes/second:     {writes_per_second:.2f}")
         print(f"  Microseconds/write: {usec_per_write:.2f}")
@@ -153,7 +154,7 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
         packet.buffer = self.generate_health_status_buffer()
 
         print(f"\n{'='*70}")
-        print(f"Performance Benchmark: packet.decom (HEALTH_STATUS)")
+        print("Performance Benchmark: packet.decom (HEALTH_STATUS)")
         print(f"Python Version: {sys.version}")
         print(f"Iterations: {iterations}")
         print(f"{'='*70}")
@@ -171,7 +172,7 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
         decoms_per_second = iterations / elapsed
         usec_per_decom = (elapsed * 1_000_000) / iterations
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Total time:        {elapsed:.4f} seconds")
         print(f"  Decoms/second:     {decoms_per_second:.2f}")
         print(f"  Microseconds/decom: {usec_per_decom:.2f}")
@@ -185,7 +186,7 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
         packet.buffer = self.generate_health_status_buffer()
 
         print(f"\n{'='*70}")
-        print(f"Performance Benchmark: TelemetryDecomTopic.write_packet")
+        print("Performance Benchmark: TelemetryDecomTopic.write_packet")
         print(f"Python Version: {sys.version}")
         print(f"Iterations: {iterations}")
         print(f"{'='*70}")
@@ -203,7 +204,7 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
         writes_per_second = iterations / elapsed
         usec_per_write = (elapsed * 1_000_000) / iterations
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Total time:        {elapsed:.4f} seconds")
         print(f"  Writes/second:     {writes_per_second:.2f}")
         print(f"  Microseconds/write: {usec_per_write:.2f}")
@@ -217,7 +218,7 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
         buffer = self.generate_health_status_buffer()
 
         print(f"\n{'='*70}")
-        print(f"Performance Benchmark: Decom path breakdown")
+        print("Performance Benchmark: Decom path breakdown")
         print(f"Python Version: {sys.version}")
         print(f"Iterations: {iterations}")
         print(f"{'='*70}")
@@ -248,11 +249,11 @@ class TestTelemetryDecomPerformance(unittest.TestCase):
 
         total_time = buffer_time + limits_time + write_time
 
-        print(f"\nBreakdown:")
+        print("\nBreakdown:")
         print(f"  packet.buffer=:           {(buffer_time * 1_000_000 / iterations):.2f} μs ({buffer_time / total_time * 100:.1f}%)")
         print(f"  packet.check_limits:      {(limits_time * 1_000_000 / iterations):.2f} μs ({limits_time / total_time * 100:.1f}%)")
         print(f"  TelemetryDecomTopic.write: {(write_time * 1_000_000 / iterations):.2f} μs ({write_time / total_time * 100:.1f}%)")
-        print(f"  ----------------------------------------")
+        print("  ----------------------------------------")
         print(f"  Total:                    {(total_time * 1_000_000 / iterations):.2f} μs")
         print(f"{'='*70}")
 

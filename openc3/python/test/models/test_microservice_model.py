@@ -17,8 +17,9 @@
 import inspect
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.models.microservice_model import MicroserviceModel
+from test.test_helper import *
 
 
 class TestMicroserviceModel(unittest.TestCase):

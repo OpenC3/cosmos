@@ -14,20 +14,21 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import struct
-import unittest
 import threading
+import time
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.cmd_api import *
 from openc3.interfaces.interface import Interface
-from openc3.models.microservice_model import MicroserviceModel
+from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
-from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
-from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.top_level import HazardousError
+from test.test_helper import *
 
 
 class MyInterface(Interface):

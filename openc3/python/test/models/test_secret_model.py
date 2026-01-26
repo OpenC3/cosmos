@@ -17,8 +17,9 @@
 
 import unittest
 import unittest.mock
-from test.test_helper import *
+
 from openc3.models.secret_model import SecretModel
+from test.test_helper import *
 
 
 class TestSecretModel(unittest.TestCase):

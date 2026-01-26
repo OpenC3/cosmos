@@ -16,13 +16,14 @@
 
 import os
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from test.test_helper import *
-from openc3.system.system import System, SystemMeta
+from unittest.mock import MagicMock, Mock, patch
+
 from openc3.packets.commands import Commands
-from openc3.packets.telemetry import Telemetry
 from openc3.packets.limits import Limits
 from openc3.packets.packet_config import PacketConfig
+from openc3.packets.telemetry import Telemetry
+from openc3.system.system import System, SystemMeta
+from test.test_helper import *
 
 
 class TestSystemMeta(unittest.TestCase):

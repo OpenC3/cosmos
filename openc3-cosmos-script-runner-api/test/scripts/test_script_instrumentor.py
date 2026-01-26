@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import ast
+
 import pytest
+
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
 
 

@@ -17,8 +17,9 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.script.telemetry import *
+from test.test_helper import *
 
 
 gPkts = []

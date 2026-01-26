@@ -16,9 +16,11 @@
 
 import os
 import shutil
-import unittest
 import tempfile
+import unittest
+
 from openc3.tools.table_manager.table_config import TableConfig
+
 
 class TestTableParser(unittest.TestCase):
     def setUp(self):

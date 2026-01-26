@@ -14,9 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
 import math
+import sys
 from unittest.mock import Mock
+
 
 # Mock dependencies before imports
 sys.modules['serial'] = Mock()

@@ -17,8 +17,10 @@
 import json
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.models.tool_config_model import ToolConfigModel
+from test.test_helper import *
+
 
 class TestToolConfigModel(unittest.TestCase):
     def setUp(self):

@@ -17,14 +17,15 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import Mock
-from test.test_helper import mock_redis, setup_system, capture_io
-from openc3.system.target import Target
-from openc3.system.system import System
+
 from openc3.packets.packet import Packet
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
-from datetime import datetime, timedelta
+from openc3.system.system import System
+from openc3.system.target import Target
+from test.test_helper import capture_io, mock_redis, setup_system
 
 
 class TestTelemetry(unittest.TestCase):
@@ -547,6 +548,7 @@ class TestTelemetry(unittest.TestCase):
     def test_identify_with_subpackets_false_excludes_subpackets(self):
         # Create config with normal packet and subpacket
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -575,6 +577,7 @@ class TestTelemetry(unittest.TestCase):
     def test_identify_with_subpackets_true_only_identifies_subpackets(self):
         # Create config with normal packet and subpacket
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -607,6 +610,7 @@ class TestTelemetry(unittest.TestCase):
 
     def test_tlm_unique_id_mode_returns_mode_for_target(self):
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -628,6 +632,7 @@ class TestTelemetry(unittest.TestCase):
 
     def test_tlm_subpacket_unique_id_mode_returns_mode_for_target(self):
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()

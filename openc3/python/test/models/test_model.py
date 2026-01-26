@@ -15,21 +15,19 @@
 # if purchased from OpenC3, Inc.
 
 import time
-from typing import Optional
 import unittest
 
-from test.test_helper import *
-
 from openc3.models.model import Model
+from test.test_helper import *
 
 
 class MyModel(Model):
     def __init__(
         self,
         name: str,
-        scope: Optional[str] = None,
-        plugin: Optional[str] = None,
-        updated_at: Optional[float] = None,
+        scope: str | None = None,
+        plugin: str | None = None,
+        updated_at: float | None = None,
     ):
         super().__init__(
             f"{scope}__TEST",
@@ -40,15 +38,15 @@ class MyModel(Model):
         )
 
     @classmethod
-    def get(cls, name: str, scope: Optional[str] = None):
+    def get(cls, name: str, scope: str | None = None):
         return super().get(f"{scope}__TEST", name=name)
 
     @classmethod
-    def names(cls, scope: Optional[str] = None):
+    def names(cls, scope: str | None = None):
         return super().names(f"{scope}__TEST")
 
     @classmethod
-    def all(cls, scope: Optional[str] = None):
+    def all(cls, scope: str | None = None):
         return super().all(f"{scope}__TEST")
 
 

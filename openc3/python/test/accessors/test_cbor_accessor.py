@@ -15,13 +15,15 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
-from openc3.accessors.cbor_accessor import CborAccessor
 from collections import namedtuple
+from unittest.mock import *
+
 from cbor2 import dumps, loads
+
+from openc3.accessors.cbor_accessor import CborAccessor
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
+from test.test_helper import *
 
 
 class TestCborAccessor(unittest.TestCase):

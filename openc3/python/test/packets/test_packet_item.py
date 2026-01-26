@@ -16,11 +16,12 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.conversion import Conversion
+from openc3.packets.limits_response import LimitsResponse
 from openc3.packets.packet_item import PacketItem
 from openc3.packets.packet_item_limits import PacketItemLimits
-from openc3.packets.limits_response import LimitsResponse
+from test.test_helper import *
 
 
 class TestPacketItem(unittest.TestCase):

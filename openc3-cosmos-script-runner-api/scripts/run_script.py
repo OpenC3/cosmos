@@ -14,21 +14,23 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-import time
 import json
+import os
 import sys
+import time
 import traceback
 from datetime import datetime, timezone
+
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.models.script_status_model import ScriptStatusModel
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
-from openc3.utilities.store import Store, EphemeralStore
-from openc3.utilities.store_queued import StoreQueued
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.utilities.running_script import RunningScript, running_script_anycable_publish
-from openc3.models.script_status_model import ScriptStatusModel
+from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store_queued import StoreQueued
+
 
 start_time = time.time()
 
@@ -118,7 +120,7 @@ try:
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
-        if not parsed_cmd == "shutdown" or (
+        if parsed_cmd != "shutdown" or (
             isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
         ):
             run_script_log(id, f"Script {path} received command: {msg['data']}")

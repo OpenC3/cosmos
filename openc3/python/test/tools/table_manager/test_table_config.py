@@ -14,12 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import os
-import tempfile
 import shutil
-from openc3.tools.table_manager.table_config import TableConfig
+import tempfile
+import unittest
+
 from openc3.tools.table_manager.table import Table
+from openc3.tools.table_manager.table_config import TableConfig
+
 
 class TestTableConfig(unittest.TestCase):
     def setUp(self):

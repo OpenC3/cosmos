@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import socket
 import threading
+import time
 import unittest
 from unittest.mock import patch
+
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
@@ -136,7 +137,7 @@ class TestUdpInterface(unittest.TestCase):
     @patch("socket.socket")
     def test_stops_the_read_thread_if_there_is_an_ioerror(self, mock_socket):
         sock = mock_socket.return_value
-        sock.recvfrom.side_effect = socket.error(socket.EWOULDBLOCK)
+        sock.recvfrom.side_effect = OSError(socket.EWOULDBLOCK)
         i = UdpInterface("localhost", "None", "8889")
         i.connect()
         thread = threading.Thread(target=i.read)
@@ -269,10 +270,10 @@ class TestUdpInterface(unittest.TestCase):
             "10.10.10.3",
         )
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check that it includes the expected keys specific to UdpInterface
         self.assertIn('hostname', details)
         self.assertIn('write_dest_port', details)
@@ -283,7 +284,7 @@ class TestUdpInterface(unittest.TestCase):
         self.assertIn('write_timeout', details)
         self.assertIn('read_timeout', details)
         self.assertIn('bind_address', details)
-        
+
         # Verify the specific values are correct
         self.assertEqual(details['hostname'], "192.168.1.100")
         self.assertEqual(details['write_dest_port'], 8888)
@@ -298,10 +299,10 @@ class TestUdpInterface(unittest.TestCase):
     def test_details_with_none_values(self):
         i = UdpInterface("localhost", "None", "8889")
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check None and default values are handled correctly
         self.assertEqual(details['hostname'], "127.0.0.1")  # localhost converted
         self.assertIsNone(details['write_dest_port'])

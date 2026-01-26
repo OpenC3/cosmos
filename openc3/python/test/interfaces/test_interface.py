@@ -14,14 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import threading
 import time
 import unittest
-import threading
 from unittest.mock import patch
+
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet
 from test.test_helper import BucketMock
+
 
 gvPacket = None
 gvData = None

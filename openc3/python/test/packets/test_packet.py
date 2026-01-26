@@ -19,23 +19,26 @@
 
 import math
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.packets.packet import Packet
-from openc3.packets.packet_item import PacketItem
-from openc3.utilities.logger import Logger
-from openc3.processors.processor import Processor
-from openc3.conversions.generic_conversion import GenericConversion
-from openc3.accessors.json_accessor import JsonAccessor
+
+from cbor2 import dumps
+
 from openc3.accessors.cbor_accessor import CborAccessor
+from openc3.accessors.json_accessor import JsonAccessor
+from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,
 )
 from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
-from datetime import datetime, timezone
-from cbor2 import dumps, loads
+from openc3.packets.packet import Packet
+from openc3.packets.packet_item import PacketItem
+from openc3.processors.processor import Processor
+from openc3.utilities.logger import Logger
+from test.test_helper import *
+
 
 class TestPacket(unittest.TestCase):
     def test_sets_the_template(self):

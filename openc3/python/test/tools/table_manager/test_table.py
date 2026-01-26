@@ -14,10 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import os
+import unittest
+
 from openc3.tools.table_manager.table import Table
 from openc3.tools.table_manager.table_item import TableItem
+
 
 class TestTable(unittest.TestCase):
     def test_table_name(self):

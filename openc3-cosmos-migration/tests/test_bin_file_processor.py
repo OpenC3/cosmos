@@ -24,7 +24,7 @@ import sys
 import tempfile
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime
 
 # Add parent directory to path so we can import openc3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "openc3", "python"))

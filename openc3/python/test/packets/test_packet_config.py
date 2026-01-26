@@ -21,11 +21,13 @@ import os
 import tempfile
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
+from cbor2 import dump, loads
+
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
-from cbor2 import dump, loads
 from openc3.subpacketizers.subpacketizer import Subpacketizer
+from test.test_helper import *
 
 
 class DummySubpacketizer(Subpacketizer):
@@ -835,7 +837,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.close()
 
     def test_sets_the_template_via_file(self):
-        with open("unittest.txt", "t+w") as data_file:
+        with open("unittest.txt", "w+") as data_file:
             data_file.write("File data")
         tf = tempfile.NamedTemporaryFile(mode="w")
         filename = "datafile2.txt"
@@ -1543,7 +1545,7 @@ class TestPacketConfig(unittest.TestCase):
             self.assertTrue(os.path.exists(tlm_file))
 
             # Verify file contains the packet definition
-            with open(tlm_file, "r") as f:
+            with open(tlm_file) as f:
                 content = f.read()
                 self.assertIn("TELEMETRY", content)
                 self.assertIn("TGT1", content)
@@ -1566,7 +1568,7 @@ class TestPacketConfig(unittest.TestCase):
             self.assertTrue(os.path.exists(cmd_file))
 
             # Verify file contains the packet definition
-            with open(cmd_file, "r") as f:
+            with open(cmd_file) as f:
                 content = f.read()
                 self.assertIn("COMMAND", content)
                 self.assertIn("TGT1", content)
@@ -1592,7 +1594,7 @@ class TestPacketConfig(unittest.TestCase):
             self.assertTrue(os.path.exists(limits_file))
 
             # Verify file contains the limits groups
-            with open(limits_file, "r") as f:
+            with open(limits_file) as f:
                 content = f.read()
                 self.assertIn("LIMITS_GROUP GROUP1", content)
                 self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
@@ -1624,7 +1626,7 @@ class TestPacketConfig(unittest.TestCase):
 
             # Verify limits groups file contains quoted names
             limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
-            with open(limits_file, "r") as f:
+            with open(limits_file) as f:
                 content = f.read()
                 self.assertIn('"GROUP WITH SPACES"', content)
                 self.assertIn('"TARGET NAME"', content)
@@ -1651,7 +1653,7 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.to_config(output_dir)
 
             # Verify new content
-            with open(tlm_file, "r") as f:
+            with open(tlm_file) as f:
                 content = f.read()
                 self.assertNotIn("OLD CONTENT", content)
                 self.assertIn("TELEMETRY", content)

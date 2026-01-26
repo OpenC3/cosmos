@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.router_model import RouterModel
 from openc3.utilities.redis_secrets import RedisSecrets
+from test.test_helper import *
 
 
 class TestInterfaceModel(unittest.TestCase):

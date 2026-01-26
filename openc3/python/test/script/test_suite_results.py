@@ -16,8 +16,9 @@
 
 import re
 import unittest
-from unittest.mock import patch
 from datetime import datetime, timezone
+from unittest.mock import patch
+
 from openc3.script.suite_results import SuiteResults
 
 

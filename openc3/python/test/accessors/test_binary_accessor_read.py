@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.accessors.binary_accessor import BinaryAccessor
+from test.test_helper import *
 
 
 class TestBinaryAccessorRead(unittest.TestCase):
@@ -79,7 +80,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
             BinaryAccessor.read(0, -8, "FLOAT", self.data, "BIG_ENDIAN")
 
     def test_reads_ascii_strings(self):
-        self.data = "DEADBEEF".encode()
+        self.data = b"DEADBEEF"
         self.assertEqual(
             BinaryAccessor.read(
                 0,

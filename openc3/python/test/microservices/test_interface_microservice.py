@@ -14,25 +14,26 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import threading
-from datetime import datetime, timezone
+import time
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.interface import Interface
-from openc3.system.system import System
+
 from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import Interface
+from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.models.cvt_model import CvtModel
-from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
-from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.target_model import TargetModel
+from openc3.system.system import System
+from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
-from openc3.topics.interface_topic import InterfaceTopic
-from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.utilities.time import from_nsec_from_epoch
+from test.test_helper import *
 
 
 # This must be here in order to work when running more than this individual file

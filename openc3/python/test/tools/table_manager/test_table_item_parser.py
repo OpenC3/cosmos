@@ -15,11 +15,13 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import unittest
-import tempfile
 import shutil
+import tempfile
+import unittest
+
 from openc3.tools.table_manager.table_config import TableConfig
 from openc3.tools.table_manager.table_item import TableItem
+
 
 class TestTableItemParser(unittest.TestCase):
     def setUp(self):

@@ -15,11 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime
 import unittest
+from datetime import datetime
 from unittest.mock import *
+
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from test.test_helper import *
-from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 class TestJson(unittest.TestCase):

@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.processor_conversion import ProcessorConversion
-from openc3.processors.processor import Processor
 from openc3.packets.packet import Packet
+from openc3.processors.processor import Processor
+from test.test_helper import *
 
 
 class TestProcessorConversion(unittest.TestCase):

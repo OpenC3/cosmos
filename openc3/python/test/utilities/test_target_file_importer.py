@@ -16,6 +16,7 @@
 
 import unittest
 from unittest.mock import *
+
 from test.test_helper import *
 
 
@@ -24,11 +25,11 @@ class TestTargetFileImporter(unittest.TestCase):
         mock_redis(self)
 
     def new_body(scope, arg):
-        return """
+        return b"""
 class Helper:
     def help(self):
         return 42
-""".encode()
+"""
 
     @classmethod
     def get_client(cls):

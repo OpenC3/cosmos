@@ -14,12 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import os
-import tempfile
 import shutil
+import tempfile
+import unittest
+
 from openc3.tools.table_manager.table_manager_core import TableManagerCore
 from openc3.utilities.string import simple_formatted
+
 
 class TestTableManagerCore(unittest.TestCase):
     def setUp(self):

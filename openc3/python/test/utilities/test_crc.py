@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.utilities.crc import Crc8, Crc16, Crc32, Crc64
+from test.test_helper import *
 
 
 class TestCrc(unittest.TestCase):
