@@ -19,6 +19,7 @@
 
 // @ts-check
 import { test, expect } from './fixture'
+import { format, add, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/tlmviewer',
@@ -324,16 +325,13 @@ test('plays back to a screen', async ({ page, utils }) => {
     await utils.sleep(500)
     await page.keyboard.press('Escape')
 
-    const timeValue = await page
-      .getByRole('textbox', { name: 'Time' })
-      .inputValue()
-    const [time, period] = timeValue.split(' ')
-    const [hours, minutes, seconds] = time.split(':')
-    // Playback defaults to 1 hr in the past so add 1 hr and subtract 2 min
-    const newHours = String(Number.parseInt(hours) + 1).padStart(2, '0')
-    const newMinutes = String(Number.parseInt(minutes) - 2).padStart(2, '0')
-    const newTime = `${newHours}:${newMinutes}:${seconds} ${period}`
-    await page.getByRole('textbox', { name: 'Time' }).fill(newTime)
+    const start = sub(new Date(), { minutes: 2 })
+    await page
+      .locator('[data-test=playback-date] input')
+      .fill(format(start, 'yyyy-MM-dd'))
+    await page
+      .locator('[data-test=playback-time] input')
+      .fill(format(start, 'HH:mm:ss'))
 
     // Click play, wait for time to increment, then pause
     await page.getByRole('button', { name: 'Play / Pause' }).click()
