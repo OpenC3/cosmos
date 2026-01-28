@@ -57,13 +57,6 @@
         hide-details
         data-test="search-plugin-store"
       />
-      <v-switch
-        v-model="verifiedOnly"
-        label="Verified only"
-        density="compact"
-        hide-details
-        class="ml-4"
-      />
     </div>
     <v-spacer />
     <span class=""> Click on a plugin to see more information about it </span>
@@ -105,7 +98,6 @@ export default {
     return {
       api: new OpenC3Api(),
       search: '',
-      verifiedOnly: false,
       showSettingsDialog: false,
       plugins: [],
       storeError: null,
@@ -115,9 +107,6 @@ export default {
   computed: {
     filteredPlugins: function () {
       let filtered = this.plugins
-      if (this.verifiedOnly) {
-        filtered = filtered.filter((plugin) => plugin.verified)
-      }
       if (this.search.length) {
         filtered = filtered.filter((plugin) =>
           plugin.title.toLowerCase().includes(this.search.toLowerCase()),
