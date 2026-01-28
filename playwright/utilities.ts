@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -30,18 +30,20 @@ export class Utilities {
   }
 
   async selectTargetPacketItem(target: string, packet?: string, item?: string) {
-    await expect(this.page.locator('[data-test="select-target"]')).toBeEnabled
+    await expect(this.page.locator('[data-test="select-target"]')).toBeEnabled()
     await expect(
       this.page.locator('[data-test="select-target"]'),
     ).not.toBeEmpty()
     if (packet) {
-      await expect(this.page.locator('[data-test="select-packet"]')).toBeEnabled
+      await expect(
+        this.page.locator('[data-test="select-packet"]'),
+      ).toBeEnabled()
       await expect(
         this.page.locator('[data-test="select-packet"]'),
       ).not.toBeEmpty()
     }
     if (item) {
-      await expect(this.page.locator('[data-test="select-item"]')).toBeEnabled
+      await expect(this.page.locator('[data-test="select-item"]')).toBeEnabled()
       await expect(
         this.page.locator('[data-test="select-item"]'),
       ).not.toBeEmpty()

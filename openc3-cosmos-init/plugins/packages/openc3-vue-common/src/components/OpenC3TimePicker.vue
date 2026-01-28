@@ -153,7 +153,8 @@ export default {
     menu(newVal) {
       if (newVal) {
         // When menu opens, initialize tempTime with current value
-        this.tempTime = this.modelValue || '00:00:00'
+        // Normalize to HH:mm:ss format (v-time-picker doesn't handle milliseconds)
+        this.tempTime = this.normalizeTime(this.modelValue) || '00:00:00'
       }
     },
     tempTime(newVal) {
@@ -258,21 +259,50 @@ export default {
       this.menu = false
     },
     cancel() {
-      this.tempTime = this.modelValue || '00:00:00'
+      this.tempTime = this.normalizeTime(this.modelValue) || '00:00:00'
       this.menu = false
+    },
+    // Normalize time to HH:mm:ss format (strips milliseconds if present)
+    normalizeTime(time) {
+      if (!time) return ''
+      const parts = time.split(':')
+      if (parts.length < 2) return time
+      const hours = Number.parseInt(parts[0], 10)
+      const minutes = Number.parseInt(parts[1], 10)
+      // Strip milliseconds from seconds (e.g., "45.123" -> 45)
+      const seconds = parts.length > 2 ? Number.parseInt(parts[2], 10) : 0
+      if (
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes) ||
+        Number.isNaN(seconds)
+      ) {
+        return ''
+      }
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
     },
     convertTo12Hour(time24) {
       if (!time24) return ''
       const parts = time24.split(':')
       if (parts.length < 2) return time24
       let hours = Number.parseInt(parts[0], 10)
-      const minutes = parts[1]
-      const seconds = parts.length > 2 ? parts[2] : '00'
+      const minutes = Number.parseInt(parts[1], 10)
+      // Strip milliseconds from seconds (e.g., "45.123" -> 45)
+      const seconds = parts.length > 2 ? Number.parseInt(parts[2], 10) : 0
+      // Validate all parts are valid numbers
+      if (
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes) ||
+        Number.isNaN(seconds)
+      ) {
+        return time24 // Return original if parsing fails
+      }
       const ampm = hours >= 12 ? 'PM' : 'AM'
       hours = hours % 12
       hours = hours ? hours : 12 // 0 should be 12
       const paddedHours = hours.toString().padStart(2, '0')
-      return `${paddedHours}:${minutes}:${seconds} ${ampm}`
+      const paddedMinutes = minutes.toString().padStart(2, '0')
+      const paddedSeconds = seconds.toString().padStart(2, '0')
+      return `${paddedHours}:${paddedMinutes}:${paddedSeconds} ${ampm}`
     },
   },
 }
