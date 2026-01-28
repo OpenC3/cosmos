@@ -216,8 +216,6 @@ module OpenC3
       @@packet_cache_mutex.synchronize do
         cached = @@packet_cache[cache_key]
         if cached && (Time.now - cached[:time]) < PACKET_CACHE_TIMEOUT
-          @@packet_cache_hits ||= 0
-          @@packet_cache_hits += 1
           return cached[:packet]
         end
       end
@@ -231,28 +229,14 @@ module OpenC3
       # Store in cache
       @@packet_cache_mutex.synchronize do
         @@packet_cache[cache_key] = { packet: packet, time: Time.now }
-        @@packet_cache_misses ||= 0
-        @@packet_cache_misses += 1
       end
 
       packet
     end
 
-    def self.packet_cache_stats
-      @@packet_cache_mutex.synchronize do
-        {
-          hits: @@packet_cache_hits || 0,
-          misses: @@packet_cache_misses || 0,
-          size: @@packet_cache.size
-        }
-      end
-    end
-
     def self.clear_packet_cache
       @@packet_cache_mutex.synchronize do
         @@packet_cache.clear
-        @@packet_cache_hits = 0
-        @@packet_cache_misses = 0
       end
     end
 
