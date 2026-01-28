@@ -25,14 +25,13 @@ module OpenC3
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
-    # Special timestamp items that are calculated from timestamp/rx_timestamp columns
-    # rather than stored as separate columns. These items can be derived from the
-    # timestamp and rx_timestamp fields on read.
+    # Special timestamp items that are calculated from PACKET_TIMESECONDS/RECEIVED_TIMESECONDS columns
+    # rather than stored as separate columns. PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored
+    # as timestamp_ns columns and need conversion to float seconds on read. The TIMEFORMATTED items
+    # are derived from these timestamp columns.
     TIMESTAMP_ITEMS = {
-      'PACKET_TIMESECONDS' => { source: 'timestamp', format: :seconds },
-      'PACKET_TIMEFORMATTED' => { source: 'timestamp', format: :formatted },
-      'RECEIVED_TIMESECONDS' => { source: 'rx_timestamp', format: :seconds },
-      'RECEIVED_TIMEFORMATTED' => { source: 'rx_timestamp', format: :formatted }
+      'PACKET_TIMEFORMATTED' => { source: 'PACKET_TIMESECONDS', format: :formatted },
+      'RECEIVED_TIMEFORMATTED' => { source: 'RECEIVED_TIMESECONDS', format: :formatted }
     }.freeze
 
     # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.

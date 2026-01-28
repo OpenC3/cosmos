@@ -314,13 +314,11 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Get the CREATE TABLE SQL statement
         create_table_sql = str(create_table_calls[0])
         print("CREATE TABLE SQL:", create_table_sql.split("\n"))
-        self.assertIn("timestamp timestamp", create_table_sql)
-        self.assertIn("rx_timestamp timestamp", create_table_sql)
-        self.assertIn("tag SYMBOL", create_table_sql)
-        # PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, PACKET_TIMEFORMATTED, RECEIVED_TIMEFORMATTED
-        # are no longer stored as separate columns - they're derived from timestamp/rx_timestamp
-        self.assertNotIn("PACKET_TIMESECONDS", create_table_sql)
-        self.assertNotIn("RECEIVED_TIMESECONDS", create_table_sql)
+        # The designated timestamp columns are now named PACKET_TIMESECONDS and RECEIVED_TIMESECONDS
+        self.assertIn("PACKET_TIMESECONDS timestamp_ns", create_table_sql)
+        self.assertIn("RECEIVED_TIMESECONDS timestamp_ns", create_table_sql)
+        # PACKET_TIMEFORMATTED and RECEIVED_TIMEFORMATTED are derived from the timestamp columns
+        # and should NOT be stored as separate columns
         self.assertNotIn("PACKET_TIMEFORMATTED", create_table_sql)
         self.assertNotIn("RECEIVED_TIMEFORMATTED", create_table_sql)
         self.assertIn('"CCSDSTYPE" int', create_table_sql)
@@ -764,7 +762,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_timestamp_columns(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics stores received time in rx_timestamp and skips time columns"""
+        """Test read_topics stores received time in RECEIVED_TIMESECONDS and skips TIMEFORMATTED columns"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -821,13 +819,15 @@ class TestTsdbMicroservice(unittest.TestCase):
         call_args = mock_ingest.row.call_args
         columns = call_args[1]["columns"]
 
-        # Time columns should NOT be stored as separate columns
+        # Time items from json_data should NOT be stored as regular columns
+        # PACKET_TIMESECONDS and RECEIVED_TIMESECONDS come from message metadata (time, received_time)
+        # PACKET_TIMEFORMATTED and RECEIVED_TIMEFORMATTED are calculated on read
         self.assertNotIn("PACKET_TIMESECONDS", columns)
         self.assertNotIn("RECEIVED_TIMESECONDS", columns)
         self.assertNotIn("PACKET_TIMEFORMATTED", columns)
         self.assertNotIn("RECEIVED_TIMEFORMATTED", columns)
 
-        # rx_timestamp should be set from message's received_time field (not json_data)
+        # RECEIVED_TIMESECONDS column is set from message's received_time field (not json_data)
         # The test message doesn't include received_time in msg_hash, so it won't be present
         # unless we explicitly add it to the test
 
@@ -1445,9 +1445,8 @@ class TestTsdbMicroservice(unittest.TestCase):
                 self.assertIn(item_name, columns_written, f"Expected item '{item_name}' to be written as a column")
 
         # Verify at least the key items are present
-        # Note: PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are no longer stored as columns
-        # They are derived from timestamp (packet_time) and rx_timestamp (received_time)
-        # which come directly from the topic message, not from json_data
+        # Note: PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored as timestamp_ns columns
+        # but the values come from the topic message metadata (time, received_time), not json_data
         key_items = ["TEMP1", "TEMP2", "TEMP3", "TEMP4", "COLLECTS"]
         for key_item in key_items:
             self.assertIn(key_item, columns_written, f"Key item '{key_item}' should be present in columns")

@@ -149,6 +149,10 @@ class LoggedStreamingThread < StreamingThread
     calculated_timestamp_items = {}
     # Track which source timestamp columns we need to add (column name => index in names array)
     timestamp_source_columns = {}
+    # Stored timestamp items that need conversion from timestamp_ns to float seconds
+    stored_timestamp_items = Set.new(['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS'])
+    # Track stored timestamp items: { item_key => { column:, table_index: } }
+    stored_timestamp_item_keys = {}
 
     start_time = nil
     end_time = nil
@@ -188,7 +192,21 @@ class LoggedStreamingThread < StreamingThread
         item = available[item_index]
         tgt, pkt, orig_item_name, value_type = item.split('__')
 
-        # Check if this is a calculated timestamp item
+        # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
+        # These are stored as timestamp_ns columns and need conversion to float seconds on read
+        if stored_timestamp_items.include?(orig_item_name)
+          col_name = "T#{table_index}.#{orig_item_name}"
+          names << "\"#{col_name}\""
+          item_types << { 'data_type' => 'TIMESTAMP', 'array_size' => nil }
+          stored_timestamp_item_keys[object.item_key] = { column: col_name, table_index: table_index }
+          item_keys << object.item_key
+          # Also store for calculated items (TIMEFORMATTED) that may need this
+          timestamp_source_columns[col_name] ||= nil
+          item_index += 1
+          next
+        end
+
+        # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
         if OpenC3::QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
           # Track this as a calculated item - store the item_key separately
           calc_info = OpenC3::QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
@@ -260,17 +278,17 @@ class LoggedStreamingThread < StreamingThread
         item_index += 1
       end
     end
-    names << "T0.timestamp"
+    names << "T0.PACKET_TIMESECONDS"
 
-    # Add any additional timestamp source columns needed for calculated items (rx_timestamp if needed)
+    # Add any additional timestamp source columns needed for calculated items (RECEIVED_TIMESECONDS if needed)
     timestamp_source_columns.each_key do |source_col|
-      # T0.timestamp is already added above, but rx_timestamp needs to be added explicitly
-      if source_col.include?('rx_timestamp')
+      # T0.PACKET_TIMESECONDS is already added above, but RECEIVED_TIMESECONDS needs to be added explicitly
+      if source_col.include?('RECEIVED_TIMESECONDS')
         timestamp_source_columns[source_col] = names.length
         names << source_col
       else
-        # T0.timestamp was already added
-        timestamp_source_columns[source_col] = names.length - 1  # timestamp is always the last item before this loop
+        # T0.PACKET_TIMESECONDS was already added
+        timestamp_source_columns[source_col] = names.length - 1  # PACKET_TIMESECONDS is always the last item before this loop
       end
     end
 
@@ -289,9 +307,9 @@ class LoggedStreamingThread < StreamingThread
         query += "ASOF JOIN #{table_name} as T#{index} "
       end
     end
-    query += "WHERE T0.timestamp >= #{start_time}"
+    query += "WHERE T0.PACKET_TIMESECONDS >= #{start_time}"
     if end_time
-      query += " AND T0.timestamp < #{end_time}"
+      query += " AND T0.PACKET_TIMESECONDS < #{end_time}"
     end
 
     done = false
@@ -332,25 +350,44 @@ class LoggedStreamingThread < StreamingThread
               timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
                 col_name = tuple[0]
-                if col_name == 'timestamp'
+                if col_name == 'PACKET_TIMESECONDS' || col_name.end_with?('.PACKET_TIMESECONDS')
                   # tuple[1] is a Ruby time object which we convert to nanoseconds
                   entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
-                  timestamp_values['timestamp'] = tuple[1]
-                elsif col_name == 'rx_timestamp'
-                  # Store for calculated items, don't add to entry
-                  timestamp_values['rx_timestamp'] = tuple[1]
+                  timestamp_values['PACKET_TIMESECONDS'] = tuple[1]
+                  # Also store with table prefix for calculated items
+                  timestamp_values[col_name] = tuple[1] if col_name.include?('.')
+                  # If this was explicitly requested as an item, add converted value to entry
+                  if index < item_keys.length && stored_timestamp_item_keys.key?(item_keys[index])
+                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
+                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
+                  end
+                elsif col_name == 'RECEIVED_TIMESECONDS' || col_name.end_with?('.RECEIVED_TIMESECONDS')
+                  # Store for calculated items
+                  timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
+                  timestamp_values[col_name] = tuple[1] if col_name.include?('.')
+                  # If this was explicitly requested as an item, add converted value to entry
+                  if index < item_keys.length && stored_timestamp_item_keys.key?(item_keys[index])
+                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
+                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
+                  end
                 elsif index < item_keys.length
                   # Decode value using item type info
                   type_info = item_types[index] || {}
-                  entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(
-                    tuple[1],
-                    data_type: type_info['data_type'],
-                    array_size: type_info['array_size']
-                  )
+                  # Check if this is a stored timestamp item that needs conversion
+                  if stored_timestamp_item_keys.key?(item_keys[index])
+                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
+                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
+                  else
+                    entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(
+                      tuple[1],
+                      data_type: type_info['data_type'],
+                      array_size: type_info['array_size']
+                    )
+                  end
                 end
               end
 
-              # Calculate timestamp items
+              # Calculate timestamp items (TIMEFORMATTED)
               calculated_timestamp_items.each do |item_key, info|
                 ts_value = timestamp_values[info[:source]]
                 ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(ts_value)
@@ -511,9 +548,9 @@ class LoggedStreamingThread < StreamingThread
 
       # Build the SQL query - select all columns from the table
       query = "SELECT * FROM \"#{table_name}\""
-      query += " WHERE timestamp >= #{start_time}"
+      query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
       if end_time
-        query += " AND timestamp < #{end_time}"
+        query += " AND PACKET_TIMESECONDS < #{end_time}"
       end
 
       min = 0
@@ -605,8 +642,8 @@ class LoggedStreamingThread < StreamingThread
       column_name = tuple[0]
       raw_value = tuple[1]
 
-      # Handle timestamp specially
-      if column_name == 'timestamp'
+      # Handle PACKET_TIMESECONDS specially - this is the designated timestamp column
+      if column_name == 'PACKET_TIMESECONDS'
         # Convert Ruby time to nanoseconds
         entry['__time'] = (raw_value.to_f * 1_000_000_000).to_i
         next

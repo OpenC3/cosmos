@@ -124,14 +124,13 @@ class QuestDBClient:
     - Schema-safe ingestion with error handling
     """
 
-    # Special timestamp items that are calculated from timestamp/rx_timestamp columns
-    # rather than stored as separate columns. These items can be derived from the
-    # timestamp and rx_timestamp fields on read.
+    # Special timestamp items that are calculated from PACKET_TIMESECONDS/RECEIVED_TIMESECONDS columns
+    # rather than stored as separate columns. PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored
+    # as timestamp_ns columns and need conversion to float seconds on read. The TIMEFORMATTED items
+    # are derived from these timestamp columns.
     TIMESTAMP_ITEMS = {
-        "PACKET_TIMESECONDS": {"source": "timestamp", "format": "seconds"},
-        "PACKET_TIMEFORMATTED": {"source": "timestamp", "format": "formatted"},
-        "RECEIVED_TIMESECONDS": {"source": "rx_timestamp", "format": "seconds"},
-        "RECEIVED_TIMEFORMATTED": {"source": "rx_timestamp", "format": "formatted"},
+        "PACKET_TIMEFORMATTED": {"source": "PACKET_TIMESECONDS", "format": "formatted"},
+        "RECEIVED_TIMEFORMATTED": {"source": "RECEIVED_TIMESECONDS", "format": "formatted"},
     }
 
     # QuestDB name restrictions - characters that need to be replaced
@@ -573,20 +572,25 @@ class QuestDBClient:
 
         try:
             with self.query.cursor() as cur:
+                # Create table with COSMOS_DATA_TAG as a SYMBOL
+                # for use as filtering/indexing column.
                 sql = f"""
                     CREATE TABLE IF NOT EXISTS "{table_name}" (
-                        timestamp timestamp_ns,
-                        rx_timestamp timestamp,
-                        tag SYMBOL,
+                        PACKET_TIMESECONDS timestamp_ns,
+                        RECEIVED_TIMESECONDS timestamp_ns,
+                        COSMOS_DATA_TAG SYMBOL,
                         RECEIVED_COUNT LONG"""
 
                 if columns_sql:
                     sql += f",\n{columns_sql}"
 
+                # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
+                # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
+                # explicitly include COSMOS_DATA_TAG as well.
                 sql += """
-                    ) TIMESTAMP(timestamp)
+                    ) TIMESTAMP(PACKET_TIMESECONDS)
                         PARTITION BY DAY
-                        DEDUP UPSERT KEYS (timestamp, tag)
+                        DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
                 """
 
                 self._log_info(f"QuestDB: Creating table:\n{sql}")
@@ -675,8 +679,11 @@ class QuestDBClient:
 
         return value, False
 
-    # Items that are stored in QuestDB's timestamp/rx_timestamp columns rather than as separate columns
-    # These can all be derived from the timestamp and rx_timestamp fields on read
+    # Items that are derived from or stored in the PACKET_TIMESECONDS/RECEIVED_TIMESECONDS
+    # timestamp columns and should not be stored as separate columns from json_data.
+    # The timestamp values come from message metadata (time, received_time), not json_data.
+    # PACKET_TIMESECONDS, RECEIVED_TIMESECONDS: stored as timestamp_ns columns (from message metadata)
+    # PACKET_TIMEFORMATTED, RECEIVED_TIMEFORMATTED: calculated on read from timestamp columns
     SKIP_TIME_ITEMS = {
         "PACKET_TIMESECONDS",
         "PACKET_TIMEFORMATTED",
@@ -700,11 +707,8 @@ class QuestDBClient:
         for orig_item_name, value in json_data.items():
             item_name = self.sanitize_column_name(orig_item_name)
 
-            # Skip time-related items - they're stored in timestamp/rx_timestamp columns
-            # (received directly from the topic message, not from json_data).
-            # These values can be calculated on read. This saves significant storage space.
-            # Note: 'TIMESTAMP' is also a reserved item name in Packet.RESERVED_ITEM_NAMES
-            # to prevent collisions with the QuestDB table timestamp column.
+            # Skip time-related items that are calculated from the PACKET_TIMESECONDS/RECEIVED_TIMESECONDS
+            # timestamp columns. These values are derived on read and don't need separate storage.
             if item_name in self.SKIP_TIME_ITEMS:
                 continue
 
@@ -724,12 +728,12 @@ class QuestDBClient:
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Packet timestamp in nanoseconds
-            rx_timestamp_ns: Received timestamp in nanoseconds (optional)
+            timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
+            rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
         """
         if rx_timestamp_ns is not None:
             # Convert nanoseconds to datetime for QuestDB timestamp column
-            columns["rx_timestamp"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+            columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
 
     def write_row_with_schema_protection(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
@@ -742,8 +746,8 @@ class QuestDBClient:
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Packet timestamp in nanoseconds
-            rx_timestamp_ns: Received timestamp in nanoseconds (optional)
+            timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
+            rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
 
         Returns:
             Tuple of (success: bool, migrated_columns: list)
@@ -751,7 +755,9 @@ class QuestDBClient:
         try:
             if rx_timestamp_ns is not None:
                 # Convert nanoseconds to datetime for QuestDB timestamp column
-                columns["rx_timestamp"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+                columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(
+                    rx_timestamp_ns / 1_000_000_000, tz=timezone.utc
+                )
             self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
             return True, []
         except IngressError as error:

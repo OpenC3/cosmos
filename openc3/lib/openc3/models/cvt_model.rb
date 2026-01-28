@@ -148,13 +148,18 @@ module OpenC3
       needed_timestamps = {} # { table_index => Set of column names }
       current_position = 0
 
+      # Stored timestamp items that need conversion from timestamp_ns to float seconds
+      stored_timestamp_items = Set.new(['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS'])
+      # Track stored timestamp items: { position => { column:, table_index: } }
+      stored_timestamp_positions = {}
+
       items.each do |item|
         target_name, packet_name, orig_item_name, value_type, limits = item
         # They will all be nil when item is a nil value
         # A nil value indicates a value that does not exist as returned by get_tlm_available
         if orig_item_name.nil?
-          # We know timestamp always exists so we can use it to fill in the nil value
-          names << "timestamp as __nil#{nil_count}"
+          # We know PACKET_TIMESECONDS always exists so we can use it to fill in the nil value
+          names << "PACKET_TIMESECONDS as __nil#{nil_count}"
           nil_count += 1
           current_position += 1
           next
@@ -163,7 +168,17 @@ module OpenC3
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
 
-        # Check if this is a calculated timestamp item
+        # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
+        # These are stored as timestamp_ns columns and need conversion to float seconds on read
+        if stored_timestamp_items.include?(orig_item_name)
+          col_name = "T#{index}.#{orig_item_name}"
+          names << "\"#{col_name}\""
+          stored_timestamp_positions[current_position] = { column: col_name, table_index: index }
+          current_position += 1
+          next
+        end
+
+        # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
         if QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
           ts_info = QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
           calculated_items[current_position] = {
@@ -261,9 +276,9 @@ module OpenC3
         end
       end
       if start_time && !end_time
-        query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
+        query += "WHERE T0.PACKET_TIMESECONDS < '#{start_time}' LIMIT -1"
       elsif start_time && end_time
-        query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+        query += "WHERE T0.PACKET_TIMESECONDS >= '#{start_time}' AND T0.PACKET_TIMESECONDS < '#{end_time}'"
       end
 
       retry_count = 0
@@ -292,7 +307,7 @@ module OpenC3
             result.each_with_index do |tuples, row_num|
               data[row_num] ||= []
               row_index = 0
-              # Store timestamp values for this row: { "T0.timestamp" => Time, "T0.rx_timestamp" => Time }
+              # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS" => Time, ... }
               row_timestamps = {}
               tuples.each do |tuple|
                 col_name = tuple[0]
@@ -303,10 +318,23 @@ module OpenC3
                   data[row_num][row_index] = [nil, nil]
                   row_index += 1
                 elsif col_name =~ /^T(\d+)___ts_(.+)$/
-                  # This is a timestamp column for calculated items
+                  # This is a timestamp column for calculated items (TIMEFORMATTED)
                   table_idx = $1.to_i
                   ts_source = $2
                   row_timestamps["T#{table_idx}.#{ts_source}"] = col_value
+                elsif col_name.end_with?('.PACKET_TIMESECONDS', '.RECEIVED_TIMESECONDS') || col_name == 'PACKET_TIMESECONDS' || col_name == 'RECEIVED_TIMESECONDS'
+                  # Stored timestamp column - convert from datetime to float seconds
+                  ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
+                  seconds_value = QuestDBClient.format_timestamp(ts_utc, :seconds)
+                  data[row_num][row_index] = [seconds_value, nil]
+                  row_index += 1
+                  # Also store for calculated items (TIMEFORMATTED) that may need this
+                  # Normalize key to T{index}.{col} format for consistency
+                  if col_name.include?('.')
+                    row_timestamps[col_name] = col_value
+                  else
+                    row_timestamps["T0.#{col_name}"] = col_value
+                  end
                 else
                   # Decode value using item type info
                   # QuestDB may return column names without table alias prefix

@@ -194,13 +194,18 @@ class CvtModel(Model):
         needed_timestamps = {}  # { table_index: set of column names }
         current_position = 0
 
+        # Stored timestamp items that need conversion from timestamp_ns to float seconds
+        stored_timestamp_items = {"PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"}
+        # Track stored timestamp items: { position: { column:, table_index: } }
+        stored_timestamp_positions = {}
+
         for item in items:
             target_name, packet_name, item_name, value_type, limits = item
             # They will all be None when item is a None value
             # A None value indicates a value that does not exist as returned by get_tlm_available
             if item_name is None:
-                # We know timestamp always exists so we can use it to fill in the None value
-                names.append(f"timestamp as __nil{nil_count}")
+                # We know PACKET_TIMESECONDS always exists so we can use it to fill in the None value
+                names.append(f"PACKET_TIMESECONDS as __nil{nil_count}")
                 nil_count += 1
                 current_position += 1
                 continue
@@ -211,7 +216,16 @@ class CvtModel(Model):
             # Find the index of this table
             index = list(tables.keys()).index(table_name)
 
-            # Check if this is a calculated timestamp item
+            # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
+            # These are stored as timestamp_ns columns and need conversion to float seconds on read
+            if item_name in stored_timestamp_items:
+                col_name = f"T{index}.{item_name}"
+                names.append(f'"{col_name}"')
+                stored_timestamp_positions[current_position] = {"column": col_name, "table_index": index}
+                current_position += 1
+                continue
+
+            # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
             if item_name in QuestDBClient.TIMESTAMP_ITEMS:
                 ts_info = QuestDBClient.TIMESTAMP_ITEMS[item_name]
                 calculated_items[current_position] = {
@@ -295,9 +309,9 @@ class CvtModel(Model):
                 query += f"ASOF JOIN {table_name} as T{index} "
 
         if start_time and not end_time:
-            query += f"WHERE T0.timestamp < '{start_time}' LIMIT -1"
+            query += f"WHERE T0.PACKET_TIMESECONDS < '{start_time}' LIMIT -1"
         elif start_time and end_time:
-            query += f"WHERE T0.timestamp >= '{start_time}' AND T0.timestamp < '{end_time}'"
+            query += f"WHERE T0.PACKET_TIMESECONDS >= '{start_time}' AND T0.PACKET_TIMESECONDS < '{end_time}'"
 
         retry_count = 0
         while retry_count <= 4:
@@ -326,7 +340,7 @@ class CvtModel(Model):
                             for row_index, row in enumerate(result):
                                 data.append([])
                                 col_index = 0
-                                # Store timestamp values for this row: { "T0.timestamp": datetime, ... }
+                                # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS": datetime, ... }
                                 row_timestamps = {}
                                 for col_name, col_value in row.items():
                                     if "__L" in col_name:
@@ -340,11 +354,24 @@ class CvtModel(Model):
                                         data[row_index].append([None, None])
                                         col_index += 1
                                     elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
-                                        # This is a timestamp column for calculated items
+                                        # This is a timestamp column for calculated items (TIMEFORMATTED)
                                         match = re.match(r"^T(\d+)___ts_(.+)$", col_name)
                                         table_idx = int(match.group(1))
                                         ts_source = match.group(2)
                                         row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
+                                    elif col_name.endswith(".PACKET_TIMESECONDS") or col_name.endswith(".RECEIVED_TIMESECONDS") or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
+                                        # Stored timestamp column - convert from datetime to float seconds
+                                        ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
+                                        seconds_value = QuestDBClient.format_timestamp(ts_utc, "seconds")
+                                        data[row_index].append([seconds_value, None])
+                                        col_index += 1
+                                        # Also store for calculated items (TIMEFORMATTED) that may need this
+                                        # Normalize key to T{index}.{col} format for consistency
+                                        if "." in col_name:
+                                            row_timestamps[col_name] = col_value
+                                        else:
+                                            # If no table prefix, assume T0
+                                            row_timestamps[f"T0.{col_name}"] = col_value
                                     else:
                                         # Decode value using item type info
                                         # QuestDB may return column names without table alias prefix
