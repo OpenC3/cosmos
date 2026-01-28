@@ -49,11 +49,6 @@
         class="d-flex align-center justify-content-space-between"
       >
         <div>{{ author }}</div>
-        <v-spacer />
-        <div v-if="verified">
-          Verified
-          <v-badge inline icon="mdi-shield-check" color="success" />
-        </div>
       </v-card-subtitle>
       <!--
       <v-card-subtitle
