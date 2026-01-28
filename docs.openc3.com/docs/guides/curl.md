@@ -18,7 +18,9 @@ OpenC3 COSMOS Core just has a single user account, so all you need to do is pass
 Request:
 
 ```bash
-curl -i -H "Content-Type: application/json-rpc" -H "Authorization: password" -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' -X POST http://127.0.0.1:2900/openc3-api/api
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: password" \
+-d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' \
+-X POST http://127.0.0.1:2900/openc3-api/api
 ```
 
 Response:
@@ -32,7 +34,7 @@ Etag: W/"e806aacfdbed0b325e7a5928e3bb5cf4"
 Vary: Origin
 X-Request-Id: bbad6c6b-6d22-4374-a86f-b5b0b95e6939
 X-Runtime: 0.059044
-Date: Sat, 04 Nov 2023 21:34:47 GMT
+Date: Wed, 10 May 2023 00:40:40 GMT
 
 {"jsonrpc":"2.0","id":8,"result":53.26555000000001}
 ```
@@ -45,7 +47,9 @@ Keycloak Request:
 
 ```bash
 # Get tokens from Keycloak - You will need to update the username and password with your account
-curl -i -H "Content-Type: application/x-www-form-urlencoded" -d 'username=operator&password=operator&client_id=api&grant_type=password&scope=openid' -X POST http://127.0.0.1:2900/auth/realms/openc3/protocol/openid-connect/token
+curl -i -H "Content-Type: application/x-www-form-urlencoded" \
+-d 'username=operator&password=operator&client_id=api&grant_type=password' \
+-X POST http://127.0.0.1:2900/auth/realms/openc3/protocol/openid-connect/token
 ```
 
 Keycloak Response:
@@ -65,7 +69,15 @@ X-Frame-Options: SAMEORIGIN
 X-Xss-Protection: 1; mode=block
 Date: Wed, 10 May 2023 00:40:40 GMT
 
-{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ0cDlERmpNZGFXMy16WXptdlBqVTZnNTVqMVNhWGhkZHJqU0szQVNvaDhVIn0.eyJleHAiOjE2ODM2Nzk1NDAsImlhdCI6MTY4MzY3OTI0MCwianRpIjoiZmVlOTQwYWYtZDY3Ny00MWUyLWIzNWYtZDI5ODhiM2RhZGQ2IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDoyOTAwL2F1dGgvcmVhbG1zL29wZW5jMyIsInN1YiI6ImFjZTFlNmExLTkzMTktNDc2ZS1iZjQzLTZmM2NhYjllZTJkZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImFwaSIsInNlc3Npb25fc3RhdGUiOiJmMzc4NTk2Ny0yYTQ2LTRjMTItYWQwYy1jZmY3ZmM0NzdkZjkiLCJhY3IiOiIxIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImRlZmF1bHQtcm9sZXMtb3BlbmMzIiwiQUxMU0NPUEVTX19vcGVyYXRvciIsIm9mZmxpbmVfYWNjZXNzIiwiQUxMU0NPUEVTX192aWV3ZXIiXX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJmMzc4NTk2Ny0yYTQ2LTRjMTItYWQwYy1jZmY3ZmM0NzdkZjkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJUaGUgT3BlcmF0b3IiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJvcGVyYXRvciIsImdpdmVuX25hbWUiOiJUaGUiLCJmYW1pbHlfbmFtZSI6Ik9wZXJhdG9yIn0.eSqSeZrmCTahwltz5jsu5r3w6W15T5h0BvIdqKWQBDcnxAcxKuT-Nwziw_ewySSgHeC172CIWJUpHVp8ACDQG-dfW4KkvA6AcGfSF_f8TBH_rZrVQwlvwwzdA_egGKzhZWcnAC8TDjXRxuaWmnOgWT0aaHZAoW8EvwmKp-1IVz2l0B-hqzfC7dkjMrCI1udLfDvDBza9OtuR-FnKGt8h4nYnRzr8pO2jwebPFyZlR00gVsyK-b411XqprpT-qpRObYZwH5womA-8xIiwRZj9dsfQ1TaHGFkp1LNzxcj_r6pfwVO263bohbeU7ImezQdbvGLJ9NHaglzVNroTui4BXA","expires_in":300,"refresh_expires_in":1800,"refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI5NjNlMjJiMS0wZmYwLTRmZjktYTg0Zi1hOGI4MzcxOWFiMDEifQ.eyJleHAiOjE2ODM2ODEwNDAsImlhdCI6MTY4MzY3OTI0MCwianRpIjoiMmQyYjIyNmItNjJkOS00YjRjLWI3YTYtMGEwYjk4MGQyMjMwIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDoyOTAwL2F1dGgvcmVhbG1zL29wZW5jMyIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6MjkwMC9hdXRoL3JlYWxtcy9vcGVuYzMiLCJzdWIiOiJhY2UxZTZhMS05MzE5LTQ3NmUtYmY0My02ZjNjYWI5ZWUyZGUiLCJ0eXAiOiJSZWZyZXNoIiwiYXpwIjoiYXBpIiwic2Vzc2lvbl9zdGF0ZSI6ImYzNzg1OTY3LTJhNDYtNGMxMi1hZDBjLWNmZjdmYzQ3N2RmOSIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJmMzc4NTk2Ny0yYTQ2LTRjMTItYWQwYy1jZmY3ZmM0NzdkZjkifQ.1HlKdxQkaL5tYuHTXsOceLZFmNNLl9BjoA4oUl70x9M","token_type":"Bearer","id_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ0cDlERmpNZGFXMy16WXptdlBqVTZnNTVqMVNhWGhkZHJqU0szQVNvaDhVIn0.eyJleHAiOjE2ODM2Nzk1NDAsImlhdCI6MTY4MzY3OTI0MCwiYXV0aF90aW1lIjowLCJqdGkiOiJhNDJkOTY1ZS1lMzU0LTRiM2QtOTIyYS1hOWE0ZDgwZWYxMTkiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjI5MDAvYXV0aC9yZWFsbXMvb3BlbmMzIiwiYXVkIjoiYXBpIiwic3ViIjoiYWNlMWU2YTEtOTMxOS00NzZlLWJmNDMtNmYzY2FiOWVlMmRlIiwidHlwIjoiSUQiLCJhenAiOiJhcGkiLCJzZXNzaW9uX3N0YXRlIjoiZjM3ODU5NjctMmE0Ni00YzEyLWFkMGMtY2ZmN2ZjNDc3ZGY5IiwiYXRfaGFzaCI6IjNBWE9ISkFKYzFPVldLd2Y0a0Q4TkEiLCJhY3IiOiIxIiwic2lkIjoiZjM3ODU5NjctMmE0Ni00YzEyLWFkMGMtY2ZmN2ZjNDc3ZGY5IiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVGhlIE9wZXJhdG9yIiwicHJlZmVycmVkX3VzZXJuYW1lIjoib3BlcmF0b3IiLCJnaXZlbl9uYW1lIjoiVGhlIiwiZmFtaWx5X25hbWUiOiJPcGVyYXRvciJ9.gdLl6KOKIIAdl6jYEuAXQrGCNvuwLQb3RDnwrHJdqyFXshiwofBiLMFreRsIE-33xXWNBU6pnSLQHPVlQU5Vmzlk0IOfk-b4yNq0dNa1TV1kmnxRl8w1ulTQYVZjdsN-oyLNwe0v3aJcYtbvIA3DP8rgO6bVv0ogkjWtlda6MbkyZN-har8x3raUVSlUPRP2Basy1xSMNNA1jvB-nEM-aubrUZE6r0PjI6PE1hbLPmuPbcX3uuIwXu2-UoXepkB8H7omUuMm-S98aHpRarwszC0mmHD5b_wiXusMVw4xYw8eavFue4zfw-T2IKuTVtxbMTygXIah6iqi4gkpL8Mx1w","not-before-policy":0,"session_state":"f3785967-2a46-4c12-ad0c-cff7fc477df9","scope":"openid profile email"}
+{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCI...",
+ "expires_in":300,
+ "refresh_expires_in":1800,
+ "refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCI...",
+ "token_type":"Bearer",
+ "not-before-policy":0,
+ "session_state":"4qBpizFTTzm5ZVHfBTXWgRAH",
+ "scope":"profile roles email"
+}
 ```
 
 COSMOS Request:
@@ -73,7 +85,9 @@ COSMOS Request:
 ```bash
 # COSMOS Request now looks like this:
 
-curl -i -H "Content-Type: application/json-rpc" -H "Authorization: eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ0cDlERmpNZGFXMy16WXptdlBqVTZnNTVqMVNhWGhkZHJqU0szQVNvaDhVIn0.eyJleHAiOjE2ODM2Nzk1NDAsImlhdCI6MTY4MzY3OTI0MCwianRpIjoiZmVlOTQwYWYtZDY3Ny00MWUyLWIzNWYtZDI5ODhiM2RhZGQ2IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDoyOTAwL2F1dGgvcmVhbG1zL29wZW5jMyIsInN1YiI6ImFjZTFlNmExLTkzMTktNDc2ZS1iZjQzLTZmM2NhYjllZTJkZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImFwaSIsInNlc3Npb25fc3RhdGUiOiJmMzc4NTk2Ny0yYTQ2LTRjMTItYWQwYy1jZmY3ZmM0NzdkZjkiLCJhY3IiOiIxIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImRlZmF1bHQtcm9sZXMtb3BlbmMzIiwiQUxMU0NPUEVTX19vcGVyYXRvciIsIm9mZmxpbmVfYWNjZXNzIiwiQUxMU0NPUEVTX192aWV3ZXIiXX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJmMzc4NTk2Ny0yYTQ2LTRjMTItYWQwYy1jZmY3ZmM0NzdkZjkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJUaGUgT3BlcmF0b3IiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJvcGVyYXRvciIsImdpdmVuX25hbWUiOiJUaGUiLCJmYW1pbHlfbmFtZSI6Ik9wZXJhdG9yIn0.eSqSeZrmCTahwltz5jsu5r3w6W15T5h0BvIdqKWQBDcnxAcxKuT-Nwziw_ewySSgHeC172CIWJUpHVp8ACDQG-dfW4KkvA6AcGfSF_f8TBH_rZrVQwlvwwzdA_egGKzhZWcnAC8TDjXRxuaWmnOgWT0aaHZAoW8EvwmKp-1IVz2l0B-hqzfC7dkjMrCI1udLfDvDBza9OtuR-FnKGt8h4nYnRzr8pO2jwebPFyZlR00gVsyK-b411XqprpT-qpRObYZwH5womA-8xIiwRZj9dsfQ1TaHGFkp1LNzxcj_r6pfwVO263bohbeU7ImezQdbvGLJ9NHaglzVNroTui4BXA" -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' -X POST http://127.0.0.1:2900/openc3-api/api
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>" \
+-d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' \
+-X POST http://127.0.0.1:2900/openc3-api/api
 ```
 
 COSMOS Response:
@@ -81,16 +95,85 @@ COSMOS Response:
 ```bash
 HTTP/1.1 200 OK
 Cache-Control: max-age=0, private, must-revalidate
+Content-Length: 42
 Content-Type: application/json-rpc
-Etag: W/"1e44c0878528687014e1e60a1cbebdae"
+Etag: W/"a1f1d2d7bc871f31c0c1977fb54778ca"
 Vary: Origin
-X-Request-Id: 47a8dd26-1348-4693-8df1-5375f60abc6c
-X-Runtime: 0.046477
-Date: Wed, 10 May 2023 00:41:33 GMT
-Transfer-Encoding: chunked
+X-Request-Id: 34b7adac-4134-429a-bd8f-e16268ea4204
+X-Runtime: 0.017652
+Date: Wed, 28 Jan 2026 14:47:46 GMT
 
-{"jsonrpc":"2.0","id":8,"result":29.204100000000007}
+{"jsonrpc":"2.0","id":8,"result":-40.6714}
 ```
+
+### Using keyword_params for Method Options
+
+Many API methods accept keyword parameters for additional options beyond the standard `scope` parameter. For example, the `cmd` method accepts `validate`, `timeout`, and `log_message` options. These are passed in the `keyword_params` field of the JSON-RPC request.
+
+Request (sending a command with validation disabled):
+
+```bash
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>" \
+-d '{"jsonrpc": "2.0", "method": "cmd", "params": ["INST COLLECT with DURATION 10, TYPE NORMAL"], "keyword_params": {"scope": "DEFAULT", "validate": false}, "id": 9}' \
+-X POST http://127.0.0.1:2900/openc3-api/api
+```
+
+Response:
+
+```bash
+HTTP/1.1 200 OK
+Cache-Control: max-age=0, private, must-revalidate
+Content-Length: 42
+Content-Type: application/json-rpc
+Etag: W/"a1f1d2d7bc871f31c0c1977fb54778ca"
+Vary: Origin
+X-Request-Id: 34b7adac-4134-429a-bd8f-e16268ea4204
+X-Runtime: 0.017652
+Date: Wed, 28 Jan 2026 14:47:46 GMT
+
+{"jsonrpc":"2.0","id":9,"result":{"target_name":"INST","cmd_name":"COLLECT",...}}
+```
+
+### Refreshing the Access Token
+
+When your access token expires (default: 5 minutes), you can use the refresh token to obtain a new access token without re-authenticating with username and password. The refresh token is returned in the initial authentication response above (`refresh_token` field).
+
+Refresh Token Request:
+
+```bash
+curl -i -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'client_id=api&grant_type=refresh_token&refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI...<refresh_token>' \
+  -X POST http://127.0.0.1:2900/auth/realms/openc3/protocol/openid-connect/token
+```
+
+Refresh Token Response:
+
+```bash
+HTTP/1.1 200 OK
+Cache-Control: no-store
+Content-Length: 1939
+Content-Type: application/json
+Pragma: no-cache
+Referrer-Policy: no-referrer
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Date: Wed, 28 Jan 2026 14:50:06 GMT
+
+{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCI...",
+ "expires_in":300,
+ "refresh_expires_in":1800,
+ "refresh_token":"eyJhbGciOiJIUzUxMiIsInR5cCI...",
+ "token_type":"Bearer",
+ "not-before-policy":0,
+ "session_state":"wtQcxD4YyzqlzBkmtRi7KTNm",
+ "scope":"profile roles email"
+}
+```
+
+The response contains both a new access token and a new refresh token. Each time you refresh, you receive a fresh refresh token, and the previous one is invalidated. The refresh token idle timeout (default: 30 minutes) is reset with each refresh request.
+
+For more details on token types and lifespans, see [Keycloak](/docs/getting-started/key-concepts#keycloak-enterprise) in Key Concepts.
 
 ## Suite Runner Example
 
