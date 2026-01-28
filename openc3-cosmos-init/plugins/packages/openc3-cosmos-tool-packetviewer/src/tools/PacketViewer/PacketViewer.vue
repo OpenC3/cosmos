@@ -135,40 +135,67 @@
     <v-dialog
       v-model="optionsDialog"
       max-width="360px"
-      @keydown.esc="optionsDialog = false"
+      persistent
+      @keydown.esc="cancelOptions"
     >
       <v-card>
-        <v-toolbar :height="24">
-          <v-spacer />
-          <span>Options</span>
-          <v-spacer />
-        </v-toolbar>
-        <v-card-text>
-          <div class="pa-3">
-            <v-text-field
-              v-model="refreshInterval"
-              min="0"
-              max="10000"
-              step="100"
-              type="number"
-              label="Refresh Interval (ms)"
-              data-test="refresh-interval"
-            />
-          </div>
-          <div class="pa-3">
-            <v-text-field
-              min="1"
-              max="10000"
-              step="1"
-              type="number"
-              label="Time at which to mark data Stale (seconds)"
-              :model-value="staleLimit"
-              min-width="280px"
-              data-test="stale-limit"
-              @update:model-value="staleLimit = parseInt($event)"
-            />
-          </div>
-        </v-card-text>
+        <v-form v-model="optionsFormValid" @submit.prevent>
+          <v-toolbar :height="24">
+            <v-spacer />
+            <span>Options</span>
+            <v-spacer />
+          </v-toolbar>
+          <v-card-text>
+            <div class="pa-3">
+              <v-row>
+                <v-text-field
+                  v-model="optionsRefreshInterval"
+                  min="1"
+                  max="3600"
+                  step="1"
+                  type="number"
+                  label="Refresh Interval (s)"
+                  :rules="[rules.required, rules.min]"
+                  data-test="refresh-interval"
+                />
+              </v-row>
+              <v-row>
+                <v-text-field
+                  v-model="optionsStaleLimit"
+                  min="1"
+                  max="10000"
+                  step="1"
+                  type="number"
+                  label="Time at which to mark data Stale (s)"
+                  :rules="[rules.required, rules.min]"
+                  min-width="280px"
+                  data-test="stale-limit"
+                />
+              </v-row>
+              <v-row class="mt-5">
+                <v-spacer />
+                <v-btn
+                  variant="outlined"
+                  class="mx-2"
+                  data-test="options-cancel-btn"
+                  @click="cancelOptions"
+                >
+                  Cancel
+                </v-btn>
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  class="mx-2"
+                  :disabled="!optionsFormValid"
+                  data-test="options-save-btn"
+                  @click="saveOptions"
+                >
+                  Save
+                </v-btn>
+              </v-row>
+            </div>
+          </v-card-text>
+        </v-form>
       </v-card>
     </v-dialog>
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
@@ -255,6 +282,13 @@ export default {
       ],
       sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
+      optionsFormValid: true,
+      optionsRefreshInterval: 1,
+      optionsStaleLimit: 30,
+      rules: {
+        required: (value) => !!value || 'Required',
+        min: (value) => value >= 1 || 'Must be at least 1',
+      },
       showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
@@ -292,6 +326,8 @@ export default {
               label: 'Options',
               icon: 'mdi-cog',
               command: () => {
+                this.optionsRefreshInterval = this.refreshInterval / 1000
+                this.optionsStaleLimit = this.staleLimit
                 this.optionsDialog = true
               },
             },
@@ -503,6 +539,20 @@ export default {
     }
   },
   methods: {
+    saveOptions() {
+      if (this.optionsRefreshInterval && this.optionsRefreshInterval >= 1) {
+        this.refreshInterval = this.optionsRefreshInterval * 1000
+      }
+      if (this.optionsStaleLimit && this.optionsStaleLimit >= 1) {
+        this.staleLimit = Number.parseInt(this.optionsStaleLimit)
+      }
+      this.optionsDialog = false
+    },
+    cancelOptions() {
+      this.optionsRefreshInterval = this.refreshInterval / 1000
+      this.optionsStaleLimit = this.staleLimit
+      this.optionsDialog = false
+    },
     showContextMenu(e, item) {
       e.preventDefault()
       this.itemName = item.name

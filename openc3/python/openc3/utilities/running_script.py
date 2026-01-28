@@ -120,7 +120,7 @@ from openc3.script.exceptions import StopScript, SkipScript, CheckError
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.script.suite import Group
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
-import openc3.utilities.target_file_importer # DO NOT REMOVE - Makes import target lib work
+import openc3.utilities.target_file_importer  # DO NOT REMOVE - Makes import target lib work
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
 # Note: This list matches the list in run_script.rb:151
@@ -1511,3 +1511,13 @@ def download_file(path, scope=OPENC3_SCOPE):
 
 
 setattr(openc3.script, "download_file", download_file)
+
+
+def open_tab(url):
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id()}",
+        {"type": "opentab", "url": url},
+    )
+
+
+setattr(openc3.script, "open_tab", open_tab)

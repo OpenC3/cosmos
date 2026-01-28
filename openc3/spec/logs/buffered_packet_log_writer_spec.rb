@@ -44,8 +44,8 @@ module OpenC3
       it "stores the buffer depth" do
         bplw = BufferedPacketLogWriter.new(@log_dir, "test")
         expect(bplw.instance_variable_get(:@buffer_depth)).to eql 60
-        bplw.shutdown
-        sleep 0.1
+        threads = bplw.shutdown
+        threads.each { |t| t.join }
       end
     end
 

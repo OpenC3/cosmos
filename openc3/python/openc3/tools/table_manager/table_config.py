@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -161,7 +161,7 @@ class TableConfig(PacketConfig):
                     self.finish_packet()
                     self.current_packet = TableParser.parse_table(parser, self.commands, self.warnings)
                     self.definitions[self.current_packet.packet_name] = self.last_config
-                    self.current_cmd_or_tlm = self.COMMAND
+                    self.current_cmd_or_tlm = PacketConfig.COMMAND_STRING
                     self.default_index = 0
 
                 # Select an existing table for editing

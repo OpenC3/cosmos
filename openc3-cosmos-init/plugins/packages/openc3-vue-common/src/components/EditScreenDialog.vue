@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -47,7 +47,7 @@
           height="45vh"
         />
         <!-- Make the error messages a max height and scrollable -->
-        <v-row style="max-height: 120px; overflow-y: auto">
+        <v-row class="ma-3" style="max-height: 120px; overflow-y: auto">
           <div v-for="(error, index) in editErrors" :key="index">
             <span class="text-red" v-text="error" />
           </div>

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,11 +32,6 @@ const routes = [
       {
         component: () => import('./tools/CmdTlmServer/InterfacesTab'),
         path: '',
-      },
-      {
-        component: () => import('./tools/CmdTlmServer/DataFlowsTab'),
-        name: 'DataFlowsTab',
-        path: 'data-flows',
       },
       {
         component: () => import('./tools/CmdTlmServer/InterfacesTab'),
@@ -62,6 +57,11 @@ const routes = [
         component: () => import('./tools/CmdTlmServer/RoutersTab'),
         name: 'RoutersTab',
         path: 'routers',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/DataFlowsTab'),
+        name: 'DataFlowsTab',
+        path: 'data-flows',
       },
       {
         component: () => import('./tools/CmdTlmServer/StatusTab'),

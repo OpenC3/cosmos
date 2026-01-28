@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -286,7 +286,7 @@ export default {
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)
                     rawString = rawString.slice(
                       0,
-                      parseInt(this.details.bit_size) / 8,
+                      Number.parseInt(this.details.bit_size) / 8,
                     )
                     // Only display the first 64 bytes at which point ...
                     let ellipse = false

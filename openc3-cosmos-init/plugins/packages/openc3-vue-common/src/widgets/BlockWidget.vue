@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -98,10 +98,10 @@ export default {
       this.formatter = this.parameters[5]
     }
     if (this.parameters[6]) {
-      this.bytesPerWord = parseInt(this.parameters[6])
+      this.bytesPerWord = Number.parseInt(this.parameters[6])
     }
     if (this.parameters[7]) {
-      this.wordsPerRow = parseInt(this.parameters[7])
+      this.wordsPerRow = Number.parseInt(this.parameters[7])
     }
     if (this.parameters[8]) {
       this.addrFormat = this.parameters[8]

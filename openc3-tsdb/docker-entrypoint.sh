@@ -31,26 +31,26 @@ read -ra LOCALDIRS < <( echo -n "( "; printf -- "-ipath ${QUESTDB_DATA_DIR}%s* -
 # Temporary only
 # Most of the users will have the data mounted under /root/.questdb as default
 # we will run as root for them until they change the mount to /var/lib/questdb or something else
-if [ "$IGNORE_DATA_ROOT_MOUNT_CHECK" = "false" ] && mount | grep "/root/.questdb" -q; then
+if [[ "$IGNORE_DATA_ROOT_MOUNT_CHECK" == "false" ]] && mount | grep "/root/.questdb" -q; then
     echo "Found /root/.questdb mount, overwriting QUESTDB_DATA_DIR"
     QUESTDB_DATA_DIR="/root/.questdb"
 fi
 
 # Check if on-demand JVM arguments are provided through environment variable
-if [ -n "$JVM_PREPEND" ]; then
+if [[ -n "$JVM_PREPEND" ]]; then
     echo "Found on-demand JVM arguments: $JVM_PREPEND, prepending to JVM args"
     JAVA_COMMAND="$JAVA_COMMAND $JVM_PREPEND"
 fi
 
 # Check if arguments are provided in the configuration file
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
     echo "No arguments found in the configuration, start with default arguments"
     set -- $JAVA_COMMAND -ea -Dnoebug -XX:+UseParallelGC -XX:ErrorFile=${QUESTDB_DATA_DIR}/db/hs_err_pid+%p.log -Dout=${QUESTDB_DATA_DIR}/conf/log.conf -m io.questdb/io.questdb.ServerMain -d ${QUESTDB_DATA_DIR} -f
 else
-    if [ "${1:0:1}" = '-' ]; then
+    if [[ "${1:0:1}" == '-' ]]; then
         echo "Found config arguments $@"
         set -- $JAVA_COMMAND "$@"
-    elif [ "$1" = "/app/bin/java" ]; then
+    elif [[ "$1" == "/app/bin/java" ]]; then
         echo "Java binary argument found in command, ignoring on-demand JVM arguments, start with fully-customized arguments"
         set -- "$@"
     fi

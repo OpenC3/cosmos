@@ -140,6 +140,9 @@ test('warns with no data', async ({ page, utils }) => {
 test('cancels a process', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 2 })
   await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
+  await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
   let endTime = add(start, { hours: 1 })
@@ -234,6 +237,9 @@ test('processes commands', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
   await page.locator('rux-icon-apps').getByRole('img').click()
   await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
+  await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
@@ -250,6 +256,9 @@ test('creates CSV output', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 2 })
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Comma Delimited').click()
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))

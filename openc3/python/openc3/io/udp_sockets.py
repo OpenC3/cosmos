@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -127,6 +127,8 @@ class UdpReadWriteSocket:
         if host is None or port is None:
             return False
         host_ip = socket.gethostbyname(host)
+        # "224.0.0.0/4 is the CIDR notation for the range of IPv4 multicast addresses,
+        # which includes all addresses from 224.0.0.0 to 239.255.255.255.
         return ipaddress.ip_address(host_ip) in ipaddress.ip_network("224.0.0.0/4")
 
 

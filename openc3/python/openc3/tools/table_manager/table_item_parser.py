@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -39,7 +39,7 @@ class TableItemParser(PacketItemParser):
             The created TableItem
         """
         parser = cls(parser, table_config, warnings)
-        parser.verify_parameters(PacketConfig.COMMAND)
+        parser.verify_parameters(PacketConfig.COMMAND_STRING)
         return parser.create_table_item(table)
 
     def create_table_item(self, table):

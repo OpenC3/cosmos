@@ -31,20 +31,20 @@ BENCHMARK_BUCKET="benchmark-test"
 # Auto-detect Docker network and MINIO container
 detect_docker_environment() {
     MINIO_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i minio | head -1)
-    if [ -z "$MINIO_CONTAINER" ]; then
+    if [[ -z "$MINIO_CONTAINER" ]]; then
         echo "${RED}Error: Could not find running MINIO container${NC}"
         echo "Make sure COSMOS is running: ./openc3.sh run"
         exit 1
     fi
 
     DOCKER_NETWORK=$(docker inspect --format '{{range $net, $config := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}' "$MINIO_CONTAINER" | grep -v '^$' | head -1)
-    if [ -z "$DOCKER_NETWORK" ]; then
+    if [[ -z "$DOCKER_NETWORK" ]]; then
         echo "${RED}Error: Could not determine network for MINIO container${NC}"
         exit 1
     fi
 
     MINIO_SERVICE=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$MINIO_CONTAINER" 2>/dev/null)
-    if [ -z "$MINIO_SERVICE" ]; then
+    if [[ -z "$MINIO_SERVICE" ]]; then
         MINIO_SERVICE="$MINIO_CONTAINER"
     fi
 }
@@ -140,7 +140,7 @@ calc_rate() {
     local duration=$2
 
     # Handle empty or zero duration
-    if [ -z "$duration" ] || [ "$duration" = "0" ]; then
+    if [[ -z "$duration" ]] || [[ "$duration" == "0" ]]; then
         echo "N/A"
         return
     fi
@@ -152,7 +152,7 @@ calc_rate() {
     fi
 
     local rate=$(echo "scale=2; $size_mb / $duration" | bc 2>/dev/null)
-    if [ -z "$rate" ]; then
+    if [[ -z "$rate" ]]; then
         echo "N/A"
     else
         echo "$rate"
@@ -164,7 +164,7 @@ format_duration() {
     local seconds=$1
 
     # Handle empty or invalid input
-    if [ -z "$seconds" ] || ! echo "$seconds" | grep -qE '^[0-9]+\.?[0-9]*$'; then
+    if [[ -z "$seconds" ]] || ! echo "$seconds" | grep -qE '^[0-9]+\.?[0-9]*$'; then
         echo "N/A"
         return
     fi
@@ -267,7 +267,7 @@ print_summary() {
     echo ""
 
     # Estimate times for larger datasets based on measured rate
-    if [ ${#BENCHMARK_RESULTS[@]} -gt 0 ]; then
+    if [[ ${#BENCHMARK_RESULTS[@]} -gt 0 ]]; then
         # Use the largest test's rate for estimation
         local last_index=$((${#BENCHMARK_RESULTS[@]} - 1))
         local last_result="${BENCHMARK_RESULTS[$last_index]}"
@@ -375,7 +375,7 @@ case "${1:-help}" in
         print_summary
         ;;
     custom)
-        if [ -z "$2" ]; then
+        if [[ -z "$2" ]]; then
             echo "${RED}Error: custom requires SIZE_MB argument${NC}"
             echo "Usage: $0 custom SIZE_MB"
             exit 1

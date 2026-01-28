@@ -156,7 +156,7 @@ export default {
   },
   created() {
     if (this.parameters[4]) {
-      this.radius = parseInt(this.parameters[4])
+      this.radius = Number.parseInt(this.parameters[4])
     }
     if (this.parameters[5]) {
       if (this.parameters[5].toLowerCase() === 'true') {

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -89,7 +89,7 @@ export default {
       this.formatter = this.parameters[5]
     }
     if (this.parameters[6]) {
-      this.itemsPerRow = parseInt(this.parameters[6])
+      this.itemsPerRow = Number.parseInt(this.parameters[6])
     }
   },
   methods: {

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -73,7 +73,7 @@ export default {
   mixins: [Layout],
   computed: {
     columns() {
-      return parseInt(this.parameters[0])
+      return Number.parseInt(this.parameters[0])
     },
     widgetChunks() {
       return _.chunk(this.widgets, this.columns)

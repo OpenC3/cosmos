@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,6 +17,7 @@
 import socket
 import sys
 import json
+from enum import IntEnum
 from datetime import datetime, timezone
 from threading import Lock
 from openc3.environment import *
@@ -29,19 +30,14 @@ CLASS_ATTRS = [
     "my_instance",
     "scope",
     "__dict__",
+    "LOG",
+    "NOTIFICATION",
+    "ALERT",
     "DEBUG",
     "INFO",
     "WARN",
     "ERROR",
     "FATAL",
-    "DEBUG_LEVEL",
-    "INFO_LEVEL",
-    "WARN_LEVEL",
-    "ERROR_LEVEL",
-    "FATAL_LEVEL",
-    "LOG",
-    "NOTIFICATION",
-    "ALERT",
 ]
 
 
@@ -83,6 +79,14 @@ class LoggerMeta(type):
         raise AttributeError(f"Unknown attribute {func}")
 
 
+class LogLevel(IntEnum):
+    DEBUG = 0
+    INFO = 1
+    WARN = 2
+    ERROR = 3
+    FATAL = 4
+
+
 # Supports different levels of logging and only writes if the level
 # is exceeded.
 class Logger(metaclass=LoggerMeta):
@@ -90,17 +94,11 @@ class Logger(metaclass=LoggerMeta):
     my_instance = None
     scope = OPENC3_SCOPE
 
-    DEBUG = 0
-    INFO = 1
-    WARN = 2
-    ERROR = 3
-    FATAL = 4
-
-    DEBUG_LEVEL = "DEBUG"
-    INFO_LEVEL = "INFO"
-    WARN_LEVEL = "WARN"
-    ERROR_LEVEL = "ERROR"
-    FATAL_LEVEL = "FATAL"
+    DEBUG = LogLevel.DEBUG
+    INFO = LogLevel.INFO
+    WARN = LogLevel.WARN
+    ERROR = LogLevel.ERROR
+    FATAL = LogLevel.FATAL
 
     LOG = "log"
     NOTIFICATION = "notification"
@@ -108,7 +106,7 @@ class Logger(metaclass=LoggerMeta):
     EPHEMERAL = "ephemeral"
 
     # @param level [Integer] The initial logging level
-    def __init__(self, level=INFO):
+    def __init__(self, level=LogLevel.INFO):
         self.stdout = True
         self.level = level
         self.detail_string = None
@@ -121,7 +119,7 @@ class Logger(metaclass=LoggerMeta):
 
     # Get the singleton instance
     @classmethod
-    def instance(cls, level=INFO):
+    def instance(cls, level=LogLevel.INFO):
         if cls.my_instance:
             return cls.my_instance
 
@@ -135,9 +133,9 @@ class Logger(metaclass=LoggerMeta):
     #   to the log message
     def debug(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.DEBUG:
+        if self.level <= LogLevel.DEBUG:
             self.log_message(
-                self.DEBUG_LEVEL,
+                LogLevel.DEBUG.name,
                 message,
                 scope=scope,
                 user=user,
@@ -149,9 +147,9 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def info(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.INFO:
+        if self.level <= LogLevel.INFO:
             self.log_message(
-                self.INFO_LEVEL,
+                LogLevel.INFO.name,
                 message,
                 scope=scope,
                 user=user,
@@ -163,9 +161,9 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def warn(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.WARN:
+        if self.level <= LogLevel.WARN:
             self.log_message(
-                self.WARN_LEVEL,
+                LogLevel.WARN.name,
                 message,
                 scope=scope,
                 user=user,
@@ -177,9 +175,9 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def error(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.ERROR:
+        if self.level <= LogLevel.ERROR:
             self.log_message(
-                self.ERROR_LEVEL,
+                LogLevel.ERROR.name,
                 message,
                 scope=scope,
                 user=user,
@@ -191,9 +189,9 @@ class Logger(metaclass=LoggerMeta):
     # (see #debug)
     def fatal(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
-        if self.level <= self.FATAL:
+        if self.level <= LogLevel.FATAL:
             self.log_message(
-                self.FATAL_LEVEL,
+                LogLevel.FATAL.name,
                 message,
                 scope=scope,
                 user=user,
@@ -232,7 +230,7 @@ class Logger(metaclass=LoggerMeta):
         with self.instance_mutex:
             data = self.build_log_data(log_level, message, user, type, url, other)
             if self.stdout:
-                if (log_level in ['WARN', 'ERROR', 'FATAL']) and OPENC3_LOG_STDERR:
+                if (log_level in ["WARN", "ERROR", "FATAL"]) and OPENC3_LOG_STDERR:
                     io = sys.stderr
                 else:
                     io = sys.stdout

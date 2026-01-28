@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -150,5 +150,10 @@ def clear_all_screens():
 
 
 def local_screen(screen_name, definition, x=None, y=None):
+    # Noop outside of ScriptRunner
+    pass
+
+
+def open_tab(url):
     # Noop outside of ScriptRunner
     pass

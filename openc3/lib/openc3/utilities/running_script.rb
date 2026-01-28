@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -312,6 +312,10 @@ module OpenC3
       def download_file(path, scope: RunningScript.instance.scope)
         url = _get_download_url(path, scope: scope)
         running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :downloadfile, filename: File.basename(path), url: url })
+      end
+
+      def open_tab(url)
+        running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :opentab, url: url })
       end
     end
   end
