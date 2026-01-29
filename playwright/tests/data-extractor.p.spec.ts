@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -140,6 +140,9 @@ test('warns with no data', async ({ page, utils }) => {
 test('cancels a process', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 2 })
   await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
+  await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
   let endTime = add(start, { hours: 1 })
@@ -163,7 +166,7 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 234')).toBeVisible()
+  await expect(page.getByText('1-20 of 258')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
@@ -234,6 +237,9 @@ test('processes commands', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
   await page.locator('rux-icon-apps').getByRole('img').click()
   await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
+  await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
@@ -250,6 +256,9 @@ test('creates CSV output', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 2 })
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Comma Delimited').click()
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))

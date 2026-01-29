@@ -31,17 +31,6 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    permissions:
-      # required for all workflows
-      security-events: write
-
-      # required to fetch internal or private CodeQL packs
-      packages: read
-
-      # only required for workflows in private repositories
-      actions: read
-      contents: read
-
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +43,14 @@ jobs:
             build-mode: none
           - language: ruby
             build-mode: none
+    permissions:
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+      # require for all code scanning workflows
+      security-events: write
+      # required to fetch internal or private CodeQL packs
+      packages: read
 
     steps:
       - name: Checkout repository

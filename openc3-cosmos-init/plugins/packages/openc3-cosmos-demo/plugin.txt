@@ -47,6 +47,26 @@ VARIABLE reduced_log_retain_time 2592000
   VARIABLE_STATE "90 days" 7776000
   VARIABLE_STATE "1 year" 31536000
 
+### Throughput Server Configuration ###
+# The throughput server can be used to test the maximum command and telemetry throughput
+# To use it enable the use_throughput_server variable and start the throughput server separately
+# From the base of the cosmos directory, in a separate terminal run:
+#   cd examples/throughput_server/
+#   python throughput_server.py
+# Once the DEMO has been installed (or re-installed with use_throughput_server enabled) it will connect
+# to the throughput server instead of using the built-in simulator. You should see a single packet.
+# Run throughput_test.rb to test INST and throughput_test.py to test INST2 throughput.
+VARIABLE use_throughput_server false
+  VARIABLE_DESCRIPTION "Use external throughput server instead of built-in simulator"
+  VARIABLE_STATE "No (use simulator)" false
+  VARIABLE_STATE "Yes (use throughput server)" true
+VARIABLE throughput_server_host host.docker.internal
+  VARIABLE_DESCRIPTION "Hostname for the throughput server"
+VARIABLE inst_throughput_port 7778
+  VARIABLE_DESCRIPTION "Port for INST throughput server connection"
+VARIABLE inst2_throughput_port 7780
+  VARIABLE_DESCRIPTION "Port for INST2 throughput server connection"
+
 <% include_inst = (inst_target_name.to_s.strip.length > 0) %>
 <% include_inst2 = (inst2_target_name.to_s.strip.length > 0) %>
 <% include_example = (example_target_name.to_s.strip.length > 0) %>
@@ -104,13 +124,28 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst and include_inst_int %>
-  INTERFACE <%= inst_int_name %> simulated_target_interface.rb sim_inst.rb
-    MAP_TARGET <%= inst_target_name %>
+  <% if use_throughput_server.to_s == "true" %>
+    # Connect to external throughput server using TCP/IP with LengthProtocol
+    # LengthProtocol params: bit_offset=32, bit_size=16, len_offset=7, bytes_per_count=1
+    INTERFACE <%= inst_int_name %> tcpip_client_interface.rb <%= throughput_server_host %> <%= inst_throughput_port %> <%= inst_throughput_port %> 10.0 nil LENGTH 32 16 7 1 BIG_ENDIAN 0 nil nil true
+      MAP_TARGET <%= inst_target_name %>
+  <% else %>
+    INTERFACE <%= inst_int_name %> simulated_target_interface.rb sim_inst.rb
+      MAP_TARGET <%= inst_target_name %>
+  <% end %>
 <% end %>
 
 <% if include_inst2 and include_inst2_int %>
-  INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
-    MAP_TARGET <%= inst2_target_name %>
+  <% if use_throughput_server.to_s == "true" %>
+    # Connect to external throughput server using Python TCP/IP with LengthProtocol
+    # Must use Python interface for INST2 because target uses Python conversions
+    # LengthProtocol params: bit_offset=32, bit_size=16, len_offset=7, bytes_per_count=1
+    INTERFACE <%= inst2_int_name %> openc3/interfaces/tcpip_client_interface.py <%= throughput_server_host %> <%= inst2_throughput_port %> <%= inst2_throughput_port %> 10.0 None LENGTH 32 16 7 1 BIG_ENDIAN 0 None None True
+      MAP_TARGET <%= inst2_target_name %>
+  <% else %>
+    INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
+      MAP_TARGET <%= inst2_target_name %>
+  <% end %>
 <% end %>
 
 <% if include_example and include_example_int %>

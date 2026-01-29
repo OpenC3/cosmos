@@ -137,7 +137,11 @@ module OpenC3
       it "returns all items from packet TGT1/PKT1" do
         items = @cmd.params("TGT1", "PKT1")
         expect(items.length).to eql 9
-        Packet::RESERVED_ITEM_NAMES.each do |reserved|
+        # These are the items auto-added by define_reserved_items()
+        # Note: TIMESTAMP and RX_TIMESTAMP are in RESERVED_ITEM_NAMES but
+        # are not auto-added - they're just reserved to prevent user collision
+        auto_added_items = %w(PACKET_TIMESECONDS PACKET_TIMEFORMATTED RECEIVED_TIMESECONDS RECEIVED_TIMEFORMATTED RECEIVED_COUNT)
+        auto_added_items.each do |reserved|
           expect(items.map { |item| item.name }).to include(reserved)
         end
         expect(items[5].name).to eql "ITEM1"

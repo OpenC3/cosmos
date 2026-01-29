@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -52,6 +52,7 @@
         :opened="initiallyOpen"
         item-value="name"
         density="compact"
+        class="ml-2"
         open-on-click
       >
         <!-- Beginning Icon -->

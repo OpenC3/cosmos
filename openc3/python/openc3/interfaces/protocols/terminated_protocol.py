@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -74,13 +74,13 @@ class TerminatedProtocol(BurstProtocol):
                 if self.strip_read_termination:
                     packet_data = self.data[0:index]
                 else:
-                    packet_data = self.data[0 : (index + len(self.read_termination_characters))]
+                    packet_data = self.data[0:(index + len(self.read_termination_characters))]
             else:  # self.data begins with the termination characters
                 if self.strip_read_termination:
                     packet_data = b""
                 else:  # Keep everything
-                    packet_data = self.data[0 : (len(self.read_termination_characters))]
-            self.data = self.data[(index + len(self.read_termination_characters)) :]
+                    packet_data = self.data[0:(len(self.read_termination_characters))]
+            self.data = self.data[(index + len(self.read_termination_characters)):]
             return (packet_data, self.extra)
         except ValueError:  # sync_index = None
             return ("STOP", self.extra)

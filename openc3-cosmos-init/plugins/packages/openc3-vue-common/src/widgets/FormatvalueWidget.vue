@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -57,7 +57,7 @@ export default {
   },
   created() {
     this.setWidth(
-      parseInt(this.parameters[5]) + INPUT_PADDING,
+      Number.parseInt(this.parameters[5]) + INPUT_PADDING,
       'ch',
       12 + INPUT_PADDING,
     )

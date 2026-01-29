@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -33,6 +33,7 @@ from openc3.topics.topic import Topic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.utilities.time import from_nsec_from_epoch
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 
 
 # This must be here in order to work when running more than this individual file
@@ -423,3 +424,53 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual("READ", im.interface.protocol_read_write)
         self.assertEqual(3, im.interface.protocol_index)
         im.shutdown()
+
+    def test_supports_update_interval_option_to_enable_queued_writes(self):
+        # Update the model to use UPDATE_INTERVAL option
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0.2"]],
+        )
+        model.update()
+
+        # Reset the store update intervals to 0 to verify they get set
+        StoreQueued.instance().set_update_interval(0)
+        EphemeralStoreQueued.instance().set_update_interval(0)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.assertEqual(im.queued, True)
+        self.assertEqual(StoreQueued.instance().update_interval, 0.2)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, 0.2)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_supports_optimize_throughput_option_for_backward_compatibility(self):
+        # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["OPTIMIZE_THROUGHPUT", "0.3"]],
+        )
+        model.update()
+
+        # Reset the store update intervals to 0 to verify they get set
+        StoreQueued.instance().set_update_interval(0)
+        EphemeralStoreQueued.instance().set_update_interval(0)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.assertEqual(im.queued, True)
+        self.assertEqual(StoreQueued.instance().update_interval, 0.3)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, 0.3)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit

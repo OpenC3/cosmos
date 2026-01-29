@@ -163,6 +163,21 @@ module OpenC3
         expect(Thread.list.count).to eql init_threads
       end
 
+      it "supports UPDATE_INTERVAL option to enable queued writes" do
+        # First update the model to use UPDATE_INTERVAL instead of OPTIMIZE_THROUGHPUT
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0.2"]]).update
+        StoreQueued.instance.set_update_interval(0)
+        EphemeralStoreQueued.instance.set_update_interval(0)
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        expect(im.instance_variable_get(:@queued)).to eql true
+        expect(StoreQueued.instance.update_interval).to eql 0.2
+        expect(EphemeralStoreQueued.instance.update_interval).to eql 0.2
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
       it "preserves existing packet counts" do
         # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
         System.telemetry.packets("INST").each do |_packet_name, packet|

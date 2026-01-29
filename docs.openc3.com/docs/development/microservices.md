@@ -190,14 +190,14 @@ include Api
 
 The API module provides access to the [Scripting API](/docs/guides/scripting-api) methods for commanding and telemetry:
 
-| API Category | Key Methods                                                    |
-| ------------ | -------------------------------------------------------------- |
-| Commands     | `cmd`, `cmd_no_hazardous_check`, `cmd_raw`, `build_cmd`        |
-| Telemetry    | `tlm`, `tlm_raw`, `tlm_formatted`, `tlm_with_units`, `set_tlm` |
-| Limits       | `get_limits`, `set_limits`, `enable_limits`, `disable_limits`  |
-| Targets      | `get_target_names`, `get_all_cmds`, `get_all_tlm`              |
-| Interfaces   | `get_interface`, `connect_interface`, `disconnect_interface`   |
-| Settings     | `get_setting`, `set_setting`, `get_all_settings`               |
+| API Category | Key Methods                                                   |
+| ------------ | ------------------------------------------------------------- |
+| Commands     | `cmd`, `cmd_no_hazardous_check`, `cmd_raw`, `build_cmd`       |
+| Telemetry    | `tlm`, `tlm_raw`, `tlm_formatted`, `set_tlm`                  |
+| Limits       | `get_limits`, `set_limits`, `enable_limits`, `disable_limits` |
+| Targets      | `get_target_names`, `get_all_cmds`, `get_all_tlm`             |
+| Interfaces   | `get_interface`, `connect_interface`, `disconnect_interface`  |
+| Settings     | `get_setting`, `set_setting`, `get_all_settings`              |
 
 ## Base Class Attributes
 
@@ -273,6 +273,7 @@ self.logger.error("Critical issue detected", type=Logger.ALERT)
 </Tabs>
 
 The available types are:
+
 - `LOG` (default) - Standard log message, appears in Log Messages panel
 - `NOTIFICATION` - Appears in the notifications dropdown
 - `ALERT` - Appears as a toast notification and in the notifications dropdown
@@ -400,10 +401,10 @@ self.metric.set(name='processing_seconds', value=elapsed, type='gauge', unit='se
 
 ### Metric Types
 
-| Type      | Description                                                                                                          |
-| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| Type      | Description                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `counter` | A cumulative value that only increases (e.g., total requests, total errors). Resets to zero when the service restarts. |
-| `gauge`   | A point-in-time value that can increase or decrease (e.g., current temperature, queue depth, memory usage).         |
+| `gauge`   | A point-in-time value that can increase or decrease (e.g., current temperature, queue depth, memory usage).            |
 
 ## Subscribing to Topics
 
