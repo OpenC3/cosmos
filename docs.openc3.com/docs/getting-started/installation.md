@@ -12,10 +12,17 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ## Installing OpenC3 COSMOS on Host Machines
 
-### Installation Video for macOS
+### Installation Videos
 
-<div style={{textAlign: 'center'}}>
-  <iframe width="560" height="315" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+<div style={{display: 'flex', justifyContent: 'center', gap: '20px'}}>
+  <div style={{textAlign: 'center'}}>
+    <iframe width="400" height="225" src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <p><strong>Windows 11</strong></p>
+  </div>
+  <div style={{textAlign: 'center'}}>
+    <iframe width="400" height="225" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <p><strong>macOS</strong></p>
+  </div>
 </div>
 
 ### Prerequisites
