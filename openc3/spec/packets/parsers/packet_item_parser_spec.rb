@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -114,6 +114,17 @@ module OpenC3
           tf.close
           expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ARRAY items cannot have brackets in their name: DATA\[1\]/)
           tf.unlink
+        end
+
+        it "complains if item name is reserved" do
+          Packet::RESERVED_ITEM_NAMES.each do |reserved_name|
+            tf = Tempfile.new('unittest')
+            tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+            tf.puts "  APPEND_ITEM #{reserved_name} 32 UINT"
+            tf.close
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /#{reserved_name} is a reserved item name/)
+            tf.unlink
+          end
         end
 
         it "only allows DERIVED items with offset 0 and size 0" do

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -117,6 +117,19 @@ class TestPacketItemParserTlm(unittest.TestCase):
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
+
+    def test_complains_if_item_name_is_reserved(self):
+        from openc3.packets.packet import Packet
+        for reserved_name in Packet.RESERVED_ITEM_NAMES:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write(f"  APPEND_ITEM {reserved_name} 32 UINT\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(
+                ConfigParser.Error, f"{reserved_name} is a reserved item name"
+            ):
+                self.pc.process_file(tf.name, "TGT1")
+            tf.close()
 
     def test_only_allows_derived_items_with_offset_0_and_size_0(self):
         tf = tempfile.NamedTemporaryFile(mode="w")

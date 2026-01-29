@@ -3,7 +3,7 @@
 #
 # Docker Compose for QuestDB integration testing.
 # Usage: docker compose -f docker-compose.test.yml up -d
-#        pytest tests/test_questdb_integration.py
+#        Run tests (see README)
 #        docker compose -f docker-compose.test.yml down
 
 services:

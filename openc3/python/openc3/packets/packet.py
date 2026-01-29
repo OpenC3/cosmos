@@ -53,6 +53,7 @@ class Packet(Structure):
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
+        "COSMOS_DATA_TAG",  # Reserved for QuestDB time series database
     }
     ANY_STATE = "ANY"
     # Valid format types

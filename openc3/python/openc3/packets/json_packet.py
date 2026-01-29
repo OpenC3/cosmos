@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -110,7 +110,7 @@ class JsonPacket:
 
         Args:
             name: Item name (should be uppercase)
-            value_type: One of "RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"
+            value_type: One of "RAW", "CONVERTED", "FORMATTED"
             reduced_type: Optional reduced data type: "AVG", "STDDEV", "MIN", "MAX"
 
         Returns:
@@ -260,7 +260,7 @@ class JsonPacket:
 
         if value_type:
             # Build expected postfix based on value_type and reduced_type
-            postfix_map = {"RAW": "", "CONVERTED": "C", "FORMATTED": "F", "WITH_UNITS": "F"}
+            postfix_map = {"RAW": "", "CONVERTED": "C", "FORMATTED": "F"}
             postfix = postfix_map.get(value_type, "")
 
             reduced_suffix_map = {"MIN": "N", "MAX": "X", "AVG": "A", "STDDEV": "S"}

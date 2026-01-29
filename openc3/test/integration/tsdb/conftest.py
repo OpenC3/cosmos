@@ -19,7 +19,7 @@ Pytest fixtures for QuestDB integration tests.
 
 Usage:
     1. Start QuestDB: docker compose -f docker-compose.test.yml up -d
-    2. Run tests: pytest tests/test_questdb_integration.py -v
+    2. Run tests: poetry run pytest python/ -v
     3. Stop QuestDB: docker compose -f docker-compose.test.yml down
 """
 
@@ -28,9 +28,9 @@ import sys
 import time
 import pytest
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "openc3", "python"))
+# Add openc3 python path for imports
+# Path: openc3/test/integration/tsdb -> openc3/python
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "python"))
 
 # Set environment variables for QuestDB connection (test defaults)
 os.environ.setdefault("OPENC3_TSDB_HOSTNAME", "127.0.0.1")

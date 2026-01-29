@@ -195,6 +195,7 @@ services:
       - .env
     extra_hosts:
       - host.docker.internal:host-gateway
+
   openc3-traefik:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"

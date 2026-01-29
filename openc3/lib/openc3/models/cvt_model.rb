@@ -21,9 +21,11 @@
 # if purchased from OpenC3, Inc.
 
 require 'pg'
+require 'set'
 require 'thread'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
+require 'openc3/utilities/questdb_client'
 require 'openc3/models/target_model'
 
 module OpenC3
@@ -132,37 +134,135 @@ module OpenC3
       end
     end
 
-    def self.tsdb_lookup(items, start_time:, end_time: nil)
+    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: $openc3_scope)
       tables = {}
       names = []
       nil_count = 0
+      # Cache packet definitions to avoid repeated lookups
+      packet_cache = {}
+      # Map column names to item type info for decoding
+      item_types = {}
+      # Track calculated timestamp items: { position => { source:, format:, table_index: } }
+      calculated_items = {}
+      # Track which timestamp columns we need per table
+      needed_timestamps = {} # { table_index => Set of column names }
+      current_position = 0
+
+      # Stored timestamp items that need conversion from timestamp_ns to float seconds
+      stored_timestamp_items = Set.new(['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS'])
+      # Track stored timestamp items: { position => { column:, table_index: } }
+      stored_timestamp_positions = {}
+
       items.each do |item|
-        target_name, packet_name, item_name, value_type, limits = item
+        target_name, packet_name, orig_item_name, value_type, limits = item
         # They will all be nil when item is a nil value
         # A nil value indicates a value that does not exist as returned by get_tlm_available
-        if item_name.nil?
-          # We know timestamp always exists so we can use it to fill in the nil value
-          names << "timestamp as __nil#{nil_count}"
+        if orig_item_name.nil?
+          # We know PACKET_TIMESECONDS always exists so we can use it to fill in the nil value
+          names << "PACKET_TIMESECONDS as __nil#{nil_count}"
           nil_count += 1
+          current_position += 1
           next
         end
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        table_name = "#{target_name}__#{packet_name}".gsub(/[?,'"\/:\)\(\+\*\%~]/, '_')
+        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name)
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
-        # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
-        # NOTE: Semicolon added as it appears invalid
-        item_name = item_name.gsub(/[?\.,'"\\\/:\)\(\+\-\*\%~;]/, '_')
+
+        # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
+        # These are stored as timestamp_ns columns and need conversion to float seconds on read
+        if stored_timestamp_items.include?(orig_item_name)
+          col_name = "T#{index}.#{orig_item_name}"
+          names << "\"#{col_name}\""
+          stored_timestamp_positions[current_position] = { column: col_name, table_index: index }
+          current_position += 1
+          next
+        end
+
+        # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
+        if QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
+          ts_info = QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
+          calculated_items[current_position] = {
+            source: ts_info[:source],
+            format: ts_info[:format],
+            table_index: index
+          }
+          # Track that we need this timestamp column for this table
+          needed_timestamps[index] ||= Set.new
+          needed_timestamps[index] << ts_info[:source]
+          current_position += 1
+          next
+        end
+
+        safe_item_name = QuestDBClient.sanitize_column_name(orig_item_name)
+
+        # Look up item type info from packet definition
+        cache_key = [target_name, packet_name]
+        unless packet_cache.key?(cache_key)
+          begin
+            packet_cache[cache_key] = TargetModel.packet(target_name, packet_name, scope: scope)
+          rescue RuntimeError
+            packet_cache[cache_key] = nil
+          end
+        end
+
+        packet_def = packet_cache[cache_key]
+        item_def = nil
+        if packet_def
+          packet_def['items']&.each do |pkt_item|
+            if pkt_item['name'] == orig_item_name
+              item_def = pkt_item
+              break
+            end
+          end
+        end
+
         case value_type
         when 'FORMATTED', 'WITH_UNITS'
-          names << "\"T#{index}.#{item_name}__F\""
+          col_name = "T#{index}.#{safe_item_name}__F"
+          names << "\"#{col_name}\""
+          # Formatted values are always strings, no special decoding needed
+          item_types[col_name] = { 'data_type' => 'STRING', 'array_size' => nil }
         when 'CONVERTED'
-          names << "\"T#{index}.#{item_name}__C\""
+          col_name = "T#{index}.#{safe_item_name}__C"
+          names << "\"#{col_name}\""
+          # Converted values may have different types based on read_conversion
+          if item_def
+            rc = item_def['read_conversion']
+            if rc && rc['converted_type']
+              item_types[col_name] = { 'data_type' => rc['converted_type'], 'array_size' => item_def['array_size'] }
+            elsif item_def['states']
+              # State values are strings
+              item_types[col_name] = { 'data_type' => 'STRING', 'array_size' => nil }
+            else
+              item_types[col_name] = { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
+            end
+          else
+            item_types[col_name] = { 'data_type' => nil, 'array_size' => nil }
+          end
         else
-          names << "\"T#{index}.#{item_name}\""
+          col_name = "T#{index}.#{safe_item_name}"
+          names << "\"#{col_name}\""
+          if item_def
+            item_types[col_name] = { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
+          else
+            item_types[col_name] = { 'data_type' => nil, 'array_size' => nil }
+          end
         end
+        current_position += 1
         if limits
-          names << "\"T#{index}.#{item_name}__L\""
+          names << "\"T#{index}.#{safe_item_name}__L\""
+        end
+      end
+
+      # Add needed timestamp columns to the SELECT
+      # Track which column alias maps to which timestamp source for result processing
+      # Note: We use underscores in the alias name to avoid needing quotes, which QuestDB includes in returned field names
+      timestamp_columns = {} # { "T0___ts_timestamp" => { table_index: 0, source: 'timestamp' } }
+      needed_timestamps.each do |table_index, ts_columns|
+        ts_columns.each do |ts_col|
+          alias_name = "T#{table_index}___ts_#{ts_col}"
+          names << "T#{table_index}.#{ts_col} as #{alias_name}"
+          timestamp_columns[alias_name] = { table_index: table_index, source: ts_col }
         end
       end
 
@@ -176,9 +276,9 @@ module OpenC3
         end
       end
       if start_time && !end_time
-        query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
+        query += "WHERE T0.PACKET_TIMESECONDS < '#{start_time}' LIMIT -1"
       elsif start_time && end_time
-        query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+        query += "WHERE T0.PACKET_TIMESECONDS >= '#{start_time}' AND T0.PACKET_TIMESECONDS < '#{end_time}'"
       end
 
       retry_count = 0
@@ -204,19 +304,69 @@ module OpenC3
             # Build up a results set that is an array of arrays
             # Each nested array is a set of 2 items: [value, limits state]
             # If the item does not have limits the limits state is nil
-            result.each_with_index do |tuples, index|
-              data[index] ||= []
+            result.each_with_index do |tuples, row_num|
+              data[row_num] ||= []
               row_index = 0
+              # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS" => Time, ... }
+              row_timestamps = {}
               tuples.each do |tuple|
-                if tuple[0].include?("__L")
-                  data[index][row_index - 1][1] = tuple[1]
-                elsif tuple[0] =~ /^__nil/
-                  data[index][row_index] = [nil, nil]
+                col_name = tuple[0]
+                col_value = tuple[1]
+                if col_name.include?("__L")
+                  data[row_num][row_index - 1][1] = col_value
+                elsif col_name =~ /^__nil/
+                  data[row_num][row_index] = [nil, nil]
                   row_index += 1
+                elsif col_name =~ /^T(\d+)___ts_(.+)$/
+                  # This is a timestamp column for calculated items (TIMEFORMATTED)
+                  table_idx = $1.to_i
+                  ts_source = $2
+                  row_timestamps["T#{table_idx}.#{ts_source}"] = col_value
+                elsif col_name.end_with?('.PACKET_TIMESECONDS', '.RECEIVED_TIMESECONDS') || col_name == 'PACKET_TIMESECONDS' || col_name == 'RECEIVED_TIMESECONDS'
+                  # Stored timestamp column - convert from datetime to float seconds
+                  ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
+                  seconds_value = QuestDBClient.format_timestamp(ts_utc, :seconds)
+                  data[row_num][row_index] = [seconds_value, nil]
+                  row_index += 1
+                  # Also store for calculated items (TIMEFORMATTED) that may need this
+                  # Normalize key to T{index}.{col} format for consistency
+                  if col_name.include?('.')
+                    row_timestamps[col_name] = col_value
+                  else
+                    row_timestamps["T0.#{col_name}"] = col_value
+                  end
                 else
-                  data[index][row_index] = [tuple[1], nil]
+                  # Decode value using item type info
+                  # QuestDB may return column names without table alias prefix
+                  # Try both the raw column name and prefixed versions
+                  type_info = item_types[col_name]
+                  unless type_info
+                    tables.length.times do |i|
+                      prefixed_name = "T#{i}.#{col_name}"
+                      type_info = item_types[prefixed_name]
+                      break if type_info
+                    end
+                    type_info ||= {}
+                  end
+                  decoded_value = QuestDBClient.decode_value(
+                    col_value,
+                    data_type: type_info['data_type'],
+                    array_size: type_info['array_size']
+                  )
+                  data[row_num][row_index] = [decoded_value, nil]
                   row_index += 1
                 end
+              end
+
+              # Insert calculated timestamp items at their positions
+              # Insert in ascending order so positions remain valid after each insert
+              calculated_items.keys.sort.each do |position|
+                calc_info = calculated_items[position]
+                ts_key = "T#{calc_info[:table_index]}.#{calc_info[:source]}"
+                ts_value = row_timestamps[ts_key]
+                ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
+                calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info[:format])
+                data[row_num].insert(position, [calculated_value, nil])
               end
             end
             # If we only have one row then we return a single array

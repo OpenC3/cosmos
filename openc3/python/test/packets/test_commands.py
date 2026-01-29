@@ -120,7 +120,17 @@ class TestCommands(unittest.TestCase):
     def test_params_returns_all_items_from_packet_tgt1_pkt1(self):
         items = self.cmd.params("TGT1", "PKT1")
         self.assertEqual(len(items), 9)
-        for reserved in Packet.RESERVED_ITEM_NAMES:
+        # These are the reserved items that are auto-added to packets.
+        # Note: TIMESTAMP and RX_TIMESTAMP are in RESERVED_ITEM_NAMES but
+        # are not auto-added - they're just reserved to prevent user collision.
+        auto_added_items = [
+            "PACKET_TIMESECONDS",
+            "PACKET_TIMEFORMATTED",
+            "RECEIVED_TIMESECONDS",
+            "RECEIVED_TIMEFORMATTED",
+            "RECEIVED_COUNT",
+        ]
+        for reserved in auto_added_items:
             self.assertIn(reserved, [item.name for item in items])
         self.assertEqual(items[5].name, "ITEM1")
         self.assertEqual(items[6].name, "ITEM2")
