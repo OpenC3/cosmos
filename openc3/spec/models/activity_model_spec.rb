@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -114,6 +114,33 @@ module OpenC3
           expect { activity.create() }.to raise_error(ActivityOverlapError, /Recurring activity overlap/)
           array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
           expect(array.length).to eql(0)
+        end
+
+        it "creates recurring activities with unique UUIDs" do
+          start = Time.now + 60 # 1 min
+          stop = start + 300 # 5 min
+          data = { "test" => "test" }
+          recurring_end = start + 1800 # 30 min
+          # Create a recurring every 10 min (should create 4 activities)
+          recurring = { 'frequency' => '10', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "COMMAND",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(4)
+          # Verify each activity has a unique UUID
+          uuids = array.map { |item| item['uuid'] }
+          expect(uuids.uniq.length).to eql(4)
+          # Verify all activities share the same recurring UUID
+          recurring_uuids = array.map { |item| item['recurring']['uuid'] }
+          expect(recurring_uuids.uniq.length).to eql(1)
         end
 
         it "creates adjacent recurring" do
