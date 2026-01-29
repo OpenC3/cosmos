@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -51,7 +51,6 @@ class BurstProtocol(Protocol):
     def reset(self):
         super().reset()
         self.data = b""
-        # self.data.force_encoding('ASCII-8BIT')
         self.sync_state = "SEARCHING"
 
     # Reads from the interface. It can look for a sync pattern before
@@ -181,7 +180,7 @@ class BurstProtocol(Protocol):
                     else:  # not found
                         self.log_discard(sync_index, False)
                         # Delete Data Before and including first character of suspected sync Pattern
-                        self.data = self.data[(sync_index + 1) :]
+                        self.data = self.data[(sync_index + 1):]
                         continue
 
                 except ValueError:  # sync_index = None

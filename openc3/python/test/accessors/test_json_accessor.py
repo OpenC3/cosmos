@@ -456,8 +456,13 @@ class TestJsonAccessor(unittest.TestCase):
         with self.assertRaises(json.JSONDecodeError) as context:
             JsonAccessor.class_write_item(item, 123, empty_buffer)
 
-        # Verify it's the expected "Expecting value" error from parsing empty string
-        self.assertIn("Expecting value", str(context.exception))
+        # Verify it's the expected error from parsing empty string
+        # Error message varies by Python version: "Expecting value" or "Input is a zero-length, empty document"
+        error_msg = str(context.exception)
+        self.assertTrue(
+            "Expecting value" in error_msg or "empty document" in error_msg,
+            f"Unexpected error message: {error_msg}",
+        )
 
     def test_should_write_to_packet_without_template_using_dict_buffer(self):
         # This test shows how JsonAccessor can work without a TEMPLATE

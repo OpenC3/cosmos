@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -134,8 +134,8 @@ class FixedProtocol(BurstProtocol):
                 self.packet_name = identified_packet.packet_name
 
                 # Get the data from this packet
-                packet_data = self.data[0 : (identified_packet.defined_length + self.discard_leading_bytes)]
-                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes) :]
+                packet_data = self.data[0:(identified_packet.defined_length + self.discard_leading_bytes)]
+                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes):]
                 break
 
         if identified_packet is None:

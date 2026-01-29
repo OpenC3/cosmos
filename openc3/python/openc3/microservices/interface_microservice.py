@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -220,7 +220,9 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
                 # Note: intentional fall through below this point
-                critical_model = CriticalCmdModel.get_model(name=msg_hash[b"release_critical"].decode(), scope=self.scope)
+                critical_model = CriticalCmdModel.get_model(
+                    name=msg_hash[b"release_critical"].decode(), scope=self.scope
+                )
                 if critical_model is not None:
                     msg_hash = critical_model.cmd_hash
                     release_critical = True
@@ -250,7 +252,9 @@ class InterfaceCmdHandlerThread:
                             f"{self.interface.name}: target_enable: {target_name} cmd_only:{cmd_only} tlm_only:{tlm_only}"
                         )
                 except Exception as e:
-                    self.logger.error(f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}")
+                    self.logger.error(
+                        f"{self.interface.name}: target_control: {''.join(traceback.format_exception(e))}"
+                    )
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"interface_details"):
@@ -544,7 +548,9 @@ class RouterTlmHandlerThread:
                             )
                         result = "SUCCESS"
                     except Exception as e:
-                        self.logger.error(f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}")
+                        self.logger.error(
+                            f"{self.router.name}: target_control: {''.join(traceback.format_exception(e))}"
+                        )
                         result = str(e)
                 elif msg_hash.get(b"router_details"):
                     result = json.dumps(self.router.details(), cls=JsonEncoder)

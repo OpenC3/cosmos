@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -47,7 +47,10 @@ class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
     VALID_TYPES = {"CMD", "TLM"}
     ITEM_MAP_CACHE_TIMEOUT = 10.0
+    PACKET_CACHE_TIMEOUT = 10.0
     item_map_cache = {}
+    packet_cache = {}
+    packet_cache_lock = threading.Lock()
     sync_packet_count_data = {}
     sync_packet_count_time = None
     sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
@@ -78,11 +81,24 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
+        # Check cache first
+        cache_key = f"{scope}__{type}__{target_name}__{packet_name}"
+        with cls.packet_cache_lock:
+            cached = cls.packet_cache.get(cache_key)
+            if cached and (time.time() - cached["time"]) < cls.PACKET_CACHE_TIMEOUT:
+                return cached["packet"]
+
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
         json_data = Store.hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
-        return json.loads(json_data)
+        packet = json.loads(json_data)
+
+        # Store in cache
+        with cls.packet_cache_lock:
+            cls.packet_cache[cache_key] = {"packet": packet, "time": time.time()}
+
+        return packet
 
     @classmethod
     def packets(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
@@ -110,6 +126,11 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
+        # Invalidate cache entry
+        cache_key = f"{scope}__{type}__{target_name}__{packet_name}"
+        with cls.packet_cache_lock:
+            cls.packet_cache.pop(cache_key, None)
+
         try:
             Store.hset(
                 f"{scope}__openc3{type.lower()}__{target_name}",
@@ -119,6 +140,11 @@ class TargetModel(Model):
         except (TypeError, RuntimeError) as error:
             Logger.error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
             raise error
+
+    @classmethod
+    def clear_packet_cache(cls):
+        with cls.packet_cache_lock:
+            cls.packet_cache.clear()
 
     @classmethod
     def packet_item(

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -136,7 +136,7 @@ class PreidentifiedProtocol(BurstProtocol):
                 if len(self.data) < len(self.sync_pattern):
                     return ("STOP", self.extra)
 
-                self.data = self.data[(len(self.sync_pattern)) :]
+                self.data = self.data[(len(self.sync_pattern)):]
                 self.reduction_state = "SYNC_REMOVED"
         elif self.reduction_state == "START":
             self.reduction_state = "SYNC_REMOVED"
