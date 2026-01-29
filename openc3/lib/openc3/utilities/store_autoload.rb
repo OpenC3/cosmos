@@ -21,7 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'redis'
-require "hiredis-client"
+require 'hiredis-client'
 require 'json'
 require 'connection_pool'
 

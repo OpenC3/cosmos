@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -39,10 +39,6 @@ class TsdbMicroservice(Microservice):
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
         self.questdb.connect_ingest()
         self.questdb.connect_query()
-
-        # Track columns that need JSON serialization due to type conflicts or DERIVED type
-        # Key is "table__column", value is True
-        self.json_columns = {}
 
         # Build the tables
         for topic in self.topics:
@@ -109,12 +105,16 @@ class TsdbMicroservice(Microservice):
                 # Get sanitized table name
                 table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
 
-                # This is the PACKET_TIMESECONDS as set in telemetry_decom_topic
+                # Get packet timestamp (packet_time) and received timestamp (received_time) in nanoseconds
                 time_bytes = msg_hash.get(b"time")
                 if not time_bytes:
                     self.logger.warn(f"QuestDB: Missing time in message for {target_name}.{packet_name}")
                     continue
-                timestamp = int(time_bytes.decode())
+                timestamp_ns = int(time_bytes.decode())
+
+                # Get received time directly from message (more efficient than extracting from json_data)
+                received_time_bytes = msg_hash.get(b"received_time")
+                rx_timestamp_ns = int(received_time_bytes.decode()) if received_time_bytes else None
 
                 # Process JSON data into QuestDB-compatible columns
                 values = self.questdb.process_json_data(json_data, table_name)
@@ -123,15 +123,15 @@ class TsdbMicroservice(Microservice):
                     self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
-                # Write to QuestDB
-                self.questdb.write_row(table_name, values, timestamp)
+                # Write to QuestDB with packet timestamp and received timestamp
+                self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
 
             # Flush the sender after the full topic read
             self.questdb.flush()
 
         except IngressError as error:
             # Try to handle the error (may alter schema for real-time ingestion)
-            self.questdb.handle_ingress_error(error, table_name, values, timestamp)
+            self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
 
     def run(self):
         """Main run loop"""

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -116,7 +116,7 @@ class Telemetry:
     # @param item_name (see #packet_and_item)
     # @param value The value to set in the packet
     # @param value_type (see #tlm)
-    def set_value(self, target_name, packet_name, item_name, value, value_type = 'CONVERTED'):
+    def set_value(self, target_name, packet_name, item_name, value, value_type="CONVERTED"):
         packet, _ = self.packet_and_item(target_name, packet_name, item_name)
         return packet.write(item_name, value, value_type)
 
@@ -133,7 +133,9 @@ class Telemetry:
 
         packets = self.config.latest_data[target_upcase].get(item_upcase)
         if packets is None:
-            raise RuntimeError(f"Telemetry item '{target_upcase} {self.LATEST_PACKET_NAME} {item_upcase}' does not exist")
+            raise RuntimeError(
+                f"Telemetry item '{target_upcase} {self.LATEST_PACKET_NAME} {item_upcase}' does not exist"
+            )
 
         return packets
 
@@ -186,8 +188,8 @@ class Telemetry:
     # @param packet_name [String] The packet name
     # @param item_name [String] The item name
     # @param value_type [String] How to convert the item before returning.
-    #   Must be one of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
-    # @return The value. 'FORMATTED' and 'WITH_UNITS' values are always returned
+    #   Must be one of 'RAW', 'CONVERTED', 'FORMATTED'
+    # @return The value. 'FORMATTED' values are always returned
     #   as Strings. 'RAW' values will match their data_type. 'CONVERTED' values
     #   can be any type.
     def value(self, target_name: str, packet_name: str, item_name: str, value_type: str = "CONVERTED") -> Any:
@@ -205,7 +207,9 @@ class Telemetry:
     # @return [List, List, List] The first list contains the item values, the
     #   second their limits state, and the third their limits settings which includes
     #   the red, yellow, and green (if given) limits values.
-    def values_and_limits_states(self, item_array: list[list[str]], value_types: Union[str, list[str]] = "CONVERTED") -> tuple[list[Any], list[Any], list[Any]]:
+    def values_and_limits_states(
+        self, item_array: list[list[str]], value_types: Union[str, list[str]] = "CONVERTED"
+    ) -> tuple[list[Any], list[Any], list[Any]]:
         items = []
         states = []
         settings = []
@@ -257,7 +261,9 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet with its data set to the given
     #   packet_data buffer. Returns nil if no packet could be identified.
-    def identify_and_set_buffer(self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify_and_set_buffer(
+        self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         identified_packet = self.identify(packet_data, target_names, subpackets=subpackets)
         if identified_packet:
             identified_packet.buffer = packet_data
@@ -270,7 +276,9 @@ class Telemetry:
     # @param target_names [Array<String>] List of target names to limit the search. The
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
-    def identify(self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify(
+        self, packet_data: bytes, target_names: Optional[list[str]] = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         if target_names is None:
             target_names = self.target_names()
 
@@ -325,7 +333,9 @@ class Telemetry:
 
         return None
 
-    def identify_and_define_packet(self, packet: "Packet", target_names: Optional[list[str]] = None, subpackets: bool = False) -> Optional["Packet"]:
+    def identify_and_define_packet(
+        self, packet: "Packet", target_names: Optional[list[str]] = None, subpackets: bool = False
+    ) -> Optional["Packet"]:
         if not packet.identified():
             identified_packet = self.identify(packet.buffer_no_copy(), target_names, subpackets=subpackets)
             if not identified_packet:
@@ -384,7 +394,7 @@ class Telemetry:
                 packet.reset()
 
     # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system
-    def all_item_strings(self, include_hidden = False, _splash = None):
+    def all_item_strings(self, include_hidden=False, _splash=None):
         strings = []
         tnames = self.target_names()
         index = 0

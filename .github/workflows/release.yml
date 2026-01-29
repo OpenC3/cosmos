@@ -33,15 +33,14 @@ on:
         type: boolean
         default: true
 
-permissions:
-  id-token: write # Required for OIDC
-  contents: read
-  packages: write # Required for pushing to ghcr.io
-
 jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC
+      contents: read
+      packages: write # Required for pushing to ghcr.io
     environment: Release
     steps:
       - uses: actions/checkout@v6
