@@ -1314,11 +1314,9 @@ module OpenC3
 
       # TSDB Microservice - subscribes to both decommutated telemetry and commands
       tsdb_topic_list = decom_topic_list + decom_command_topic_list
-      unless tsdb_topic_list.empty?
-        if ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
-          deploy_target_microservices('TSDB', tsdb_topic_list, "#{@scope}__DECOM") do |topics, instance, parent|
-            deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
-          end
+      if !tsdb_topic_list.empty? and ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
+        deploy_target_microservices('TSDB', tsdb_topic_list, "#{@scope}__DECOM") do |topics, instance, parent|
+          deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
         end
       end
 
