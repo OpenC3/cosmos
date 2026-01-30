@@ -782,6 +782,38 @@ module OpenC3
           "#{@scope}__REDUCER__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
       end
+
+      it "deploys TSDB microservice with both telemetry and command topics" do
+        # Set TSDB environment variables
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_HOSTNAME').and_return('localhost')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_QUERY_PORT').and_return('8086')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_INGEST_PORT').and_return('8087')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_USERNAME').and_return('admin')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_PASSWORD').and_return('password')
+
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.create
+        capture_io do |stdout|
+          model.deploy(@target_dir, {})
+          expect(stdout.string).to include("#{@scope}__TSDB__#{@target}")
+        end
+
+        # Verify TSDB microservice was created with both telemetry and command topics
+        tsdb_model = MicroserviceModel.get_model(name: "#{@scope}__TSDB__#{@target}", scope: @scope)
+        expect(tsdb_model).to_not be_nil
+
+        # Check that TSDB topics include both DECOM (telemetry) and DECOMCMD (commands)
+        decom_topics = tsdb_model.topics.select { |t| t.include?("__DECOM__") }
+        decomcmd_topics = tsdb_model.topics.select { |t| t.include?("__DECOMCMD__") }
+
+        expect(decom_topics).to_not be_empty
+        expect(decomcmd_topics).to_not be_empty
+
+        # Verify specific topic patterns
+        expect(decom_topics.first).to match(/#{@scope}__DECOM__\{#{@target}\}__/)
+        expect(decomcmd_topics.first).to match(/#{@scope}__DECOMCMD__\{#{@target}\}__/)
+      end
     end
 
     describe "destroy" do

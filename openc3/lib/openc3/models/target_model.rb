@@ -1303,19 +1303,20 @@ module OpenC3
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
 
-        # TSDB Microservice
-        if ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
-          deploy_target_microservices('TSDB', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
-            deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
-          end
-        end
-
         # Reducer Microservice
         unless @reducer_disable
           # TODO: Does Reducer even need a topic list?
           deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
             deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
           end
+        end
+      end
+
+      # TSDB Microservice - subscribes to both decommutated telemetry and commands
+      tsdb_topic_list = decom_topic_list + decom_command_topic_list
+      if !tsdb_topic_list.empty? and ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
+        deploy_target_microservices('TSDB', tsdb_topic_list, "#{@scope}__DECOM") do |topics, instance, parent|
+          deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
         end
       end
 

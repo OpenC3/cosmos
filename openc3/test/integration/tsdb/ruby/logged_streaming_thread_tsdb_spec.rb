@@ -37,7 +37,7 @@ require 'logged_streaming_thread'
 # Mock StreamingObject for testing
 class MockStreamingObject
   attr_accessor :key, :target_name, :packet_name, :item_name, :value_type
-  attr_accessor :start_time, :end_time, :offset, :item_key, :topic, :stream_mode
+  attr_accessor :start_time, :end_time, :offset, :item_key, :topic, :stream_mode, :cmd_or_tlm
 
   def initialize(target:, packet:, item:, value_type: :RAW, start_time: nil, end_time: nil)
     @target_name = target
@@ -47,6 +47,7 @@ class MockStreamingObject
     @start_time = start_time
     @end_time = end_time
     @stream_mode = :DECOM
+    @cmd_or_tlm = :TLM
     @offset = '0-0'
     @key = "DECOM__TLM__#{target}__#{packet}__#{item}__#{value_type}"
     @item_key = "#{target}__#{packet}__#{item}__#{value_type}"
