@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -301,6 +301,7 @@ module OpenC3
           (@start..@recurring['end']).step(recurrence).each do |start_time|
             @start = start_time
             @stop = start_time + duration
+            @uuid = SecureRandom.uuid
 
             if last_stop and @start < last_stop
               @events.pop # Remove previously created event
