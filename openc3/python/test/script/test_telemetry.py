@@ -16,10 +16,10 @@
 
 import time
 import unittest
-from unittest.mock import *
+from unittest.mock import patch
 
-from openc3.script.telemetry import *
-from test.test_helper import *
+from openc3.script.telemetry import OPENC3_SCOPE, get_packets, inject_tlm, normalize_tlm, override_tlm, set_tlm
+from test.test_helper import capture_io, mock_redis, setup_system
 
 
 gPkts = []
@@ -64,18 +64,18 @@ class TestTelemetry(unittest.TestCase):
     def test_get_packets(self):
         global gPkts
         gPkts = ["pkt1", "pkt2"]
-        id, packets = get_packets("id")
-        self.assertEqual(id, "ID")
+        _id, packets = get_packets("id")
+        self.assertEqual(_id, "ID")
         self.assertEqual(packets, ["pkt1", "pkt2"])
 
     def test_get_packets_with_block(self):
         global gPkts
         global gSleep
         gPkts = []
-        id, packets = get_packets("id", block=0.5, block_delay=0.2)
+        _id, packets = get_packets("id", block=0.5, block_delay=0.2)
         self.assertEqual(gSleep, 0.2)
         self.assertAlmostEqual(gTotalSleep, 0.6)
-        self.assertEqual(id, "ID")
+        self.assertEqual(_id, "ID")
         self.assertEqual(packets, [])
 
     def test_inject_tlm(self):
