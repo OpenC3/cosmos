@@ -17,8 +17,9 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.microservices.microservice import Microservice
+from test.test_helper import *
 
 
 class TestMicroservice(unittest.TestCase):
@@ -41,6 +42,7 @@ class TestMicroservice(unittest.TestCase):
 
     def test_logs_message_when_run_method_returns_cleanly(self):
         from openc3.utilities.logger import Logger
+
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
         with patch.object(Logger.instance(), "info") as mock_logger_info:
             Microservice.class_run()

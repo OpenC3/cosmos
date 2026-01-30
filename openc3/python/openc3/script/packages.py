@@ -16,8 +16,10 @@
 
 import json
 import traceback
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+
 
 def package_list(scope: str = OPENC3_SCOPE):
     try:

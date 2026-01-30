@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.:
 
 import unittest
+
 from openc3.io.json_rpc import JsonRpcRequest, RequestError
 
 
@@ -69,9 +70,7 @@ class TestJsonRpc(unittest.TestCase):
         """
         Test json request
         """
-        json_request_example = (
-            '{"method": "connect_interface", "params": ["EXAMPLE_INT"], "id": 110}'
-        )
+        json_request_example = '{"method": "connect_interface", "params": ["EXAMPLE_INT"], "id": 110}'
         with self.assertRaises(RequestError) as context:
             JsonRpcRequest.from_json(json_request_example, {})
         self.assertIn("invalid json-rpc 2.0 request", context.exception.__str__())

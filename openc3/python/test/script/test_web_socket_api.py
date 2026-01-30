@@ -17,15 +17,16 @@
 import json
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
+from websockets.exceptions import ConnectionClosedOK
+
 from openc3.script.web_socket_api import (
-    WebSocketApi,
     MessagesWebSocketApi,
+    WebSocketApi,
 )
 from openc3.utilities.time import to_nsec_from_epoch
-from datetime import datetime, timezone, timedelta
-from websockets.exceptions import ConnectionClosedOK
 
 
 class TestMessagesWebSocketApiConnectionClosed(unittest.TestCase):
@@ -86,6 +87,7 @@ class TestWebSocketApiEdgeCases(unittest.TestCase):
 
         # Simulate slow responses - return multiple ping messages
         call_count = [0]
+
         def slow_read():
             call_count[0] += 1
             time.sleep(0.15)

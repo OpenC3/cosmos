@@ -17,11 +17,11 @@
 import tempfile
 import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.system.target import Target
-from openc3.packets.packet import Packet
+
 from openc3.packets.commands import Commands
 from openc3.packets.packet_config import PacketConfig
+from openc3.system.target import Target
+from test.test_helper import *
 
 
 class TestCommands(unittest.TestCase):
@@ -44,15 +44,15 @@ class TestCommands(unittest.TestCase):
         tf.write("    STATE BAD2 1 HAZARDOUS\n")
         tf.write("    STATE GOOD 2 DISABLE_MESSAGES\n")
         tf.write('  APPEND_PARAMETER item3 32 FLOAT 0 1 0 "Item3"\n')
-        tf.write('    STATE S1 0.0\n')
-        tf.write('    STATE S2 0.25\n')
-        tf.write('    STATE S3 0.5\n')
-        tf.write('    STATE S4 0.75\n')
-        tf.write('    STATE S5 1.0\n')
+        tf.write("    STATE S1 0.0\n")
+        tf.write("    STATE S2 0.25\n")
+        tf.write("    STATE S3 0.5\n")
+        tf.write("    STATE S4 0.75\n")
+        tf.write("    STATE S5 1.0\n")
         tf.write('  APPEND_PARAMETER item4 40 STRING "HELLO"\n')
-        tf.write('    STATE HI HELLO\n')
-        tf.write('    STATE WO WORLD\n')
-        tf.write('    STATE JA JASON\n')
+        tf.write("    STATE HI HELLO\n")
+        tf.write("    STATE WO WORLD\n")
+        tf.write("    STATE JA JASON\n")
         tf.write('COMMAND tgt2 pkt3 LITTLE_ENDIAN "TGT2 PKT3 Description"\n')
         tf.write('  HAZARDOUS "Hazardous"\n')
         tf.write('  APPEND_ID_PARAMETER item1 8 UINT 3 3 3 "Item1"\n')
@@ -74,7 +74,7 @@ class TestCommands(unittest.TestCase):
         tf.write('  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"\n')
         tf.write('  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN\n')
         tf.write('  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"\n')
-        tf.write('    OBFUSCATE\n')
+        tf.write("    OBFUSCATE\n")
         tf.seek(0)
 
         pc = PacketConfig()
@@ -264,12 +264,12 @@ class TestCommands(unittest.TestCase):
     def test_creates_a_command_packet_with_mixed_endianness(self):
         for range_checking in [True, False]:
             for raw in [True, False]:
-                items = { "ITEM2": 0xABCD, "ITEM3": 0x6789 }
+                items = {"ITEM2": 0xABCD, "ITEM3": 0x6789}
                 cmd = self.cmd.build_cmd("TGT2", "PKT6", items, range_checking, raw)
                 self.assertEqual(cmd.read("item1"), 6)
                 self.assertEqual(cmd.read("item2"), 0xABCD)
                 self.assertEqual(cmd.read("item3"), 0x6789)
-                self.assertEqual(cmd.buffer, b"\x00\x06\xCD\xAB\x67\x89")
+                self.assertEqual(cmd.buffer, b"\x00\x06\xcd\xab\x67\x89")
 
     def test_build_cmd_resets_the_buffer_size(self):
         for range_checking in [True, False]:
@@ -328,45 +328,45 @@ class TestCommands(unittest.TestCase):
 
     def test_build_cmd_complains_about_out_of_range_item_states(self):
         for raw in [True, False]:
-            items = { "ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD" }
+            items = {"ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD"}
             if raw:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
 
-            items = { "ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD" }
+            items = {"ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD"}
             if raw:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
 
-            items = { "ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY" }
+            items = {"ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY"}
             if raw:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                RuntimeError,
-                "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA",
+                    RuntimeError,
+                    "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
 
@@ -378,26 +378,25 @@ class TestCommands(unittest.TestCase):
             self.assertEqual(cmd.read("item3"), 3)
             self.assertEqual(cmd.read("item4"), 4)
 
-
     def test_build_cmd_ignores_out_of_range_item_states(self):
         for raw in [True, False]:
-            items = { "ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD" }
+            items = {"ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD"}
             cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
-            self.assertEqual(cmd.read("item2", 'RAW'), 3)
-            self.assertEqual(cmd.read("item3", 'RAW'), 0.0)
-            self.assertEqual(cmd.read("item4", 'RAW'), 'WORLD')
+            self.assertEqual(cmd.read("item2", "RAW"), 3)
+            self.assertEqual(cmd.read("item3", "RAW"), 0.0)
+            self.assertEqual(cmd.read("item4", "RAW"), "WORLD")
 
-            items = { "ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD" }
+            items = {"ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD"}
             cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
-            self.assertEqual(cmd.read("item2", 'RAW'), 0)
-            self.assertEqual(cmd.read("item3", 'RAW'), 2.0)
-            self.assertEqual(cmd.read("item4", 'RAW'), 'WORLD')
+            self.assertEqual(cmd.read("item2", "RAW"), 0)
+            self.assertEqual(cmd.read("item3", "RAW"), 2.0)
+            self.assertEqual(cmd.read("item4", "RAW"), "WORLD")
 
-            items = { "ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY" }
+            items = {"ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY"}
             cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
-            self.assertEqual(cmd.read("item2", 'RAW'), 0)
-            self.assertEqual(cmd.read("item3", 'RAW'), 0.0)
-            self.assertEqual(cmd.read("item4", 'RAW'), 'TESTY')
+            self.assertEqual(cmd.read("item2", "RAW"), 0)
+            self.assertEqual(cmd.read("item3", "RAW"), 0.0)
+            self.assertEqual(cmd.read("item4", "RAW"), "TESTY")
 
     def test_build_cmd_supports_building_raw_commands(self):
         items = {"ITEM2": 10}
@@ -430,7 +429,7 @@ class TestCommands(unittest.TestCase):
 
         # If the string is too big it should truncate it
         string = ""
-        for i in range(0, 256):
+        for _i in range(0, 256):
             string += "A"
         pkt.write("ITEM2", string)
         pkt.raw = False
@@ -535,7 +534,7 @@ class TestCommands(unittest.TestCase):
         cmd = Commands(pc, System)
 
         # Packet with ID 10 should identify as SUB1
-        packet_data = b"\x0A"
+        packet_data = b"\x0a"
         identified = cmd.identify(packet_data, ["TGT1"], subpackets=True)
         self.assertIsNotNone(identified)
         self.assertEqual(identified.packet_name, "SUB1")

@@ -20,28 +20,29 @@
 import os
 import tempfile
 import traceback
+
 from openc3.config.config_parser import ConfigParser
-from openc3.packets.packet import Packet
-from openc3.packets.parsers.packet_parser import PacketParser
-from openc3.packets.parsers.packet_item_parser import PacketItemParser
-from openc3.packets.parsers.state_parser import StateParser
-from openc3.packets.parsers.limits_parser import LimitsParser
-from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
-from openc3.packets.parsers.format_string_parser import FormatStringParser
-from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 from openc3.conversions.segmented_polynomial_conversion import (
     SegmentedPolynomialConversion,
 )
+from openc3.packets.packet import Packet
+from openc3.packets.parsers.format_string_parser import FormatStringParser
+from openc3.packets.parsers.limits_parser import LimitsParser
+from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
+from openc3.packets.parsers.packet_item_parser import PacketItemParser
+from openc3.packets.parsers.packet_parser import PacketParser
+from openc3.packets.parsers.processor_parser import ProcessorParser
+from openc3.packets.parsers.state_parser import StateParser
+from openc3.top_level import get_class_from_module
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
-    filename_to_module,
-    filename_to_class_name,
     class_name_to_filename,
+    filename_to_class_name,
+    filename_to_module,
 )
-from openc3.top_level import get_class_from_module
 
 
 class PacketConfig:
@@ -116,7 +117,7 @@ class PacketConfig:
         else:
             raise ValueError("process_target_name is required (XTCE parsing not yet implemented)")
         parser = ConfigParser("https://docs.openc3.com/docs")
-        setattr(parser, "target_name", process_target_name)
+        parser.target_name = process_target_name
         for keyword, params in parser.parse_file(filename):
             if self.building_generic_conversion:
                 match keyword:
@@ -318,7 +319,7 @@ class PacketConfig:
                 os.remove(filename)
 
             # Write all telemetry packets for this target
-            for packet_name, packet in packets.items():
+            for _packet_name, packet in packets.items():
                 if "../" in filename or "..\\" in filename:
                     raise ValueError(f"Path traversal detected in filename: {filename}")
 
@@ -340,7 +341,7 @@ class PacketConfig:
                 os.remove(filename)
 
             # Write all command packets for this target
-            for packet_name, packet in packets.items():
+            for _packet_name, packet in packets.items():
                 with open(filename, "a") as f:
                     f.write(packet.to_config("COMMAND"))
                     f.write("\n")
@@ -558,7 +559,9 @@ class PacketConfig:
             case "SELECT_PARAMETER" | "SELECT_ITEM" | "DELETE_PARAMETER" | "DELETE_ITEM":
                 if (self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING) and (keyword.split("_")[1] == "ITEM"):
                     raise parser.error(f"{keyword} only applies to telemetry packets")
-                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING) and (keyword.split("_")[1] == "PARAMETER"):
+                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING) and (
+                    keyword.split("_")[1] == "PARAMETER"
+                ):
                     raise parser.error(f"{keyword} only applies to command packets")
 
                 usage = f"{keyword} <{keyword.split('_')[1]} NAME>"
@@ -569,12 +572,12 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except Exception:  # Rescue the default exception to provide a nicer error message
+                except Exception as error:  # Rescue the default exception to provide a nicer error message
                     cmd_or_tlm_str = self.current_cmd_or_tlm.lower() if self.current_cmd_or_tlm else "unknown"
                     raise parser.error(
                         f"{params[0]} not found in {cmd_or_tlm_str} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
                         usage,
-                    )
+                    ) from error
 
             # Start a new telemetry item in the current packet
             case (
@@ -707,10 +710,10 @@ class PacketConfig:
                             raise parser.error(
                                 f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
                             )
-                    except ModuleNotFoundError:
+                    except ModuleNotFoundError as error:
                         raise parser.error(
                             f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}\n{traceback.format_exc()}"
-                        )
+                        ) from error
 
                 if not klass:
                     raise parser.error(f"Failed to load class for {keyword}")
@@ -733,7 +736,7 @@ class PacketConfig:
                 try:
                     self.current_packet.template = parser.read_file(params[0])
                 except OSError as error:
-                    raise parser.error(error)
+                    raise parser.error(error) from error
 
             case "RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
@@ -810,7 +813,7 @@ class PacketConfig:
                     #     self.warnings.append(msg)
                     #     Logger.warn(self.warnings[-1])
                 except Exception as error:
-                    raise parser.error(error)
+                    raise parser.error(error) from error
 
             # Apply a polynomial conversion to the current item
             case "POLY_READ_CONVERSION" | "POLY_WRITE_CONVERSION":

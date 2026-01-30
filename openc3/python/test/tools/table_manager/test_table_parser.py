@@ -16,9 +16,11 @@
 
 import os
 import shutil
-import unittest
 import tempfile
+import unittest
+
 from openc3.tools.table_manager.table_config import TableConfig
+
 
 class TestTableParser(unittest.TestCase):
     def setUp(self):
@@ -32,27 +34,27 @@ class TestTableParser(unittest.TestCase):
     def test_verify_parameters(self):
         """Test verifying table parameters"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN KEY_VALUE")
         # Should not raise an exception
         TableConfig.process_file(def_path)
 
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN KEY_VALUE DESCRIPTION")
         # Should not raise an exception
         TableConfig.process_file(def_path)
 
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN ROW_COLUMN 3")
         # Should not raise an exception
         TableConfig.process_file(def_path)
 
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN ROW_COLUMN 3 DESCRIPTION")
         # Should not raise an exception
         TableConfig.process_file(def_path)
 
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN")
         # Should raise an exception due to too few parameters
         with self.assertRaises(Exception):
@@ -62,7 +64,7 @@ class TestTableParser(unittest.TestCase):
         """Test creating tables with various configurations"""
         # Test KEY_VALUE table
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN KEY_VALUE DESCRIPTION")
         config = TableConfig.process_file(def_path)
         table = config.tables["TABLE1"]
@@ -72,7 +74,7 @@ class TestTableParser(unittest.TestCase):
         self.assertEqual(table.description, "DESCRIPTION")
 
         # Test ROW_COLUMN table
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE2 LITTLE_ENDIAN ROW_COLUMN 3 DESCRIPTION")
         config = TableConfig.process_file(def_path)
         table = config.tables["TABLE2"]
@@ -83,14 +85,14 @@ class TestTableParser(unittest.TestCase):
         self.assertEqual(table.description, "DESCRIPTION")
 
         # Test invalid endianness
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE3 INVALID KEY_VALUE DESCRIPTION")
         with self.assertRaises(Exception) as context:
             config = TableConfig.process_file(def_path)
         self.assertTrue("Invalid endianness" in str(context.exception))
 
         # Test invalid type
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE4 BIG_ENDIAN INVALID DESCRIPTION")
         with self.assertRaises(Exception) as context:
             config = TableConfig.process_file(def_path)
@@ -99,13 +101,14 @@ class TestTableParser(unittest.TestCase):
     def test_check_for_duplicate(self):
         """Test checking for duplicate tables"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write("TABLE TABLE1 BIG_ENDIAN KEY_VALUE DESCRIPTION")
         TableConfig.process_file(def_path)
 
         # with patch('openc3.top_level.Logger') as mock_logger:
         TableConfig.process_file(def_path)
-            # self.assertTrue("redefined" in mock_logger)
+        # self.assertTrue("redefined" in mock_logger)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -14,26 +14,28 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-import time
 import json
+import os
 import sys
+import time
 import traceback
 from datetime import datetime, timezone
+
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.models.script_status_model import ScriptStatusModel
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
-from openc3.utilities.store import Store, EphemeralStore
-from openc3.utilities.store_queued import StoreQueued
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.utilities.running_script import RunningScript, running_script_anycable_publish
-from openc3.models.script_status_model import ScriptStatusModel
+from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store_queued import StoreQueued
+
 
 start_time = time.time()
 
 # Load the bucket client code to ensure we authenticate outside ENV vars
-Bucket.getClient()
+Bucket.get_client()
 
 del os.environ["OPENC3_BUCKET_USERNAME"]
 del os.environ["OPENC3_BUCKET_PASSWORD"]
@@ -51,7 +53,7 @@ os.unsetenv("OPENC3_REDIS_PASSWORD")
 
 id = sys.argv[1]
 scope = sys.argv[2]
-script_status = ScriptStatusModel.get_model(name = id, scope = scope)
+script_status = ScriptStatusModel.get_model(name=id, scope=scope)
 if script_status is None:
     raise RuntimeError(f"Unknown script id {id} for scope {scope}")
 if script_status.state != "spawning":
@@ -60,12 +62,11 @@ if script_status.state != "spawning":
 startup_time = time.time() - start_time
 path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", script_status.filename)
 
+
 def run_script_log(id, message, color="BLACK", message_log=True):
     line_to_write = (
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        + " (SCRIPTRUNNER): "
-        + message
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + " (SCRIPTRUNNER): " + message
     )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
@@ -101,7 +102,7 @@ try:
     running_script.run()
 
     # Notify frontend of number of running scripts in this scope
-    running = ScriptStatusModel.all(scope = scope, type = "running")
+    running = ScriptStatusModel.all(scope=scope, type="running")
     running_script_anycable_publish(
         "all-scripts-channel",
         {
@@ -118,9 +119,7 @@ try:
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
-        if not parsed_cmd == "shutdown" or (
-            isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
-        ):
+        if parsed_cmd != "shutdown" or (isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")):
             run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
             case "go":
@@ -154,38 +153,22 @@ try:
                             | "open_files_dialog"
                         ):
                             if running_script.prompt_id is not None:
-                                if (
-                                    "prompt_id" in parsed_cmd
-                                    and running_script.prompt_id
-                                    == parsed_cmd["prompt_id"]
-                                ):
+                                if "prompt_id" in parsed_cmd and running_script.prompt_id == parsed_cmd["prompt_id"]:
                                     if "password" in parsed_cmd:
-                                        running_script.user_input = str(
-                                            parsed_cmd["password"]
-                                        )
+                                        running_script.user_input = str(parsed_cmd["password"])
                                     elif "multiple" in parsed_cmd:
-                                        running_script.user_input = json.loads(
-                                            parsed_cmd["multiple"]
-                                        )
+                                        running_script.user_input = json.loads(parsed_cmd["multiple"])
                                         run_script_log(
                                             id,
                                             f"Multiple input: {running_script.user_input}",
                                         )
                                     elif "open_file" in parsed_cmd["method"]:
                                         running_script.user_input = parsed_cmd["answer"]
-                                        run_script_log(
-                                            id, f"File(s): {running_script.user_input}"
-                                        )
+                                        run_script_log(id, f"File(s): {running_script.user_input}")
                                     else:
-                                        running_script.user_input = str(
-                                            parsed_cmd["answer"]
-                                        )
+                                        running_script.user_input = str(parsed_cmd["answer"])
                                         if parsed_cmd["method"] == "ask":
-                                            running_script.user_input = (
-                                                convert_to_value(
-                                                    running_script.user_input
-                                                )
-                                            )
+                                            running_script.user_input = convert_to_value(running_script.user_input)
                                         run_script_log(
                                             id,
                                             f"User input: {running_script.user_input}",
@@ -217,12 +200,8 @@ try:
                                 },
                             )
                         case "debug":
-                            run_script_log(
-                                id, f"DEBUG: {parsed_cmd['args']}"
-                            )  # Log what we were passed
-                            running_script.debug(
-                                parsed_cmd["args"]
-                            )  # debug() logs the output of the command
+                            run_script_log(id, f"DEBUG: {parsed_cmd['args']}")  # Log what we were passed
+                            running_script.debug(parsed_cmd["args"])  # debug() logs the output of the command
                         case "executewhilepaused":
                             run_script_log(
                                 id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
@@ -235,9 +214,7 @@ try:
                                 "RED",
                             )
                 else:
-                    run_script_log(
-                        id, f"ERROR: Script command not handled: {msg['data']}", "RED"
-                    )
+                    run_script_log(id, f"ERROR: Script command not handled: {msg['data']}", "RED")
 except Exception:
     tb = traceback.format_exc()
     run_script_log(id, tb, "RED")
@@ -253,10 +230,10 @@ finally:
         # Ensure script is marked as complete with an end time
         if not script_status.is_complete():
             script_status.state = "completed"
-        script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         script_status.update()
 
-        running = ScriptStatusModel.all(scope = scope, type = "running")
+        running = ScriptStatusModel.all(scope=scope, type="running")
 
         # Inform script channel it is complete
         running_script_anycable_publish(

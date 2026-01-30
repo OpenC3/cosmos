@@ -17,13 +17,15 @@
 import time
 import unittest
 from unittest.mock import patch
-from test.test_helper import mock_redis, capture_io, BucketMock
+
 from openc3.logs.stream_log import StreamLog
+from test.test_helper import BucketMock, capture_io, mock_redis
+
 
 class TestStreamLog(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
-        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3 = BucketMock.get_client()
         self.mock_s3.clear()
         self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
         self.patcher.start()
@@ -82,7 +84,7 @@ class TestStreamLog(unittest.TestCase):
 
     def test_handles_errors_creating_the_log_file(self):
         with patch("builtins.open") as mock_file:
-            mock_file.side_effect = IOError()
+            mock_file.side_effect = OSError()
             for stdout in capture_io():
                 self.stream_log = StreamLog("SLINT", "WRITE")
                 self.stream_log.write(b"\x00\x01\x02\x03")

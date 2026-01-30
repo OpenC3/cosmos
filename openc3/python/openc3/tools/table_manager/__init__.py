@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.tools.table_manager.table_manager_core import TableManagerCore
-from openc3.tools.table_manager.table_config import TableConfig
 from openc3.tools.table_manager.table import Table
+from openc3.tools.table_manager.table_config import TableConfig
 from openc3.tools.table_manager.table_item import TableItem
-from openc3.tools.table_manager.table_parser import TableParser
 from openc3.tools.table_manager.table_item_parser import TableItemParser
+from openc3.tools.table_manager.table_manager_core import TableManagerCore
+from openc3.tools.table_manager.table_parser import TableParser
 
-__all__ = ['TableManagerCore', 'TableConfig', 'Table', 'TableItem', 'TableParser', 'TableItemParser']
+
+__all__ = ["TableManagerCore", "TableConfig", "Table", "TableItem", "TableParser", "TableItemParser"]

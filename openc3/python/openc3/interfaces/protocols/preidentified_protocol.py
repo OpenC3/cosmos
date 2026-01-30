@@ -14,10 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import math
 import json
+import math
 import struct
 from datetime import datetime, timezone
+
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.utilities.extract import convert_to_value
@@ -136,7 +137,7 @@ class PreidentifiedProtocol(BurstProtocol):
                 if len(self.data) < len(self.sync_pattern):
                     return ("STOP", self.extra)
 
-                self.data = self.data[(len(self.sync_pattern)):]
+                self.data = self.data[(len(self.sync_pattern)) :]
                 self.reduction_state = "SYNC_REMOVED"
         elif self.reduction_state == "START":
             self.reduction_state = "SYNC_REMOVED"

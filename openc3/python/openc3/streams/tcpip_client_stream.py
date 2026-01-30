@@ -14,10 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import socket
 import errno
-from openc3.streams.tcpip_socket_stream import TcpipSocketStream
+import socket
+
 from openc3.config.config_parser import ConfigParser
+from openc3.streams.tcpip_socket_stream import TcpipSocketStream
 
 
 # Data {Stream} which reads and writes to TCPIP sockets. This class creates

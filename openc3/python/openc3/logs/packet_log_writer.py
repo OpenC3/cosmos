@@ -25,34 +25,34 @@ import json
 import os
 import struct
 from datetime import datetime, timezone
-from typing import Optional, Dict
+
 import cbor2
 
 from openc3.logs.packet_log_constants import (
-    OPENC3_FILE_HEADER,
-    OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK,
-    OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK,
-    OPENC3_RAW_PACKET_ENTRY_TYPE_MASK,
-    OPENC3_JSON_PACKET_ENTRY_TYPE_MASK,
-    OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK,
-    OPENC3_KEY_MAP_ENTRY_TYPE_MASK,
-    OPENC3_CMD_FLAG_MASK,
-    OPENC3_STORED_FLAG_MASK,
-    OPENC3_ID_FLAG_MASK,
     OPENC3_CBOR_FLAG_MASK,
+    OPENC3_CMD_FLAG_MASK,
     OPENC3_EXTRA_FLAG_MASK,
-    OPENC3_RECEIVED_TIME_FLAG_MASK,
-    OPENC3_PRIMARY_FIXED_SIZE,
-    OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE,
-    OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE,
-    OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE,
-    OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE,
-    OPENC3_PACKET_SECONDARY_FIXED_SIZE,
-    OPENC3_ID_FIXED_SIZE,
-    OPENC3_RECEIVED_TIME_FIXED_SIZE,
     OPENC3_EXTRA_LENGTH_FIXED_SIZE,
+    OPENC3_FILE_HEADER,
+    OPENC3_ID_FIXED_SIZE,
+    OPENC3_ID_FLAG_MASK,
+    OPENC3_JSON_PACKET_ENTRY_TYPE_MASK,
+    OPENC3_KEY_MAP_ENTRY_TYPE_MASK,
+    OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE,
     OPENC3_MAX_PACKET_INDEX,
     OPENC3_MAX_TARGET_INDEX,
+    OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK,
+    OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE,
+    OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK,
+    OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE,
+    OPENC3_PACKET_SECONDARY_FIXED_SIZE,
+    OPENC3_PRIMARY_FIXED_SIZE,
+    OPENC3_RAW_PACKET_ENTRY_TYPE_MASK,
+    OPENC3_RECEIVED_TIME_FIXED_SIZE,
+    OPENC3_RECEIVED_TIME_FLAG_MASK,
+    OPENC3_STORED_FLAG_MASK,
+    OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK,
+    OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE,
 )
 
 
@@ -93,22 +93,22 @@ class PacketLogWriter:
         self._file_size = 0
 
         # Packet table tracking
-        self._cmd_packet_table: Dict[str, Dict[str, int]] = {}
-        self._tlm_packet_table: Dict[str, Dict[str, int]] = {}
-        self._key_map_table: Dict[int, Dict[str, str]] = {}
-        self._target_indexes: Dict[str, int] = {}
+        self._cmd_packet_table: dict[str, dict[str, int]] = {}
+        self._tlm_packet_table: dict[str, dict[str, int]] = {}
+        self._key_map_table: dict[int, dict[str, str]] = {}
+        self._target_indexes: dict[str, int] = {}
         self._next_target_index = 0
         self._next_packet_index = 0
 
         # Timestamps
-        self._first_time: Optional[int] = None
-        self._last_time: Optional[int] = None
+        self._first_time: int | None = None
+        self._last_time: int | None = None
 
         # Offset tracking
-        self._last_offsets: Dict[str, str] = {}
+        self._last_offsets: dict[str, str] = {}
 
     @property
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str | None:
         """The current log filename."""
         return self._filename
 
@@ -126,7 +126,7 @@ class PacketLogWriter:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")[:20]
         self._filename = os.path.join(self.log_directory, f"{timestamp}__{self.label}.bin")
 
-        self._file = open(self._filename, "wb")
+        self._file = open(self._filename, "wb")  # noqa: SIM115
         self._file.write(OPENC3_FILE_HEADER)
         self._file_size = len(OPENC3_FILE_HEADER)
 
@@ -163,10 +163,10 @@ class PacketLogWriter:
         time_nsec_since_epoch: int,
         stored: bool,
         data,
-        id: Optional[str] = None,
+        id: str | None = None,
         redis_offset: str = "0-0",
-        received_time_nsec_since_epoch: Optional[int] = None,
-        extra: Optional[dict] = None,
+        received_time_nsec_since_epoch: int | None = None,
+        extra: dict | None = None,
     ):
         """
         Write an entry to the log file.
@@ -200,9 +200,7 @@ class PacketLogWriter:
             extra=extra,
         )
 
-    def _get_packet_index(
-        self, cmd_or_tlm: str, target_name: str, packet_name: str, entry_type: str, data
-    ) -> int:
+    def _get_packet_index(self, cmd_or_tlm: str, target_name: str, packet_name: str, entry_type: str, data) -> int:
         """Get or create the packet index for a target/packet combination."""
         if cmd_or_tlm == "CMD":
             target_table = self._cmd_packet_table.get(target_name)
@@ -233,18 +231,17 @@ class PacketLogWriter:
         self._write_packet_declaration(cmd_or_tlm, target_name, packet_name)
 
         # For JSON packets, write key map if not already done
-        if entry_type == self.JSON_PACKET:
-            if packet_index not in self._key_map_table:
-                parsed = data if isinstance(data, dict) else json.loads(data)
-                keys = list(parsed.keys())
-                key_map = {str(i): key for i, key in enumerate(keys)}
-                reverse_key_map = {key: str(i) for i, key in enumerate(keys)}
-                self._key_map_table[packet_index] = reverse_key_map
-                self._write_key_map(packet_index, key_map)
+        if entry_type == self.JSON_PACKET and packet_index not in self._key_map_table:
+            parsed = data if isinstance(data, dict) else json.loads(data)
+            keys = list(parsed.keys())
+            key_map = {str(i): key for i, key in enumerate(keys)}
+            reverse_key_map = {key: str(i) for i, key in enumerate(keys)}
+            self._key_map_table[packet_index] = reverse_key_map
+            self._write_key_map(packet_index, key_map)
 
         return packet_index
 
-    def _write_target_declaration(self, target_name: str, id: Optional[str] = None):
+    def _write_target_declaration(self, target_name: str, id: str | None = None):
         """Write a target declaration entry."""
         target_index = self._next_target_index
         self._target_indexes[target_name] = target_index
@@ -269,9 +266,7 @@ class PacketLogWriter:
         self._file.write(entry)
         self._file_size += len(entry)
 
-    def _write_packet_declaration(
-        self, cmd_or_tlm: str, target_name: str, packet_name: str, id: Optional[str] = None
-    ):
+    def _write_packet_declaration(self, cmd_or_tlm: str, target_name: str, packet_name: str, id: str | None = None):
         """Write a packet declaration entry."""
         target_index = self._target_indexes[target_name]
 
@@ -327,9 +322,9 @@ class PacketLogWriter:
         time_nsec_since_epoch: int,
         stored: bool,
         data,
-        id: Optional[str],
-        received_time_nsec_since_epoch: Optional[int] = None,
-        extra: Optional[dict] = None,
+        id: str | None,
+        received_time_nsec_since_epoch: int | None = None,
+        extra: dict | None = None,
     ):
         """Write an entry to the log file."""
         if id and len(id) != 64:

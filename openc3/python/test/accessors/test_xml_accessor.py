@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
-from openc3.accessors.xml_accessor import XmlAccessor
 from collections import namedtuple
+from unittest.mock import *
+
+from openc3.accessors.xml_accessor import XmlAccessor
+from test.test_helper import *
 
 
 class TestXmlAccessor(unittest.TestCase):
@@ -33,9 +34,7 @@ class TestXmlAccessor(unittest.TestCase):
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.js")
 
         item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING", None)
-        self.assertEqual(
-            XmlAccessor.class_read_item(item, self.data1), "No Script Detected"
-        )
+        self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "No Script Detected")
 
         item = self.Xml("ITEM", "/html/body/img/@src", "STRING", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.jpg")

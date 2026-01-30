@@ -16,7 +16,7 @@
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
-from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store import EphemeralStore, Store
 
 
 class MetricModel(Model):

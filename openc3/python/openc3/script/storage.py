@@ -14,15 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 import io
-import os
 import json
+import os
 import tempfile
 import traceback
+
 import requests
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 from openc3.utilities.local_mode import LocalMode
+
 
 OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 
@@ -115,7 +118,7 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
                     print(f"Reading local {scope}/{part}/{path}")
-                    file = tempfile.NamedTemporaryFile(mode="w+b")
+                    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
                     file.write(local_file.read())
                     file.seek(0)  # Rewind so the file is ready to read
                     return file
@@ -165,7 +168,7 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Create Tempfile to store data
-    file = tempfile.NamedTemporaryFile(mode="w+b")
+    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
     result = _get_presigned_request(endpoint, scope=scope)

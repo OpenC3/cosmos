@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime
 import unittest
+from datetime import datetime
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.utilities.time import *
+from test.test_helper import *
 
 
 class TestTime(unittest.TestCase):

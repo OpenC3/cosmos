@@ -16,8 +16,9 @@
 
 import re
 import unittest
-from unittest.mock import patch
 from datetime import datetime, timezone
+from unittest.mock import patch
+
 from openc3.script.suite_results import SuiteResults
 
 
@@ -34,11 +35,10 @@ class TestSuiteResults(unittest.TestCase):
         report = self.suite_results.report()
 
         # Should contain a timestamp in UTC format with Z suffix
-        pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test message'
-        self.assertIsNotNone(re.search(pattern, report),
-                            f"Expected UTC timestamp format, got: {report}")
+        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test message"
+        self.assertIsNotNone(re.search(pattern, report), f"Expected UTC timestamp format, got: {report}")
 
-    @patch('openc3.script.suite_results.datetime')
+    @patch("openc3.script.suite_results.datetime")
     def test_write_appends_to_report(self, mock_datetime):
         """Test that write appends messages to the report"""
         mock_datetime.now.return_value = self.frozen_time_utc
@@ -58,10 +58,10 @@ class TestSuiteResults(unittest.TestCase):
         report = self.suite_results.report()
 
         # Should contain a timestamp in UTC format with Z suffix
-        pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test puts message'
+        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test puts message"
         self.assertIsNotNone(re.search(pattern, report))
 
-    @patch('openc3.script.suite_results.datetime')
+    @patch("openc3.script.suite_results.datetime")
     def test_print_is_alias_for_write(self, mock_datetime):
         """Test that print method is an alias for write"""
         mock_datetime.now.return_value = self.frozen_time_utc
@@ -72,11 +72,13 @@ class TestSuiteResults(unittest.TestCase):
 
         # Should contain a timestamp in UTC format with Z suffix
         import re
-        pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test print message'
+
+        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z: Test print message"
         self.assertIsNotNone(re.search(pattern, report))
 
     def test_integration_full_report(self):
         """Test that formatted timestamps appear in the full report"""
+
         # Simulate a test run
         class TestSuiteClass:
             __name__ = "TestSuite"
@@ -93,7 +95,8 @@ class TestSuiteResults(unittest.TestCase):
 
         # Check for timestamps in UTC format with Z suffix
         import re
-        pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z:'
+
+        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z:"
         matches = re.findall(pattern, report)
         self.assertGreater(len(matches), 0, "Expected to find UTC timestamps in the report")
 
@@ -115,5 +118,5 @@ class TestSuiteResults(unittest.TestCase):
         self.assertNotIn("+00:00", report)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

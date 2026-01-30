@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.unix_time_seconds_conversion import UnixTimeSecondsConversion
 from openc3.packets.packet import Packet
+from test.test_helper import *
 
 
 class TestUnixTimeSecondsConversion(unittest.TestCase):

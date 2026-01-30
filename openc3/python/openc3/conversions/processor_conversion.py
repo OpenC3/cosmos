@@ -15,9 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 
-from openc3.conversions.conversion import Conversion
-from openc3.config.config_parser import ConfigParser
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.config.config_parser import ConfigParser
+from openc3.conversions.conversion import Conversion
 
 
 class ProcessorConversion(Conversion):

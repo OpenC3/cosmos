@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.object_read_conversion import ObjectReadConversion
+from test.test_helper import *
 
 
 class TestObjectReadConversion(unittest.TestCase):

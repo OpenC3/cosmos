@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import multiprocessing
 import select
 import socket
 import threading
-import multiprocessing
-from openc3.streams.stream import Stream
+
 from openc3.config.config_parser import ConfigParser
-from openc3.utilities.logger import Logger
+from openc3.streams.stream import Stream
 from openc3.top_level import close_socket
+from openc3.utilities.logger import Logger
 
 
 class TcpipSocketStream(Stream):
@@ -62,7 +63,7 @@ class TcpipSocketStream(Stream):
                 data = self.read_socket.recv(65535, socket.MSG_DONTWAIT)
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
             # if there is no data available
-            except socket.error as error:
+            except OSError as error:
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                     # If select returns something it means the socket is now available for
                     # reading so retry the read. If it returns empty list it means we timed out.
@@ -96,7 +97,7 @@ class TcpipSocketStream(Stream):
                     bytes_sent = self.write_socket.send(data_to_send, socket.MSG_DONTWAIT)
                 # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
                 # if the write would block
-                except socket.error as error:
+                except OSError as error:
                     if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                         # Wait for the socket to be ready for writing or for the timeout
                         _, writeable, _ = select.select([], [self.write_socket], [], self.write_timeout)
@@ -105,7 +106,7 @@ class TcpipSocketStream(Stream):
                         if writeable:
                             continue
                         else:
-                            raise RuntimeError("Write Timeout")
+                            raise RuntimeError("Write Timeout") from error
                 total_bytes_sent += bytes_sent
                 if total_bytes_sent >= num_bytes_to_send:
                     break

@@ -17,11 +17,14 @@ import asyncio
 import json
 import logging
 from threading import Thread
+
 import websockets
 from requests.auth import AuthBase
 
 from openc3.environment import *
+
 from .authorization import generate_auth
+
 
 logger = logging.getLogger("websockets")
 logger.setLevel(logging.INFO)

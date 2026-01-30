@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from cbor2 import dumps, loads
+
 from .json_accessor import JsonAccessor
 
 

@@ -15,6 +15,8 @@
 # if purchased from OpenC3, Inc.
 
 import os
+from unittest.mock import patch
+
 
 os.environ["OPENC3_NO_STORE"] = "true"
 os.environ["OPENC3_CLOUD"] = "local"
@@ -23,19 +25,20 @@ os.environ["OPENC3_TOOLS_BUCKET"] = "tools"
 os.environ["OPENC3_CONFIG_BUCKET"] = "config"
 os.environ["OPENC3_LOCAL_MODE_PATH"] = os.path.dirname(__file__)
 import io
-import sys
 import json
-import fakeredis
 import queue
+import sys
 
-from unittest.mock import *
+import fakeredis
+
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
-from openc3.utilities.logger import Logger
-from openc3.utilities.store import Store, EphemeralStore
-from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
-from openc3.utilities.sleeper import Sleeper
 from openc3.system.system import System
+from openc3.utilities.logger import Logger
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
+
 
 TEST_DIR = os.path.dirname(__file__)
 Logger.no_store = True
@@ -62,6 +65,7 @@ def my_init(self, update_interval):
 
 
 import openc3.utilities.store_queued
+
 
 openc3.utilities.store_queued.StoreQueued.__init__ = my_init
 openc3.utilities.store_queued.StoreQueued.__getattr__ = my_getattr
@@ -144,7 +148,7 @@ class BucketMock:
         self.objs = {}
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         if cls.instance:
             return cls.instance
         cls.instance = cls()

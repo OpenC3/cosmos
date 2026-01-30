@@ -32,7 +32,7 @@ class IpWriteConversion(Conversion):
     # @param buffer [String] The packet buffer
     # @return The converted value
     def call(self, value, _packet, _buffer):
-        octets = value.split('.')
+        octets = value.split(".")
         return (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
 
     # @return [String] The conversion class
@@ -41,5 +41,5 @@ class IpWriteConversion(Conversion):
 
     # @param read_or_write [String] Either 'READ' or 'WRITE'
     # @return [String] Config fragment for this conversion
-    def to_config(read_or_write):
-        return f"{read_or_write}_CONVERSION openc3/conversions/ip_write_conversion.py\n"
+    def to_config(self):
+        return f"{self}_CONVERSION openc3/conversions/ip_write_conversion.py\n"

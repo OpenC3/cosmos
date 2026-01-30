@@ -16,8 +16,8 @@
 
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
-from datetime import datetime, timezone, timedelta
 
 from openc3.script.web_socket_api import MessagesWebSocketApi
 from openc3.utilities.time import to_nsec_from_epoch
@@ -33,16 +33,13 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
 
         # Generate exactly 100 messages
-        batch_100 = [
-            {"time": i * 1000000000, "level": "INFO", "message": f"Message {i}"}
-            for i in range(100)
-        ]
+        batch_100 = [{"time": i * 1000000000, "level": "INFO", "message": f"Message {i}"} for i in range(100)]
 
         mock_stream_instance.read.side_effect = [
             '{"type":"confirm_subscription"}',
@@ -61,23 +58,18 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
 
         # Simulate receiving multiple batches
-        batch_100_a = [
-            {"time": i * 1000000000, "level": "INFO", "message": f"Batch A Message {i}"}
-            for i in range(100)
-        ]
+        batch_100_a = [{"time": i * 1000000000, "level": "INFO", "message": f"Batch A Message {i}"} for i in range(100)]
         batch_100_b = [
-            {"time": (i + 100) * 1000000000, "level": "INFO", "message": f"Batch B Message {i}"}
-            for i in range(100)
+            {"time": (i + 100) * 1000000000, "level": "INFO", "message": f"Batch B Message {i}"} for i in range(100)
         ]
         batch_100_c = [
-            {"time": (i + 200) * 1000000000, "level": "INFO", "message": f"Batch C Message {i}"}
-            for i in range(100)
+            {"time": (i + 200) * 1000000000, "level": "INFO", "message": f"Batch C Message {i}"} for i in range(100)
         ]
 
         mock_stream_instance.read.side_effect = [
@@ -96,14 +88,8 @@ class TestMessagesBatchSize(unittest.TestCase):
                     break
                 all_batches.append(batch)
                 # Assert no batch has 101 messages (the bug)
-                self.assertLessEqual(
-                    len(batch), 100,
-                    f"Batch size should never exceed 100, got {len(batch)}"
-                )
-                self.assertNotEqual(
-                    len(batch), 101,
-                    "Batch size should never be 101 (off-by-one bug)"
-                )
+                self.assertLessEqual(len(batch), 100, f"Batch size should never exceed 100, got {len(batch)}")
+                self.assertNotEqual(len(batch), 101, "Batch size should never be 101 (off-by-one bug)")
 
             self.assertEqual(len(all_batches), 3, "Should receive 3 batches")
             for i, batch in enumerate(all_batches):
@@ -116,16 +102,13 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
 
         # Generate partial batch
-        batch_50 = [
-            {"time": i * 1000000000, "level": "INFO", "message": f"Message {i}"}
-            for i in range(50)
-        ]
+        batch_50 = [{"time": i * 1000000000, "level": "INFO", "message": f"Message {i}"} for i in range(50)]
 
         mock_stream_instance.read.side_effect = [
             '{"type":"confirm_subscription"}',
@@ -144,7 +127,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
@@ -152,7 +135,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         # Simulate 10 full batches + 1 partial batch
         batches = []
         responses = ['{"type":"confirm_subscription"}']
-        
+
         # 10 full batches of 100
         for batch_num in range(10):
             batch = [
@@ -161,11 +144,10 @@ class TestMessagesBatchSize(unittest.TestCase):
             ]
             batches.append(batch)
             responses.append(json.dumps({"message": batch}))
-        
+
         # 1 partial batch of 37
         partial_batch = [
-            {"time": (1000 + i) * 1000000000, "level": "INFO", "message": f"Msg final-{i}"}
-            for i in range(37)
+            {"time": (1000 + i) * 1000000000, "level": "INFO", "message": f"Msg final-{i}"} for i in range(37)
         ]
         batches.append(partial_batch)
         responses.append(json.dumps({"message": partial_batch}))
@@ -182,20 +164,14 @@ class TestMessagesBatchSize(unittest.TestCase):
                 received_batches.append(batch)
 
             self.assertEqual(len(received_batches), 11, "Should receive 11 batches total")
-            
+
             # Check first 10 batches are exactly 100
             for i in range(10):
-                self.assertEqual(
-                    len(received_batches[i]), 100,
-                    f"Batch {i} should have exactly 100 messages"
-                )
-            
+                self.assertEqual(len(received_batches[i]), 100, f"Batch {i} should have exactly 100 messages")
+
             # Check last batch is 37
-            self.assertEqual(
-                len(received_batches[10]), 37,
-                "Final batch should have 37 messages"
-            )
-            
+            self.assertEqual(len(received_batches[10]), 37, "Final batch should have 37 messages")
+
             # Verify total message count
             total_messages = sum(len(batch) for batch in received_batches)
             self.assertEqual(total_messages, 1037, "Total messages should be 1037")
@@ -207,7 +183,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
@@ -232,7 +208,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
@@ -256,11 +232,11 @@ class TestMessagesBatchSize(unittest.TestCase):
             # Read 99
             result1 = api.read()
             self.assertEqual(len(result1), 99)
-            
+
             # Read 100
             result2 = api.read()
             self.assertEqual(len(result2), 100)
-            
+
             # Read 101 (if server somehow sends it, client handles it)
             result3 = api.read()
             # Client can receive 101 if server sends it, but server shouldn't with our fix
@@ -273,7 +249,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         mock_auth_instance = Mock()
         mock_auth_instance.token.return_value = "test_token"
         mock_auth.return_value = mock_auth_instance
-        
+
         mock_stream_instance = Mock()
         mock_stream_class.return_value = mock_stream_instance
         mock_stream_instance.connected.return_value = True
@@ -281,7 +257,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         # Simulate historical data query returning multiple 100-message batches
         batches_data = []
         responses = ['{"type":"confirm_subscription"}']
-        
+
         for batch_num in range(5):
             batch = [
                 {"time": (batch_num * 100 + i) * 1000000000, "level": "INFO", "message": f"Historical {i}"}
@@ -289,7 +265,7 @@ class TestMessagesBatchSize(unittest.TestCase):
             ]
             batches_data.append(batch)
             responses.append(json.dumps({"message": batch}))
-        
+
         responses.append(json.dumps({"message": []}))
         mock_stream_instance.read.side_effect = responses
 
@@ -304,7 +280,7 @@ class TestMessagesBatchSize(unittest.TestCase):
                 if not batch or len(batch) == 0:
                     break
                 batch_sizes.append(len(batch))
-            
+
             # All batches should be exactly 100
             self.assertEqual(len(batch_sizes), 5)
             for size in batch_sizes:
@@ -319,20 +295,19 @@ class TestBatchSizeDocumentation(unittest.TestCase):
         # This test serves as documentation
         EXPECTED_MAX_BATCH_SIZE = 100
         EXPECTED_MIN_BATCH_SIZE = 0  # Empty batch signals completion
-        
+
         # The server should send batches with these characteristics:
         # - Full batches: exactly 100 messages
         # - Partial batch: 1-99 messages (final batch if total not divisible by 100)
         # - Empty batch: 0 messages (signals stream completion)
         # - NEVER: 101 messages (this was the bug)
-        
+
         self.assertEqual(EXPECTED_MAX_BATCH_SIZE, 100)
         self.assertGreaterEqual(EXPECTED_MIN_BATCH_SIZE, 0)
-        
+
         # Document that 101 is not valid
         INVALID_BATCH_SIZE = 101
-        self.assertGreater(INVALID_BATCH_SIZE, EXPECTED_MAX_BATCH_SIZE,
-                          "101 message batches indicate off-by-one bug")
+        self.assertGreater(INVALID_BATCH_SIZE, EXPECTED_MAX_BATCH_SIZE, "101 message batches indicate off-by-one bug")
 
 
 if __name__ == "__main__":

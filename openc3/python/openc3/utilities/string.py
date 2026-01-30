@@ -60,10 +60,10 @@ def formatted(
 
             # Add the address if requested:
             if show_address:
-                string += "%08X%s" % (byte_offset, address_separator)
+                string += f"{byte_offset:08X}{address_separator}"
 
         # Add the byte
-        string += "%02X" % byte
+        string += f"{byte:02X}"
 
         # Create the ASCII representation if requested:
         if show_ascii:

@@ -16,10 +16,12 @@
 
 import json
 import time
-from openc3.topics.topic import Topic
-from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.json import JsonEncoder, JsonDecoder
+
 from openc3.config.config_parser import ConfigParser
+from openc3.environment import OPENC3_SCOPE
+from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonDecoder, JsonEncoder
+
 
 class DecomInterfaceTopic(Topic):
     @classmethod
@@ -77,8 +79,8 @@ class DecomInterfaceTopic(Topic):
     @classmethod
     def get_tlm_buffer(cls, target_name, packet_name, timeout=5, scope=OPENC3_SCOPE):
         data = {}
-        data['target_name'] = target_name.upper()
-        data['packet_name'] = packet_name.upper()
+        data["target_name"] = target_name.upper()
+        data["packet_name"] = packet_name.upper()
         # DecomMicroservice is listening to the DECOMINTERFACE topic and has
         # the most recent decommed packets including subpackets
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"

@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.object_write_conversion import ObjectWriteConversion
+from test.test_helper import *
 
 
 class TestObjectWriteConversion(unittest.TestCase):

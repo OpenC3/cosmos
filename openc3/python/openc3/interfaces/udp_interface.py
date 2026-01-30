@@ -14,13 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import socket
-from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket, UdpReadWriteSocket
-from openc3.interfaces.interface import Interface
+
 from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import Interface
+from openc3.io.udp_sockets import UdpReadSocket, UdpReadWriteSocket, UdpWriteSocket
+from openc3.top_level import close_socket
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
-from openc3.top_level import close_socket
 
 
 # Base class for interfaces that send and receive messages over UDP
@@ -145,20 +145,11 @@ class UdpInterface(Interface):
     #   is used to determine connection.
     def connected(self):
         if self.write_dest_port is not None and self.read_port is not None:
-            if self.write_socket and self.read_socket:
-                return True
-            else:
-                return False
+            return bool(self.write_socket and self.read_socket)
         elif self.write_dest_port is not None:
-            if self.write_socket:
-                return True
-            else:
-                return False
+            return bool(self.write_socket)
         else:
-            if self.read_socket:
-                return True
-            else:
-                return False
+            return bool(self.read_socket)
 
     # Close the active ports (read and/or write) and set the sockets to nil.
     def disconnect(self):
@@ -193,7 +184,7 @@ class UdpInterface(Interface):
             return (data, extra)
         # TODO: select.select can throw TypeErorr: fileno() returned a non-integer
         # Does it also throw socket.error?
-        except (TypeError, socket.error):
+        except (OSError, TypeError):
             return None, None
 
     # Writes to the socket
@@ -204,14 +195,14 @@ class UdpInterface(Interface):
         return data, extra
 
     def details(self):
-      result = super().details()
-      result['hostname'] = self.hostname
-      result['write_dest_port'] = self.write_dest_port
-      result['read_port'] = self.read_port
-      result['write_src_port'] = self.write_src_port
-      result['interface_address'] = self.interface_address
-      result['ttl'] = self.ttl
-      result['write_timeout'] = self.write_timeout
-      result['read_timeout'] = self.read_timeout
-      result['bind_address'] = self.bind_address
-      return result
+        result = super().details()
+        result["hostname"] = self.hostname
+        result["write_dest_port"] = self.write_dest_port
+        result["read_port"] = self.read_port
+        result["write_src_port"] = self.write_src_port
+        result["interface_address"] = self.interface_address
+        result["ttl"] = self.ttl
+        result["write_timeout"] = self.write_timeout
+        result["read_timeout"] = self.read_timeout
+        result["bind_address"] = self.bind_address
+        return result

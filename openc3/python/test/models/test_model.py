@@ -14,22 +14,21 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import time
-from typing import Optional
 import unittest
 
-from test.test_helper import *
-
 from openc3.models.model import Model
+from test.test_helper import mock_redis
 
 
 class MyModel(Model):
     def __init__(
         self,
         name: str,
-        scope: Optional[str] = None,
-        plugin: Optional[str] = None,
-        updated_at: Optional[float] = None,
+        scope: str | None = None,
+        plugin: str | None = None,
+        updated_at: float | None = None,
     ):
         super().__init__(
             f"{scope}__TEST",
@@ -40,15 +39,15 @@ class MyModel(Model):
         )
 
     @classmethod
-    def get(cls, name: str, scope: Optional[str] = None):
+    def get(cls, name: str, scope: str | None = None):
         return super().get(f"{scope}__TEST", name=name)
 
     @classmethod
-    def names(cls, scope: Optional[str] = None):
+    def names(cls, scope: str | None = None):
         return super().names(f"{scope}__TEST")
 
     @classmethod
-    def all(cls, scope: Optional[str] = None):
+    def all(cls, scope: str | None = None):
         return super().all(f"{scope}__TEST")
 
 
@@ -72,9 +71,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(vals["scope"], "DEFAULT")
         self.assertEqual(vals["plugin"], "PLUGIN")
         # self.assertEqual(vals["updated_at"]).to be_within(100_000_000).of(start_time)
-        self.assertEqual(
-            vals.get("other"), None
-        )  # No other keyword arguments are stored by the constructor
+        self.assertIsNone(vals.get("other"))  # No other keyword arguments are stored by the constructor
 
     def test_complains_if_it_already_exists(self):
         model = Model("primary_key", name="model")
@@ -111,9 +108,7 @@ class TestModel(unittest.TestCase):
 
     def test_deploy_must_be_implemented_by_subclass(self):
         model = Model("primary_key", name="model")
-        with self.assertRaisesRegex(
-            NotImplementedError, "must be implemented by subclass"
-        ):
+        with self.assertRaisesRegex(NotImplementedError, "must be implemented by subclass"):
             model.deploy("", "")
 
     def test_removes_the_model(self):

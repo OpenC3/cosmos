@@ -16,13 +16,14 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.accessors.binary_accessor import BinaryAccessor
+from test.test_helper import *
 
 
 class TestBinaryAccessorRead(unittest.TestCase):
     def setUp(self):
-        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     def test_complains_about_unknown_data_types(self):
         with self.assertRaisesRegex(TypeError, "data_type BLOB is not recognized"):
@@ -79,7 +80,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
             BinaryAccessor.read(0, -8, "FLOAT", self.data, "BIG_ENDIAN")
 
     def test_reads_ascii_strings(self):
-        self.data = "DEADBEEF".encode()
+        self.data = b"DEADBEEF"
         self.assertEqual(
             BinaryAccessor.read(
                 0,
@@ -93,7 +94,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
 
     def test_reads_aligned_strings(self):
         # Make the data ASCII
-        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5a\x5b\x5c\x5d\x5e\x5f"
         for bit_offset in range(0, len(self.data) * 8, 8):
             if (bit_offset / 8) <= 7:
                 self.assertEqual(
@@ -130,7 +131,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
                 )
 
     def test_reads_variable_length_strings_with_a_zero_and_negative_bit_size(self):
-        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5a\x5b\x5c\x5d\x5e\x5f"
         for bit_size in range(0, -len(self.data) * 8, -8):
             if (bit_size / 8) >= -8:
                 self.assertEqual(
@@ -214,7 +215,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
 
 class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def setUp(self):
-        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     def test_reads_1_bit_unsigned_integers(self):
         expected = [0x1, 0x0]
@@ -519,7 +520,7 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
 
 class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def setUp(self):
-        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     def test_complains_about_ill_defined_little_endian_bitfields(self):
         self.assertRaisesRegex(
@@ -828,19 +829,15 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
 
 class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def setUp(self):
-        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     def test_complains_with_unknown_data_type(self):
         with self.assertRaisesRegex(TypeError, "data_type BLAH is not recognized"):
             BinaryAccessor.read_array(0, 8, "BLAH", 0, self.data, "LITTLE_ENDIAN")
 
     def test_complains_about_negative_bit_sizes(self):
-        with self.assertRaisesRegex(
-            ValueError, "bit_size -8 must be positive for arrays"
-        ):
-            BinaryAccessor.read_array(
-                0, -8, "UINT", len(self.data) * 8, self.data, "LITTLE_ENDIAN"
-            )
+        with self.assertRaisesRegex(ValueError, "bit_size -8 must be positive for arrays"):
+            BinaryAccessor.read_array(0, -8, "UINT", len(self.data) * 8, self.data, "LITTLE_ENDIAN")
 
     def test_reads_the_given_array_size_amount_of_items(self):
         self.assertEqual(
@@ -862,9 +859,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
         )
 
     def test_complains_with_an_array_size_not_a_multiple_of_bit_size(self):
-        with self.assertRaisesRegex(
-            ValueError, "array_size 10 not a multiple of bit_size 8"
-        ):
+        with self.assertRaisesRegex(ValueError, "array_size 10 not a multiple of bit_size 8"):
             BinaryAccessor.read_array(0, 8, "UINT", 10, self.data, "LITTLE_ENDIAN")
 
     def test_reads_as_many_items_as_possible_with_a_zero_array_size(self):
@@ -947,14 +942,12 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
         self.assertEqual(BinaryAccessor.read_array(0, 8, "UINT", 32, b"", "LITTLE_ENDIAN"), [])
 
     def test_complains_about_unaligned_strings(self):
-        with self.assertRaisesRegex(
-            ValueError, "bit_offset 1 is not byte aligned for data_type STRING"
-        ):
+        with self.assertRaisesRegex(ValueError, "bit_offset 1 is not byte aligned for data_type STRING"):
             BinaryAccessor.read_array(1, 32, "STRING", 32, self.data, "LITTLE_ENDIAN")
 
     def test_reads_a_single_string_item(self):
         # Make the data ASCII
-        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5a\x5b\x5c\x5d\x5e\x5f"
         self.assertEqual(
             BinaryAccessor.read_array(0, 128, "STRING", 0, self.data, "LITTLE_ENDIAN"),
             [self.data[0:8].decode()],
@@ -1038,21 +1031,17 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
             self.assertAlmostEqual(val, expected_array[index])
 
     def test_complains_about_unaligned_floats(self):
-        with self.assertRaisesRegex(
-            ValueError, "bit_offset 1 is not byte aligned for data_type FLOAT"
-        ):
+        with self.assertRaisesRegex(ValueError, "bit_offset 1 is not byte aligned for data_type FLOAT"):
             BinaryAccessor.read_array(1, 32, "FLOAT", 32, self.data, "LITTLE_ENDIAN")
 
     def test_complains_about_mis_sized_floats(self):
-        with self.assertRaisesRegex(
-            ValueError, "bit_size is 65 but must be 32 or 64 for data_type FLOAT"
-        ):
+        with self.assertRaisesRegex(ValueError, "bit_size is 65 but must be 32 or 64 for data_type FLOAT"):
             BinaryAccessor.read_array(0, 65, "FLOAT", 65, self.data, "LITTLE_ENDIAN")
 
 
 class TestBinaryAccessorReadArrayBE(unittest.TestCase):
     def setUp(self):
-        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     def test_reads_7_bit_unsigned_integers(self):
         expected = [0x40, 0x60, 0x50]
@@ -1106,18 +1095,21 @@ class TestBinaryAccessorReadArrayBE(unittest.TestCase):
 class TestBinaryAccessorReadItemUndersizedBuffer(unittest.TestCase):
     def test_returns_none_for_items_outside_buffer_bounds(self):
         from openc3.packets.structure_item import StructureItem
+
         buffer = bytearray(b"\x00\x01\x02\x03")  # 4 bytes
         item = StructureItem("TEST", 32, 32, "UINT", "BIG_ENDIAN")
         self.assertIsNone(BinaryAccessor.class_read_item(item, buffer))
 
     def test_returns_value_for_items_within_buffer_bounds(self):
         from openc3.packets.structure_item import StructureItem
+
         buffer = bytearray(b"\x00\x01\x02\x03")  # 4 bytes
         item = StructureItem("TEST", 0, 32, "UINT", "BIG_ENDIAN")
         self.assertEqual(BinaryAccessor.class_read_item(item, buffer), 0x00010203)
 
     def test_returns_none_for_partially_out_of_bounds_items(self):
         from openc3.packets.structure_item import StructureItem
+
         buffer = bytearray(b"\x00\x01\x02\x03")  # 4 bytes = 32 bits
         item = StructureItem("TEST", 16, 32, "UINT", "BIG_ENDIAN")
         self.assertIsNone(BinaryAccessor.class_read_item(item, buffer))

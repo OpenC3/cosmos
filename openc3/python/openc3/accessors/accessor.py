@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 from ast import literal_eval
+
 from openc3.config.config_parser import ConfigParser
+
 
 class Accessor:
     def __init__(self, packet=None):
@@ -27,7 +29,7 @@ class Accessor:
             # Structure is used to read items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            return structure.read(item.key, 'RAW', structure_buffer)
+            return structure.read(item.key, "RAW", structure_buffer)
         else:
             return self.__class__.class_read_item(item, buffer)
 
@@ -36,7 +38,7 @@ class Accessor:
             # Structure is used to write items with parent, not accessor
             structure_buffer = self.read_item(item.parent_item, buffer)
             structure = item.parent_item.structure
-            structure.write(item.key, value, 'RAW', structure_buffer)
+            structure.write(item.key, value, "RAW", structure_buffer)
             return self.__class__.class_write_item(item.parent_item, structure_buffer, buffer)
         else:
             return self.__class__.class_write_item(item, value, buffer)

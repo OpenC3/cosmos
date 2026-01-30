@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.tcpip_client_stream import TcpipClientStream
-from openc3.config.config_parser import ConfigParser
 
 
 # Base class for interfaces that act as a TCP/IP client
@@ -89,9 +89,9 @@ class TcpipClientInterface(StreamInterface):
 
     def details(self):
         result = super().details()
-        result['hostname'] = self.hostname
-        result['write_port'] = self.write_port
-        result['read_port'] = self.read_port
-        result['write_timeout'] = self.write_timeout
-        result['read_timeout'] = self.read_timeout
+        result["hostname"] = self.hostname
+        result["write_port"] = self.write_port
+        result["read_port"] = self.read_port
+        result["write_timeout"] = self.write_timeout
+        result["read_timeout"] = self.read_timeout
         return result

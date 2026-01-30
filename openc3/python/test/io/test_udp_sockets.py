@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import struct
 import select
+import struct
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.io.udp_sockets import *
+from test.test_helper import *
 
 
 class TestUdpWriteSocket(unittest.TestCase):
@@ -31,9 +32,7 @@ class TestUdpWriteSocket(unittest.TestCase):
         udp = UdpWriteSocket("224.0.1.1", 8888, 7888, "127.0.0.1", 3)
         self.assertEqual(udp.getsockname()[1], 7888)
         self.assertEqual(udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL), 3)
-        bytes = struct.pack(
-            "<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF)
-        )
+        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(socket.inet_ntoa(bytes), "127.0.0.1")
         udp.close()
 
@@ -70,9 +69,7 @@ class TestUdpReadSocket(unittest.TestCase):
         self.assertEqual(udp.getsockname()[1], 8888)
         udp.close()
         udp = UdpReadSocket(8888, "224.0.1.1")
-        bytes = struct.pack(
-            "<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF)
-        )
+        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(socket.inet_ntoa(bytes), "0.0.0.0")
         udp.close()
 
@@ -116,9 +113,7 @@ class TestUdpReadWriteSocket(unittest.TestCase):
         udp = UdpReadWriteSocket(8888, "0.0.0.0", 1234, "224.0.1.1")
         self.assertEqual(udp.getpeername()[0], "224.0.1.1")
         self.assertEqual(udp.getpeername()[1], 1234)
-        bytes = struct.pack(
-            "<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF)
-        )
+        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(udp.getsockname()[1], 8888)
         self.assertEqual(socket.inet_ntoa(bytes), "0.0.0.0")
         udp.close()

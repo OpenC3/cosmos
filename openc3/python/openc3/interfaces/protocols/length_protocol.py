@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.utilities.extract import convert_to_value
 
 
@@ -92,24 +92,23 @@ class LengthProtocol(BurstProtocol):
     # self.param packet [Packet] Original packet
     # self.return [Packet] Potentially modified packet
     def write_packet(self, packet):
-        if self.fill_fields:
-            # If the start of the length field is past what we discard, then the
-            # length field is inside the packet
-            if self.length_bit_offset >= (self.discard_leading_bytes * 8):
-                length = self.calculate_length(len(packet.buffer_no_copy()) + self.discard_leading_bytes)
-                # Subtract off the discarded bytes since they haven't been added yet
-                # Adding bytes happens in the write_data method
-                offset = self.length_bit_offset - (self.discard_leading_bytes * 8)
-                # Directly write the packet buffer and fill in the length
-                BinaryAccessor.write(
-                    length,
-                    offset,
-                    self.length_bit_size,
-                    "UINT",
-                    packet.buffer_no_copy(),
-                    self.length_endianness,
-                    "ERROR",
-                )
+        # If the start of the length field is past what we discard, then the
+        # length field is inside the packet
+        if self.fill_fields and self.length_bit_offset >= (self.discard_leading_bytes * 8):
+            length = self.calculate_length(len(packet.buffer_no_copy()) + self.discard_leading_bytes)
+            # Subtract off the discarded bytes since they haven't been added yet
+            # Adding bytes happens in the write_data method
+            offset = self.length_bit_offset - (self.discard_leading_bytes * 8)
+            # Directly write the packet buffer and fill in the length
+            BinaryAccessor.write(
+                length,
+                offset,
+                self.length_bit_size,
+                "UINT",
+                packet.buffer_no_copy(),
+                self.length_endianness,
+                "ERROR",
+            )
         return super().write_packet(packet)  # Allow burst_protocol to set the sync if needed:
 
     # Called to perform modifications on write data before making it into a packet
@@ -118,19 +117,18 @@ class LengthProtocol(BurstProtocol):
     # self.return [String] Potentially modified packet data
     def write_data(self, data, extra=None):
         data, extra = super().write_data(data, extra)
-        if self.fill_fields:
-            # If the start of the length field is before what we discard, then the
-            # length field is outside the packet
-            if self.length_bit_offset < (self.discard_leading_bytes * 8):
-                BinaryAccessor.write(
-                    self.calculate_length(len(data)),
-                    self.length_bit_offset,
-                    self.length_bit_size,
-                    "UINT",
-                    data,
-                    self.length_endianness,
-                    "ERROR",
-                )
+        # If the start of the length field is before what we discard, then the
+        # length field is outside the packet
+        if self.fill_fields and self.length_bit_offset < (self.discard_leading_bytes * 8):
+            BinaryAccessor.write(
+                self.calculate_length(len(data)),
+                self.length_bit_offset,
+                self.length_bit_size,
+                "UINT",
+                data,
+                self.length_endianness,
+                "ERROR",
+            )
         return (data, extra)
 
     def calculate_length(self, buffer_length):

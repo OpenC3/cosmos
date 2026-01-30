@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.packets.structure_item import StructureItem
+from test.test_helper import *
 
 
 class TestStructureItem(unittest.TestCase):

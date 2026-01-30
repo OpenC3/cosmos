@@ -15,11 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import shutil
 import tempfile
 import unittest
-import shutil
-from test.test_helper import TEST_DIR
+
 from openc3.system.target import Target
+from test.test_helper import TEST_DIR
 
 
 class TestTarget(unittest.TestCase):

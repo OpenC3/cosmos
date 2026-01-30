@@ -17,8 +17,9 @@
 import inspect
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.models.microservice_model import MicroserviceModel
+from test.test_helper import *
 
 
 class TestMicroserviceModel(unittest.TestCase):
@@ -117,7 +118,7 @@ class TestMicroserviceModel(unittest.TestCase):
         model = MicroserviceModel(folder_name="TEST", name="DEFAULT__TYPE__NAME", scope="DEFAULT")
         json = model.as_json()
         self.assertEqual(json["name"], "DEFAULT__TYPE__NAME")
-        for key in inspect.signature(model.__init__).parameters.keys():
+        for key in inspect.signature(model.__init__).parameters:
             # Scope isn't included in as_json as it is part of the key used to get the model
             if key == "scope":
                 continue

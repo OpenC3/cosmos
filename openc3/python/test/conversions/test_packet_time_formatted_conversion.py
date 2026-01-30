@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.packet_time_formatted_conversion import (
     PacketTimeFormattedConversion,
 )
 from openc3.packets.packet import Packet
+from test.test_helper import *
 
 
 class TestPacketTimeFormattedConversion(unittest.TestCase):
@@ -42,6 +43,4 @@ class TestPacketTimeFormattedConversion(unittest.TestCase):
         self.assertEqual(gc.call(None, packet, None), "No Packet Time")
 
     def test_returns_the_class(self):
-        self.assertEqual(
-            str(PacketTimeFormattedConversion()), "PacketTimeFormattedConversion"
-        )
+        self.assertEqual(str(PacketTimeFormattedConversion()), "PacketTimeFormattedConversion")

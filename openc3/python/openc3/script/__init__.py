@@ -14,11 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import threading
+
+from openc3.environment import OPENC3_KEYCLOAK_URL
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.authentication import OpenC3KeycloakAuthentication
 from openc3.utilities.extract import convert_to_value
-from openc3.environment import OPENC3_KEYCLOAK_URL
-import threading
+
 
 API_SERVER = ApiServerProxy()
 SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
@@ -138,6 +140,9 @@ def run_mode():
     # running_script.py implements the real functionality
     pass
 
+
+from openc3.api import WHITELIST
+
 from .api_shared import *
 from .autonomic import *
 from .commands import *
@@ -154,7 +159,7 @@ from .script_runner import *
 from .storage import *
 from .tables import *
 from .telemetry import *
-from openc3.api import WHITELIST
+
 
 # Note: Enterprise Only - Use this for first time setup of an offline access token
 # so that users can run scripts.  Not necessary if accessing APIs via the web
@@ -166,10 +171,13 @@ from openc3.api import WHITELIST
 #
 def initialize_offline_access():
     if not OPENC3_KEYCLOAK_URL:
-        raise RuntimeError("initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set.")
+        raise RuntimeError(
+            "initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set."
+        )
     auth = OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
-    auth.token(include_bearer=True, openid_scope='openid offline_access')
+    auth.token(include_bearer=True, openid_scope="openid offline_access")
     set_offline_access(auth.refresh_token)
+
 
 ###########################################################################
 # END PUBLIC API

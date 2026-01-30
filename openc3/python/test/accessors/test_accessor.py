@@ -16,6 +16,7 @@
 
 import unittest
 from unittest.mock import Mock
+
 from openc3.accessors.accessor import Accessor
 
 
@@ -39,21 +40,15 @@ class TestAccessor(unittest.TestCase):
         item = Mock()
         item.data_type = "ARRAY"
         self.assertEqual(Accessor.convert_to_type("[1, 2, 3]", item), [1, 2, 3])
-        self.assertEqual(
-            Accessor.convert_to_type('["a", "b", "c"]', item), ["a", "b", "c"]
-        )
+        self.assertEqual(Accessor.convert_to_type('["a", "b", "c"]', item), ["a", "b", "c"])
         self.assertEqual(Accessor.convert_to_type([1, 2, 3], item), [1, 2, 3])
 
     def test_converts_object_values_from_strings(self):
         item = Mock()
         item.data_type = "OBJECT"
-        self.assertEqual(
-            Accessor.convert_to_type('{"key": "value"}', item), {"key": "value"}
-        )
+        self.assertEqual(Accessor.convert_to_type('{"key": "value"}', item), {"key": "value"})
         self.assertEqual(Accessor.convert_to_type('{"num": 123}', item), {"num": 123})
-        self.assertEqual(
-            Accessor.convert_to_type({"key": "value"}, item), {"key": "value"}
-        )
+        self.assertEqual(Accessor.convert_to_type({"key": "value"}, item), {"key": "value"})
 
     def test_converts_any_values_from_strings(self):
         item = Mock()
@@ -61,9 +56,7 @@ class TestAccessor(unittest.TestCase):
         self.assertEqual(Accessor.convert_to_type('"text"', item), "text")
         self.assertEqual(Accessor.convert_to_type("123", item), 123)
         self.assertEqual(Accessor.convert_to_type("[1, 2, 3]", item), [1, 2, 3])
-        self.assertEqual(
-            Accessor.convert_to_type('{"key": "value"}', item), {"key": "value"}
-        )
+        self.assertEqual(Accessor.convert_to_type('{"key": "value"}', item), {"key": "value"})
         self.assertEqual(Accessor.convert_to_type("invalid json", item), "invalid json")
         self.assertEqual(Accessor.convert_to_type(123, item), 123)
         self.assertEqual(Accessor.convert_to_type([1, 2, 3], item), [1, 2, 3])
@@ -125,7 +118,5 @@ class TestAccessor(unittest.TestCase):
         item = Mock()
         item.data_type = "FLOAT"
         item.array_size = 24
-        self.assertEqual(
-            Accessor.convert_to_type("[1.1, 2.2, 3.3]", item), [1.1, 2.2, 3.3]
-        )
+        self.assertEqual(Accessor.convert_to_type("[1.1, 2.2, 3.3]", item), [1.1, 2.2, 3.3])
         self.assertEqual(Accessor.convert_to_type([1.1, 2.2, 3.3], item), [1.1, 2.2, 3.3])

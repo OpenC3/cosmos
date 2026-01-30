@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.environment import OPENC3_LOCAL_MODE, OPENC3_CONFIG_BUCKET
-from openc3.utilities.local_mode import LocalMode
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_LOCAL_MODE
 from openc3.utilities.bucket import Bucket
+from openc3.utilities.local_mode import LocalMode
 
 
 class TargetFile:
@@ -29,7 +29,7 @@ class TargetFile:
             if local_file:
                 return local_file.read()
 
-        bucket = Bucket.getClient()
+        bucket = Bucket.get_client()
         resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
         if not resp:
             # Now try the original

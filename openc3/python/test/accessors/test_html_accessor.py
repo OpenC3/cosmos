@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
-from openc3.accessors.html_accessor import HtmlAccessor
 from collections import namedtuple
+from unittest.mock import *
+
+from openc3.accessors.html_accessor import HtmlAccessor
+from test.test_helper import *
 
 
 class TestHtmlAccessor(unittest.TestCase):
@@ -34,9 +35,7 @@ class TestHtmlAccessor(unittest.TestCase):
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), "test.js")
 
         item = self.Html("ITEM", "/html/body/noscript/text()", "STRING", None)
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item, self.data1), "No Script Detected"
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), "No Script Detected")
 
         item = self.Html("ITEM", "/html/body/img/@src", "STRING", None)
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), "test.jpg")
@@ -58,13 +57,9 @@ class TestHtmlAccessor(unittest.TestCase):
         item = self.Html("ITEM", "/html/body/ul/li[3]/text()", "INT", 24)
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), [1, 2, 3])
         item = self.Html("ITEM", "/html/body/ul/li[3]/text()", "FLOAT", 24)
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item, self.data1), [1.1, 2.2, 3.3]
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), [1.1, 2.2, 3.3])
         item = self.Html("ITEM", "/html/body/ul/li[3]/text()", "STRING", 24)
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item, self.data1), ["1.1", "2.2", "3.3"]
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), ["1.1", "2.2", "3.3"])
 
     def test_should_read_a_collection_of_items(self):
         item1 = self.Html("ITEM1", "/html/head/script/@src", "STRING", None)
@@ -107,9 +102,7 @@ class TestHtmlAccessor(unittest.TestCase):
 
         item = self.Html("ITEM", "/html/body/ul/li[3]/text()", "FLOAT", 24)
         HtmlAccessor.class_write_item(item, ["2.2", 3, 4.4], self.data1)
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item, self.data1), [2.2, 3.0, 4.4]
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), [2.2, 3.0, 4.4])
 
     def test_should_write_multiple_items(self):
         item1 = self.Html("ITEM1", "/html/head/script/@src", "STRING", None)
@@ -130,15 +123,9 @@ class TestHtmlAccessor(unittest.TestCase):
         ]
         HtmlAccessor.class_write_items(items, values, self.data1)
 
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item1, self.data1), "different.js"
-        )
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item2, self.data1), "Nothing Here"
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item1, self.data1), "different.js")
+        self.assertEqual(HtmlAccessor.class_read_item(item2, self.data1), "Nothing Here")
         self.assertEqual(HtmlAccessor.class_read_item(item3, self.data1), "other.png")
         self.assertEqual(HtmlAccessor.class_read_item(item4, self.data1), 15)
         self.assertEqual(HtmlAccessor.class_read_item(item5, self.data1), 1.234)
-        self.assertEqual(
-            HtmlAccessor.class_read_item(item6, self.data1), [2.2, 3.3, 4.4]
-        )
+        self.assertEqual(HtmlAccessor.class_read_item(item6, self.data1), [2.2, 3.3, 4.4])

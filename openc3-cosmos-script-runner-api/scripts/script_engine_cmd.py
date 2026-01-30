@@ -14,18 +14,21 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
-import os
 import glob
-from openc3.top_level import get_class_from_module, add_to_search_path
-from openc3.utilities.string import (
-    filename_to_module,
-    filename_to_class_name,
-)
+import os
+import sys
+
 from openc3.models.script_engine_model import ScriptEngineModel
+from openc3.top_level import add_to_search_path, get_class_from_module
+from openc3.utilities.string import (
+    filename_to_class_name,
+    filename_to_module,
+)
+
 
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
+
 
 class RunningScriptProxy:
     def pre_line_instrumentation(self, filename, line_number, global_variables, local_variables):
@@ -37,12 +40,13 @@ class RunningScriptProxy:
     def exception_instrumentation(self, filename, line_number):
         pass
 
+
 command = sys.argv[1]
 filename = sys.argv[2]
 extension = str(os.path.splitext(filename)[1]).lower()
 
 script_engine_filename = None
-script_engine_model = ScriptEngineModel.get_model(name = extension, scope = 'DEFAULT')
+script_engine_model = ScriptEngineModel.get_model(name=extension, scope="DEFAULT")
 if script_engine_model is not None:
     script_engine_filename = script_engine_model.filename
 else:
@@ -58,7 +62,7 @@ script_engine = klass(running_script_proxy)
 
 # Read File Text
 text = ""
-with open(filename, 'r') as file:
+with open(filename) as file:
     text = file.read()
 
 exit_code = 0

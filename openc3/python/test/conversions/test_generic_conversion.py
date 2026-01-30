@@ -15,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from openc3.packets.packet import Packet
+
 from openc3.conversions.generic_conversion import GenericConversion
+from openc3.packets.packet import Packet
 
 
 class TestGenericConversion(unittest.TestCase):

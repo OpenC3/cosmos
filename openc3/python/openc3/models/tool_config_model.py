@@ -16,9 +16,9 @@
 
 from typing import Any
 
-from openc3.utilities.store import Store
-from openc3.utilities.local_mode import LocalMode
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.local_mode import LocalMode
+from openc3.utilities.store import Store
 
 
 class ToolConfigModel:

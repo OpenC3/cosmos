@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
 import copy
 import re
+import sys
 from io import StringIO
-from openc3.script.exceptions import StopScript, SkipScript
+
 import openc3.script
-from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
+from openc3.io.stdout import Stdout
+from openc3.script.exceptions import SkipScriptError, StopScriptError
 
 
 class Suite:
@@ -126,7 +127,7 @@ class Suite:
             results.append(result)
             yield result
             if result.stopped:
-                raise StopScript
+                raise StopScriptError
 
         # Run each script
         for type, group_class, script in self.plans():
@@ -136,20 +137,20 @@ class Suite:
                         results.append(result)
                         yield result
                         if result.stopped:
-                            raise StopScript
+                            raise StopScriptError
                 case "SCRIPT":
                     result = self.run_script(group_class, script, True)
                     results.append(result)
                     yield result
                     if (result.exceptions and group_class.abort_on_exception) or result.stopped:
-                        raise StopScript
+                        raise StopScriptError
                 case "GROUP_SETUP":
                     result = self.run_group_setup(group_class, True)
                     if result:
                         results.append(result)
                         yield result
                         if (result.exceptions and group_class.abort_on_exception) or result.stopped:
-                            raise StopScript
+                            raise StopScriptError
 
                 case "GROUP_TEARDOWN":
                     result = self.run_group_teardown(group_class, True)
@@ -157,7 +158,7 @@ class Suite:
                         results.append(result)
                         yield result
                         if (result.exceptions and group_class.abort_on_exception) or result.stopped:
-                            raise StopScript
+                            raise StopScriptError
 
         # Teardown the suite
         result = self.run_teardown(True)
@@ -165,7 +166,7 @@ class Suite:
             results.append(result)
             yield result
             if result.stopped:
-                raise StopScript
+                raise StopScriptError
         ScriptResult.suite = None
         return results
 
@@ -196,7 +197,7 @@ class Suite:
                 results.append(result)
                 yield result
                 if result.stopped:
-                    raise StopScript
+                    raise StopScriptError
         else:
             if not internal:
                 ScriptStatus.instance().total = num_scripts
@@ -328,14 +329,14 @@ class Group:
             results.append(result)
             yield result
             if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
-                raise StopScript
+                raise StopScriptError
 
         # Run all the scripts
         for method_name in self.__class__.scripts():
             results.append(self.run_script(method_name))
             yield results[-1]
             if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
-                raise StopScript
+                raise StopScriptError
 
         # Teardown the script group
         result = self.run_teardown()
@@ -343,7 +344,7 @@ class Group:
             results.append(result)
             yield result
             if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
-                raise StopScript
+                raise StopScriptError
         return results
 
     # Run a specific script method
@@ -381,16 +382,16 @@ class Group:
                     openc3.script.RUNNING_SCRIPT.instance.exceptions = None
 
             except Exception as error:
-                if isinstance(error, StopScript):
+                if isinstance(error, StopScriptError):
                     result.stopped = True
                     result.result = "STOP"
-                if isinstance(error, SkipScript):
+                if isinstance(error, SkipScriptError):
                     result.result = "SKIP"
                     if hasattr(error, "message"):
                         result.message = result.message or ""
                         result.message += error.message + "\n"
                 else:
-                    if not isinstance(error, StopScript) and (
+                    if not isinstance(error, StopScriptError) and (
                         not openc3.script.RUNNING_SCRIPT
                         or not openc3.script.RUNNING_SCRIPT.instance
                         or not openc3.script.RUNNING_SCRIPT.instance.exceptions

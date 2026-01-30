@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.system.system import System
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.logger import Logger
-from openc3.interfaces.protocols.protocol import Protocol
-from queue import SimpleQueue, Empty
 import time
+from queue import Empty, SimpleQueue
+
+from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
 
 
 # Protocol that waits for a response for any commands with a defined response packet.

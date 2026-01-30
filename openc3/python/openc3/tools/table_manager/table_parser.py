@@ -18,6 +18,7 @@ from openc3.packets.parsers.packet_parser import PacketParser
 from openc3.tools.table_manager.table import Table
 from openc3.top_level import Logger
 
+
 class TableParser(PacketParser):
     """Parses the TABLE keyword definition in table configuration files."""
 
@@ -44,7 +45,7 @@ class TableParser(PacketParser):
 
     def verify_parameters(self):
         """Verify the correct number of arguments to the TABLE keyword"""
-        self.usage = 'TABLE <TABLE NAME> <ENDIANNESS: BIG_ENDIAN/LITTLE_ENDIAN> <DISPLAY: KEY_VALUE/ROW_COLUMN> <ROW_COLUMN ROW COUNT> <DESCRIPTION (Optional)>'
+        self.usage = "TABLE <TABLE NAME> <ENDIANNESS: BIG_ENDIAN/LITTLE_ENDIAN> <DISPLAY: KEY_VALUE/ROW_COLUMN> <ROW_COLUMN ROW COUNT> <DESCRIPTION (Optional)>"
         self.parser.verify_num_parameters(3, 5, self.usage)
 
     def create_table(self, tables, warnings):

@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import traceback
-from openc3.system.system import System
+from datetime import datetime, timezone
+
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
+from openc3.system.system import System
 from openc3.utilities.extract import convert_to_value
 
 
@@ -134,8 +135,8 @@ class FixedProtocol(BurstProtocol):
                 self.packet_name = identified_packet.packet_name
 
                 # Get the data from this packet
-                packet_data = self.data[0:(identified_packet.defined_length + self.discard_leading_bytes)]
-                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes):]
+                packet_data = self.data[0 : (identified_packet.defined_length + self.discard_leading_bytes)]
+                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes) :]
                 break
 
         if identified_packet is None:

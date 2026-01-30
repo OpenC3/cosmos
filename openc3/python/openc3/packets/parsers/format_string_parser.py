@@ -44,11 +44,11 @@ class FormatStringParser:
         try:
             match item.data_type:
                 case "INT" | "UINT":
-                    f"{item.format_string}" % 0
+                    _ = f"{item.format_string}" % 0
                 case "FLOAT":
-                    f"{item.format_string}" % 0.0
+                    _ = f"{item.format_string}" % 0.0
                 case "STRING" | "BLOCK":
-                    f"{item.format_string}" % "Hello"
+                    _ = f"{item.format_string}" % "Hello"
         except TypeError as error:
             raise self.parser.error(
                 f"Invalid FORMAT_STRING specified for type {item.data_type}: {self.parser.parameters[0]}",

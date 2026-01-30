@@ -21,22 +21,20 @@ These tests match the functionality of the Ruby spec at:
 openc3/spec/logs/packet_log_reader_spec.rb
 """
 
-import json
 import os
-import struct
 import tempfile
 import time
 import unittest
 from datetime import datetime, timezone
 
-from openc3.logs.packet_log_reader import PacketLogReader
-from openc3.logs.packet_log_writer import PacketLogWriter
 from openc3.logs.packet_log_constants import (
     COSMOS2_FILE_HEADER,
     COSMOS4_FILE_HEADER,
-    OPENC3_FILE_HEADER,
 )
+from openc3.logs.packet_log_reader import PacketLogReader
+from openc3.logs.packet_log_writer import PacketLogWriter
 from openc3.packets.json_packet import JsonPacket
+
 
 # 1 second in nanoseconds
 NSEC_PER_SECOND = 1_000_000_000
@@ -294,7 +292,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
         """returns no packets if the start time is after all"""
         start = datetime.fromtimestamp((self.start_nsec + 10 * NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
         index = 0
-        for packet in self.plr.each(self.logfile, start_time=start):
+        for _packet in self.plr.each(self.logfile, start_time=start):
             index += 1
         self.assertEqual(index, 0)
 
@@ -312,7 +310,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
         """returns no packets if the end time is before all"""
         end = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
         index = 0
-        for packet in self.plr.each(self.logfile, end_time=end):
+        for _packet in self.plr.each(self.logfile, end_time=end):
             index += 1
         self.assertEqual(index, 0)
 

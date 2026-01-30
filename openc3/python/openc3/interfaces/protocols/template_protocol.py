@@ -16,15 +16,16 @@
 
 import re
 import time
-from queue import SimpleQueue, Empty
-from datetime import datetime, timezone
 import traceback
+from datetime import datetime, timezone
+from queue import Empty, SimpleQueue
+
 from openc3.config.config_parser import ConfigParser
-from openc3.system.system import System
-from openc3.packets.packet import Packet
-from openc3.utilities.logger import Logger
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
+from openc3.packets.packet import Packet
+from openc3.system.system import System
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 
 
 # Protocol which delineates packets using delimiter characters. Designed for
@@ -267,7 +268,7 @@ class TemplateProtocol(TerminatedProtocol):
             self.response_template = None
             self.response_packet = None
             self.response_target_name = None
-            self.response_packets.clear
+            self.response_packets.clear()
         return super().post_write_interface(packet, data, extra)
 
     def handle_error(self, msg):

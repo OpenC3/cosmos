@@ -17,12 +17,13 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
+from openc3.conversions.generic_conversion import GenericConversion
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
-from openc3.conversions.generic_conversion import GenericConversion
 from openc3.utilities.store import Store
+from test.test_helper import *
 
 
 class TestCvtModel(unittest.TestCase):

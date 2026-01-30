@@ -14,8 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.system.system import System
 from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
 
 
 # Ignore a specific packet by not letting it through the protocol
@@ -34,9 +34,12 @@ class IgnorePacketProtocol(Protocol):
         if self.interface:
             target_names = self.interface.tlm_target_names
         identified_packet = System.telemetry.identify_and_define_packet(packet, target_names)
-        if identified_packet:
-            if identified_packet.target_name == self.target_name and identified_packet.packet_name == self.packet_name:
-                return "STOP"
+        if (
+            identified_packet
+            and identified_packet.target_name == self.target_name
+            and identified_packet.packet_name == self.packet_name
+        ):
+            return "STOP"
         return super().read_packet(packet)
 
     def write_packet(self, packet):

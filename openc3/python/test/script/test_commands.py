@@ -17,10 +17,12 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
+from openc3.models.target_model import TargetModel
 from openc3.script.commands import *
 from openc3.top_level import HazardousError
-from openc3.models.target_model import TargetModel
+from test.test_helper import *
+
 
 gArgs = []
 gKwargs = {}
@@ -112,14 +114,14 @@ class Proxy:
         return cmd
 
     # Duplicate the return in cmd_api.py
-    def get_cmd(target_name, cmd_name, scope):
-        return TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
+    def get_cmd(self, cmd_name, scope):
+        return TargetModel.packet(self, cmd_name, type="CMD", scope=scope)
 
     # Duplicate the return in cmd_api.py
-    def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
+    def get_cmd_time(self=None, command_name=None, scope=OPENC3_SCOPE):
         global gTime
         return (
-            target_name,
+            self,
             command_name,
             int(gTime),
             int((gTime - int(gTime)) * 1_000_000),
@@ -223,7 +225,7 @@ class TestCommands(unittest.TestCase):
         cmd_time = get_cmd_time("INST", "CLEAR")
         self.assertEqual(cmd_time[0], "INST")
         self.assertEqual(cmd_time[1], "CLEAR")
-        self.assertEqual("%.3f" % cmd_time[2].timestamp(), "%.3f" % gTime)
+        self.assertEqual(f"{cmd_time[2].timestamp():.3f}", f"{gTime:.3f}")
 
     def test_handles_obfuscation(self):
         global gArgs

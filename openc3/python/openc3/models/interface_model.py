@@ -14,18 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import copy
 from pathlib import Path
-from typing import Optional
 
 from openc3.environment import OPENC3_SCOPE
+from openc3.logs.stream_log_pair import StreamLogPair
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.model import Model
 from openc3.models.secret_model import SecretModel
 from openc3.models.target_model import TargetModel
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import filename_to_module, filename_to_class_name
-import copy
+from openc3.utilities.string import filename_to_class_name, filename_to_module
 
 
 class InterfaceModel(Model):
@@ -68,28 +67,28 @@ class InterfaceModel(Model):
     def __init__(
         self,
         name,
-        config_params: Optional[list] = None,
-        target_names: Optional[list] = None,
-        cmd_target_names: Optional[list] = None,
-        tlm_target_names: Optional[list] = None,
-        cmd_target_enabled: Optional[dict] = None,
-        tlm_target_enabled: Optional[dict] = None,
+        config_params: list | None = None,
+        target_names: list | None = None,
+        cmd_target_names: list | None = None,
+        tlm_target_names: list | None = None,
+        cmd_target_enabled: dict | None = None,
+        tlm_target_enabled: dict | None = None,
         connect_on_startup: bool = True,
         auto_reconnect: bool = True,
         reconnect_delay: float = 5.0,
         disable_disconnect: bool = False,
-        options: Optional[list] = None,
-        secret_options: Optional[list] = None,
-        protocols: Optional[list] = None,
+        options: list | None = None,
+        secret_options: list | None = None,
+        protocols: list | None = None,
         log_stream=None,
-        updated_at: Optional[float] = None,
-        plugin: Optional[str] = None,
+        updated_at: float | None = None,
+        plugin: str | None = None,
         needs_dependencies: bool = False,
-        secrets: Optional[list] = None,
+        secrets: list | None = None,
         cmd: str = None,
         work_dir: str = "/openc3/lib/openc3/microservices",
-        ports: Optional[list] = None,
-        env: Optional[dict] = None,
+        ports: list | None = None,
+        env: dict | None = None,
         container=None,
         prefix=None,
         shard=0,

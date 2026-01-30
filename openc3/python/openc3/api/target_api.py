@@ -16,9 +16,10 @@
 
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
-from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
+from openc3.models.target_model import TargetModel
+from openc3.utilities.authorization import authorize
+
 
 WHITELIST.extend(
     [

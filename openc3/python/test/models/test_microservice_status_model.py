@@ -17,9 +17,10 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.models.microservice_status_model import MicroserviceStatusModel
+
 from openc3.microservices.microservice import Microservice
+from openc3.models.microservice_status_model import MicroserviceStatusModel
+from test.test_helper import *
 
 
 class TestMicroserviceStatusModel(unittest.TestCase):

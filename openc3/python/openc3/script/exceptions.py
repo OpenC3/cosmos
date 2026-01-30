@@ -19,9 +19,9 @@ class CheckError(Exception):
     pass
 
 
-class StopScript(Exception):
+class StopScriptError(Exception):
     pass
 
 
-class SkipScript(Exception):
+class SkipScriptError(Exception):
     pass

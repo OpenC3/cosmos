@@ -17,9 +17,10 @@
 import json
 import unittest
 from unittest.mock import Mock, patch
-from test.test_helper import mock_redis
-from openc3.models.queue_model import QueueModel, QueueError
+
+from openc3.models.queue_model import QueueError, QueueModel
 from openc3.topics.queue_topic import QueueTopic
+from test.test_helper import mock_redis
 
 
 class TestQueueModel(unittest.TestCase):

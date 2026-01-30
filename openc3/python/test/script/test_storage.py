@@ -17,9 +17,10 @@
 import os
 import unittest
 from unittest.mock import Mock, patch
-from test.test_helper import mock_redis
-from openc3.script.storage import get_target_file
+
 import openc3.script
+from openc3.script.storage import get_target_file
+from test.test_helper import mock_redis
 
 
 class TestGetTargetFile(unittest.TestCase):

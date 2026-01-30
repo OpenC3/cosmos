@@ -16,9 +16,10 @@
 
 import json
 import traceback
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 
 
 def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):
@@ -70,9 +71,6 @@ def critical_cmd_can_approve(uuid: str, scope: str = OPENC3_SCOPE):
         if not response or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to critical_cmd_can_approve: {repr(response)}")
         result = json.loads(response.text)
-        if result["status"] == "ok":
-            return True
-        else:
-            return False
+        return result["status"] == "ok"
     except Exception as error:
         raise RuntimeError(f"critical_cmd_approve failed due to {traceback.format_exc()}") from error

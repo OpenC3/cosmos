@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.interfaces.tcpip_client_interface import TcpipClientInterface
 
 
@@ -75,18 +76,18 @@ class TestTcpipClientInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check that it includes the expected keys specific to TcpipClientInterface
-        self.assertIn('hostname', details)
-        self.assertIn('write_port', details)
-        self.assertIn('read_port', details)
-        self.assertIn('write_timeout', details)
-        self.assertIn('read_timeout', details)
+        self.assertIn("hostname", details)
+        self.assertIn("write_port", details)
+        self.assertIn("read_port", details)
+        self.assertIn("write_timeout", details)
+        self.assertIn("read_timeout", details)
 
         # Verify the specific values are correct
-        self.assertEqual(details['hostname'], "192.168.1.100")
-        self.assertEqual(details['write_port'], 8888)
-        self.assertEqual(details['read_port'], 8889)
-        self.assertEqual(details['write_timeout'], 10.0)
-        self.assertEqual(details['read_timeout'], 15.0)
+        self.assertEqual(details["hostname"], "192.168.1.100")
+        self.assertEqual(details["write_port"], 8888)
+        self.assertEqual(details["read_port"], 8889)
+        self.assertEqual(details["write_timeout"], 10.0)
+        self.assertEqual(details["read_timeout"], 15.0)
 
     def test_details_with_none_ports(self):
         i = TcpipClientInterface("localhost", "None", "8889", "5", "None", "burst")
@@ -96,8 +97,8 @@ class TestTcpipClientInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check None values are preserved
-        self.assertEqual(details['hostname'], "localhost")
-        self.assertIsNone(details['write_port'])
-        self.assertEqual(details['read_port'], 8889)
-        self.assertEqual(details['write_timeout'], 5.0)
-        self.assertIsNone(details['read_timeout'])
+        self.assertEqual(details["hostname"], "localhost")
+        self.assertIsNone(details["write_port"])
+        self.assertEqual(details["read_port"], 8889)
+        self.assertEqual(details["write_timeout"], 5.0)
+        self.assertIsNone(details["read_timeout"])

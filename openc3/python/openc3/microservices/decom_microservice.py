@@ -14,30 +14,28 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-import sys
-import time
 import json
-import threading
-import traceback
+import os
 import queue
+import sys
+import threading
+import time
+import traceback
+from datetime import datetime, timezone
+
+from openc3.config.config_parser import ConfigParser
+from openc3.microservices.interface_decom_common import handle_build_cmd, handle_get_tlm_buffer, handle_inject_tlm
+from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.microservices.microservice import Microservice
+from openc3.models.target_model import TargetModel
 from openc3.system.system import System
-from openc3.topics.topic import Topic
+from openc3.top_level import kill_thread
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
+from openc3.topics.topic import Topic
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.microservices.interface_microservice import InterfaceMicroservice
-from openc3.microservices.interface_decom_common import (
-    handle_build_cmd,
-    handle_inject_tlm,
-    handle_get_tlm_buffer
-)
-from openc3.models.target_model import TargetModel
-from openc3.top_level import kill_thread
-from datetime import datetime, timezone
+from openc3.utilities.time import from_nsec_from_epoch, to_nsec_from_epoch
+
 
 class LimitsResponseThread:
     def __init__(self, microservice_name, queue, logger, metric, scope):
@@ -232,13 +230,17 @@ class DecomMicroservice(Microservice):
 
         if subpacket.stored:
             # Stored telemetry does not update the current value table
-            identified_subpacket = System.telemetry.identify_and_define_packet(subpacket, self.target_names, subpackets=True)
+            identified_subpacket = System.telemetry.identify_and_define_packet(
+                subpacket, self.target_names, subpackets=True
+            )
         else:
             # Identify and update subpacket
             if subpacket.identified():
                 try:
                     # Preidentifed subpacket - place it into the current value table
-                    identified_subpacket = System.telemetry.update(subpacket.target_name, subpacket.packet_name, subpacket.buffer)
+                    identified_subpacket = System.telemetry.update(
+                        subpacket.target_name, subpacket.packet_name, subpacket.buffer
+                    )
                 except Exception:
                     # Subpacket identified but we don't know about it
                     # Clear packet_name and target_name and try to identify

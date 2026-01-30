@@ -16,6 +16,7 @@
 
 import json
 import traceback
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
