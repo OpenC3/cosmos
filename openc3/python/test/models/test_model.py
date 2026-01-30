@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import time
 import unittest
 
 from openc3.models.model import Model
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 class MyModel(Model):
@@ -70,7 +71,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(vals["scope"], "DEFAULT")
         self.assertEqual(vals["plugin"], "PLUGIN")
         # self.assertEqual(vals["updated_at"]).to be_within(100_000_000).of(start_time)
-        self.assertEqual(vals.get("other"), None)  # No other keyword arguments are stored by the constructor
+        self.assertIsNone(vals.get("other"))  # No other keyword arguments are stored by the constructor
 
     def test_complains_if_it_already_exists(self):
         model = Model("primary_key", name="model")

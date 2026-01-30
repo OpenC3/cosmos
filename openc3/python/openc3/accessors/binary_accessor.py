@@ -458,9 +458,8 @@ class BinaryAccessor(Accessor):
                 if bit_size in [32, 64]:
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                    format = f"{endian}{const}"
                     return struct.unpack(
-                        format,
+                        f"{endian}{const}",
                         buffer[lower_bound : upper_bound + 1],
                     )[0]
                 else:
@@ -683,9 +682,8 @@ class BinaryAccessor(Accessor):
                 if bit_size in [32, 64]:
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                    format = f"{endian}{const}"
                     buffer[lower_bound : upper_bound + 1] = struct.pack(
-                        format,
+                        f"{endian}{const}",
                         value,
                     )
                 else:
@@ -904,10 +902,9 @@ class BinaryAccessor(Accessor):
                     ###########################################################
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                    format = f"{endian}{num_items}{const}"
                     return list(
                         struct.unpack(
-                            format,
+                            f"{endian}{num_items}{const}",
                             buffer[lower_bound : upper_bound + 1],
                         )
                     )
@@ -934,10 +931,9 @@ class BinaryAccessor(Accessor):
                     if bit_size in [32, 64]:
                         const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                         endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                        format = f"{endian}{num_items}{const}"
                         return list(
                             struct.unpack(
-                                format,
+                                f"{endian}{num_items}{const}",
                                 buffer[lower_bound : upper_bound + 1],
                             )
                         )
@@ -1111,9 +1107,8 @@ class BinaryAccessor(Accessor):
                     )
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                    format = f"{endian}{num_writes}{const}"
                     buffer[lower_bound : upper_bound + 1] = struct.pack(
-                        format,
+                        f"{endian}{num_writes}{const}",
                         *values,
                     )
 
@@ -1147,9 +1142,8 @@ class BinaryAccessor(Accessor):
                     if bit_size in [32, 64]:
                         const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                         endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                        format = f"{endian}{num_writes}{const}"
                         buffer[lower_bound : upper_bound + 1] = struct.pack(
-                            format,
+                            f"{endian}{num_writes}{const}",
                             *values,
                         )
                     else:
