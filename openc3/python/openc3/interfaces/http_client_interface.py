@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -100,7 +100,7 @@ class HttpClientInterface(Interface):
         the response queue to allow the read_interface method to return.
         """
         if self.http:
-            self.http.close
+            self.http.close()
         self.http = None
         while not self.response_queue.empty():
             self.response_queue.get_nowait()
