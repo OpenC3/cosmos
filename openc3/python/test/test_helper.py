@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+from unittest.mock import patch
 
 
 os.environ["OPENC3_NO_STORE"] = "true"
@@ -27,7 +28,6 @@ import io
 import json
 import queue
 import sys
-from unittest.mock import *
 
 import fakeredis
 
@@ -148,7 +148,7 @@ class BucketMock:
         self.objs = {}
 
     @classmethod
-    def getClient(cls):
+    def get_client(cls):
         if cls.instance:
             return cls.instance
         cls.instance = cls()
