@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import re
 import threading
 import time
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from openc3.api.tlm_api import tlm
 from openc3.microservices.decom_microservice import DecomMicroservice
@@ -31,7 +32,7 @@ from openc3.system.system import System
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
-from test.test_helper import Mock, capture_io, mock_redis, setup_system
+from test.test_helper import capture_io, mock_redis, setup_system
 
 
 class TestDecomMicroservice(unittest.TestCase):
@@ -50,10 +51,8 @@ class TestDecomMicroservice(unittest.TestCase):
             if "block" in kwargs:
                 kwargs.pop("block")
             result = None
-            try:
+            with contextlib.suppress(Exception):
                 result = orig_xread(*args, **kwargs)
-            except Exception:
-                pass
 
             # # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:

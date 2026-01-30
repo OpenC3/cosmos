@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import threading
 import time
 import unittest
@@ -106,10 +107,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it blocks and calls it continuously
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()
@@ -143,10 +142,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it calls it continuously
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()
@@ -173,10 +170,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it calls it continuously
         def my_read2():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read2)
         thread.start()
@@ -255,10 +250,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.assertIsNone(TestIgnorePacketProtocol.buffer)
 
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()

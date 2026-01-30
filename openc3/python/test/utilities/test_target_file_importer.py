@@ -24,7 +24,7 @@ class TestTargetFileImporter(unittest.TestCase):
     def setUp(self) -> None:
         mock_redis(self)
 
-    def new_body(scope, arg):
+    def new_body(self, arg):
         return b"""
 class Helper:
     def help(self):

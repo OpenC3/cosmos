@@ -49,6 +49,10 @@ format-changed:
 lint:
     -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
 
+# Lint code with Ruff (shows issues but doesn't fail)
+lint-all:
+    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
+
 # Lint and auto-fix issues (doesn't fail if unfixable issues remain)
 lint-fix:
     -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix
@@ -160,6 +164,7 @@ clean:
     rm -rf .coverage
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
+    rm -f .coverage
 
 # Build the package (wheel and sdist)
 build:

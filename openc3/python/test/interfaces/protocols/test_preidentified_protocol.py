@@ -58,7 +58,9 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface = TestPreidentifiedProtocol.MyInterface()
         TestPreidentifiedProtocol.buffer = None
 
-    def setup_stream_pkt(self, args=[]):
+    def setup_stream_pkt(self, args=None):
+        if args is None:
+            args = []
         self.interface.stream = TestPreidentifiedProtocol.PreStream()
         self.interface.add_protocol(PreidentifiedProtocol, args, "READ_WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META").clone()

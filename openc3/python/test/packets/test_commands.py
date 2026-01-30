@@ -429,7 +429,7 @@ class TestCommands(unittest.TestCase):
 
         # If the string is too big it should truncate it
         string = ""
-        for i in range(0, 256):
+        for _i in range(0, 256):
             string += "A"
         pkt.write("ITEM2", string)
         pkt.raw = False

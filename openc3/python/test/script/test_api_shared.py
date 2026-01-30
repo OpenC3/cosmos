@@ -29,12 +29,12 @@ received_count = 0
 
 
 class Proxy:
-    def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
+    def tlm(self, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
         global count
         global received_count
 
         if scope != "DEFAULT":
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+            raise RuntimeError(f"Packet '{self} {packet_name}' does not exist")
         match item_name:
             case "TEMP1":
                 match type:

@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import threading
 import time
 import unittest
@@ -42,10 +43,8 @@ class TestLimitsApi(unittest.TestCase):
             if "block" in kwargs:
                 kwargs.pop("block")
             result = None
-            try:
+            with contextlib.suppress(Exception):
                 result = orig_xread(*args, **kwargs)
-            except Exception:
-                pass
 
             # # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:

@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import struct
 import threading
 import time
@@ -56,10 +57,8 @@ class TestCmdApi(unittest.TestCase):
         def xread_side_effect(*args, **kwargs):
             result = None
             if self.process:
-                try:
+                with contextlib.suppress(Exception):
                     result = orig_xread(*args)
-                except Exception:
-                    pass
 
             # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:

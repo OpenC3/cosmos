@@ -163,7 +163,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         self.assertTrue(
-            set(["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7"]).issubset(
+            {"ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7"}.issubset(
                 set(self.pc.telemetry["TGT1"]["PKT1"].items.keys())
             ),
         )
@@ -193,7 +193,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         packet = self.pc.commands["TGT1"]["PKT1"]
         self.assertTrue(
-            set(["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7", "ITEM8", "ITEM9"]).issubset(
+            {"ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7", "ITEM8", "ITEM9"}.issubset(
                 set(packet.items.keys())
             )
         )

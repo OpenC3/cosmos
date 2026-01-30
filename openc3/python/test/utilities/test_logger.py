@@ -563,7 +563,6 @@ class TestLogMessage(unittest.TestCase):
         sys.stdout = StringIO()
 
         logger = Logger()
-        results = []
 
         def log_from_thread(n):
             logger.log_message("INFO", f"Message {n}", scope="TEST", user=None, type=Logger.LOG, url=None)

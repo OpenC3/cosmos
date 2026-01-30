@@ -252,7 +252,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         )
         model.create()
 
-        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
 
         # Check that table was created with correct name
         calls = mock_cursor.execute.call_args_list
@@ -284,7 +284,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         model.create()
 
         for stdout in capture_io():
-            tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+            TsdbMicroservice("DEFAULT__TSDB__TEST")
             # Should warn about invalid characters
             self.assertIn("changed to", stdout.getvalue())
 
@@ -415,7 +415,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         model.create()
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
-        initial_topics = tsdb.topics.copy()
+        tsdb.topics.copy()
 
         # Write a config event for deleting a target
         ConfigTopic.write({"type": "target", "kind": "deleted", "name": "INST"}, scope="DEFAULT")
@@ -1309,7 +1309,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         )
         model.create()
 
-        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
 
         # Verify table creation was not attempted for UNKNOWN
         calls = mock_cursor.execute.call_args_list

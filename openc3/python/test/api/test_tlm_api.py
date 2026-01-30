@@ -17,6 +17,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1957
 
+import contextlib
 import re
 import threading
 import time
@@ -46,10 +47,8 @@ class TestTlmApi(unittest.TestCase):
         def xread_side_effect(*args, **kwargs):
             result = None
             if self.process:
-                try:
+                with contextlib.suppress(Exception):
                     result = orig_xread(*args)
-                except Exception:
-                    pass
 
             # # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:

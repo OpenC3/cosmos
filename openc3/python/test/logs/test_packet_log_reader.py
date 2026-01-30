@@ -292,7 +292,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
         """returns no packets if the start time is after all"""
         start = datetime.fromtimestamp((self.start_nsec + 10 * NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
         index = 0
-        for packet in self.plr.each(self.logfile, start_time=start):
+        for _packet in self.plr.each(self.logfile, start_time=start):
             index += 1
         self.assertEqual(index, 0)
 
@@ -310,7 +310,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
         """returns no packets if the end time is before all"""
         end = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
         index = 0
-        for packet in self.plr.each(self.logfile, end_time=end):
+        for _packet in self.plr.each(self.logfile, end_time=end):
             index += 1
         self.assertEqual(index, 0)
 
