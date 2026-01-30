@@ -80,7 +80,7 @@ lint-changed:
 lint-stats:
     -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration --statistics
 
-# Lint and auto-fix unsafe issues includeing unsafe fixes (doesn't fail if unfixable issues remain)
+# Lint and auto-fix unsafe issues including unsafe fixes (doesn't fail if unfixable issues remain)
 lint-unsafe:
     -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix --unsafe-fixes
 
