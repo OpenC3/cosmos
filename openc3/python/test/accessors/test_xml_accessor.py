@@ -34,9 +34,7 @@ class TestXmlAccessor(unittest.TestCase):
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.js")
 
         item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING", None)
-        self.assertEqual(
-            XmlAccessor.class_read_item(item, self.data1), "No Script Detected"
-        )
+        self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "No Script Detected")
 
         item = self.Xml("ITEM", "/html/body/img/@src", "STRING", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.jpg")

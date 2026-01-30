@@ -199,7 +199,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.1)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(20):
+                time.sleep(0.01)
+                if "Bad response" in stdout.getvalue():
+                    break
             self.assertIn("INST HEALTH_STATUS TEMP1 Limits Response Exception!", stdout.getvalue())
             self.assertIn("Bad response", stdout.getvalue())
 

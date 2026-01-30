@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -1021,7 +1021,6 @@ class TestStructureReadItemsNoBuffer(unittest.TestCase):
 
 class TestStructureSynchronizeAllowReadsMutexHeld(unittest.TestCase):
     def test_yields_when_mutex_already_held(self):
-
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 8, "UINT")
         s.write("test1", 42)
@@ -1052,9 +1051,9 @@ class TestStructureDefineItemRecalculateBitOffsets(unittest.TestCase):
         s.append_item("test2", 0, "BLOCK")
         s.define_item("test3", -32, 16, "UINT")
         s.define_item("test4", -16, 16, "UINT")
-        s.buffer = b"\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        s.buffer = b"\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xaa\x55\xbb\x66"
         self.assertEqual(s.read("test1"), b"\x01\x02\x03\x04\x05")
-        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66")
+        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0b\x0a\xaa\x55\xbb\x66")
         self.assertEqual(s.read("test3"), 0xAA55)
         self.assertEqual(s.read("test4"), 0xBB66)
 
@@ -1062,6 +1061,7 @@ class TestStructureDefineItemRecalculateBitOffsets(unittest.TestCase):
 class TestStructureWriteFullSize64BitIntegers(unittest.TestCase):
     def test_writes_full_size_64_bit_integers(self):
         from openc3.accessors.binary_accessor import BinaryAccessor
+
         s = Structure("BIG_ENDIAN")
         s.define_item("test1", 0, 64, "UINT")
         s.define_item("test2", 64, 64, "INT")
@@ -1084,7 +1084,7 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
+        s.write("test3", b"\x07\x08\x09\x0a")
         self.assertIn("    TEST1: [1, 2]", s.formatted("CONVERTED", 4))
         self.assertIn("    TEST2: 3456", s.formatted("CONVERTED", 4))
         self.assertIn("    TEST3", s.formatted("CONVERTED", 4))
@@ -1097,8 +1097,8 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
-        buffer = b"\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
+        s.write("test3", b"\x07\x08\x09\x0a")
+        buffer = b"\x0a\x0b\x0c\x0d\xde\xad\xbe\xef"
         self.assertIn("TEST1: [10, 11]", s.formatted("CONVERTED", 0, buffer))
         self.assertIn("TEST2: 3085", s.formatted("CONVERTED", 0, buffer))
         self.assertIn("TEST3", s.formatted("CONVERTED", 0, buffer))
@@ -1111,7 +1111,7 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
+        s.write("test3", b"\x07\x08\x09\x0a")
         self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST3"]), "TEST2: 3456\n")
         self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST2", "TEST3"]), "")
 
@@ -1122,10 +1122,7 @@ class TestStructureBufferRecalculateBitOffsets(unittest.TestCase):
         s.append_item("test1", 80, "BLOCK")
         s.append_item("test2", 0, "BLOCK")
         s.define_item("test3", -16, 16, "UINT")
-        s.buffer = (
-            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
-            b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
-        )
+        s.buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
         self.assertEqual(s.read("test1"), b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09")
         self.assertEqual(s.read("test2"), b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55")
         self.assertEqual(s.read("test3"), 0xAA55)

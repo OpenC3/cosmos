@@ -830,9 +830,7 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             self.pc.commands["TGT1"]["PKT99"].buffer,
             # The formatting of this string has to be precise
-            bytearray(
-                b'{"id_item":1,"item1":202,"more":{"item2":333,"item3":7.89,"item4":"TEST","item5":[6,7,8,9]}}'
-            ),
+            bytearray(b'{"id_item":1,"item1":202,"more":{"item2":333,"item3":7.89,"item4":"TEST","item5":[6,7,8,9]}}'),
         )
         tf.close()
 
@@ -874,7 +872,11 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             loads(self.pc.commands["TGT1"]["PKT1"].buffer),
             # Template values are preserved for accessor-based items with explicit keys
-            {"id_item": 2, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]}},
+            {
+                "id_item": 2,
+                "item1": 101,
+                "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+            },
         )
         self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
         self.pc.commands["TGT1"]["PKT1"].write("item2", 333)

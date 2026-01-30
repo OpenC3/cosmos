@@ -44,6 +44,4 @@ class TestReceivedTimeSecondsConversion(unittest.TestCase):
         self.assertEqual(gc.call(None, packet, None), 0.0)
 
     def test_returns_the_class(self):
-        self.assertEqual(
-            str(ReceivedTimeSecondsConversion()), "ReceivedTimeSecondsConversion"
-        )
+        self.assertEqual(str(ReceivedTimeSecondsConversion()), "ReceivedTimeSecondsConversion")

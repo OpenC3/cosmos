@@ -14,13 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet_item'
+require 'openc3/packets/packet'
 
 module OpenC3
   # Parses a packet item definition and creates a new PacketItem
@@ -78,6 +79,9 @@ module OpenC3
 
     def create_packet_item(packet, cmd_or_tlm)
       item_name = @parser.parameters[0].upcase
+      if Packet::RESERVED_ITEM_NAMES.include?(item_name)
+        raise @parser.error("#{item_name} is a reserved item name", @usage)
+      end
       if packet.items[item_name]
         msg = "#{packet.target_name} #{packet.packet_name} #{item_name} redefined."
         Logger.instance.warn msg

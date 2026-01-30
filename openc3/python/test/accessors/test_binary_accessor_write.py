@@ -27,13 +27,13 @@ from test.test_helper import *
 class TestBinaryAccessorWrite(unittest.TestCase):
     def setUp(self):
         self.data = bytearray(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
 
     def test_can_write_QUIC_encoded_variable_sized_integers(self):
         packet = Packet()
         packet.append_item("marker", 16, "STRING")
         packet.write("marker", "**")
-        self.assertEqual(packet.buffer, b"\x2A\x2A")
+        self.assertEqual(packet.buffer, b"\x2a\x2a")
 
         packet.append_item("item1_length", 2, "UINT")
         item1 = packet.append_item("item1", 0, "UINT")
@@ -45,11 +45,11 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         # This is required to get the defined_length_bits set correctly
         # It is normally called by packet_config when constructing the packet
         packet.set_item(item1)
-        self.assertEqual(packet.buffer, b"\x2A\x2A\x00")
+        self.assertEqual(packet.buffer, b"\x2a\x2a\x00")
 
         packet.append_item("marker", 16, "STRING")
         packet.write("marker", "##")
-        self.assertEqual(packet.buffer, b"\x2A\x2A\x00\x23\x23")
+        self.assertEqual(packet.buffer, b"\x2a\x2a\x00\x23\x23")
 
         packet.append_item("item2_length", 2, "UINT")
         item2 = packet.append_item("item2", 0, "INT")
@@ -61,11 +61,11 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         # This is required to get the defined_length_bits set correctly
         # It is normally called by packet_config when constructing the packet
         packet.set_item(item2)
-        self.assertEqual(packet.buffer, b"\x2A\x2A\x00\x23\x23\x00")
+        self.assertEqual(packet.buffer, b"\x2a\x2a\x00\x23\x23\x00")
 
         packet.append_item("marker", 16, "STRING")
         packet.write("marker", "$$")
-        self.assertEqual(packet.buffer, b"\x2A\x2A\x00\x23\x23\x00\x24\x24")
+        self.assertEqual(packet.buffer, b"\x2a\x2a\x00\x23\x23\x00\x24\x24")
 
         # For all these example the 2 bits indicate the length
         # 0 is 6, 1 is 14, 2 is 30, 4 is 62
@@ -73,7 +73,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
 
         packet.write("item1", 0)
         packet.write("item2", 0)
-        self.assertEqual(packet.buffer, b"\x2A\x2A\x00\x23\x23\x00\x24\x24")
+        self.assertEqual(packet.buffer, b"\x2a\x2a\x00\x23\x23\x00\x24\x24")
         self.assertEqual(packet.read("item1"), 0x0)
         self.assertEqual(packet.read("item2"), 0x0)
 
@@ -93,7 +93,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
             packet.write("item1", min_unsigned)
             packet.write("item2", min_signed)
             # We know min unsigned is just 0 so pack that
-            buffer = b"\x2A\x2A\x00\x23\x23"
+            buffer = b"\x2a\x2a\x00\x23\x23"
             # Mask off the length bits then set them
             buffer += struct.pack(
                 format_string,
@@ -106,7 +106,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
 
             packet.write("item1", max_unsigned)
             packet.write("item2", max_signed)
-            buffer = b"\x2A\x2A"
+            buffer = b"\x2a\x2a"
             # Mask off the length bits then set them
             buffer += struct.pack(
                 format_string,
@@ -165,7 +165,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(packet.buffer, b"\x00\x00\x00\x00\x00\x00\x00")
 
         packet.write("item1", "This is Awesome")
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0FThis is Awesome\x00\x00\x00")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0fThis is Awesome\x00\x00\x00")
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
         self.assertEqual(item2_length.bit_offset, 152)
@@ -174,7 +174,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item3.bit_offset, 176)
 
         packet.write("item2", "So is this")
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x00")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0fThis is Awesome\x00\x0aSo is this\x00")
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
         self.assertEqual(item2_length.bit_offset, 152)
@@ -183,7 +183,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item3.bit_offset, 256)
 
         packet.write("item3", [1, 2, 3, 4, 5])
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x05\x01\x02\x03\x04\x05")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0fThis is Awesome\x00\x0aSo is this\x05\x01\x02\x03\x04\x05")
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
         self.assertEqual(item2_length.bit_offset, 152)
@@ -192,7 +192,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item3.bit_offset, 256)
 
         packet.write("item2", "Small")
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0FThis is Awesome\x00\x05Small\x05\x01\x02\x03\x04\x05")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x0fThis is Awesome\x00\x05Small\x05\x01\x02\x03\x04\x05")
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
         self.assertEqual(item2_length.bit_offset, 152)
@@ -210,7 +210,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item3.bit_offset, 112)
 
         # Recalculates offsets when buffer is written
-        packet.buffer = b"\x00\x00\x00\x03Ok!\x00\x04Cool\x02\xA5\x5A"
+        packet.buffer = b"\x00\x00\x00\x03Ok!\x00\x04Cool\x02\xa5\x5a"
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
         self.assertEqual(item2_length.bit_offset, 56)
@@ -268,10 +268,18 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         packet = Packet()
         item1_length = packet.append_item("item1_length", 32, "UINT")
         item1 = packet.append_item("item1", 8, "UINT", 0)
-        item1.variable_bit_size = {'length_item_name': 'item1_length', 'length_value_bit_offset': 0, 'length_bits_per_count': 8}
+        item1.variable_bit_size = {
+            "length_item_name": "item1_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         item2_length = packet.append_item("item2_length", 32, "UINT")
         item2 = packet.append_item("item2", 8, "UINT", 0)
-        item2.variable_bit_size = {'length_item_name': 'item2_length', 'length_value_bit_offset': 0, 'length_bits_per_count': 8}
+        item2.variable_bit_size = {
+            "length_item_name": "item2_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
 
         self.assertEqual(item1_length.bit_offset, 0)
         self.assertEqual(item1.bit_offset, 32)
@@ -293,10 +301,10 @@ class TestBinaryAccessorWrite(unittest.TestCase):
 
         packet.write("item1", [11, 12, 13])
         packet.write("item2", [17])
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x03\x0B\x0C\x0D\x00\x00\x00\x01\x11")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x03\x0b\x0c\x0d\x00\x00\x00\x01\x11")
         packet.write("item2", [11, 12, 13])
         packet.write("item1", [17])
-        self.assertEqual(packet.buffer, b"\x00\x00\x00\x01\x11\x00\x00\x00\x03\x0B\x0C\x0D")
+        self.assertEqual(packet.buffer, b"\x00\x00\x00\x01\x11\x00\x00\x00\x03\x0b\x0c\x0d")
         self.assertEqual(packet.read("item2_length"), 3)
         self.assertEqual(packet.read("item2"), [11, 12, 13])
         self.assertEqual(item2.array_size, 24)
@@ -689,7 +697,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(self.data, b"\x00\x00\x00\x00\x00\x00\x00\x00")
 
     def test_writes_a_shorter_string_and_zero_fill_to_the_given_bit_size(self):
-        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         BinaryAccessor.write(
             b"\x01\x02\x03\x04\x05\x06\x07\x08",
             0,
@@ -705,7 +713,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         )
 
     def test_writes_a_shorter_block_and_zero_fill_to_the_given_bit_size(self):
-        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         BinaryAccessor.write(
             b"\x01\x02\x03\x04\x05\x06\x07\x08",
             0,
@@ -850,7 +858,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
 class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
     def setUp(self):
         self.data = bytearray(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
 
     def test_writes_1_bit_unsigned_integers(self):
         BinaryAccessor.write(0x1, 8, 1, "UINT", self.data, "BIG_ENDIAN", "ERROR")
@@ -858,7 +866,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         BinaryAccessor.write(0x1, 10, 1, "UINT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_1_bit_signed_integers(self):
@@ -869,7 +877,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         BinaryAccessor.write(0x0, 11, 1, "INT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_7_bit_unsigned_integers(self):
@@ -1057,7 +1065,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         BinaryAccessor.write(0x00090A0B0C, 67, 37, "UINT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\x81\x82\x83\x84\x80\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00",
+            b"\x00\x81\x82\x83\x84\x80\x00\x00\x00\x09\x0a\x0b\x0c\x00\x00\x00",
         )
 
     def test_writes_37_bit_signed_integers(self):
@@ -1073,21 +1081,21 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         BinaryAccessor.write(0x00090A0B0C, 67, 37, "INT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\x81\x82\x83\x84\x80\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00",
+            b"\x00\x81\x82\x83\x84\x80\x00\x00\x00\x09\x0a\x0b\x0c\x00\x00\x00",
         )
 
     def test_writes_63_bit_unsigned_integers(self):
-        self.data[-1:] = b"\xFF"
+        self.data[-1:] = b"\xff"
         BinaryAccessor.write(0x8081828384858687 >> 1, 0, 63, "UINT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x86\x00\x00\x00\x00\x00\x00\x00\xFF",
+            b"\x80\x81\x82\x83\x84\x85\x86\x86\x00\x00\x00\x00\x00\x00\x00\xff",
         )
-        self.data[0:1] = b"\xFF"
+        self.data[0:1] = b"\xff"
         BinaryAccessor.write(0x08090A0B0C0D0E0F, 65, 63, "UINT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\xFF\x81\x82\x83\x84\x85\x86\x86\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\xff\x81\x82\x83\x84\x85\x86\x86\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_63_bit_signed_integers(self):
@@ -1103,14 +1111,14 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         BinaryAccessor.write(0x00090A0B0C0D0E0F, 65, 63, "INT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x86\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\x80\x81\x82\x83\x84\x85\x86\x86\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_67_bit_unsigned_integers(self):
         BinaryAccessor.write(0x8081828384858687FF >> 5, 0, 67, "UINT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x87\xE0\x00\x00\x00\x00\x00\x00\x00",
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\xe0\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_67_bit_signed_integers(self):
@@ -1125,7 +1133,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         )
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x87\xE0\x00\x00\x00\x00\x00\x00\x00",
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\xe0\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_aligned_64_bit_unsigned_integers(self):
@@ -1239,7 +1247,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
 class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
     def setUp(self):
         self.data = bytearray(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
 
     def test_complains_about_ill_defined_little_endian_bitfields(self):
         self.assertRaisesRegex(
@@ -1263,7 +1271,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x0, 11, 1, "INT", self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_1_bit_signed_integers(self):
@@ -1272,7 +1280,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x1, 10, 1, "INT", self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_7_bit_unsigned_integers(self):
@@ -1285,7 +1293,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x7F, 11, 7, "UINT", self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\xC0\x1F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\xc0\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_7_bit_signed_integers(self):
@@ -1439,7 +1447,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x0C0B0A0900 >> 3, 96, 37, "UINT", self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\x81\x82\x83\x84\x15\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00",
+            b"\x00\x81\x82\x83\x84\x15\x00\x00\x00\x09\x0a\x0b\x0c\x00\x00\x00",
         )
 
     def test_writes_37_bit_signed_integers(self):
@@ -1447,7 +1455,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x0C0B0A0900 >> 3, 96, 37, "INT", self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\x81\x82\x83\x84\x15\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00",
+            b"\x00\x81\x82\x83\x84\x15\x00\x00\x00\x09\x0a\x0b\x0c\x00\x00\x00",
         )
 
     def test_writes_63_bit_unsigned_integers(self):
@@ -1463,7 +1471,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         )
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x47\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\x80\x81\x82\x83\x84\x85\x86\x47\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_63_bit_signed_integers(self):
@@ -1479,7 +1487,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         BinaryAccessor.write(0x0F0E0D0C0B0A0900 >> 1, 120, 63, "INT", self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x80\x81\x82\x83\x84\x85\x86\x47\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\x80\x81\x82\x83\x84\x85\x86\x47\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_67_bit_unsigned_integers(self):
@@ -1494,7 +1502,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         )
         self.assertEqual(
             self.data,
-            b"\x00\x00\x00\x00\x00\x00\x00\xE0\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\x00\x00\x00\x00\x00\x00\x00\xe0\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_67_bit_signed_integers(self):
@@ -1509,7 +1517,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         )
         self.assertEqual(
             self.data,
-            b"\x00\x00\x00\x00\x00\x00\x00\xE0\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+            b"\x00\x00\x00\x00\x00\x00\x00\xe0\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f",
         )
 
     def test_writes_aligned_64_bit_unsigned_integers(self):
@@ -1739,7 +1747,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
         self.data_array = []
         for i in range(len(self.data)):
             self.data_array.append(self.data[i])
-        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         self.baseline_data_array = []
         for i in range(len(self.baseline_data)):
             self.baseline_data_array.append(self.baseline_data[i])
@@ -1996,7 +2004,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
             BinaryAccessor.write_array([1, 2], -32, 8, "UINT", -8, self.data, "LITTLE_ENDIAN", "ERROR")
 
     def test_writes_a_shorter_string_and_zero_fill_to_the_given_bit_size(self):
-        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         BinaryAccessor.write_array(
             [b"\x01\x02", b"\x01\x02", b"\x01\x02", b"\x01\x02"],
             0,
@@ -2013,7 +2021,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
         )
 
     def test_writes_a_shorter_block_and_zero_fill_to_the_given_bit_size(self):
-        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         BinaryAccessor.write_array(
             [b"\x01\x02", b"\x01\x02", b"\x01\x02", b"\x01\x02"],
             0,
@@ -2060,7 +2068,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
             "BIG_ENDIAN",
             "ERROR",
         )
-        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xFF\xFF")
+        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xff\xff")
 
     def test_writes_aligned_8_bit_signed_integers(self):
         BinaryAccessor.write_array(
@@ -2073,7 +2081,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
             "BIG_ENDIAN",
             "ERROR",
         )
-        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xFF\x7F")
+        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xff\x7f")
 
     def test_complains_about_unaligned_strings_bin(self):
         with self.assertRaisesRegex(ValueError, "bit_offset 1 is not byte aligned for data_type STRING"):
@@ -2192,12 +2200,12 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
         BinaryAccessor.write_array([1, 0, 1], 8, 1, "UINT", 3, self.data, "BIG_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_1_bit_signed_integers(self):
         BinaryAccessor.write_array([1, 0, 1], 8, 1, "INT", 0, self.data, "BIG_ENDIAN", "ERROR")
-        self.assertEqual(self.data, b"\x00\xA0")
+        self.assertEqual(self.data, b"\x00\xa0")
 
     def test_writes_7_bit_unsigned_integers(self):
         BinaryAccessor.write_array([0x40, 0x60, 0x50], 8, 7, "UINT", 21, self.data, "BIG_ENDIAN", "ERROR")
@@ -2282,7 +2290,7 @@ class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
         self.data_array = []
         for i in range(len(self.data)):
             self.data_array.append(self.data[i])
-        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
+        self.baseline_data = bytearray(b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0a\x0b\x0c\x0d\x0e\x0f")
         self.baseline_data_array = []
         for i in range(len(self.baseline_data)):
             self.baseline_data_array.append(self.baseline_data[i])
@@ -2291,12 +2299,12 @@ class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
         BinaryAccessor.write_array([1, 0, 1], 8, 1, "UINT", 3, self.data, "LITTLE_ENDIAN", "ERROR")
         self.assertEqual(
             self.data,
-            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
 
     def test_writes_1_bit_signed_integers(self):
         BinaryAccessor.write_array([1, 0, 1], 8, 1, "INT", 0, self.data, "LITTLE_ENDIAN", "ERROR")
-        self.assertEqual(self.data, b"\x00\xA0")
+        self.assertEqual(self.data, b"\x00\xa0")
 
     def test_complains_about_little_endian_bit_fields_greater_than_1_bit(self):
         with self.assertRaisesRegex(

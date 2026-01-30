@@ -440,7 +440,9 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]])
 
     def test_values_and_limits_states_complains_about_non_existent_value_types(self):
-        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"):
+        with self.assertRaisesRegex(
+            ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
+        ):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], "MINE")
 
     def test_values_and_limits_states_complains_if_passed_a_single_array(self):
@@ -539,8 +541,18 @@ class TestTelemetry(unittest.TestCase):
         items["TGT1 PKT1"] = ["ITEM1", "ITEM2", "ITEM3", "ITEM4"]
         items["TGT1 PKT2"] = ["ITEM1", "ITEM2"]
         items["TGT2 PKT1"] = ["ITEM1", "ITEM2"]
+        # These are the items auto-added by define_reserved_items()
+        # Note: TIMESTAMP and RX_TIMESTAMP are in RESERVED_ITEM_NAMES but
+        # are not auto-added - they're just reserved to prevent user collision
+        auto_added_items = [
+            "PACKET_TIMESECONDS",
+            "PACKET_TIMEFORMATTED",
+            "RECEIVED_TIMESECONDS",
+            "RECEIVED_TIMEFORMATTED",
+            "RECEIVED_COUNT",
+        ]
         for tgt_pkt, sitems in items.items():
-            for item in Packet.RESERVED_ITEM_NAMES:
+            for item in auto_added_items:
                 self.assertIn(f"{tgt_pkt} {item}", strings)
             for item in sitems:
                 self.assertIn(f"{tgt_pkt} {item}", strings)

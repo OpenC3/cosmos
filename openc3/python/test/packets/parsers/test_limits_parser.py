@@ -42,9 +42,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Must give both a green low and green high"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Must give both a green low and green high"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -53,9 +51,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for LIMITS"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -65,9 +61,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12 18 20\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Too many parameters for LIMITS"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for LIMITS"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -77,9 +71,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  APPEND_PARAMETER item1 16 UINT 0 0 0 "Item"\n')
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "LIMITS only applies to telemetry items"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "LIMITS only applies to telemetry items"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -89,9 +81,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
         tf.write("    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DEFAULT limits set must be defined"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DEFAULT limits set must be defined"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -102,9 +92,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    STATE ONE 1\n")
         tf.write("    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Items with STATE can't define LIMITS"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Items with STATE can't define LIMITS"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -153,9 +141,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
         tf.write("    LIMITS DEFAULT TRUE ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Persistence must be an integer"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Persistence must be an integer"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -165,9 +151,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
         tf.write("    LIMITS DEFAULT 3 TRUE 1 2 6 7 3 5\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Initial LIMITS state must be ENABLED or DISABLED"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Initial LIMITS state must be ENABLED or DISABLED"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -192,9 +176,7 @@ class TestLimitsParser(unittest.TestCase):
             limits[index] = "X"
             tf.write(" ".join(limits))
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Invalid {msgs[index]} limit value"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Invalid {msgs[index]} limit value"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 

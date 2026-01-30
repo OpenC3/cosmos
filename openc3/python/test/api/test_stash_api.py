@@ -29,8 +29,8 @@ class TestStashApi(unittest.TestCase):
         stash_set("key", "val")
         self.assertEqual(stash_get("key"), "val")
         # Override with binary data
-        stash_set("key", "\xDE\xAD\xBE\xEF")
-        self.assertEqual(stash_get("key"), "\xDE\xAD\xBE\xEF")
+        stash_set("key", "\xde\xad\xbe\xef")
+        self.assertEqual(stash_get("key"), "\xde\xad\xbe\xef")
 
     def test_sets_an_array_in_the_stash(self):
         data = [1, 2, [3, 4]]

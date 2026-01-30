@@ -68,5 +68,6 @@ class TestTableItem(unittest.TestCase):
         self.assertEqual(json_hash["editable"], False)
         self.assertEqual(json_hash["hidden"], True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

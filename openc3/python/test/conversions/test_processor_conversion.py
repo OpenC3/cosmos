@@ -57,17 +57,17 @@ class TestProcessorConversion(unittest.TestCase):
         )
 
     def test_as_json_creates_a_reproducible_format(self):
-        pc = ProcessorConversion('TEST1', 'TEST2', 'FLOAT', '64', '128')
+        pc = ProcessorConversion("TEST1", "TEST2", "FLOAT", "64", "128")
         json = pc.as_json()
-        self.assertEqual(json['class'], "ProcessorConversion")
-        self.assertEqual(json['converted_type'], "FLOAT")
-        self.assertEqual(json['converted_bit_size'], 64)
-        self.assertEqual(json['converted_array_size'], 128)
-        self.assertEqual(json['params'], ['TEST1', 'TEST2', "FLOAT", 64, 128])
-        new_pc = ProcessorConversion(*json['params'])
+        self.assertEqual(json["class"], "ProcessorConversion")
+        self.assertEqual(json["converted_type"], "FLOAT")
+        self.assertEqual(json["converted_bit_size"], 64)
+        self.assertEqual(json["converted_array_size"], 128)
+        self.assertEqual(json["params"], ["TEST1", "TEST2", "FLOAT", 64, 128])
+        new_pc = ProcessorConversion(*json["params"])
         packet = Packet("tgt", "pkt")
-        packet.append_item('ITEM1', 64, "FLOAT")
+        packet.append_item("ITEM1", 64, "FLOAT")
         proc = Processor()
         proc.results = {"TEST2": 6.0}
-        packet.processors['TEST1'] = proc
+        packet.processors["TEST1"] = proc
         self.assertEqual(pc.call(1, packet, None), new_pc.call(1, packet, None))

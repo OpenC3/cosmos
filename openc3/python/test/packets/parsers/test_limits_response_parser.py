@@ -35,9 +35,7 @@ class TestLimitsResponseParser(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("  LIMITS_RESPONSE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "No current item for LIMITS_RESPONSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current item for LIMITS_RESPONSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -47,9 +45,7 @@ class TestLimitsResponseParser(unittest.TestCase):
         tf.write('ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("  LIMITS_RESPONSE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for LIMITS_RESPONSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS_RESPONSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -59,9 +55,7 @@ class TestLimitsResponseParser(unittest.TestCase):
         tf.write('  APPEND_PARAMETER item1 16 UINT 0 0 0 "Item"\n')
         tf.write("    LIMITS_RESPONSE test.rb\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "LIMITS_RESPONSE only applies to telemetry items"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "LIMITS_RESPONSE only applies to telemetry items"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 

@@ -24,41 +24,39 @@ from test.test_helper import *
 
 class TestToolConfigModel(unittest.TestCase):
     def setUp(self):
-      mock_redis(self)
-      setup_system()
+        mock_redis(self)
+        setup_system()
 
-    #def test_self_load_config(self):
-        #config = ToolConfigModel.load_config('toolie', 'namely', scope= 'DEFAULT')
-        #self.assertEqual(config, {})
+    # def test_self_load_config(self):
+    # config = ToolConfigModel.load_config('toolie', 'namely', scope= 'DEFAULT')
+    # self.assertEqual(config, {})
 
-    #def test_self_save_config(self):
-        #self.assertRaises(ValueError,
-        #  result = ToolConfigModel.save_config(
-        #  'toolie',
-        #  'namely',
-        #  '{"data":"value", "other":42, "not":null}',
-        #   local_mode= True,
-        #   scope= 'DEFAULT')
-        #) # message (/Read-only file system self. dir_s_mkdir - \/plugins/)
+    # def test_self_save_config(self):
+    # self.assertRaises(ValueError,
+    #  result = ToolConfigModel.save_config(
+    #  'toolie',
+    #  'namely',
+    #  '{"data":"value", "other":42, "not":null}',
+    #   local_mode= True,
+    #   scope= 'DEFAULT')
+    # ) # message (/Read-only file system self. dir_s_mkdir - \/plugins/)
 
     def test_self_list_configs(self):
-        all_tc = ToolConfigModel.list_configs('toolie', scope= 'DEFAULT')
-        self.assertEqual(all_tc, []) # eq('ps')
+        all_tc = ToolConfigModel.list_configs("toolie", scope="DEFAULT")
+        self.assertEqual(all_tc, [])  # eq('ps')
 
     def test_self_config_tool_names(self):
-        names = ToolConfigModel.config_tool_names(scope= 'DEFAULT')
-        self.assertEqual(names, []) # eq('ps')
+        names = ToolConfigModel.config_tool_names(scope="DEFAULT")
+        self.assertEqual(names, [])  # eq('ps')
 
-    #def test_deletes(self):
-        #name = ToolConfigModel.delete_config('toolie', 'namely', local_mode= True, scope= 'DEFAULT')
+    # def test_deletes(self):
+    # name = ToolConfigModel.delete_config('toolie', 'namely', local_mode= True, scope= 'DEFAULT')
 
     # some overlap
 
     def test_save_load_list_delete(self):
         data = {"key": "value", "longer key": "more data"}
-        ToolConfigModel.save_config(
-            "TestTool", "config", json.dumps(data), local_mode=False
-        )
+        ToolConfigModel.save_config("TestTool", "config", json.dumps(data), local_mode=False)
         # self.assertTrue(
         #     os.path.isfile(f"{TEST_DIR}/DEFAULT/tool_config/TestTool/config.json")
         # )

@@ -32,7 +32,7 @@ module OpenC3
   # Packet adds is the ability to apply formatting to PacketItem values as well
   # as managing PacketItem's limit states.
   class Packet < Structure
-    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze].freeze
+    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze].freeze
     ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with

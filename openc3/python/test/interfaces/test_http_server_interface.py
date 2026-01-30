@@ -52,14 +52,14 @@ class TestHttpServerInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check that it includes the expected keys specific to HttpServerInterface
-        self.assertIn('listen_address', details)
-        self.assertIn('port', details)
-        self.assertIn('request_queue_length', details)
+        self.assertIn("listen_address", details)
+        self.assertIn("port", details)
+        self.assertIn("request_queue_length", details)
 
         # Verify the specific values are correct
-        self.assertEqual(details['listen_address'], "0.0.0.0")
-        self.assertEqual(details['port'], 8080)
-        self.assertEqual(details['request_queue_length'], 0)  # No server started
+        self.assertEqual(details["listen_address"], "0.0.0.0")
+        self.assertEqual(details["port"], 8080)
+        self.assertEqual(details["request_queue_length"], 0)  # No server started
 
     def test_details_with_custom_listen_address(self):
         i = HttpServerInterface(9090)
@@ -70,9 +70,9 @@ class TestHttpServerInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check values with custom settings
-        self.assertEqual(details['listen_address'], "192.168.1.100")
-        self.assertEqual(details['port'], 9090)
-        self.assertEqual(details['request_queue_length'], 0)
+        self.assertEqual(details["listen_address"], "192.168.1.100")
+        self.assertEqual(details["port"], 9090)
+        self.assertEqual(details["request_queue_length"], 0)
 
     def test_details_default_port(self):
         i = HttpServerInterface()  # Default port 80
@@ -82,9 +82,9 @@ class TestHttpServerInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check default port
-        self.assertEqual(details['port'], 80)
-        self.assertEqual(details['listen_address'], "0.0.0.0")
+        self.assertEqual(details["port"], 80)
+        self.assertEqual(details["listen_address"], "0.0.0.0")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

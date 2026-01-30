@@ -35,7 +35,7 @@ class TestTableConfig(unittest.TestCase):
     def test_process_file(self):
         """Test process_file class method"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "test" 8 UINT 0 0xFF 0\n')
 
@@ -58,7 +58,7 @@ class TestTableConfig(unittest.TestCase):
     def test_process_file_with_types(self):
         """Test processing a file with different parameter types"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "uint" 8 UINT 0 0xFF 0\n')
             file.write('  APPEND_PARAMETER "int" 8 INT -127 127 0\n')
@@ -77,11 +77,11 @@ class TestTableConfig(unittest.TestCase):
     def test_process_file_with_state_parameters(self):
         """Test processing a file with state parameters"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "state" 8 UINT 0 1 0\n')
-            file.write('    STATE DISABLE 0\n')
-            file.write('    STATE ENABLE 1\n')
+            file.write("    STATE DISABLE 0\n")
+            file.write("    STATE ENABLE 1\n")
 
         config = TableConfig.process_file(def_path)
         self.assertTrue("TEST" in config.tables)
@@ -92,12 +92,12 @@ class TestTableConfig(unittest.TestCase):
     def test_process_file_with_hidden_and_uneditable(self):
         """Test processing a file with hidden and uneditable parameters"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "hidden" 8 UINT 0 0xFF 0\n')
-            file.write('    HIDDEN\n')
+            file.write("    HIDDEN\n")
             file.write('  APPEND_PARAMETER "uneditable" 8 UINT 0 0xFF 0\n')
-            file.write('    UNEDITABLE\n')
+            file.write("    UNEDITABLE\n")
 
         config = TableConfig.process_file(def_path)
         self.assertTrue("TEST" in config.tables)
@@ -110,7 +110,7 @@ class TestTableConfig(unittest.TestCase):
     def test_row_column_table(self):
         """Test processing a ROW_COLUMN table"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN ROW_COLUMN 3 "Description"\n')
             file.write('  APPEND_PARAMETER "param1" 8 UINT 0 0xFF 0 "ITEM"\n')
             file.write('  APPEND_PARAMETER "param2" 8 UINT 0 0xFF 0 "ITEM"\n')
@@ -130,11 +130,11 @@ class TestTableConfig(unittest.TestCase):
     def test_process_file_with_includes(self):
         """Test processing a file with includes"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLEFILE "include.txt"\n')
 
         include_path = os.path.join(self.temp_dir, "include.txt")
-        with open(include_path, 'w') as file:
+        with open(include_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "param" 8 UINT 0 0xFF 0\n')
 
@@ -144,14 +144,14 @@ class TestTableConfig(unittest.TestCase):
     def test_finish_packet_with_default_values(self):
         """Test finishing a packet with default values"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "uint" 8 UINT 0 0xFF 0\n')
             file.write('  APPEND_PARAMETER "int" 8 INT -127 127 0\n')
             file.write('  APPEND_PARAMETER "state" 8 UINT 0 1 0\n')
-            file.write('    STATE DISABLE 0\n')
-            file.write('    STATE ENABLE 1\n')
-            file.write('DEFAULT 10 -20 ENABLE\n')
+            file.write("    STATE DISABLE 0\n")
+            file.write("    STATE ENABLE 1\n")
+            file.write("DEFAULT 10 -20 ENABLE\n")
 
         config = TableConfig.process_file(def_path)
         self.assertTrue("TEST" in config.tables)
@@ -160,5 +160,6 @@ class TestTableConfig(unittest.TestCase):
         self.assertEqual(table.sorted_items[1].default, -20)
         self.assertEqual(table.sorted_items[2].default, 1)  # ENABLE maps to 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

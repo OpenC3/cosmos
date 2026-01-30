@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -50,7 +50,6 @@ class BurstProtocol(Protocol):
     def reset(self):
         super().reset()
         self.data = b""
-        # self.data.force_encoding('ASCII-8BIT')
         self.sync_state = "SEARCHING"
 
     # Reads from the interface. It can look for a sync pattern before

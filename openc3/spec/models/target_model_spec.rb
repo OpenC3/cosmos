@@ -333,6 +333,84 @@ module OpenC3
         expect(pkt['target_name']).to eql "INST"
         expect(pkt['packet_name']).to eql "ABORT"
       end
+
+      it "caches packet lookups" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # First call should hit the Store
+        expect(Store).to receive(:hget).once.and_call_original
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Second call should hit cache and NOT call Store
+        expect(Store).not_to receive(:hget)
+        pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Both packets should be equivalent
+        expect(pkt1).to eql pkt2
+      end
+
+      it "expires cache after timeout" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # First call populates cache
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Set timeout to 0 to force expiration
+        timeout = TargetModel::PACKET_CACHE_TIMEOUT
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = 0
+        end
+
+        # Next call should miss cache due to expiration and hit Store again
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Restore timeout
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = timeout
+        end
+      end
+
+      it "invalidates cache on set_packet" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # Populate cache
+        expect(Store).to receive(:hget).once.and_call_original
+        pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # set_packet should invalidate the cache entry
+        TargetModel.set_packet("INST", "HEALTH_STATUS", pkt, type: :TLM, scope: "DEFAULT")
+
+        # Next get should miss cache and hit Store again
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+      end
+
+      it "caches different packet types separately" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # Get telemetry packet - should hit Store
+        expect(Store).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original
+        tlm_pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Get command packet - should also hit Store (different cache key)
+        expect(Store).to receive(:hget).with("DEFAULT__openc3cmd__INST", "ABORT").once.and_call_original
+        cmd_pkt = TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
+
+        # Verify they are different packets
+        expect(tlm_pkt['packet_name']).to eql "HEALTH_STATUS"
+        expect(cmd_pkt['packet_name']).to eql "ABORT"
+
+        # Getting them again should NOT hit Store (cache hit)
+        expect(Store).not_to receive(:hget)
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
+      end
     end
 
     describe "self.packet_item" do

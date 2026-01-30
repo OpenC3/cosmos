@@ -32,6 +32,8 @@ env:
 jobs:
   openc3-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Need write permission to upload release asset
     steps:
       - name: Create trivy output folder
         run: mkdir trivy_results

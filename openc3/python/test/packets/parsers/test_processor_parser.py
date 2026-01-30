@@ -32,9 +32,7 @@ class TestProcessorParser(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write("PROCESSOR")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "No current packet for PROCESSOR"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current packet for PROCESSOR"):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
 
@@ -43,9 +41,7 @@ class TestProcessorParser(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("  PROCESSOR\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for PROCESSOR"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for PROCESSOR"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -65,9 +61,7 @@ class TestProcessorParser(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt3 LITTLE_ENDIAN "Packet"\n')
         tf.write('  ITEM item1 0 16 UINT "Integer Item"\n')
-        tf.write(
-            "    READ_CONVERSION openc3/conversions/processor_conversion.py WATER HIGH_WATER\n"
-        )
+        tf.write("    READ_CONVERSION openc3/conversions/processor_conversion.py WATER HIGH_WATER\n")
         tf.write("  PROCESSOR WATER openc3/processors/watermark_processor.py ITEM1\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
@@ -80,8 +74,6 @@ class TestProcessorParser(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt4 LITTLE_ENDIAN "Packet"\n')
         tf.write("  PROCESSOR WATER openc3/processors/watermark_processor.py ITEM\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "PROCESSOR only applies to telemetry packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "PROCESSOR only applies to telemetry packets"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

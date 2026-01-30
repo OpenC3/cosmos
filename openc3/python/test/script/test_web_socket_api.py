@@ -87,6 +87,7 @@ class TestWebSocketApiEdgeCases(unittest.TestCase):
 
         # Simulate slow responses - return multiple ping messages
         call_count = [0]
+
         def slow_read():
             call_count[0] += 1
             time.sleep(0.15)

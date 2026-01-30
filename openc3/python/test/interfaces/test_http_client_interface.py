@@ -76,20 +76,20 @@ class TestHttpClientInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check that it includes the expected keys specific to HttpClientInterface
-        self.assertIn('url', details)
-        self.assertIn('write_timeout', details)
-        self.assertIn('read_timeout', details)
-        self.assertIn('connect_timeout', details)
-        self.assertIn('include_request_in_response', details)
-        self.assertIn('request_queue_length', details)
+        self.assertIn("url", details)
+        self.assertIn("write_timeout", details)
+        self.assertIn("read_timeout", details)
+        self.assertIn("connect_timeout", details)
+        self.assertIn("include_request_in_response", details)
+        self.assertIn("request_queue_length", details)
 
         # Verify the specific values are correct
-        self.assertEqual(details['url'], "https://api.example.com:8080")
-        self.assertIsNone(details['write_timeout'])  # Python version doesn't use write_timeout
-        self.assertEqual(details['read_timeout'], 30.0)
-        self.assertEqual(details['connect_timeout'], 10.0)
-        self.assertTrue(details['include_request_in_response'])
-        self.assertEqual(details['request_queue_length'], 0)  # Empty queue
+        self.assertEqual(details["url"], "https://api.example.com:8080")
+        self.assertIsNone(details["write_timeout"])  # Python version doesn't use write_timeout
+        self.assertEqual(details["read_timeout"], 30.0)
+        self.assertEqual(details["connect_timeout"], 10.0)
+        self.assertTrue(details["include_request_in_response"])
+        self.assertEqual(details["request_queue_length"], 0)  # Empty queue
 
     def test_details_with_defaults(self):
         i = HttpClientInterface("localhost")
@@ -99,12 +99,12 @@ class TestHttpClientInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check default values
-        self.assertEqual(details['url'], "http://localhost")
-        self.assertIsNone(details['write_timeout'])
-        self.assertIsNone(details['read_timeout'])
-        self.assertEqual(details['connect_timeout'], 5)
-        self.assertFalse(details['include_request_in_response'])
-        self.assertEqual(details['request_queue_length'], 0)
+        self.assertEqual(details["url"], "http://localhost")
+        self.assertIsNone(details["write_timeout"])
+        self.assertIsNone(details["read_timeout"])
+        self.assertEqual(details["connect_timeout"], 5)
+        self.assertFalse(details["include_request_in_response"])
+        self.assertEqual(details["request_queue_length"], 0)
 
     def test_details_with_none_timeouts(self):
         i = HttpClientInterface("example.com", 80, "http", None, "None", "None", False)
@@ -114,11 +114,11 @@ class TestHttpClientInterface(unittest.TestCase):
         self.assertIsInstance(details, dict)
 
         # Check None values are preserved
-        self.assertEqual(details['url'], "http://example.com")
-        self.assertIsNone(details['write_timeout'])
-        self.assertIsNone(details['read_timeout'])
-        self.assertIsNone(details['connect_timeout'])
-        self.assertFalse(details['include_request_in_response'])
+        self.assertEqual(details["url"], "http://example.com")
+        self.assertIsNone(details["write_timeout"])
+        self.assertIsNone(details["read_timeout"])
+        self.assertIsNone(details["connect_timeout"])
+        self.assertFalse(details["include_request_in_response"])
 
     def test_details_with_queue_items(self):
         i = HttpClientInterface("example.com")
@@ -130,8 +130,8 @@ class TestHttpClientInterface(unittest.TestCase):
         details = i.details()
 
         # Verify queue length is reported correctly
-        self.assertEqual(details['request_queue_length'], 3)
+        self.assertEqual(details["request_queue_length"], 3)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

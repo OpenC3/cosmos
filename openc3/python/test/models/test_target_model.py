@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -164,6 +164,8 @@ class TestTargetModelPacket(unittest.TestCase):
         setup_system()
         model = TargetModel(folder_name="INST", name="INST", scope="DEFAULT")
         model.create()
+        # Clear packet cache before each test
+        TargetModel.packet_cache = {}
 
     def test_raises_for_an_unknown_type(self):
         with self.assertRaisesRegex(RuntimeError, "Unknown type OTHER"):
@@ -186,6 +188,70 @@ class TestTargetModelPacket(unittest.TestCase):
         pkt = TargetModel.packet("INST", "ABORT", type="CMD", scope="DEFAULT")
         self.assertEqual(pkt["target_name"], "INST")
         self.assertEqual(pkt["packet_name"], "ABORT")
+
+    def test_caches_packet_lookups(self):
+        # First call should populate cache
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+
+        # Second call should hit cache and return same result
+        pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+
+        # Both should be equal
+        self.assertEqual(pkt1, pkt2)
+
+    def test_expires_cache_after_timeout(self):
+        import time as time_module
+
+        # First call populates cache
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+
+        # Save the original timeout and set it to 0 to force expiration
+        original_timeout = TargetModel.PACKET_CACHE_TIMEOUT
+        TargetModel.PACKET_CACHE_TIMEOUT = 0
+
+        try:
+            # Wait a tiny bit to ensure cache is expired
+            time_module.sleep(0.001)
+
+            # Next call should miss cache due to expiration
+            pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+
+            # Still only one entry but cache time should have been updated
+            self.assertEqual(len(TargetModel.packet_cache), 1)
+            self.assertEqual(pkt1, pkt2)
+        finally:
+            # Restore timeout
+            TargetModel.PACKET_CACHE_TIMEOUT = original_timeout
+
+    def test_invalidates_cache_on_set_packet(self):
+        # First call populates cache
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+
+        # set_packet should invalidate the cache entry
+        TargetModel.set_packet("INST", "HEALTH_STATUS", pkt1, type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 0)
+
+        # Next packet() call should re-populate cache
+        pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+        self.assertEqual(pkt1, pkt2)
+
+    def test_caches_different_packet_types_separately(self):
+        # Get TLM packet
+        tlm_pkt = TargetModel.packet("INST", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 1)
+
+        # Get CMD packet
+        cmd_pkt = TargetModel.packet("INST", "ABORT", type="CMD", scope="DEFAULT")
+        self.assertEqual(len(TargetModel.packet_cache), 2)
+
+        # Verify different packets
+        self.assertEqual(tlm_pkt["packet_name"], "HEALTH_STATUS")
+        self.assertEqual(cmd_pkt["packet_name"], "ABORT")
 
 
 class TestTargetModelPacketItem(unittest.TestCase):

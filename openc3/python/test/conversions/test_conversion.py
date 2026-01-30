@@ -23,9 +23,7 @@ from test.test_helper import *
 
 class TestConversion(unittest.TestCase):
     def test_raises_an_exception(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "call method must be defined by subclass"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "call method must be defined by subclass"):
             Conversion().call(0, 0, 0)
 
     def test_returns_a_string(self):

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -176,13 +176,26 @@ test('changes the polling rate', async ({ page, utils }) => {
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await page
-    .locator('.v-dialog [data-test=refresh-interval] input')
-    .fill('5000')
-  await page
-    .locator('.v-dialog [data-test=refresh-interval] input')
-    .press('Enter')
-  await page.locator('.v-dialog').press('Escape')
+  // Verify the dialog opens with default value of 1 second
+  await expect(
+    page.locator('[data-test=refresh-interval] input'),
+  ).toHaveValue('1')
+  // Change to 5 seconds (input is in seconds, not milliseconds)
+  await page.locator('[data-test=refresh-interval] input').fill('5')
+  // Test Cancel button - should NOT save changes
+  await page.locator('[data-test=options-cancel-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  // Re-open and verify value is still 1 (cancel didn't save)
+  await page.locator('[data-test=packet-viewer-file]').click()
+  await page.locator('[data-test=packet-viewer-file-options]').click()
+  await expect(
+    page.locator('[data-test=refresh-interval] input'),
+  ).toHaveValue('1')
+  // Now change to 5 seconds and Save
+  await page.locator('[data-test=refresh-interval] input').fill('5')
+  await page.locator('[data-test=options-save-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  // Verify the change took effect by checking RECEIVED_COUNT
   const received = parseInt(
     await page.inputValue('tr:has-text("RECEIVED_COUNT") input'),
   )
@@ -192,16 +205,16 @@ test('changes the polling rate', async ({ page, utils }) => {
   )
   expect(received2 - received).toBeLessThanOrEqual(6) // Allow slop
   expect(received2 - received).toBeGreaterThanOrEqual(4) // Allow slop
-  // Set it back
+  // Verify the saved value persists
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await page
-    .locator('.v-dialog [data-test=refresh-interval] input')
-    .fill('1000')
-  await page
-    .locator('.v-dialog [data-test=refresh-interval] input')
-    .press('Enter')
-  await page.locator('.v-dialog').press('Escape')
+  await expect(
+    page.locator('[data-test=refresh-interval] input'),
+  ).toHaveValue('5')
+  // Set it back to 1 second
+  await page.locator('[data-test=refresh-interval] input').fill('1')
+  await page.locator('[data-test=options-save-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
 })
 
 //

@@ -1,0 +1,17 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# Gemfile for TSDB integration tests
+
+source 'https://rubygems.org'
+
+# Use local openc3 gem
+gem 'openc3', path: '../../../..'
+
+gem 'rspec', '~> 3.12'
+
+# Ruby 3.4 removed these from stdlib
+gem 'drb'
+gem 'base64'
+gem 'bigdecimal'
+gem 'mutex_m'

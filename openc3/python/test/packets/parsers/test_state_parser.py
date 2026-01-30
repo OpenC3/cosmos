@@ -271,9 +271,9 @@ class TestStateParser(unittest.TestCase):
 
         # Verify hex values are correctly converted to integers
         states = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states
-        self.assertEqual(states["HEX_LOW"], 10)     # 0x0A = 10
-        self.assertEqual(states["HEX_HIGH"], 255)   # 0xFF = 255
-        self.assertEqual(states["HEX_MIXED"], 57005) # 0xDEAD = 57005
+        self.assertEqual(states["HEX_LOW"], 10)  # 0x0A = 10
+        self.assertEqual(states["HEX_HIGH"], 255)  # 0xFF = 255
+        self.assertEqual(states["HEX_MIXED"], 57005)  # 0xDEAD = 57005
 
         # Test reading values back
         tlm = Telemetry(self.pc, System)

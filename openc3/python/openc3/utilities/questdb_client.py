@@ -22,13 +22,97 @@ Used by both TsdbMicroservice (real-time) and MigrationMicroservice (historical 
 import base64
 import contextlib
 import json
-import numbers
+import math
 import os
 import re
+from datetime import datetime, timezone
+from decimal import Decimal
 
 import numpy
 import psycopg
-from questdb.ingress import IngressError, Protocol, Sender, TimestampMicros, TimestampNanos
+from questdb.ingress import IngressError, Protocol, Sender, TimestampNanos
+
+
+# Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
+# QuestDB stores these as NULL, so we use sentinel values near float max instead.
+# 64-bit double sentinels (for FLOAT 64-bit columns)
+FLOAT64_POS_INF_SENTINEL = 1.7976931348623155e308
+FLOAT64_NEG_INF_SENTINEL = -1.7976931348623155e308
+FLOAT64_NAN_SENTINEL = -1.7976931348623153e308
+
+# 32-bit float sentinels (for FLOAT 32-bit columns)
+# These are the values to write; they'll be truncated to 32-bit precision on storage
+FLOAT32_POS_INF_SENTINEL = 3.4028233e38
+FLOAT32_NEG_INF_SENTINEL = -3.4028233e38
+FLOAT32_NAN_SENTINEL = -3.4028231e38
+
+# What we'll read back after 32-bit storage (for comparison on read)
+FLOAT32_POS_INF_STORED = 3.4028232635611926e38
+FLOAT32_NEG_INF_STORED = -3.4028232635611926e38
+FLOAT32_NAN_STORED = -3.4028230607370965e38
+
+
+def encode_float_special_values(value, bit_size=64):
+    """
+    Convert float special values (inf, -inf, nan) to sentinel values for QuestDB storage.
+
+    Args:
+        value: The float value to potentially encode
+        bit_size: 32 for single precision, 64 for double precision
+
+    Returns:
+        The value with special values replaced by sentinels
+    """
+    if not isinstance(value, float):
+        return value
+
+    if bit_size == 32:
+        if math.isinf(value):
+            return FLOAT32_POS_INF_SENTINEL if value > 0 else FLOAT32_NEG_INF_SENTINEL
+        if math.isnan(value):
+            return FLOAT32_NAN_SENTINEL
+    else:
+        if math.isinf(value):
+            return FLOAT64_POS_INF_SENTINEL if value > 0 else FLOAT64_NEG_INF_SENTINEL
+        if math.isnan(value):
+            return FLOAT64_NAN_SENTINEL
+
+    return value
+
+
+def decode_float_special_values(value):
+    """
+    Convert sentinel values back to float special values (inf, -inf, nan).
+
+    Checks against both 32-bit and 64-bit sentinel values since we may not
+    know the original column type at read time.
+
+    Args:
+        value: The float value to potentially decode
+
+    Returns:
+        The value with sentinels replaced by special values
+    """
+    if not isinstance(value, float):
+        return value
+
+    # Check 64-bit sentinels
+    if value == FLOAT64_POS_INF_SENTINEL:
+        return float("inf")
+    if value == FLOAT64_NEG_INF_SENTINEL:
+        return float("-inf")
+    if value == FLOAT64_NAN_SENTINEL:
+        return float("nan")
+
+    # Check 32-bit sentinels (stored values after precision loss)
+    if value == FLOAT32_POS_INF_STORED:
+        return float("inf")
+    if value == FLOAT32_NEG_INF_STORED:
+        return float("-inf")
+    if value == FLOAT32_NAN_STORED:
+        return float("nan")
+
+    return value
 
 
 class QuestDBClient:
@@ -43,10 +127,108 @@ class QuestDBClient:
     - Schema-safe ingestion with error handling
     """
 
+    # Special timestamp items that are calculated from PACKET_TIMESECONDS/RECEIVED_TIMESECONDS columns
+    # rather than stored as separate columns. PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored
+    # as timestamp_ns columns and need conversion to float seconds on read. The TIMEFORMATTED items
+    # are derived from these timestamp columns.
+    TIMESTAMP_ITEMS = {
+        "PACKET_TIMEFORMATTED": {"source": "PACKET_TIMESECONDS", "format": "formatted"},
+        "RECEIVED_TIMEFORMATTED": {"source": "RECEIVED_TIMESECONDS", "format": "formatted"},
+    }
+
     # QuestDB name restrictions - characters that need to be replaced
     # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
     TABLE_NAME_INVALID_CHARS = r'[?,\'"\\/:)(+*%~]'
-    COLUMN_NAME_INVALID_CHARS = r'[?\.,\'"\\/:)(+\-*%~;]'
+    # ILP protocol special characters that must be sanitized in column names
+    COLUMN_NAME_INVALID_CHARS = r'[?\.,\'"\\/:)(+=\-*%~;!@#$^&]'
+
+    @staticmethod
+    def decode_value(value, data_type=None, array_size=None):
+        """
+        Decode a value retrieved from QuestDB back to its original Python type.
+
+        QuestDB stores certain COSMOS types specially:
+        - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
+        - Objects/Dicts are JSON-encoded: '{"key": "value"}'
+        - Binary data (BLOCK) is base64-encoded
+        - Large integers (64-bit) are stored as DECIMAL (returned as Decimal objects)
+
+        Args:
+            value: The value to decode
+            data_type: COSMOS data type (INT, UINT, FLOAT, STRING, BLOCK, DERIVED, etc.)
+            array_size: If not None, indicates this is an array item
+
+        Returns:
+            The decoded value
+        """
+        # Handle Decimal values from QuestDB DECIMAL columns (used for 64-bit integers)
+        if isinstance(value, Decimal):
+            if data_type in ("INT", "UINT"):
+                return int(value)
+            return value
+
+        # Decode float sentinel values back to inf/nan
+        if isinstance(value, float):
+            return decode_float_special_values(value)
+
+        # Non-strings don't need decoding (already handled by psycopg type mapping)
+        if not isinstance(value, str):
+            return value
+
+        # Handle based on data type if provided
+        if data_type == "BLOCK":
+            # Empty string should be empty bytes for BLOCK type
+            if not value:
+                return b""
+            try:
+                return base64.b64decode(value)
+            except Exception:
+                return value
+
+        # Empty strings stay as empty strings (for non-BLOCK types)
+        if not value:
+            return value
+
+        # Arrays are JSON-encoded
+        if array_size is not None:
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+
+        # Integer values stored as strings (fallback path, normally DECIMAL)
+        if data_type in ("INT", "UINT"):
+            try:
+                return int(value)
+            except (ValueError, OverflowError):
+                return value
+
+        # DERIVED items are JSON-encoded (could be any type)
+        if data_type == "DERIVED":
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                # Could be a plain string from DERIVED
+                return value
+
+        # No data_type provided - fall back to heuristic decoding
+        if data_type is None:
+            first_char = value[0]
+            # Try JSON for arrays/objects
+            if first_char == "[" or first_char == "{":
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    pass
+            # Try integer conversion for numeric strings
+            elif (first_char == "-" or first_char.isdigit()) and value.lstrip("-").isdigit():
+                try:
+                    return int(value)
+                except (ValueError, OverflowError):
+                    pass
+
+        # Return as-is (STRING type or unknown)
+        return value
 
     def __init__(self, logger=None, name=None):
         """
@@ -63,6 +245,14 @@ class QuestDBClient:
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
         # Key is "table__column", value is True
         self.json_columns = {}
+        # Track columns that store integers as DECIMAL (for 64-bit items)
+        # These need integer values converted to strings before ILP ingestion
+        # (QuestDB casts strings to DECIMAL for pre-created DECIMAL columns)
+        # Key is "table__column", value is True
+        self.decimal_int_columns = {}
+        # Track FLOAT column bit sizes for proper inf/nan sentinel encoding
+        # Key is "table__column", value is bit_size (32 or 64)
+        self.float_bit_sizes = {}
 
     def _log_info(self, msg):
         if self.logger:
@@ -205,6 +395,64 @@ class QuestDBClient:
         """
         return re.sub(cls.COLUMN_NAME_INVALID_CHARS, "_", item_name)
 
+    @staticmethod
+    def column_suffix_for_value_type(value_type):
+        """
+        Get the column suffix for a given value type.
+        Used when building SQL queries to select the appropriate column.
+
+        Args:
+            value_type: Value type: 'RAW', 'CONVERTED', 'FORMATTED'
+
+        Returns:
+            Column suffix ('__C', '__F') or None for RAW
+        """
+        if value_type == "FORMATTED":
+            return "__F"
+        elif value_type == "CONVERTED":
+            return "__C"
+        else:
+            return None
+
+    @staticmethod
+    def pg_timestamp_to_utc(pg_time):
+        """
+        Convert a psycopg timestamp to UTC.
+        psycopg returns timestamps as naive datetime objects that need UTC treatment.
+        QuestDB stores timestamps in UTC, but the psycopg driver may return naive datetimes.
+
+        Args:
+            pg_time: Timestamp from psycopg query result (datetime)
+
+        Returns:
+            UTC-aware datetime
+        """
+        if pg_time is None:
+            return None
+        # Replace timezone info with UTC (psycopg may return naive datetimes)
+        return pg_time.replace(tzinfo=timezone.utc)
+
+    @staticmethod
+    def format_timestamp(utc_time, format_type):
+        """
+        Format a UTC timestamp according to the specified format.
+
+        Args:
+            utc_time: UTC datetime
+            format_type: 'seconds' for Unix seconds (float), 'formatted' for ISO 8601
+
+        Returns:
+            Formatted timestamp (float or string) or None if utc_time is None
+        """
+        if utc_time is None:
+            return None
+        if format_type == "seconds":
+            return utc_time.timestamp()
+        elif format_type == "formatted":
+            return utc_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            return None
+
     def create_table(self, target_name, packet_name, packet):
         """
         Create a QuestDB table for a target/packet combination.
@@ -255,14 +503,9 @@ class QuestDBClient:
                 continue
 
             if item.get("array_size") is not None:
-                # QuestDB only supports DOUBLE[] arrays as of 9.0.0
-                # Numeric arrays can use DOUBLE[], non-numeric must be JSON serialized
-                if data_type in ["INT", "UINT", "FLOAT"]:
-                    column_definitions.append(f'"{item_name}" DOUBLE[]')
-                else:
-                    # Non-numeric arrays (STRING, BLOCK, etc.) must be JSON serialized
-                    column_definitions.append(f'"{item_name}" varchar')
-                    self.json_columns[f"{table_name}__{item_name}"] = True
+                # Always json encode arrays to avoid QuestDB array type issues
+                column_definitions.append(f'"{item_name}" varchar')
+                self.json_columns[f"{table_name}__{item_name}"] = True
             else:
                 # Determine the QuestDB column type based on item data type
                 # Default to VARCHAR for flexibility
@@ -276,15 +519,22 @@ class QuestDBClient:
                 if data_type in ["INT", "UINT"]:
                     if bit_size < 32:
                         column_type = "int"
-                    elif bit_size <= 64:
+                    elif bit_size < 64:
                         column_type = "long"
                     else:
-                        column_type = "varchar"
+                        # Use DECIMAL(20, 0) for 64-bit integers to preserve full range
+                        # LONG uses min value as NULL, DECIMAL uses out-of-range value
+                        # 20 digits covers unsigned 64-bit max (18446744073709551615)
+                        column_type = "DECIMAL(20, 0)"
+                        # Register for Decimal conversion before ILP ingestion
+                        self.decimal_int_columns[f"{table_name}__{item_name}"] = True
                 elif data_type == "FLOAT":
                     if bit_size == 32:
                         column_type = "float"
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 32
                     else:
                         column_type = "double"
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 64
                 elif data_type in ["STRING", "BLOCK"]:
                     column_type = "varchar"
 
@@ -299,8 +549,10 @@ class QuestDBClient:
                     if converted_type == "FLOAT":
                         if converted_bit_size == 32:
                             column_definitions.append(f'"{item_name}__C" float')
+                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 32
                         else:
                             column_definitions.append(f'"{item_name}__C" double')
+                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 64
                     elif converted_type in ["INT", "UINT"]:
                         if converted_bit_size < 32:
                             column_definitions.append(f'"{item_name}__C" int')
@@ -318,23 +570,25 @@ class QuestDBClient:
 
         try:
             with self.query.cursor() as cur:
+                # Create table with COSMOS_DATA_TAG as a SYMBOL
+                # for use as filtering/indexing column.
                 sql = f"""
                     CREATE TABLE IF NOT EXISTS "{table_name}" (
-                        timestamp timestamp,
-                        tag SYMBOL,
-                        PACKET_TIMESECONDS timestamp,
-                        RECEIVED_TIMESECONDS timestamp,
-                        PACKET_TIMEFORMATTED varchar,
-                        RECEIVED_TIMEFORMATTED varchar,
+                        PACKET_TIMESECONDS timestamp_ns,
+                        RECEIVED_TIMESECONDS timestamp_ns,
+                        COSMOS_DATA_TAG SYMBOL,
                         RECEIVED_COUNT LONG"""
 
                 if columns_sql:
                     sql += f",\n{columns_sql}"
 
+                # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
+                # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
+                # explicitly include COSMOS_DATA_TAG as well.
                 sql += """
-                    ) TIMESTAMP(timestamp)
+                    ) TIMESTAMP(PACKET_TIMESECONDS)
                         PARTITION BY DAY
-                        DEDUP UPSERT KEYS (timestamp, tag)
+                        DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
                 """
 
                 self._log_info(f"QuestDB: Creating table:\n{sql}")
@@ -371,27 +625,40 @@ class QuestDBClient:
                 return json.dumps(value), False
             return value, False
 
+        # Check if this column stores integers as DECIMAL (64-bit integer columns)
+        if table_name:
+            decimal_int_key = f"{table_name}__{item_name}"
+            is_decimal_int = decimal_int_key in self.decimal_int_columns
+        else:
+            is_decimal_int = False
+
         # Handle various data types for non-DERIVED columns
         match value:
             case int():
-                if value > (2**63 - 1):
-                    value = 2**63 - 1
-                elif value < (-(2**63) + 1):
-                    value = -(2**63) + 1
+                # 64-bit integer columns are stored as DECIMAL - send as string via ILP
+                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns.
+                # QuestDB Python client uses C long internally (signed 64-bit).
+                # Values outside this range must be strings for DECIMAL columns.
+                if is_decimal_int or value > 9223372036854775807 or value < -9223372036854775808:
+                    value = str(value)
 
-            case float() | str() | None:
+            case float():
+                # Encode inf/nan as sentinel values (QuestDB stores these as NULL)
+                if table_name:
+                    float_key = f"{table_name}__{item_name}"
+                    bit_size = self.float_bit_sizes.get(float_key, 64)
+                else:
+                    bit_size = 64
+                value = encode_float_special_values(value, bit_size)
+
+            case str() | None:
                 pass
 
             case bytes():
                 value = base64.b64encode(value).decode("ascii")
 
             case list():
-                # QuestDB 9.0.0 only supports DOUBLE arrays
-                # Check ALL elements are numeric (not just first) to avoid mixed array errors
-                if len(value) == 0 or not all(isinstance(v, numbers.Number) for v in value):
-                    value = json.dumps(value)
-                else:
-                    value = numpy.array(value, dtype=numpy.float64)
+                value = json.dumps(value)
 
             case dict():
                 json_class = value.get("json_class")
@@ -410,6 +677,18 @@ class QuestDBClient:
 
         return value, False
 
+    # Items that are derived from or stored in the PACKET_TIMESECONDS/RECEIVED_TIMESECONDS
+    # timestamp columns and should not be stored as separate columns from json_data.
+    # The timestamp values come from message metadata (time, received_time), not json_data.
+    # PACKET_TIMESECONDS, RECEIVED_TIMESECONDS: stored as timestamp_ns columns (from message metadata)
+    # PACKET_TIMEFORMATTED, RECEIVED_TIMEFORMATTED: calculated on read from timestamp columns
+    SKIP_TIME_ITEMS = {
+        "PACKET_TIMESECONDS",
+        "PACKET_TIMEFORMATTED",
+        "RECEIVED_TIMESECONDS",
+        "RECEIVED_TIMEFORMATTED",
+    }
+
     def process_json_data(self, json_data, table_name=None):
         """
         Process JSON data dict into QuestDB-compatible columns.
@@ -422,34 +701,40 @@ class QuestDBClient:
             Dict of sanitized_column_name -> converted_value
         """
         values = {}
+
         for orig_item_name, value in json_data.items():
             item_name = self.sanitize_column_name(orig_item_name)
+
+            # Skip time-related items that are calculated from the PACKET_TIMESECONDS/RECEIVED_TIMESECONDS
+            # timestamp columns. These values are derived on read and don't need separate storage.
+            if item_name in self.SKIP_TIME_ITEMS:
+                continue
 
             converted, skip = self.convert_value(value, item_name, table_name)
             if skip:
                 self._log_warn(f"QuestDB: Unsupported value type for {orig_item_name}: {type(value)}")
                 continue
 
-            # Handle timestamp columns specially
-            if item_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
-                values[item_name] = TimestampMicros(int(converted * 1_000_000))
-            else:
-                values[item_name] = converted
+            values[item_name] = converted
 
         return values
 
-    def write_row(self, table_name, columns, timestamp_ns):
+    def write_row(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
         """
         Write a single row to QuestDB.
 
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Timestamp in nanoseconds
+            timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
+            rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
         """
+        if rx_timestamp_ns is not None:
+            # Convert nanoseconds to datetime for QuestDB timestamp column
+            columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
 
-    def write_row_with_schema_protection(self, table_name, columns, timestamp_ns):
+    def write_row_with_schema_protection(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
         """
         Write a single row with schema protection (for migration).
 
@@ -459,12 +744,18 @@ class QuestDBClient:
         Args:
             table_name: Target table name (already sanitized)
             columns: Dict of column_name -> value
-            timestamp_ns: Timestamp in nanoseconds
+            timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
+            rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
 
         Returns:
             Tuple of (success: bool, migrated_columns: list)
         """
         try:
+            if rx_timestamp_ns is not None:
+                # Convert nanoseconds to datetime for QuestDB timestamp column
+                columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(
+                    rx_timestamp_ns / 1_000_000_000, tz=timezone.utc
+                )
             self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
             return True, []
         except IngressError as error:
@@ -531,6 +822,24 @@ class QuestDBClient:
                             columns[column_name] = json.dumps(value.tolist())
                         else:
                             columns[column_name] = json.dumps(value)
+                        self.connect_ingest()  # reconnect
+                        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+                        return True
+                    return False
+
+                # Handle INTEGER to DECIMAL cast error by converting value to string
+                # This happens for 64-bit integer columns which are stored as DECIMAL
+                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns
+                if protocol_type == "INTEGER" and column_type == "DECIMAL":
+                    if column_name in columns:
+                        value = columns[column_name]
+                        columns[column_name] = str(value)
+                        # Register this column so future values are converted upfront
+                        self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
+                        self._log_info(
+                            f"QuestDB: Column {column_name} is DECIMAL but received INTEGER. "
+                            f"Converting value to string and retrying."
+                        )
                         self.connect_ingest()  # reconnect
                         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
                         return True

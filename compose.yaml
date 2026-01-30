@@ -128,11 +128,6 @@ services:
       RAILS_ENV: "production"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
@@ -160,15 +155,6 @@ services:
       RAILS_ENV: "production"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SR_REDIS_USERNAME: "${OPENC3_SR_REDIS_USERNAME}"
-      OPENC3_SR_REDIS_PASSWORD: "${OPENC3_SR_REDIS_PASSWORD}"
-      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
-      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
@@ -205,50 +191,10 @@ services:
       CI: "true"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
     env_file:
       - .env
     extra_hosts:
       - host.docker.internal:host-gateway
-
-  # Migration microservice for ingesting historical bin file data into QuestDB
-  # Disabled by default - set MIGRATION_ENABLED=true to enable
-  # openc3-cosmos-migration:
-  #   user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
-  #   image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-migration${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-  #   restart: "no"  # Run once, don't auto-restart
-  #   depends_on:
-  #     - "openc3-redis"
-  #     - "openc3-buckets"
-  #     - "openc3-tsdb"
-  #   volumes:
-  #     - "openc3-gems-v:/gems:ro"
-  #     - "./cacert.pem:/devel/cacert.pem:z"
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-  #   environment:
-  #     - GEM_HOME=/gems
-  #     - PYTHONUSERBASE=/gems/python_packages
-  #     - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-  #     - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-  #     - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-  #     - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-  #     - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
-  #     - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
-  #     - MIGRATION_ENABLED=${MIGRATION_ENABLED:-false}
-  #     - MIGRATION_BATCH_SIZE=${MIGRATION_BATCH_SIZE:-1000}
-  #     - MIGRATION_SLEEP_SECONDS=${MIGRATION_SLEEP_SECONDS:-0.5}
-  #     - MIGRATION_FILES_BEFORE_PAUSE=${MIGRATION_FILES_BEFORE_PAUSE:-10}
-  #     - MIGRATION_PAUSE_SECONDS=${MIGRATION_PAUSE_SECONDS:-30}
-  #   env_file:
-  #     - .env
 
   openc3-traefik:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -307,12 +253,6 @@ services:
       CI: "true"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
-      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
     env_file:
       - .env
 
@@ -321,5 +261,5 @@ volumes:
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
   openc3-buckets-v:
-    name: openc3-buckets-v  # Fixed name to match migration script (no project prefix)
+    name: openc3-buckets-v # Fixed name to match migration script (no project prefix)
   openc3-gems-v: {}

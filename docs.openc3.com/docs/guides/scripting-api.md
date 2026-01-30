@@ -9666,8 +9666,7 @@ delete_config('telemetry_grapher', 'adcs')
 
 ## Offline Access
 
-An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and
-setting of the offline_access_token.
+An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and setting of the offline_access_token.
 
 ### initialize_offline_access
 

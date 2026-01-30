@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -32,9 +32,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 8 0 DERIVED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "ITEM types are only valid with TELEMETRY"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "ITEM types are only valid with TELEMETRY"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -103,9 +101,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ARRAY_ITEM ITEM[0] 0 32 FLOAT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: ITEM\[0\]"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: ITEM\[0\]"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -113,20 +109,28 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ARRAY_ITEM DATA[1] 8 UINT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: DATA\[1\]"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: DATA\[1\]"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
+
+    def test_complains_if_item_name_is_reserved(self):
+        from openc3.packets.packet import Packet
+
+        for reserved_name in Packet.RESERVED_ITEM_NAMES:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write(f"  APPEND_ITEM {reserved_name} 32 UINT\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, f"{reserved_name} is a reserved item name"):
+                self.pc.process_file(tf.name, "TGT1")
+            tf.close()
 
     def test_only_allows_derived_items_with_offset_0_and_size_0(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 8 0 DERIVED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED items must have bit_offset of zero"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED items must have bit_offset of zero"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -134,9 +138,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 0 8 DERIVED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED items must have bit_size of zero"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED items must have bit_size of zero"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -155,7 +157,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write("  ITEM ITEM2 0 32 UINT\n")
         tf.write("  ARRAY_ITEM ITEM3 0 32 FLOAT 64\n")
         tf.write('  APPEND_ID_ITEM ITEM4 32 STRING "0xABCD"\n')
-        tf.write('  APPEND_ID_ITEM ITEM5 32 BLOCK 0xABCD\n')
+        tf.write("  APPEND_ID_ITEM ITEM5 32 BLOCK 0xABCD\n")
         tf.write("  APPEND_ITEM ITEM6 32 BLOCK\n")
         tf.write("  APPEND_ARRAY_ITEM ITEM7 32 BLOCK 64\n")
         tf.seek(0)
@@ -167,7 +169,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         )
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].id_value, 0x42)
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM4"].id_value, "0xABCD")
-        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM5"].id_value, b"\xAB\xCD")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM5"].id_value, b"\xab\xcd")
         id_items = []
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"])
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM4"])
@@ -211,9 +213,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 0 0 BOOL 1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Default for BOOL data type must be TRUE or FALSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Default for BOOL data type must be TRUE or FALSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -221,9 +221,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ID_ITEM ITEM1 0 BOOL invalid\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "ID Value for BOOL data type must be TRUE or FALSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "ID Value for BOOL data type must be TRUE or FALSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -232,9 +230,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 0 0 ARRAY notarray\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Unparsable value for ARRAY: notarray"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Unparsable value for ARRAY: notarray"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -242,9 +238,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write('  APPEND_ID_ITEM ITEM1 0 ARRAY "string"\n')
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Unparsable value for ARRAY: string"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Unparsable value for ARRAY: string"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -253,9 +247,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 0 0 OBJECT notobject\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Unparsable value for OBJECT: notobject"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Unparsable value for OBJECT: notobject"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -263,9 +255,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ID_ITEM ITEM1 0 OBJECT [1,2,3]\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "ID Value for OBJECT data type must be a Hash"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "ID Value for OBJECT data type must be a Hash"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -310,7 +300,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         packet = self.pc.telemetry["TGT1"]["PKT1"]
-        packet.buffer = bytearray(b"\xDE\xAD\xBE\xEF")
+        packet.buffer = bytearray(b"\xde\xad\xbe\xef")
         self.assertEqual(packet.read("ITEM1"), 0xBEEF)
         self.assertIn("TGT1 PKT1 ITEM1 redefined.", self.pc.warnings)
         tf.close()
@@ -320,9 +310,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 8 0 DERIVED 0 0 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "PARAMETER types are only valid with COMMAND"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "PARAMETER types are only valid with COMMAND"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -369,9 +357,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 8 0 DERIVED 0 0 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED items must have bit_offset of zero"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED items must have bit_offset of zero"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -379,9 +365,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 0 8 DERIVED 0 0 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED items must have bit_size of zero"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED items must have bit_size of zero"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -398,9 +382,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ID_PARAMETER ITEM1 0 0 DERIVED 0 0 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED data type not allowed"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED data type not allowed"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -409,9 +391,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ID_PARAMETER ITEM1 0 DERIVED 0 0 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DERIVED data type not allowed"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DERIVED data type not allowed"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -420,9 +400,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ARRAY_PARAMETER PARAM[0] 0 32 UINT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: PARAM\[0\]"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: PARAM\[0\]"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -430,9 +408,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ARRAY_PARAMETER VALUES[2] 16 INT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, r"ARRAY items cannot have brackets in their name: VALUES\[2\]"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: VALUES\[2\]"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -444,7 +420,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write("  PARAMETER ITEM3 64 32 UINT 0 0 0\n")
         tf.write("  ARRAY_PARAMETER ITEM4 96 32 FLOAT 64\n")
         tf.write("  APPEND_ID_PARAMETER ITEM5 32 UINT 0x0 0xFFFFFFFF 0xDEADBEEF\n")
-        tf.write('  APPEND_ID_PARAMETER ITEM6 32 BLOCK 0xABCD\n')
+        tf.write("  APPEND_ID_PARAMETER ITEM6 32 BLOCK 0xABCD\n")
         tf.write('  APPEND_PARAMETER ITEM7 32 BLOCK "1234"\n')
         tf.write("  APPEND_ARRAY_PARAMETER ITEM8 32 BLOCK 0x40\n")
         tf.seek(0)
@@ -454,9 +430,9 @@ class TestPacketItemParserCmd(unittest.TestCase):
         self.assertEqual(packet.get_item("ITEM1").id_value, 0x42)
         self.assertEqual(packet.get_item("ITEM2").bit_offset, 32)
         self.assertEqual(packet.get_item("ITEM2").bit_size, 32)
-        self.assertEqual(packet.get_item("ITEM2").id_value, '0xABCD')
+        self.assertEqual(packet.get_item("ITEM2").id_value, "0xABCD")
         self.assertEqual(packet.get_item("ITEM5").id_value, 0xDEADBEEF)
-        self.assertEqual(packet.get_item("ITEM6").id_value, b'\xAB\xCD')
+        self.assertEqual(packet.get_item("ITEM6").id_value, b"\xab\xcd")
         self.assertEqual(packet.get_item("ITEM8").array_size, 64)
         tf.close()
 
@@ -546,9 +522,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write('  ID_PARAMETER ITEM1 0 32 UINT 0 0 0 "" MIDDLE_ENDIAN\n')
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Invalid endianness MIDDLE_ENDIAN"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Invalid endianness MIDDLE_ENDIAN"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -578,9 +552,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
     def test_accepts_hex_values(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write(
-            '  PARAMETER ITEM1 0 32 UINT 0x12345678 0xDEADFEEF 0xBA5EBA11 "" LITTLE_ENDIAN\n'
-        )
+        tf.write('  PARAMETER ITEM1 0 32 UINT 0x12345678 0xDEADFEEF 0xBA5EBA11 "" LITTLE_ENDIAN\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -593,7 +565,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         packet = self.pc.commands["TGT1"]["PKT1"]
-        packet.buffer = b"\xDE\xAD\xBE\xEF"
+        packet.buffer = b"\xde\xad\xbe\xef"
         self.assertEqual(packet.read("PARAM1"), 0xBEEF)
         self.assertIn("TGT1 PKT1 PARAM1 redefined.", self.pc.warnings)
         tf.close()

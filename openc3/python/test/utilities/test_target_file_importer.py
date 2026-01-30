@@ -34,9 +34,7 @@ class Helper:
     @classmethod
     def get_client(cls):
         class FakeBucket:
-            def list_files(
-                self, bucket, prefix=None, max_request=1000, max_total=100_000
-            ):
+            def list_files(self, bucket, prefix=None, max_request=1000, max_total=100_000):
                 return ([prefix], [])
 
         return FakeBucket()

@@ -32,6 +32,7 @@ from unittest.mock import *
 import fakeredis
 
 from openc3.models.cvt_model import CvtModel
+from openc3.models.target_model import TargetModel
 from openc3.system.system import System
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
@@ -77,6 +78,7 @@ def setup_system(targets=None):
     file_path = os.path.realpath(__file__)
     target_config_dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
     System.instance_obj = None
+    TargetModel.clear_packet_cache()
     System.instance(targets, target_config_dir)
 
     # Initialize the packets in Redis
@@ -146,7 +148,7 @@ class BucketMock:
         self.objs = {}
 
     @classmethod
-    def get_client(cls):
+    def getClient(cls):
         if cls.instance:
             return cls.instance
         cls.instance = cls()

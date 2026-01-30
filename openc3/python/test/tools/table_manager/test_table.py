@@ -79,5 +79,6 @@ class TestTable(unittest.TestCase):
         t = Table("table", "BIG_ENDIAN", "ROW_COLUMN", "description", "filename")
         self.assertEqual(t.num_columns, 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,4 @@ class TestReceivedTimeFormattedConversion(unittest.TestCase):
         self.assertEqual(gc.call(None, packet, None), "No Packet Received Time")
 
     def test_returns_the_class(self):
-        self.assertEqual(
-            str(ReceivedTimeFormattedConversion()), "ReceivedTimeFormattedConversion"
-        )
+        self.assertEqual(str(ReceivedTimeFormattedConversion()), "ReceivedTimeFormattedConversion")

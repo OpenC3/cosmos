@@ -36,6 +36,8 @@ jobs:
     strategy:
       matrix:
         ruby-version: ["3.4"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6

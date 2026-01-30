@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -190,8 +190,8 @@ class Telemetry:
     # @param packet_name [String] The packet name
     # @param item_name [String] The item name
     # @param value_type [String] How to convert the item before returning.
-    #   Must be one of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
-    # @return The value. 'FORMATTED' and 'WITH_UNITS' values are always returned
+    #   Must be one of 'RAW', 'CONVERTED', 'FORMATTED'
+    # @return The value. 'FORMATTED' values are always returned
     #   as Strings. 'RAW' values will match their data_type. 'CONVERTED' values
     #   can be any type.
     def value(self, target_name: str, packet_name: str, item_name: str, value_type: str = "CONVERTED") -> Any:

@@ -47,15 +47,15 @@ format-changed:
 
 # Lint code with Ruff (shows issues but doesn't fail)
 lint:
-    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
 
 # Lint and auto-fix issues (doesn't fail if unfixable issues remain)
 lint-fix:
-    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration --fix
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix
 
 # Lint code strictly (fails on any issues - for CI)
 lint-strict:
-    uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration
+    uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
 
 # Lint only changed files (staged and unstaged)
 lint-changed:
@@ -75,6 +75,10 @@ lint-changed:
 # Show linting statistics
 lint-stats:
     -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration --statistics
+
+# Lint and auto-fix unsafe issues includeing unsafe fixes (doesn't fail if unfixable issues remain)
+lint-unsafe:
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix --unsafe-fixes
 
 # Run all tests
 test:

@@ -16,7 +16,7 @@ SCREEN:
       values: \d+
     - name: Polling Period
       required: true
-      description: Number of seconds between screen updates
+      description: Number of seconds between screen updates. 0 means disable polling.
       values: '[0-9]*\.?[0-9]+'
   example: |
     SCREEN AUTO AUTO 1.0

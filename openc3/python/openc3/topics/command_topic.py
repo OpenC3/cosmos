@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -43,15 +43,35 @@ class CommandTopic(Topic):
 
     @classmethod
     def send_command(cls, command, timeout, scope, obfuscated_items=None):
+        """Send a command to a target.
+
+        Args:
+            command: Command hash structure to be written to a topic
+            timeout: Timeout in seconds. Set to 0 or negative for fire-and-forget mode (no ACK waiting).
+            scope: COSMOS scope
+            obfuscated_items: List of obfuscated items
+        """
         if obfuscated_items is None:
             obfuscated_items = []
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
-        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
-        Topic.update_topic_offsets([ack_topic])
         # Save the existing cmd_params Hash and JSON generate before writing to the topic
         cmd_params = command["cmd_params"]
         command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
+
+        # Fire-and-forget mode: skip ACK waiting when timeout <= 0
+        if timeout <= 0:
+            Topic.write_topic(
+                f"{{{scope}__CMD}}TARGET__{command['target_name']}",
+                command,
+                "*",
+                100,
+            )
+            command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
+            return command
+
+        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
+        Topic.update_topic_offsets([ack_topic])
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}TARGET__{command['target_name']}",
             command,

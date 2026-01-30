@@ -340,7 +340,7 @@ class TestCborAccessor(unittest.TestCase):
 
         item = self.Cbor("item", "$[1].packet.item5.happy", "OBJECT", None)
         CborAccessor.class_write_item(item, "{'ryan': 'hello'}", self.data2)
-        self.assertEqual(CborAccessor.class_read_item(item, self.data2), {'ryan': 'hello'})
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), {"ryan": "hello"})
 
         item = self.Cbor("item", "$[1].packet.item4[3]", "INT", None)
         CborAccessor.class_write_item(item, 14, self.data2)

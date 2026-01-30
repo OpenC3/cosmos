@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,6 +17,7 @@
 from ast import literal_eval
 
 from openc3.config.config_parser import ConfigParser
+from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
 from openc3.utilities.extract import convert_to_value, hex_to_byte_string
 from openc3.utilities.logger import Logger
@@ -76,6 +77,8 @@ class PacketItemParser:
     def create_packet_item(self, packet, cmd_or_tlm):
         try:
             item_name = self.parser.parameters[0].upper()
+            if item_name in Packet.RESERVED_ITEM_NAMES:
+                raise self.parser.error(f"{item_name} is a reserved item name", self.usage)
             if packet.items.get(item_name):
                 msg = f"{packet.target_name} {packet.packet_name} {item_name} redefined."
                 Logger.warn(msg)
@@ -273,8 +276,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception as error:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from error
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
                 return value
             else:
@@ -283,8 +286,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception as error:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from error
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
                 return value
             else:
@@ -331,8 +334,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception as error:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from error
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
                 return value
             else:
@@ -341,8 +344,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception as error:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from error
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
                 return value
             else:

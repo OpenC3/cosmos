@@ -40,9 +40,7 @@ def load_utility(procedure_name):
     # Retrieve file
     text = TargetFile.body(openc3_scope, procedure_name)
     if not text:
-        raise RuntimeError(
-            f"Unable to retrieve: {procedure_name} in scope {openc3_scope}"
-        )
+        raise RuntimeError(f"Unable to retrieve: {procedure_name} in scope {openc3_scope}")
     else:
         text = text.decode()
 

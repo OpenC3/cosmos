@@ -235,7 +235,9 @@ class TestPacketLogWriter(unittest.TestCase):
         plw = PacketLogWriter(self.temp_dir, "test")
 
         with self.assertRaises(ValueError) as context:
-            plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", "short_id", "0-0")
+            plw.write(
+                "RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", "short_id", "0-0"
+            )
 
         self.assertIn("64", str(context.exception))
         plw.shutdown()
@@ -467,7 +469,9 @@ class TestPacketLogWriterRoundTrip(unittest.TestCase):
         # Write multiple JSON packets - should use key map compression
         for i in range(3):
             json_data = {"COLLECTS": 100 + i, "TEMP1": 25.5 + i, "STATUS": "NOMINAL"}
-            plw.write("JSON_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec + i * 1000, False, json_data, None, "0-0")
+            plw.write(
+                "JSON_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec + i * 1000, False, json_data, None, "0-0"
+            )
 
         filename = plw.filename
         plw.shutdown()

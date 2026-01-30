@@ -1,4 +1,3 @@
-
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #

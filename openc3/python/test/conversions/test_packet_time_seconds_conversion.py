@@ -44,6 +44,4 @@ class TestPacketTimeSecondsConversion(unittest.TestCase):
         self.assertEqual(gc.call(None, packet, None), 0.0)
 
     def test_returns_the_class(self):
-        self.assertEqual(
-            str(PacketTimeSecondsConversion()), "PacketTimeSecondsConversion"
-        )
+        self.assertEqual(str(PacketTimeSecondsConversion()), "PacketTimeSecondsConversion")

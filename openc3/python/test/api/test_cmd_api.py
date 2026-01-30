@@ -116,8 +116,8 @@ class TestCmdApi(unittest.TestCase):
                 command = func("inst Collect with type 0, Duration 5")
             else:
                 command = func("inst Collect with type NORMAL, Duration 5")
-            self.assertEqual(command['target_name'], "INST")
-            self.assertEqual(command['cmd_name'], "COLLECT")
+            self.assertEqual(command["target_name"], "INST")
+            self.assertEqual(command["cmd_name"], "COLLECT")
             if "raw" in name:
                 self.assertEqual(command["cmd_params"], {"TYPE": 0, "DURATION": 5})
             else:
@@ -402,7 +402,7 @@ class TestCmdApi(unittest.TestCase):
                 func(
                     "INST",
                     "MEMLOAD",
-                    {"DATA": b"\xAA\xBB\xCC\xDD\xEE\xFF"},
+                    {"DATA": b"\xaa\xbb\xcc\xdd\xee\xff"},
                     log_message=True,
                 )
                 self.assertIn(
@@ -800,7 +800,7 @@ class BuildCommand(unittest.TestCase):
         self.assertEqual(cmd["packet_name"], "COLLECT")
         self.assertEqual(
             cmd["buffer"],
-            b"\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00",
+            b"\x13\xe7\xc0\x00\x00\x00\x00\x01\x00\x00@\xa0\x00\x00\xab\x00\x00\x00\x00",
         )
 
     def test_complains_if_parameters_are_not_separated_by_commas(self):
@@ -817,19 +817,19 @@ class BuildCommand(unittest.TestCase):
         self.assertEqual(cmd["packet_name"], "COLLECT")
         self.assertEqual(
             cmd["buffer"],
-            b"\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00",
+            b"\x13\xe7\xc0\x00\x00\x00\x00\x01\x00\x00@\xa0\x00\x00\xab\x00\x00\x00\x00",
         )
 
     def test_processes_commands_without_parameters(self):
         cmd = build_cmd("INST", "ABORT")
         self.assertEqual(cmd["target_name"], "INST")
         self.assertEqual(cmd["packet_name"], "ABORT")
-        self.assertEqual(cmd["buffer"], b"\x13\xE7\xC0\x00\x00\x00\x00\x02")  # Pkt ID 2
+        self.assertEqual(cmd["buffer"], b"\x13\xe7\xc0\x00\x00\x00\x00\x02")  # Pkt ID 2
 
         cmd = build_cmd("INST CLEAR")
         self.assertEqual(cmd["target_name"], "INST")
         self.assertEqual(cmd["packet_name"], "CLEAR")
-        self.assertEqual(cmd["buffer"], b"\x13\xE7\xC0\x00\x00\x00\x00\x03")  # Pkt ID 3
+        self.assertEqual(cmd["buffer"], b"\x13\xe7\xc0\x00\x00\x00\x00\x03")  # Pkt ID 3
 
     def test_complains_about_too_many_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):

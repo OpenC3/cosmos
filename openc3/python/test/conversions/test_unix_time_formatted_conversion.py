@@ -37,9 +37,7 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
         packet.append_item("TIME", 32, "UINT")
         time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()
         packet.write("TIME", time)
-        self.assertEqual(
-            utfc.call(None, packet, packet.buffer), "2020/01/31 12:15:30.000"
-        )
+        self.assertEqual(utfc.call(None, packet, packet.buffer), "2020/01/31 12:15:30.000")
 
     def test_returns_the_formatted_packet_time_based_on_seconds_and_microseconds(self):
         utfc = UnixTimeFormattedConversion("TIME", "TIME_US")
@@ -49,25 +47,19 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
         packet.write("TIME", time)
         packet.append_item("TIME_US", 32, "UINT")
         packet.write("TIME_US", 500000)
-        self.assertEqual(
-            utfc.call(None, packet, packet.buffer), "2020/01/31 12:15:30.500"
-        )
+        self.assertEqual(utfc.call(None, packet, packet.buffer), "2020/01/31 12:15:30.500")
 
     def test_complains_if_the_seconds_item_doesnt_exist(self):
         utfc = UnixTimeFormattedConversion("TIME")
         packet = Packet("TGT", "PKT")
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'TGT PKT TIME' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME' does not exist"):
             utfc.call(None, packet, packet.buffer)
 
     def test_complains_if_the_microseconds_item_doesnt_exist(self):
         utfc = UnixTimeFormattedConversion("TIME", "TIME_US")
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"):
             utfc.call(None, packet, packet.buffer)
 
     def test_returns_the_seconds_conversion(self):
@@ -82,10 +74,10 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
         utfc = UnixTimeFormattedConversion("TIME", "TIME_US")
         json = utfc.as_json()
         self.assertEqual(json.get("class"), "UnixTimeFormattedConversion")
-        self.assertEqual(json.get('converted_type'), "STRING")
-        self.assertEqual(json.get('converted_bit_size'), 0)
-        self.assertEqual(json.get('params'), ["TIME", "TIME_US"])
-        new_utfc = UnixTimeFormattedConversion(*json['params'])
+        self.assertEqual(json.get("converted_type"), "STRING")
+        self.assertEqual(json.get("converted_bit_size"), 0)
+        self.assertEqual(json.get("params"), ["TIME", "TIME_US"])
+        new_utfc = UnixTimeFormattedConversion(*json["params"])
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
         time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()

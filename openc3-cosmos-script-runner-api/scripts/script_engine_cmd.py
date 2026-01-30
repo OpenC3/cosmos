@@ -29,6 +29,7 @@ from openc3.utilities.string import (
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
 
+
 class RunningScriptProxy:
     def pre_line_instrumentation(self, filename, line_number, global_variables, local_variables):
         pass
@@ -39,12 +40,13 @@ class RunningScriptProxy:
     def exception_instrumentation(self, filename, line_number):
         pass
 
+
 command = sys.argv[1]
 filename = sys.argv[2]
 extension = str(os.path.splitext(filename)[1]).lower()
 
 script_engine_filename = None
-script_engine_model = ScriptEngineModel.get_model(name = extension, scope = 'DEFAULT')
+script_engine_model = ScriptEngineModel.get_model(name=extension, scope="DEFAULT")
 if script_engine_model is not None:
     script_engine_filename = script_engine_model.filename
 else:

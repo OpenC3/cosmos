@@ -29,9 +29,7 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(b.value_type, "CONVERTED")
 
     def test_raises_an_exception(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "call method must be defined by subclass"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "call method must be defined by subclass"):
             Processor().call(0, 0)
 
     def test_returns_a_string(self):

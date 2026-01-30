@@ -27,6 +27,8 @@ on:
 jobs:
   openc3-clamav-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Need write permission to upload release asset
     steps:
       - uses: actions/checkout@v6 # Latest version is fine here because we are scanning released containers not built from code
       - name: Set up Ruby 3.4

@@ -41,9 +41,7 @@ class Proxy:
         global gPkts
         return "ID", gPkts
 
-    def inject_tlm(
-        target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE
-    ):
+    def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
         pass
 
     def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):

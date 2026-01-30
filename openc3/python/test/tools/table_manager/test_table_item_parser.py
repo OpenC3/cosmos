@@ -35,7 +35,7 @@ class TestTableItemParser(unittest.TestCase):
     def test_process_file(self):
         """Test process_file class method"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "Test" BIG_ENDIAN KEY_VALUE "Description"\n')
             file.write('  APPEND_PARAMETER "PARAM1" 8 UINT 0 0xFF 0\n')
 
@@ -55,9 +55,9 @@ class TestTableItemParser(unittest.TestCase):
     def test_parse_with_id(self):
         """Test parsing a table item with ID"""
         def_path = os.path.join(self.temp_dir, "tabledef.txt")
-        with open(def_path, 'w') as file:
+        with open(def_path, "w") as file:
             file.write('TABLE "TEST" BIG_ENDIAN KEY_VALUE "Description"\n')
-            file.write('  APPEND_ID_PARAMETER PARAM1 8 UINT 0 0xFF 0xAB 0\n')
+            file.write("  APPEND_ID_PARAMETER PARAM1 8 UINT 0 0xFF 0xAB 0\n")
 
         config = TableConfig.process_file(def_path)
         self.assertTrue("TEST" in config.tables)
@@ -65,5 +65,6 @@ class TestTableItemParser(unittest.TestCase):
         self.assertEqual(item.name, "PARAM1")
         self.assertEqual(item.id_value, 0xAB)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
