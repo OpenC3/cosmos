@@ -20,17 +20,17 @@ RUN mkdir -p lib/openc3/ext \
   && rake gems \
   && gem install --local ./openc3-*.gem \
   && openc3_gem=$(dirname `gem which openc3`) \
-  && ln -s $openc3_gem/openc3 $openc3_gem/cosmos \
+  && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
   && mkdir -p gems \
-  && mv *.gem gems/. \
+  && mv ./*.gem gems/. \
   && gem cleanup \
   && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 WORKDIR /openc3/python
 
-RUN . /openc3/venv/bin/activate \
-  && uv export --no-hashes --format requirements-txt > requirements.txt \
-  && pip3 install -r requirements.txt && pip3 install --pre .
+RUN uv export --no-hashes --format requirements-txt > requirements.txt \
+  && uv pip install --python /openc3/venv/bin/python -r requirements.txt \
+  && uv pip install --python /openc3/venv/bin/python --pre .
 
 WORKDIR /openc3/
 
