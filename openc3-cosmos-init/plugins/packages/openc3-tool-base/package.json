@@ -31,6 +31,6 @@
   "peerDependencies": {
     "single-spa": "6.0.3",
     "vue-router": "4.4.4",
-    "vuex": "4.1.0"
+    "pinia": "3.0.4"
   }
 }

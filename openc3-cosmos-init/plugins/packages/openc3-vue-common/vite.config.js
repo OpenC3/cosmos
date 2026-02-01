@@ -22,7 +22,7 @@ export default defineConfig({
       name: '@openc3/vue-common',
     },
     rollupOptions: {
-      external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
+      external: ['single-spa', 'vue', 'pinia', 'vue-router', 'vuetify'],
       preserveEntrySignatures: 'strict',
       onwarn: (warning, warn) => {
         const ignoredWarnings = [
@@ -51,5 +51,6 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
     },
+    dedupe: ['pinia', 'vue'],
   },
 })

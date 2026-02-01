@@ -49,7 +49,8 @@
           "vue": "/js/vue.global.prod-3.5.26.min.js",
           "vuetify": "/js/vuetify-labs-3.11.6.min.js",
           "vue-router": "/js/vue-router-4.4.4.min.js",
-          "vuex": "/js/vuex-4.1.0.min.js"
+          "vuex": "/js/vuex-4.1.0.min.js",
+          "pinia": "/js/pinia-3.0.4.min.js"
         }
       }
     </script>
@@ -60,6 +61,7 @@
     <link rel="preload" href="/js/vuetify-labs-3.11.6.min.js" as="script" />
     <link rel="preload" href="/js/vue-router-4.4.4.min.js" as="script" />
     <link rel="preload" href="/js/vuex-4.1.0.min.js" as="script" />
+    <link rel="preload" href="/js/pinia-3.0.4.min.js" as="script" />
     <script src="/js/browsercheck.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/import-map-overrides-6.1.0.min.js"></script>
@@ -89,12 +91,14 @@
             return Promise.all([
               System.import('vue-router'),
               System.import('vuex'),
+              System.import('pinia'),
               System.import('vuetify'),
             ])
           })
           .then(function (modules) {
             System.set(System.resolve('vue-router'), window.VueRouter)
             System.set(System.resolve('vuex'), window.Vuex)
+            System.set(System.resolve('pinia'), window.Pinia)
             System.import('@openc3/tool-base')
           })
       })()

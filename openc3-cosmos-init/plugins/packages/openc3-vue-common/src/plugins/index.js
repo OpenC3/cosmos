@@ -19,7 +19,7 @@
 import cosmosThemeDark from './cosmosThemeDark'
 import Dialog from './dialog'
 import Notify from './notify'
-import store from './store'
+import store, { useStore } from './store'
 import vuetify from './vuetify'
 
-export { cosmosThemeDark, Dialog, Notify, store, vuetify }
+export { cosmosThemeDark, Dialog, Notify, store, useStore, vuetify }

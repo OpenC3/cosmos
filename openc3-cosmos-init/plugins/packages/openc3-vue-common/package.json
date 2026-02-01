@@ -92,7 +92,7 @@
     "uplot": "1.6.32",
     "vue": "3.5.26",
     "vuetify": "3.11.6",
-    "vuex": "4.1.0"
+    "pinia": "3.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "5.2.3",

@@ -712,6 +712,12 @@ export default {
       type: String,
       default: null,
     },
+    // Optional filename to use when running inline scripts
+    // This allows relative path resolution to work correctly
+    initialFilename: {
+      type: String,
+      default: null,
+    },
   },
   emits: ['alert', 'script-id'],
   setup() {
@@ -1367,6 +1373,10 @@ export default {
       if (this.body) {
         this.editor.setValue(this.body)
         this.editor.clearSelection()
+        // If initialFilename is provided, use it for path resolution
+        if (this.initialFilename) {
+          this.filename = this.initialFilename
+        }
       }
     }
     this.updateInterval = setInterval(async () => {

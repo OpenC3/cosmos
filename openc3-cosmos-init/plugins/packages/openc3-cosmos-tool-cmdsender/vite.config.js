@@ -19,7 +19,7 @@ export default defineConfig((options) => {
           chunkFileNames: '[name]-[hash:20].js',
           assetFileNames: 'assets/[name]-[hash][extname]',
         },
-        external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
+        external: ['single-spa', 'vue', 'pinia', 'vue-router', 'vuetify'],
         preserveEntrySignatures: 'strict',
       },
     },
@@ -41,6 +41,7 @@ export default defineConfig((options) => {
         '@': resolve(__dirname, './src'),
       },
       extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
+      dedupe: ['pinia', 'vue'],
     },
     define: {
       __BASE_URL__: JSON.stringify('/tools/cmdsender'),
