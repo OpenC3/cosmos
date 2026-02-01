@@ -331,7 +331,7 @@ def check_versitygw(client, versitygw_version)
   versions = []
   releases.each do |release|
     # Tags are like "v1.0.20"
-    versions << release['tag_name'].sub(/^v/, '')
+    versions << release['tag_name']#.sub(/^v/, '')
   end
   validate_versions(versions, versitygw_version, 'versitygw')
 end
@@ -339,7 +339,7 @@ end
 def check_build_files(versitygw_version, traefik_version)
   File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
     file.each do |line|
-      if line.include?('OPENC3_VERSITYGW_VERSION=')
+      if line.include?('OPENC3_VERSITYGW_VERSION=v')
         parts = line.split('=')
         if parts[1].strip != versitygw_version
           puts "WARN: Update build_multi_arch.sh to match openc3-buckets Dockerfile: #{versitygw_version}, Current value: #{parts[1].strip}"
@@ -377,11 +377,12 @@ def validate_versions(versions, version, name)
   if versions.include?(version)
     new_version = false
     major, minor, patch = version.split('.')
-    if versions.include?("#{major.to_i + 1}.0")
+    # Check for next major version and two common patch versions (in case they skip a patch)
+    if versions.include?("#{major.to_i + 1}.0.0") || versions.include?("#{major.to_i + 1}.0.1") || versions.include?("#{major.to_i + 1}.1.0")
       puts "NOTE: #{name} has a new major version: #{major.to_i + 1}, Current Version: #{version}"
       new_version = true
     end
-    if versions.include?("#{major}.#{minor.to_i + 1}")
+    if versions.include?("#{major}.#{minor.to_i + 1}.0") || versions.include?("#{major}.#{minor.to_i + 1}.1")
       puts "NOTE: #{name} has a new minor version: #{major}.#{minor.to_i + 1}, Current Version: #{version}"
       new_version = true
     end
@@ -414,10 +415,14 @@ def check_keycloak(client, containers)
   validate_versions(versions, version, 'keycloak')
 end
 
-def check_container_version(client, containers, name)
-  container = containers.select { |val| val[:name].include?(name) }[0]
-  version = container[:base_image].split(':')[-1]
-  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024").body
+def check_container_version(client, containers, image_name)
+  container = containers.select { |val| val[:name].include?(image_name) }[0]
+  name, version = container[:base_image].split(':')
+  if image_name == 'traefik'
+    resp = client.get("https://registry.hub.docker.com/v2/repositories/library/traefik/tags?page_size=1024").body
+  elsif image_name == 'redis'
+    resp = client.get("https://registry.hub.docker.com/v2/repositories/valkey/valkey/tags?page_size=1024").body
+  end
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|

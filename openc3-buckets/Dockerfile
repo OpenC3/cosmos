@@ -1,7 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_VERSION=3.22
-ARG ALPINE_BUILD=2
-ARG OPENC3_VERSITYGW_VERSION=1.0.20
+ARG ALPINE_BUILD=3
+ARG OPENC3_VERSITYGW_VERSION=v1.1.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 
@@ -9,10 +9,10 @@ ARG OPENC3_VERSITYGW_VERSION
 ARG TARGETARCH
 
 # Copy and extract versitygw binary from local tar.gz files
-COPY versitygw_v${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
+COPY versitygw_${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x86_64") && \
-    tar xzf /tmp/versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}.tar.gz -C /tmp versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw && \
-    mv /tmp/versitygw_v${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw /usr/local/bin/ && \
+    tar xzf /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}.tar.gz -C /tmp versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw && \
+    mv /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw /usr/local/bin/ && \
     chmod +x /usr/local/bin/versitygw && \
     rm -rf /tmp/versitygw_*
 
