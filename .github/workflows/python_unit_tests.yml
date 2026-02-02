@@ -44,18 +44,16 @@ jobs:
         uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7
         with:
           enable-cache: true
+          cache-suffix: ${{ matrix.python-version }}
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
         run: uv sync --locked
         working-directory: openc3/python
-      - name: Lint with ruff
-        run: uv run ruff check --output-format=github openc3
-        working-directory: openc3/python
       - name: Run unit tests
         run: |
-          uv run coverage run -m pytest ./test/
-          uv run coverage xml -i
+          uv run --frozen coverage run -m pytest ./test/
+          uv run --frozen coverage xml -i
         working-directory: openc3/python
       - uses: codecov/codecov-action@v5
         with:
