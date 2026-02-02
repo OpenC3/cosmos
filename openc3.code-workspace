@@ -112,6 +112,7 @@
       "cosmos/openc3/python/test/install/config/targets",
       "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets",
       "app-store/openc3-cosmos-clam/targets",
+      "cosmos/plugins/openc3-cosmos-demo/openc3-cosmos-demo-5.21.0.pre.beta0.gem/targets",
     ],
   },
 }

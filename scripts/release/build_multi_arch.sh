@@ -30,12 +30,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.0.20
+  OPENC3_VERSITYGW_VERSION=v1.1.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.0.20
+  OPENC3_VERSITYGW_VERSION=v1.1.0
 fi
 
 # Setup cacert.pem
@@ -325,7 +325,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.6.5
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.6
+  OPENC3_TRAEFIK_RELEASE=v3.6.7
 fi
 cd ../openc3-traefik
 docker buildx build \

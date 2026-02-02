@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -40,6 +40,9 @@ export default {
   },
   computed: {
     src: function () {
+      if (!this.screenValues[this.valueId]) {
+        return ''
+      }
       return `data:image/${this.parameters[3]};base64, ${this.screenValues[this.valueId][0]}`
     },
   },
