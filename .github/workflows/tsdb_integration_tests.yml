@@ -66,10 +66,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7
         with:
-          python-version: "3.12"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -84,16 +87,9 @@ jobs:
         env:
           OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
       - name: Install Python dependencies
         working-directory: openc3/python
-        run: poetry install
+        run: uv sync --locked
 
       - name: Install Ruby dependencies
         working-directory: openc3/test/integration/tsdb/ruby
@@ -116,7 +112,7 @@ jobs:
       - name: Run Python integration tests
         working-directory: openc3/python
         run: |
-          poetry run pytest ../test/integration/tsdb/python/ -v --tb=short
+          uv run --frozen pytest ../test/integration/tsdb/python/ -v --tb=short
 
       - name: Run Ruby CvtModel integration tests
         working-directory: openc3/test/integration/tsdb/ruby

@@ -24,7 +24,7 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 ### Core Library
 
 - **openc3/** - Ruby gem with ~40 C extensions for performance-critical operations
-- **openc3/python/** - Python library (Poetry-managed) with equivalent functionality
+- **openc3/python/** - Python library (uv-managed) with equivalent functionality
 
 ### Frontend (pnpm Workspace)
 
