@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,6 +43,9 @@ export default {
   },
   computed: {
     _value() {
+      if (!this.screenValues[this.valueId]) {
+        return ''
+      }
       return this.screenValues[this.valueId][0]
     },
     fontSize() {

@@ -39,7 +39,7 @@ unless ENV['SKIP_DEV_GEMS']
   group :development, :test do
     # Call 'byebug' anywhere in the code to stop execution and get a debugger console
     gem 'byebug', platforms: [:mri, :windows]
-    gem 'rspec-rails', '~> 7.0'
+    gem 'rspec-rails', '~> 8.0'
     gem 'simplecov', '~> 0.22'
     gem 'simplecov-cobertura', '~> 3.0'
     gem 'rexml', '~> 3.4'

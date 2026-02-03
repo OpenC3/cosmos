@@ -73,6 +73,9 @@ export default {
   },
   methods: {
     calcPosition() {
+      if (!this.screenValues[this.valueId]) {
+        return 0
+      }
       let value = this.screenValues[this.valueId][0]
       if (!value) {
         return 0

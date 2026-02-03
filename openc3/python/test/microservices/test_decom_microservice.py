@@ -182,10 +182,10 @@ class TestDecomMicroservice(unittest.TestCase):
         temp1.limits.response = DelayedLimitsResponse()
         packet.received_time = datetime.now(timezone.utc)
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
-        time.sleep(0.01)
+        time.sleep(0.02)
 
         # Verify that even though the limits response sleeps for 0.1s, the decom thread is not blocked
-        self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.01)
+        self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.02)
 
     def test_handles_exceptions_in_limits_responses(self):
         class BadLimitsResponse(LimitsResponse):

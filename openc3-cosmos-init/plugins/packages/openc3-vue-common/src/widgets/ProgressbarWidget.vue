@@ -51,6 +51,9 @@ export default {
     _value: function () {
       let value = this.value
       if (value === null) {
+        if (!this.screenValues[this.valueId]) {
+          return 0
+        }
         value = this.screenValues[this.valueId][0]
       }
       return Number.parseInt(Number.parseFloat(value) * this.scaleFactor)

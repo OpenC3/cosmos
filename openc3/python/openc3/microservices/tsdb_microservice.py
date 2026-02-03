@@ -21,6 +21,7 @@ import traceback
 
 from questdb.ingress import IngressError
 
+from openc3.api.cmd_api import get_all_cmd_names, get_cmd
 from openc3.api.tlm_api import get_all_tlm_names, get_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.topics.config_topic import ConfigTopic
@@ -49,12 +50,17 @@ class TsdbMicroservice(Microservice):
             packet_name = topic_parts[3]
             if target_name == "UNKNOWN":
                 continue
-            self._create_table(target_name, packet_name)
+            self._create_table(target_name, packet_name, topic)
 
-    def _create_table(self, target_name, packet_name):
+    def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
-        packet = get_tlm(target_name, packet_name)
-        self.questdb.create_table(target_name, packet_name, packet)
+        if "__DECOMCMD__" in topic:
+            packet = get_cmd(target_name, packet_name)
+            cmd_or_tlm = "CMD"
+        else:
+            packet = get_tlm(target_name, packet_name)
+            cmd_or_tlm = "TLM"
+        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm)
 
     def sync_topics(self):
         """Update local topics based on config events"""
@@ -75,10 +81,18 @@ class TsdbMicroservice(Microservice):
 
             if kind == "created":
                 self.logger.info(f"New target {target_name} created")
-                packets = get_all_tlm_names(target_name)
-                for packet_name in packets:
-                    self._create_table(target_name, packet_name)
-                    self.topics.append(f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}")
+                # Add telemetry packets
+                tlm_packets = get_all_tlm_names(target_name)
+                for packet_name in tlm_packets:
+                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}"
+                    self._create_table(target_name, packet_name, topic)
+                    self.topics.append(topic)
+                # Add command packets
+                cmd_packets = get_all_cmd_names(target_name)
+                for packet_name in cmd_packets:
+                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOMCMD__{{{target_name}}}__{packet_name}"
+                    self._create_table(target_name, packet_name, topic)
+                    self.topics.append(topic)
             elif kind == "deleted":
                 self.logger.info(f"Target {target_name} deleted")
                 self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
@@ -86,7 +100,7 @@ class TsdbMicroservice(Microservice):
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            for _, _, msg_hash, _ in Topic.read_topics(self.topics):
+            for topic, _, msg_hash, _ in Topic.read_topics(self.topics):
                 if self.cancel_thread:
                     break
 
@@ -104,8 +118,11 @@ class TsdbMicroservice(Microservice):
                     self.logger.error(f"Failed to parse json_data for {target_name}.{packet_name}")
                     continue
 
+                # Determine if this is a command or telemetry packet based on topic
+                cmd_or_tlm = "CMD" if "__DECOMCMD__" in topic else "TLM"
+
                 # Get sanitized table name
-                table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+                table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name, cmd_or_tlm)
 
                 # Get packet timestamp (packet_time) and received timestamp (received_time) in nanoseconds
                 time_bytes = msg_hash.get(b"time")

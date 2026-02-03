@@ -254,9 +254,9 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Check that table was created with correct name
+        # Check that table was created with correct name (TLM__ prefix for telemetry)
         calls = mock_cursor.execute.call_args_list
-        self.assertTrue(any("INST__HEALTH_STATUS" in str(call) for call in calls))
+        self.assertTrue(any("TLM__INST__HEALTH_STATUS" in str(call) for call in calls))
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -353,13 +353,15 @@ class TestTsdbMicroservice(unittest.TestCase):
         for item_name in expected_items:
             self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
 
+    @patch("openc3.microservices.tsdb_microservice.get_cmd")
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.tsdb_microservice.get_all_cmd_names")
     @patch("openc3.microservices.tsdb_microservice.get_all_tlm_names")
     @patch("openc3.microservices.microservice.System")
     def test_sync_topics_creates_new_target(
-        self, mock_system, mock_get_all_tlm, mock_psycopg, mock_sender, mock_get_tlm
+        self, mock_system, mock_get_all_tlm, mock_get_all_cmd, mock_psycopg, mock_sender, mock_get_tlm, mock_get_cmd
     ):
         """Test sync_topics creates tables for new targets"""
         mock_ingest = Mock()
@@ -370,8 +372,10 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
         mock_get_all_tlm.return_value = ["PACKET1", "PACKET2"]
-        # Mock get_tlm to return a dummy packet dict
+        mock_get_all_cmd.return_value = ["CMD1"]
+        # Mock get_tlm and get_cmd to return a dummy packet dict
         mock_get_tlm.return_value = {"items": []}
+        mock_get_cmd.return_value = {"items": []}
 
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
@@ -389,9 +393,13 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb.sync_topics()
 
-        # Should have added new topics
+        # Should have added new topics for both telemetry and commands
         self.assertGreater(len(tsdb.topics), initial_topic_count)
         self.assertTrue(any("NEWTARGET" in topic for topic in tsdb.topics))
+        # Verify telemetry topics were added
+        self.assertTrue(any("__DECOM__" in topic and "NEWTARGET" in topic for topic in tsdb.topics))
+        # Verify command topics were added
+        self.assertTrue(any("__DECOMCMD__" in topic and "NEWTARGET" in topic for topic in tsdb.topics))
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -477,7 +485,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Verify data was written to QuestDB
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertEqual(call_args[0][0], "INST__HEALTH_STATUS")
+        self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")
         self.assertIn("TEMP1", call_args[1]["columns"])
         self.assertEqual(call_args[1]["columns"]["TEMP1"], 42)
 
@@ -925,7 +933,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Setup mock to raise IngressError on first call, succeed on second
         error_msg = (
-            "error in line 1: table: INST__HEALTH_STATUS, column: TEMP1; "
+            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: TEMP1; "
             'cast error from protocol type: FLOAT to column type: LONG","line":1'
         )
         mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
@@ -987,7 +995,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Setup mock to raise IngressError for array-to-scalar conversion on first call,
         # then succeed on retry after JSON serialization
         error_msg = (
-            "error in line 1: table: INST__HEALTH_STATUS, column: JSON_ITEM; "
+            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: JSON_ITEM; "
             'cast error from protocol type: DOUBLE[] to column type: INT","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
@@ -1014,7 +1022,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
 
         # Column should be registered for JSON serialization
-        self.assertIn("INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
+        self.assertIn("TLM__INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -1051,7 +1059,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Setup mock to raise IngressError for ARRAY (no brackets) to VARCHAR conversion
         # This matches the error format from QuestDB when sending array to varchar column
         error_msg = (
-            "error in line 1: table: INST__HEALTH_STATUS, column: ITEM7; "
+            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: ITEM7; "
             'cast error from protocol type: ARRAY to column type: VARCHAR","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
@@ -1078,7 +1086,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
 
         # Column should be registered for JSON serialization
-        self.assertIn("INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
+        self.assertIn("TLM__INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1157,8 +1165,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"STRING_ARRAY" varchar', create_table_sql)
 
         # Non-numeric arrays should be registered for JSON serialization
-        self.assertIn("TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
-        self.assertIn("TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("TLM__TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("TLM__TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
 
     def test_convert_value_arrays_json_serialized(self):
         """Test that all arrays are JSON serialized to avoid QuestDB type conflicts"""
@@ -1452,8 +1460,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         for key_item in key_items:
             self.assertIn(key_item, columns_written, f"Key item '{key_item}' should be present in columns")
 
-        # Verify the table name is correct
-        self.assertEqual(call_args[0][0], "INST__HEALTH_STATUS")
+        # Verify the table name is correct (TLM__ prefix for telemetry)
+        self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")
 
 
 if __name__ == "__main__":
