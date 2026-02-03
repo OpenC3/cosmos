@@ -267,7 +267,7 @@ class TestStructureDefine(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 2)
         buffer = b"\x01\x02"
         self.assertEqual(self.s.read_item(self.s.get_item("test1"), "RAW", buffer), 1)
-        self.assertEqual(self.s.read_item(self.s.get_item("test2"), "RAW", buffer), 278)
+        self.assertEqual(self.s.read_item(self.s.get_item("test2"), "RAW", buffer), 258)
 
     def test_overwrites_existing_items(self):
         si = StructureItem("test1", 0, 8, "UINT", "BIG_ENDIAN")
@@ -1203,3 +1203,10 @@ class TestStructureShortBufferAllowed(unittest.TestCase):
         self.assertIsNone(s.read("item3"))
         # Buffer should remain at its original size (not padded)
         self.assertEqual(len(s.buffer), 2)
+
+    def test_raises_error_when_short_buffer_allowed_is_false(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        with self.assertRaisesRegex(ValueError, "Buffer length less than defined length"):
+            s.buffer = b"\x00\x01"
