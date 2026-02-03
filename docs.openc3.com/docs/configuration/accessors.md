@@ -80,11 +80,12 @@ end
 
 #### Telemetry
 
-Using the CBOR Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+Using the CBOR Accessor for [telemetry definitions](telemetry) only _requires_ the use of [KEY](command#key) to pull values from the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath). However, it is highly recommended to implement the [TEMPLATE_FILE](telemetry#template_file) keyword to allow the [`inject_tlm`](/docs/guides/scripting-api#inject_tlm) method to work.
 
 ```ruby
 TELEMETRY CBOR CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
   ACCESSOR CborAccessor
+  TEMPLATE_FILE _cbor_template.bin
   APPEND_ID_ITEM ID_ITEM 32 INT 2 "Int Item"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
@@ -270,11 +271,12 @@ COMMAND JSON JSONCMD BIG_ENDIAN "JSON Accessor Command"
 
 #### Telemetry
 
-Using the JSON Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+Using the JSON Accessor for [telemetry definitions](telemetry) only _requires_ the use of [KEY](command#key) to pull values from the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath). However, it is highly recommended to implement the [TEMPLATE](telemetry#template) keyword to allow the [`inject_tlm`](/docs/guides/scripting-api#inject_tlm) method to work.
 
 ```ruby
 TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
+  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
   APPEND_ID_ITEM ID_ITEM 32 INT 1 "Int Item"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
@@ -364,12 +366,11 @@ COMMAND XML XMLCMD BIG_ENDIAN "XML Accessor Command"
 
 #### Telemetry
 
-Using the XML Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+Using the XML Accessor for [telemetry definitions](telemetry) only _requires_ the use of [KEY](command#key) to pull values from the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath). However, it is highly recommended to implement the [TEMPLATE](telemetry#template) keyword to allow the [`inject_tlm`](/docs/guides/scripting-api#inject_tlm) method to work.
 
 ```ruby
 TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
   ACCESSOR XmlAccessor
-  # Template is not required for telemetry, but is useful for simulation
   TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
   APPEND_ID_ITEM ID_ITEM 32 INT 3 "Int Item"
     KEY "/html/head/script/@src"

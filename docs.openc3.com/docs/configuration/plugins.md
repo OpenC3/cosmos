@@ -75,13 +75,12 @@ The VARIABLE_DESCRIPTION keyword adds a human-readable description to a previous
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Variable Name | Name of the variable to describe. Must match a previously defined VARIABLE name. | True |
 | Description | Human-readable description of the variable's purpose | True |
 
 Example Usage:
 ```ruby
 VARIABLE port 8080
-VARIABLE_DESCRIPTION port "TCP port for the target connection"
+VARIABLE_DESCRIPTION "TCP port for the target connection"
 ```
 
 ## VARIABLE_STATE
@@ -91,16 +90,14 @@ The VARIABLE_STATE keyword defines a selectable state for a previously defined V
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Variable Name | Name of the variable this state belongs to. Must match a previously defined VARIABLE name. | True |
+| State Description | Human-readable description of what this state represents. Appears as option in the dropdown. | False |
 | State Value | The value that will be used when this state is selected | True |
-| State Description | Human-readable description of what this state represents. Appears as subtitle in the dropdown. | False |
 
 Example Usage:
 ```ruby
-VARIABLE target_name INST
-VARIABLE_DESCRIPTION target_name "Select the target name"
-VARIABLE_STATE target_name INST "Primary instrument"
-VARIABLE_STATE target_name INST2 "Secondary instrument"
+VARIABLE log_retain_time 172800
+VARIABLE_STATE "24 hours" 86400
+VARIABLE_STATE "48 hours" 172800
 ```
 
 ## NEEDS_DEPENDENCIES
