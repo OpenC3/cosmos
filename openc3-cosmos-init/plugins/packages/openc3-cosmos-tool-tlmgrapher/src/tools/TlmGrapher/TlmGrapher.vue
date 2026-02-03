@@ -40,12 +40,49 @@
             :initial-target-name="$route.params.target"
             :initial-packet-name="$route.params.packet"
             :initial-item-name="$route.params.item"
-            button-text="Add Item"
             choose-item
             select-types
             show-latest
-            @add-item="addItem"
+            @on-set="updateCurrentItem"
           />
+          <div class="mt-4 ml-2">
+            <v-btn-group density="comfortable" class="split-button">
+              <v-btn
+                color="primary"
+                data-test="add-item"
+                :disabled="!currentItem"
+                @click="addItem(currentItem)"
+              >
+                Add Item
+              </v-btn>
+              <v-menu location="bottom end">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    color="primary"
+                    class="split-button-dropdown"
+                    data-test="add-item-menu"
+                    :disabled="!currentItem"
+                  >
+                    <v-icon>mdi-chevron-down</v-icon>
+                  </v-btn>
+                </template>
+                <v-list data-test="add-item-graph-list">
+                  <v-list-subheader>Add to Graph</v-list-subheader>
+                  <v-list-item
+                    v-for="graph in graphs"
+                    :key="graph"
+                    :data-test="`add-to-graph-${graph}`"
+                    @click="addItemToGraph(currentItem, graph)"
+                  >
+                    <v-list-item-title>
+                      {{ getGraphTitle(graph) }}
+                    </v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </v-btn-group>
+          </div>
           <v-btn
             :class="{
               blink: isPaused,
@@ -170,6 +207,7 @@ export default {
       counter: 1,
       applyingConfig: false,
       observer: null,
+      currentItem: null,
       menus: [
         {
           label: 'File',
@@ -416,8 +454,33 @@ export default {
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
-    addItem: function (newItem, startGraphing = true) {
-      for (const item of this.$refs[`graph${this.selectedGraphId}`][0].items) {
+    updateCurrentItem: function (item) {
+      // Store the current item selection from the chooser
+      if (item.targetName && item.packetName && item.itemName) {
+        this.currentItem = item
+      } else {
+        this.currentItem = null
+      }
+    },
+    getGraphTitle: function (graphId) {
+      const graphRef = this.$refs[`graph${graphId}`]
+      if (graphRef && graphRef[0]) {
+        const title = graphRef[0].title
+        if (title) {
+          return title
+        }
+      }
+      // Find the index of this graph in the graphs array for display
+      const index = this.graphs.indexOf(graphId)
+      return `Graph ${index + 1}`
+    },
+    addItemToGraph: function (item, graphId) {
+      // Add item to a specific graph
+      this.addItem(item, true, graphId)
+    },
+    addItem: function (newItem, startGraphing = true, graphId = null) {
+      const targetGraphId = graphId !== null ? graphId : this.selectedGraphId
+      for (const item of this.$refs[`graph${targetGraphId}`][0].items) {
         if (
           newItem.targetName === item.targetName &&
           newItem.packetName === item.packetName &&
@@ -435,7 +498,7 @@ export default {
           return
         }
       }
-      this.$refs[`graph${this.selectedGraphId}`][0].addItems([newItem])
+      this.$refs[`graph${targetGraphId}`][0].addItems([newItem])
       if (startGraphing === true) {
         this.state = 'start'
       }
@@ -645,5 +708,8 @@ export default {
   cursor: pointer;
   border-radius: 6px;
   margin: 6px;
+}
+.split-button-dropdown {
+  border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 </style>
