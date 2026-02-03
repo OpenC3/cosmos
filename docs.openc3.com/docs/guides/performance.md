@@ -15,7 +15,7 @@ COSMOS can run on a Raspberry Pi up to a Kubernetes cluster in the cloud. On all
 
 - Base RAM MB Calculator = 800 + (num targets) \* 300
 
-In addition, the Redis streams contain the last 10 min of both raw and decommutated data from all targets. Thus you must wait ~15min to truly see what the high water memory mark will be. In the COSMOS Demo the INST & INST2 targets are fairly simple with four 1Hz packet of ~15 items and one 10Hz packet with 20 items. This only causes 50 MiB of redis RAM usage according to `docker stats`. Installing the COSMOS [LoadSim](https://github.com/OpenC3/openc3-cosmos-load-sim) with 10 packets with 1000 items each at 10Hz pushed the redis memory usage to about 350 MiB.
+In addition, the Redis streams contain the last 10 min (by default) of both raw and decommutated data from all targets. Thus you must wait ~15min to truly see what the high water memory mark will be. In the COSMOS Demo the INST & INST2 targets are fairly simple with four 1Hz packet of ~15 items and one 10Hz packet with 20 items. This only causes 50 MiB of redis RAM usage according to `docker stats`. Installing the COSMOS [LoadSim](https://github.com/OpenC3/openc3-cosmos-load-sim) with 10 packets with 1000 items each at 10Hz pushed the redis memory usage to about 350 MiB.
 
 ## CPU
 

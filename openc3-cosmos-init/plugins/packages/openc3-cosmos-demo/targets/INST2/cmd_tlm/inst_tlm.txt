@@ -175,6 +175,17 @@ TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 
+TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
+  <%= render "_ccsds_tlm.txt", locals: {apid: 7} %>
+  APPEND_ITEM ARRAY1_LENGTH 32 UINT "Length of array 1"
+  APPEND_ARRAY_ITEM ARRAY1 8 UINT 0 "Array 1 data"
+    VARIABLE_BIT_SIZE ARRAY1_LENGTH
+  APPEND_ITEM ARRAY2_LENGTH 32 UINT "Length of array 2"
+  APPEND_ARRAY_ITEM ARRAY2 8 UINT 0 "Array 2 data"
+    VARIABLE_BIT_SIZE ARRAY2_LENGTH
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
   # Template is not required for telemetry, but is useful for simulation
