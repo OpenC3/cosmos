@@ -499,12 +499,45 @@ class QuestDBClient:
 
             data_type = item.get("data_type")
 
-            # DERIVED items have unpredictable types (could be int, float, array, etc.)
-            # Create them as VARCHAR and serialize as JSON to avoid type conflicts
+            # DERIVED items: check if conversion declares a specific type
+            # If so, use that type instead of falling back to VARCHAR/JSON
             if data_type == "DERIVED":
-                column_definitions.append(f'"{item_name}" varchar')
-                # Register for JSON serialization
-                self.json_columns[f"{table_name}__{item_name}"] = True
+                rc = item.get("read_conversion")
+                converted_type = rc.get("converted_type") if rc else None
+                converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
+                converted_array_size = rc.get("converted_array_size") if rc else None
+
+                # Types that require JSON serialization (complex or unknown types)
+                if converted_type is None or converted_type in ["ARRAY", "OBJECT", "ANY"] or converted_array_size:
+                    column_definitions.append(f'"{item_name}" varchar')
+                    self.json_columns[f"{table_name}__{item_name}"] = True
+                elif converted_type == "FLOAT":
+                    if converted_bit_size == 32:
+                        column_definitions.append(f'"{item_name}" float')
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 32
+                    else:
+                        column_definitions.append(f'"{item_name}" double')
+                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 64
+                elif converted_type in ["INT", "UINT"]:
+                    if converted_bit_size < 32:
+                        column_definitions.append(f'"{item_name}" int')
+                    elif converted_bit_size < 64:
+                        column_definitions.append(f'"{item_name}" long')
+                    else:
+                        column_definitions.append(f'"{item_name}" DECIMAL(20, 0)')
+                        self.decimal_int_columns[f"{table_name}__{item_name}"] = True
+                elif converted_type == "TIME":
+                    column_definitions.append(f'"{item_name}" timestamp_ns')
+                elif converted_type == "STRING":
+                    column_definitions.append(f'"{item_name}" varchar')
+                    # STRING type doesn't need JSON encoding - stored as plain varchar
+                elif converted_type == "BLOCK":
+                    column_definitions.append(f'"{item_name}" varchar')
+                    # BLOCK type is base64 encoded, not JSON
+                else:
+                    # Unknown converted_type - fall back to JSON serialization
+                    column_definitions.append(f'"{item_name}" varchar')
+                    self.json_columns[f"{table_name}__{item_name}"] = True
                 continue
 
             if item.get("array_size") is not None:

@@ -1167,6 +1167,140 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn("TLM__TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
         self.assertIn("TLM__TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
 
+    @patch("openc3.microservices.tsdb_microservice.get_tlm")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_create_table_derived_with_typed_conversion(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
+        """Test that DERIVED items with declared converted_type use that type instead of VARCHAR"""
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        # Mock packet with DERIVED items that have typed conversions
+        mock_get_tlm.return_value = {
+            "items": [
+                # DERIVED with FLOAT 32 conversion (e.g., TEMP1_MICRO)
+                {
+                    "name": "DERIVED_FLOAT32",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "FLOAT", "converted_bit_size": 32},
+                },
+                # DERIVED with FLOAT 64 conversion
+                {
+                    "name": "DERIVED_FLOAT64",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "FLOAT", "converted_bit_size": 64},
+                },
+                # DERIVED with INT 16 conversion
+                {
+                    "name": "DERIVED_INT16",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "INT", "converted_bit_size": 16},
+                },
+                # DERIVED with UINT 32 conversion
+                {
+                    "name": "DERIVED_UINT32",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "UINT", "converted_bit_size": 32},
+                },
+                # DERIVED with INT 64 conversion
+                {
+                    "name": "DERIVED_INT64",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "INT", "converted_bit_size": 64},
+                },
+                # DERIVED with STRING conversion
+                {
+                    "name": "DERIVED_STRING",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "STRING", "converted_bit_size": 0},
+                },
+                # DERIVED with TIME conversion (e.g., PACKET_TIME from unix_time_conversion)
+                {
+                    "name": "DERIVED_TIME",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "TIME", "converted_bit_size": 0},
+                },
+                # DERIVED with no conversion (should be VARCHAR/JSON)
+                {"name": "DERIVED_NO_CONV", "data_type": "DERIVED"},
+                # DERIVED with conversion but no converted_type (should be VARCHAR/JSON)
+                {
+                    "name": "DERIVED_NIL_TYPE",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": None, "converted_bit_size": 0},
+                },
+                # DERIVED with ARRAY type (should be VARCHAR/JSON)
+                {
+                    "name": "DERIVED_ARRAY",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "ARRAY", "converted_bit_size": 0},
+                },
+                # DERIVED with OBJECT type (should be VARCHAR/JSON)
+                {
+                    "name": "DERIVED_OBJECT",
+                    "data_type": "DERIVED",
+                    "read_conversion": {"converted_type": "OBJECT", "converted_bit_size": 0},
+                },
+            ]
+        }
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{TEST}__PACKET"],
+            target_names=["TEST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Verify CREATE TABLE was called
+        create_table_calls = [call for call in mock_cursor.execute.call_args_list if "CREATE TABLE" in str(call)]
+        self.assertTrue(len(create_table_calls) > 0, "CREATE TABLE should have been called")
+
+        create_table_sql = str(create_table_calls[0])
+
+        # DERIVED items with typed conversions should use native QuestDB types
+        self.assertIn('"DERIVED_FLOAT32" float', create_table_sql)
+        self.assertIn('"DERIVED_FLOAT64" double', create_table_sql)
+        self.assertIn('"DERIVED_INT16" int', create_table_sql)
+        self.assertIn('"DERIVED_UINT32" long', create_table_sql)
+        # 64-bit integers use DECIMAL(20, 0) for full range support
+        self.assertIn('"DERIVED_INT64" DECIMAL(20, 0)', create_table_sql)
+        self.assertIn('"DERIVED_STRING" varchar', create_table_sql)
+        self.assertIn('"DERIVED_TIME" timestamp_ns', create_table_sql)
+
+        # DERIVED items without type info or with complex types should use VARCHAR
+        self.assertIn('"DERIVED_NO_CONV" varchar', create_table_sql)
+        self.assertIn('"DERIVED_NIL_TYPE" varchar', create_table_sql)
+        self.assertIn('"DERIVED_ARRAY" varchar', create_table_sql)
+        self.assertIn('"DERIVED_OBJECT" varchar', create_table_sql)
+
+        # Only untyped/complex DERIVED items should be registered for JSON serialization
+        self.assertIn("TLM__TEST__PACKET__DERIVED_NO_CONV", tsdb.questdb.json_columns)
+        self.assertIn("TLM__TEST__PACKET__DERIVED_NIL_TYPE", tsdb.questdb.json_columns)
+        self.assertIn("TLM__TEST__PACKET__DERIVED_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("TLM__TEST__PACKET__DERIVED_OBJECT", tsdb.questdb.json_columns)
+
+        # Typed DERIVED items should NOT be registered for JSON serialization
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_FLOAT32", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_FLOAT64", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_INT16", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_UINT32", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_STRING", tsdb.questdb.json_columns)
+        self.assertNotIn("TLM__TEST__PACKET__DERIVED_TIME", tsdb.questdb.json_columns)
+
+        # Float columns should be registered with correct bit sizes
+        self.assertEqual(tsdb.questdb.float_bit_sizes.get("TLM__TEST__PACKET__DERIVED_FLOAT32"), 32)
+        self.assertEqual(tsdb.questdb.float_bit_sizes.get("TLM__TEST__PACKET__DERIVED_FLOAT64"), 64)
+
+        # 64-bit integer columns should be registered for DECIMAL conversion
+        self.assertIn("TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.decimal_int_columns)
+
     def test_convert_value_arrays_json_serialized(self):
         """Test that all arrays are JSON serialized to avoid QuestDB type conflicts"""
         from openc3.utilities.questdb_client import QuestDBClient

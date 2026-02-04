@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -28,7 +28,7 @@ require 'openc3/config/meta_config_parser'
 module OpenC3
   describe OpenC3 do
     # These are not expected to be documented as they are deprecated
-    DEPRECATED = %w(DONT_LOG)
+    DEPRECATED = %w(DONT_LOG CMD_DECOM_LOG_CYCLE_TIME CMD_DECOM_LOG_CYCLE_SIZE CMD_DECOM_LOG_RETAIN_TIME TLM_DECOM_LOG_CYCLE_TIME TLM_DECOM_LOG_CYCLE_SIZE TLM_DECOM_LOG_RETAIN_TIME)
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC CMD_RESPONSE OVERRIDE IGNORE_PACKET))

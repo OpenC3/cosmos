@@ -124,12 +124,15 @@ module OpenC3
         end
       end
 
-      # DERIVED items are JSON-encoded (could be any type)
+      # DERIVED items with declared converted_type are stored as typed columns
+      # (float, int, etc.) and will be returned as non-strings, handled above.
+      # DERIVED items without declared type or with complex types (ARRAY, OBJECT, ANY)
+      # are stored as VARCHAR and JSON-encoded.
       if data_type == 'DERIVED'
         begin
           return JSON.parse(value, allow_nan: true, create_additions: true)
         rescue JSON::ParserError
-          # Could be a plain string from DERIVED
+          # Could be a plain string from DERIVED with converted_type=STRING
           return value
         end
       end
