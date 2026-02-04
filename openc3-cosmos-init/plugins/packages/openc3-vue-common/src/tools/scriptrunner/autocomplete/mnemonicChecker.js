@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -64,22 +64,38 @@ export default class MnemonicChecker {
         if (line.match(/^#/)) {
           return result
         }
+        // Strip trailing comments to avoid matching keywords in comments
+        // This handles both Ruby (# comment) and Python (# comment) style
+        // Be careful not to strip # inside strings
+        const commentMatch = line.match(/^([^#'"]*(?:(?:"[^"]*"|'[^']*')[^#'"]*)*)(#.*)$/)
+        const lineWithoutComment = commentMatch ? commentMatch[1].trim() : line
+
         const cmdMatch = this.cmdKeywordExpressions.reduce((found, regex) => {
-          return found || line.match(regex)
+          return found || lineWithoutComment.match(regex)
         }, null)
         const tlmMatch = this.tlmKeywordExpressions.reduce((found, regex) => {
-          return found || line.match(regex)
+          return found || lineWithoutComment.match(regex)
         }, null)
         if (!cmdMatch && !tlmMatch) {
           return result
         }
 
-        let matchStr = cmdMatch || tlmMatch
-        let matchStrLen = matchStr.length
-        matchStr = matchStr[matchStrLen - 1]
+        const matchResult = cmdMatch || tlmMatch
+        // Use capture group 2 which contains the full call arguments
+        // Group 2 is always defined when matched: ((\s.+)|(\(.+\)))
+        // Groups 3 and 4 are alternates and only one will be defined
+        const matchStr = matchResult[2]
+        if (!matchStr) {
+          return result
+        }
 
-        const mnemonicMatch = matchStr
-          .substring(matchStr.match(/[\(\s)]/).index + 1) // Trim off leading `cmd(` or whatever
+        const parenOrSpaceMatch = matchStr.match(/[\(\s)]/)
+        if (!parenOrSpaceMatch) {
+          return result
+        }
+
+        let mnemonicMatch = matchStr
+          .substring(parenOrSpaceMatch.index + 1) // Trim off leading `(` or space
           .replace(/\)+.*$/, '') // and the closing )s
 
         if (mnemonicMatch.match(interpolatedStringRegex)) {
@@ -88,6 +104,24 @@ export default class MnemonicChecker {
         }
 
         const usingAlternateSyntax = !!mnemonicMatch.match(alternateSyntaxRegex)
+
+        // For space-based syntax (command as a single string like "TARGET PACKET with PARAM value"),
+        // extract only the content within the first quoted string to avoid including
+        // Ruby/Python keyword arguments like queue: or queue=
+        if (!usingAlternateSyntax) {
+          const firstQuote = mnemonicMatch.match(/^['"]/)
+          if (firstQuote) {
+            const quoteChar = firstQuote[0]
+            const closingQuoteIndex = mnemonicMatch.indexOf(
+              quoteChar,
+              1,
+            )
+            if (closingQuoteIndex > 0) {
+              mnemonicMatch = mnemonicMatch.substring(1, closingQuoteIndex)
+            }
+          }
+        }
+
         const mnemonicParts = mnemonicMatch.split(
           usingAlternateSyntax ? ',' : ' ',
         )
