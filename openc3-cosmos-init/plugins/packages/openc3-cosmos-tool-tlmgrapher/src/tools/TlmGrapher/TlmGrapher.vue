@@ -479,7 +479,7 @@ export default {
       this.addItem(item, true, graphId)
     },
     addItem: function (newItem, startGraphing = true, graphId = null) {
-      const targetGraphId = graphId !== null ? graphId : this.selectedGraphId
+      const targetGraphId = graphId ?? this.selectedGraphId
       for (const item of this.$refs[`graph${targetGraphId}`][0].items) {
         if (
           newItem.targetName === item.targetName &&
