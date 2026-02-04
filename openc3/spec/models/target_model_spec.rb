@@ -580,17 +580,14 @@ module OpenC3
         tf = Tempfile.new
         tf.puts "CMD_LOG_CYCLE_TIME 1"
         tf.puts "CMD_LOG_CYCLE_SIZE 2"
-        tf.puts "CMD_DECOM_LOG_CYCLE_TIME 3"
-        tf.puts "CMD_DECOM_LOG_CYCLE_SIZE 4"
         tf.puts "CMD_BUFFER_DEPTH 9"
         tf.puts "CMD_LOG_RETAIN_TIME 10"
-        tf.puts "CMD_DECOM_LOG_RETAIN_TIME 12"
         tf.puts "TLM_BUFFER_DEPTH 13"
         tf.puts "TLM_LOG_RETAIN_TIME 14"
-        tf.puts "TLM_DECOM_LOG_RETAIN_TIME 15"
         tf.puts "REDUCED_MINUTE_LOG_RETAIN_TIME 16"
         tf.puts "REDUCED_HOUR_LOG_RETAIN_TIME 17"
         tf.puts "REDUCED_DAY_LOG_RETAIN_TIME 18"
+        tf.puts "DECOM_RETAIN_DAYS 30"
         tf.puts "LOG_RETAIN_TIME 19"
         tf.puts "REDUCED_LOG_RETAIN_TIME 20"
         tf.puts "REDUCER_DISABLED 21"
@@ -605,8 +602,6 @@ module OpenC3
         tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
-        tf.puts "TLM_DECOM_LOG_CYCLE_TIME 7"
-        tf.puts "TLM_DECOM_LOG_CYCLE_SIZE 8"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -614,13 +609,40 @@ module OpenC3
         json = model.as_json()
         expect(json['cmd_log_cycle_time']).to eql 1
         expect(json['cmd_log_cycle_size']).to eql 2
-        expect(json['cmd_decom_log_cycle_time']).to eql 3
-        expect(json['cmd_decom_log_cycle_size']).to eql 4
         expect(json['tlm_log_cycle_time']).to eql 5
         expect(json['tlm_log_cycle_size']).to eql 6
-        expect(json['tlm_decom_log_cycle_time']).to eql 7
-        expect(json['tlm_decom_log_cycle_size']).to eql 8
+        expect(json['decom_retain_days']).to eql 30
         expect(json['shard']).to eql 9
+        tf.unlink
+      end
+
+      it "rejects DECOM_RETAIN_DAYS of 0" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "DECOM_RETAIN_DAYS 0"
+        tf.close
+        expect do
+          parser.parse_file(tf.path) do |keyword, params|
+            model.handle_config(parser, keyword, params)
+          end
+        end.to raise_error(ConfigParser::Error, /DECOM_RETAIN_DAYS must be greater than 0/)
+        tf.unlink
+      end
+
+      it "rejects negative DECOM_RETAIN_DAYS" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "DECOM_RETAIN_DAYS -5"
+        tf.close
+        expect do
+          parser.parse_file(tf.path) do |keyword, params|
+            model.handle_config(parser, keyword, params)
+          end
+        end.to raise_error(ConfigParser::Error, /DECOM_RETAIN_DAYS must be greater than 0/)
         tf.unlink
       end
     end
@@ -661,8 +683,8 @@ module OpenC3
       it "creates and deploys Target microservices" do
         variables = { "test" => "example" }
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:create).exactly(8).times
-        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(8).times
+        expect(umodel).to receive(:create).exactly(6).times
+        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(6).times
         # Verify the microservices that are started
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__COMMANDLOG__#{@target}",
@@ -670,17 +692,7 @@ module OpenC3
                                                           scope: @scope
                                                         )).and_return(umodel)
         expect(MicroserviceModel).to receive(:new).with(hash_including(
-                                                          name: "#{@scope}__DECOMCMDLOG__#{@target}",
-                                                          plugin: 'PLUGIN',
-                                                          scope: @scope
-                                                        )).and_return(umodel)
-        expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__PACKETLOG__#{@target}",
-                                                          plugin: 'PLUGIN',
-                                                          scope: @scope
-                                                        )).and_return(umodel)
-        expect(MicroserviceModel).to receive(:new).with(hash_including(
-                                                          name: "#{@scope}__DECOMLOG__#{@target}",
                                                           plugin: 'PLUGIN',
                                                           scope: @scope
                                                         )).and_return(umodel)
@@ -709,9 +721,7 @@ module OpenC3
         capture_io do |stdout|
           model.deploy(@target_dir, variables)
           expect(stdout.string).to include("#{@scope}__COMMANDLOG__#{@target}")
-          expect(stdout.string).to include("#{@scope}__DECOMCMDLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__PACKETLOG__#{@target}")
-          expect(stdout.string).to include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOM__#{@target}")
           expect(stdout.string).to include("#{@scope}__REDUCER__#{@target}")
         end
@@ -724,9 +734,7 @@ module OpenC3
         capture_io do |stdout|
           model.deploy(@target_dir, {})
           expect(stdout.string).to_not include("#{@scope}__COMMANDLOG__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__DECOMCMDLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__PACKETLOG__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOM__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__REDUCER__#{@target}")
         end
@@ -745,15 +753,11 @@ module OpenC3
         capture_io do |stdout|
           model.deploy(@target_dir, {})
           expect(stdout.string).to include("#{@scope}__COMMANDLOG__#{@target}")
-          expect(stdout.string).to include("#{@scope}__DECOMCMDLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__PACKETLOG__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOM__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__REDUCER__#{@target}")
         end
-        expect(MicroserviceModel.names()).to include(
-          "#{@scope}__COMMANDLOG__#{@target}",
-          "#{@scope}__DECOMCMDLOG__#{@target}")
+        expect(MicroserviceModel.names()).to include("#{@scope}__COMMANDLOG__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
       end
 
@@ -769,15 +773,12 @@ module OpenC3
         capture_io do |stdout|
           model.deploy(@target_dir, {})
           expect(stdout.string).to_not include("#{@scope}__COMMANDLOG__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__DECOMCMDLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__PACKETLOG__#{@target}")
-          expect(stdout.string).to include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOM__#{@target}")
           expect(stdout.string).to include("#{@scope}__REDUCER__#{@target}")
         end
         expect(MicroserviceModel.names()).to include(
           "#{@scope}__PACKETLOG__#{@target}",
-          "#{@scope}__DECOMLOG__#{@target}",
           "#{@scope}__DECOM__#{@target}",
           "#{@scope}__REDUCER__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
@@ -844,8 +845,8 @@ module OpenC3
         orig_keys << "openc3_microservices"
 
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:destroy).exactly(18).times
-        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(18).times
+        expect(umodel).to receive(:destroy).exactly(14).times
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(14).times
         inst_model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: "INST_PLUGIN")
         inst_model.create
         inst_model.deploy(@target_dir, {})
@@ -916,8 +917,6 @@ module OpenC3
         packet = Packet.new("INST", "NEW_CMD")
         cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
         cmd_log_model.create
-        decom_cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOMCMDLOG__INST", scope: @scope)
-        decom_cmd_log_model.create
 
         pkts = Store.hgetall("#{@scope}__openc3cmd__#{@target}")
         expect(pkts.keys).to_not include("NEW_CMD")
@@ -933,16 +932,12 @@ module OpenC3
         expect(pkts.keys).to include("ABORT") # Other commands should still be there
         model = MicroserviceModel.get_model(name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
         expect(model.topics).to include("DEFAULT__COMMAND__{INST}__NEW_CMD")
-        model = MicroserviceModel.get_model(name: "DEFAULT__DECOMCMDLOG__INST", scope: @scope)
-        expect(model.topics).to include("DEFAULT__DECOMCMD__{INST}__NEW_CMD")
       end
 
       it "adds new telemetry" do
         packet = Packet.new("INST", "NEW_TLM")
         pkt_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__PACKETLOG__INST", scope: @scope)
         pkt_log_model.create
-        decom_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOMLOG__INST", scope: @scope)
-        decom_log_model.create
         decom_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOM__INST", scope: @scope)
         decom_model.create
 
@@ -960,8 +955,6 @@ module OpenC3
         expect(pkts.keys).to include("HEALTH_STATUS") # Other telemetry should still be there
         model = MicroserviceModel.get_model(name: "DEFAULT__PACKETLOG__INST", scope: @scope)
         expect(model.topics).to include("DEFAULT__TELEMETRY__{INST}__NEW_TLM")
-        model = MicroserviceModel.get_model(name: "DEFAULT__DECOMLOG__INST", scope: @scope)
-        expect(model.topics).to include("DEFAULT__DECOM__{INST}__NEW_TLM")
         model = MicroserviceModel.get_model(name: "DEFAULT__DECOM__INST", scope: @scope)
         expect(model.topics).to include("DEFAULT__TELEMETRY__{INST}__NEW_TLM")
       end

@@ -53,7 +53,7 @@ class TargetModel(Model):
     packet_cache_lock = threading.Lock()
     sync_packet_count_data = {}
     sync_packet_count_time = None
-    sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -315,15 +315,17 @@ class TargetModel(Model):
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                 update_packet = System.telemetry.packet(target_name, packet_name.decode())
                 update_packet.received_count = int(count)
-        for packet_name, count in TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope).items():
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+        for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
+            update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
             update_packet.received_count = int(count)
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
         if cls.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
             # Perfect but slow method
-            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
+            packet.received_count = TargetModel.increment_telemetry_count(
+                packet.target_name, packet.packet_name, 1, scope=scope
+            )
         else:
             # Eventually consistent method
             # Only sync every period (default 1 second) to avoid hammering Redis
@@ -341,7 +343,10 @@ class TargetModel(Model):
             packet.received_count = update_packet.received_count
 
             # Check if we need to sync the packet counts
-            if cls.sync_packet_count_time is None or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds:
+            if (
+                cls.sync_packet_count_time is None
+                or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
+            ):
                 cls.sync_packet_count_time = time.time()
 
                 result = []
@@ -362,7 +367,7 @@ class TargetModel(Model):
                         # Get all the packet counts with the global counters
                         for target_name in tlm_target_names:
                             TargetModel.get_all_telemetry_counts(target_name, scope=scope)
-                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope)
+                        TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope)
 
                         result = pipeline.execute()
                     finally:
@@ -373,7 +378,7 @@ class TargetModel(Model):
                         update_packet.received_count = int(count)
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+                    update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
                     update_packet.received_count = int(count)
 
     @classmethod
@@ -455,19 +460,14 @@ class TargetModel(Model):
         cmd_log_cycle_time=600,
         cmd_log_cycle_size=50_000_000,
         cmd_log_retain_time=None,
-        cmd_decom_log_cycle_time=600,
-        cmd_decom_log_cycle_size=50_000_000,
-        cmd_decom_log_retain_time=None,
         tlm_buffer_depth=60,
         tlm_log_cycle_time=600,
         tlm_log_cycle_size=50_000_000,
         tlm_log_retain_time=None,
-        tlm_decom_log_cycle_time=600,
-        tlm_decom_log_cycle_size=50_000_000,
-        tlm_decom_log_retain_time=None,
         reduced_minute_log_retain_time=None,
         reduced_hour_log_retain_time=None,
         reduced_day_log_retain_time=None,
+        decom_retain_days=None,
         cleanup_poll_time=600,
         needs_dependencies=False,
         target_microservices={"REDUCER": [[]]},
@@ -585,11 +585,6 @@ class TargetModel(Model):
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMLOG__{self.name}", decom_topics)
-            Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
@@ -600,11 +595,6 @@ class TargetModel(Model):
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
-            Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMCMDLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMCMDLOG__{self.name}", decom_topics)
 
     def add_topics_to_microservice(self, microservice_name, topics):
         model = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
