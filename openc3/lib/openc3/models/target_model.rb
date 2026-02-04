@@ -529,18 +529,14 @@ module OpenC3
       when 'CMD_DECOM_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
         @cmd_decom_retain_time = ConfigParser.handle_nil(parameters[0])
-        if @cmd_decom_retain_time
-          unless @cmd_decom_retain_time.match?(/^\d+[hdwMy]$/)
-            raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
-          end
+        if @cmd_decom_retain_time and !@cmd_decom_retain_time.match?(/^\d+[hdwMy]$/)
+          raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
         end
       when 'TLM_DECOM_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
         @tlm_decom_retain_time = ConfigParser.handle_nil(parameters[0])
-        if @tlm_decom_retain_time
-          unless @tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
-            raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
-          end
+        if @tlm_decom_retain_time and !@tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
+          raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
         end
       when 'LOG_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all raw log files in seconds - nil = Forever>")
