@@ -352,8 +352,6 @@ class TestTargetModelDynamic(unittest.TestCase):
         packet = Packet("INST", "NEW_CMD")
         cmd_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__COMMANDLOG__INST", scope=self.scope)
         cmd_log_model.create()
-        decom_cmd_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__DECOMCMDLOG__INST", scope=self.scope)
-        decom_cmd_log_model.create()
 
         pkts = Store.hgetall(f"{self.scope}__openc3cmd__{self.target}")
         self.assertNotIn(b"NEW_CMD", pkts.keys())
@@ -368,15 +366,11 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn(b"ABORT", pkts.keys())
         model = MicroserviceModel.get_model(name="DEFAULT__COMMANDLOG__INST", scope=self.scope)
         self.assertIn("DEFAULT__COMMAND__{INST}__NEW_CMD", model.topics)
-        model = MicroserviceModel.get_model(name="DEFAULT__DECOMCMDLOG__INST", scope=self.scope)
-        self.assertIn("DEFAULT__DECOMCMD__{INST}__NEW_CMD", model.topics)
 
     def test_adds_new_telemetry(self):
         packet = Packet("INST", "NEW_TLM")
         pkt_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__PACKETLOG__INST", scope=self.scope)
         pkt_log_model.create()
-        decom_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__DECOMLOG__INST", scope=self.scope)
-        decom_log_model.create()
         decom_model = MicroserviceModel(folder_name="INST", name="DEFAULT__DECOM__INST", scope=self.scope)
         decom_model.create()
 
@@ -393,7 +387,5 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn(b"HEALTH_STATUS", pkts.keys())
         model = MicroserviceModel.get_model(name="DEFAULT__PACKETLOG__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
-        model = MicroserviceModel.get_model(name="DEFAULT__DECOMLOG__INST", scope=self.scope)
-        self.assertIn("DEFAULT__DECOM__{INST}__NEW_TLM", model.topics)
         model = MicroserviceModel.get_model(name="DEFAULT__DECOM__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)

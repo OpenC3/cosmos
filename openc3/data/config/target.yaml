@@ -9,8 +9,7 @@ TARGET:
       values: .*
     - name: Name
       required: true
-      description:
-        The target name. While this typically matches the Folder Name
+      description: The target name. While this typically matches the Folder Name
         it can be different to create multiple targets based on the same target definition.
         As in the Example Usage, the target folder is KEYSIGHT_N6700 but the target name is PWR_SUPPLY1.
         To create multiple targets from the same folder, just define multiple TARGET entries
@@ -119,27 +118,6 @@ TARGET:
           required: true
           description: Number of seconds to keep decom telemetry logs (default = nil = Forever)
           values: \d+
-    REDUCED_MINUTE_LOG_RETAIN_TIME:
-      summary: How long to keep reduced minute telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep reduced minute telemetry logs (default = nil = Forever)
-          values: \d+
-    REDUCED_HOUR_LOG_RETAIN_TIME:
-      summary: How long to keep reduced hour telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep reduced hour telemetry logs (default = nil = Forever)
-          values: \d+
-    REDUCED_DAY_LOG_RETAIN_TIME:
-      summary: How long to keep reduced day telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep reduced day telemetry logs (default = nil = Forever)
-          values: \d+
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:
@@ -147,28 +125,12 @@ TARGET:
           required: true
           description: Number of seconds to keep all regular telemetry logs (default = nil = Forever)
           values: \d+
-    REDUCED_LOG_RETAIN_TIME:
-      summary: How long to keep all reduced telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep all reduced telemetry logs (default = nil = Forever)
-          values: \d+
     CLEANUP_POLL_TIME:
       summary: Period at which to run the cleanup process.
       parameters:
         - name: Time
           required: true
           description: Number of seconds between runs of the cleanup process (default = 600 = 10 minutes)
-          values: \d+
-    REDUCER_DISABLE:
-      summary: Disables the data reduction microservice for the target
-    REDUCER_MAX_CPU_UTILIZATION:
-      summary: Maximum amount of CPU utilization to apply to data reduction
-      parameters:
-        - name: Percentage
-          required: true
-          description: 0 to 100 percent (default = 30)
           values: \d+
     TARGET_MICROSERVICE:
       summary: Breaks a target microservice out into its own process.
@@ -181,7 +143,7 @@ TARGET:
         - name: Type
           required: true
           description: The target microservice type. Must be one of
-            DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP
+            DECOM, COMMANDLOG, PACKETLOG, or CLEANUP
           values: .*
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
@@ -190,7 +152,7 @@ TARGET:
         - name: Packet Name
           required: true
           description: The packet name. Does not apply to
-            REDUCER or CLEANUP target microservice types.
+            CLEANUP target microservice type.
           values: .*
     DISABLE_ERB:
       summary: Disable ERB processing

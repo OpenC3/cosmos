@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -55,7 +55,7 @@ class StorageController < ApplicationController
 
   # Extract the target name from a bucket path based on known path patterns
   # Config bucket: {SCOPE}/targets/{TARGET_NAME}/... or {SCOPE}/targets_modified/{TARGET_NAME}/... or {SCOPE}/target_archives/{TARGET_NAME}/...
-  # Logs bucket: {SCOPE}/{decom|raw|reduced_*}_logs/{tlm|cmd}/{TARGET_NAME}/...
+  # Logs bucket: {SCOPE}/raw_logs/{tlm|cmd}/{TARGET_NAME}/...
   # Returns nil if target cannot be determined from the path
   def extract_target_from_path(bucket_param, path)
     return nil if path.nil? || path.empty?
