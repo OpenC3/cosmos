@@ -112,179 +112,35 @@
           @button="suiteRunnerButton"
           @loaded="doResize"
         />
-        <div id="sr-controls">
-          <v-row no-gutters justify="space-between">
-            <v-icon v-if="showDisconnect" class="mt-2" color="red">
-              mdi-connection
-            </v-icon>
-            <div class="d-flex align-center mr-1">
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-if="!scriptId"
-                    v-bind="props"
-                    icon="mdi-cached"
-                    variant="text"
-                    density="compact"
-                    :disabled="filename === NEW_FILENAME"
-                    aria-label="Reload File"
-                    @click="reloadFile"
-                  />
-                  <v-btn
-                    v-else
-                    v-bind="props"
-                    icon="mdi-arrow-left"
-                    variant="text"
-                    density="compact"
-                    @click="backToNewScript"
-                  />
-                </template>
-                <span v-if="!scriptId"> Reload File </span>
-                <span v-else> Back to New Script </span>
-              </v-tooltip>
-            </div>
-            <v-tooltip
-              location="bottom"
-              :text="filenameSelect"
-              :disabled="!filenameSelect || filenameSelect.length <= 45"
-            >
-              <template #activator="{ props }">
-                <div v-bind="props" style="width: 32rem">
-                  <v-select
-                    id="filename"
-                    v-model="filenameSelect"
-                    :items="fileList"
-                    :disabled="fileList.length <= 1"
-                    label="Filename"
-                    data-test="filename"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
-                    @update:model-value="fileNameChanged"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-            <v-text-field
-              v-model="scriptId"
-              label="Script ID"
-              data-test="id"
-              class="shrink ml-2 script-state"
-              style="max-width: 100px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
-            />
-            <v-text-field
-              v-model="stateTimer"
-              label="Script State"
-              data-test="state"
-              :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
-              style="max-width: 120px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
-            />
-            <v-progress-circular
-              v-if="state === 'Connecting...'"
-              :size="40"
-              class="mx-2"
-              indeterminate
-              color="primary"
-            />
-            <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
-
-            <v-spacer />
-            <div v-if="startOrGoButton === 'Start'">
-              <v-tooltip
-                v-if="overridesCount > 0"
-                :open-delay="600"
-                location="top"
-              >
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-4"
-                    icon
-                    variant="text"
-                    density="compact"
-                    data-test="tlm-override-button"
-                    aria-label="TLM Overrides"
-                    @click="showOverrides = !showOverrides"
-                  >
-                    <v-badge
-                      :content="overridesCount > 99 ? '99+' : overridesCount"
-                      floating
-                      color="primary"
-                    >
-                      <v-icon icon="mdi-application-cog-outline" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span> TLM Overrides ({{ overridesCount }}) </span>
-              </v-tooltip>
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-2"
-                    icon
-                    variant="text"
-                    density="compact"
-                    :disabled="envDisabled"
-                    data-test="env-button"
-                    aria-label="Script Environment"
-                    @click="scriptEnvironment.show = !scriptEnvironment.show"
-                  >
-                    <v-badge v-model="environmentModified" floating dot>
-                      <v-icon icon="mdi-application-variable" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span>
-                  Script Environment
-                  <template v-if="environmentModified"> (modified) </template>
-                </span>
-              </v-tooltip>
-              <v-btn
-                class="mx-1"
-                color="primary"
-                text="Start"
-                data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
-                :hidden="suiteRunner"
-                @click="startHandler"
-              />
-            </div>
-            <div v-else>
-              <v-btn
-                color="primary"
-                class="mr-2"
-                text="Go"
-                :disabled="startOrGoDisabled"
-                data-test="go-button"
-                @click="go"
-              />
-              <v-btn
-                color="primary"
-                class="mr-2"
-                :text="pauseOrRetryButton"
-                :disabled="pauseOrRetryDisabled"
-                data-test="pause-retry-button"
-                @click="pauseOrRetry"
-              />
-              <v-btn
-                color="primary"
-                text="Stop"
-                data-test="stop-button"
-                :disabled="stopDisabled"
-                @click="stop"
-              />
-            </div>
-          </v-row>
-        </div>
+        <script-control-bar
+          v-model="filenameSelect"
+          :show-disconnect="showDisconnect"
+          :script-id="scriptId"
+          :filename="filename"
+          :new-filename="NEW_FILENAME"
+          :file-list="fileList"
+          :state="state"
+          :start-or-go-button="startOrGoButton"
+          :start-or-go-disabled="startOrGoDisabled"
+          :env-disabled="envDisabled"
+          :pause-or-retry-button="pauseOrRetryButton"
+          :pause-or-retry-disabled="pauseOrRetryDisabled"
+          :stop-disabled="stopDisabled"
+          :overrides-count="overridesCount"
+          :environment-modified="environmentModified"
+          :execute-user="executeUser"
+          :suite-runner="suiteRunner"
+          :waiting-time="waitingTime"
+          @reload-file="reloadFile"
+          @back-to-new-script="backToNewScript"
+          @file-name-changed="fileNameChanged"
+          @toggle-overrides="showOverrides = !showOverrides"
+          @toggle-environment="scriptEnvironment.show = !scriptEnvironment.show"
+          @start="startHandler"
+          @go="go"
+          @pause-or-retry="pauseOrRetry"
+          @stop="stop"
+        />
       </v-card-text>
     </v-card>
     <splitpanes
@@ -711,6 +567,7 @@ import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironm
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import ScriptControlBar from '@/tools/scriptrunner/ScriptControlBar.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -750,6 +607,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    ScriptControlBar,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -933,34 +791,6 @@ export default {
     }
   },
   computed: {
-    stateTimer: function () {
-      if (this.state === 'waiting' || this.state === 'paused') {
-        return `${this.state} ${this.waitingTime}s`
-      }
-      // Map completed_errors to completed for display
-      // it will be colored via the stateColorClass
-      if (this.state === 'completed_errors') {
-        return 'completed'
-      }
-      return this.state
-    },
-    stateColorClass: function () {
-      // All possible states: spawning, init, running, paused, waiting, breakpoint,
-      // error, crashed, stopped, completed, completed_errors, killed
-      if (
-        this.state === 'error' ||
-        this.state === 'crashed' ||
-        this.state === 'killed'
-      ) {
-        return 'script-state-red'
-      } else if (this.state === 'completed_errors') {
-        return 'script-state-orange'
-      } else if (this.state === 'completed') {
-        return 'script-state-green'
-      } else {
-        return ''
-      }
-    },
     // This is the list of files shown in the select dropdown
     fileList: function () {
       // this.files is the list of all files seen while running
@@ -3110,37 +2940,11 @@ hr {
   box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
 }
 
-#sr-controls {
-  padding: 0px;
-}
-
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
-}
-
-.script-state :deep(.v-field) {
-  background-color: var(--color-background-base-default);
-}
-
-.script-state :deep(input) {
-  text-transform: capitalize;
-}
-
-/* Taken from the various status-symbol-color-fill classes
-   on https://www.astrouxds.com/design-tokens/component/ */
-.script-state-red :deep(input) {
-  color: #ff3838 !important;
-}
-
-.script-state-orange :deep(input) {
-  color: #ffb302 !important;
-}
-
-.script-state-green :deep(input) {
-  color: #56f000 !important;
 }
 </style>
 <style>
