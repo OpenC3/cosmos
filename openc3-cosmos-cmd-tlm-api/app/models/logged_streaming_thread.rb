@@ -467,15 +467,11 @@ class LoggedStreamingThread < StreamingThread
         objects_by_table_and_mode[key] ||= []
         objects_by_table_and_mode[key] << object
 
-        if object.start_time
-          if start_time.nil? or object.start_time < start_time
-            start_time = object.start_time
-          end
+        if object.start_time and (start_time.nil? or object.start_time < start_time)
+          start_time = object.start_time
         end
-        if object.end_time
-          if end_time.nil? or object.end_time > end_time
-            end_time = object.end_time
-          end
+        if object.end_time and (end_time.nil? or object.end_time > end_time)
+          end_time = object.end_time
         end
       end
     end
@@ -537,6 +533,9 @@ class LoggedStreamingThread < StreamingThread
             column_mapping["#{safe_item_name}__CX"] = [item_name, :MAX, :CONVERTED]
             column_mapping["#{safe_item_name}__CA"] = [item_name, :AVG, :CONVERTED]
             column_mapping["#{safe_item_name}__CS"] = [item_name, :STDDEV, :CONVERTED]
+          else
+            # Unsupported value_type for reduction
+            next
           end
         end
       end
@@ -849,15 +848,11 @@ class LoggedStreamingThread < StreamingThread
 
         packet_objects << object
 
-        if object.start_time
-          if start_time.nil? or object.start_time < start_time
-            start_time = object.start_time
-          end
+        if object.start_time and (start_time.nil? or object.start_time < start_time)
+          start_time = object.start_time
         end
-        if object.end_time
-          if end_time.nil? or object.end_time > end_time
-            end_time = object.end_time
-          end
+        if object.end_time and (end_time.nil? or object.end_time > end_time)
+          end_time = object.end_time
         end
       end
     end
@@ -928,6 +923,9 @@ class LoggedStreamingThread < StreamingThread
             selects << "max(\"#{safe_name}__C\") as \"#{safe_name}__CX\""
             selects << "avg(\"#{safe_name}__C\") as \"#{safe_name}__CA\""
             selects << "stddev(\"#{safe_name}__C\") as \"#{safe_name}__CS\""
+          else
+            # Unsupported value_type for reduction
+            next
           end
         end
       end
