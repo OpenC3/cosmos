@@ -587,7 +587,8 @@ module OpenC3
         tf.puts "REDUCED_MINUTE_LOG_RETAIN_TIME 16"
         tf.puts "REDUCED_HOUR_LOG_RETAIN_TIME 17"
         tf.puts "REDUCED_DAY_LOG_RETAIN_TIME 18"
-        tf.puts "DECOM_RETAIN_DAYS 30"
+        tf.puts "CMD_DECOM_RETAIN_TIME 30d"
+        tf.puts "TLM_DECOM_RETAIN_TIME 60d"
         tf.puts "LOG_RETAIN_TIME 19"
         tf.puts "REDUCED_LOG_RETAIN_TIME 20"
         tf.puts "REDUCER_DISABLED 21"
@@ -611,40 +612,42 @@ module OpenC3
         expect(json['cmd_log_cycle_size']).to eql 2
         expect(json['tlm_log_cycle_time']).to eql 5
         expect(json['tlm_log_cycle_size']).to eql 6
-        expect(json['decom_retain_days']).to eql 30
+        expect(json['cmd_decom_retain_time']).to eql '30d'
+        expect(json['tlm_decom_retain_time']).to eql '60d'
         expect(json['shard']).to eql 9
         tf.unlink
       end
 
-      it "rejects DECOM_RETAIN_DAYS of 0" do
+      it "rejects CMD_DECOM_RETAIN_TIME with invalid format" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
         parser = ConfigParser.new
         tf = Tempfile.new
-        tf.puts "DECOM_RETAIN_DAYS 0"
+        tf.puts "CMD_DECOM_RETAIN_TIME 30"
         tf.close
         expect do
           parser.parse_file(tf.path) do |keyword, params|
             model.handle_config(parser, keyword, params)
           end
-        end.to raise_error(ConfigParser::Error, /DECOM_RETAIN_DAYS must be greater than 0/)
+        end.to raise_error(ConfigParser::Error, /CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y/)
         tf.unlink
       end
 
-      it "rejects negative DECOM_RETAIN_DAYS" do
+      it "rejects TLM_DECOM_RETAIN_TIME with invalid format" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
         parser = ConfigParser.new
         tf = Tempfile.new
-        tf.puts "DECOM_RETAIN_DAYS -5"
+        tf.puts "TLM_DECOM_RETAIN_TIME abc"
         tf.close
         expect do
           parser.parse_file(tf.path) do |keyword, params|
             model.handle_config(parser, keyword, params)
           end
-        end.to raise_error(ConfigParser::Error, /DECOM_RETAIN_DAYS must be greater than 0/)
+        end.to raise_error(ConfigParser::Error, /TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y/)
         tf.unlink
       end
+
     end
 
    describe "deploy" do
@@ -683,8 +686,8 @@ module OpenC3
       it "creates and deploys Target microservices" do
         variables = { "test" => "example" }
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:create).exactly(6).times
-        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(6).times
+        expect(umodel).to receive(:create).exactly(5).times
+        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(5).times
         # Verify the microservices that are started
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__COMMANDLOG__#{@target}",
@@ -708,11 +711,6 @@ module OpenC3
                                                         )).and_return(umodel)
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__MULTI__#{@target}",
-                                                          plugin: 'PLUGIN',
-                                                          scope: @scope
-                                                        )).and_return(umodel)
-        expect(MicroserviceModel).to receive(:new).with(hash_including(
-                                                          name: "#{@scope}__CLEANUP__#{@target}",
                                                           plugin: 'PLUGIN',
                                                           scope: @scope
                                                         )).and_return(umodel)

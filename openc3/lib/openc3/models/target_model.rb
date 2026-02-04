@@ -79,7 +79,8 @@ module OpenC3
     attr_accessor :reduced_minute_log_retain_time
     attr_accessor :reduced_hour_log_retain_time
     attr_accessor :reduced_day_log_retain_time
-    attr_accessor :decom_retain_days
+    attr_accessor :cmd_decom_retain_time
+    attr_accessor :tlm_decom_retain_time
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
@@ -392,7 +393,8 @@ module OpenC3
       reduced_minute_log_retain_time: nil,
       reduced_hour_log_retain_time: nil,
       reduced_day_log_retain_time: nil,
-      decom_retain_days: nil,
+      cmd_decom_retain_time: nil,
+      tlm_decom_retain_time: nil,
       cleanup_poll_time: 600,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
@@ -409,7 +411,7 @@ module OpenC3
         tlm_log_retain_time: tlm_log_retain_time,
         reduced_minute_log_retain_time: reduced_minute_log_retain_time,
         reduced_hour_log_retain_time: reduced_hour_log_retain_time, reduced_day_log_retain_time: reduced_day_log_retain_time,
-        decom_retain_days: decom_retain_days,
+        cmd_decom_retain_time: cmd_decom_retain_time, tlm_decom_retain_time: tlm_decom_retain_time,
         cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
         reducer_disable: reducer_disable, reducer_max_cpu_utilization: reducer_max_cpu_utilization,
         scope: scope)
@@ -431,7 +433,8 @@ module OpenC3
       @reduced_minute_log_retain_time = reduced_minute_log_retain_time
       @reduced_hour_log_retain_time = reduced_hour_log_retain_time
       @reduced_day_log_retain_time = reduced_day_log_retain_time
-      @decom_retain_days = decom_retain_days
+      @cmd_decom_retain_time = cmd_decom_retain_time
+      @tlm_decom_retain_time = tlm_decom_retain_time
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
@@ -466,7 +469,8 @@ module OpenC3
         'reduced_minute_log_retain_time' => @reduced_minute_log_retain_time,
         'reduced_hour_log_retain_time' => @reduced_hour_log_retain_time,
         'reduced_day_log_retain_time' => @reduced_day_log_retain_time,
-        'decom_retain_days' => @decom_retain_days,
+        'cmd_decom_retain_time' => @cmd_decom_retain_time,
+        'tlm_decom_retain_time' => @tlm_decom_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
@@ -522,12 +526,21 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for reduced day log files in seconds - nil = Forever>")
         @reduced_day_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @reduced_day_log_retain_time = @reduced_day_log_retain_time.to_i if @reduced_day_log_retain_time
-      when 'DECOM_RETAIN_DAYS'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Number of days to retain decom data in the database - nil = Forever>")
-        @decom_retain_days = ConfigParser.handle_nil(parameters[0])
-        if @decom_retain_days
-          @decom_retain_days = @decom_retain_days.to_i
-          raise ConfigParser::Error.new(parser, "DECOM_RETAIN_DAYS must be greater than 0") if @decom_retain_days <= 0
+      when 'CMD_DECOM_RETAIN_TIME'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
+        @cmd_decom_retain_time = ConfigParser.handle_nil(parameters[0])
+        if @cmd_decom_retain_time
+          unless @cmd_decom_retain_time.match?(/^\d+[hdwMy]$/)
+            raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 30d, 1y)")
+          end
+        end
+      when 'TLM_DECOM_RETAIN_TIME'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
+        @tlm_decom_retain_time = ConfigParser.handle_nil(parameters[0])
+        if @tlm_decom_retain_time
+          unless @tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
+            raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 30d, 1y)")
+          end
         end
       when 'LOG_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all log files in seconds - nil = Forever>")
@@ -1032,11 +1045,15 @@ module OpenC3
 
     def deploy_tsdb_microservice(gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__TSDB#{instance}__#{@name}"
+      options = []
+      options << ["CMD_DECOM_RETAIN_TIME", @cmd_decom_retain_time] if @cmd_decom_retain_time
+      options << ["TLM_DECOM_RETAIN_TIME", @tlm_decom_retain_time] if @tlm_decom_retain_time
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
         cmd: ["python", "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
+        options: options,
         topics: topics,
         plugin: @plugin,
         parent: nil,
@@ -1218,9 +1235,7 @@ module OpenC3
         end
       end
 
-      if @cmd_log_retain_time or @tlm_log_retain_time or
-         @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time or
-         @decom_retain_days
+      if @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time
         # Cleanup Microservice
         deploy_target_microservices('CLEANUP', nil, nil) do |_, instance, parent|
           deploy_cleanup_microservice(gem_path, variables, instance, parent)

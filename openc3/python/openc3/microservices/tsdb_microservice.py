@@ -36,6 +36,15 @@ class TsdbMicroservice(Microservice):
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
+        # Extract retain time options from microservice config
+        self.cmd_decom_retain_time = None
+        self.tlm_decom_retain_time = None
+        for option in self.config.get("options", []):
+            if option[0] == "CMD_DECOM_RETAIN_TIME":
+                self.cmd_decom_retain_time = option[1]
+            elif option[0] == "TLM_DECOM_RETAIN_TIME":
+                self.tlm_decom_retain_time = option[1]
+
         # Use shared QuestDB client
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
         self.questdb.connect_ingest()
@@ -55,10 +64,12 @@ class TsdbMicroservice(Microservice):
         if "__DECOMCMD__" in topic:
             packet = get_cmd(target_name, packet_name)
             cmd_or_tlm = "CMD"
+            retain_time = self.cmd_decom_retain_time
         else:
             packet = get_tlm(target_name, packet_name)
             cmd_or_tlm = "TLM"
-        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm)
+            retain_time = self.tlm_decom_retain_time
+        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time)
 
     def sync_topics(self):
         """Update local topics based on config events"""

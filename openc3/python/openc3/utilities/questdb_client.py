@@ -456,7 +456,7 @@ class QuestDBClient:
         else:
             return None
 
-    def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM"):
+    def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None):
         """
         Create a QuestDB table for a target/packet combination.
 
@@ -465,6 +465,7 @@ class QuestDBClient:
             packet_name: Packet name
             packet: Packet definition dict with 'items' list
             cmd_or_tlm: "CMD" or "TLM" prefix (default "TLM")
+            retain_time: Optional Time To Live for the table (e.g., "30d", "1y")
 
         Returns:
             The sanitized table name that was created
@@ -595,12 +596,57 @@ class QuestDBClient:
                         DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
                 """
 
+                # Add TTL clause if specified
+                # QuestDB TTL format: TTL <value> <unit> where unit is HOUR, DAY, WEEK, MONTH, YEAR
+                if retain_time:
+                    retain_time_sql = self._convert_retain_time_to_questdb_format(retain_time)
+                    if retain_time_sql:
+                        sql += f"\n                        TTL {retain_time_sql}"
+
                 self._log_info(f"QuestDB: Creating table:\n{sql}")
                 cur.execute(sql)
         except psycopg.Error as error:
             self._log_error(f"QuestDB: Error creating table {table_name}: {error}")
 
         return table_name
+
+    def _convert_retain_time_to_questdb_format(self, retain_time):
+        """
+        Convert TTL from compact format (e.g., "30d", "1y") to QuestDB format (e.g., "30 DAY", "1 YEAR").
+
+        Args:
+            retain_time: TTL string in format like "30d", "1w", "6M", "1y"
+
+        Returns:
+            QuestDB-compatible TTL string or None if invalid
+        """
+        if not retain_time:
+            return None
+
+        # Map of unit suffixes to QuestDB TTL units
+        unit_map = {
+            "h": "HOUR",
+            "d": "DAY",
+            "w": "WEEK",
+            "M": "MONTH",
+            "y": "YEAR",
+        }
+
+        # Extract the numeric value and unit
+        match = re.match(r"^(\d+)([hdwMy])$", retain_time)
+        if not match:
+            self._log_warn(f"QuestDB: Invalid TTL format '{retain_time}', expected format like '30d', '1y'")
+            return None
+
+        value = match.group(1)
+        unit_suffix = match.group(2)
+        questdb_unit = unit_map.get(unit_suffix)
+
+        if not questdb_unit:
+            self._log_warn(f"QuestDB: Unknown TTL unit '{unit_suffix}'")
+            return None
+
+        return f"{value} {questdb_unit}"
 
     def convert_value(self, value, item_name, table_name=None):
         """

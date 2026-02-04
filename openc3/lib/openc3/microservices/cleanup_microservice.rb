@@ -32,8 +32,6 @@ module OpenC3
       @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
       @delete_count = 0
       @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
-      @partition_drop_count = 0
-      @metric.set(name: 'cleanup_partition_drop_total', value: @partition_drop_count, type: 'counter')
       @sleeper = Sleeper.new
     end
 
@@ -63,80 +61,6 @@ module OpenC3
       end
     end
 
-    def cleanup_decom(target_name, decom_retain_days)
-      return unless decom_retain_days
-      return unless ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and
-                    ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
-
-      @state = 'CLEANING_DECOM'
-
-      begin
-        require 'pg'
-        conn = PG::Connection.new(
-          host: ENV['OPENC3_TSDB_HOSTNAME'],
-          port: ENV['OPENC3_TSDB_QUERY_PORT'],
-          user: ENV['OPENC3_TSDB_USERNAME'],
-          password: ENV['OPENC3_TSDB_PASSWORD'],
-          dbname: 'qdb'
-        )
-
-        # Calculate cutoff time for partition retention
-        cutoff_time = Time.now.utc - (decom_retain_days * 86400)
-        cutoff_date = cutoff_time.strftime('%Y-%m-%d')
-
-        # Get all tables for this target (both TLM and CMD)
-        # Table names follow the pattern: TLM__TARGET__PACKET or CMD__TARGET__PACKET
-        tables_result = conn.exec("SELECT table_name FROM tables() WHERE table_name LIKE 'TLM__#{target_name}__%' OR table_name LIKE 'CMD__#{target_name}__%'")
-        return if tables_result.ntuples == 0
-
-        # Check if any partitions need dropping by examining the first table
-        # This avoids running expensive ALTER TABLE commands when there's nothing to clean up
-        first_table = tables_result[0]['table_name']
-        begin
-          partitions_result = conn.exec("SHOW PARTITIONS FROM \"#{first_table}\"")
-          has_old_partitions = partitions_result.any? do |partition|
-            # maxTimestamp indicates the newest data in the partition
-            # If maxTimestamp is before cutoff, the entire partition can be dropped
-            max_timestamp = partition['maxTimestamp']
-            next false if max_timestamp.nil? || max_timestamp.empty?
-            Time.parse(max_timestamp) < cutoff_time
-          end
-
-          unless has_old_partitions
-            @logger.debug("No partitions older than #{cutoff_date} found, skipping decom cleanup")
-            return
-          end
-        rescue PG::Error => e
-          # If we can't check partitions exit
-          @logger.error("Could not check partitions for #{first_table}: #{e.message}")
-          return
-        end
-
-        # Proceed with dropping old partitions from all tables
-        tables_result.each do |row|
-          table_name = row['table_name']
-          begin
-            # Drop partitions older than the cutoff date
-            # QuestDB partitions are typically by day when using timestamp columns
-            sql = "ALTER TABLE \"#{table_name}\" DROP PARTITION WHERE timestamp < '#{cutoff_date}'"
-            conn.exec(sql)
-            @partition_drop_count += 1
-            @metric.set(name: 'cleanup_partition_drop_total', value: @partition_drop_count, type: 'counter')
-            @logger.debug("Dropped old partitions from #{table_name} before #{cutoff_date}")
-          rescue PG::Error => e
-            # Log but don't fail if a specific table has issues (e.g., no partitions to drop)
-            @logger.debug("Could not drop partitions from #{table_name}: #{e.message}")
-          end
-        end
-      rescue LoadError => e
-        @logger.error("PG gem not available for decom cleanup: #{e.message}")
-      rescue PG::Error => e
-        @logger.error("QuestDB connection error during decom cleanup: #{e.message}")
-      ensure
-        conn&.close
-      end
-    end
-
     def get_areas_and_poll_time
       split_name = @name.split("__")
       target_name = split_name[-1]
@@ -149,16 +73,15 @@ module OpenC3
         ["#{@scope}/reduced_hour_logs/tlm/#{target_name}", target.reduced_hour_log_retain_time],
         ["#{@scope}/reduced_day_logs/tlm/#{target_name}", target.reduced_day_log_retain_time],
       ]
-      return areas, target.cleanup_poll_time, target_name, target.decom_retain_days
+      return areas, target.cleanup_poll_time
     end
 
     def run
       bucket = Bucket.getClient()
       while true
         break if @cancel_thread
-        areas, poll_time, target_name, decom_retain_days = get_areas_and_poll_time()
+        areas, poll_time = get_areas_and_poll_time()
         cleanup(areas, bucket)
-        cleanup_decom(target_name, decom_retain_days)
 
         @count += 1
         @metric.set(name: 'cleanup_total', value: @count, type: 'counter')

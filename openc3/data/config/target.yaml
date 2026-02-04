@@ -76,13 +76,32 @@ TARGET:
           required: true
           description: Number of seconds to keep raw telemetry logs (default = nil = Forever)
           values: \d+
-    DECOM_RETAIN_DAYS:
-      summary: How many days to keep decom records in the database.
+    CMD_DECOM_RETAIN_TIME:
+      summary: How long to keep command decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
       parameters:
-        - name: Days
+        - name: Time
           required: true
-          description: Number of days to keep decom records (default = nil = Forever)
-          values: \d+
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
+    TLM_DECOM_RETAIN_TIME:
+      summary: How long to keep telemetry decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
+      parameters:
+        - name: Time
+          required: true
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
     REDUCED_MINUTE_LOG_RETAIN_TIME:
       summary: How long to keep reduced minute telemetry logs in seconds.
       parameters:
