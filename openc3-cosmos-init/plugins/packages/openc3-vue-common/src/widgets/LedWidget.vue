@@ -115,6 +115,9 @@ export default {
       return this.parameters[5] ? Number.parseInt(this.parameters[5]) : 20
     },
     cssProps() {
+      if (!this.screenValues[this.valueId]) {
+        return { '--color': 'openc3-black' }
+      }
       let value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
@@ -134,7 +137,10 @@ export default {
     },
     getClass() {
       let result = 'ledwidget mt-2'
-      if (this.screenValues[this.valueId][1] === 'STALE') {
+      if (
+        this.screenValues[this.valueId] &&
+        this.screenValues[this.valueId][1] === 'STALE'
+      ) {
         result += ' stale'
       }
       return result

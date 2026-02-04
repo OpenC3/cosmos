@@ -174,7 +174,7 @@ class LoggedStreamingThread < StreamingThread
 
       objects.each do |object|
         break if @cancel_thread
-        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name)
+        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
         tables[table_name] = 1
 
         if object.start_time
@@ -520,11 +520,11 @@ class LoggedStreamingThread < StreamingThread
 
     return end_time ? true : false if packet_objects.empty?
 
-    # Group objects by table (target__packet) for efficient querying
+    # Group objects by table (cmd_or_tlm__target__packet) for efficient querying
     objects_by_table = {}
     packet_objects.each do |object|
       # Same sanitization as tsdb_microservice.py create_table()
-      table_name = "#{object.target_name}__#{object.packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
+      table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
       objects_by_table[table_name] ||= []
       objects_by_table[table_name] << object
     end

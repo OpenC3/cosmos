@@ -29,7 +29,7 @@ version_tag = ARGV[0] || "latest"
 
 # Get versions from the Dockerfiles
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
-redis_version = get_docker_version("openc3-redis/Dockerfile")
+valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
@@ -43,7 +43,7 @@ containers = [
     pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
   { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
 ]
@@ -70,11 +70,11 @@ report = build_report(containers, client)
 summary_report = build_summary_report(containers)
 
 # Now check for latest versions
-check_build_files(versitygw_version, traefik_version)
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_versitygw(client, versitygw_version)
-check_container_version(client, containers, 'redis')
+check_build_files(versitygw_version, traefik_version)
+check_container_version(client, containers, 'redis') # valkey base image
 base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
