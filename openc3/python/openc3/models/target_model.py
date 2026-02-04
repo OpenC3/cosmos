@@ -585,6 +585,11 @@ class TargetModel(Model):
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__DECOMLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__DECOMLOG__{self.name}", decom_topics)
+            Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
@@ -595,6 +600,11 @@ class TargetModel(Model):
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__DECOMCMDLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__DECOMCMDLOG__{self.name}", decom_topics)
 
     def add_topics_to_microservice(self, microservice_name, topics):
         model = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)

@@ -68,7 +68,9 @@ module OpenC3
 
       areas = [
         ["#{@scope}/raw_logs/cmd/#{target_name}", target.cmd_log_retain_time],
+        ["#{@scope}/decom_logs/cmd/#{target_name}", target.cmd_decom_log_retain_time],
         ["#{@scope}/raw_logs/tlm/#{target_name}", target.tlm_log_retain_time],
+        ["#{@scope}/decom_logs/tlm/#{target_name}", target.tlm_decom_log_retain_time],
       ]
       return areas, target.cleanup_poll_time
     end

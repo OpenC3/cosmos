@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -158,7 +158,7 @@ class StreamingThread
     time = msg_hash['time'].to_i
     if first_object.stream_mode == :RAW
       return handle_raw_packet(msg_hash['buffer'], objects, time)
-    else # @stream_mode == :DECOM or :REDUCED_X
+    else # @stream_mode == :DECOM
       # Parse json_data to extract extra field containing username and other metadata
       json_data = msg_hash["json_data"]
       extra = nil

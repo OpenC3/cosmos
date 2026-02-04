@@ -142,8 +142,7 @@ TARGET:
       parameters:
         - name: Type
           required: true
-          description: The target microservice type. Must be one of
-            DECOM, COMMANDLOG, PACKETLOG, or CLEANUP
+          description: The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG or CLEANUP
           values: .*
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
