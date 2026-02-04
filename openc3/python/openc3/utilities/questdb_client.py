@@ -635,7 +635,7 @@ class QuestDBClient:
         # Extract the numeric value and unit
         match = re.match(r"^(\d+)([hdwMy])$", retain_time)
         if not match:
-            self._log_warn(f"QuestDB: Invalid TTL format '{retain_time}', expected format like '30d', '1y'")
+            self._log_warn(f"QuestDB: Invalid retain_time format '{retain_time}', expected format like '30d', '1y'")
             return None
 
         value = match.group(1)
@@ -643,7 +643,7 @@ class QuestDBClient:
         questdb_unit = unit_map.get(unit_suffix)
 
         if not questdb_unit:
-            self._log_warn(f"QuestDB: Unknown TTL unit '{unit_suffix}'")
+            self._log_warn(f"QuestDB: Unknown retain_time unit '{unit_suffix}'")
             return None
 
         return f"{value} {questdb_unit}"

@@ -395,7 +395,7 @@ module OpenC3
       reduced_day_log_retain_time: nil,
       cmd_decom_retain_time: nil,
       tlm_decom_retain_time: nil,
-      cleanup_poll_time: 600,
+      cleanup_poll_time: 3600,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
       reducer_disable: false,
@@ -494,7 +494,7 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
         @cmd_log_cycle_size = parameters[0].to_i
       when 'CMD_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for cmd log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for raw cmd log files in seconds - nil = Forever>")
         @cmd_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @cmd_log_retain_time = @cmd_log_retain_time.to_i if @cmd_log_retain_time
       when 'CMD_DECOM_LOG_CYCLE_TIME', 'CMD_DECOM_LOG_CYCLE_SIZE', 'CMD_DECOM_LOG_RETAIN_TIME'
@@ -509,7 +509,7 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
         @tlm_log_cycle_size = parameters[0].to_i
       when 'TLM_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for tlm log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for raw tlm log files in seconds - nil = Forever>")
         @tlm_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @tlm_log_retain_time = @tlm_log_retain_time.to_i if @tlm_log_retain_time
       when 'TLM_DECOM_LOG_CYCLE_TIME', 'TLM_DECOM_LOG_CYCLE_SIZE', 'TLM_DECOM_LOG_RETAIN_TIME'
@@ -531,7 +531,7 @@ module OpenC3
         @cmd_decom_retain_time = ConfigParser.handle_nil(parameters[0])
         if @cmd_decom_retain_time
           unless @cmd_decom_retain_time.match?(/^\d+[hdwMy]$/)
-            raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 30d, 1y)")
+            raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
           end
         end
       when 'TLM_DECOM_RETAIN_TIME'
@@ -539,11 +539,11 @@ module OpenC3
         @tlm_decom_retain_time = ConfigParser.handle_nil(parameters[0])
         if @tlm_decom_retain_time
           unless @tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
-            raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 30d, 1y)")
+            raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
           end
         end
       when 'LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all raw log files in seconds - nil = Forever>")
         log_retain_time = ConfigParser.handle_nil(parameters[0])
         if log_retain_time
           @cmd_log_retain_time = log_retain_time.to_i
@@ -1235,7 +1235,7 @@ module OpenC3
         end
       end
 
-      if @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time
+      if @cmd_log_retain_time or @tlm_log_retain_time or @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time
         # Cleanup Microservice
         deploy_target_microservices('CLEANUP', nil, nil) do |_, instance, parent|
           deploy_cleanup_microservice(gem_path, variables, instance, parent)

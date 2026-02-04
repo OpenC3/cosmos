@@ -469,7 +469,7 @@ class TargetModel(Model):
         reduced_day_log_retain_time=None,
         cmd_decom_retain_time=None,
         tlm_decom_retain_time=None,
-        cleanup_poll_time=600,
+        cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices={"REDUCER": [[]]},
         reducer_disable=False,

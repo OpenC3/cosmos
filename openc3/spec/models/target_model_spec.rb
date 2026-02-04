@@ -686,8 +686,8 @@ module OpenC3
       it "creates and deploys Target microservices" do
         variables = { "test" => "example" }
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:create).exactly(5).times
-        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(5).times
+        expect(umodel).to receive(:create).exactly(6).times
+        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(6).times
         # Verify the microservices that are started
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__COMMANDLOG__#{@target}",
@@ -714,6 +714,12 @@ module OpenC3
                                                           plugin: 'PLUGIN',
                                                           scope: @scope
                                                         )).and_return(umodel)
+        expect(MicroserviceModel).to receive(:new).with(hash_including(
+                                                          name: "#{@scope}__CLEANUP__#{@target}",
+                                                          plugin: 'PLUGIN',
+                                                          scope: @scope
+                                                        )).and_return(umodel)
+
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN', tlm_log_retain_time: 60)
         model.create
         capture_io do |stdout|

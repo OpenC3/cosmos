@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -65,7 +65,7 @@ class ScopeModel(Model):
         text_log_cycle_size: int = 50_000_000,
         text_log_retain_time: int = None,
         tool_log_retain_time: int = None,
-        cleanup_poll_time: int = 900,
+        cleanup_poll_time: int = 3600,
         command_authority: bool = False,
         critical_commanding: str = "OFF",
         shard: int = 0,

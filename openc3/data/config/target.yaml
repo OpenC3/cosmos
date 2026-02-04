@@ -142,7 +142,7 @@ TARGET:
       parameters:
         - name: Time
           required: true
-          description: Number of seconds between runs of the cleanup process (default = 600 = 10 minutes)
+          description: Number of seconds between runs of the cleanup process (default = 3600 = 1 hour)
           values: \d+
     REDUCER_DISABLE:
       summary: Disables the data reduction microservice for the target
