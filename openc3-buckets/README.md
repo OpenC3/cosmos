@@ -103,14 +103,14 @@ OPENC3_BUCKET_USERNAME=your_bucket_user OPENC3_BUCKET_PASSWORD=your_bucket_pass 
 OLD_VOLUME=myproject_openc3-buckets-v NEW_VOLUME=myproject_openc3-buckets-v ./openc3_migrate_s3.sh migrate
 ```
 
-| Variable                 | Description                              | Default               |
-| ------------------------ | ---------------------------------------- | --------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name                 | `openc3-buckets-v`     |
-| `NEW_VOLUME`             | Destination versitygw volume name        | `openc3-buckets-v`      |
-| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)       | `openc3minio`         |
-| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)       | `openc3miniopassword` |
-| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest)     | `openc3bucket`        |
-| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest)     | `openc3bucketpassword`|
+| Variable                 | Description                          | Default                |
+| ------------------------ | ------------------------------------ | ---------------------- |
+| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-object-v`      |
+| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
+| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
+| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
+| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
+| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
 
 ### Migration Performance
 
