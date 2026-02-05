@@ -103,11 +103,11 @@ test-cov-html:
 
 # Run specific test file
 test-file FILE:
-    uv run pytest {{FILE}}
+    uv run pytest {{ FILE }}
 
 # Run tests matching a pattern
 test-pattern PATTERN:
-    uv run pytest -k {{PATTERN}}
+    uv run pytest -k {{ PATTERN }}
 
 # Run only fast tests (exclude slow tests)
 test-fast:
@@ -201,23 +201,23 @@ update:
 
 # Update a specific package
 update-package PACKAGE:
-    uv lock --upgrade-package {{PACKAGE}}
+    uv lock --upgrade-package {{ PACKAGE }}
 
 # Add a new dependency
 add PACKAGE:
-    uv add {{PACKAGE}}
+    uv add {{ PACKAGE }}
 
 # Add a new dev dependency
 add-dev PACKAGE:
-    uv add --dev {{PACKAGE}}
+    uv add --dev {{ PACKAGE }}
 
 # Remove a dependency
 remove PACKAGE:
-    uv remove {{PACKAGE}}
+    uv remove {{ PACKAGE }}
 
 # Run the OpenC3 CLI
 cli *ARGS:
-    uv run openc3pycli {{ARGS}}
+    uv run openc3pycli {{ ARGS }}
 
 # Show project info
 info:
@@ -225,6 +225,80 @@ info:
     @echo "Python: $(python --version)"
     @echo "UV: $(uv --version)"
     @uv tree --depth 1
+
+# Run Trivy security scan on dependencies (includes dev dependencies)
+trivy:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps uv.lock
+
+# Run Trivy security scan with dependency tree (only shows vulnerable packages)
+trivy-tree:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --dependency-tree uv.lock
+
+# Show full dependency tree with Trivy scan results
+trivy-full:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    echo "=== Dependency Tree ==="
+    uv tree
+    echo ""
+    echo "=== Trivy Vulnerability Scan ==="
+    trivy fs --scanners vuln --include-dev-deps uv.lock
+
+# Run Trivy security scan with JSON output (includes dev dependencies)
+trivy-json:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --format json uv.lock
+
+# Run Trivy security scan with only HIGH and CRITICAL vulnerabilities (includes dev dependencies)
+trivy-critical:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL uv.lock
+
+# Run PySentry security scan (checks PyPA Advisory Database, PyPI JSON API, and OSV.dev)
+pysentry:
+    uvx pysentry-rs .
+
+# Run PySentry security scan with JSON output
+pysentry-json:
+    uvx pysentry-rs . --format json
+
+# Run PySentry security scan with SARIF output (for GitHub Security tab)
+pysentry-sarif:
+    uvx pysentry-rs . --format sarif
+
+# Run PySentry security scan with only HIGH and CRITICAL vulnerabilities
+pysentry-critical:
+    uvx pysentry-rs . --severity high,critical
+
+# Run PySentry security scan with detailed output
+pysentry-verbose:
+    uvx pysentry-rs . --verbose
 
 # Watch for file changes and run tests
 watch:
