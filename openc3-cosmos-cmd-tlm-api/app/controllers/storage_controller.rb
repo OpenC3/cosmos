@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -459,6 +459,21 @@ class StorageController < ApplicationController
     render json: { status: 'error', message: e.message }, status: 500
   end
 
+  def delete_directory
+    return unless authorization('system_set')
+    if params[:bucket].presence
+      return unless delete_bucket_directory(params)
+    elsif params[:volume].presence
+      return unless delete_volume_directory(params)
+    else
+      raise "Must pass bucket or volume parameter!"
+    end
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Delete directory failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: 500
+  end
+
   private
 
   # See https://ctrf.io/docs/category/specification
@@ -667,6 +682,81 @@ class StorageController < ApplicationController
     else
       return false
     end
+  end
+
+  def delete_bucket_directory(params)
+    bucket_name = ENV[params[:bucket]]
+    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+
+    path = sanitize_path(params[:object_id])
+    path = "#{path}/" unless path.end_with?('/')
+    key_split = path.split('/')
+
+    # Check scope-based RBAC
+    if bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        return false
+      end
+    end
+
+    # Require admin for most bucket directories
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+      return false unless authorization('admin')
+    end
+
+    # List all objects under the prefix (same pattern as TargetModel#undeploy)
+    bucket = OpenC3::Bucket.getClient()
+    objects = bucket.list_objects(bucket: bucket_name, prefix: path)
+    keys = objects.map(&:key)
+
+    if keys.empty?
+      render json: { deleted_count: 0 }
+      return true
+    end
+
+    # Delete in batches of 1000 (S3 limit)
+    deleted_count = 0
+    keys.each_slice(1000) do |key_batch|
+      bucket.delete_objects(bucket: bucket_name, keys: key_batch)
+      deleted_count += key_batch.length
+
+      # Handle local mode
+      if ENV['OPENC3_LOCAL_MODE']
+        key_batch.each { |key| OpenC3::LocalMode.delete_local(key) }
+      end
+    end
+
+    OpenC3::Logger.info("Deleted directory: #{bucket_name}/#{path} (#{deleted_count} files)",
+                        scope: params[:scope], user: username())
+    render json: { deleted_count: deleted_count }
+    true
+  end
+
+  def delete_volume_directory(params)
+    return false unless authorization('admin')
+
+    volume = ENV[params[:volume]]
+    raise "Unknown volume #{params[:volume]}" unless volume
+
+    path = sanitize_path(params[:object_id])
+    full_path = "/#{volume}/#{path}"
+
+    unless File.directory?(full_path)
+      render json: { status: 'error', message: "Not a directory: #{path}" }, status: 400
+      return false
+    end
+
+    # Count files before deletion for reporting
+    file_count = Dir.glob("#{full_path}/**/*").count { |f| File.file?(f) }
+
+    FileUtils.rm_rf(full_path)
+
+    OpenC3::Logger.info("Deleted directory: #{full_path} (#{file_count} files)",
+                        scope: params[:scope], user: username())
+    render json: { deleted_count: file_count }
+    true
   end
 
   # Validates and returns storage source information
