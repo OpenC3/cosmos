@@ -196,36 +196,16 @@
           </v-list>
         </v-menu>
       </pane>
-      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
-        <div v-if="showDebug" id="debug" class="pa-0">
-          <v-row no-gutters>
-            <v-btn
-              color="primary"
-              style="width: 100px"
-              class="mr-4"
-              text="Step"
-              append-icon="mdi-step-forward"
-              :disabled="!scriptId"
-              data-test="step-button"
-              @click="step"
-            />
-            <v-text-field
-              ref="debug"
-              v-model="debug"
-              class="mb-2"
-              variant="outlined"
-              density="compact"
-              hide-details
-              label="Debug"
-              data-test="debug-text"
-              @keydown="debugKeydown"
-            />
-          </v-row>
-        </div>
-        <script-log-messages
-          id="log-messages"
-          v-model="messages"
-          @sort="messageSortOrder"
+      <pane :size="100 - editorBoxSize">
+        <script-debug-panel
+          ref="debugPanel"
+          v-model:debug="debug"
+          v-model:messages="messages"
+          :show-debug="showDebug"
+          :script-id="scriptId"
+          @step="step"
+          @execute-debug="executeDebug"
+          @message-sort-order="messageSortOrder"
         />
       </pane>
     </splitpanes>
@@ -568,6 +548,7 @@ import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import ScriptControlBar from '@/tools/scriptrunner/ScriptControlBar.vue'
+import ScriptDebugPanel from '@/tools/scriptrunner/ScriptDebugPanel.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -608,6 +589,7 @@ export default {
     CriticalCmdDialog,
     CommandEditor,
     ScriptControlBar,
+    ScriptDebugPanel,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -676,8 +658,6 @@ export default {
       showEnvironment: false,
       showDebug: false,
       debug: '',
-      debugHistory: [],
-      debugHistoryIndex: 0,
       showDisconnect: false,
       files: {},
       breakpoints: {},
@@ -2830,35 +2810,13 @@ class TestSuite(Suite):
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
-    debugKeydown(event) {
-      if (event.key === 'Escape') {
-        this.debug = ''
-        this.debugHistoryIndex = this.debugHistory.length
-      } else if (event.key === 'Enter') {
-        this.debugHistory.push(this.debug)
-        this.debugHistoryIndex = this.debugHistory.length
-        // Post the code to /debug, output is processed by receive()
-        Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
-          data: {
-            args: this.debug,
-          },
-        })
-        this.debug = ''
-      } else if (event.key === 'ArrowUp') {
-        this.debugHistoryIndex -= 1
-        if (this.debugHistoryIndex < 0) {
-          this.debugHistoryIndex = this.debugHistory.length - 1
-        }
-        this.debug = this.debugHistory[this.debugHistoryIndex]
-        // Prevent the cursor/caret from moving to the front
-        event.preventDefault()
-      } else if (event.key === 'ArrowDown') {
-        this.debugHistoryIndex += 1
-        if (this.debugHistoryIndex >= this.debugHistory.length) {
-          this.debugHistoryIndex = 0
-        }
-        this.debug = this.debugHistory[this.debugHistoryIndex]
-      }
+    executeDebug(debugCommand) {
+      // Post the debug command to the API, output is processed by receive()
+      Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
+        data: {
+          args: debugCommand,
+        },
+      })
     },
     removeAllMarkers: function () {
       const allMarkers = this.editor.session.getMarkers()
