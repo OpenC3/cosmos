@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,14 +21,14 @@
 -->
 
 <template>
-  <v-dialog v-model="show" persistent width="600" @keydown.esc="cancelHandler">
+  <v-dialog v-model="show" persistent scrollable width="600" @keydown.esc="cancelHandler">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
         <span class="text" v-text="title" />
         <v-spacer />
       </v-toolbar>
-      <div class="pa-2">
+      <div class="pa-2" style="max-height: 60vh; overflow: auto">
         <v-card-text class="text">
           <v-row v-if="subtitle">
             <v-card-subtitle>{{ subtitle }}</v-card-subtitle>
