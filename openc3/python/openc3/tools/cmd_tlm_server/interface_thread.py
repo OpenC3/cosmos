@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -212,15 +212,6 @@ class InterfaceThread:
                         router.write(packet)
                 except Exception as e:
                     Logger.error(f"Problem writing to router {router.name} - {type(e).__name__}:{e}")
-
-            # Write to packet log writers
-            if packet.stored and self.interface.stored_packet_log_writer_pairs:
-                for packet_log_writer_pair in self.interface.stored_packet_log_writer_pairs:
-                    packet_log_writer_pair.tlm_log_writer.write(packet)
-            else:
-                for packet_log_writer_pair in self.interface.packet_log_writer_pairs:
-                    # Write errors are handled by the log writer
-                    packet_log_writer_pair.tlm_log_writer.write(packet)
 
         except Exception as e:
             Logger.error(f"Error handling packet in {self.interface.name}: {e}")
