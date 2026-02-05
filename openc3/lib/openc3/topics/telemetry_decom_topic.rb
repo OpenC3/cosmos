@@ -41,6 +41,7 @@ module OpenC3
         # Write to stream
         msg_hash = {
           :time => packet.packet_time.to_nsec_from_epoch,
+          :received_time => packet.received_time.to_nsec_from_epoch,
           :stored => packet.stored.to_s,
           :target_name => packet.target_name,
           :packet_name => packet.packet_name,
