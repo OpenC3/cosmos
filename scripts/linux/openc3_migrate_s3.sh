@@ -33,7 +33,7 @@ MINIO_PASS="${MINIO_ROOT_PASSWORD:-openc3miniopassword}"
 # Versitygw credentials (destination - uses COSMOS 7 bucket credentials)
 VERSITY_USER="${OPENC3_BUCKET_USERNAME:-openc3bucket}"
 VERSITY_PASS="${OPENC3_BUCKET_PASSWORD:-openc3bucketpassword}"
-OLD_VOLUME="${OLD_VOLUME:-openc3-object-v}"
+OLD_VOLUME="${OLD_VOLUME:-openc3-bucket-v}"
 NEW_VOLUME="${NEW_VOLUME:-openc3-object-v}"
 # User IDs - must match openc3.sh behavior
 # openc3.sh sets these to current user (id -u/id -g) for non-rootless Docker
