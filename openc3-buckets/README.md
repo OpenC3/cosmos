@@ -99,13 +99,16 @@ MINIO_ROOT_USER=your_old_minio_user MINIO_ROOT_PASSWORD=your_old_minio_pass ./op
 # If you customized COSMOS 7 versitygw credentials (check your current .env file)
 OPENC3_BUCKET_USERNAME=your_bucket_user OPENC3_BUCKET_PASSWORD=your_bucket_pass ./openc3_migrate_s3.sh migrate
 
+# See all your docker volumes
+docker volume ls
+
 # Custom volume names (if using docker compose project prefix)
-OLD_VOLUME=myproject_openc3-buckets-v NEW_VOLUME=myproject_openc3-buckets-v ./openc3_migrate_s3.sh migrate
+OLD_VOLUME=cosmos-project_openc3-bucket-v ./openc3_migrate_s3.sh migrate
 ```
 
 | Variable                 | Description                          | Default                |
 | ------------------------ | ------------------------------------ | ---------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-object-v`      |
+| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`      |
 | `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
 | `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
 | `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
