@@ -262,7 +262,7 @@ class StorageController < ApplicationController
 
   def exists
     return unless authorization('system')
-    raise "Must specify a bucket" unless params[:bucket]
+    params.require(:bucket)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
@@ -384,7 +384,7 @@ class StorageController < ApplicationController
 
   def get_download_presigned_request
     return unless authorization('system')
-    raise "Must specify a bucket" unless params[:bucket]
+    params.require(:bucket)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
@@ -412,7 +412,7 @@ class StorageController < ApplicationController
 
   def get_upload_presigned_request
     return unless authorization('system_set')
-    raise "Must specify a bucket" unless params[:bucket]
+    params.require(:bucket)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
@@ -624,7 +624,7 @@ class StorageController < ApplicationController
   end
 
   def delete_bucket_item(params)
-    raise "Must specify a bucket" unless params[:bucket]
+    params.require(:bucket)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
