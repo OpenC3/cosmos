@@ -57,6 +57,7 @@
         hide-default-footer
         multi-sort
         density="compact"
+        class="parameters-table"
         @contextmenu:row="showContextMenu"
       >
         <template #item.val="{ item }">
@@ -463,3 +464,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.parameters-table {
+  max-height: 50vh;
+}
+</style>
