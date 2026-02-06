@@ -75,7 +75,7 @@
       </div>
       <div v-else>
         <v-card-actions :class="layoutClass">
-          <v-spacer />
+          <v-spacer v-if="layout !== 'vertical'" />
           <v-btn
             variant="outlined"
             data-test="prompt-cancel"
@@ -151,9 +151,9 @@ export default {
     layoutClass() {
       let layout = 'px-2 d-flex align-start'
       if (this.layout === 'vertical') {
-        return `${layout} flex-column`
+        return `${layout} flex-column prompt-buttons-vertical`
       } else {
-        return `${layout} flex-row`
+        return `${layout} flex-row flex-wrap prompt-buttons-horizontal`
       }
     },
   },
@@ -181,5 +181,16 @@ export default {
 .text {
   font-size: 1rem;
   white-space: pre-line;
+}
+
+.prompt-buttons-vertical {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.prompt-buttons-horizontal {
+  max-height: 50vh;
+  overflow-y: auto;
+  gap: 8px;
 }
 </style>
