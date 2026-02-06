@@ -11,6 +11,7 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 ## Quick Start
 
 1. Start QuestDB:
+
    ```bash
    docker compose -f docker-compose.test.yml up -d
    ```
@@ -18,12 +19,14 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 2. Wait for QuestDB to be ready (check http://localhost:9000)
 
 3. Run Python tests:
+
    ```bash
-   cd /path/to/openc3
-   poetry run pytest test/integration/tsdb/python/ -v
+   cd /cosmos/openc3/python
+   poetry run pytest ../test/integration/tsdb/python/ -v
    ```
 
 4. Run Ruby tests:
+
    ```bash
    cd /path/to/openc3/test/integration/tsdb/ruby
    bundle install
@@ -54,6 +57,7 @@ tsdb/
 ## What's Tested
 
 ### Python Tests (`python/test_tsdb_roundtrip.py`)
+
 - INT (signed) roundtrip: 3-bit to 64-bit
 - UINT (unsigned) roundtrip: 3-bit to 64-bit
 - FLOAT roundtrip: 32-bit and 64-bit
@@ -64,12 +68,15 @@ tsdb/
 - OBJECT roundtrip (simple and complex)
 
 ### Ruby CvtModel Tests (`ruby/cvt_model_tsdb_spec.rb`)
+
 Cross-language tests where Python writes data and Ruby reads it back:
+
 - Same data types as Python tests
 - Tests RAW, CONVERTED, and FORMATTED value types
 - Verifies `CvtModel.tsdb_lookup` functionality
 
 ### Ruby Streaming Tests (`ruby/logged_streaming_thread_tsdb_spec.rb`)
+
 - `LoggedStreamingThread.stream_items` functionality
 - INT, FLOAT, STRING, DERIVED, ARRAY streaming
 - CONVERTED and FORMATTED value streaming
@@ -80,6 +87,7 @@ Cross-language tests where Python writes data and Ruby reads it back:
 ## CI/CD
 
 These tests run in the `tsdb_integration_tests.yml` GitHub Action workflow which:
+
 1. Starts a QuestDB service container
 2. Runs Python tests
 3. Runs Ruby tests
@@ -90,18 +98,23 @@ The workflow only runs on changes to TSDB-related files.
 ## Troubleshooting
 
 ### QuestDB not available
+
 Ensure QuestDB is running and accessible:
+
 ```bash
 curl http://localhost:9000/
 psql -h localhost -p 8812 -U admin -d qdb
 ```
 
 ### Connection refused
+
 Check that ports 9000 (HTTP) and 8812 (PostgreSQL) are not in use:
+
 ```bash
 lsof -i :9000
 lsof -i :8812
 ```
 
 ### Tests timing out
+
 QuestDB has eventual consistency. If tests fail with timing issues, try increasing the `timeout` parameter in `wait_for_data()` calls.

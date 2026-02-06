@@ -182,22 +182,6 @@ module OpenC3
       item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
     end
 
-    # Get the column suffix for a given value type.
-    # Used when building SQL queries to select the appropriate column.
-    #
-    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED'
-    # @return [String, nil] Column suffix ('__C', '__F') or nil for RAW
-    def self.column_suffix_for_value_type(value_type)
-      case value_type
-      when 'FORMATTED'
-        '__F'
-      when 'CONVERTED'
-        '__C'
-      else
-        nil
-      end
-    end
-
     # Convert a PG timestamp to UTC.
     # PG driver returns timestamps as naive Time objects that need UTC treatment.
     # QuestDB stores timestamps in UTC, but the PG driver applies local timezone.
