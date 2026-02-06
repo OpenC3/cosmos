@@ -1178,9 +1178,7 @@ class TestStructureBufferRecalculateBitOffsets(unittest.TestCase):
         s.append_item("test1", 80, "BLOCK")
         s.append_item("test2", 0, "BLOCK")
         s.define_item("test3", -16, 16, "UINT")
-        s.buffer = (
-            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09" b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
-        )
+        s.buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
         self.assertEqual(s.read("test1"), b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09")
         self.assertEqual(s.read("test2"), b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55")
         self.assertEqual(s.read("test3"), 0xAA55)
