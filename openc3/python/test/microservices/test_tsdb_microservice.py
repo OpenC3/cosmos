@@ -902,7 +902,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_cast_error(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics handles type cast errors by altering table"""
+        """Test read_topics handles type cast errors by casting value"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -953,10 +953,10 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         for stdout in capture_io():
             tsdb.read_topics()
-            # Should have logged ALTER TABLE command
-            self.assertIn("ALTER TABLE", stdout.getvalue())
+            # Should have logged warning about casting the value
+            self.assertIn("expected LONG but received FLOAT", stdout.getvalue())
 
-        # Should have called row twice (failed, then succeeded)
+        # Should have called row twice (failed, then succeeded after cast)
         self.assertEqual(mock_ingest.row.call_count, 2)
 
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1018,7 +1018,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         for stdout in capture_io():
             tsdb.read_topics()
             # Should have logged warning about array-to-scalar conversion and retry
-            self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
+            self.assertIn("Serializing as JSON string", stdout.getvalue())
 
         # Column should be registered for JSON serialization
         self.assertIn("TLM__INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
@@ -1082,7 +1082,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         for stdout in capture_io():
             tsdb.read_topics()
             # Should have logged warning about array-to-scalar conversion and retry
-            self.assertIn("Serializing as JSON and retrying", stdout.getvalue())
+            self.assertIn("Serializing as JSON string", stdout.getvalue())
 
         # Column should be registered for JSON serialization
         self.assertIn("TLM__INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)

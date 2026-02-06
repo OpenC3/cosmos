@@ -143,7 +143,8 @@ def run_roundtrip_test(questdb_client, clean_table, wait_for_data):
         read_conversion=None,
     ):
         target_name = "ROUNDTRIP"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         # Build item definition
         item = {"name": "VALUE", "data_type": data_type}
@@ -155,7 +156,7 @@ def run_roundtrip_test(questdb_client, clean_table, wait_for_data):
             item["read_conversion"] = read_conversion
 
         packet_def = {"items": [item]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         # Insert test values
         ts = int(time.time() * 1e9)
@@ -551,11 +552,12 @@ class TestTimestampItemsRoundtrip:
         """Helper to run timestamp item tests."""
         target_name = "ROUNDTRIP"
         packet_name = f"TS_{item_name}"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         # Build a simple packet definition
         packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         # Insert test values with known timestamps
         base_ts = int(time.time() * 1e9)
@@ -661,10 +663,11 @@ class TestTimestampItemsRoundtrip:
         """Timestamp items work correctly alongside regular items."""
         target_name = "ROUNDTRIP"
         packet_name = "TS_MIXED"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         base_ts = int(time.time() * 1e9)
         test_values = [100, 200]

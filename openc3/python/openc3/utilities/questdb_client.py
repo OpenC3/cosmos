@@ -23,6 +23,7 @@ import os
 import re
 import json
 import math
+import time
 import base64
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -270,40 +271,48 @@ class QuestDBClient:
         else:
             print(f"ERROR: {msg}")
 
-    def connect_ingest(self):
-        """
-        Establish HTTP ILP connection for data ingestion.
+    def _get_connection_env(self, port_env_var):
+        """Read and validate QuestDB connection environment variables.
 
-        Uses environment variables:
-        - OPENC3_TSDB_HOSTNAME: QuestDB host
-        - OPENC3_TSDB_INGEST_PORT: HTTP ILP port (default 9000)
-        - OPENC3_TSDB_USERNAME: Authentication username
-        - OPENC3_TSDB_PASSWORD: Authentication password
+        Args:
+            port_env_var: Name of the port environment variable
+
+        Returns:
+            Tuple of (host, port, username, password)
 
         Raises:
-            RuntimeError: If required environment variables are missing
-            ConnectionError: If connection fails
+            RuntimeError: If any required environment variable is missing
         """
         host = os.environ.get("OPENC3_TSDB_HOSTNAME")
-        ingest_port = os.environ.get("OPENC3_TSDB_INGEST_PORT")
+        port = os.environ.get(port_env_var)
         username = os.environ.get("OPENC3_TSDB_USERNAME")
         password = os.environ.get("OPENC3_TSDB_PASSWORD")
 
         if not host:
             raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_HOSTNAME")
-        if ingest_port:
-            ingest_port = int(ingest_port)
-        else:
-            raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_INGEST_PORT")
+        if not port:
+            raise RuntimeError(f"{self.name} missing env var {port_env_var}")
         if not username:
             raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_USERNAME")
         if not password:
             raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_PASSWORD")
 
+        return host, int(port), username, password
+
+    def connect_ingest(self):
+        """
+        Establish HTTP ILP connection for data ingestion.
+
+        Raises:
+            RuntimeError: If required environment variables are missing
+            ConnectionError: If connection fails
+        """
+        host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT")
+
         try:
             if self.ingest:
                 self.ingest.close()
-            self.ingest = Sender(Protocol.Http, host, ingest_port, username=username, password=password)
+            self.ingest = Sender(Protocol.Http, host, port, username=username, password=password)
             self.ingest.establish()
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}")
@@ -312,31 +321,11 @@ class QuestDBClient:
         """
         Establish PostgreSQL connection for queries and DDL.
 
-        Uses environment variables:
-        - OPENC3_TSDB_HOSTNAME: QuestDB host
-        - OPENC3_TSDB_QUERY_PORT: PostgreSQL port (default 8812)
-        - OPENC3_TSDB_USERNAME: Authentication username
-        - OPENC3_TSDB_PASSWORD: Authentication password
-
         Raises:
             RuntimeError: If required environment variables are missing
             ConnectionError: If connection fails
         """
-        host = os.environ.get("OPENC3_TSDB_HOSTNAME")
-        query_port = os.environ.get("OPENC3_TSDB_QUERY_PORT")
-        username = os.environ.get("OPENC3_TSDB_USERNAME")
-        password = os.environ.get("OPENC3_TSDB_PASSWORD")
-
-        if not host:
-            raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_HOSTNAME")
-        if query_port:
-            query_port = int(query_port)
-        else:
-            raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_QUERY_PORT")
-        if not username:
-            raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_USERNAME")
-        if not password:
-            raise RuntimeError(f"{self.name} missing env var OPENC3_TSDB_PASSWORD")
+        host, port, username, password = self._get_connection_env("OPENC3_TSDB_QUERY_PORT")
 
         try:
             if self.query:
@@ -344,7 +333,7 @@ class QuestDBClient:
 
             self.query = psycopg.connect(
                 host=host,
-                port=query_port,
+                port=port,
                 user=username,
                 password=password,
                 dbname="qdb",
@@ -440,25 +429,6 @@ class QuestDBClient:
         return re.sub(cls.COLUMN_NAME_INVALID_CHARS, "_", item_name)
 
     @staticmethod
-    def column_suffix_for_value_type(value_type):
-        """
-        Get the column suffix for a given value type.
-        Used when building SQL queries to select the appropriate column.
-
-        Args:
-            value_type: Value type: 'RAW', 'CONVERTED', 'FORMATTED'
-
-        Returns:
-            Column suffix ('__C', '__F') or None for RAW
-        """
-        if value_type == "FORMATTED":
-            return "__F"
-        elif value_type == "CONVERTED":
-            return "__C"
-        else:
-            return None
-
-    @staticmethod
     def pg_timestamp_to_utc(pg_time):
         """
         Convert a psycopg timestamp to UTC.
@@ -497,6 +467,37 @@ class QuestDBClient:
         else:
             return None
 
+    # Maps SQL type strings used in CREATE TABLE to canonical type names returned by SHOW COLUMNS
+    QUESTDB_TYPE_MAP = {
+        "float": "FLOAT",
+        "double": "DOUBLE",
+        "int": "INT",
+        "long": "LONG",
+        "varchar": "VARCHAR",
+        "DECIMAL(20, 0)": "DECIMAL",
+        "timestamp_ns": "TIMESTAMP_NS",
+        "SYMBOL": "SYMBOL",
+    }
+
+    def _get_existing_columns(self, table_name):
+        """Query QuestDB for existing column names and types.
+
+        Returns:
+            Dict of column_name -> column_type (e.g., {"VALUE": "LONG", "STATUS": "VARCHAR"}),
+            or None if the table does not exist.
+        """
+        try:
+            with self.query.cursor() as cur:
+                cur.execute(f'SHOW COLUMNS FROM "{table_name}"')
+                columns = {}
+                for row in cur.fetchall():
+                    columns[row[0]] = row[1]
+                return columns
+        except (psycopg.Error, TypeError):
+            # psycopg.Error: table doesn't exist in QuestDB
+            # TypeError: can occur in unit tests with mock cursors
+            return None
+
     def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None):
         """
         Create a QuestDB table for a target/packet combination.
@@ -518,8 +519,9 @@ class QuestDBClient:
                 f"QuestDB: Target / packet {orig_table_name} changed to {table_name} due to invalid characters"
             )
 
-        # Build column definitions for all packet items
-        column_definitions = []
+        # Build desired column definitions: dict of column_name -> sql_type
+        # Used both for CREATE TABLE (new tables) and ALTER TABLE (existing tables)
+        desired_columns = {}
 
         items = packet.get("items", [])
         for item in items:
@@ -550,57 +552,37 @@ class QuestDBClient:
 
                 # Types that require JSON serialization (complex or unknown types)
                 if converted_type is None or converted_type in ["ARRAY", "OBJECT", "ANY"] or converted_array_size:
-                    column_definitions.append(f'"{item_name}" varchar')
+                    desired_columns[item_name] = "varchar"
                     self.json_columns[f"{table_name}__{item_name}"] = True
                 else:
                     col_type, needs_json = self._get_column_type_from_conversion(
                         table_name, item_name, converted_type, converted_bit_size
                     )
-                    column_definitions.append(f'"{item_name}" {col_type}')
+                    desired_columns[item_name] = col_type
                     if needs_json:
                         self.json_columns[f"{table_name}__{item_name}"] = True
                 continue
 
             if item.get("array_size") is not None:
                 # Always json encode arrays to avoid QuestDB array type issues
-                column_definitions.append(f'"{item_name}" varchar')
+                desired_columns[item_name] = "varchar"
                 self.json_columns[f"{table_name}__{item_name}"] = True
             else:
                 # Determine the QuestDB column type based on item data type
-                # Default to VARCHAR for flexibility
-                column_type = "VARCHAR"
-
                 # We need to make sure to choose nullable types and choose types that
                 # can support the full range of the given type. This is tricky because
                 # QuestDB uses the minimum possible value in a given type as NULL.
                 # See https://questdb.com/docs/reference/sql/datatypes for more details.
                 bit_size = item.get("bit_size", 0)
-                if data_type in ["INT", "UINT"]:
-                    if bit_size < 32:
-                        column_type = "int"
-                    elif bit_size < 64:
-                        column_type = "long"
-                    else:
-                        # Use DECIMAL(20, 0) for 64-bit integers to preserve full range
-                        # LONG uses min value as NULL, DECIMAL uses out-of-range value
-                        # 20 digits covers unsigned 64-bit max (18446744073709551615)
-                        column_type = "DECIMAL(20, 0)"
-                        # Register for Decimal conversion before ILP ingestion
-                        self.decimal_int_columns[f"{table_name}__{item_name}"] = True
-                elif data_type == "FLOAT":
-                    if bit_size == 32:
-                        column_type = "float"
-                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 32
-                    else:
-                        column_type = "double"
-                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 64
-                elif data_type in ["STRING", "BLOCK"]:
-                    column_type = "varchar"
-
-                column_definitions.append(f'"{item_name}" {column_type}')
+                col_type, needs_json = self._get_column_type_from_conversion(
+                    table_name, item_name, data_type, bit_size
+                )
+                desired_columns[item_name] = col_type
+                if needs_json:
+                    self.json_columns[f"{table_name}__{item_name}"] = True
 
                 if item.get("states"):
-                    column_definitions.append(f'"{item_name}__C" varchar')
+                    desired_columns[f"{item_name}__C"] = "varchar"
                 elif item.get("read_conversion"):
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
@@ -608,47 +590,84 @@ class QuestDBClient:
                     col_type, _ = self._get_column_type_from_conversion(
                         table_name, f"{item_name}__C", converted_type, converted_bit_size
                     )
-                    column_definitions.append(f'"{item_name}__C" {col_type}')
+                    desired_columns[f"{item_name}__C"] = col_type
 
                 if item.get("format_string") or item.get("units"):
-                    column_definitions.append(f'"{item_name}__F" varchar')
+                    desired_columns[f"{item_name}__F"] = "varchar"
 
-        columns_sql = ",\n".join(column_definitions)
+        # Check if table already exists and reconcile column types
+        existing_columns = self._get_existing_columns(table_name)
 
-        try:
-            with self.query.cursor() as cur:
-                # Create table with COSMOS_DATA_TAG as a SYMBOL
-                # for use as filtering/indexing column.
-                sql = f"""
-                    CREATE TABLE IF NOT EXISTS "{table_name}" (
-                        PACKET_TIMESECONDS timestamp_ns,
-                        RECEIVED_TIMESECONDS timestamp_ns,
-                        COSMOS_DATA_TAG SYMBOL,
-                        RECEIVED_COUNT LONG"""
+        if existing_columns is not None:
+            # Table exists — check for type mismatches and missing columns
+            altered = False
+            try:
+                with self.query.cursor() as cur:
+                    for col_name, desired_sql_type in desired_columns.items():
+                        desired_canonical = self.QUESTDB_TYPE_MAP.get(desired_sql_type, desired_sql_type.upper())
+                        existing_type = existing_columns.get(col_name)
 
-                if columns_sql:
-                    sql += f",\n{columns_sql}"
+                        if existing_type is None:
+                            # Column doesn't exist yet — add it
+                            alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
+                            cur.execute(alter)
+                            self._log_info(f"QuestDB: Added column: {alter}")
+                            altered = True
+                        elif existing_type != desired_canonical:
+                            # Type mismatch — ALTER the column type
+                            alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                            cur.execute(alter)
+                            self._log_info(
+                                f"QuestDB: Altered column type: {alter} "
+                                f"(was {existing_type}, now {desired_canonical})"
+                            )
+                            altered = True
+            except psycopg.Error as error:
+                self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
 
-                # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
-                # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
-                # explicitly include COSMOS_DATA_TAG as well.
-                sql += """
-                    ) TIMESTAMP(PACKET_TIMESECONDS)
-                        PARTITION BY DAY
-                        DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
-                """
+            if altered:
+                # QuestDB applies ALTER asynchronously — wait for changes to propagate
+                time.sleep(0.5)
+                # Reconnect ILP sender to clear its cached schema
+                self.connect_ingest()
+        else:
+            # Table doesn't exist — create it
+            columns_sql = ",\n".join(f'"{col}" {col_type}' for col, col_type in desired_columns.items())
 
-                # Add TTL clause if specified
-                # QuestDB TTL format: TTL <value> <unit> where unit is HOUR, DAY, WEEK, MONTH, YEAR
-                if retain_time:
-                    retain_time_sql = self._convert_retain_time_to_questdb_format(retain_time)
-                    if retain_time_sql:
-                        sql += f"\n                        TTL {retain_time_sql}"
+            try:
+                with self.query.cursor() as cur:
+                    # Create table with COSMOS_DATA_TAG as a SYMBOL
+                    # for use as filtering/indexing column.
+                    sql = f"""
+                        CREATE TABLE IF NOT EXISTS "{table_name}" (
+                            PACKET_TIMESECONDS timestamp_ns,
+                            RECEIVED_TIMESECONDS timestamp_ns,
+                            COSMOS_DATA_TAG SYMBOL,
+                            RECEIVED_COUNT LONG"""
 
-                self._log_info(f"QuestDB: Creating table:\n{sql}")
-                cur.execute(sql)
-        except psycopg.Error as error:
-            self._log_error(f"QuestDB: Error creating table {table_name}: {error}")
+                    if columns_sql:
+                        sql += f",\n{columns_sql}"
+
+                    # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
+                    # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
+                    # explicitly include COSMOS_DATA_TAG as well.
+                    sql += """
+                        ) TIMESTAMP(PACKET_TIMESECONDS)
+                            PARTITION BY DAY
+                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
+                    """
+
+                    # Add TTL clause if specified
+                    # QuestDB TTL format: TTL <value> <unit> where unit is HOUR, DAY, WEEK, MONTH, YEAR
+                    if retain_time:
+                        retain_time_sql = self._convert_retain_time_to_questdb_format(retain_time)
+                        if retain_time_sql:
+                            sql += f"\n                        TTL {retain_time_sql}"
+
+                    self._log_info(f"QuestDB: Creating table:\n{sql}")
+                    cur.execute(sql)
+            except psycopg.Error as error:
+                self._log_error(f"QuestDB: Error creating table {table_name}: {error}")
 
         return table_name
 
@@ -826,44 +845,66 @@ class QuestDBClient:
             columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
 
-    def write_row_with_schema_protection(self, table_name, columns, timestamp_ns, rx_timestamp_ns=None):
-        """
-        Write a single row with schema protection (for migration).
-
-        Tries to write the row, and if it fails due to schema mismatch,
-        adapts the data rather than altering the schema.
-
-        Args:
-            table_name: Target table name (already sanitized)
-            columns: Dict of column_name -> value
-            timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
-            rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
-
-        Returns:
-            Tuple of (success: bool, migrated_columns: list)
-        """
-        try:
-            if rx_timestamp_ns is not None:
-                # Convert nanoseconds to datetime for QuestDB timestamp column
-                columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(
-                    rx_timestamp_ns / 1_000_000_000, tz=timezone.utc
-                )
-            self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-            return True, []
-        except IngressError as error:
-            return self.handle_ingress_error_with_protection(error, table_name, columns, timestamp_ns)
-
     def flush(self):
         """Flush pending writes to QuestDB."""
         if self.ingest:
             self.ingest.flush()
 
+    def _convert_column_to_json(self, table_name, column_name, columns):
+        """Mark a column for JSON serialization and convert its current value."""
+        self.json_columns[f"{table_name}__{column_name}"] = True
+        if column_name in columns:
+            value = columns[column_name]
+            if isinstance(value, numpy.ndarray):
+                columns[column_name] = json.dumps(value.tolist())
+            else:
+                columns[column_name] = json.dumps(value)
+
+    def _reconnect_and_retry_row(self, table_name, columns, timestamp_ns):
+        """Reconnect the ILP sender and retry writing the row."""
+        self.connect_ingest()
+        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+
+    # Map QuestDB column types to Python casting functions for value conversion.
+    # Used by handle_ingress_error to cast mismatched values to fit the column type.
+    COLUMN_TYPE_CASTERS = {
+        "LONG": int,
+        "INT": int,
+        "SHORT": int,
+        "BYTE": int,
+        "FLOAT": float,
+        "DOUBLE": float,
+        "VARCHAR": str,
+        "STRING": str,
+        "SYMBOL": str,
+        "DECIMAL": str,
+    }
+
+    def _cast_value_to_column_type(self, value, column_type):
+        """Attempt to cast a value to match the expected column type.
+
+        Args:
+            value: The value to cast
+            column_type: QuestDB column type name (e.g., "LONG", "DOUBLE", "VARCHAR")
+
+        Returns:
+            The casted value, or None if casting fails.
+        """
+        caster = self.COLUMN_TYPE_CASTERS.get(column_type)
+        if caster is None:
+            return None
+        try:
+            return caster(value)
+        except (ValueError, TypeError, OverflowError):
+            return None
+
     def handle_ingress_error(self, error, table_name, columns, timestamp_ns):
         """
-        Handle an IngressError, potentially fixing schema issues.
+        Handle an IngressError by casting the value to fit the column type.
 
-        For real-time ingestion, this will ALTER the table schema.
-        For migration, use handle_ingress_error_with_protection instead.
+        Since create_table proactively reconciles column types on startup,
+        IngressErrors indicate the data doesn't match the user's definitions.
+        We cast the value to fit the column type rather than altering the schema.
 
         Args:
             error: The IngressError
@@ -881,168 +922,73 @@ class QuestDBClient:
             return False
 
         try:
-            with self.query.cursor() as cur:
-                error_message = str(error)
-                table_match = re.search(r"table:\s+(.+?),", error_message)
-                column_match = re.search(r"column:\s+(.+?);", error_message)
-                type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
-                to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
+            error_message = str(error)
+            table_match = re.search(r"table:\s+(.+?),", error_message)
+            column_match = re.search(r"column:\s+(.+?);", error_message)
+            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
+            to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
 
-                if not (table_match and column_match and type_match):
-                    self._log_error("QuestDB: Could not parse table, column, or type from error message")
-                    return False
+            if not (table_match and column_match and type_match):
+                self._log_error("QuestDB: Could not parse table, column, or type from error message")
+                return False
 
-                err_table_name = table_match.group(1)
-                column_name = column_match.group(1)
-                protocol_type = type_match.group(1)
-                column_type = to_type_match.group(1) if to_type_match else ""
+            err_table_name = table_match.group(1)
+            column_name = column_match.group(1)
+            protocol_type = type_match.group(1)
+            column_type = to_type_match.group(1) if to_type_match else ""
 
-                # Check if this is an array-to-scalar/varchar conversion (not fixable via ALTER)
-                is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
-                is_array_column = column_type.endswith("[]") or column_type.upper() == "ARRAY"
-                if is_array_protocol and not is_array_column:
-                    json_key = f"{err_table_name}__{column_name}"
-                    self.json_columns[json_key] = True
-                    self._log_warn(
-                        f"QuestDB: Column {column_name} in table {err_table_name} was created as scalar "
-                        f"but received array. Serializing as JSON and retrying."
-                    )
-                    # Convert the array value to JSON and retry
-                    if column_name in columns:
-                        value = columns[column_name]
-                        if isinstance(value, numpy.ndarray):
-                            columns[column_name] = json.dumps(value.tolist())
-                        else:
-                            columns[column_name] = json.dumps(value)
-                        self.connect_ingest()  # reconnect
-                        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-                        return True
-                    return False
+            is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
 
-                # Handle INTEGER to DECIMAL cast error by converting value to string
-                # This happens for 64-bit integer columns which are stored as DECIMAL
-                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns
-                if protocol_type == "INTEGER" and column_type == "DECIMAL":
-                    if column_name in columns:
-                        value = columns[column_name]
-                        columns[column_name] = str(value)
-                        # Register this column so future values are converted upfront
-                        self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
-                        self._log_info(
-                            f"QuestDB: Column {column_name} is DECIMAL but received INTEGER. "
-                            f"Converting value to string and retrying."
-                        )
-                        self.connect_ingest()  # reconnect
-                        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-                        return True
-                    return False
-
-                # Try to change the column type to fix the error
-                # Note: QuestDB only supports DOUBLE[] arrays, convert other array types
-                if protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY":
-                    new_type = "DOUBLE[]"
-                else:
-                    new_type = protocol_type.lower()
-                alter = f"""ALTER TABLE "{err_table_name}" ALTER COLUMN {column_name} TYPE {new_type}"""
-                cur.execute(alter)
-                self._log_info(f"QuestDB: {alter}")
-                self.connect_ingest()  # reconnect
-                # Retry write
-                self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+            # Handle array type mismatches — convert to JSON string
+            if is_array_protocol:
+                self._convert_column_to_json(err_table_name, column_name, columns)
+                self._log_warn(
+                    f"QuestDB: Column {column_name} in table {err_table_name} "
+                    f"received array data but column type is {column_type}. "
+                    f"Serializing as JSON string."
+                )
+                self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
                 return True
 
-        except psycopg.Error as psy_error:
-            self._log_error(f"QuestDB: Error executing ALTER\n{psy_error}")
+            # Handle INTEGER to DECIMAL cast error by converting value to string
+            # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns
+            if protocol_type == "INTEGER" and column_type == "DECIMAL":
+                if column_name in columns:
+                    columns[column_name] = str(columns[column_name])
+                    self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
+                    self._log_warn(
+                        f"QuestDB: Column {column_name} in table {err_table_name} "
+                        f"is DECIMAL but received INTEGER. Converting value to string."
+                    )
+                    self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
+                    return True
+                return False
+
+            # For scalar type mismatches, cast the value to fit the column type
+            if column_name not in columns:
+                return False
+
+            value = columns[column_name]
+            casted = self._cast_value_to_column_type(value, column_type)
+            if casted is not None:
+                columns[column_name] = casted
+                self._log_warn(
+                    f"QuestDB: Column {column_name} in table {err_table_name} "
+                    f"expected {column_type} but received {protocol_type}. "
+                    f"Cast value from {repr(value)} to {repr(casted)}."
+                )
+            else:
+                # Can't cast — remove from row (will be NULL in QuestDB)
+                del columns[column_name]
+                self._log_warn(
+                    f"QuestDB: Column {column_name} in table {err_table_name} "
+                    f"expected {column_type} but received {protocol_type}. "
+                    f"Could not cast {repr(value)}, storing as NULL."
+                )
+            self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
+            return True
+
+        except Exception as exc:
+            self._log_error(f"QuestDB: Error handling ingress error: {exc}")
             return False
 
-    def handle_ingress_error_with_protection(self, error, table_name, columns, timestamp_ns):
-        """
-        Handle an IngressError with schema protection (for migration).
-
-        This method protects the existing schema by:
-        1. On cast error, trying to adapt the value
-        2. If adaptation fails, writing to a new __MIGRATED column
-
-        Args:
-            error: The IngressError
-            table_name: Table name
-            columns: Column values dict (will be modified)
-            timestamp_ns: Timestamp in nanoseconds
-
-        Returns:
-            Tuple of (success: bool, migrated_columns: list of (old_col, new_col))
-        """
-        migrated_columns = []
-        error_str = str(error)
-
-        if "cast error from protocol type" not in error_str:
-            self._log_error(f"QuestDB: Non-cast error writing to {table_name}: {error}")
-            return False, migrated_columns
-
-        # Parse the error to find the problematic column
-        table_match = re.search(r"table:\s+(.+?),", error_str)
-        column_match = re.search(r"column:\s+(.+?);", error_str)
-        type_match = re.search(r"protocol type:\s+([A-Z]+)\s", error_str)
-
-        if not (table_match and column_match and type_match):
-            self._log_error(f"QuestDB: Could not parse cast error: {error}")
-            return False, migrated_columns
-
-        col_name = column_match.group(1)
-        expected_type = type_match.group(1).lower()
-
-        # Try to adapt the value
-        if col_name in columns:
-            original_value = columns[col_name]
-            adapted_value = self._try_adapt_value(original_value, expected_type)
-
-            if adapted_value is not None:
-                columns[col_name] = adapted_value
-                try:
-                    self.connect_ingest()
-                    self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-                    return True, migrated_columns
-                except IngressError:
-                    pass
-
-            # Adaptation failed - write to new column
-            new_col = f"{col_name}__MIGRATED"
-            columns[new_col] = columns.pop(col_name)
-            migrated_columns.append((col_name, new_col))
-            self._log_warn(f"QuestDB: Schema mismatch, {col_name} -> {new_col}")
-
-            try:
-                self.connect_ingest()
-                self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-                return True, migrated_columns
-            except IngressError as e2:
-                self._log_error(f"QuestDB: Failed even with migrated column: {e2}")
-                return False, migrated_columns
-
-        return False, migrated_columns
-
-    def _try_adapt_value(self, value, expected_type):
-        """
-        Try to adapt a value to the expected type.
-
-        Args:
-            value: The value to adapt
-            expected_type: The expected QuestDB type (lowercase)
-
-        Returns:
-            Adapted value or None if adaptation not possible
-        """
-        try:
-            if expected_type in ("int", "long"):
-                if isinstance(value, float):
-                    return int(value)
-                elif isinstance(value, str):
-                    return int(float(value))
-            elif expected_type in ("float", "double"):
-                if isinstance(value, (int, str)):
-                    return float(value)
-            elif expected_type == "varchar":
-                return str(value)
-        except (ValueError, TypeError):
-            pass
-        return None

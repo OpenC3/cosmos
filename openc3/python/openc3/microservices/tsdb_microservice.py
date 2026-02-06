@@ -158,7 +158,7 @@ class TsdbMicroservice(Microservice):
             self.questdb.flush()
 
         except IngressError as error:
-            # Try to handle the error (may alter schema for real-time ingestion)
+            # Cast the value to fit the column type and retry
             self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
 
     def run(self):
