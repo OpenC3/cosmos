@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -54,7 +54,6 @@
 </template>
 
 <script>
-import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/theme-twilight'
@@ -119,36 +118,20 @@ export default {
   },
   methods: {
     initEditor() {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
-
       // Build modes using the mixin methods
       const RubyMode = this.buildRubyMode()
       const PythonMode = this.buildPythonMode()
       this.rubyMode = new RubyMode()
       this.pythonMode = new PythonMode()
 
-      // Set initial mode based on language
-      if (this.language === 'python') {
-        this.editor.session.setMode(this.pythonMode)
-      } else {
-        this.editor.session.setMode(this.rubyMode)
-      }
-
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
-      this.editor.setOption('enableBasicAutocompletion', true)
-      this.editor.setOption('enableLiveAutocompletion', true)
-      this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-      this.editor.setHighlightActiveLine(false)
-      this.editor.setValue(this.modelValue)
-      this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
-      this.editor.focus()
-
-      this.editor.session.on('change', () => {
-        this.$emit('update:modelValue', this.editor.getValue())
+      // Initialize editor with common settings
+      this.editor = AceEditorUtils.initializeEditor(this.$refs.editor, {
+        mode: this.language === 'python' ? this.pythonMode : this.rubyMode,
+        completers: [new CmdCompleter(), new TlmCompleter()],
+        value: this.modelValue,
+        onChange: () => {
+          this.$emit('update:modelValue', this.editor.getValue())
+        },
       })
     },
     getValue() {

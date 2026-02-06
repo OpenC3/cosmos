@@ -996,37 +996,28 @@ export default {
     }
   },
   mounted: async function () {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
+    // Build modes using the mixin methods
     const RubyMode = this.buildRubyMode()
     const PythonMode = this.buildPythonMode()
     this.rubyMode = new RubyMode()
     this.pythonMode = new PythonMode()
     const language = AceEditorUtils.getDefaultScriptingLanguage()
-    if (language === 'python') {
-      this.editor.session.setMode(this.pythonMode)
-    } else {
-      this.editor.session.setMode(this.rubyMode)
-    }
-    this.editor.session.setTabSize(2)
-    this.editor.session.setUseWrapMode(true)
-    this.editor.$blockScrolling = Infinity
-    this.editor.setOption('enableBasicAutocompletion', true)
-    this.editor.setOption('enableLiveAutocompletion', true)
-    this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-    this.editor.setHighlightActiveLine(false)
-    AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
-    this.editor.focus()
 
+    // Initialize editor with common settings
+    this.editor = AceEditorUtils.initializeEditor(this.$refs.editor, {
+      mode: language === 'python' ? this.pythonMode : this.rubyMode,
+      completers: [new CmdCompleter(), new TlmCompleter()],
+      vimModeSaveFn: this.saveFile,
+      readOnly: this.readOnlyUser || this.inline,
+      hideCursor: this.readOnlyUser || this.inline,
+    })
+
+    // Add ScriptRunner-specific event listeners and annotations
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
     this.editor.session.on('tokenizerUpdate', this.onChange)
-    if (this.readOnlyUser || this.inline) {
-      this.editor.setReadOnly(true)
-      this.editor.renderer.$cursorLayer.element.style.display = 'none'
-    }
 
     const sleepAnnotator = new SleepAnnotator(this.editor)
     this.editor.session.on('change', ($event, session) => {

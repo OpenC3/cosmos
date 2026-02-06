@@ -270,17 +270,12 @@ export default {
   mounted() {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
-      this.editor.session.setMode(new pluginMode())
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
-      this.editor.setHighlightActiveLine(false)
-      this.editor.setValue(this.localPluginTxt)
-      this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
-      this.editor.focus()
+      this.editor = AceEditorUtils.initializeEditor(this.$refs.editor, {
+        mode: new pluginMode(),
+        value: this.localPluginTxt,
+        enableAutocompletion: false,
+        enableLiveAutocompletion: false,
+      })
     } else {
       this.tab = 1 // Show the diff right off the bat
       this.differ = new AceDiff({
