@@ -22,6 +22,7 @@ from openc3.utilities.string import quote_if_necessary, simple_formatted
 from openc3.conversions.conversion import Conversion
 from openc3.config.config_parser import ConfigParser
 
+
 class PacketItem(StructureItem):
     # The allowable state colors
     VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
@@ -67,9 +68,7 @@ class PacketItem(StructureItem):
     def format_string(self, format_string):
         if format_string:
             if not isinstance(format_string, str):
-                raise TypeError(
-                    f"{self.name}: format_string must be a str but is a {format_string.__class__.__name__}"
-                )
+                raise TypeError(f"{self.name}: format_string must be a str but is a {format_string.__class__.__name__}")
             if not re.search(r"%.*(b|B|d|i|o|u|x|X|e|E|f|g|G|a|A|c|p|s|%)", format_string):
                 raise ValueError(f"{self.name}: format_string invalid '{format_string}'")
             self.__format_string = format_string
@@ -152,9 +151,7 @@ class PacketItem(StructureItem):
     def description(self, description):
         if description:
             if not isinstance(description, str):
-                raise TypeError(
-                    f"{self.name}: description must be a str but is a {description.__class__.__name__}"
-                )
+                raise TypeError(f"{self.name}: description must be a str but is a {description.__class__.__name__}")
             self.__description = description
         else:
             self.__description = None
@@ -189,9 +186,7 @@ class PacketItem(StructureItem):
         if self.default is not None and self.write_conversion is None:
             if self.array_size is not None:
                 if not isinstance(self.default, list):
-                    raise TypeError(
-                        f"{self.name}: default must be a list but is a {self.default.__class__.__name__}"
-                    )
+                    raise TypeError(f"{self.name}: default must be a list but is a {self.default.__class__.__name__}")
             else:
                 match self.data_type:
                     case "INT" | "UINT":
@@ -230,13 +225,19 @@ class PacketItem(StructureItem):
                             )
                     case "ARRAY":
                         if not isinstance(self.default, list):
-                            raise TypeError(f"{self.name}: default must be a list but is a {self.default.__class__.__name__}")
+                            raise TypeError(
+                                f"{self.name}: default must be a list but is a {self.default.__class__.__name__}"
+                            )
                     case "OBJECT":
                         if not isinstance(self.default, dict):
-                            raise TypeError(f"{self.name}: default must be a dict but is a {self.default.__class__.__name__}")
+                            raise TypeError(
+                                f"{self.name}: default must be a dict but is a {self.default.__class__.__name__}"
+                            )
                     case "BOOL":
                         if not isinstance(self.default, bool):
-                            raise TypeError(f"{self.name}: default must be a bool but is a {self.default.__class__.__name__}")
+                            raise TypeError(
+                                f"{self.name}: default must be a bool but is a {self.default.__class__.__name__}"
+                            )
 
     @property
     def hazardous(self):
@@ -275,9 +276,7 @@ class PacketItem(StructureItem):
     def state_colors(self, state_colors):
         if state_colors is not None:
             if not isinstance(state_colors, dict):
-                raise TypeError(
-                    f"{self.name}: state_colors must be a dict but is a {state_colors.__class__.__name__}"
-                )
+                raise TypeError(f"{self.name}: state_colors must be a dict but is a {state_colors.__class__.__name__}")
 
             self.__state_colors = state_colors
         else:
@@ -291,9 +290,7 @@ class PacketItem(StructureItem):
     def limits(self, limits):
         if limits is not None:
             if not isinstance(limits, PacketItemLimits):
-                raise TypeError(
-                    f"{self.name}: limits must be a PacketItemLimits but is a {limits.__class__.__name__}"
-                )
+                raise TypeError(f"{self.name}: limits must be a PacketItemLimits but is a {limits.__class__.__name__}")
 
             self.__limits = limits
         else:

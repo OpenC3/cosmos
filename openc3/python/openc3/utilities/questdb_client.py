@@ -368,6 +368,47 @@ class QuestDBClient:
                 pass
             self.query = None
 
+    def _get_column_type_from_conversion(self, table_name, column_name, converted_type, converted_bit_size):
+        """
+        Determine the QuestDB column type based on a read_conversion's converted_type and converted_bit_size.
+
+        Args:
+            table_name: Table name for tracking column metadata
+            column_name: Column name for tracking column metadata
+            converted_type: The converted_type from read_conversion (FLOAT, INT, UINT, TIME, STRING, BLOCK, etc.)
+            converted_bit_size: The converted_bit_size from read_conversion
+
+        Returns:
+            Tuple of (column_type_sql, needs_json) where:
+                - column_type_sql is the QuestDB column type string (e.g., "float", "double", "varchar")
+                - needs_json is True if the column should be JSON-serialized
+        """
+        if converted_type == "FLOAT":
+            if converted_bit_size == 32:
+                self.float_bit_sizes[f"{table_name}__{column_name}"] = 32
+                return "float", False
+            else:
+                self.float_bit_sizes[f"{table_name}__{column_name}"] = 64
+                return "double", False
+        elif converted_type in ("INT", "UINT"):
+            if converted_bit_size < 32:
+                return "int", False
+            elif converted_bit_size < 64:
+                return "long", False
+            else:
+                self.decimal_int_columns[f"{table_name}__{column_name}"] = True
+                return "DECIMAL(20, 0)", False
+        elif converted_type == "TIME":
+            return "timestamp_ns", False
+        elif converted_type == "STRING":
+            return "varchar", False
+        elif converted_type == "BLOCK":
+            # BLOCK type is base64 encoded, not JSON
+            return "varchar", False
+        else:
+            # Unknown converted_type - fall back to JSON serialization
+            return "varchar", True
+
     @classmethod
     def sanitize_table_name(cls, target_name, packet_name, cmd_or_tlm="TLM"):
         """
@@ -511,33 +552,13 @@ class QuestDBClient:
                 if converted_type is None or converted_type in ["ARRAY", "OBJECT", "ANY"] or converted_array_size:
                     column_definitions.append(f'"{item_name}" varchar')
                     self.json_columns[f"{table_name}__{item_name}"] = True
-                elif converted_type == "FLOAT":
-                    if converted_bit_size == 32:
-                        column_definitions.append(f'"{item_name}" float')
-                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 32
-                    else:
-                        column_definitions.append(f'"{item_name}" double')
-                        self.float_bit_sizes[f"{table_name}__{item_name}"] = 64
-                elif converted_type in ["INT", "UINT"]:
-                    if converted_bit_size < 32:
-                        column_definitions.append(f'"{item_name}" int')
-                    elif converted_bit_size < 64:
-                        column_definitions.append(f'"{item_name}" long')
-                    else:
-                        column_definitions.append(f'"{item_name}" DECIMAL(20, 0)')
-                        self.decimal_int_columns[f"{table_name}__{item_name}"] = True
-                elif converted_type == "TIME":
-                    column_definitions.append(f'"{item_name}" timestamp_ns')
-                elif converted_type == "STRING":
-                    column_definitions.append(f'"{item_name}" varchar')
-                    # STRING type doesn't need JSON encoding - stored as plain varchar
-                elif converted_type == "BLOCK":
-                    column_definitions.append(f'"{item_name}" varchar')
-                    # BLOCK type is base64 encoded, not JSON
                 else:
-                    # Unknown converted_type - fall back to JSON serialization
-                    column_definitions.append(f'"{item_name}" varchar')
-                    self.json_columns[f"{table_name}__{item_name}"] = True
+                    col_type, needs_json = self._get_column_type_from_conversion(
+                        table_name, item_name, converted_type, converted_bit_size
+                    )
+                    column_definitions.append(f'"{item_name}" {col_type}')
+                    if needs_json:
+                        self.json_columns[f"{table_name}__{item_name}"] = True
                 continue
 
             if item.get("array_size") is not None:
@@ -584,22 +605,10 @@ class QuestDBClient:
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
                     converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
-                    if converted_type == "FLOAT":
-                        if converted_bit_size == 32:
-                            column_definitions.append(f'"{item_name}__C" float')
-                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 32
-                        else:
-                            column_definitions.append(f'"{item_name}__C" double')
-                            self.float_bit_sizes[f"{table_name}__{item_name}__C"] = 64
-                    elif converted_type in ["INT", "UINT"]:
-                        if converted_bit_size < 32:
-                            column_definitions.append(f'"{item_name}__C" int')
-                        elif converted_bit_size <= 64:
-                            column_definitions.append(f'"{item_name}__C" long')
-                        else:
-                            column_definitions.append(f'"{item_name}__C" varchar')
-                    else:
-                        column_definitions.append(f'"{item_name}__C" varchar')
+                    col_type, _ = self._get_column_type_from_conversion(
+                        table_name, f"{item_name}__C", converted_type, converted_bit_size
+                    )
+                    column_definitions.append(f'"{item_name}__C" {col_type}')
 
                 if item.get("format_string") or item.get("units"):
                     column_definitions.append(f'"{item_name}__F" varchar')
