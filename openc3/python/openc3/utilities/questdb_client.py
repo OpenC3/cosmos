@@ -29,7 +29,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 import psycopg
 import numpy
-from questdb.ingress import Sender, IngressError, Protocol, TimestampNanos
+from questdb.ingress import Sender, Protocol, TimestampNanos
 
 # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
 # QuestDB stores these as NULL, so we use sentinel values near float max instead.
@@ -574,9 +574,7 @@ class QuestDBClient:
                 # QuestDB uses the minimum possible value in a given type as NULL.
                 # See https://questdb.com/docs/reference/sql/datatypes for more details.
                 bit_size = item.get("bit_size", 0)
-                col_type, needs_json = self._get_column_type_from_conversion(
-                    table_name, item_name, data_type, bit_size
-                )
+                col_type, needs_json = self._get_column_type_from_conversion(table_name, item_name, data_type, bit_size)
                 desired_columns[item_name] = col_type
                 if needs_json:
                     self.json_columns[f"{table_name}__{item_name}"] = True
@@ -991,4 +989,3 @@ class QuestDBClient:
         except Exception as exc:
             self._log_error(f"QuestDB: Error handling ingress error: {exc}")
             return False
-
