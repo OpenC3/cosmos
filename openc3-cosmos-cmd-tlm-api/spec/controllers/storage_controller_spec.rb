@@ -693,7 +693,8 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "handles errors" do
-      allow(ENV).to receive(:[]).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
 
       delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
       expect(response).to have_http_status(:internal_server_error)
@@ -815,7 +816,8 @@ RSpec.describe StorageController, type: :controller do
       end
 
       it "handles errors" do
-        allow(ENV).to receive(:[]).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
 
         delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
         expect(response).to have_http_status(:internal_server_error)
