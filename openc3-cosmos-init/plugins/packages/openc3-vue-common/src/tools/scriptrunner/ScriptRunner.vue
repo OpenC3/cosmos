@@ -211,147 +211,27 @@
     </splitpanes>
   </div>
 
-  <div
+  <script-runner-inline
     v-else
-    style="
-      background-color: var(--color-background-base-default);
-      margin: 0px;
-      padding: 0px;
-    "
-  >
-    <v-row no-gutters justify="right">
-      <v-tabs v-model="inlineTab" density="compact">
-        <v-tab value="script" text="Script" data-test="script-tab" />
-        <v-tab value="messages" text="Messages" data-test="messages-tab" />
-      </v-tabs>
-      <v-tooltip
-        location="bottom"
-        :text="filenameSelect"
-        :disabled="!filenameSelect || filenameSelect.length <= 45"
-      >
-        <template #activator="{ props }">
-          <div v-bind="props" style="width: 32rem">
-            <v-select
-              id="inline-filename"
-              v-model="filenameSelect"
-              :items="fileList"
-              :disabled="fileList.length <= 1"
-              label="Filename"
-              data-test="filename"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="fileNameChanged"
-            />
-          </div>
-        </template>
-      </v-tooltip>
-      <v-text-field
-        v-model="scriptId"
-        label="Script ID"
-        data-test="id"
-        class="shrink ml-2 script-state"
-        style="max-width: 100px"
-        density="compact"
-        variant="outlined"
-        readonly
-        hide-details
-      />
-      <v-text-field
-        v-model="stateTimer"
-        label="Script State"
-        data-test="state"
-        :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
-        style="max-width: 120px"
-        density="compact"
-        variant="outlined"
-        readonly
-        hide-details
-      />
-      <v-progress-circular
-        v-if="state === 'Connecting...'"
-        :size="40"
-        class="mx-2"
-        indeterminate
-        color="primary"
-      />
-    </v-row>
-    <v-tabs-window v-model="inlineTab">
-      <v-tabs-window-item value="script">
-        <v-row>
-          <v-col
-            class="v-col-10"
-            style="margin: 15px 0px 0px 0px; padding: 0px"
-          >
-            <pre
-              ref="editor"
-              class="editor"
-              style="height: 200px"
-              @contextmenu.prevent="showExecuteSelectionMenu"
-            ></pre>
-          </v-col>
-          <v-col
-            class="v-col-2"
-            style="
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              background-color: var(--color-background-surface-default);
-            "
-          >
-            <div v-if="startOrGoButton === 'Start'">
-              <v-btn
-                class="mx-1"
-                color="primary"
-                text="Start"
-                data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
-                :hidden="suiteRunner"
-                @click="startHandler"
-              />
-            </div>
-            <div v-else>
-              <v-btn
-                color="primary"
-                class="ma-2"
-                text="Go"
-                :disabled="startOrGoDisabled"
-                data-test="go-button"
-                @click="go"
-              />
-              <v-btn
-                color="primary"
-                class="ma-2"
-                :text="pauseOrRetryButton"
-                :disabled="pauseOrRetryDisabled"
-                data-test="pause-retry-button"
-                @click="pauseOrRetry"
-              />
-
-              <v-btn
-                color="primary"
-                class="ma-2"
-                text="Stop"
-                data-test="stop-button"
-                :disabled="stopDisabled"
-                @click="stop"
-              />
-            </div>
-          </v-col>
-        </v-row>
-      </v-tabs-window-item>
-
-      <v-tabs-window-item value="messages">
-        <div style="height: 200px; overflow: hidden">
-          <script-log-messages
-            v-model="messages"
-            :newest-on-top="messagesNewestOnTop"
-            @message-order-changed="messageOrderChanged"
-          />
-        </div>
-      </v-tabs-window-item>
-    </v-tabs-window>
-  </div>
+    ref="inlineEditor"
+    v-model:filename-select="filenameSelect"
+    v-model:messages="messages"
+    :file-list="fileList"
+    :start-or-go-button="startOrGoButton"
+    :start-or-go-disabled="startOrGoDisabled"
+    :execute-user="executeUser"
+    :suite-runner="suiteRunner"
+    :pause-or-retry-button="pauseOrRetryButton"
+    :pause-or-retry-disabled="pauseOrRetryDisabled"
+    :stop-disabled="stopDisabled"
+    :messages-newest-on-top="messagesNewestOnTop"
+    @show-execute-selection-menu="showExecuteSelectionMenu"
+    @start="startHandler"
+    @go="go"
+    @pause-or-retry="pauseOrRetry"
+    @stop="stop"
+    @message-order-changed="messageSortOrder"
+  />
 
   <file-open-save-dialog
     v-if="fileOpen"
@@ -546,9 +426,9 @@ import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
-import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import ScriptControlBar from '@/tools/scriptrunner/ScriptControlBar.vue'
 import ScriptDebugPanel from '@/tools/scriptrunner/ScriptDebugPanel.vue'
+import ScriptRunnerInline from '@/tools/scriptrunner/ScriptRunnerInline.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -585,11 +465,11 @@ export default {
     SimpleTextDialog,
     SuiteRunner,
     RunningScripts,
-    ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
     ScriptControlBar,
     ScriptDebugPanel,
+    ScriptRunnerInline,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -680,7 +560,6 @@ export default {
       receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
-      inlineTab: 'script',
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {
