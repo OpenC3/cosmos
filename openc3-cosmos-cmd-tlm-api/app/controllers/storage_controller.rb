@@ -31,6 +31,8 @@ rescue LoadError
 end
 
 class StorageController < ApplicationController
+  class StorageError < StandardError; end
+
   # Check if a bucket requires RBAC (config and logs do, tools does not)
   def bucket_requires_rbac?(bucket_param)
     # Tools bucket is accessible to all users with system permission
@@ -179,7 +181,7 @@ class StorageController < ApplicationController
 
   def files
     return unless authorization('system')
-    root = ENV.fetch(params[:root]) { |name| raise "Unknown bucket / volume #{name}" }
+    root = ENV.fetch(params[:root]) { |name| raise StorageError, "Unknown bucket / volume #{name}" }
     results = []
     if params[:root].include?('_BUCKET')
       bucket = OpenC3::Bucket.getClient()
@@ -247,7 +249,7 @@ class StorageController < ApplicationController
       results << dirs
       results << files
     else
-      raise "Unknown root #{params[:root]}"
+      raise StorageError, "Unknown root #{params[:root]}"
     end
     render json: results
   rescue OpenC3::Bucket::NotFound => e
@@ -262,7 +264,7 @@ class StorageController < ApplicationController
   def exists
     return unless authorization('system')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -343,7 +345,7 @@ class StorageController < ApplicationController
 
     begin
       files = params[:files] || []
-      raise "No files specified" if files.empty?
+      raise StorageError, "No files specified" if files.empty?
 
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
@@ -383,7 +385,7 @@ class StorageController < ApplicationController
   def get_download_presigned_request
     return unless authorization('system')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -410,7 +412,7 @@ class StorageController < ApplicationController
   def get_upload_presigned_request
     return unless authorization('system_set')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
 
@@ -465,7 +467,7 @@ class StorageController < ApplicationController
     elsif params[:volume].presence
       return unless delete_volume_directory(params)
     else
-      raise "Must pass bucket or volume parameter!"
+      raise StorageError, "Must pass bucket or volume parameter!"
     end
   rescue Exception => e
     log_error(e)
@@ -629,14 +631,14 @@ class StorageController < ApplicationController
     # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
     sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
     if sanitized != path
-      raise "Invalid path: #{path}"
+      raise StorageError, "Invalid path: #{path}"
     end
     sanitized
   end
 
   def delete_bucket_item(params)
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
 
@@ -671,7 +673,7 @@ class StorageController < ApplicationController
   def delete_volume_item(params)
     # Deleting requires admin
     if authorization('admin')
-      volume = ENV.fetch(params[:volume]) { |name| raise "Unknown volume #{name}" }
+      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
       filename = "/#{volume}/#{params[:object_id]}"
       filename = sanitize_path(filename)
       FileUtils.rm filename
@@ -683,7 +685,7 @@ class StorageController < ApplicationController
   end
 
   def delete_bucket_directory(params)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
 
     path = sanitize_path(params[:object_id])
     path = "#{path}/" unless path.end_with?('/')
@@ -732,7 +734,7 @@ class StorageController < ApplicationController
   def delete_volume_directory(params)
     return false unless authorization('admin')
 
-    volume = ENV.fetch(params[:volume]) { |name| raise "Unknown volume #{name}" }
+    volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
 
     path = sanitize_path(params[:object_id])
     full_path = "/#{volume}/#{path}"
@@ -757,13 +759,13 @@ class StorageController < ApplicationController
   # @return [Array<Symbol, String>] Storage type (:volume or :bucket) and storage name
   def validate_storage_source
     if params[:volume]
-      volume = ENV.fetch(params[:volume]) { |name| raise "Unknown volume #{name}" }
+      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
       [:volume, volume]
     elsif params[:bucket]
-      bucket = ENV.fetch(params[:bucket]) { |name| raise "Unknown bucket #{name}" }
+      bucket = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
       [:bucket, bucket]
     else
-      raise "No volume or bucket given"
+      raise StorageError, "No volume or bucket given"
     end
   end
 
