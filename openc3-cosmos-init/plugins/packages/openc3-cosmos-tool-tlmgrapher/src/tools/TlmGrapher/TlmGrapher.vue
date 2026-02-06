@@ -36,6 +36,7 @@
 
         <v-container v-else class="d-flex pb-0">
           <target-packet-item-chooser
+            ref="chooser"
             class="flex-grow-1"
             :initial-target-name="$route.params.target"
             :initial-packet-name="$route.params.packet"
@@ -50,8 +51,8 @@
               <v-btn
                 color="primary"
                 data-test="add-item"
-                :disabled="!currentItem"
-                @click="addItem(currentItem)"
+                :disabled="!hasValidItem"
+                @click="addItem(getCurrentItem())"
               >
                 Add Item
               </v-btn>
@@ -62,7 +63,7 @@
                     color="primary"
                     class="split-button-dropdown"
                     data-test="add-item-menu"
-                    :disabled="!currentItem"
+                    :disabled="!hasValidItem"
                   >
                     <v-icon>mdi-chevron-down</v-icon>
                   </v-btn>
@@ -73,7 +74,7 @@
                     v-for="graph in graphs"
                     :key="graph"
                     :data-test="`add-to-graph-${graph}`"
-                    @click="addItemToGraph(currentItem, graph)"
+                    @click="addItemToGraph(getCurrentItem(), graph)"
                   >
                     <v-list-item-title>
                       {{ getGraphTitle(graph) }}
@@ -207,7 +208,7 @@ export default {
       counter: 1,
       applyingConfig: false,
       observer: null,
-      currentItem: null,
+      hasValidItem: false,
       menus: [
         {
           label: 'File',
@@ -455,12 +456,7 @@ export default {
       this.selectedGraphId = id
     },
     updateCurrentItem: function (item) {
-      // Store the current item selection from the chooser
-      if (item.targetName && item.packetName && item.itemName) {
-        this.currentItem = item
-      } else {
-        this.currentItem = null
-      }
+      this.hasValidItem = !!(item.targetName && item.packetName && item.itemName)
     },
     getGraphTitle: function (graphId) {
       const graphRef = this.$refs[`graph${graphId}`]
@@ -473,6 +469,18 @@ export default {
       // Find the index of this graph in the graphs array for display
       const index = this.graphs.indexOf(graphId)
       return `Graph ${index + 1}`
+    },
+    getCurrentItem: function () {
+      const chooser = this.$refs.chooser
+      if (!chooser) return null
+      return {
+        targetName: chooser.selectedTargetName,
+        packetName: chooser.selectedPacketName,
+        itemName: chooser.selectedItemNameWIndex,
+        valueType: chooser.selectedValueType,
+        reduced: chooser.selectedReduced,
+        reducedType: chooser.selectedReducedType,
+      }
     },
     addItemToGraph: function (item, graphId) {
       // Add item to a specific graph
