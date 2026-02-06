@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -416,7 +416,7 @@ class XtceConverter:
             parent: Parent XML element
         """
         attrs = {"name": f"{item.name}_Type"}
-        if item.default and not item.array_size:
+        if item.default and item.array_size is None:
             attrs["initialValue"] = str(item.default)
         if item.description:
             attrs["shortDescription"] = item.description
@@ -504,7 +504,7 @@ class XtceConverter:
             parent: Parent XML element
         """
         attrs = {"name": f"{item.name}_Type", "sizeInBits": str(item.bit_size)}
-        if item.default and not item.array_size:
+        if item.default and item.array_size is None:
             attrs["initialValue"] = str(item.default)
         if item.description:
             attrs["shortDescription"] = item.description
@@ -555,7 +555,7 @@ class XtceConverter:
         if string_or_binary == "String":
             attrs["characterWidth"] = "8"
 
-        if item.default and not item.array_size:
+        if item.default and item.array_size is None:
             try:
                 # Try to determine if printable
                 if isinstance(item.default, (bytes, bytearray)):

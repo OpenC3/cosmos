@@ -585,3 +585,129 @@ class TestCommands(unittest.TestCase):
 
         cmd = Commands(pc, System)
         self.assertTrue(cmd.cmd_subpacket_unique_id_mode("TGT1"))
+
+    def test_build_cmd_skips_auto_managed_length_fields_for_variable_bit_size_arrays(self):
+        """
+        Test that build_cmd skips writing length fields that are auto-managed by
+        variable_bit_size arrays. This prevents the bug where writing the length
+        field before the array causes adjustment=0, leading to incorrect bit_offsets.
+
+        Without the fix, passing both ARRAY1_LENGTH and ARRAY1 to build_cmd would:
+        1. Write ARRAY1_LENGTH = 3 to the buffer
+        2. Write ARRAY1 = [1,2,3], which reads ARRAY1_LENGTH=3, calculates adjustment=0
+        3. ARRAY2_LENGTH's bit_offset doesn't get adjusted, causing errors
+
+        With the fix, the explicit ARRAY1_LENGTH value is ignored and set by the
+        array write, ensuring proper bit_offset adjustment.
+        """
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("COMMAND TGT1 VARARRAYS BIG_ENDIAN\n")
+        tf.write("  APPEND_PARAMETER ARRAY1_LENGTH 32 UINT 0 100 0\n")
+        tf.write("  APPEND_ARRAY_PARAMETER ARRAY1 8 UINT 0\n")
+        tf.write("    VARIABLE_BIT_SIZE ARRAY1_LENGTH 8 0\n")
+        tf.write("  APPEND_PARAMETER ARRAY2_LENGTH 32 UINT 0 100 0\n")
+        tf.write("  APPEND_ARRAY_PARAMETER ARRAY2 8 UINT 0\n")
+        tf.write("    VARIABLE_BIT_SIZE ARRAY2_LENGTH 8 0\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+
+        # Build command with explicit length values AND array data
+        # The length values should be IGNORED and derived from the array data
+        items = {
+            "ARRAY1_LENGTH": 99,  # This should be ignored, actual length is 3
+            "ARRAY1": [0x01, 0x02, 0x03],
+            "ARRAY2_LENGTH": 88,  # This should be ignored, actual length is 2
+            "ARRAY2": [0xAA, 0xBB],
+        }
+        command = cmd.build_cmd("TGT1", "VARARRAYS", items, False, False)
+
+        # Verify the lengths were derived from array data, not explicit values
+        self.assertEqual(command.read("ARRAY1_LENGTH"), 3)  # Not 99
+        self.assertEqual(command.read("ARRAY2_LENGTH"), 2)  # Not 88
+        self.assertEqual(command.read("ARRAY1"), [0x01, 0x02, 0x03])
+        self.assertEqual(command.read("ARRAY2"), [0xAA, 0xBB])
+
+    def test_build_cmd_correctly_builds_multiple_variable_bit_size_array_commands(self):
+        """
+        This test ensures that using deep_copy prevents the template from being
+        corrupted between builds. Without deep_copy, the shared items would have
+        their bit_offsets modified during the first build, causing the second build
+        to fail or produce incorrect results.
+        """
+        import tempfile
+
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write("COMMAND TGT1 VARARRAYS BIG_ENDIAN\n")
+        tf.write("  APPEND_PARAMETER ARRAY1_LENGTH 32 UINT 0 100 0\n")
+        tf.write("  APPEND_ARRAY_PARAMETER ARRAY1 8 UINT 0\n")
+        tf.write("    VARIABLE_BIT_SIZE ARRAY1_LENGTH 8 0\n")
+        tf.write("  APPEND_PARAMETER ARRAY2_LENGTH 32 UINT 0 100 0\n")
+        tf.write("  APPEND_ARRAY_PARAMETER ARRAY2 8 UINT 0\n")
+        tf.write("    VARIABLE_BIT_SIZE ARRAY2_LENGTH 8 0\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        from openc3.packets.commands import Commands
+        from openc3.system.system import System
+
+        cmd = Commands(pc, System)
+
+        # Build first command
+        command1 = cmd.build_cmd(
+            "TGT1",
+            "VARARRAYS",
+            {"ARRAY1": [0x01, 0x02, 0x03], "ARRAY2": [0x04, 0x05]},
+            False,
+            False,
+        )
+
+        # Verify first command buffer layout
+        # Expected: ARRAY1_LENGTH(4 bytes) + ARRAY1(3 bytes) + ARRAY2_LENGTH(4 bytes) + ARRAY2(2 bytes) = 13 bytes
+        self.assertEqual(len(command1.buffer), 13)
+        self.assertEqual(command1.read("ARRAY1_LENGTH"), 3)
+        self.assertEqual(command1.read("ARRAY1"), [0x01, 0x02, 0x03])
+        self.assertEqual(command1.read("ARRAY2_LENGTH"), 2)
+        self.assertEqual(command1.read("ARRAY2"), [0x04, 0x05])
+
+        # Verify byte layout
+        buffer = command1.buffer
+        # ARRAY1_LENGTH = 3 (big endian 32-bit)
+        self.assertEqual(buffer[0:4], bytearray(b"\x00\x00\x00\x03"))
+        # ARRAY1 = [1, 2, 3]
+        self.assertEqual(buffer[4:7], bytearray(b"\x01\x02\x03"))
+        # ARRAY2_LENGTH = 2 (big endian 32-bit)
+        self.assertEqual(buffer[7:11], bytearray(b"\x00\x00\x00\x02"))
+        # ARRAY2 = [4, 5]
+        self.assertEqual(buffer[11:13], bytearray(b"\x04\x05"))
+
+        # Build second command with different array sizes
+        # This verifies the template wasn't corrupted by the first build
+        command2 = cmd.build_cmd(
+            "TGT1",
+            "VARARRAYS",
+            {"ARRAY1": [0xAA], "ARRAY2": [0xBB, 0xCC, 0xDD, 0xEE]},
+            False,
+            False,
+        )
+
+        # Verify second command
+        self.assertEqual(len(command2.buffer), 13)
+        self.assertEqual(command2.read("ARRAY1_LENGTH"), 1)
+        self.assertEqual(command2.read("ARRAY1"), [0xAA])
+        self.assertEqual(command2.read("ARRAY2_LENGTH"), 4)
+        self.assertEqual(command2.read("ARRAY2"), [0xBB, 0xCC, 0xDD, 0xEE])
+
+        # First command should still be unchanged
+        self.assertEqual(command1.read("ARRAY1"), [0x01, 0x02, 0x03])
+        self.assertEqual(command1.read("ARRAY2"), [0x04, 0x05])

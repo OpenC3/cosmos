@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -150,6 +150,7 @@ class SimInst(SimulatedTarget):
         self.quiet = False
         self.time_offset = 0
         self.ip_address = 0
+        self.variable_arrays_updated = False
 
     def set_rates(self):
         self.set_rate("ADCS", 10)
@@ -174,6 +175,7 @@ class SimInst(SimulatedTarget):
 
         hs_packet = self.tlm_packets["HEALTH_STATUS"]
         params_packet = self.tlm_packets["PARAMS.PKT"]
+        arrays_packet = self.tlm_packets["VARIABLE_ARRAYS"]
         json_packet = self.tlm_packets["JSONTLM"]
         cbor_packet = self.tlm_packets["CBORTLM"]
         xml_packet = self.tlm_packets["XMLTLM"]
@@ -240,6 +242,13 @@ class SimInst(SimulatedTarget):
                 html_packet.buffer = packet.buffer
             case "HYBRIDCMD":
                 hybrid_packet.buffer = packet.buffer
+            case "VARIABLE_ARRAYS":
+                self.variable_arrays_updated = True
+                # Reset buffer to ensure proper bit_offset recalculation
+                arrays_packet.buffer = bytearray(b"\x00" * arrays_packet.defined_length)
+                # Write only arrays - variable_bit_size will auto-update length fields
+                arrays_packet.write("array1", packet.read("ARRAY1"))
+                arrays_packet.write("array2", packet.read("ARRAY2"))
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False
@@ -445,5 +454,13 @@ class SimInst(SimulatedTarget):
             pending_packets.append(
                 Packet(None, None, "BIG_ENDIAN", None, random.randbytes(10))
             )
+
+        if self.variable_arrays_updated:
+            self.variable_arrays_updated = False
+            arrays_packet = self.tlm_packets["VARIABLE_ARRAYS"]
+            arrays_packet.write("timesec", int(time - self.time_offset))
+            arrays_packet.write("timeus", int((time % 1) * 1000000))
+            arrays_packet.write("ccsdsseqcnt", arrays_packet.read("ccsdsseqcnt") + 1)
+            pending_packets.append(arrays_packet)
 
         return pending_packets

@@ -28,7 +28,7 @@ services:
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-buckets-v:/data"
+      - "openc3-object-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
     restart: "unless-stopped"
     logging:
@@ -260,6 +260,6 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-buckets-v:
-    name: openc3-buckets-v # Fixed name to match migration script (no project prefix)
+  openc3-object-v:
+    name: openc3-object-v # Fixed name to match migration script (no project prefix)
   openc3-gems-v: {}

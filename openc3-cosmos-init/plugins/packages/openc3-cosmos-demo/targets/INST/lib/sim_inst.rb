@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -154,6 +154,7 @@ module OpenC3
       @quiet = false
       @time_offset = 0
       @ip_address = 0
+      @variable_arrays_updated = false
     end
 
     def set_rates
@@ -183,6 +184,7 @@ module OpenC3
 
       hs_packet = @tlm_packets['HEALTH_STATUS']
       params_packet = @tlm_packets['PARAMS']
+      arrays_packet = @tlm_packets['VARIABLE_ARRAYS']
       json_packet = @tlm_packets['JSONTLM']
       cbor_packet = @tlm_packets['CBORTLM']
       xml_packet = @tlm_packets['XMLTLM']
@@ -265,6 +267,13 @@ module OpenC3
         html_packet.buffer = packet.buffer
       when 'HYBRIDCMD'
         hybrid_packet.buffer = packet.buffer
+      when 'VARIABLE_ARRAYS'
+        @variable_arrays_updated = true
+        # Reset buffer to ensure proper bit_offset recalculation
+        arrays_packet.buffer = "\x00" * arrays_packet.defined_length
+        # Write only arrays - variable_bit_size will auto-update length fields
+        arrays_packet.write('ARRAY1', packet.read('ARRAY1'))
+        arrays_packet.write('ARRAY2', packet.read('ARRAY2'))
       end
     end
 
@@ -442,6 +451,15 @@ module OpenC3
       data = Array.new(10) { rand(0..255) }.pack("C*")
       if count_100hz % 1000 == 900
         pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+      end
+
+      if @variable_arrays_updated
+        @variable_arrays_updated = false
+        arrays_packet = @tlm_packets['VARIABLE_ARRAYS']
+        arrays_packet.write('TIMESEC', time.tv_sec - @time_offset)
+        arrays_packet.write('TIMEUS', time.tv_usec)
+        arrays_packet.write('CCSDSSEQCNT', arrays_packet.read('CCSDSSEQCNT') + 1)
+        pending_packets << arrays_packet
       end
 
       pending_packets

@@ -19,9 +19,9 @@ AVAILABLE_IMAGES=(
 if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: openc3_build_ubi.sh [IMAGE_NAME...]"
   echo ""
-  echo "Builds OpenC3 UBI (Universal Base Image) containers for enterprise deployments."
+  echo "Builds OpenC3 Core UBI (Universal Base Image) containers for enterprise deployments."
   echo ""
-  echo "This script builds all OpenC3 services using Red Hat UBI base images,"
+  echo "This script builds all OpenC3 Core services using Red Hat UBI base images,"
   echo "suitable for air-gapped and government environments."
   echo ""
   echo "Arguments:"
@@ -34,12 +34,12 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   done
   echo ""
   echo "Environment variables required:"
+  echo "  OPENC3_REGISTRY          - OpenC3 base registry URL"
+  echo "  OPENC3_NAMESPACE         - OpenC3 base namespace"
+  echo "  OPENC3_TAG               - OpenC3 base tag"
   echo "  OPENC3_UBI_REGISTRY      - UBI registry URL"
   echo "  OPENC3_UBI_IMAGE         - UBI image name"
   echo "  OPENC3_UBI_TAG           - UBI image tag"
-  echo "  OPENC3_REGISTRY          - Target registry for built images"
-  echo "  OPENC3_NAMESPACE         - Target namespace"
-  echo "  OPENC3_TAG               - Tag for built images"
   echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
   echo "  PYPI_URL                 - PyPI mirror URL (optional)"
   echo "  NPM_URL                  - NPM registry URL (optional)"
@@ -72,7 +72,7 @@ else
     if [[ " ${AVAILABLE_IMAGES[@]} " =~ " ${arg} " ]]; then
       IMAGES_TO_BUILD+=("$arg")
     else
-      echo "Error: Unknown image '${arg}'"
+      echo "Error: Unknown image '${arg}'" >&2
       echo "Available images:"
       for img in "${AVAILABLE_IMAGES[@]}"; do
         echo "  - $img"
@@ -148,6 +148,7 @@ chmod -R +r . 2>/dev/null || echo "Warning: Could not set all files readable (th
 should_build() {
   local image_name="$1"
   [[ " ${IMAGES_TO_BUILD[@]} " =~ " ${image_name} " ]]
+  return $?
 }
 
 # Helper function to format duration in human-readable format
@@ -160,6 +161,7 @@ format_duration() {
   else
     echo "${seconds}s"
   fi
+  return 0
 }
 
 # Arrays to track build times for final report
@@ -172,6 +174,7 @@ record_build() {
   local duration="$2"
   BUILT_IMAGES+=("$image_name")
   BUILD_TIMES+=("$duration")
+  return 0
 }
 
 if should_build "openc3-ruby-ubi"; then
