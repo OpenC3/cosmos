@@ -67,7 +67,9 @@ export default class MnemonicChecker {
         // Strip trailing comments to avoid matching keywords in comments
         // This handles both Ruby (# comment) and Python (# comment) style
         // Be careful not to strip # inside strings
-        const commentMatch = line.match(/^([^#'"]*(?:(?:"[^"]*"|'[^']*')[^#'"]*)*)(#.*)$/)
+        const commentMatch = line.match(
+          /^([^#'"]*(?:(?:"[^"]*"|'[^']*')[^#'"]*)*)(#.*)$/,
+        )
         const lineWithoutComment = commentMatch ? commentMatch[1].trim() : line
 
         const cmdMatch = this.cmdKeywordExpressions.reduce((found, regex) => {
@@ -112,10 +114,7 @@ export default class MnemonicChecker {
           const firstQuote = mnemonicMatch.match(/^['"]/)
           if (firstQuote) {
             const quoteChar = firstQuote[0]
-            const closingQuoteIndex = mnemonicMatch.indexOf(
-              quoteChar,
-              1,
-            )
+            const closingQuoteIndex = mnemonicMatch.indexOf(quoteChar, 1)
             if (closingQuoteIndex > 0) {
               mnemonicMatch = mnemonicMatch.substring(1, closingQuoteIndex)
             }
