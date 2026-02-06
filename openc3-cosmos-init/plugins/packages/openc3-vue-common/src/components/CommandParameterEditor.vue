@@ -25,6 +25,7 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
+      :disabled="disabled"
       hide-details
       density="compact"
       variant="filled"
@@ -35,6 +36,7 @@
       <v-select
         :items="stateOptions"
         :model-value="selectValue"
+        :disabled="disabled"
         item-title="label"
         :class="stateClass"
         hide-details
@@ -73,6 +75,10 @@ export default {
       default: () => null,
     },
     statesInHex: {
+      type: Boolean,
+      default: false,
+    },
+    disabled: {
       type: Boolean,
       default: false,
     },

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -32,20 +32,22 @@ test.describe.configure({ mode: 'serial' })
 
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
-  let row = page.locator(`tr:has-text("${param}")`)
+  // Use exact text match with colon suffix to avoid partial matches (e.g., ARRAY1 vs ARRAY1_LENGTH)
+  let row = page.locator(`tr:has(td:text-is("${param}"))`)
   await row.locator('[data-test=cmd-param-select]').click({ force: true })
   await page.getByRole('option', { name: value }).click()
 }
 
 // Helper function to set parameter value
 async function setValue(page, param, value) {
+  // Use exact text match with colon suffix to avoid partial matches (e.g., ARRAY1 vs ARRAY1_LENGTH)
   await page
-    .locator(`tr:has-text("${param}") [data-test=cmd-param-value] input`)
+    .locator(`tr:has(td:text-is("${param}")) [data-test=cmd-param-value] input`)
     .first()
     .fill(value)
   // Trigger the update handler that sets the drop down by pressing Enter
   await page
-    .locator(`tr:has-text("${param}") [data-test=cmd-param-value] input`)
+    .locator(`tr:has(td:text-is("${param}")) [data-test=cmd-param-value] input`)
     .first()
     .press('Enter')
   await checkValue(page, param, value)
@@ -53,9 +55,10 @@ async function setValue(page, param, value) {
 
 // Helper function to check parameter value
 async function checkValue(page, param, value) {
+  // Use exact text match with colon suffix to avoid partial matches (e.g., ARRAY1 vs ARRAY1_LENGTH)
   expect(
     await page.inputValue(
-      `tr:has-text("${param}") [data-test=cmd-param-value] input`,
+      `tr:has(td:text-is("${param}")) [data-test=cmd-param-value] input`,
     ),
   ).toMatch(value)
 }
@@ -707,3 +710,89 @@ test('disables command validation', async ({ page, utils }) => {
     'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
   )
 })
+
+//
+// Test VARIABLE_ARRAYS command with variable_bit_size arrays
+//
+for (const target of ['INST', 'INST2']) {
+  test(`sends ${target} VARIABLE_ARRAYS command and verifies in packet viewer`, async ({
+    page,
+    utils,
+  }) => {
+    await page.locator('[data-test="clear-history"]').click()
+    await utils.selectTargetPacketItem(target, 'VARIABLE_ARRAYS')
+
+    // Verify the LENGTH fields are disabled (shown but not editable)
+    // Use exact text match with colon suffix to avoid partial matches
+    const array1LengthRow = page.locator('tr:has(td:text-is("ARRAY1_LENGTH"))')
+    const array2LengthRow = page.locator('tr:has(td:text-is("ARRAY2_LENGTH"))')
+
+    // Check that the LENGTH input fields are disabled
+    await expect(
+      array1LengthRow.locator('[data-test=cmd-param-value] input'),
+    ).toBeDisabled()
+    await expect(
+      array2LengthRow.locator('[data-test=cmd-param-value] input'),
+    ).toBeDisabled()
+
+    // Set the array values
+    await setValue(page, 'ARRAY1', '[1, 2, 3]')
+    await setValue(page, 'ARRAY2', '[4, 5]')
+
+    // Send the command
+    await page.locator('[data-test="select-send"]').click()
+    await expect(page.locator('main')).toContainText(
+      `cmd("${target} VARIABLE_ARRAYS with ARRAY1_LENGTH 0, ARRAY1 [ 1, 2, 3 ], ARRAY2_LENGTH 0, ARRAY2 [ 4, 5 ]") sent`,
+    )
+
+    // Open Packet Viewer to verify the telemetry
+    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('text=Packet Viewer').click()
+    await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
+
+    // Navigate to the VARIABLE_ARRAYS telemetry packet
+    await utils.selectTargetPacketItem(target, 'VARIABLE_ARRAYS')
+
+    // Wait for the packet to be received and verify the values
+    // Use polling since telemetry updates asynchronously
+    await expect
+      .poll(
+        async () => {
+          return await page.inputValue(
+            'tr:has(td div:text-is("ARRAY1_LENGTH")) input',
+          )
+        },
+        { timeout: 10000 },
+      )
+      .toBe('3')
+
+    await expect
+      .poll(
+        async () => {
+          return await page.inputValue(
+            'tr:has(td div:text-is("ARRAY2_LENGTH")) input',
+          )
+        },
+        { timeout: 10000 },
+      )
+      .toBe('2')
+
+    await expect
+      .poll(
+        async () => {
+          return await page.inputValue('tr:has(td div:text-is("ARRAY1")) input')
+        },
+        { timeout: 10000 },
+      )
+      .toMatch(/\[\s*1,\s*2,\s*3\s*\]/)
+
+    await expect
+      .poll(
+        async () => {
+          return await page.inputValue('tr:has(td div:text-is("ARRAY2")) input')
+        },
+        { timeout: 10000 },
+      )
+      .toMatch(/\[\s*4,\s*5\s*\]/)
+  })
+}

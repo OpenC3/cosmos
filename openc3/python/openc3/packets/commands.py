@@ -191,7 +191,10 @@ class Commands:
         if pkt is None:
             raise RuntimeError(f"Command packet '{target_upcase} {packet_upcase}' does not exist")
 
-        command = pkt.clone()
+        # Use deep_copy to avoid shared item modifications affecting the template
+        # This is critical for variable_bit_size items where handle_write_variable_bit_size
+        # modifies item.bit_offset and item.array_size during writes
+        command = pkt.deep_copy()
 
         # Restore the command's buffer to a zeroed string of defined length
         # This will undo any side effects from earlier commands that may have altered the size
@@ -282,8 +285,22 @@ class Commands:
 
     def _set_parameters(self, command, params, range_checking):
         given_item_names = []
+
+        # Identify length fields that are auto-managed by variable_bit_size arrays
+        # These should not be written directly - the array write will auto-update them
+        auto_length_fields = set()
+        for item in command.sorted_items:
+            if item.variable_bit_size:
+                auto_length_fields.add(item.variable_bit_size["length_item_name"].upper())
+
         for item_name, value in params.items():
             item_upcase = item_name.upper()
+
+            # Skip auto-managed length fields - they will be set when the array is written
+            if item_upcase in auto_length_fields:
+                given_item_names.append(item_upcase)
+                continue
+
             item = command.get_item(item_upcase)
             range_check_value = value
 
