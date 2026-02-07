@@ -640,7 +640,7 @@ value = tlm("INST LATEST TEMP")
 
 ### Checking Every Single Sample of a Telemetry Point
 
-When writing COSMOS scripts, checking the most recent value of a telemetry point normally gets the job done. The tlm(), tlm_raw(), etc methods all retrieve the most recent value of a telemetry point. Sometimes you need to perform analysis on every single sample of a telemetry point. This can be done using the COSMOS packet subscription system. The packet subscription system lets you choose one or more packets and receive them all from a queue. You can then pick out the specific telemetry points you care about from each packet.
+When writing COSMOS scripts, checking the most recent value of a telemetry point normally gets the job done. The tlm(), tlm_raw(), etc methods all retrieve the most recent value of a telemetry point. Sometimes you need to perform analysis on every single sample of a telemetry point. This can be done using the COSMOS packet subscription system. The packet subscription system lets you choose one or more packets and receive them all from a queue. You can then pick out the specific telemetry points you care about from each packet. See the [Packet Data Subscriptions](scripting-api.md#packet-data-subscriptions) section of the Scripting API guide for the complete API documentation including the packet hash/dictionary structure.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
