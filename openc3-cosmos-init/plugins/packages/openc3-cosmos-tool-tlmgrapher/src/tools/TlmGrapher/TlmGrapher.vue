@@ -456,7 +456,11 @@ export default {
       this.selectedGraphId = id
     },
     updateCurrentItem: function (item) {
-      this.hasValidItem = !!(item.targetName && item.packetName && item.itemName)
+      this.hasValidItem = !!(
+        item.targetName &&
+        item.packetName &&
+        item.itemName
+      )
     },
     getGraphTitle: function (graphId) {
       const graphRef = this.$refs[`graph${graphId}`]
