@@ -429,9 +429,10 @@ export default {
     ScriptRunnerInline,
   },
   mixins: [AceEditorModes, ClassificationBanners],
-  beforeRouteUpdate: function (to, from, next) {
+  beforeRouteUpdate: async function (to, from, next) {
     if (to.params.id) {
-      this.tryLoadRunningScript(to.params.id).then(next)
+      await this.tryLoadRunningScript(to.params.id)
+      next()
     } else {
       next()
     }
@@ -912,9 +913,9 @@ export default {
         }
       }
     },
-    showOverrides: function (newVal, oldVal) {
+    showOverrides: async function (newVal, oldVal) {
       if (oldVal && !newVal) {
-        this.updateOverridesCount()
+        await this.updateOverridesCount()
       }
     },
   },
@@ -922,18 +923,16 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
+    try {
+      const response = await this.api.get_setting('time_zone')
+      if (response) {
+        this.timeZone = response
+      }
+    } catch (error) {
+      // Do nothing
+    }
 
-    this.updateOverridesCount()
+    await this.updateOverridesCount()
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -952,27 +951,19 @@ export default {
       } else if (role == 'runner') {
         this.executeUser = true
       } else {
-        await Api.get(`/openc3-api/roles/${role}`).then((response) => {
+        const response = await Api.get(`/openc3-api/roles/${role}`)
+        if (response.data !== null && response.data.permissions !== undefined) {
           if (
-            response.data !== null &&
-            response.data.permissions !== undefined
+            response.data.permissions.some((i) => i.permission == 'script_edit')
           ) {
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_edit',
-              )
-            ) {
-              this.readOnlyUser = false
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_run',
-              )
-            ) {
-              this.executeUser = true
-            }
+            this.readOnlyUser = false
           }
-        })
+          if (
+            response.data.permissions.some((i) => i.permission == 'script_run')
+          ) {
+            this.executeUser = true
+          }
+        }
       }
     }
     // Output the userinfo for use in the SuiteRunner component
@@ -993,9 +984,10 @@ export default {
       this.showAlert = true
     }
 
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.screenKeywords = response.data
-    })
+    const keywordsResponse = await Api.get(
+      '/openc3-api/autocomplete/keywords/screen',
+    )
+    this.screenKeywords = keywordsResponse.data
 
     if (this.inline) {
       this.readOnly = true
@@ -1095,10 +1087,9 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    updateOverridesCount: function () {
-      this.api.get_overrides().then((result) => {
-        this.overridesCount = result.length
-      })
+    updateOverridesCount: async function () {
+      const result = await this.api.get_overrides()
+      this.overridesCount = result.length
     },
     toggleVimMode() {
       AceEditorUtils.toggleVimMode(this.editor)
@@ -1157,22 +1148,21 @@ export default {
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
     },
-    showMetadata() {
-      Api.get('/openc3-api/metadata').then((response) => {
-        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-        this.inputMetadata.events = response.data.map((event) => {
-          return {
-            name: 'Metadata',
-            start: new Date(event.start * 1000),
-            end: new Date(event.start * 1000),
-            color: event.color,
-            type: event.type,
-            timed: true,
-            metadata: event,
-          }
-        })
-        this.inputMetadata.show = true
+    showMetadata: async function () {
+      const response = await Api.get('/openc3-api/metadata')
+      // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+      this.inputMetadata.events = response.data.map((event) => {
+        return {
+          name: 'Metadata',
+          start: new Date(event.start * 1000),
+          end: new Date(event.start * 1000),
+          color: event.color,
+          type: event.type,
+          timed: true,
+          metadata: event,
+        }
       })
+      this.inputMetadata.show = true
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
@@ -1208,45 +1198,44 @@ export default {
       )
       this.editor.gotoLine(this.files[filename].lineNo)
     },
-    tryLoadRunningScript: function (id) {
-      return Api.get(`/script-api/running-script/${id}`)
-        .then((response) => {
-          if (response.data) {
-            let state = response.data.state
-            // Check for all the completed states, see is_complete in script_status_model
-            if (
-              state !== 'completed' &&
-              state !== 'completed_errors' &&
-              state !== 'stopped' &&
-              state !== 'crashed' &&
-              state !== 'killed'
-            ) {
-              this.filename = response.data.filename
-              this.tryLoadSuites(response)
-              this.initScriptStart()
-              this.scriptStart(id)
-            } else {
-              this.$notify.caution({
-                title: `Script ${id} has already completed`,
-                body: 'Check the Completed Scripts below ...',
-              })
-              this.scriptComplete()
-              this.showScripts = true
-            }
+    tryLoadRunningScript: async function (id) {
+      try {
+        const response = await Api.get(`/script-api/running-script/${id}`)
+        if (response.data) {
+          let state = response.data.state
+          // Check for all the completed states, see is_complete in script_status_model
+          if (
+            state !== 'completed' &&
+            state !== 'completed_errors' &&
+            state !== 'stopped' &&
+            state !== 'crashed' &&
+            state !== 'killed'
+          ) {
+            this.filename = response.data.filename
+            this.tryLoadSuites(response)
+            this.initScriptStart()
+            this.scriptStart(id)
           } else {
-            throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
+            this.$notify.caution({
+              title: `Script ${id} has already completed`,
+              body: 'Check the Completed Scripts below ...',
+            })
+            this.scriptComplete()
+            this.showScripts = true
           }
+        } else {
+          throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
+        }
+      } catch (error) {
+        // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
+        // We should probably not allow the bottom sheet to blur the screen
+        this.$notify.caution({
+          title: `Running Script ${id} not found`,
+          body: 'Check the Completed Scripts below ...',
         })
-        .catch((error) => {
-          // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
-          // We should probably not allow the bottom sheet to blur the screen
-          this.$notify.caution({
-            title: `Running Script ${id} not found`,
-            body: 'Check the Completed Scripts below ...',
-          })
-          this.scriptComplete()
-          this.showScripts = true
-        })
+        this.scriptComplete()
+        this.showScripts = true
+      }
     },
     tryLoadSuites: function (response) {
       if (response.data.suites) {
@@ -1370,18 +1359,16 @@ export default {
         this.editor.session.setBreakpoint(breakpoint)
       })
     },
-    deleteAllBreakpoints: function () {
-      this.$dialog
-        .confirm('Permanently delete all breakpoints for ALL scripts?', {
+    deleteAllBreakpoints: async function () {
+      await this.$dialog.confirm(
+        'Permanently delete all breakpoints for ALL scripts?',
+        {
           okText: 'Delete',
           cancelText: 'Cancel',
-        })
-        .then((dialog) => {
-          return Api.delete('/script-api/breakpoints/delete/all')
-        })
-        .then((response) => {
-          this.clearBreakpoints()
-        })
+        },
+      )
+      await Api.delete('/script-api/breakpoints/delete/all')
+      this.clearBreakpoints()
     },
     suiteRunnerButton(event) {
       if (this.startOrGoButton === START) {
@@ -1421,45 +1408,47 @@ export default {
         this.fileModified = ''
       }
     },
-    checkMnemonics: function () {
+    checkMnemonics: async function () {
       let filename = this.filename
-      if (this.filename !== NEW_FILENAME) {
-        // Check if the extension is not .rb or .py
-        if (!(filename.endsWith('.rb') || filename.endsWith('.py'))) {
-          Api.post(`/script-api/scripts/${this.filename}/mnemonics`, {
+      // Check if the extension is not .rb or .py
+      if (
+        this.filename !== NEW_FILENAME &&
+        !(filename.endsWith('.rb') || filename.endsWith('.py'))
+      ) {
+        const response = await Api.post(
+          `/script-api/scripts/${this.filename}/mnemonics`,
+          {
             data: this.editor.getValue(),
             headers: {
               Accept: 'application/json',
               'Content-Type': 'plain/text',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
-            return
-          })
+          },
+        )
+        let alertText = ''
+        alertText += `<strong>${response.data.title}</strong><br/><br/>`
+        alertText += JSON.parse(response.data.description)
+        this.$dialog.alert(alertText.trim(), { html: true })
+      } else {
+        const { skipped, problems } = await this.mnemonicChecker.checkText(
+          this.editor.getValue(),
+        )
+        let alertText = ''
+        if (problems.length) {
+          const problemText = problems
+            .map((problem) => `${problem.lineNumber}: ${problem.error}`)
+            .join('<br/>')
+          alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
         }
+        if (skipped.length) {
+          alertText +=
+            '<strong>Mnemonics with string interpolation were not checked.</strong>'
+        }
+        if (alertText === '') {
+          alertText = '<strong>Everything looks good!</strong>'
+        }
+        this.$dialog.alert(alertText.trim(), { html: true })
       }
-      this.mnemonicChecker
-        .checkText(this.editor.getValue())
-        .then(({ skipped, problems }) => {
-          let alertText = ''
-          if (problems.length) {
-            const problemText = problems
-              .map((problem) => `${problem.lineNumber}: ${problem.error}`)
-              .join('<br/>')
-            alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
-          }
-          if (skipped.length) {
-            alertText +=
-              '<strong>Mnemonics with string interpolation were not checked.</strong>'
-          }
-          if (alertText === '') {
-            alertText = '<strong>Everything looks good!</strong>'
-          }
-          this.$dialog.alert(alertText.trim(), { html: true })
-        })
     },
     initScriptStart() {
       this.disableSuiteButtons = true
@@ -1471,23 +1460,20 @@ export default {
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
     },
-    scriptStart(id) {
+    scriptStart: async function (id) {
       this.$emit('script-id', id)
       this.scriptId = id
-      this.cable
-        .createSubscription(
-          'RunningScriptChannel',
-          window.openc3Scope,
-          {
-            received: (data) => this.received(data),
-          },
-          {
-            id: this.scriptId,
-          },
-        )
-        .then((subscription) => {
-          this.subscription = subscription
-        })
+      const subscription = await this.cable.createSubscription(
+        'RunningScriptChannel',
+        window.openc3Scope,
+        {
+          received: (data) => this.received(data),
+        },
+        {
+          id: this.scriptId,
+        },
+      )
+      this.subscription = subscription
     },
     async scriptComplete() {
       // Make sure we process no more events
@@ -1518,7 +1504,7 @@ export default {
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
       // Overrides can be set from a script
-      this.updateOverridesCount()
+      await this.updateOverridesCount()
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -1567,13 +1553,12 @@ export default {
       if (end_line_no !== null) {
         data['end_line_no'] = end_line_no
       }
-      Api.post(url, { data })
-        .then((response) => {
-          this.scriptStart(response.data)
-        })
-        .catch((error) => {
-          this.scriptComplete()
-        })
+      try {
+        const response = await Api.post(url, { data })
+        this.scriptStart(response.data)
+      } catch (error) {
+        this.scriptComplete()
+      }
     },
     go() {
       // Ensure we're on the correct filename when we hit go
@@ -2027,27 +2012,28 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(
-            Api.get(
+          promises.push(async () => {
+            const response = await Api.get(
               `/openc3-api/storage/upload/${encodeURIComponent(
                 `${window.openc3Scope}/tmp/${file.name}`,
               )}?bucket=OPENC3_CONFIG_BUCKET`,
-            ).then((response) => {
-              // This pushes the file into storage by using the fields in the presignedRequest
-              // See storage_controller.rb get_upload_presigned_request()
-              promises.push(
-                axios({
-                  ...response.data,
-                  data: file,
-                }),
-              )
-            }),
-          )
+            )
+            // This pushes the file into storage by using the fields in the presignedRequest
+            // See storage_controller.rb get_upload_presigned_request()
+            promises.push(
+              axios({
+                ...response.data,
+                data: file,
+              }),
+            )
+          })
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+      await Promise.all(promises)
+      Api.post(
+        `/script-api/running-script/${this.scriptId}/prompt`,
+        {
           data: {
             method: this.file.multiple
               ? 'open_files_dialog'
@@ -2056,8 +2042,8 @@ export default {
             prompt_id: this.activePromptId,
           },
         })
-        this.file.show = false // Close the dialog immediately to avoid race condition
       })
+      this.file.show = false // Close the dialog immediately to avoid race condition
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
@@ -2256,41 +2242,40 @@ class TestSuite(Suite):
       // before it's fully loaded and then save over it with a blank file
       this.saveAllowed = false
       this.startOrGoDisabled = true
-      await Api.get(`/script-api/scripts/${this.filename}`, {
-        headers: {
-          Accept: 'application/json',
-          'Ignore-Errors': '404',
-        },
-      })
-        .then((response) => {
-          const file = {
-            name: this.filename,
-            contents: response.data.contents,
-          }
-          if (response.data.suites) {
-            file['suites'] = JSON.parse(response.data.suites)
-          }
-          if (response.data.error) {
-            file['error'] = response.data.error
-          }
-          if (response.data.success) {
-            file['success'] = response.data.success
-          }
-          const locked = response.data.locked
-          const breakpoints = response.data.breakpoints
-          this.setFile({ file, locked, breakpoints }, true)
-          this.saveAllowed = true
+      try {
+        const response = await Api.get(`/script-api/scripts/${this.filename}`, {
+          headers: {
+            Accept: 'application/json',
+            'Ignore-Errors': '404',
+          },
         })
-        .catch((error) => {
-          if (showError === true) {
-            this.$notify.caution({
-              title: 'File Open Error',
-              body: `Failed to open ${this.filename} due to ${error}`,
-            })
-          }
-          this.removeFromRecent(this.filename)
-          this.newFile() // Reset the GUI
-        })
+        const file = {
+          name: this.filename,
+          contents: response.data.contents,
+        }
+        if (response.data.suites) {
+          file['suites'] = JSON.parse(response.data.suites)
+        }
+        if (response.data.error) {
+          file['error'] = response.data.error
+        }
+        if (response.data.success) {
+          file['success'] = response.data.success
+        }
+        const locked = response.data.locked
+        const breakpoints = response.data.breakpoints
+        this.setFile({ file, locked, breakpoints }, true)
+        this.saveAllowed = true
+      } catch (error) {
+        if (showError === true) {
+          this.$notify.caution({
+            title: 'File Open Error',
+            body: `Failed to open ${this.filename} due to ${error}`,
+          })
+        }
+        this.removeFromRecent(this.filename)
+        this.newFile() // Reset the GUI
+      }
     },
     // Called by the FileOpenDialog to set the file contents
     setFile({ file, locked, breakpoints }, local = false) {
@@ -2445,53 +2430,55 @@ class TestSuite(Suite):
           }
         }
         this.showSave = true
-        await Api.post(`/script-api/scripts/${this.filename}`, {
-          data: {
-            text: this.editor.getValue(), // Pass in the raw file text
-            breakpoints,
-          },
-        })
-          .then((response) => {
-            if (response.status == 200) {
-              if (response.data.suites) {
-                this.startOrGoDisabled = true
-                this.suiteRunner = true
-                this.suiteMap = JSON.parse(response.data.suites)
-              } else {
-                this.startOrGoDisabled = false
-                this.suiteRunner = false
-                this.suiteMap = {}
-              }
-              if (response.data.error) {
-                this.suiteError = response.data.error
-                this.showSuiteError = true
-              }
-              this.fileModified = ''
-              setTimeout(() => {
-                this.showSave = false
-              }, 2000)
+        try {
+          const response = await Api.post(
+            `/script-api/scripts/${this.filename}`,
+            {
+              data: {
+                text: this.editor.getValue(), // Pass in the raw file text
+                breakpoints,
+              },
+            },
+          )
+          if (response.status == 200) {
+            if (response.data.suites) {
+              this.startOrGoDisabled = true
+              this.suiteRunner = true
+              this.suiteMap = JSON.parse(response.data.suites)
             } else {
+              this.startOrGoDisabled = false
+              this.suiteRunner = false
+              this.suiteMap = {}
+            }
+            if (response.data.error) {
+              this.suiteError = response.data.error
+              this.showSuiteError = true
+            }
+            this.fileModified = ''
+            setTimeout(() => {
               this.showSave = false
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-              this.showAlert = true
-            }
-            this.lockFile() // Ensure this file is locked for editing
-            this.doResize()
-          })
-          .catch(({ response }) => {
+            }, 2000)
+          } else {
             this.showSave = false
-            // 422 error means we couldn't parse the script file into Suites
-            // response.data.suites holds the parse result
-            if (response.status == 422) {
-              this.alertType = 'error'
-              this.alertText = response.data.suites
-            } else {
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-            }
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
             this.showAlert = true
-          })
+          }
+          this.lockFile() // Ensure this file is locked for editing
+          this.doResize()
+        } catch ({ response }) {
+          this.showSave = false
+          // 422 error means we couldn't parse the script file into Suites
+          // response.data.suites holds the parse result
+          if (response.status == 422) {
+            this.alertType = 'error'
+            this.alertText = response.data.suites
+          } else {
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+          }
+          this.showAlert = true
+        }
       } else {
         this.setError('Attempt to save file when not allowed')
       }
@@ -2508,34 +2495,30 @@ class TestSuite(Suite):
       }
       await this.saveFile('menu')
     },
-    delete() {
+    delete: async function () {
       let filename = this.filename
       if (this.tempFilename) {
         filename = this.tempFilename
       }
-      this.$dialog
-        .confirm(`Permanently delete file: ${filename}`, {
+      try {
+        await this.$dialog.confirm(`Permanently delete file: ${filename}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
-          return Api.post(`/script-api/scripts/${filename}/delete`, {
-            data: {},
-          })
+        await Api.post(`/script-api/scripts/${filename}/delete`, {
+          data: {},
         })
-        .then((response) => {
-          this.removeFromRecent(filename)
-          this.newFile()
-        })
-        .catch((error) => {
-          if (error !== true) {
-            const alertObject = {
-              text: `Failed Multi-Delete. ${error}`,
-              type: 'error',
-            }
-            this.$emit('alert', alertObject)
+        this.removeFromRecent(filename)
+        this.newFile()
+      } catch (error) {
+        if (error !== true) {
+          const alertObject = {
+            text: `Failed Multi-Delete. ${error}`,
+            type: 'error',
           }
-        })
+          this.$emit('alert', alertObject)
+        }
+      }
     },
     download() {
       const blob = new Blob([this.editor.getValue()], {
@@ -2548,33 +2531,37 @@ class TestSuite(Suite):
       link.click()
     },
     // ScriptRunner Script menu actions
-    syntaxCheck() {
-      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
-        data: this.editor.getValue(),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'plain/text',
+    syntaxCheck: async function () {
+      const response = await Api.post(
+        `/script-api/scripts/${this.filename}/syntax`,
+        {
+          data: this.editor.getValue(),
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'plain/text',
+          },
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
-      })
+      )
+      this.information.title = response.data.title
+      this.information.text = JSON.parse(response.data.description)
+      this.information.show = true
+      this.information.width = '600'
     },
-    showInstrumented() {
-      Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
-        data: this.editor.getValue(),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'plain/text',
+    showInstrumented: async function () {
+      const response = await Api.post(
+        `/script-api/scripts/${this.filename}/instrumented`,
+        {
+          data: this.editor.getValue(),
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'plain/text',
+          },
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '90vw'
-      })
+      )
+      this.information.title = response.data.title
+      this.information.text = JSON.parse(response.data.description)
+      this.information.show = true
+      this.information.width = '90vw'
     },
     showCallStack() {
       Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
@@ -2604,19 +2591,16 @@ class TestSuite(Suite):
         .filter((key) => allMarkers[key].type === 'fullLine')
         .forEach((marker) => this.editor.session.removeMarker(marker))
     },
-    confirmLocalUnlock: function () {
-      this.$dialog
-        .confirm(
-          'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
-          {
-            okText: 'Force Unlock',
-            cancelText: 'Cancel',
-          },
-        )
-        .then(() => {
-          this.lockedBy = null
-          return this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
-        })
+    confirmLocalUnlock: async function () {
+      await this.$dialog.confirm(
+        'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
+        {
+          okText: 'Force Unlock',
+          cancelText: 'Cancel',
+        },
+      )
+      this.lockedBy = null
+      this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
     },
     lockFile: function () {
       if (!this.readOnlyUser) {
