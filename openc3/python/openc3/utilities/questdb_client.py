@@ -249,6 +249,10 @@ class QuestDBClient:
         # (QuestDB casts strings to DECIMAL for pre-created DECIMAL columns)
         # Key is "table__column", value is True
         self.decimal_int_columns = {}
+        # Track columns that are VARCHAR type (for state __C columns, etc.)
+        # Non-string values must be converted to strings before ILP ingestion.
+        # Key is "table__column", value is True
+        self.varchar_columns = {}
         # Track FLOAT column bit sizes for proper inf/nan sentinel encoding
         # Key is "table__column", value is bit_size (32 or 64)
         self.float_bit_sizes = {}
@@ -388,7 +392,7 @@ class QuestDBClient:
                 self.decimal_int_columns[f"{table_name}__{column_name}"] = True
                 return "DECIMAL(20, 0)", False
         elif converted_type == "TIME":
-            return "timestamp_ns", False
+            return "varchar", False
         elif converted_type == "STRING":
             return "varchar", False
         elif converted_type == "BLOCK":
@@ -581,6 +585,7 @@ class QuestDBClient:
 
                 if item.get("states"):
                     desired_columns[f"{item_name}__C"] = "varchar"
+                    self.varchar_columns[f"{table_name}__{item_name}__C"] = True
                 elif item.get("read_conversion"):
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
@@ -733,6 +738,17 @@ class QuestDBClient:
             elif not isinstance(value, str):
                 return json.dumps(value), False
             return value, False
+
+        # Check if this column is VARCHAR (e.g. state __C columns where values
+        # may be numeric when they don't match any defined state)
+        if table_name:
+            varchar_key = f"{table_name}__{item_name}"
+            is_varchar = varchar_key in self.varchar_columns
+        else:
+            is_varchar = False
+
+        if is_varchar and not isinstance(value, str):
+            return str(value), False
 
         # Check if this column stores integers as DECIMAL (64-bit integer columns)
         if table_name:

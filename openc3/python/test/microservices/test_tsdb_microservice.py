@@ -1271,7 +1271,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # 64-bit integers use DECIMAL(20, 0) for full range support
         self.assertIn('"DERIVED_INT64" DECIMAL(20, 0)', create_table_sql)
         self.assertIn('"DERIVED_STRING" varchar', create_table_sql)
-        self.assertIn('"DERIVED_TIME" timestamp_ns', create_table_sql)
+        self.assertIn('"DERIVED_TIME" varchar', create_table_sql)
 
         # DERIVED items without type info or with complex types should use VARCHAR
         self.assertIn('"DERIVED_NO_CONV" varchar', create_table_sql)
