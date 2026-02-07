@@ -357,6 +357,7 @@ import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
+import { ref } from 'vue'
 import {
   AceEditorModes,
   AceEditorUtils,
@@ -391,6 +392,7 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -454,7 +456,15 @@ export default {
   setup() {
     const containerHeight = useContainerHeight()
 
-    return { containerHeight }
+    // Reactive state
+    const state = ref(null)
+    const { handleWaiting, waitingTime } = useHandleWaiting(state)
+
+    return {
+      containerHeight,
+      state,
+      handleWaiting,
+    }
   },
   data() {
     return {
@@ -482,7 +492,6 @@ export default {
       showAlert: false,
       alertType: null,
       alertText: '',
-      state: null,
       scriptId: null,
       startOrGoButton: START,
       startOrGoDisabled: false,
@@ -585,9 +594,6 @@ export default {
       idCounter: 0,
       updateCounter: 0,
       recent: [],
-      waitingInterval: null,
-      waitingTime: 0,
-      waitingStart: 0,
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
@@ -1589,26 +1595,6 @@ export default {
     },
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
-    },
-    // This is called by processLine no matter the current state
-    handleWaiting() {
-      // First check if we're not waiting and if so clear the interval
-      if (this.state !== 'waiting' && this.state !== 'paused') {
-        this.clearWaiting()
-      } else if (this.waitingInterval !== null) {
-        // If we're waiting and the interval is active then nothing to do
-        return
-      }
-      this.waitingStart = Date.now()
-      // Create an interval to count every second
-      this.waitingInterval = setInterval(() => {
-        this.waitingTime = Math.round((Date.now() - this.waitingStart) / 1000)
-      }, 1000)
-    },
-    clearWaiting() {
-      this.waitingTime = 0
-      clearInterval(this.waitingInterval)
-      this.waitingInterval = null
     },
     processLine(data) {
       if (data.filename && data.filename !== this.currentFilename) {
