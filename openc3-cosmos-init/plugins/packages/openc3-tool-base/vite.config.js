@@ -41,7 +41,7 @@ export default defineConfig((options) => {
         '@': resolve(__dirname, './src'),
       },
       extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
-      dedupe: ['pinia', 'vue'],
+      dedupe: ['single-spa', 'vue', 'vuetify', 'vue-router', 'pinia'],
     },
     optimizeDeps: {
       entries: [], // https://github.com/vituum/vituum/issues/25#issuecomment-1690080284

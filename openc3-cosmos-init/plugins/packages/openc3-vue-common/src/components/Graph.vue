@@ -321,10 +321,6 @@ export default {
     GraphEditItemDialog,
   },
   mixins: [TimeFilters],
-  setup() {
-    const store = useStore()
-    return { store }
-  },
   props: {
     id: {
       type: Number,
@@ -404,6 +400,10 @@ export default {
     'start',
     'started',
   ],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data() {
     return {
       api: null,
@@ -639,7 +639,10 @@ export default {
               }
               // Decrement store counter now that playback data has been processed
               this.store.updatePlayback({
-                playbackLoading: Math.max(0, this.store.playback.playbackLoading - 1),
+                playbackLoading: Math.max(
+                  0,
+                  this.store.playback.playbackLoading - 1,
+                ),
               })
               this.dataChanged = true
               this.updateGraphData()

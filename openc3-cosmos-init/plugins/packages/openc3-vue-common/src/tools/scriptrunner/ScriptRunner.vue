@@ -401,7 +401,7 @@
         <template #activator="{ props }">
           <div v-bind="props" style="width: 32rem">
             <v-select
-              id="filename"
+              id="inline-filename"
               v-model="filenameSelect"
               :items="fileList"
               :disabled="fileList.length <= 1"

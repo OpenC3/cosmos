@@ -41,7 +41,7 @@ export default defineConfig((options) => {
         '@': resolve(__dirname, './src'),
       },
       extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
-      dedupe: ['pinia', 'vue'],
+      dedupe: ['single-spa', 'vue', 'vuetify', 'vue-router', 'pinia'],
     },
     define: {
       __BASE_URL__: JSON.stringify('/tools/admin'),

@@ -51,6 +51,6 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
     },
-    dedupe: ['pinia', 'vue'],
+    dedupe: ['single-spa', 'vue', 'vuetify', 'vue-router', 'pinia'],
   },
 })
