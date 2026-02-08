@@ -233,3 +233,15 @@ Roles are managed in Keycloak:
 5. Assign roles using the `{SCOPE}__{ROLE_NAME}` format
 
 ![Keycloak User Roles](/img/guides/roles-permissions/keycloak_user_roles.png)
+
+#### User Group Role from LDAP Federation
+
+If you have instead imported user groups from an LDAP user federation system, you can instead assign roles to user groups rather than individual users, but you must do the following:
+
+1. Navigate to "Client Scopes"
+2. Click on the "roles" scope
+3. Go to the "Mappers" tab
+4. Click "Add mapper" then "From predefined mappers"
+5. Search for "groups" and check the box next to that, then click "Add"
+
+![Keycloak Groups Token Mapper](/img/guides/roles-permissions/keycloak_groups_token_mapper.png)
