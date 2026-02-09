@@ -43,7 +43,7 @@ export default {
     try {
       this.widgetType = await System.import(/* webpackIgnore: true */ this.url)
     } catch (e) {
-      throw new Error(`Unknown widget: ${this.name}`)
+      throw new Error(`Unknown widget: ${this.name}: ${e}`)
     }
   },
 }

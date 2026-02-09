@@ -22,6 +22,7 @@
 
 import { ConfigParserError } from '@openc3/js-common/services'
 import WidgetComponents from './WidgetComponents'
+import { useStore } from '@/plugins/store'
 
 export default {
   mixins: [WidgetComponents],
@@ -58,6 +59,10 @@ export default {
       type: Number,
       default: 0,
     },
+  },
+  setup() {
+    const store = useStore()
+    return { store }
   },
   data() {
     return {
@@ -107,9 +112,7 @@ export default {
       const that = this
       return {
         getNamedWidget: function (widgetName) {
-          return that.$store.getters.namedWidget(
-            that.toQualifiedWidgetName(widgetName),
-          )
+          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
         },
         open: function (target, screen) {
           that.$emit('open', target, screen)
@@ -139,17 +142,6 @@ export default {
       }, {})
     },
   },
-  watch: {
-    widgetName: function (newName, oldName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(oldName),
-      )
-      this.$store.commit('setNamedWidget', {
-        [this.toQualifiedWidgetName(newName)]: this,
-      })
-    },
-  },
   created() {
     // Look through the settings and get a reference to the screen
     this.screenId = this.settings
@@ -159,6 +151,12 @@ export default {
     this.widgetName = this.settings
       .find((setting) => setting[0] === 'NAMED_WIDGET')
       ?.at(1)
+
+    if (this.widgetName) {
+      this.store.setNamedWidget({
+        [this.toQualifiedWidgetName(this.widgetName)]: this,
+      })
+    }
 
     // Figure out any subsettings that apply
     this.appliedSettings = this.settings
@@ -181,10 +179,7 @@ export default {
   },
   beforeUnmount() {
     if (this.widgetName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(this.widgetName),
-      )
+      this.store.clearNamedWidget(this.toQualifiedWidgetName(this.widgetName))
     }
   },
   methods: {

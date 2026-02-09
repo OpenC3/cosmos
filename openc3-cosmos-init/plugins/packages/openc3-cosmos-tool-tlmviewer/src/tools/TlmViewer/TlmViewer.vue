@@ -274,6 +274,7 @@ import {
   SaveConfigDialog,
   TopBar,
 } from '@openc3/vue-common/components'
+import { useStore } from '@openc3/vue-common/plugins'
 import NewScreenDialog from './NewScreenDialog'
 import { TimeFilters } from '@openc3/vue-common/util'
 
@@ -287,6 +288,10 @@ export default {
     SaveConfigDialog,
   },
   mixins: [Config, TimeFilters],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data() {
     return {
       title: 'Telemetry Viewer',
@@ -317,7 +322,7 @@ export default {
   },
   computed: {
     playbackLoading: function () {
-      return this.$store.state.playback.playbackLoading > 0
+      return this.store.playback.playbackLoading > 0
     },
     menus: function () {
       return [
@@ -391,7 +396,7 @@ export default {
       deep: true,
     },
     playbackMode: function (mode) {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,
@@ -407,7 +412,7 @@ export default {
       }
     },
     playbackDateTime: function () {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,
@@ -429,7 +434,7 @@ export default {
       }
     },
     playbackStep: function () {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,

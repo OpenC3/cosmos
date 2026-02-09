@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -179,6 +179,7 @@ import {
   AstroStatusIndicator,
   UnknownToAstroStatus,
 } from '@/icons'
+import { useStore } from '@/plugins/store'
 import { AstroStatus } from '@/util'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
@@ -195,6 +196,10 @@ export default {
     },
   },
   emits: ['ephemeral'],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data: function () {
     return {
       AstroStatusColors,
@@ -281,7 +286,7 @@ export default {
     this.showToast = localStorage.notoast === 'false'
     this.subscribe()
     // TODO How does this get updated after initialization
-    this.alerts = this.$store.state.notifyHistory
+    this.alerts = this.store.notifyHistory
     // Get the initial number of running scripts
     Api.get('/script-api/running-script').then((response) => {
       this.numScripts = response.data.total
