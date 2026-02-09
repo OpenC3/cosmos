@@ -10,10 +10,21 @@ This project uses modern Python tooling:
 - **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter
 - **[Just](https://github.com/casey/just)** - Command runner (like Make but better)
 
-### Installing Tools (macOS)
+### Installing Tools
 
+**macOS:**
 ```bash
 brew install uv ruff just
+```
+
+**Linux/WSL:**
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Ruff and Just (via cargo or package manager)
+cargo install ruff just
+# Or on Debian/Ubuntu: apt-get install ruff just (if available in repos)
 ```
 
 ## Quick Start

@@ -156,18 +156,31 @@ COSMOS uses Python for scripting and provides a Python library (`openc3`) that m
 - **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter (replaces flake8/black/isort)
 - **[Just](https://github.com/casey/just)** - Command runner for development tasks
 
-### Installing Tools (macOS)
+### Installing Tools
+
+**macOS:**
 
 ```bash
 brew install uv ruff just
 ```
 
-### Quick Start
-
-1.  Install dependencies:
+**Linux/WSL:**
 
 ```bash
-cosmos/openc3/python % uv sync
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Ruff and Just (via cargo or package manager)
+cargo install ruff just
+```
+
+### Quick Start
+
+1.  Install Python and dependencies:
+
+```bash
+cosmos/openc3/python % uv python install  # Install Python from .python-version
+cosmos/openc3/python % uv sync             # Create venv and install dependencies
 ```
 
 2.  View all available commands:
@@ -222,8 +235,9 @@ just clean               # Remove build artifacts and caches
 If you prefer not to use Just, you can run commands directly with UV:
 
 ```bash
-# Install dependencies
-uv sync
+# Setup
+uv python install    # Install Python from .python-version
+uv sync              # Create venv and install dependencies
 
 # Run tests
 uv run pytest
