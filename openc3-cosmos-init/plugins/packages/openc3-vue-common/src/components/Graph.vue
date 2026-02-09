@@ -315,7 +315,10 @@ import 'uplot/dist/uPlot.min.css'
 const DEFAULT_X_AXIS_ITEM = '__time'
 // Max milliseconds to spend processing buffered data per animation frame
 // before yielding back to the browser for rendering
-const MAX_PROCESSING_MS = 50
+// We're calling requestAnimationFrame which is typically 60Hz or every 16.667ms
+// A good rule of thumb is to stay within roughly half the frame budget, so 8–10ms.
+// This leaves the other ~7–8ms for the browser to do layout, paint, compositing, and GC.
+const MAX_PROCESSING_MS = 10
 
 export default {
   components: {
@@ -1836,9 +1839,7 @@ export default {
       ) {
         const pointsToRemove = this.data[0].length - this.pointsSaved
         for (let j = 0; j < this.data.length; j++) {
-          // slice() creates a new contiguous array which is faster than
-          // splice(0, N) which shifts every remaining element in-place
-          this.data[j] = this.data[j].slice(pointsToRemove)
+          this.data[j].splice(0, pointsToRemove)
         }
       }
 
