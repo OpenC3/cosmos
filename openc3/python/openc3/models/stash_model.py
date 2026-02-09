@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from typing import Any
+
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 

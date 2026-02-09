@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import threading
 import socket
+import threading
 from datetime import datetime, timezone
+
+from openc3.system.system import System
+from openc3.top_level import kill_thread
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.top_level import kill_thread
-from openc3.system.system import System
 
 
 class InterfaceThread:
@@ -224,11 +225,10 @@ class InterfaceThread:
             # Check for common connection errors that don't need exception files
             common_errors = (ConnectionRefusedError, ConnectionResetError, TimeoutError, socket.error, OSError, IOError)
 
-            if isinstance(connect_error, common_errors):
-                # Do not write an exception file for these extremely common cases
-                pass
-            elif isinstance(connect_error, RuntimeError) and (
-                "canceled" in str(connect_error) or "timeout" in str(connect_error)
+            if (
+                isinstance(connect_error, common_errors)
+                or isinstance(connect_error, RuntimeError)
+                and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
             ):
                 # Do not write an exception file for these extremely common cases
                 pass

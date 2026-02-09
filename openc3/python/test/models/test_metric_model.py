@@ -16,8 +16,9 @@
 
 import unittest
 import unittest.mock
-from test.test_helper import *
+
 from openc3.models.metric_model import MetricModel
+from test.test_helper import *
 
 
 class TestMetricModel(unittest.TestCase):

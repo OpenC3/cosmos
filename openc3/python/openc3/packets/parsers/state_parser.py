@@ -15,8 +15,8 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.packet_item import PacketItem
-from openc3.utilities.logger import Logger
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 
 
 class StateParser:

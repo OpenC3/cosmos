@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -17,8 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from openc3.environment import OPENC3_SCOPE
+
 import openc3.script
+from openc3.environment import OPENC3_SCOPE
 
 
 # Group Methods
@@ -40,7 +39,7 @@ def autonomic_group_list(scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_group_list: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_group_list failed due to {error}")
+        raise RuntimeError(f"autonomic_group_list failed due to {error}") from error
 
 
 def autonomic_group_create(name, scope=None):
@@ -66,7 +65,7 @@ def autonomic_group_create(name, scope=None):
                 raise RuntimeError("autonomic_group_create failed")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_group_create failed due to {error}")
+        raise RuntimeError(f"autonomic_group_create failed due to {error}") from error
 
 
 def autonomic_group_show(name, scope=None):
@@ -88,7 +87,7 @@ def autonomic_group_show(name, scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_group_show: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_group_show failed due to {error}")
+        raise RuntimeError(f"autonomic_group_show failed due to {error}") from error
 
 
 def autonomic_group_destroy(name, scope=None):
@@ -111,7 +110,7 @@ def autonomic_group_destroy(name, scope=None):
                 raise RuntimeError("autonomic_group_destroy failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_group_destroy failed due to {error}")
+        raise RuntimeError(f"autonomic_group_destroy failed due to {error}") from error
 
 
 # Trigger Methods
@@ -134,7 +133,7 @@ def autonomic_trigger_list(group="DEFAULT", scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_trigger_list: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_list failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_list failed due to {error}") from error
 
 
 def autonomic_trigger_create(left, operator, right, group="DEFAULT", scope=None):
@@ -164,7 +163,7 @@ def autonomic_trigger_create(left, operator, right, group="DEFAULT", scope=None)
                 raise RuntimeError("autonomic_trigger_create failed")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_create failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_create failed due to {error}") from error
 
 
 def autonomic_trigger_show(name, group="DEFAULT", scope=None):
@@ -187,7 +186,7 @@ def autonomic_trigger_show(name, group="DEFAULT", scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_trigger_show: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_show failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_show failed due to {error}") from error
 
 
 def autonomic_trigger_enable(name, group="DEFAULT", scope=None):
@@ -211,7 +210,7 @@ def autonomic_trigger_enable(name, group="DEFAULT", scope=None):
                 raise RuntimeError("autonomic_trigger_enable failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_enable failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_enable failed due to {error}") from error
 
 
 def autonomic_trigger_disable(name, group="DEFAULT", scope=None):
@@ -235,7 +234,7 @@ def autonomic_trigger_disable(name, group="DEFAULT", scope=None):
                 raise RuntimeError("autonomic_trigger_disable failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_disable failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_disable failed due to {error}") from error
 
 
 def autonomic_trigger_update(name, group="DEFAULT", left=None, operator=None, right=None, scope=None):
@@ -272,7 +271,7 @@ def autonomic_trigger_update(name, group="DEFAULT", left=None, operator=None, ri
                 raise RuntimeError("autonomic_trigger_update failed")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_update failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_update failed due to {error}") from error
 
 
 def autonomic_trigger_destroy(name, group="DEFAULT", scope=None):
@@ -296,7 +295,7 @@ def autonomic_trigger_destroy(name, group="DEFAULT", scope=None):
                 raise RuntimeError("autonomic_trigger_destroy failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_trigger_destroy failed due to {error}")
+        raise RuntimeError(f"autonomic_trigger_destroy failed due to {error}") from error
 
 
 # Reaction Methods
@@ -318,7 +317,7 @@ def autonomic_reaction_list(scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_reaction_list: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_list failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_list failed due to {error}") from error
 
 
 def autonomic_reaction_create(triggers, actions, trigger_level="EDGE", snooze=0, scope=None):
@@ -353,7 +352,7 @@ def autonomic_reaction_create(triggers, actions, trigger_level="EDGE", snooze=0,
                 raise RuntimeError("autonomic_reaction_create failed")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_create failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_create failed due to {error}") from error
 
 
 def autonomic_reaction_show(name, scope=None):
@@ -375,7 +374,7 @@ def autonomic_reaction_show(name, scope=None):
             raise RuntimeError(f"Unexpected response to autonomic_reaction_show: {response}")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_show failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_show failed due to {error}") from error
 
 
 def autonomic_reaction_enable(name, scope=None):
@@ -398,7 +397,7 @@ def autonomic_reaction_enable(name, scope=None):
                 raise RuntimeError("autonomic_reaction_enable failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_enable failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_enable failed due to {error}") from error
 
 
 def autonomic_reaction_disable(name, scope=None):
@@ -421,7 +420,7 @@ def autonomic_reaction_disable(name, scope=None):
                 raise RuntimeError("autonomic_reaction_disable failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_disable failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_disable failed due to {error}") from error
 
 
 def autonomic_reaction_execute(name, scope=None):
@@ -444,7 +443,7 @@ def autonomic_reaction_execute(name, scope=None):
                 raise RuntimeError("autonomic_reaction_execute failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_execute failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_execute failed due to {error}") from error
 
 
 def autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None, snooze=None, scope=None):
@@ -483,7 +482,7 @@ def autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=N
                 raise RuntimeError("autonomic_reaction_update failed")
         return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_update failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_update failed due to {error}") from error
 
 
 def autonomic_reaction_destroy(name, scope=None):
@@ -506,4 +505,4 @@ def autonomic_reaction_destroy(name, scope=None):
                 raise RuntimeError("autonomic_reaction_destroy failed")
         return
     except Exception as error:
-        raise RuntimeError(f"autonomic_reaction_destroy failed due to {error}")
+        raise RuntimeError(f"autonomic_reaction_destroy failed due to {error}") from error

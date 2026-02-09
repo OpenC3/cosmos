@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
+from test.test_helper import *
 
 
 class TestStateParser(unittest.TestCase):
@@ -270,9 +271,9 @@ class TestStateParser(unittest.TestCase):
 
         # Verify hex values are correctly converted to integers
         states = self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states
-        self.assertEqual(states["HEX_LOW"], 10)     # 0x0A = 10
-        self.assertEqual(states["HEX_HIGH"], 255)   # 0xFF = 255
-        self.assertEqual(states["HEX_MIXED"], 57005) # 0xDEAD = 57005
+        self.assertEqual(states["HEX_LOW"], 10)  # 0x0A = 10
+        self.assertEqual(states["HEX_HIGH"], 255)  # 0xFF = 255
+        self.assertEqual(states["HEX_MIXED"], 57005)  # 0xDEAD = 57005
 
         # Test reading values back
         tlm = Telemetry(self.pc, System)

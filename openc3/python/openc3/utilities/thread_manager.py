@@ -17,6 +17,7 @@
 import time
 from threading import Lock
 
+
 class ThreadManager:
     MONITOR_SLEEP_SECONDS = 0.25
 

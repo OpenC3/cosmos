@@ -15,11 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+from collections import namedtuple
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.accessors.template_accessor import TemplateAccessor
 from openc3.packets.packet import Packet
-from collections import namedtuple
+from test.test_helper import *
 
 
 class TestTemplateAccessor(unittest.TestCase):

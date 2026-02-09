@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import threading
 import queue
+import threading
 from time import sleep
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.logger import Logger
 
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
+
+from openc3.config.config_parser import ConfigParser
+from openc3.utilities.logger import Logger
 
 
 class MqttStream:

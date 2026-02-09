@@ -17,9 +17,11 @@
 import os
 import tempfile
 import unittest
+
 from lxml import etree
-from openc3.packets.parsers.xtce_converter import XtceConverter
+
 from openc3.packets.packet_config import PacketConfig
+from openc3.packets.parsers.xtce_converter import XtceConverter
 
 
 class TestXtceConverter(unittest.TestCase):

@@ -16,11 +16,12 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.interfaces.protocols.length_protocol import LengthProtocol
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
+from test.test_helper import *
 
 
 class TestLengthProtocol(unittest.TestCase):

@@ -17,9 +17,10 @@
 import json
 import os
 import re
-import time
 import threading
-from typing import Any, Optional
+import time
+from typing import Any
+
 
 try:
     import psycopg
@@ -29,14 +30,14 @@ try:
 except ImportError:
     PSYCOPG_AVAILABLE = False
 
-from openc3.utilities.store import Store
-from openc3.utilities.store_queued import StoreQueued
-from openc3.utilities.questdb_client import QuestDBClient
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
-from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.json import JsonEncoder, JsonDecoder
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
+from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.store import Store
+from openc3.utilities.store_queued import StoreQueued
 
 
 class CvtModel(Model):
@@ -176,7 +177,7 @@ class CvtModel(Model):
             return None
 
     @classmethod
-    def tsdb_lookup(cls, items: list, start_time: str, end_time: Optional[str] = None, scope: str = OPENC3_SCOPE):
+    def tsdb_lookup(cls, items: list, start_time: str, end_time: str | None = None, scope: str = OPENC3_SCOPE):
         """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")
@@ -270,19 +271,28 @@ class CvtModel(Model):
                 if item_def:
                     rc = item_def.get("read_conversion")
                     if rc and rc.get("converted_type"):
-                        item_types[col_name] = {"data_type": rc.get("converted_type"), "array_size": item_def.get("array_size")}
+                        item_types[col_name] = {
+                            "data_type": rc.get("converted_type"),
+                            "array_size": item_def.get("array_size"),
+                        }
                     elif item_def.get("states"):
                         # State values are strings
                         item_types[col_name] = {"data_type": "STRING", "array_size": None}
                     else:
-                        item_types[col_name] = {"data_type": item_def.get("data_type"), "array_size": item_def.get("array_size")}
+                        item_types[col_name] = {
+                            "data_type": item_def.get("data_type"),
+                            "array_size": item_def.get("array_size"),
+                        }
                 else:
                     item_types[col_name] = {"data_type": None, "array_size": None}
             else:
                 col_name = f"T{index}.{safe_item_name}"
                 names.append(f'"{col_name}"')
                 if item_def:
-                    item_types[col_name] = {"data_type": item_def.get("data_type"), "array_size": item_def.get("array_size")}
+                    item_types[col_name] = {
+                        "data_type": item_def.get("data_type"),
+                        "array_size": item_def.get("array_size"),
+                    }
                 else:
                     item_types[col_name] = {"data_type": None, "array_size": None}
 
@@ -359,7 +369,11 @@ class CvtModel(Model):
                                         table_idx = int(match.group(1))
                                         ts_source = match.group(2)
                                         row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
-                                    elif col_name.endswith(".PACKET_TIMESECONDS") or col_name.endswith(".RECEIVED_TIMESECONDS") or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
+                                    elif (
+                                        col_name.endswith(".PACKET_TIMESECONDS")
+                                        or col_name.endswith(".RECEIVED_TIMESECONDS")
+                                        or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS")
+                                    ):
                                         # Stored timestamp column - convert from datetime to float seconds
                                         ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
                                         seconds_value = QuestDBClient.format_timestamp(ts_utc, "seconds")
@@ -412,7 +426,7 @@ class CvtModel(Model):
                 retry_count += 1
                 if retry_count > 4:
                     # After the 5th retry just raise the error
-                    raise RuntimeError(f"Error querying TSDB: {str(e)}")
+                    raise RuntimeError(f"Error querying TSDB: {str(e)}") from e
                 Logger.warn(f"TSDB: Retrying due to error: {str(e)}")
                 Logger.warn(f"TSDB: Last query: {query}")  # Log the last query for debugging
                 with cls._conn_mutex:

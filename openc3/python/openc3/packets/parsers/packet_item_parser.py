@@ -14,12 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.packets.packet_item import PacketItem
-from openc3.packets.packet import Packet
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.logger import Logger
-from openc3.utilities.extract import hex_to_byte_string, convert_to_value
 from ast import literal_eval
+
+from openc3.config.config_parser import ConfigParser
+from openc3.packets.packet import Packet
+from openc3.packets.packet_item import PacketItem
+from openc3.utilities.extract import convert_to_value, hex_to_byte_string
+from openc3.utilities.logger import Logger
+
 
 class PacketItemParser:
     COMMAND = "Command"
@@ -86,10 +88,10 @@ class PacketItemParser:
                     item_name,
                     self._get_bit_offset(),
                     self._get_bit_size(True),
-                    'BLOCK',
-                    'BIG_ENDIAN',
+                    "BLOCK",
+                    "BIG_ENDIAN",
                     None,
-                    "ERROR", # overflow
+                    "ERROR",  # overflow
                 )
             else:
                 item = PacketItem(
@@ -99,7 +101,7 @@ class PacketItemParser:
                     self._get_data_type(),
                     self._get_endianness(packet),
                     self._get_array_size(),
-                    "ERROR", # overflow
+                    "ERROR",  # overflow
                 )
                 if cmd_or_tlm == PacketItemParser.COMMAND:
                     item.minimum = self._get_minimum()
@@ -112,11 +114,13 @@ class PacketItemParser:
             else:
                 item = packet.define(item)
             if "STRUCTURE" in self.parser.keyword:
-                structure = self._lookup_packet(self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name())
+                structure = self._lookup_packet(
+                    self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name()
+                )
                 packet.structurize_item(item, structure)
             return item
         except Exception as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _append(self):
         return "APPEND" in self.parser.keyword
@@ -135,20 +139,22 @@ class PacketItemParser:
         try:
             return int(self.parser.parameters[1], 0)
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_bit_size(self, check_structure=False):
         index = 1 if self._append() else 2
         try:
             bit_size = self.parser.parameters[index]
-            if not check_structure or str(bit_size).upper() != 'DEFINED':
+            if not check_structure or str(bit_size).upper() != "DEFINED":
                 return int(bit_size, 0)
             else:
-                structure = self._lookup_packet(self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name())
+                structure = self._lookup_packet(
+                    self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name()
+                )
                 return structure.defined_length_bits
 
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_array_size(self):
         if "ARRAY" not in self.parser.keyword:
@@ -169,7 +175,7 @@ class PacketItemParser:
                 self.warnings.append(warning)
             return array_bit_size
         except ValueError as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error
 
     def _get_endianness(self, packet):
         params = self.parser.parameters
@@ -237,7 +243,7 @@ class PacketItemParser:
         return str(self.parser.parameters[index]).upper()
 
     def _lookup_packet(self, cmd_or_tlm, target_name, packet_name):
-        if cmd_or_tlm == 'CMD' or cmd_or_tlm == 'COMMAND':
+        if cmd_or_tlm == "CMD" or cmd_or_tlm == "COMMAND":
             return self.packet_config.commands[target_name][packet_name]
         else:
             return self.packet_config.telemetry[target_name][packet_name]
@@ -270,8 +276,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
                 return value
             else:
@@ -280,8 +286,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
                 return value
             else:
@@ -328,8 +334,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for ARRAY: {value}")
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
                 return value
             else:
@@ -338,8 +344,8 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             try:
                 value = literal_eval(value)
-            except Exception:
-                raise self.parser.error(f"Unparsable value for OBJECT: {value}")
+            except Exception as e:
+                raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
                 return value
             else:

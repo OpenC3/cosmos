@@ -74,13 +74,13 @@ class TerminatedProtocol(BurstProtocol):
                 if self.strip_read_termination:
                     packet_data = self.data[0:index]
                 else:
-                    packet_data = self.data[0:(index + len(self.read_termination_characters))]
+                    packet_data = self.data[0 : (index + len(self.read_termination_characters))]
             else:  # self.data begins with the termination characters
                 if self.strip_read_termination:
                     packet_data = b""
                 else:  # Keep everything
-                    packet_data = self.data[0:(len(self.read_termination_characters))]
-            self.data = self.data[(index + len(self.read_termination_characters)):]
+                    packet_data = self.data[0 : (len(self.read_termination_characters))]
+            self.data = self.data[(index + len(self.read_termination_characters)) :]
             return (packet_data, self.extra)
         except ValueError:  # sync_index = None
             return ("STOP", self.extra)

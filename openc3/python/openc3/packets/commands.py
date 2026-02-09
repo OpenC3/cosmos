@@ -18,7 +18,9 @@
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
+
 from openc3.utilities.cmd_log import _build_cmd_output_string
+
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -146,7 +148,6 @@ class Commands:
                         identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
-
                 identified_packet = identified_packet.clone()
                 identified_packet.received_time = None
                 identified_packet.stored = False
@@ -175,11 +176,13 @@ class Commands:
         self,
         target_name,
         packet_name,
-        params={},
+        params=None,
         range_checking=True,
         raw=False,
         check_required_params=True,
     ):
+        if params is None:
+            params = {}
         target_upcase = target_name.upper()
         packet_upcase = packet_name.upper()
 
@@ -216,7 +219,9 @@ class Commands:
         return command
 
     # Formatted version of a command
-    def format(self, packet, ignored_parameters=[]):
+    def format(self, packet, ignored_parameters=None):
+        if ignored_parameters is None:
+            ignored_parameters = []
         if packet.raw:
             items = packet.read_all("RAW")
             raw = True
@@ -229,11 +234,10 @@ class Commands:
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False, packet=None):
         method_name = "cmd_raw" if raw else "cmd"
-        target_name = "UNKNOWN" if not target_name else target_name
-        cmd_name = "UNKNOWN" if not cmd_name else cmd_name
+        target_name = target_name if target_name else "UNKNOWN"
+        cmd_name = cmd_name if cmd_name else "UNKNOWN"
         packet_hash = packet.as_json() if packet else {}
         return _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
-
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states
@@ -266,9 +270,11 @@ class Commands:
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
     # @param params (see #build_cmd)
-    def cmd_hazardous(self, target_name, packet_name, params={}):
+    def cmd_hazardous(self, target_name, packet_name, params=None):
         # Build a command without range checking, perform conversions, and don't
         # check required parameters since we're not actually using the command.
+        if params is None:
+            params = {}
         return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
     def all(self):
@@ -324,14 +330,20 @@ class Commands:
                 # Only range check if we have a min, max and not a string default value
                 minimum = item.minimum
                 maximum = item.maximum
-                if minimum is not None and maximum is not None and not isinstance(item.default, str):
-                    # Perform Range Check on command parameter
-                    if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
-                        if isinstance(range_check_value, str):
-                            range_check_value = f"'{range_check_value}'"
-                        raise RuntimeError(
-                            f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
-                        )
+                # Perform Range Check on command parameter
+                if (
+                    minimum is not None
+                    and maximum is not None
+                    and not isinstance(item.default, str)
+                    and (
+                        isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum
+                    )
+                ):
+                    if isinstance(range_check_value, str):
+                        range_check_value = f"'{range_check_value}'"
+                    raise RuntimeError(
+                        f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
+                    )
 
             # Update parameter in command
             if command.raw:

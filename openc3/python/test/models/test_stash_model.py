@@ -17,8 +17,9 @@
 
 import unittest
 import unittest.mock
-from test.test_helper import *
+
 from openc3.models.stash_model import StashModel
+from test.test_helper import *
 
 
 class TestStashModel(unittest.TestCase):

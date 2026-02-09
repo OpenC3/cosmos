@@ -14,12 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import *
-from test.test_helper import *
-from openc3.packets.packet_config import PacketConfig
+
 from openc3.config.config_parser import ConfigParser
+from openc3.packets.packet_config import PacketConfig
+from test.test_helper import *
 
 
 class TestPacketParser(unittest.TestCase):
@@ -31,9 +32,7 @@ class TestPacketParser(unittest.TestCase):
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write(keyword)
             tf.seek(0)  # Rewind so the file is ready to read
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Not enough parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters for {keyword}"):
                 self.pc.process_file(tf.name, "SYSTEM")
             tf.close()
 
@@ -42,9 +41,7 @@ class TestPacketParser(unittest.TestCase):
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet' extra")
             tf.seek(0)  # Rewind so the file is ready to read
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Too many parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -96,7 +93,5 @@ class TestPacketParser(unittest.TestCase):
             tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet 2'\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
-            self.assertIn(
-                f"{keyword.capitalize()} Packet TGT1 PKT1 redefined.", self.pc.warnings
-            )
+            self.assertIn(f"{keyword.capitalize()} Packet TGT1 PKT1 redefined.", self.pc.warnings)
             tf.close()

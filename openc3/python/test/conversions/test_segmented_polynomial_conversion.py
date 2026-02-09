@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.segmented_polynomial_conversion import (
     SegmentedPolynomialConversion,
 )
+from test.test_helper import *
 
 
 class TestSegmentedPolynomialConversion(unittest.TestCase):

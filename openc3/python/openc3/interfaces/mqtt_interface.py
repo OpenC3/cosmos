@@ -18,16 +18,17 @@
 # docker run -it -p 1883:1883 eclipse-mosquitto:2.0.15 mosquitto -c /mosquitto-no-auth.conf
 # You can also test against encrypted and authenticated servers at https://test.mosquitto.org/
 
-from time import sleep
 import queue
 import tempfile
-from openc3.interfaces.interface import Interface
-from openc3.system.system import System
-from openc3.utilities.logger import Logger
-from openc3.config.config_parser import ConfigParser
+from time import sleep
 
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
+
+from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.interface import Interface
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
 
 
 # Base class for interfaces that send and receive messages over MQTT
@@ -175,7 +176,7 @@ class MqttInterface(Interface):
         try:
             topic = self.write_topics.pop(0)
         except IndexError:
-            raise RuntimeError(f"write_interface called with no topics: {self.write_topics}")
+            raise RuntimeError(f"write_interface called with no topics: {self.write_topics}") from None
         info = self.client.publish(topic, data)
         # This more closely matches the ruby implementation
         info.wait_for_publish(timeout=self.ack_timeout)
@@ -199,45 +200,42 @@ class MqttInterface(Interface):
                 self.password = option_values[0]
             case "CERT":
                 # CERT must be given as a file
-                self.cert = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.cert.write(option_values[0])
-                self.cert.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.cert:
+                    self.cert.write(option_values[0])
             case "KEY":
                 # KEY must be given as a file
-                self.key = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.key.write(option_values[0])
-                self.key.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.key:
+                    self.key.write(option_values[0])
             case "CA_FILE":
                 # CA_FILE must be given as a file
-                self.ca_file = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-                self.ca_file.write(option_values[0])
-                self.ca_file.close()
+                with tempfile.NamedTemporaryFile(mode="w+", delete=False) as self.ca_file:
+                    self.ca_file.write(option_values[0])
             case "KEYFILE_PASSWORD":
                 self.keyfile_password = option_values[0]
 
     def details(self):
         result = super().details()
-        result['hostname'] = self.hostname
-        result['port'] = self.port
-        result['ssl'] = self.ssl
-        result['ack_timeout'] = self.ack_timeout
-        result['username'] = self.username
+        result["hostname"] = self.hostname
+        result["port"] = self.port
+        result["ssl"] = self.ssl
+        result["ack_timeout"] = self.ack_timeout
+        result["username"] = self.username
         if self.password:
-            result['password'] = 'Set'
+            result["password"] = "Set"
         if self.cert:
-            result['cert'] = 'Set'
+            result["cert"] = "Set"
         if self.key:
-            result['key'] = 'Set'
+            result["key"] = "Set"
         if self.ca_file:
-            result['ca_file'] = 'Set'
+            result["ca_file"] = "Set"
         # Remove sensitive options from the options dict
-        if 'PASSWORD' in result['options']:
-            del result['options']['PASSWORD']
-        if 'CERT' in result['options']:
-            del result['options']['CERT']
-        if 'KEY' in result['options']:
-            del result['options']['KEY']
-        if 'CA_FILE' in result['options']:
-            del result['options']['CA_FILE']
-        result['read_packets_by_topic'] = self.read_packets_by_topic
+        if "PASSWORD" in result["options"]:
+            del result["options"]["PASSWORD"]
+        if "CERT" in result["options"]:
+            del result["options"]["CERT"]
+        if "KEY" in result["options"]:
+            del result["options"]["KEY"]
+        if "CA_FILE" in result["options"]:
+            del result["options"]["CA_FILE"]
+        result["read_packets_by_topic"] = self.read_packets_by_topic
         return result

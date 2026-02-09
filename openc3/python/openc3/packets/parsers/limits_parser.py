@@ -97,10 +97,7 @@ class LimitsParser:
         enabled = self.parser.parameters[2].upper()
         if enabled != "ENABLED" and enabled != "DISABLED":
             raise self.parser.error("Initial LIMITS state must be ENABLED or DISABLED.", self.usage)
-        if enabled == "ENABLED":
-            return True
-        else:
-            return False
+        return enabled == "ENABLED"
 
     def _get_values(self):
         values = self._get_red_yellow_values()
@@ -139,7 +136,7 @@ class LimitsParser:
         # special check for 8 parameters which is an error
         if len(params) == 8:
             raise self.parser.error("Must give both a green low and green high value.", self.usage)
-        if not len(params) == 9:
+        if len(params) != 9:
             return []
 
         try:

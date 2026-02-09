@@ -15,11 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from test.test_helper import mock_redis, setup_system
+
+from openc3.interfaces.protocols.protocol import Protocol
 from openc3.interfaces.simulated_target_interface import SimulatedTargetInterface
 from openc3.packets.packet import Packet
-from openc3.interfaces.protocols.protocol import Protocol
 from openc3.system.system import System
+from test.test_helper import mock_redis, setup_system
 
 
 class MyProtocol(Protocol):
