@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+
 from openc3.topics.topic import Topic
 from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch

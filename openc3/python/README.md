@@ -7,21 +7,49 @@ Additional functionality and support will be added over time.
 
 ---
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+## Installation
 
-## Installation:
+### For Users
 
-```
-cosmos/openc3/python % pip install openc3
-cosmos/openc3/python % pip install poetry
-cosmos/openc3/python % poetry install
+```bash
+pip install openc3
 ```
 
-### Development
+### For Development
 
-Every command should be prefixed with poetry to ensure the correct environment. To run the unit tests and generate a report:
+See [README-DEV.md](README-DEV.md) for complete development setup.
 
+#### Install Development Tools
+
+Install UV, Ruff, and Just using pipx (recommended for isolated environments):
+
+```bash
+# Install pipx if not already installed
+pip install --user pipx
+pipx ensurepath
+
+# Install development tools
+pipx install uv
+pipx install ruff
+pipx install just
 ```
-cosmos/openc3/python % poetry run coverage run -m pytest
-cosmos/openc3/python % poetry run coverage html
+
+Or using your system package manager:
+- **macOS**: `brew install uv ruff just`
+- **Linux**: See [UV docs](https://docs.astral.sh/uv/getting-started/installation/), [Ruff docs](https://docs.astral.sh/ruff/installation/), [Just docs](https://github.com/casey/just#installation)
+- **Windows**: See tool documentation links above
+
+#### Quick Start
+
+```bash
+# Create virtual environment and install dependencies
+cosmos/openc3/python % uv venv
+cosmos/openc3/python % uv sync
+
+# Run tests
+cosmos/openc3/python % uv run pytest
+
+# Run tests with coverage
+cosmos/openc3/python % uv run coverage run -m pytest
+cosmos/openc3/python % uv run coverage html
 ```

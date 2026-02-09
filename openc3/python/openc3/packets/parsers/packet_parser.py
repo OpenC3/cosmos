@@ -45,10 +45,9 @@ class PacketParser:
     @classmethod
     def _check_for_duplicate(cls, type, list, packet):
         msg = None
-        if list.get(packet.target_name):
-            if list[packet.target_name].get(packet.packet_name):
-                msg = f"{type} Packet {packet.target_name} {packet.packet_name} redefined."
-                Logger.warn(msg)
+        if list.get(packet.target_name) and list[packet.target_name].get(packet.packet_name):
+            msg = f"{type} Packet {packet.target_name} {packet.packet_name} redefined."
+            Logger.warn(msg)
         return msg
 
     @classmethod

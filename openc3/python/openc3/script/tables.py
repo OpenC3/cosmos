@@ -15,23 +15,29 @@
 # if purchased from OpenC3, Inc.
 
 import json
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
+
 def table_create_binary(definition: str, scope: str = OPENC3_SCOPE):
     data = {}
-    data['definition'] = definition
-    response = openc3.script.API_SERVER.request("post", "/openc3-api/tables/generate", data=data, json=True, scope=scope)
-    return _handle_response(response, 'Failed to create binary')
+    data["definition"] = definition
+    response = openc3.script.API_SERVER.request(
+        "post", "/openc3-api/tables/generate", data=data, json=True, scope=scope
+    )
+    return _handle_response(response, "Failed to create binary")
+
 
 def table_create_report(filename: str, definition: str, table_name: str = None, scope: str = OPENC3_SCOPE):
     data = {}
-    data['binary'] = filename
-    data['definition'] = definition
+    data["binary"] = filename
+    data["definition"] = definition
     if table_name:
-        data['table_name'] = table_name
+        data["table_name"] = table_name
     response = openc3.script.API_SERVER.request("post", "/openc3-api/tables/report", data=data, json=True, scope=scope)
-    return _handle_response(response, 'Failed to create binary')
+    return _handle_response(response, "Failed to create binary")
+
 
 # Helper method to handle the response
 def _handle_response(response, error_message):

@@ -7,3 +7,6 @@ omit =
     # omit temp files
     /tmp/*
     /private/*
+    # omit temporary test conversion files
+    openc3/test_convert.py
+    openc3/test_real_conversion.py

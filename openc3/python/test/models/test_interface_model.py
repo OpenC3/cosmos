@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.router_model import RouterModel
 from openc3.utilities.redis_secrets import RedisSecrets
+from test.test_helper import *
 
 
 class TestInterfaceModel(unittest.TestCase):
@@ -112,9 +113,7 @@ class TestInterfaceModel(unittest.TestCase):
 
     def test_only_handles_python(self):
         with self.assertRaisesRegex(RuntimeError, "Unknown file type interface.rb"):
-            InterfaceModel(
-                name="TEST_INT", scope="DEFAULT", config_params=["interface.rb"]
-            )
+            InterfaceModel(name="TEST_INT", scope="DEFAULT", config_params=["interface.rb"])
 
     def test_stores_model_based_on_scope_and_class_name(self):
         model = InterfaceModel(name="TEST_INT", scope="DEFAULT")

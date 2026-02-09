@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+
 class ScriptEngine:
     def __init__(self, running_script):
         self.running_script = running_script
@@ -23,7 +24,7 @@ class ScriptEngine:
         print(line)
         return line_no + 1
 
-    def run_text(self, text, filename = None, line_no = 1, end_line_no = None, bind_variables = False):
+    def run_text(self, text, filename=None, line_no=1, end_line_no=None, bind_variables=False):
         lines = text.splitlines()
 
         while True:
@@ -53,15 +54,15 @@ class ScriptEngine:
     def debug(self, text):
         self.run_line(text, [text], "DEBUG", 1)
 
-    def syntax_check(self, text, filename = None):
+    def syntax_check(self, text, filename=None):
         print("Not Implemented")
         return 1
 
-    def mnemonic_check(self, text, filename = None):
+    def mnemonic_check(self, text, filename=None):
         print("Not Implemented")
         return 1
 
-    def tokenizer(self, s, special_chars='()><+-*/=;,'):
+    def tokenizer(self, s, special_chars="()><+-*/=;,"):
         """
         Advanced tokenizer that:
         1. Preserves quoted strings with their quotes
@@ -86,7 +87,7 @@ class ScriptEngine:
                 i += 1
                 # Find the closing quote
                 while i < len(s):
-                    if s[i] == '\\' and i + 1 < len(s):  # Handle escaped characters
+                    if s[i] == "\\" and i + 1 < len(s):  # Handle escaped characters
                         i += 2
                     elif s[i] == quote_char:  # Found closing quote
                         i += 1

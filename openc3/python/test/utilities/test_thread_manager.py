@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from time import perf_counter
-import time
 import threading
+import time
 import unittest
+from time import perf_counter
 from unittest.mock import Mock
+
 from openc3.utilities.thread_manager import ThreadManager
 
 

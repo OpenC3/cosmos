@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.bit_reverse_conversion import BitReverseConversion
+from test.test_helper import *
 
 
 class TestBitReverseConversion(unittest.TestCase):

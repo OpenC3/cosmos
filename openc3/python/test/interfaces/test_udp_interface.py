@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import socket
 import threading
+import time
 import unittest
 from unittest.mock import patch
+
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
@@ -136,7 +137,7 @@ class TestUdpInterface(unittest.TestCase):
     @patch("socket.socket")
     def test_stops_the_read_thread_if_there_is_an_ioerror(self, mock_socket):
         sock = mock_socket.return_value
-        sock.recvfrom.side_effect = socket.error(socket.EWOULDBLOCK)
+        sock.recvfrom.side_effect = OSError(socket.EWOULDBLOCK)
         i = UdpInterface("localhost", "None", "8889")
         i.connect()
         thread = threading.Thread(target=i.read)
@@ -269,46 +270,46 @@ class TestUdpInterface(unittest.TestCase):
             "10.10.10.3",
         )
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check that it includes the expected keys specific to UdpInterface
-        self.assertIn('hostname', details)
-        self.assertIn('write_dest_port', details)
-        self.assertIn('read_port', details)
-        self.assertIn('write_src_port', details)
-        self.assertIn('interface_address', details)
-        self.assertIn('ttl', details)
-        self.assertIn('write_timeout', details)
-        self.assertIn('read_timeout', details)
-        self.assertIn('bind_address', details)
-        
+        self.assertIn("hostname", details)
+        self.assertIn("write_dest_port", details)
+        self.assertIn("read_port", details)
+        self.assertIn("write_src_port", details)
+        self.assertIn("interface_address", details)
+        self.assertIn("ttl", details)
+        self.assertIn("write_timeout", details)
+        self.assertIn("read_timeout", details)
+        self.assertIn("bind_address", details)
+
         # Verify the specific values are correct
-        self.assertEqual(details['hostname'], "192.168.1.100")
-        self.assertEqual(details['write_dest_port'], 8888)
-        self.assertEqual(details['read_port'], 8889)
-        self.assertEqual(details['write_src_port'], 8890)
-        self.assertEqual(details['interface_address'], "10.10.10.2")
-        self.assertEqual(details['ttl'], 128)
-        self.assertEqual(details['write_timeout'], 10.0)
-        self.assertEqual(details['read_timeout'], 15.0)
-        self.assertEqual(details['bind_address'], "10.10.10.3")
+        self.assertEqual(details["hostname"], "192.168.1.100")
+        self.assertEqual(details["write_dest_port"], 8888)
+        self.assertEqual(details["read_port"], 8889)
+        self.assertEqual(details["write_src_port"], 8890)
+        self.assertEqual(details["interface_address"], "10.10.10.2")
+        self.assertEqual(details["ttl"], 128)
+        self.assertEqual(details["write_timeout"], 10.0)
+        self.assertEqual(details["read_timeout"], 15.0)
+        self.assertEqual(details["bind_address"], "10.10.10.3")
 
     def test_details_with_none_values(self):
         i = UdpInterface("localhost", "None", "8889")
         details = i.details()
-        
+
         # Verify it returns a dictionary
         self.assertIsInstance(details, dict)
-        
+
         # Check None and default values are handled correctly
-        self.assertEqual(details['hostname'], "127.0.0.1")  # localhost converted
-        self.assertIsNone(details['write_dest_port'])
-        self.assertEqual(details['read_port'], 8889)
-        self.assertIsNone(details['write_src_port'])
-        self.assertIsNone(details['interface_address'])
-        self.assertEqual(details['ttl'], 128)  # default value
-        self.assertEqual(details['write_timeout'], 10.0)  # default value
-        self.assertIsNone(details['read_timeout'])
-        self.assertEqual(details['bind_address'], "0.0.0.0")  # default value
+        self.assertEqual(details["hostname"], "127.0.0.1")  # localhost converted
+        self.assertIsNone(details["write_dest_port"])
+        self.assertEqual(details["read_port"], 8889)
+        self.assertIsNone(details["write_src_port"])
+        self.assertIsNone(details["interface_address"])
+        self.assertEqual(details["ttl"], 128)  # default value
+        self.assertEqual(details["write_timeout"], 10.0)  # default value
+        self.assertIsNone(details["read_timeout"])
+        self.assertEqual(details["bind_address"], "0.0.0.0")  # default value

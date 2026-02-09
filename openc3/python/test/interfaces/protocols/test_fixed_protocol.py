@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.interfaces.protocols.fixed_protocol import FixedProtocol
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.stream import Stream
+from test.test_helper import *
 
 
 class TestFixedProtocol(unittest.TestCase):
@@ -226,6 +227,7 @@ class TestFixedProtocol(unittest.TestCase):
 
     def test_identifies_normal_packets_but_not_subpackets(self):
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
@@ -246,15 +248,15 @@ class TestFixedProtocol(unittest.TestCase):
         pc.process_file(tf.name, "TEST")
         tf.close()
 
-        from openc3.system.system import System
         from openc3.packets.telemetry import Telemetry
+        from openc3.system.system import System
 
         System.telemetry = Telemetry(pc, System)
         System.telemetry.config = pc
 
         # Create interface with fixed protocol
-        from openc3.interfaces.stream_interface import StreamInterface
         from openc3.interfaces.protocols.fixed_protocol import FixedProtocol
+        from openc3.interfaces.stream_interface import StreamInterface
 
         interface = StreamInterface()
         interface.add_protocol(FixedProtocol, [2, 0, None, True], "READ_WRITE")

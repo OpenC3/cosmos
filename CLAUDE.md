@@ -24,7 +24,7 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 ### Core Library
 
 - **openc3/** - Ruby gem with ~40 C extensions for performance-critical operations
-- **openc3/python/** - Python library (Poetry-managed) with equivalent functionality
+- **openc3/python/** - Python library (uv-managed) with equivalent functionality
 
 ### Frontend (pnpm Workspace)
 
@@ -73,16 +73,80 @@ bundle exec rspec spec/path/to/spec.rb           # Run single test file
 bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 ```
 
-### Python Tests
+### Python Development
+
+#### First Time Setup
+
+Install required tools (macOS):
+
+```bash
+brew install uv ruff just
+```
+
+Setup Python environment:
 
 ```bash
 cd openc3/python
-poetry install
-poetry run ruff check openc3                     # Lint
-poetry run pytest                                # Run all tests
-poetry run pytest test/path/to/test.py           # Run single test file
-poetry run coverage run -m pytest && poetry run coverage report
+uv python install                                # Install Python from .python-version
+uv sync                                          # Create venv and install dependencies
 ```
+
+#### Common Python Commands
+
+**Using Just (recommended):**
+```bash
+just                                             # Show all available commands
+just test                                        # Run all tests
+just test-cov                                    # Run tests with coverage
+just lint                                        # Check code quality
+just format                                      # Format all code
+just verify                                      # Format, lint, and test everything
+just verify-changed                              # Fast check of only changed files
+just add PACKAGE                                 # Add new dependency
+just update                                      # Update all dependencies
+```
+
+**Manual commands:**
+```bash
+uv run pytest                                    # Run all tests
+uv run pytest test/path/to/test.py               # Run single test file
+uv run ruff check openc3                         # Lint
+uv run ruff format openc3                        # Format
+uv run ruff check openc3 --fix                   # Lint and auto-fix
+uv run coverage run -m pytest && uv run coverage report  # Coverage
+```
+
+#### UV Workflow Tips
+
+**Adding dependencies:**
+```bash
+uv add package-name                              # Add runtime dependency
+uv add --dev package-name                        # Add dev dependency
+uv sync                                          # Install after manual pyproject.toml edits
+```
+
+**Updating dependencies:**
+```bash
+uv lock --upgrade                                # Update uv.lock
+uv sync                                          # Install updated dependencies
+```
+
+**Managing Python versions:**
+```bash
+uv python list                                   # List available Python versions
+uv python install 3.13                           # Install specific Python version
+uv python pin 3.13                               # Update .python-version
+```
+
+**Troubleshooting:**
+```bash
+rm -rf .venv && uv sync                          # Reset virtual environment
+uv cache clean                                   # Clear uv cache
+uv python list --only-installed                  # Show installed Python versions
+```
+
+**Migration from Poetry:**
+See `openc3/python/README-DEV.md` for detailed migration instructions.
 
 ### Frontend (Vue.js/Vuetify)
 
@@ -127,7 +191,9 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 - **Ruby 3.4** - Backend APIs and core library
 - **Rails 7.2** - REST APIs with AnyCable for WebSockets
-- **Python 3.10-3.12** - Alternative scripting language
+- **Python 3.10-3.14** - Alternative scripting language
+- **UV** - Python package manager (fast Rust-based replacement for pip/poetry)
+- **Ruff** - Python linter and formatter (fast Rust-based replacement for flake8/black)
 - **Vue.js 3 + Vuetify 3** - Frontend UI framework
 - **Vite** - Frontend build tool
 - **pnpm 10** - Frontend package management (monorepo workspace)
@@ -163,10 +229,23 @@ This installs:
 
 ### Python
 
-- Ruff for linting (pycodestyle E + Pyflakes F rules)
-- Line length: 120
-- Target Python: 3.12
-- Config in `openc3/python/pyproject.toml`
+- **Package Manager**: UV (fast Rust-based replacement for pip/poetry)
+- **Linter & Formatter**: Ruff (replaces flake8, black, isort)
+- **Active Rules**: E, F, I, N, UP, B, W, C4, SIM (pycodestyle, Pyflakes, isort, naming, pyupgrade, bugbear, simplify)
+- **Line Length**: 120
+- **Target Python**: 3.10 (minimum ruff target for backwards compatibility)
+- **Docker Python**: 3.12 (used in Alpine/UBI base images)
+- **Supported Versions**: 3.11, 3.12, 3.13 (Docker version ±1)
+- **Config**: `openc3/python/pyproject.toml`
+- **Lockfile**: `openc3/python/uv.lock` (replaces poetry.lock)
+- **Python Version**: `openc3/python/.python-version` (default: 3.12)
+
+**Important UV Notes:**
+- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
+- Use `uv sync --locked` in development (updates if out of sync)
+- Use `uv run` instead of activating the venv manually
+- The lockfile (`uv.lock`) must be committed to git
+- Don't commit `.venv` directory (it's in .gitignore)
 
 ### JavaScript/TypeScript
 

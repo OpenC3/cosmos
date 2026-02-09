@@ -14,18 +14,20 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import os
 import sys
-import json
 import traceback
+
 from questdb.ingress import IngressError
-from openc3.utilities.thread_manager import ThreadManager
-from openc3.utilities.questdb_client import QuestDBClient
+
+from openc3.api.cmd_api import get_all_cmd_names, get_cmd
+from openc3.api.tlm_api import get_all_tlm_names, get_tlm
 from openc3.microservices.microservice import Microservice
-from openc3.topics.topic import Topic
 from openc3.topics.config_topic import ConfigTopic
-from openc3.api.tlm_api import get_tlm, get_all_tlm_names
-from openc3.api.cmd_api import get_cmd, get_all_cmd_names
+from openc3.topics.topic import Topic
+from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):

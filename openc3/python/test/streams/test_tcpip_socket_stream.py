@@ -14,15 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import socket
 import socketserver
 import threading
+import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
 from openc3.top_level import close_socket
+from test.test_helper import *
 
 
 class TestTcpipSocketStream(unittest.TestCase):

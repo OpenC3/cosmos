@@ -17,6 +17,7 @@
 import copy
 import threading
 from contextlib import contextmanager
+
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.structure_item import StructureItem
 from openc3.utilities.string import formatted
@@ -318,7 +319,7 @@ class Structure:
             # Need to allocate space for the variable length item if its minimum size is greater than zero
             if item.variable_bit_size:
                 minimum_data_bits = 0
-                if (item.data_type == "INT" or item.data_type == "UINT") and not item.original_array_size:
+                if (item.data_type == "INT" or item.data_type == "UINT") and item.original_array_size is None:
                     # Minimum QUIC encoded integer, see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
                     minimum_data_bits = 6
                 # STRING, BLOCK, or array item
@@ -607,13 +608,12 @@ class Structure:
         if not self.fixed_size:
             self.recalculate_bit_offsets()
 
-        if self.accessor.enforce_length():
-            if len(self._buffer) != self.defined_length:
-                if len(self._buffer) < self.defined_length:
-                    # Only resize if short_buffer_allowed is false
-                    # When short_buffer_allowed is true, keep the buffer short so reads
-                    # of items beyond the buffer return None
-                    if not self.short_buffer_allowed:
-                        raise ValueError("Buffer length less than defined length")
-                elif self.fixed_size and self.defined_length != 0:
-                    raise ValueError("Buffer length greater than defined length")
+        if self.accessor.enforce_length() and len(self._buffer) != self.defined_length:
+            if len(self._buffer) < self.defined_length:
+                # Only resize if short_buffer_allowed is false
+                # When short_buffer_allowed is true, keep the buffer short so reads
+                # of items beyond the buffer return None
+                if not self.short_buffer_allowed:
+                    raise ValueError("Buffer length less than defined length")
+            elif self.fixed_size and self.defined_length != 0:
+                raise ValueError("Buffer length greater than defined length")

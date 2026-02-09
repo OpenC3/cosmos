@@ -1,0 +1,64 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Python Lint
+
+on:
+  pull_request:
+    branches-ignore:
+      - "dependabot/**"
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - "openc3/python/**/*.py"
+      - "openc3-cosmos-script-runner-api/scripts/**/*.py"
+      - "openc3-cosmos-script-runner-api/test/**/*.py"
+      - "openc3/python/pyproject.toml"
+      - "openc3/python/uv.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  ruff:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install
+        working-directory: openc3/python
+      - name: Install dependencies
+        run: uv sync --locked
+        working-directory: openc3/python
+      - name: Run ruff check on openc3/python
+        run: uv run --frozen ruff check --output-format=github openc3
+        working-directory: openc3/python
+      - name: Run ruff format check on openc3/python
+        run: uv run --frozen ruff format --check openc3
+        working-directory: openc3/python
+      - name: Run ruff check on script-runner-api scripts
+        run: uv run --frozen ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        working-directory: openc3/python
+      - name: Run ruff format check on script-runner-api scripts
+        run: uv run --frozen ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        working-directory: openc3/python

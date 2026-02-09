@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.accessors.accessor import Accessor
 import re
+
+from openc3.accessors.accessor import Accessor
 
 
 class TemplateAccessor(Accessor):
@@ -108,9 +109,9 @@ class TemplateAccessor(Accessor):
                     key = item.key if item.key is not None else item.name
                     index = self.item_keys.index(key)
                     result[item.name] = self.__class__.convert_to_type(values[index], item)
-                except ValueError:
+                except ValueError as error:
                     key = item.key if item.key is not None else item.name
-                    raise RuntimeError(f"Unknown item with key {key} requested")
+                    raise RuntimeError(f"Unknown item with key {key} requested") from error
 
         return result
 

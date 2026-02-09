@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.settings_api import *
+from test.test_helper import *
 
 
 class TestSettingsApi(unittest.TestCase):

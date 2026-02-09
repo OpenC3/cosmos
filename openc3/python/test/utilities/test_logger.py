@@ -14,14 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import os
 import time
-import json
 import unittest
 from io import StringIO
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.utilities.logger import Logger
+from test.test_helper import *
 
 
 class TestLogger(unittest.TestCase):
@@ -334,10 +335,10 @@ class TestLogMessage(unittest.TestCase):
     @patch.dict(os.environ, {"OPENC3_LOG_STDERR": ""}, clear=False)
     def test_log_message_stdout_when_stderr_not_enabled(self):
         """Test that all log levels go to stdout when OPENC3_LOG_STDERR is not enabled"""
-        from openc3.environment import OPENC3_LOG_STDERR
 
         # Force reload to pick up the environment variable
         import importlib
+
         import openc3.environment
 
         importlib.reload(openc3.environment)
@@ -562,7 +563,6 @@ class TestLogMessage(unittest.TestCase):
         sys.stdout = StringIO()
 
         logger = Logger()
-        results = []
 
         def log_from_thread(n):
             logger.log_message("INFO", f"Message {n}", scope="TEST", user=None, type=Logger.LOG, url=None)

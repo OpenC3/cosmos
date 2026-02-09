@@ -15,10 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-import json
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.io.json_rpc import JsonRpcRequest
+from test.test_helper import *
 
 
 class TestJsonRpc(unittest.TestCase):
@@ -61,19 +61,19 @@ class TestJsonRpc(unittest.TestCase):
         See: https://github.com/OpenC3/cosmos/pull/2535
         """
         # Test micro sign µ (U+00B5) - common in units like "µA" for micro-Ampères
-        micro_amperes = "0.5 µA".encode("utf-8")
+        micro_amperes = "0.5 µA".encode()
         json_rpc_request = JsonRpcRequest(0, "cmd", {"UNITS": micro_amperes})
         request = json_rpc_request.to_hash()
         self.assertEqual(request["params"], [{"UNITS": "0.5 µA"}])
 
         # Test degree symbol ° (U+00B0) - common in temperature units
-        degree_celsius = "25 °C".encode("utf-8")
+        degree_celsius = "25 °C".encode()
         json_rpc_request = JsonRpcRequest(0, "cmd", {"TEMP": degree_celsius})
         request = json_rpc_request.to_hash()
         self.assertEqual(request["params"], [{"TEMP": "25 °C"}])
 
         # Test accented characters like in "Ampères"
-        amperes = "Ampères".encode("utf-8")
+        amperes = "Ampères".encode()
         json_rpc_request = JsonRpcRequest(0, "cmd", {"LABEL": amperes})
         request = json_rpc_request.to_hash()
         self.assertEqual(request["params"], [{"LABEL": "Ampères"}])
@@ -101,7 +101,7 @@ class TestJsonRpc(unittest.TestCase):
         """
         # Binary data: invalid UTF-8, should be encoded as raw
         binary = bytes([0xDE, 0xAD, 0xBE, 0xEF])
-        json_rpc_request = JsonRpcRequest(0, "cmd", {"BIN": binary, "TXT": "Test µ".encode("utf-8")})
+        json_rpc_request = JsonRpcRequest(0, "cmd", {"BIN": binary, "TXT": "Test µ".encode()})
         request = json_rpc_request.to_hash()
 
         # Binary should be raw object

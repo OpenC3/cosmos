@@ -16,6 +16,7 @@
 
 from functools import lru_cache
 
+
 try:
     import orjson
 
@@ -36,6 +37,7 @@ except ImportError:
 
 
 from jsonpath_ng import parse
+
 from .accessor import Accessor
 
 

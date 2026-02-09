@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,6 +31,8 @@ rescue LoadError
 end
 
 class StorageController < ApplicationController
+  class StorageError < StandardError; end
+
   # Check if a bucket requires RBAC (config and logs do, tools does not)
   def bucket_requires_rbac?(bucket_param)
     # Tools bucket is accessible to all users with system permission
@@ -179,8 +181,7 @@ class StorageController < ApplicationController
 
   def files
     return unless authorization('system')
-    root = ENV[params[:root]] # Get the actual bucket / volume name
-    raise "Unknown bucket / volume #{params[:root]}" unless root
+    root = ENV.fetch(params[:root]) { |name| raise StorageError, "Unknown bucket / volume #{name}" }
     results = []
     if params[:root].include?('_BUCKET')
       bucket = OpenC3::Bucket.getClient()
@@ -193,7 +194,7 @@ class StorageController < ApplicationController
         if path_scope
           # Accessing a specific scope - verify authorization
           unless authorize_bucket_path(params[:root], path)
-            render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+            render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
             return
           end
         end
@@ -248,29 +249,29 @@ class StorageController < ApplicationController
       results << dirs
       results << files
     else
-      raise "Unknown root #{params[:root]}"
+      raise StorageError, "Unknown root #{params[:root]}"
     end
     render json: results
   rescue OpenC3::Bucket::NotFound => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 404
+    render json: { status: 'error', message: e.message }, status: :not_found
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def exists
     return unless authorization('system')
-    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+    params.require(:bucket)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
       unless authorize_bucket_path(params[:bucket], path)
         path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
         return
       end
     end
@@ -283,12 +284,12 @@ class StorageController < ApplicationController
     if result
       render json: result
     else
-      render json: result, status: 404
+      render json: result, status: :not_found
     end
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def download_file
@@ -303,7 +304,7 @@ class StorageController < ApplicationController
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
         unless authorize_bucket_path(params[:bucket], object_id)
           path_scope = extract_scope_from_path(object_id)
-          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
           return
         end
       end
@@ -331,7 +332,7 @@ class StorageController < ApplicationController
     rescue Exception => e
       log_error(e)
       OpenC3::Logger.error("Download failed: #{e.message}", user: username())
-      render json: { status: 'error', message: e.message }, status: 500
+      render json: { status: 'error', message: e.message }, status: :internal_server_error
     ensure
       FileUtils.rm_rf(tmp_dir) if tmp_dir
     end
@@ -344,7 +345,7 @@ class StorageController < ApplicationController
 
     begin
       files = params[:files] || []
-      raise "No files specified" if files.empty?
+      raise StorageError, "No files specified" if files.empty?
 
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
@@ -353,7 +354,7 @@ class StorageController < ApplicationController
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
         unless authorize_bucket_path(params[:bucket], path)
           path_scope = extract_scope_from_path(path)
-          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
           return
         end
       end
@@ -375,7 +376,7 @@ class StorageController < ApplicationController
     rescue Exception => e
       log_error(e)
       OpenC3::Logger.error("Multiple file download failed: #{e.message}", user: username())
-      render json: { status: 'error', message: e.message }, status: 500
+      render json: { status: 'error', message: e.message }, status: :internal_server_error
     ensure
       FileUtils.rm_rf(tmp_dir) if tmp_dir
     end
@@ -383,15 +384,15 @@ class StorageController < ApplicationController
 
   def get_download_presigned_request
     return unless authorization('system')
-    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+    params.require(:bucket)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
       unless authorize_bucket_path(params[:bucket], path)
         path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
         return
       end
     end
@@ -401,17 +402,17 @@ class StorageController < ApplicationController
                                       key: path,
                                       method: :get_object,
                                       internal: params[:internal])
-    render json: result, status: 201
+    render json: result, status: :created
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def get_upload_presigned_request
     return unless authorization('system_set')
-    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+    params.require(:bucket)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
 
@@ -419,7 +420,7 @@ class StorageController < ApplicationController
     if bucket_requires_rbac?(params[:bucket])
       unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
         path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
         return
       end
     end
@@ -436,11 +437,11 @@ class StorageController < ApplicationController
                                       internal: params[:internal])
     OpenC3::Logger.info("S3 upload presigned request generated: #{bucket_name}/#{path}",
         scope: params[:scope], user: username())
-    render json: result, status: 201
+    render json: result, status: :created
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def delete
@@ -456,7 +457,22 @@ class StorageController < ApplicationController
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Delete failed: #{e.message}", user: username())
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def delete_directory
+    return unless authorization('system_set')
+    if params[:bucket].presence
+      return unless delete_bucket_directory(params)
+    elsif params[:volume].presence
+      return unless delete_volume_directory(params)
+    else
+      raise StorageError, "Must pass bucket or volume parameter!"
+    end
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Delete directory failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   private
@@ -615,14 +631,14 @@ class StorageController < ApplicationController
     # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
     sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
     if sanitized != path
-      raise "Invalid path: #{path}"
+      raise StorageError, "Invalid path: #{path}"
     end
     sanitized
   end
 
   def delete_bucket_item(params)
-    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+    params.require(:bucket)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
 
@@ -630,7 +646,7 @@ class StorageController < ApplicationController
     if bucket_requires_rbac?(params[:bucket])
       unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
         path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: 403
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
         return false
       end
     end
@@ -642,7 +658,7 @@ class StorageController < ApplicationController
     end
 
     if authorized
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV.fetch('OPENC3_LOCAL_MODE', false)
         OpenC3::LocalMode.delete_local(path)
       end
 
@@ -657,8 +673,7 @@ class StorageController < ApplicationController
   def delete_volume_item(params)
     # Deleting requires admin
     if authorization('admin')
-      volume = ENV[params[:volume]] # Get the actual volume name
-      raise "Unknown volume #{params[:volume]}" unless volume
+      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
       filename = "/#{volume}/#{params[:object_id]}"
       filename = sanitize_path(filename)
       FileUtils.rm filename
@@ -669,19 +684,88 @@ class StorageController < ApplicationController
     end
   end
 
+  def delete_bucket_directory(params)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+
+    path = sanitize_path(params[:object_id])
+    path = "#{path}/" unless path.end_with?('/')
+    key_split = path.split('/')
+
+    # Check scope-based RBAC
+    if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+      path_scope = extract_scope_from_path(path)
+      render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+      return false
+    end
+
+    # Require admin for most bucket directories
+    unless (params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+      return false unless authorization('admin')
+    end
+
+    # List all objects under the prefix (same pattern as TargetModel#undeploy)
+    bucket = OpenC3::Bucket.getClient()
+    objects = bucket.list_objects(bucket: bucket_name, prefix: path)
+    keys = objects.map(&:key)
+
+    if keys.empty?
+      render json: { deleted_count: 0 }
+      return true
+    end
+
+    # Delete in batches of 1000 (S3 limit)
+    deleted_count = 0
+    keys.each_slice(1000) do |key_batch|
+      bucket.delete_objects(bucket: bucket_name, keys: key_batch)
+      deleted_count += key_batch.length
+
+      # Handle local mode
+      if ENV.fetch('OPENC3_LOCAL_MODE', false)
+        key_batch.each { |key| OpenC3::LocalMode.delete_local(key) }
+      end
+    end
+
+    OpenC3::Logger.info("Deleted directory: #{bucket_name}/#{path} (#{deleted_count} files)",
+                        scope: params[:scope], user: username())
+    render json: { deleted_count: deleted_count }
+    true
+  end
+
+  def delete_volume_directory(params)
+    return false unless authorization('admin')
+
+    volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+
+    path = sanitize_path(params[:object_id])
+    full_path = "/#{volume}/#{path}"
+
+    unless File.directory?(full_path)
+      render json: { status: 'error', message: "Not a directory: #{path}" }, status: :bad_request
+      return false
+    end
+
+    # Count files before deletion for reporting
+    file_count = Dir.glob("#{full_path}/**/*").count { |f| File.file?(f) }
+
+    FileUtils.rm_rf(full_path)
+
+    OpenC3::Logger.info("Deleted directory: #{full_path} (#{file_count} files)",
+                        scope: params[:scope], user: username())
+    render json: { deleted_count: file_count }
+    true
+  end
+
   # Validates and returns storage source information
   # @return [Array<Symbol, String>] Storage type (:volume or :bucket) and storage name
   def validate_storage_source
     if params[:volume]
-      volume = ENV[params[:volume]]
-      raise "Unknown volume #{params[:volume]}" unless volume
+      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
       [:volume, volume]
     elsif params[:bucket]
-      bucket = ENV[params[:bucket]]
-      raise "Unknown bucket #{params[:bucket]}" unless bucket
+      bucket = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
       [:bucket, bucket]
     else
-      raise "No volume or bucket given"
+      raise StorageError, "No volume or bucket given"
     end
   end
 

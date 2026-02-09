@@ -14,12 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script.suite import Suite, Group
-from openc3.script.exceptions import SkipScript
+from openc3.script.exceptions import SkipScriptError
+from openc3.script.suite import Group, Suite
 
 
 # @deprecated Use SkipScript
-class SkipTestCase(SkipScript):
+class SkipTestCase(SkipScriptError):  # noqa: N818
     pass
 
 

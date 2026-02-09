@@ -14,13 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
 import copy
-from openc3.packets.structure_item import StructureItem
-from openc3.packets.packet_item_limits import PacketItemLimits
-from openc3.utilities.string import quote_if_necessary, simple_formatted
-from openc3.conversions.conversion import Conversion
+import re
+
 from openc3.config.config_parser import ConfigParser
+from openc3.conversions.conversion import Conversion
+from openc3.packets.packet_item_limits import PacketItemLimits
+from openc3.packets.structure_item import StructureItem
+from openc3.utilities.string import quote_if_necessary, simple_formatted
+
 
 
 class PacketItem(StructureItem):
@@ -517,5 +519,5 @@ class PacketItem(StructureItem):
                     return ConfigParser.handle_true_false(value)
                 case _:
                     return value
-        except ValueError:
-            raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}")
+        except ValueError as error:
+            raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}") from error

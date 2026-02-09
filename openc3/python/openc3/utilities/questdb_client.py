@@ -19,15 +19,16 @@ Shared QuestDB client for connection management, table creation, and data ingest
 Used by both TsdbMicroservice (real-time) and MigrationMicroservice (historical data).
 """
 
-import os
-import re
+import base64
+import contextlib
 import json
 import math
 import time
 import base64
 from decimal import Decimal
 from datetime import datetime, timezone
-import psycopg
+from decimal import Decimal
+
 import numpy
 from questdb.ingress import Sender, Protocol, TimestampNanos
 
@@ -219,12 +220,11 @@ class QuestDBClient:
                 except json.JSONDecodeError:
                     pass
             # Try integer conversion for numeric strings
-            elif first_char == "-" or first_char.isdigit():
-                if value.lstrip("-").isdigit():
-                    try:
-                        return int(value)
-                    except (ValueError, OverflowError):
-                        pass
+            elif (first_char == "-" or first_char.isdigit()) and value.lstrip("-").isdigit():
+                try:
+                    return int(value)
+                except (ValueError, OverflowError):
+                    pass
 
         # Return as-is (STRING type or unknown)
         return value
@@ -319,7 +319,7 @@ class QuestDBClient:
             self.ingest = Sender(Protocol.Http, host, port, username=username, password=password)
             self.ingest.establish()
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to QuestDB: {e}")
+            raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
     def connect_query(self):
         """
@@ -344,21 +344,17 @@ class QuestDBClient:
                 autocommit=True,  # Important for QuestDB
             )
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to QuestDB: {e}")
+            raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
     def close(self):
         """Close all connections."""
         if self.ingest:
-            try:
+            with contextlib.suppress(Exception):
                 self.ingest.close()
-            except Exception:
-                pass
             self.ingest = None
         if self.query:
-            try:
+            with contextlib.suppress(Exception):
                 self.query.close()
-            except Exception:
-                pass
             self.query = None
 
     def _get_column_type_from_conversion(self, table_name, column_name, converted_type, converted_bit_size):

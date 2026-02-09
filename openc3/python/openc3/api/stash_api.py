@@ -15,10 +15,12 @@
 # if purchased from OpenC3, Inc.:
 
 import json
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
 from openc3.models.stash_model import StashModel
+from openc3.utilities.authorization import authorize
+
 
 WHITELIST.extend(["stash_set", "stash_get", "stash_all", "stash_keys", "stash_delete"])
 

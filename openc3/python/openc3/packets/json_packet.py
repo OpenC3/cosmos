@@ -24,7 +24,7 @@ raw binary data.
 
 import json
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any
 
 
 class JsonPacket:
@@ -50,9 +50,9 @@ class JsonPacket:
         time_nsec_since_epoch: int,
         stored: bool,
         json_data,
-        key_map: Optional[dict] = None,
-        received_time_nsec_since_epoch: Optional[int] = None,
-        extra: Optional[dict] = None,
+        key_map: dict | None = None,
+        received_time_nsec_since_epoch: int | None = None,
+        extra: dict | None = None,
     ):
         """
         Initialize a JsonPacket.
@@ -104,7 +104,7 @@ class JsonPacket:
         seconds = nsec / 1_000_000_000
         return datetime.fromtimestamp(seconds, tz=timezone.utc)
 
-    def read(self, name: str, value_type: str = "CONVERTED", reduced_type: Optional[str] = None) -> Any:
+    def read(self, name: str, value_type: str = "CONVERTED", reduced_type: str | None = None) -> Any:
         """
         Read an item value from the packet.
 
@@ -193,7 +193,7 @@ class JsonPacket:
 
         return None
 
-    def read_with_limits_state(self, name: str, value_type: str = "CONVERTED", reduced_type: Optional[str] = None):
+    def read_with_limits_state(self, name: str, value_type: str = "CONVERTED", reduced_type: str | None = None):
         """
         Read an item value along with its limits state.
 
@@ -210,7 +210,7 @@ class JsonPacket:
         return (value, limits_state)
 
     def read_all(
-        self, value_type: str = "CONVERTED", reduced_type: Optional[str] = None, names: Optional[list] = None
+        self, value_type: str = "CONVERTED", reduced_type: str | None = None, names: list | None = None
     ) -> dict:
         """
         Read all items in the packet.
@@ -228,7 +228,7 @@ class JsonPacket:
         return {name: self.read(name, value_type, reduced_type) for name in names}
 
     def read_all_with_limits_states(
-        self, value_type: str = "CONVERTED", reduced_type: Optional[str] = None, names: Optional[list] = None
+        self, value_type: str = "CONVERTED", reduced_type: str | None = None, names: list | None = None
     ) -> dict:
         """
         Read all items with their limits states.
@@ -245,7 +245,7 @@ class JsonPacket:
             names = self.read_all_names()
         return {name: self.read_with_limits_state(name, value_type, reduced_type) for name in names}
 
-    def read_all_names(self, value_type: Optional[str] = None, reduced_type: Optional[str] = None) -> list:
+    def read_all_names(self, value_type: str | None = None, reduced_type: str | None = None) -> list:
         """
         Get all item names in the packet.
 
@@ -269,7 +269,7 @@ class JsonPacket:
             elif value_type == "RAW":
                 postfix = None  # RAW with no reduced type has no suffix
 
-            for key in self.json_hash.keys():
+            for key in self.json_hash:
                 key_split = key.split("__")
                 if postfix is None:
                     # RAW with no reduced: only include keys without suffix
@@ -279,7 +279,7 @@ class JsonPacket:
                     result[key_split[0]] = True
         else:
             # Return all base names
-            for key in self.json_hash.keys():
+            for key in self.json_hash:
                 base_name = key.split("__")[0]
                 result[base_name] = True
 
@@ -288,8 +288,8 @@ class JsonPacket:
     def formatted(
         self,
         value_type: str = "CONVERTED",
-        reduced_type: Optional[str] = None,
-        names: Optional[list] = None,
+        reduced_type: str | None = None,
+        names: list | None = None,
         indent: int = 0,
     ) -> str:
         """

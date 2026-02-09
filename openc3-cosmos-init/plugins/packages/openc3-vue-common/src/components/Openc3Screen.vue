@@ -31,7 +31,7 @@
       :min-width="width"
       style="cursor: default"
     >
-      <v-toolbar height="24">
+      <v-toolbar height="24" :class="{ 'floated-toolbar': floated }">
         <v-btn
           v-show="errors.length !== 0"
           icon="mdi-alert"
@@ -797,13 +797,40 @@ export default {
     },
     dragMouseDown: function (e) {
       e = e || window.event
-      e.preventDefault()
-      // get the mouse cursor position at startup:
-      this.dragX = e.clientX
-      this.dragY = e.clientY
-      document.onmouseup = this.closeDragElement
-      // call a function whenever the cursor moves:
-      document.onmousemove = this.elementDrag
+      const target = e.target
+
+      // Only allow dragging from the toolbar, not the screen content
+      const isInToolbar = target.closest('.v-toolbar')
+      if (!isInToolbar) {
+        return
+      }
+
+      // Don't allow dragging from interactive elements (buttons, inputs, etc.)
+      const interactiveTags = ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT']
+      const interactiveSelectors = [
+        'button',
+        '.v-btn',
+        'input',
+        'textarea',
+        '.v-text-field',
+        '.v-select',
+        '.v-combobox',
+        '.v-autocomplete',
+      ]
+
+      const isInteractive =
+        interactiveTags.includes(target.tagName) ||
+        interactiveSelectors.some((selector) => target.closest(selector))
+
+      if (!isInteractive) {
+        e.preventDefault()
+        // get the mouse cursor position at startup:
+        this.dragX = e.clientX
+        this.dragY = e.clientY
+        document.onmouseup = this.closeDragElement
+        // call a function whenever the cursor moves:
+        document.onmousemove = this.elementDrag
+      }
     },
     elementDrag: function (e) {
       e = e || window.event
@@ -1139,5 +1166,32 @@ export default {
   padding: 5px;
   -webkit-mask-image: unset;
   mask-image: unset;
+}
+</style>
+
+<style>
+/* Unscoped styles for cursor on floated toolbars */
+.floated-toolbar.v-toolbar,
+.floated-toolbar .v-toolbar__content {
+  cursor: grab !important;
+}
+
+.floated-toolbar.v-toolbar:active,
+.floated-toolbar .v-toolbar__content:active {
+  cursor: grabbing !important;
+}
+
+/* Ensure grab cursor on spacers and text */
+.floated-toolbar .v-spacer,
+.floated-toolbar span {
+  cursor: grab !important;
+}
+
+/* Keep pointer cursor on buttons and their children */
+.floated-toolbar .v-btn,
+.floated-toolbar .v-btn *,
+.floated-toolbar button,
+.floated-toolbar button * {
+  cursor: pointer !important;
 }
 </style>
