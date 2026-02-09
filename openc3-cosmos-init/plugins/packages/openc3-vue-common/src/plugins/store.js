@@ -60,6 +60,21 @@ export const useStore = defineStore('app', {
 
 const store = createPinia()
 
+// Add a global $store property like Vuex
+store.use(({ store }) => {
+  // Mimic Vuex's commit/dispatch on each store
+  store.commit = (mutation, payload) => {
+    if (typeof store[mutation] === 'function') {
+      store[mutation](payload)
+    }
+  }
+  store.dispatch = (action, payload) => {
+    if (typeof store[action] === 'function') {
+      return store[action](payload)
+    }
+  }
+})
+
 // Wrap the original install to also set up $store global property
 const originalInstall = store.install.bind(store)
 store.install = (app) => {
@@ -67,7 +82,34 @@ store.install = (app) => {
   originalInstall(app)
   // Create the store instance and make it available as $store
   const piniaStore = useStore(store)
-  app.config.globalProperties.$store = piniaStore
+  app.config.globalProperties.$store = {
+    state: new Proxy(
+      {},
+      {
+        get(_, module) {
+          return piniaStore.$state
+        },
+      },
+    ),
+    getters: new Proxy(
+      {},
+      {
+        get(_, key) {
+          // Map 'module/getter' style access
+          const [mod, getter] = key.split('/')
+          return piniaStore[getter]
+        },
+      },
+    ),
+    commit(type, payload) {
+      const [mod, mutation] = type.split('/')
+      piniaStore[mutation]?.(payload)
+    },
+    dispatch(type, payload) {
+      const [mod, action] = type.split('/')
+      return piniaStore[action]?.(payload)
+    },
+  }
 }
 
 export default store

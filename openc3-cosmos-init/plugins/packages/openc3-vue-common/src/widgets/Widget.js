@@ -22,6 +22,7 @@
 
 import { ConfigParserError } from '@openc3/js-common/services'
 import WidgetComponents from './WidgetComponents'
+import { useStore } from '@/plugins/store'
 
 export default {
   mixins: [WidgetComponents],
@@ -58,6 +59,10 @@ export default {
       type: Number,
       default: 0,
     },
+  },
+  setup() {
+    const store = useStore()
+    return { store }
   },
   data() {
     return {
@@ -107,7 +112,7 @@ export default {
       const that = this
       return {
         getNamedWidget: function (widgetName) {
-          return that.$store.namedWidget(that.toQualifiedWidgetName(widgetName))
+          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
         },
         open: function (target, screen) {
           that.$emit('open', target, screen)
@@ -148,7 +153,7 @@ export default {
       ?.at(1)
 
     if (this.widgetName) {
-      this.$store.setNamedWidget({
+      this.store.setNamedWidget({
         [this.toQualifiedWidgetName(this.widgetName)]: this,
       })
     }
@@ -174,7 +179,7 @@ export default {
   },
   beforeUnmount() {
     if (this.widgetName) {
-      this.$store.clearNamedWidget(this.toQualifiedWidgetName(this.widgetName))
+      this.store.clearNamedWidget(this.toQualifiedWidgetName(this.widgetName))
     }
   },
   methods: {
