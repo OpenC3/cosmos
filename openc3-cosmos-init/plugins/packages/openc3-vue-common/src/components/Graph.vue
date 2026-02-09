@@ -313,6 +313,9 @@ import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
 
 const DEFAULT_X_AXIS_ITEM = '__time'
+// Max milliseconds to spend processing buffered data per animation frame
+// before yielding back to the browser for rendering
+const MAX_PROCESSING_MS = 50
 
 export default {
   components: {
@@ -1768,10 +1771,14 @@ export default {
         )
       }
     },
+    // Drains the pendingData buffer in a time-boxed loop. Each call is
+    // triggered by a single requestAnimationFrame scheduled in received().
+    // When processing exceeds MAX_PROCESSING_MS we schedule another frame
+    // so the browser can paint and handle user input between batches.
     processReceivedData: function () {
+      // The rAF that invoked us has already fired, so clear the handle
       this.processingRAF = null
       const startTime = performance.now()
-      const MAX_PROCESSING_MS = 50
       while (this.pendingData.length > 0) {
         const batch = this.pendingData.shift()
         this.processDataBatch(batch)
@@ -1829,6 +1836,8 @@ export default {
       ) {
         const pointsToRemove = this.data[0].length - this.pointsSaved
         for (let j = 0; j < this.data.length; j++) {
+          // slice() creates a new contiguous array which is faster than
+          // splice(0, N) which shifts every remaining element in-place
           this.data[j] = this.data[j].slice(pointsToRemove)
         }
       }
