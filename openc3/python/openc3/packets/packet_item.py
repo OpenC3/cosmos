@@ -24,7 +24,6 @@ from openc3.packets.structure_item import StructureItem
 from openc3.utilities.string import quote_if_necessary, simple_formatted
 
 
-
 class PacketItem(StructureItem):
     # The allowable state colors
     VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
