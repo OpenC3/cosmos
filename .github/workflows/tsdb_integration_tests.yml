@@ -73,6 +73,7 @@ jobs:
 
       - name: Set up Python
         run: uv python install
+        working-directory: openc3/python
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
