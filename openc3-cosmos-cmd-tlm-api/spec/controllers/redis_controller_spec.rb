@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -25,7 +25,7 @@ RSpec.describe RedisController, type: :controller do
     it "rejects disallowed commands" do
       request.content_type = "text/plain"
       post :execute_raw, body: "AUTH password", params: {scope: "DEFAULT"}
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("The AUTH command is not allowed.")

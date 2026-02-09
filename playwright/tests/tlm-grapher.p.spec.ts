@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -28,14 +28,14 @@ test.use({
 
 test('add item start, pause, resume and stop', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
   await utils.sleep(3000) // Wait for graphing to occur
   // Add another item while it is already graphing
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
   await page.locator('[data-test=data-type] i').click()
   await page.getByRole('option', { name: 'RAW', exact: true }).click()
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('TEMP2 (RAW)')
   // Use the graph buttons first
   await page.locator('[data-test=pause-graph]').click()
@@ -56,13 +56,13 @@ test('add item start, pause, resume and stop', async ({ page, utils }) => {
 
 test('adds multiple graphs', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
   await utils.sleep(1000) // Wait for graphing to occur
   await page.locator('[data-test=telemetry-grapher-graph]').click()
   await page.locator('text=Add Graph').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart1')).toContainText('TEMP2')
   await expect(page.locator('#chart1')).not.toContainText('TEMP1')
   await expect(page.locator('#chart0')).not.toContainText('TEMP2')
@@ -211,7 +211,7 @@ test('shrinks and expands both width and height', async ({ page, utils }) => {
 
 test('edits a graph', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
   await utils.sleep(3000) // Wait for graphing to occur
 
@@ -245,7 +245,7 @@ test('edits a graph', async ({ page, utils }) => {
 
 test('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ADCS', 'POSX')
-  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('POSX')
   await expect(page.locator('#chart0')).toContainText('Time')
 
