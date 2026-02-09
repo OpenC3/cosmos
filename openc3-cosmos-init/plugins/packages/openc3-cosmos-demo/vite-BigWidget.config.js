@@ -9,14 +9,15 @@ export default defineConfig({
     outDir: 'tools/widgets/BigWidget',
     emptyOutDir: true,
     sourcemap: true,
-    lib: {
-      entry: './src/BigWidget.vue',
-      name: 'BigWidget',
-      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
-      formats: ['umd'],
-    },
     rollupOptions: {
+      input: './src/BigWidget.vue',
+      output: {
+        format: 'systemjs',
+        entryFileNames: 'BigWidget.umd.min.js',
+        inlineDynamicImports: true,
+      },
       external: ['vue', 'vuetify'],
+      preserveEntrySignatures: 'strict',
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

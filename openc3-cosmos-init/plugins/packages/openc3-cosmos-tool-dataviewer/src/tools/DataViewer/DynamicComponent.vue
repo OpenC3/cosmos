@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -56,7 +56,8 @@ export default {
   },
   async mounted() {
     try {
-      this.widgetType = await System.import(this.url)
+      const mod = await System.import(this.url)
+      this.widgetType = mod.default || mod
     } catch (e) {
       throw new Error(`Unknown widget: ${this.name}`)
     }

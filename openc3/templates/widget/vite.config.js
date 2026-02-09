@@ -9,14 +9,15 @@ export default defineConfig({
     outDir: 'tools/widgets/<%= widget_name %>',
     emptyOutDir: true,
     sourcemap: true,
-    lib: {
-      entry: './src/<%= widget_name %>.vue',
-      name: '<%= widget_name %>',
-      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
-      formats: ['umd'],
-    },
     rollupOptions: {
+      input: './src/<%= widget_name %>.vue',
+      output: {
+        format: 'systemjs',
+        entryFileNames: '<%= widget_name %>.umd.min.js',
+        inlineDynamicImports: true,
+      },
       external: ['vue', 'vuetify'],
+      preserveEntrySignatures: 'strict',
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

@@ -9,14 +9,15 @@ export default defineConfig({
     outDir: 'tools/widgets/DataviewertimeWidget',
     emptyOutDir: true,
     sourcemap: true,
-    lib: {
-      entry: './src/DataviewertimeWidget.vue',
-      name: 'DataviewertimeWidget',
-      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
-      formats: ['umd'],
-    },
     rollupOptions: {
+      input: './src/DataviewertimeWidget.vue',
+      output: {
+        format: 'systemjs',
+        entryFileNames: 'DataviewertimeWidget.umd.min.js',
+        inlineDynamicImports: true,
+      },
       external: ['vue', 'vuetify'],
+      preserveEntrySignatures: 'strict',
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

@@ -9,14 +9,15 @@ export default defineConfig({
     outDir: 'tools/widgets/HelloworldWidget',
     emptyOutDir: true,
     sourcemap: true,
-    lib: {
-      entry: './src/HelloworldWidget.vue',
-      name: 'HelloworldWidget',
-      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
-      formats: ['umd'],
-    },
     rollupOptions: {
+      input: './src/HelloworldWidget.vue',
+      output: {
+        format: 'systemjs',
+        entryFileNames: 'HelloworldWidget.umd.min.js',
+        inlineDynamicImports: true,
+      },
       external: ['vue', 'vuetify'],
+      preserveEntrySignatures: 'strict',
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

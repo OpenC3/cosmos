@@ -9,14 +9,15 @@ export default defineConfig({
     outDir: 'tools/widgets/DataviewerquaternionWidget',
     emptyOutDir: true,
     sourcemap: true,
-    lib: {
-      entry: './src/DataviewerquaternionWidget.vue',
-      name: 'DataviewerquaternionWidget',
-      fileName: (format, entryName) => `${entryName}.${format}.min.js`,
-      formats: ['umd'],
-    },
     rollupOptions: {
+      input: './src/DataviewerquaternionWidget.vue',
+      output: {
+        format: 'systemjs',
+        entryFileNames: 'DataviewerquaternionWidget.umd.min.js',
+        inlineDynamicImports: true,
+      },
       external: ['vue', 'vuetify'],
+      preserveEntrySignatures: 'strict',
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

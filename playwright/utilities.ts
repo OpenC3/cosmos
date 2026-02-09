@@ -30,38 +30,42 @@ export class Utilities {
   }
 
   async selectTargetPacketItem(target: string, packet?: string, item?: string) {
-    await expect(this.page.locator('[data-test="select-target"]')).toBeEnabled()
+    // On mount the component calls get_target_names() and auto-selects the
+    // first target. The selection text element only renders once that API
+    // call returns and a value is chosen, so wait for it before interacting.
     await expect(
-      this.page.locator('[data-test="select-target"]'),
-    ).not.toBeEmpty()
-    if (packet) {
-      await expect(
-        this.page.locator('[data-test="select-packet"]'),
-      ).toBeEnabled()
-      await expect(
-        this.page.locator('[data-test="select-packet"]'),
-      ).not.toBeEmpty()
-    }
-    if (item) {
-      await expect(this.page.locator('[data-test="select-item"]')).toBeEnabled()
-      await expect(
-        this.page.locator('[data-test="select-item"]'),
-      ).not.toBeEmpty()
-    }
+      this.page.locator(
+        '[data-test="select-target"] .v-autocomplete__selection-text',
+      ),
+    ).toBeVisible()
+    // After auto-selecting a target, updatePackets() temporarily disables
+    // the dropdowns (internalDisabled=true). Wait for that to finish so we
+    // don't open the menu only to have it close mid-interaction.
+    await expect(this.page.locator('[data-test="select-target"]')).toBeEnabled()
     await this.page.locator('[data-test=select-target]').click()
     await this.page.getByRole('option', { name: target, exact: true }).click()
     await expect(
       this.page.locator('[data-test="select-target"]'),
     ).toContainText(target)
+    // If the target changed, Vue's synchronous reactivity sets
+    // internalDisabled=true before Playwright's click resolves.
+    // If re-selected, packets are already loaded and this passes immediately.
+    await expect(this.page.locator('[data-test="select-packet"]')).toBeEnabled()
+
     if (packet) {
-      await this.sleep(500) // Wait for packets to populate
       await this.page.locator('[data-test=select-packet]').click()
       await this.page.getByRole('option', { name: packet, exact: true }).click()
       await expect(
         this.page.locator('[data-test="select-packet"]'),
       ).toContainText(packet)
+      // Wait for item dropdown to be enabled if it exists. When a packet
+      // changes, updateItems() sets internalDisabled=true until items load.
+      const itemDropdown = this.page.locator('[data-test="select-item"]')
+      if ((await itemDropdown.count()) > 0) {
+        await expect(itemDropdown).toBeEnabled()
+      }
+
       if (item) {
-        await this.sleep(500) // Wait for items to populate
         await this.page.locator('[data-test=select-item] i').click()
         // Need to fill the item to allow filtering since the item list can be long
         await this.page
@@ -71,13 +75,7 @@ export class Utilities {
         await expect(
           this.page.locator('[data-test="select-item"]'),
         ).toContainText(item)
-      } else {
-        // If we're only selecting a packet wait for items to populate
-        await this.sleep(500)
       }
-    } else {
-      // If we're only selecting a target wait for packets to populate
-      await this.sleep(500)
     }
   }
 
