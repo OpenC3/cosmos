@@ -3571,6 +3571,8 @@ subscribe_packets(packets)
 | --------- | ----------------------------------------------------------------------------------- |
 | packets   | Nested array of target name/packet name pairs that the user wishes to subscribe to. |
 
+Returns a unique id string which should be passed to [get_packets](#get_packets) to retrieve the subscribed data.
+
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
 
@@ -3591,13 +3593,13 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 
 ### get_packets
 
-Streams packet data from a previous subscription.
+Streams packet data from a previous subscription. Returns an updated id and an array of packet hashes/dictionaries. The updated id should be passed to the next call to `get_packets` to continue streaming.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-get_packets(id, block: nil, count: 1000)
+id, packets = get_packets(id, block: nil, count: 1000)
 ```
 
 </TabItem>
@@ -3605,7 +3607,7 @@ get_packets(id, block: nil, count: 1000)
 <TabItem value="python" label="Python Syntax">
 
 ```python
-get_packets(id, block=None, count=1000)
+id, packets = get_packets(id, block=None, count=1000)
 ```
 
 </TabItem>
@@ -3613,9 +3615,35 @@ get_packets(id, block=None, count=1000)
 
 | Parameter | Description                                                                                                  |
 | --------- | ------------------------------------------------------------------------------------------------------------ |
-| id        | Unique id returned by subscribe_packets                                                                      |
-| block     | Number of milliseconds to block while waiting for packets form ANY stream, default nil / None (do not block) |
+| id        | Unique id returned by subscribe_packets or the previous call to get_packets                                  |
+| block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block)      |
 | count     | Maximum number of packets to return from EACH packet stream                                                  |
+
+Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
+
+**Metadata keys:**
+
+| Key            | Type    | Description                                                         |
+| -------------- | ------- | ------------------------------------------------------------------- |
+| target_name    | String  | Target name, e.g. "INST"                                           |
+| packet_name    | String  | Packet name, e.g. "HEALTH_STATUS"                                  |
+| time           | Integer | Packet time as nanoseconds since the Unix epoch                    |
+| received_time  | Integer | Time the packet was received as nanoseconds since the Unix epoch   |
+| received_count | Integer | Running count of packets received                                  |
+| stored         | String  | "true" or "false" indicating if the packet was stored (not realtime) |
+
+**Telemetry item keys:**
+
+Each telemetry item in the packet is included with up to four keys using the item name with different suffixes:
+
+| Key            | Description                                                                      |
+| -------------- | -------------------------------------------------------------------------------- |
+| ITEM_NAME      | Raw value of the telemetry item                                                  |
+| ITEM_NAME\_\_C | Converted value (present if the item has states or a read conversion)            |
+| ITEM_NAME\_\_F | Formatted value (present if the item has a format string or units)               |
+| ITEM_NAME\_\_L | Limits state, e.g. "GREEN", "YELLOW", "RED" (present if the item has limits set) |
+
+For example, if the HEALTH_STATUS packet has a TEMP1 item with a conversion and limits, the packet hash/dictionary would contain `TEMP1` (raw), `TEMP1__C` (converted), `TEMP1__F` (formatted), and `TEMP1__L` (limits state).
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
