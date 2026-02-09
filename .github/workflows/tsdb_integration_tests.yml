@@ -72,7 +72,7 @@ jobs:
           enable-cache: true
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

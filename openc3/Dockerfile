@@ -28,9 +28,7 @@ RUN mkdir -p lib/openc3/ext \
 
 WORKDIR /openc3/python
 
-RUN uv export --no-hashes --format requirements-txt > requirements.txt \
-  && uv pip install --python /openc3/venv/bin/python -r requirements.txt \
-  && uv pip install --python /openc3/venv/bin/python --pre .
+RUN uv sync --frozen
 
 WORKDIR /openc3/
 

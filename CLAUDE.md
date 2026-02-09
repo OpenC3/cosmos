@@ -73,26 +73,80 @@ bundle exec rspec spec/path/to/spec.rb           # Run single test file
 bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 ```
 
-### Python Tests
+### Python Development
 
-First install the required tools (macOS):
+#### First Time Setup
+
+Install required tools (macOS):
 
 ```bash
 brew install uv ruff just
 ```
 
-Then run tests:
+Setup Python environment:
 
 ```bash
 cd openc3/python
-uv sync                                          # Install dependencies
+uv python install                                # Install Python from .python-version
+uv sync                                          # Create venv and install dependencies
+```
+
+#### Common Python Commands
+
+**Using Just (recommended):**
+```bash
+just                                             # Show all available commands
+just test                                        # Run all tests
+just test-cov                                    # Run tests with coverage
+just lint                                        # Check code quality
+just format                                      # Format all code
+just verify                                      # Format, lint, and test everything
+just verify-changed                              # Fast check of only changed files
+just add PACKAGE                                 # Add new dependency
+just update                                      # Update all dependencies
+```
+
+**Manual commands:**
+```bash
+uv run pytest                                    # Run all tests
+uv run pytest test/path/to/test.py               # Run single test file
 uv run ruff check openc3                         # Lint
 uv run ruff format openc3                        # Format
 uv run ruff check openc3 --fix                   # Lint and auto-fix
-uv run pytest                                    # Run all tests
-uv run pytest test/path/to/test.py               # Run single test file
-uv run coverage run -m pytest && uv run coverage report
+uv run coverage run -m pytest && uv run coverage report  # Coverage
 ```
+
+#### UV Workflow Tips
+
+**Adding dependencies:**
+```bash
+uv add package-name                              # Add runtime dependency
+uv add --dev package-name                        # Add dev dependency
+uv sync                                          # Install after manual pyproject.toml edits
+```
+
+**Updating dependencies:**
+```bash
+uv lock --upgrade                                # Update uv.lock
+uv sync                                          # Install updated dependencies
+```
+
+**Managing Python versions:**
+```bash
+uv python list                                   # List available Python versions
+uv python install 3.13                           # Install specific Python version
+uv python pin 3.13                               # Update .python-version
+```
+
+**Troubleshooting:**
+```bash
+rm -rf .venv && uv sync                          # Reset virtual environment
+uv cache clean                                   # Clear uv cache
+uv python list --only-installed                  # Show installed Python versions
+```
+
+**Migration from Poetry:**
+See `openc3/python/README-DEV.md` for detailed migration instructions.
 
 ### Frontend (Vue.js/Vuetify)
 
@@ -179,8 +233,19 @@ This installs:
 - **Linter & Formatter**: Ruff (replaces flake8, black, isort)
 - **Active Rules**: E, F, I, N, UP, B, W, C4, SIM (pycodestyle, Pyflakes, isort, naming, pyupgrade, bugbear, simplify)
 - **Line Length**: 120
-- **Target Python**: 3.10 (minimum supported version for compatibility across 3.10-3.14)
+- **Target Python**: 3.10 (minimum ruff target for backwards compatibility)
+- **Docker Python**: 3.12 (used in Alpine/UBI base images)
+- **Supported Versions**: 3.11, 3.12, 3.13 (Docker version ±1)
 - **Config**: `openc3/python/pyproject.toml`
+- **Lockfile**: `openc3/python/uv.lock` (replaces poetry.lock)
+- **Python Version**: `openc3/python/.python-version` (default: 3.12)
+
+**Important UV Notes:**
+- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
+- Use `uv sync --locked` in development (updates if out of sync)
+- Use `uv run` instead of activating the venv manually
+- The lockfile (`uv.lock`) must be committed to git
+- Don't commit `.venv` directory (it's in .gitignore)
 
 ### JavaScript/TypeScript
 

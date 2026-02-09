@@ -18,11 +18,15 @@ brew install uv ruff just
 
 ## Quick Start
 
-```bash
-# Create virtual environment (automatically installs Python 3.12 if needed)
-uv venv
+### First Time Setup (New Developers)
 
-# Install dependencies
+If you're cloning the repository for the first time:
+
+```bash
+# Install Python (reads .python-version, installs if needed)
+uv python install
+
+# Install dependencies (automatically creates venv if needed)
 uv sync
 
 # View all commands
@@ -36,9 +40,38 @@ just verify
 ```
 
 **Note:** UV will automatically:
-- Create a `.venv` virtual environment
 - Install Python 3.12 (specified in `.python-version`) if not already installed
-- Install all project dependencies
+- Create a `.venv` virtual environment if it doesn't exist
+- Install all project dependencies and the openc3 package
+
+### Migration from Poetry
+
+If you were previously using Poetry, follow these steps to switch to uv:
+
+```bash
+# 1. Remove Poetry virtual environment
+rm -rf .venv
+poetry env remove --all  # If you have Poetry installed
+
+# 2. Remove Poetry cache (optional but recommended)
+rm -rf ~/.cache/pypoetry
+
+# 3. Install uv and dependencies
+uv python install
+uv sync
+
+# 4. Verify everything works
+just test
+```
+
+**What's different:**
+- `poetry.lock` is replaced by `uv.lock`
+- `poetry install` → `uv sync`
+- `poetry add` → `just add` or `uv add`
+- `poetry run` → `uv run`
+- `poetry shell` → `source .venv/bin/activate` (or just use `uv run`)
+
+You can now uninstall Poetry if you no longer need it: `brew uninstall poetry` or `pip uninstall poetry`
 
 ## Available Commands
 
@@ -180,8 +213,8 @@ If you prefer not to use Just:
 
 ```bash
 # Setup
-uv venv                  # Create virtual environment
-uv sync                  # Install dependencies
+uv python install        # Install Python from .python-version
+uv sync                  # Create venv and install dependencies
 
 # Test
 uv run pytest
