@@ -1597,6 +1597,281 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Verify the table name is correct (TLM__ prefix for telemetry)
         self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")
 
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_sets_cosmos_stored_true(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics sets COSMOS__STORED to True when stored flag is true"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Write test data with stored=True
+        json_data = {"TEMP1": 42}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"stored": b"True",
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        tsdb.read_topics()
+
+        mock_ingest.row.assert_called_once()
+        call_args = mock_ingest.row.call_args
+        columns = call_args[1]["columns"]
+        self.assertIn("COSMOS__STORED", columns)
+        self.assertTrue(columns["COSMOS__STORED"])
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_sets_cosmos_stored_false(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics sets COSMOS__STORED to False when stored flag is false"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Write test data with stored=false
+        json_data = {"TEMP1": 42}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"stored": b"false",
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        tsdb.read_topics()
+
+        mock_ingest.row.assert_called_once()
+        call_args = mock_ingest.row.call_args
+        columns = call_args[1]["columns"]
+        self.assertIn("COSMOS__STORED", columns)
+        self.assertFalse(columns["COSMOS__STORED"])
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_sets_cosmos_stored_false_when_missing(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics defaults COSMOS__STORED to False when stored flag is absent"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Write test data without stored field
+        json_data = {"TEMP1": 42}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        tsdb.read_topics()
+
+        mock_ingest.row.assert_called_once()
+        call_args = mock_ingest.row.call_args
+        columns = call_args[1]["columns"]
+        self.assertIn("COSMOS__STORED", columns)
+        self.assertFalse(columns["COSMOS__STORED"])
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_sets_cosmos_extra(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics sets COSMOS__EXTRA when extra field is present"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Write test data with extra field
+        json_data = {"TEMP1": 42}
+        extra_data = {"vcid": 1, "data_source": "replay"}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"stored": b"false",
+                b"extra": json.dumps(extra_data).encode(),
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        tsdb.read_topics()
+
+        mock_ingest.row.assert_called_once()
+        call_args = mock_ingest.row.call_args
+        columns = call_args[1]["columns"]
+        self.assertIn("COSMOS__EXTRA", columns)
+        self.assertEqual(columns["COSMOS__EXTRA"], json.dumps(extra_data))
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_read_topics_omits_cosmos_extra_when_missing(self, mock_system, mock_psycopg, mock_sender):
+        """Test read_topics does not set COSMOS__EXTRA when extra field is absent"""
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        orig_xread = self.redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            return orig_xread(*args, **kwargs)
+
+        self.redis.xread = Mock(side_effect=xread_side_effect)
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        # Write test data without extra field
+        json_data = {"TEMP1": 42}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"stored": b"false",
+                b"json_data": json.dumps(json_data).encode(),
+            },
+            "*",
+            100,
+        )
+
+        tsdb.read_topics()
+
+        mock_ingest.row.assert_called_once()
+        call_args = mock_ingest.row.call_args
+        columns = call_args[1]["columns"]
+        self.assertNotIn("COSMOS__EXTRA", columns)
+
 
 if __name__ == "__main__":
     unittest.main()

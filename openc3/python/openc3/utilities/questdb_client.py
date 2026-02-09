@@ -23,14 +23,16 @@ import base64
 import contextlib
 import json
 import math
+import os
+import re
 import time
-import base64
-from decimal import Decimal
 from datetime import datetime, timezone
 from decimal import Decimal
 
 import numpy
-from questdb.ingress import Sender, Protocol, TimestampNanos
+import psycopg
+from questdb.ingress import Protocol, Sender, TimestampNanos
+
 
 # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
 # QuestDB stores these as NULL, so we use sentinel values near float max instead.
@@ -387,9 +389,7 @@ class QuestDBClient:
             else:
                 self.decimal_int_columns[f"{table_name}__{column_name}"] = True
                 return "DECIMAL(20, 0)", False
-        elif converted_type == "TIME":
-            return "varchar", False
-        elif converted_type == "STRING":
+        elif converted_type == "TIME" or converted_type == "STRING":
             return "varchar", False
         elif converted_type == "BLOCK":
             # BLOCK type is base64 encoded, not JSON
@@ -635,25 +635,29 @@ class QuestDBClient:
 
             try:
                 with self.query.cursor() as cur:
-                    # Create table with COSMOS_DATA_TAG as a SYMBOL
-                    # for use as filtering/indexing column.
+                    # NOTE: Since __ is not allowed in item names we can safely use COSMOS__ as a prefix
+                    # for reserved metadata columns without worrying about name collisions with actual item names.
+                    # Create table with COSMOS__TAG as a symbol for use as filtering/indexing column,
+                    # COSMOS__STORED as a boolean to indicate if the packet had the stored flag set
                     sql = f"""
                         CREATE TABLE IF NOT EXISTS "{table_name}" (
                             PACKET_TIMESECONDS timestamp_ns,
                             RECEIVED_TIMESECONDS timestamp_ns,
-                            COSMOS_DATA_TAG SYMBOL,
-                            RECEIVED_COUNT LONG"""
+                            COSMOS__TAG symbol,
+                            COSMOS__STORED boolean,
+                            COSMOS__EXTRA varchar,
+                            RECEIVED_COUNT long"""
 
                     if columns_sql:
                         sql += f",\n{columns_sql}"
 
                     # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
                     # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
-                    # explicitly include COSMOS_DATA_TAG as well.
+                    # explicitly include COSMOS__TAG as well.
                     sql += """
                         ) TIMESTAMP(PACKET_TIMESECONDS)
                             PARTITION BY DAY
-                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
+                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS__TAG)
                     """
 
                     # Add TTL clause if specified

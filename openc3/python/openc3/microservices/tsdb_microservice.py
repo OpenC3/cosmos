@@ -153,6 +153,15 @@ class TsdbMicroservice(Microservice):
                     self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
+                # Extract stored flag from message hash
+                stored = msg_hash.get(b"stored", b"false").decode().lower() == "true"
+                values["COSMOS__STORED"] = stored
+
+                # Extract extra field from message hash
+                extra_bytes = msg_hash.get(b"extra")
+                if extra_bytes:
+                    values["COSMOS__EXTRA"] = extra_bytes.decode()
+
                 # Write to QuestDB with packet timestamp and received timestamp
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
 
