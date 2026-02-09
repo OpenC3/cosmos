@@ -37,7 +37,7 @@ from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.cmd_log import _build_cmd_output_string
-from openc3.utilities.extract import *
+from openc3.utilities.extract import extract_fields_from_cmd_text
 
 
 WHITELIST.extend(
@@ -409,7 +409,7 @@ def get_cmd_value(
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()")
     if target_name is None or command_name is None:
         raise RuntimeError(
-            f'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
+            'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or ("TGT", "CMD", "PARAM")'
         )
 
     authorize(

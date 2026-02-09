@@ -397,9 +397,8 @@ class BinaryAccessor(Accessor):
                 ###########################################################
                 const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                 endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                format = f"{endian}{const}"
                 return struct.unpack(
-                    format,
+                    f"{endian}{const}",
                     buffer[lower_bound : upper_bound + 1],
                 )[0]
 
@@ -597,9 +596,8 @@ class BinaryAccessor(Accessor):
                 ###########################################################
                 const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                 endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
-                format = f"{endian}{const}"
                 buffer[lower_bound : upper_bound + 1] = struct.pack(
-                    format,
+                    f"{endian}{const}",
                     value,
                 )
 
