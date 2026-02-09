@@ -58,9 +58,7 @@ class WebSocketClientStream:
         self.connection.send(data)
 
     def connected(self):
-        if self.connection:
-            return True
-        return False
+        return bool(self.connection)
 
     def disconnect(self):
         if self.connection:

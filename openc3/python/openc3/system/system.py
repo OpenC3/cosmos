@@ -17,22 +17,23 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
-import os
 import glob
-import zipfile
+import os
 import traceback
+import zipfile
 from threading import Lock
-from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
+
+from openc3.config.config_parser import ConfigParser
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
+from openc3.packets.commands import Commands
+from openc3.packets.limits import Limits
+from openc3.packets.packet_config import PacketConfig
+from openc3.packets.telemetry import Telemetry
+from openc3.system.target import Target
 from openc3.top_level import add_to_search_path
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store
-from openc3.config.config_parser import ConfigParser
-from openc3.packets.packet_config import PacketConfig
-from openc3.packets.commands import Commands
-from openc3.packets.telemetry import Telemetry
-from openc3.packets.limits import Limits
-from openc3.system.target import Target
 
 
 class SystemMeta(type):
@@ -170,7 +171,7 @@ class System(metaclass=SystemMeta):
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
         if not System.instance_obj:  # type: ignore[has-type]
             os.makedirs(f"{base_dir}/targets", exist_ok=True)
-            bucket = Bucket.getClient()
+            bucket = Bucket.get_client()
             for target_name in target_names:
                 # Retrieve bucket/targets/target_name/<TARGET>_current.zip
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"

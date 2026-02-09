@@ -14,14 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import socket
 import sys
-import json
-from enum import IntEnum
 from datetime import datetime, timezone
+from enum import IntEnum
 from threading import Lock
+
 from openc3.environment import *
 from openc3.utilities.store_queued import EphemeralStoreQueued
+
 
 # Logger class, class attribute list
 CLASS_ATTRS = [

@@ -145,3 +145,108 @@ openc3-cosmos-cmd-tlm-api % bundle exec rails s
 ```
 
 1.  Once the `bundle exec rails s` command returns you should see API requests coming from interactions in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.
+
+## Python Development
+
+COSMOS uses Python for scripting and provides a Python library (`openc3`) that mirrors the Ruby API. The Python library uses modern tooling for fast, reliable dependency management and code quality.
+
+### Development Tools
+
+- **[UV](https://github.com/astral-sh/uv)** - Fast Python package manager (replaces pip/poetry)
+- **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter (replaces flake8/black/isort)
+- **[Just](https://github.com/casey/just)** - Command runner for development tasks
+
+### Installing Tools
+
+**macOS:**
+
+```bash
+brew install uv ruff just
+```
+
+**Linux/WSL:**
+
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Ruff and Just (via cargo or package manager)
+cargo install ruff just
+```
+
+### Quick Start
+
+1.  Install Python and dependencies:
+
+```bash
+cosmos/openc3/python % uv python install  # Install Python from .python-version
+cosmos/openc3/python % uv sync             # Create venv and install dependencies
+```
+
+2.  View all available commands:
+
+```bash
+cosmos/openc3/python % just
+```
+
+### Common Commands
+
+```bash
+# Code Quality
+just format              # Format all code with Ruff
+just format-changed      # Format only changed files (fast!)
+just lint                # Check code quality
+just lint-changed        # Lint only changed files (fast!)
+just lint-fix            # Auto-fix linting issues
+just lint-stats          # Show detailed linting statistics
+
+# Testing
+just test                # Run all tests
+just test-cov            # Run tests with coverage
+just test-cov-html       # Generate HTML coverage report
+just test-fast           # Run fast tests only (skip slow tests)
+just test-file test/path/to/test.py  # Run specific test
+
+# Pre-commit Check
+just verify-changed      # Quick check of only changed files (recommended!)
+just verify              # Full verification: format, lint, and test
+just check               # CI-friendly check without modifications
+
+# Dependencies
+just add package-name    # Add a new dependency
+just update              # Update all dependencies
+just deps                # Show dependency tree
+
+# Cleanup
+just clean               # Remove build artifacts and caches
+```
+
+### Development Workflow
+
+1.  Make your changes to the Python code
+2.  Quick check before committing: `just verify-changed` (fast!)
+3.  Or full verification: `just verify` (formats, lints, tests everything)
+4.  Commit your changes
+
+**Tip:** Use `verify-changed` for quick iterations - it only checks files you've modified!
+
+### Manual Commands
+
+If you prefer not to use Just, you can run commands directly with UV:
+
+```bash
+# Setup
+uv python install    # Install Python from .python-version
+uv sync              # Create venv and install dependencies
+
+# Run tests
+uv run pytest
+
+# Lint and format
+uv run ruff check openc3
+uv run ruff format openc3
+
+# Run with coverage
+uv run coverage run -m pytest
+uv run coverage report
+```

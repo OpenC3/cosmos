@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.interfaces.interface import Interface
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.router_status_model import RouterStatusModel
+from test.test_helper import *
 
 
 class MyRouter(Interface):

@@ -14,20 +14,22 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
+import contextlib
 import struct
-import unittest
 import threading
+import time
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.cmd_api import *
 from openc3.interfaces.interface import Interface
-from openc3.models.microservice_model import MicroserviceModel
+from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
-from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
-from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.top_level import HazardousError
+from test.test_helper import *
 
 
 class MyInterface(Interface):
@@ -55,10 +57,8 @@ class TestCmdApi(unittest.TestCase):
         def xread_side_effect(*args, **kwargs):
             result = None
             if self.process:
-                try:
+                with contextlib.suppress(Exception):
                     result = orig_xread(*args)
-                except Exception:
-                    pass
 
             # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:
@@ -115,8 +115,8 @@ class TestCmdApi(unittest.TestCase):
                 command = func("inst Collect with type 0, Duration 5")
             else:
                 command = func("inst Collect with type NORMAL, Duration 5")
-            self.assertEqual(command['target_name'], "INST")
-            self.assertEqual(command['cmd_name'], "COLLECT")
+            self.assertEqual(command["target_name"], "INST")
+            self.assertEqual(command["cmd_name"], "COLLECT")
             if "raw" in name:
                 self.assertEqual(command["cmd_params"], {"TYPE": 0, "DURATION": 5})
             else:
@@ -401,7 +401,7 @@ class TestCmdApi(unittest.TestCase):
                 func(
                     "INST",
                     "MEMLOAD",
-                    {"DATA": b"\xAA\xBB\xCC\xDD\xEE\xFF"},
+                    {"DATA": b"\xaa\xbb\xcc\xdd\xee\xff"},
                     log_message=True,
                 )
                 self.assertIn(
@@ -799,7 +799,7 @@ class BuildCommand(unittest.TestCase):
         self.assertEqual(cmd["packet_name"], "COLLECT")
         self.assertEqual(
             cmd["buffer"],
-            b"\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00",
+            b"\x13\xe7\xc0\x00\x00\x00\x00\x01\x00\x00@\xa0\x00\x00\xab\x00\x00\x00\x00",
         )
 
     def test_complains_if_parameters_are_not_separated_by_commas(self):
@@ -816,19 +816,19 @@ class BuildCommand(unittest.TestCase):
         self.assertEqual(cmd["packet_name"], "COLLECT")
         self.assertEqual(
             cmd["buffer"],
-            b"\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00",
+            b"\x13\xe7\xc0\x00\x00\x00\x00\x01\x00\x00@\xa0\x00\x00\xab\x00\x00\x00\x00",
         )
 
     def test_processes_commands_without_parameters(self):
         cmd = build_cmd("INST", "ABORT")
         self.assertEqual(cmd["target_name"], "INST")
         self.assertEqual(cmd["packet_name"], "ABORT")
-        self.assertEqual(cmd["buffer"], b"\x13\xE7\xC0\x00\x00\x00\x00\x02")  # Pkt ID 2
+        self.assertEqual(cmd["buffer"], b"\x13\xe7\xc0\x00\x00\x00\x00\x02")  # Pkt ID 2
 
         cmd = build_cmd("INST CLEAR")
         self.assertEqual(cmd["target_name"], "INST")
         self.assertEqual(cmd["packet_name"], "CLEAR")
-        self.assertEqual(cmd["buffer"], b"\x13\xE7\xC0\x00\x00\x00\x00\x03")  # Pkt ID 3
+        self.assertEqual(cmd["buffer"], b"\x13\xe7\xc0\x00\x00\x00\x00\x03")  # Pkt ID 3
 
     def test_complains_about_too_many_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):

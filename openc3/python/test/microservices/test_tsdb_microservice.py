@@ -14,23 +14,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import base64
+import json
+import math
 import os
 import re
-import json
-import base64
+import time
 import unittest
 from datetime import datetime, timezone
-import time
-import math
 from unittest.mock import Mock, patch
-from test.test_helper import mock_redis, setup_system, capture_io, System
-from openc3.models.target_model import TargetModel
-from openc3.models.microservice_model import MicroserviceModel
+
+from questdb.ingress import IngressError
+
 from openc3.microservices.tsdb_microservice import TsdbMicroservice
-from openc3.topics.topic import Topic
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.target_model import TargetModel
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from questdb.ingress import IngressError, TimestampMicros, TimestampNanos
+from openc3.topics.topic import Topic
+from test.test_helper import System, capture_io, mock_redis, setup_system
 
 
 class TestTsdbMicroservice(unittest.TestCase):
@@ -250,7 +252,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         )
         model.create()
 
-        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
 
         # Check that table was created with correct name (TLM__ prefix for telemetry)
         calls = mock_cursor.execute.call_args_list
@@ -282,7 +284,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         model.create()
 
         for stdout in capture_io():
-            tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+            TsdbMicroservice("DEFAULT__TSDB__TEST")
             # Should warn about invalid characters
             self.assertIn("changed to", stdout.getvalue())
 
@@ -349,7 +351,6 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Verify that key items are in the CREATE TABLE statement
         for item_name in expected_items:
-
             self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
 
     @patch("openc3.microservices.tsdb_microservice.get_cmd")
@@ -422,7 +423,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         model.create()
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
-        initial_topics = tsdb.topics.copy()
+        tsdb.topics.copy()
 
         # Write a config event for deleting a target
         ConfigTopic.write({"type": "target", "kind": "deleted", "name": "INST"}, scope="DEFAULT")
@@ -1316,7 +1317,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         )
         model.create()
 
-        tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
 
         # Verify table creation was not attempted for UNKNOWN
         calls = mock_cursor.execute.call_args_list

@@ -91,7 +91,8 @@ class Limits:
                     limits_for_set[1],
                     limits_for_set[2],
                     limits_for_set[3],
-                    gl, gh,
+                    gl,
+                    gh,
                 ]
             else:
                 return [None, None, None, None, None, None, None, None, None]
@@ -187,6 +188,6 @@ class Limits:
 
         packet = packets.get(packet_name.upper())
         if packet is None:
-            raise RuntimeError(f"Telemetry packet '{target_name.upper()} { packet_name.upper()}' does not exist")
+            raise RuntimeError(f"Telemetry packet '{target_name.upper()} {packet_name.upper()}' does not exist")
 
         return packet

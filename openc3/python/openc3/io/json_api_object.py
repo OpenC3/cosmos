@@ -17,16 +17,19 @@
 import json
 import time
 import traceback
-from requests import Session
-from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
 from threading import Lock
-from typing import Optional
+
+from requests import Session
+from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ConnectionError as RequestsConnectionError
+
 from openc3.environment import *
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
 )
 from openc3.utilities.logger import Logger
+
 
 # Number of times to retry a request when a connection error occurs
 RETRY_COUNT = 3
@@ -57,7 +60,7 @@ class JsonApiObject:
         self,
         url: str,
         timeout: float = 1.0,
-        authentication: Optional[OpenC3Authentication] = None,
+        authentication: OpenC3Authentication | None = None,
     ):
         """
         Args:
@@ -117,7 +120,7 @@ class JsonApiObject:
         try:
             self.http = Session()
         except Exception as error:
-            raise JsonApiError(error)
+            raise JsonApiError(error) from error
 
     def _generate_kwargs(self, keyword_params):
         """NOTE: This is a helper method and should not be called directly"""
@@ -218,12 +221,12 @@ class JsonApiObject:
                     self.connect()
                 else:
                     error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-                    raise RuntimeError(error)
-            except Exception:
+                    raise RuntimeError(error) from e
+            except Exception as e:
                 self.log[2] = f"{method} Exception: {traceback.format_exc()}"
                 self.disconnect()
                 error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-                raise RuntimeError(error)
+                raise RuntimeError(error) from e
         # Should not reach here, but just in case
         error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
         raise RuntimeError(error)

@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import copy
+
 from openc3.packets.packet import Packet
 
 

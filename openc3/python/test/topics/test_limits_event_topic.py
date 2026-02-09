@@ -16,8 +16,9 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.topics.limits_event_topic import LimitsEventTopic
+from test.test_helper import *
 
 
 class TestLimitsEventTopic(unittest.TestCase):

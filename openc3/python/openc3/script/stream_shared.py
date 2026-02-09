@@ -15,8 +15,9 @@
 
 import json
 
-from .authorization import CosmosAuthorization, generate_auth
 from openc3.environment import OPENC3_SCOPE
+
+from .authorization import CosmosAuthorization, generate_auth
 from .stream import CosmosAsyncStream
 
 

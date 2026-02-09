@@ -83,13 +83,10 @@ RUN cd / \
     && ln -s /bin/python3.12 /bin/python3 \
     && ln -s /bin/pip3.12 /bin/pip \
     && ln -s /bin/pip3.12 /bin/pip3 \
-    && python3 -m venv /openc3/venv \
-    && source /openc3/venv/bin/activate \
-    && pip3 config --global set global.index $PYPI_URL/pypi \
-    && pip3 config --global set global.index-url $PYPI_URL/simple \
-    && pip3 install --upgrade pip setuptools wheel \
-    && pip3 install poetry \
-    && pip3 install poetry-plugin-export
+    && python3 -m pip install --break-system-packages uv \
+    && uv venv /openc3/venv --python python3 --seed \
+    && /openc3/venv/bin/pip install --index-url $PYPI_URL/simple --upgrade pip setuptools
+# Note: UV has built-in export command, no plugin needed
 
 # rbspy - https://github.com/rbspy/rbspy
 COPY rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz

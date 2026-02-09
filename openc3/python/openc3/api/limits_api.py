@@ -15,17 +15,19 @@
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime, timezone
+
 from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_process_args
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
-from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
+from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.utilities.authorization import authorize
 
 # from openc3.utilities.extract import *
 from openc3.utilities.logger import Logger
 from openc3.utilities.time import to_nsec_from_epoch
+
 
 WHITELIST.extend(
     [
@@ -119,10 +121,7 @@ def limits_enabled(*args, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(args, "limits_enabled", scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-    if item["limits"].get("enabled"):
-        return True
-    else:
-        return False
+    return bool(item["limits"].get("enabled"))
 
 
 # Enable limits checking for a telemetry item

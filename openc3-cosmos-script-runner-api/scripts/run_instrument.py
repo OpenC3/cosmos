@@ -14,9 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
 import ast
+import sys
+
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
+
 
 text = None
 with open(sys.argv[1]) as file:

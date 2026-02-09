@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.tools.table_manager.table_item import TableItem
+
 
 class TestTableItem(unittest.TestCase):
     def test_initialize(self):
@@ -66,5 +68,6 @@ class TestTableItem(unittest.TestCase):
         self.assertEqual(json_hash["editable"], False)
         self.assertEqual(json_hash["hidden"], True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
