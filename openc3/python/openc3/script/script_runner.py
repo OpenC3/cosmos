@@ -15,9 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 
 
 def _script_response_error(response, message, scope=OPENC3_SCOPE):
@@ -42,7 +43,9 @@ def script_syntax_check(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/syntax"
     # Explicitly set the headers to plain/text so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, headers=headers, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+        "post", endpoint, json=False, data=script, headers=headers, scope=scope
+    )
     if not response or response.status_code != 200:
         _script_response_error(response, "Script syntax check request failed", scope=scope)
     else:
@@ -71,7 +74,7 @@ def script_run(filename, disconnect=False, environment=None, suite_runner=None, 
         endpoint = f"/script-api/scripts/{filename}/run"
 
     # Encode the environment hash into an array of key values
-    if environment and not len(environment) == 0:
+    if environment and len(environment) != 0:
         env_data = []
         for key, value in environment.items():
             env_data.append({"key": key, "value": value})
@@ -80,12 +83,10 @@ def script_run(filename, disconnect=False, environment=None, suite_runner=None, 
     data = {"environment": env_data}
     if suite_runner:
         # TODO 7.0: Should suiteRunner be snake case?
-        data['suiteRunner'] = suite_runner
+        data["suiteRunner"] = suite_runner
 
     # NOTE: json: true causes json_api_object to JSON generate and set the Content-Type to json
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data=data, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=True, data=data, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to run {filename}", scope=scope)
     else:
@@ -124,7 +125,9 @@ def script_instrumented(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/instrumented"
     # Explicitly set the headers to plain/text so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, headers=headers, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+        "post", endpoint, json=False, data=script, headers=headers, scope=scope
+    )
     if not response or response.status_code != 200:
         _script_response_error(response, "Script instrumented request failed", scope=scope)
     else:
@@ -136,7 +139,9 @@ def script_instrumented(script, scope=OPENC3_SCOPE):
             raise result
 
 
-def script_create(filename, script, breakpoints=[], scope=OPENC3_SCOPE):
+def script_create(filename, script, breakpoints=None, scope=OPENC3_SCOPE):
+    if breakpoints is None:
+        breakpoints = []
     endpoint = f"/script-api/scripts/{filename}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post",
@@ -162,11 +167,13 @@ def script_delete_all_breakpoints(scope=OPENC3_SCOPE):
 
 def running_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
     endpoint = "/script-api/running-script"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, query={"limit": limit, "offset": offset}, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+        "get", endpoint, query={"limit": limit, "offset": offset}, scope=scope
+    )
     if not response or response.status_code != 200:
         _script_response_error(response, "Running script list request failed", scope=scope)
     else:
-        return json.loads(response.text)['items']
+        return json.loads(response.text)["items"]
 
 
 def script_get(id, scope=OPENC3_SCOPE):
@@ -176,6 +183,8 @@ def script_get(id, scope=OPENC3_SCOPE):
         _script_response_error(response, "Running script show request failed", scope=scope)
     else:
         return json.loads(response.text)
+
+
 running_script_get = script_get  # Alias for compatibility
 
 
@@ -284,8 +293,10 @@ def running_script_execute_while_paused(id, filename, line_no, end_line_no=None,
 
 def completed_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
     endpoint = "/script-api/completed-scripts"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, query={"limit": limit, "offset": offset}, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+        "get", endpoint, query={"limit": limit, "offset": offset}, scope=scope
+    )
     if not response or response.status_code != 200:
         _script_response_error(response, "Completed script list request failed", scope=scope)
     else:
-        return json.loads(response.text)['items']
+        return json.loads(response.text)["items"]

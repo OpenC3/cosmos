@@ -16,11 +16,12 @@
 
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.topics.interface_topic import InterfaceTopic
+from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
+
 
 WHITELIST.extend(
     [
@@ -114,7 +115,7 @@ def get_all_interface_info(scope=OPENC3_SCOPE):
     for int_name, int in InterfaceStatusModel.all(scope=scope).items():
         # Get the interface configuration to access disable_disconnect
         interface_model = InterfaceModel.get(name=int_name, scope=scope)
-        if interface_model and interface_model['disable_disconnect']:
+        if interface_model and interface_model["disable_disconnect"]:
             disable_disconnect = True
         else:
             disable_disconnect = False

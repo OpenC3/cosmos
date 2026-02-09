@@ -16,9 +16,10 @@
 
 import re
 import time
-from datetime import datetime, timezone
-from openc3.utilities.extract import remove_quotes
 import traceback
+from datetime import datetime, timezone
+
+from openc3.utilities.extract import remove_quotes
 
 
 class SuiteResults:

@@ -360,7 +360,6 @@ class LoggedStreamingThread < StreamingThread
           # QuestDB only uses the LIMIT keyword as a range
           # See https://questdb.com/docs/reference/sql/limit/
           query_offset = "#{query} LIMIT #{min}, #{max}"
-          puts "QuestDB query:#{query_offset}"
           OpenC3::Logger.debug("QuestDB query: #{query_offset}")
           results = []
           result = @@conn.exec(query_offset)

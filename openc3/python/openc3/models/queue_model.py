@@ -17,7 +17,6 @@
 import json
 import threading
 import time
-from typing import Optional
 
 from openc3.models.model import Model
 from openc3.topics.queue_topic import QueueTopic
@@ -71,7 +70,7 @@ class QueueModel(Model):
         else:
             raise QueueError(f"Queue '{name}' is disabled. Command '{command}' not queued.")
 
-    def __init__(self, name: str, scope: str, state: str = "HOLD", updated_at: Optional[float] = None):
+    def __init__(self, name: str, scope: str, state: str = "HOLD", updated_at: float | None = None):
         super().__init__(f"{scope}__{self.PRIMARY_KEY}", name=name, updated_at=updated_at, scope=scope)
         self.microservice_name = f"{scope}__QUEUE__{name}"
         if state in ["HOLD", "RELEASE", "DISABLE"]:

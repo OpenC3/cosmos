@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
@@ -59,7 +60,9 @@ def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
     return _handle_response(response, "Failed to delete timeline")
 
 
-def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOPE):
+def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SCOPE):
+    if data is None:
+        data = {}
     kind = kind.lower()
     kinds = ["command", "script", "reserve"]
     if kind not in kinds:
@@ -80,7 +83,9 @@ def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOP
 
 
 def get_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request("get", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope)
+    response = openc3.script.API_SERVER.request(
+        "get", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope
+    )
     return _handle_response(response, "Failed to get timeline activity")
 
 

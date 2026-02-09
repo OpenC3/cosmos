@@ -18,7 +18,7 @@ OpenC3 COSMOS Core just has a single user account, so all you need to do is pass
 Request:
 
 ```bash
-curl -i -H "Content-Type: application/json-rpc" -H "Authorization: password" \
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>" \
 -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' \
 -X POST http://127.0.0.1:2900/openc3-api/api
 ```
@@ -187,7 +187,7 @@ curl 'http://localhost:2900/script-api/scripts/TARGET/procedures/cmd_tlm_test.rb
   -X 'POST' \
   -H 'Accept: application/json' \
   -H 'Accept-Language: en-US,en;q=0.9' \
-  -H 'Authorization: pass' \
+  -H 'Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>' \
   -H 'Connection: keep-alive' \
   -H 'Content-Length: 0' \
   -H 'Origin: http://ascportal:2900' \
@@ -219,7 +219,7 @@ SCRIPT_API="$COSMOS_HOST/script-api"
 SCRIPT_PATH="scripts/$TARGET/$SCRIPT"
 CURL_ARGS=(
 	-H 'Accept: application/json'
-	-H 'Authorization: password'
+	-H 'Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>'
 	-H 'Accept-Language: en-US,en;q=0.9'
 	-H 'Connection: keep-alive'
 	-H 'Content-Type: application/json'

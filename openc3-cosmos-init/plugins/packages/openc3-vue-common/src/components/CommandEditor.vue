@@ -57,6 +57,7 @@
         hide-default-footer
         multi-sort
         density="compact"
+        class="parameters-table"
         @contextmenu:row="showContextMenu"
       >
         <template #item.val="{ item }">
@@ -70,6 +71,7 @@
               v-model="item.val"
               :states="item.states"
               :states-in-hex="statesInHex"
+              :disabled="item.disabled"
               @hazardous-change="onParameterHazardousChange(item, $event)"
             />
           </slot>
@@ -257,6 +259,17 @@ export default {
           .then(
             (command) => {
               if (command) {
+                // Identify length fields that are auto-managed by variable_bit_size arrays
+                // These should be shown but disabled - they will be set when the array is written
+                const autoLengthFields = new Set()
+                command.items.forEach((parameter) => {
+                  if (parameter.variable_bit_size) {
+                    autoLengthFields.add(
+                      parameter.variable_bit_size.length_item_name.toUpperCase(),
+                    )
+                  }
+                })
+
                 command.items.forEach((parameter) => {
                   if (this.reservedItemNames.includes(parameter.name)) return
                   if (
@@ -299,6 +312,10 @@ export default {
                       }
                       range = `${parameter.minimum}..${parameter.maximum}`
                     }
+                    // Disable auto-managed length fields for variable_bit_size arrays
+                    const isAutoLengthField = autoLengthFields.has(
+                      parameter.name.toUpperCase(),
+                    )
                     this.computedRows.push({
                       parameter_name: parameter.name,
                       val: val,
@@ -307,6 +324,7 @@ export default {
                       range: range,
                       units: parameter.units,
                       type: parameter.data_type,
+                      disabled: isAutoLengthField,
                     })
                   }
                 })
@@ -463,3 +481,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.parameters-table {
+  max-height: 50vh;
+}
+</style>

@@ -16,11 +16,12 @@
 
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
 from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
 from openc3.topics.router_topic import RouterTopic
+from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
+
 
 WHITELIST.extend(
     [
@@ -151,6 +152,7 @@ def router_protocol_cmd(
         scope=scope,
     )
 
+
 # Associates a target and all its commands and telemetry with a particular
 # router.
 #
@@ -215,9 +217,7 @@ def router_target_enable(
     if not cmd_only:
         router.tlm_target_enabled[target_name.upper()] = True
     router.update()
-    RouterTopic.router_target_enable(
-        router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
-    )
+    RouterTopic.router_target_enable(router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope)
 
 
 def router_target_disable(
@@ -237,9 +237,7 @@ def router_target_disable(
     if not cmd_only:
         router.tlm_target_enabled[target_name.upper()] = False
     router.update()
-    RouterTopic.router_target_disable(
-        router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope
-    )
+    RouterTopic.router_target_disable(router_name, target_name, cmd_only=cmd_only, tlm_only=tlm_only, scope=scope)
 
 
 def router_details(router_name, scope=OPENC3_SCOPE):

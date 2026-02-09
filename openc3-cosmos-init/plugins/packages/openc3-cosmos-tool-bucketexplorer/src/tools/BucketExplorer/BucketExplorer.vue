@@ -192,6 +192,15 @@
             aria-label="Delete File"
             @click="deleteFile(item.name)"
           />
+          <v-btn
+            v-if="item.icon === 'mdi-folder'"
+            icon="mdi-delete"
+            variant="text"
+            density="compact"
+            data-test="delete-directory"
+            aria-label="Delete Directory"
+            @click.stop="deleteDirectory(item.name)"
+          />
         </template>
       </v-data-table>
     </v-card>
@@ -710,6 +719,41 @@ export default {
           this.updateFiles()
         })
         .catch((err) => {})
+    },
+    deleteDirectory(dirname) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
+      this.$dialog
+        .confirm(
+          `Are you sure you want to delete the directory "${dirname}" and ALL its contents? This cannot be undone.`,
+          {
+            okText: 'Delete Directory',
+            cancelText: 'Cancel',
+          },
+        )
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/storage/delete_directory/${encodeURIComponent(
+              this.path,
+            )}${dirname}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
+          )
+        })
+        .then((response) => {
+          const count = response.data.deleted_count || 0
+          this.$notify.normal({
+            title: `Deleted directory "${dirname}" (${count} files)`,
+          })
+          this.updateFiles()
+        })
+        .catch((err) => {
+          if (err?.response?.data?.message) {
+            this.$notify.caution({
+              title: `Failed to delete directory: ${err.response.data.message}`,
+            })
+          }
+        })
     },
     updateFiles() {
       let root = this.root.toUpperCase()

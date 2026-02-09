@@ -16,22 +16,14 @@
 
 from openc3.packets.packet_item import PacketItem
 
+
 class TableItem(PacketItem):
     """
     Implements the attributes that are unique to a TableItem such as editable
     and hidden. All other functionality is inherited from PacketItem.
     """
 
-    def __init__(
-        self,
-        name,
-        bit_offset,
-        bit_size,
-        data_type,
-        endianness,
-        array_size=None,
-        overflow="ERROR"
-    ):
+    def __init__(self, name, bit_offset, bit_size, data_type, endianness, array_size=None, overflow="ERROR"):
         """
         Constructor
 
@@ -117,6 +109,6 @@ class TableItem(PacketItem):
             Dict representing the item
         """
         hash_val = super().as_json(*args, **kwargs)
-        hash_val['editable'] = self.editable
-        hash_val['hidden'] = self.hidden
+        hash_val["editable"] = self.editable
+        hash_val["hidden"] = self.hidden
         return hash_val

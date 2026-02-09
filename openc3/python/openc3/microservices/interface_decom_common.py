@@ -17,14 +17,15 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1963
 
-from datetime import datetime, timezone
 import json
-from openc3.system.system import System
-from openc3.topics.topic import Topic
-from openc3.topics.telemetry_topic import TelemetryTopic
-from openc3.utilities.time import to_nsec_from_epoch
-from openc3.utilities.json import JsonEncoder, JsonDecoder
+from datetime import datetime, timezone
+
 from openc3.models.target_model import TargetModel
+from openc3.system.system import System
+from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonDecoder, JsonEncoder
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 def handle_inject_tlm(inject_tlm_json, scope):

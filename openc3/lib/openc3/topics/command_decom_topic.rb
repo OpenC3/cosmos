@@ -28,6 +28,7 @@ module OpenC3
     def self.write_packet(packet, scope:)
       topic = "#{scope}__DECOMCMD__{#{packet.target_name}}__#{packet.packet_name}"
       msg_hash = { time: packet.packet_time.to_nsec_from_epoch,
+                   received_time: packet.received_time.to_nsec_from_epoch,
                    target_name: packet.target_name,
                    packet_name: packet.packet_name,
                    stored: packet.stored.to_s,

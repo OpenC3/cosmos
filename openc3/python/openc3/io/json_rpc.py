@@ -291,7 +291,7 @@ class JsonRpcError(dict):
             return cls(code, hash["message"], hash["data"])
         except ValueError as err:
             error = "Invalid JSON-RPC 2.0"
-            raise RuntimeError("{} {}: {}".format(error, type(err), err)) from err
+            raise RuntimeError(f"{error} {type(err)}: {err}") from err
 
 
 def convert_json_class(object_):
@@ -314,10 +314,8 @@ def convert_json_class(object_):
             return object_
     elif isinstance(object_, (tuple, list)):
         object_ = list(object_)
-        index = 0
-        for value in object_:
+        for index, value in enumerate(object_):
             object_[index] = convert_json_class(value)
-            index += 1
         return object_
     else:
         return object_
@@ -347,18 +345,16 @@ def _convert_bytearray_to_string_raw(object_):
             if _is_latin_text(decoded):
                 return decoded
             else:
-                return {"json_class": "String", "raw": [byte for byte in object_]}
+                return {"json_class": "String", "raw": list(object_)}
         except UnicodeDecodeError:
-            return {"json_class": "String", "raw": [byte for byte in object_]}
+            return {"json_class": "String", "raw": list(object_)}
     if isinstance(object_, dict):
         for key, value in object_.items():
             object_[key] = _convert_bytearray_to_string_raw(value)
         return object_
     if isinstance(object_, (tuple, list)):
         object_ = list(object_)
-        index = 0
-        for value in object_:
+        for index, value in enumerate(object_):
             object_[index] = _convert_bytearray_to_string_raw(value)
-            index += 1
         return object_
     return object_

@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.utilities.store_implementation import Store
 
 

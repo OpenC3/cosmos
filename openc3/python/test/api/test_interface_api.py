@@ -14,17 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import threading
+import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.interface_api import *
 from openc3.interfaces.interface import Interface
-from openc3.models.target_model import TargetModel
+from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.microservice_model import MicroserviceModel
-from openc3.microservices.interface_microservice import InterfaceMicroservice
+from openc3.models.target_model import TargetModel
+from test.test_helper import *
 
 
 class TestInterfaceApi(unittest.TestCase):
@@ -234,7 +235,7 @@ class TestInterfaceApi(unittest.TestCase):
         mock_interface.unmap_target.side_effect = Exception("Unmap failed")
         mock_get_model.side_effect = None
         mock_get_model.return_value = mock_interface
-        
+
         with self.assertRaises(Exception):
             unmap_target_from_interface("INST", "INST_INT")
 

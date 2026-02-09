@@ -9,6 +9,33 @@ sidebar_custom_props:
 
 Most packets defined in COSMOS are "regular packets". These are standard command and telemetry packets that flow through interfaces. Regular telemetry packets are identified at the interface level and then the identified raw packets flow through Redis streams for additional processing like decomutation and logging.
 
+## LATEST
+
+LATEST is a special packet name that can be used in place of an actual packet name when retrieving telemetry. It returns the most recently received value of a telemetry item across all packets that contain it. This is useful in systems where the same telemetry item appears in multiple packets, potentially at different rates.
+
+For example, assume the target INST has two packets: PACKET1 and PACKET2. Both packets have a telemetry item called TEMP.
+
+```ruby
+# Get the value of TEMP from the most recently received PACKET1
+value = tlm("INST PACKET1 TEMP")
+# Get the value of TEMP from the most recently received PACKET2
+value = tlm("INST PACKET2 TEMP")
+# Get the value of TEMP from whichever packet (PACKET1 or PACKET2) was received most recently
+value = tlm("INST LATEST TEMP")
+```
+
+LATEST works by comparing the `PACKET_TIMESECONDS` timestamp of each packet containing the requested item in the Current Value Table (CVT) and selecting the one with the newest timestamp.
+
+LATEST can be used with:
+
+- [tlm, tlm_raw, tlm_formatted](/docs/guides/scripting-api#tlm-tlm_raw-tlm_formatted) for reading telemetry values
+- [Telemetry Screen](/docs/configuration/telemetry-screens) widgets like LABELVALUE and FORMATVALUE
+- [get_tlm_values](/docs/guides/scripting-api#get_tlm_values) for reading multiple values at once
+
+:::note
+LATEST cannot be used with methods that operate on entire packets such as [get_tlm_packet](/docs/guides/scripting-api#get_tlm_packet) or [get_tlm_buffer](/docs/guides/scripting-api#get_tlm_buffer) since those require a specific packet name. If an item only exists in a single packet, LATEST still works but is equivalent to using the packet name directly.
+:::
+
 ## Subpackets
 
 Subpackets are marked with the keyword [SUBPACKET](/docs/configuration/telemetry#subpacket). Subpackets exist inside of regular packets and are identified and broken out during decom processing by a [SUBPACKETIZER](/docs/configuration/telemetry#subpacketizer) Python/Ruby class. Subpackets are used for channelized telemetry and for multi-sampled telemetry points in a regular packet. They can also be used for any content that may or may not be present in the parent packet. Note: because subpackets exist inside of regular packets, there is no "raw" version of a subpacket ie. the raw subpacket is part of its parent regular packet.

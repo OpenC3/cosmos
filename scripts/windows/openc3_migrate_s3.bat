@@ -36,8 +36,8 @@ REM User IDs - must match openc3.bat behavior
 REM On Windows, typically runs as 1001:1001 (no rootless detection needed)
 if "%OPENC3_USER_ID%"=="" set "OPENC3_USER_ID=1001"
 if "%OPENC3_GROUP_ID%"=="" set "OPENC3_GROUP_ID=1001"
-if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-buckets-v"
-if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-buckets-v"
+if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-bucket-v"
+if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-object-v"
 
 REM Container/image names
 set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
@@ -136,8 +136,8 @@ echo      %~nx0 cleanup
 echo      openc3.bat run
 echo.
 echo Configuration (via environment variables):
-echo   OLD_VOLUME    Old MINIO volume name (default: openc3-buckets-v)
-echo   NEW_VOLUME    New versitygw volume name (default: openc3-buckets-v)
+echo   OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
+echo   NEW_VOLUME    New versitygw volume name (default: openc3-object-v)
 echo   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
 echo   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
 echo.

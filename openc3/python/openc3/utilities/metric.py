@@ -14,11 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
+import contextlib
 import threading
+import time
+
 from openc3.models.metric_model import MetricModel
-from openc3.utilities.sleeper import Sleeper
 from openc3.top_level import kill_thread
+from openc3.utilities.sleeper import Sleeper
 
 
 class Metric:
@@ -104,10 +106,8 @@ class Metric:
 
     def shutdown(self):
         with Metric.mutex:
-            try:
+            with contextlib.suppress(ValueError):
                 Metric.instances.remove(self)
-            except ValueError:
-                pass
             if len(Metric.instances) <= 0:
                 if Metric.update_sleeper:
                     Metric.update_sleeper.cancel()

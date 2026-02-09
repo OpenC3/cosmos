@@ -21,19 +21,19 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import json
-import time
 import threading
+import time
 from typing import Any
-from openc3.environment import OPENC3_SCOPE
-from openc3.topics.topic import Topic
-from openc3.models.model import Model
+
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
 from openc3.models.microservice_model import MicroserviceModel
-from openc3.utilities.json import JsonEncoder
-from openc3.utilities.store import Store, openc3_redis_cluster
-from openc3.utilities.logger import Logger
-from openc3.utilities.bucket import Bucket
+from openc3.models.model import Model
 from openc3.system.system import System
-from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.topics.topic import Topic
+from openc3.utilities.bucket import Bucket
+from openc3.utilities.json import JsonEncoder
+from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store, openc3_redis_cluster
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -448,11 +448,11 @@ class TargetModel(Model):
         self,
         name: str,
         folder_name=None,
-        requires=[],
-        ignored_parameters=[],
-        ignored_items=[],
-        limits_groups=[],
-        cmd_tlm_files=[],
+        requires=None,
+        ignored_parameters=None,
+        ignored_items=None,
+        limits_groups=None,
+        cmd_tlm_files=None,
         id=None,
         updated_at=None,
         plugin=None,
@@ -473,10 +473,24 @@ class TargetModel(Model):
         cleanup_poll_time=600,
         needs_dependencies=False,
         target_microservices={},
+        reducer_disable=False,
+        reducer_max_cpu_utilization=30.0,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
     ):
+        if target_microservices is None:
+            target_microservices = {"REDUCER": [[]]}
+        if cmd_tlm_files is None:
+            cmd_tlm_files = []
+        if limits_groups is None:
+            limits_groups = []
+        if ignored_items is None:
+            ignored_items = []
+        if ignored_parameters is None:
+            ignored_parameters = []
+        if requires is None:
+            requires = []
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,
@@ -534,7 +548,7 @@ class TargetModel(Model):
         packet_hash = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not packet_hash.get(target_name, None):
+            if not packet_hash.get(target_name):
                 packet_hash[target_name] = {}
             packet_name = packet.packet_name.upper()
             packet_hash[target_name][packet_name] = packet
@@ -550,14 +564,14 @@ class TargetModel(Model):
         configs = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not configs.get(target_name, None):
+            if not configs.get(target_name):
                 configs[target_name] = ""
             config = configs[target_name]
             config += packet.to_config(cmd_or_tlm)
             config += "\n"
         for target_name, config in configs.items():
             bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
-            client = Bucket.getClient()
+            client = Bucket.get_client()
             client.put_object(
                 # Use targets_modified to save modifications
                 # This keeps the original target clean (read-only)

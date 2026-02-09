@@ -16,16 +16,21 @@
 
 import json
 import time
-from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
-from openc3.io.json_api_object import JsonApiObject, JsonApiError
+
+from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ConnectionError as RequestsConnectionError
+
+from openc3.io.json_api_object import JsonApiError, JsonApiObject
+from openc3.top_level import CriticalCmdError, DisabledError, HazardousError  # noqa: F401
 from openc3.utilities.logger import Logger
+
 from .json_rpc import (
+    JsonRpcErrorResponse,
     JsonRpcRequest,
     JsonRpcResponse,
     JsonRpcSuccessResponse,
-    JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError, CriticalCmdError, DisabledError  # noqa: F401
+
 
 # Number of times to retry a request when a connection error occurs
 RETRY_COUNT = 3
@@ -104,7 +109,7 @@ class JsonDRbObject(JsonApiObject):
                 if not self.http:
                     self.connect()
                 json_rpc_request = JsonRpcRequest(0, func, *args, **kwargs)
-                token = kwargs.get("token", None)
+                token = kwargs.get("token")
                 response_body = self.make_request(json_rpc_request, token)
                 if not response_body:
                     self.disconnect()

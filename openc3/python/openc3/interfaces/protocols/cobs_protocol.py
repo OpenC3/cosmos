@@ -16,6 +16,7 @@
 
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
 
+
 # This file implements the COBS protocol as here=
 # https=//en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 # http=//www.stuartcheshire.org/papers/COBSforToN.pdf

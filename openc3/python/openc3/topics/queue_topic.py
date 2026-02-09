@@ -22,4 +22,4 @@ class QueueTopic(Topic):
 
     @classmethod
     def write_notification(cls, notification, scope):
-        cls.write_topic(f"{scope}__{cls.PRIMARY_KEY}", notification, '*', 1000)
+        cls.write_topic(f"{scope}__{cls.PRIMARY_KEY}", notification, "*", 1000)
