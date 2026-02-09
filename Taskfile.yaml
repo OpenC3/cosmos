@@ -279,27 +279,32 @@ tasks:
         vars:
           CLI_ARGS: help
 
-  cli-generate-plugin:
+  "generate:plugin":
     desc: Generate a new plugin
     summary: |
       Generate a new OpenC3 COSMOS plugin.
 
-      Usage: task cli-generate-plugin -- <PluginName> [--ruby|--python]
+      Usage: task generate:plugin -- <PluginName> [--ruby|--python]
 
-      Example: task cli-generate-plugin -- MyPlugin --ruby
+      Example: task generate:plugin -- LRO --ruby
+
+      This creates a plugin directory structure with:
+        - plugin.txt (plugin configuration)
+        - targets/<NAME>/ (target directory)
+        - Rakefile (for building the gem)
     cmds:
       - task: cli
         vars:
           CLI_ARGS: generate plugin {{.CLI_ARGS}}
 
-  cli-generate-target:
+  "generate:target":
     desc: Generate a new target
     summary: |
-      Generate a new OpenC3 COSMOS target.
+      Generate a new OpenC3 COSMOS target within an existing plugin.
 
-      Usage: task cli-generate-target -- <TARGET_NAME>
+      Usage: task generate:target -- <TARGET_NAME>
 
-      Example: task cli-generate-target -- MY_TARGET
+      Example: task generate:target -- MY_TARGET
     cmds:
       - task: cli
         vars:
@@ -326,6 +331,41 @@ tasks:
       - task: cli
         vars:
           CLI_ARGS: load {{.CLI_ARGS}}
+
+  xtce-import:
+    desc: Convert XTCE file to COSMOS configuration
+    summary: |
+      Convert an XTCE (XML Telemetry and Command Exchange) file into
+      COSMOS configuration files.
+
+      Usage: task xtce-import -- <xtce_file> --output <output_dir>
+
+      Example: task xtce-import -- satellite.xtce --output ./my_target
+
+      The converted configuration files will be placed in a target folder
+      within the specified output directory.
+
+      Note: XTCE files can also be used directly by placing them in
+      a target's cmd_tlm folder without conversion.
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: xtce_converter --import {{.CLI_ARGS}}
+
+  xtce-export:
+    desc: Convert COSMOS plugin to XTCE format
+    summary: |
+      Convert an OpenC3 COSMOS plugin to XTCE format.
+
+      Usage: task xtce-export -- <plugin.gem> --output <output_dir>
+
+      Example: task xtce-export -- openc3-cosmos-demo.gem --output ./xtce_output
+
+      One .xtce file will be created per target in the plugin.
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: xtce_converter --plugin {{.CLI_ARGS}}
 
   # ============================================================================
   # Test Commands
