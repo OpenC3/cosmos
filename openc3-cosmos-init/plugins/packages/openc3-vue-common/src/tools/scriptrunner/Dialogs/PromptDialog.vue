@@ -21,7 +21,13 @@
 -->
 
 <template>
-  <v-dialog v-model="show" persistent scrollable width="600" @keydown.esc="cancelHandler">
+  <v-dialog
+    v-model="show"
+    persistent
+    scrollable
+    width="600"
+    @keydown.esc="cancelHandler"
+  >
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
