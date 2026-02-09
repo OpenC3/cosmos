@@ -1,0 +1,636 @@
+
+version: "3"
+
+vars:
+  CONTAINER_BIN: '{{.CONTAINER_BIN | default "docker"}}'
+  ENV_FILE: '{{.ENV_FILE | default ".env"}}'
+  COMPOSE_FILE: compose.yaml
+  COMPOSE_BUILD_FILE: compose-build.yaml
+
+tasks:
+  # ============================================================================
+  # Common Commands
+  # ============================================================================
+
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  start:
+    desc: Build and run COSMOS (development) or just run (runtime)
+    summary: |
+      Build and run OpenC3 COSMOS containers.
+
+      In development environments (with compose-build.yaml), this will:
+        1. Build all Docker containers from source
+        2. Start the containers
+
+      In runtime environments, this will just start the containers.
+
+      Access COSMOS at: http://localhost:2900
+    cmds:
+      - task: _check-root
+      - |
+        if test -f compose-build.yaml; then
+          task build
+          task run
+        else
+          task run
+        fi
+      - |
+        echo ""
+        echo "=========================================="
+        echo "  OpenC3 COSMOS is now running!"
+        echo "=========================================="
+        echo ""
+        echo "  Web Interface: http://localhost:2900"
+        echo ""
+        echo "  Useful commands:"
+        echo "    task ps      - Show container status"
+        echo "    task logs    - Follow container logs"
+        echo "    task stop    - Stop all containers"
+        echo ""
+
+  run:
+    desc: Start COSMOS containers in detached mode
+    summary: |
+      Start all OpenC3 COSMOS containers in detached mode.
+
+      Containers will run in the background. Access COSMOS at http://localhost:2900
+
+      Common services:
+        - openc3-operator - Main orchestration service
+        - openc3-cosmos-cmd-tlm-api - Command/Telemetry API
+        - openc3-cosmos-script-runner-api - Script execution service
+        - openc3-redis - Redis database
+        - openc3-buckets - Object storage
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - task: _check-root
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} up -d"
+
+  stop:
+    desc: Stop all COSMOS containers gracefully
+    summary: |
+      Stop all OpenC3 COSMOS containers gracefully.
+
+      This command:
+        1. Stops operator, script-runner-api, and cmd-tlm-api containers
+        2. Waits 5 seconds for graceful shutdown
+        3. Runs docker compose down with 30 second timeout
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-operator"
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-cosmos-script-runner-api"
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-cosmos-cmd-tlm-api"
+      - sleep 5
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} down -t 30"
+
+  logs:
+    desc: Follow logs from all containers
+    summary: |
+      Follow logs from all COSMOS containers.
+
+      Use Ctrl+C to stop following logs.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} logs -f {{.CLI_ARGS}}"
+
+  ps:
+    desc: Show status of COSMOS containers
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} ps"
+
+  # ============================================================================
+  # Development Commands
+  # ============================================================================
+
+  build:
+    desc: Build all COSMOS Docker containers from source
+    summary: |
+      Build all OpenC3 COSMOS Docker containers from source.
+
+      This command:
+        1. Runs setup to download certificates
+        2. Builds openc3-ruby base image
+        3. Builds openc3-base image
+        4. Builds openc3-node image
+        5. Builds all remaining service containers
+
+      Requires compose-build.yaml (development environment).
+    dotenv:
+      - "{{.ENV_FILE}}"
+    preconditions:
+      - sh: test -f compose-build.yaml
+        msg: "Error: 'build' command is only available in development environments (compose-build.yaml not found)"
+    cmds:
+      - task: setup
+      # Handle restrictive umasks - Built files need to be world readable
+      - chmod -R +r .
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build openc3-ruby"
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build openc3-base"
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build openc3-node"
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build"
+
+  build-image:
+    desc: Build a specific Docker image
+    summary: |
+      Build a specific OpenC3 COSMOS Docker image.
+
+      Usage: task build-image -- <image-name>
+
+      Example: task build-image -- openc3-cosmos-cmd-tlm-api
+    dotenv:
+      - "{{.ENV_FILE}}"
+    preconditions:
+      - sh: test -f compose-build.yaml
+        msg: "Error: 'build-image' command is only available in development environments"
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build {{.CLI_ARGS}}"
+
+  setup:
+    desc: Run initial setup (download certificates, etc.)
+    summary: |
+      Run initial setup for OpenC3 COSMOS.
+
+      This downloads necessary certificates and performs other setup tasks.
+    cmds:
+      - ./scripts/linux/openc3_setup.sh
+
+  # ============================================================================
+  # UBI (Universal Base Image) Commands
+  # ============================================================================
+
+  start-ubi:
+    desc: Build and run COSMOS with UBI images
+    summary: |
+      Build and run OpenC3 COSMOS with Red Hat UBI (Universal Base Image) containers.
+
+      Used for enterprise deployments requiring Red Hat UBI base images,
+      suitable for air-gapped and government environments.
+    cmds:
+      - task: _check-root
+      - |
+        if test -f compose-build.yaml; then
+          task build-ubi
+          task run-ubi
+        else
+          task run-ubi
+        fi
+
+  build-ubi:
+    desc: Build COSMOS UBI containers
+    summary: |
+      Build OpenC3 COSMOS UBI (Universal Base Image) containers.
+
+      Used for enterprise deployments requiring Red Hat UBI base images.
+
+      Required environment variables (set in .env file):
+        OPENC3_UBI_REGISTRY - UBI registry URL
+        OPENC3_UBI_IMAGE - UBI image name
+        OPENC3_UBI_TAG - UBI image tag
+    dotenv:
+      - "{{.ENV_FILE}}"
+    preconditions:
+      - sh: test -f compose-build.yaml
+        msg: "Error: 'build-ubi' command is only available in development environments"
+    cmds:
+      - |
+        if test -f /etc/ssl/certs/ca-bundle.crt; then
+          cp /etc/ssl/certs/ca-bundle.crt cacert.pem
+        fi
+      - task: setup
+      - ./scripts/linux/openc3_build_ubi.sh {{.CLI_ARGS}}
+
+  run-ubi:
+    desc: Run COSMOS with UBI containers
+    summary: |
+      Run OpenC3 COSMOS UBI containers in detached mode.
+
+      Uses UBI-based container images with UBI-specific configurations.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    env:
+      OPENC3_IMAGE_SUFFIX: "-ubi"
+      OPENC3_REDIS_VOLUME: "/home/data"
+    cmds:
+      - task: _check-root
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} up -d"
+
+  # ============================================================================
+  # CLI Commands
+  # ============================================================================
+
+  cli:
+    desc: Run COSMOS CLI commands in a container
+    summary: |
+      Run OpenC3 COSMOS CLI commands inside a Docker container.
+
+      Usage: task cli -- <command> [options]
+
+      Examples:
+        task cli -- help                           # Show CLI help
+        task cli -- validate plugin.gem            # Validate a plugin
+        task cli -- load plugin.gem                # Load a plugin
+        task cli -- generate plugin MyPlugin       # Generate new plugin
+
+      The current directory is mounted as /openc3/local inside the container.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - |
+        {{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} run -it --rm \
+          -v "$(pwd):/openc3/local:z" \
+          -w /openc3/local \
+          -e OPENC3_API_PASSWORD=${OPENC3_API_PASSWORD:-} \
+          --no-deps \
+          openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli {{.CLI_ARGS}}
+
+  cliroot:
+    desc: Run COSMOS CLI commands as root user
+    summary: |
+      Run OpenC3 COSMOS CLI commands inside a Docker container as root.
+
+      Same as 'cli' but runs as root user for elevated privileges.
+
+      Usage: task cliroot -- <command> [options]
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - |
+        {{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} run -it --rm \
+          --user=root \
+          -v "$(pwd):/openc3/local:z" \
+          -w /openc3/local \
+          -e OPENC3_API_PASSWORD=${OPENC3_API_PASSWORD:-} \
+          --no-deps \
+          openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli {{.CLI_ARGS}}
+
+  cli-help:
+    desc: Show COSMOS CLI help
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: help
+
+  cli-generate-plugin:
+    desc: Generate a new plugin
+    summary: |
+      Generate a new OpenC3 COSMOS plugin.
+
+      Usage: task cli-generate-plugin -- <PluginName> [--ruby|--python]
+
+      Example: task cli-generate-plugin -- MyPlugin --ruby
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: generate plugin {{.CLI_ARGS}}
+
+  cli-generate-target:
+    desc: Generate a new target
+    summary: |
+      Generate a new OpenC3 COSMOS target.
+
+      Usage: task cli-generate-target -- <TARGET_NAME>
+
+      Example: task cli-generate-target -- MY_TARGET
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: generate target {{.CLI_ARGS}}
+
+  cli-validate:
+    desc: Validate a plugin
+    summary: |
+      Validate an OpenC3 COSMOS plugin gem file.
+
+      Usage: task cli-validate -- <plugin.gem>
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: validate {{.CLI_ARGS}}
+
+  cli-load:
+    desc: Load a plugin
+    summary: |
+      Load an OpenC3 COSMOS plugin.
+
+      Usage: task cli-load -- <plugin.gem>
+    cmds:
+      - task: cli
+        vars:
+          CLI_ARGS: load {{.CLI_ARGS}}
+
+  # ============================================================================
+  # Test Commands
+  # ============================================================================
+
+  test-rspec:
+    desc: Run RSpec tests against Ruby code
+    summary: |
+      Run RSpec tests in a Docker container.
+
+      This builds the containers first, then runs the RSpec test suite.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - task: setup
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build"
+      - ./scripts/linux/openc3_test.sh rspec {{.CLI_ARGS}}
+
+  test-playwright:
+    desc: Run Playwright end-to-end tests
+    summary: |
+      Run Playwright end-to-end tests.
+
+      Subcommands available:
+        task test-playwright-install    Install playwright and dependencies
+        task test-playwright-build      Build the plugin for tests
+        task test-playwright-run        Run tests using Chrome
+
+      Or run directly with arguments.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - task: setup
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build"
+      - ./scripts/linux/openc3_test.sh playwright {{.CLI_ARGS}}
+
+  test-playwright-install:
+    desc: Install Playwright and dependencies
+    dir: playwright
+    cmds:
+      - ./playwright.sh install-playwright
+
+  test-playwright-build:
+    desc: Build the plugin for Playwright tests
+    dir: playwright
+    cmds:
+      - ./playwright.sh build-plugin
+
+  test-playwright-run:
+    desc: Run Playwright tests
+    dir: playwright
+    cmds:
+      - pnpm test {{.CLI_ARGS}}
+
+  test-hash:
+    desc: Run comprehensive tests with coverage
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - task: setup
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} -f {{.COMPOSE_BUILD_FILE}} build"
+      - ./scripts/linux/openc3_test.sh hash {{.CLI_ARGS}}
+
+  # ============================================================================
+  # Utility Commands
+  # ============================================================================
+
+  util-encode:
+    desc: Encode a string to base64
+    summary: |
+      Encode a string to base64.
+
+      Usage: task util-encode -- <string>
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh encode {{.CLI_ARGS}}
+
+  util-hash:
+    desc: Hash a string using SHA-256
+    summary: |
+      Hash a string using SHA-256.
+
+      Usage: task util-hash -- <string>
+    cmds:
+      - ./scripts/linux/openc3_util.sh hash {{.CLI_ARGS}}
+
+  util-save:
+    desc: Save Docker images to tar files
+    summary: |
+      Save OpenC3 COSMOS Docker images to tar files.
+
+      Usage: task util-save -- <repo> <namespace> <tag> [suffix]
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh save {{.CLI_ARGS}}
+
+  util-load:
+    desc: Load Docker images from tar files
+    summary: |
+      Load OpenC3 COSMOS Docker images from tar files.
+
+      Usage: task util-load -- [tag] [suffix]
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh load {{.CLI_ARGS}}
+
+  util-tag:
+    desc: Tag images from one repo to another
+    summary: |
+      Tag OpenC3 COSMOS Docker images from one repository to another.
+
+      Usage: task util-tag -- <repo1> <repo2> <ns1> <tag1> [ns2] [tag2] [suffix]
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh tag {{.CLI_ARGS}}
+
+  util-push:
+    desc: Push images to Docker repository
+    summary: |
+      Push OpenC3 COSMOS Docker images to a repository.
+
+      Usage: task util-push -- <repo> <namespace> <tag> [suffix]
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh push {{.CLI_ARGS}}
+
+  util-clean:
+    desc: Remove node_modules, coverage, etc.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - ./scripts/linux/openc3_util.sh clean
+
+  # ============================================================================
+  # Cleanup Commands
+  # ============================================================================
+
+  cleanup:
+    desc: Remove all Docker volumes and data (DESTRUCTIVE!)
+    summary: |
+      Remove all OpenC3 COSMOS Docker volumes and data.
+
+      WARNING: This is a destructive operation that removes ALL COSMOS data!
+
+      Use 'task cleanup-force' to skip confirmation.
+      Use 'task cleanup-local' to also remove local plugin files.
+    dotenv:
+      - "{{.ENV_FILE}}"
+    prompt: Are you sure you want to remove ALL Docker volumes and COSMOS data?
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} down -t 30 -v"
+
+  cleanup-force:
+    desc: Remove all Docker volumes without confirmation
+    dotenv:
+      - "{{.ENV_FILE}}"
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} down -t 30 -v"
+
+  cleanup-local:
+    desc: Remove Docker volumes and local plugin files
+    summary: |
+      Remove all OpenC3 COSMOS Docker volumes and local plugin files.
+
+      This removes:
+        - All Docker volumes
+        - Local plugin files in plugins/DEFAULT/
+    dotenv:
+      - "{{.ENV_FILE}}"
+    prompt: Are you sure you want to remove ALL Docker volumes, COSMOS data, and local plugins?
+    cmds:
+      - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} down -t 30 -v"
+      - |
+        cd plugins/DEFAULT && ls | grep -xv "README.md" | xargs rm -rf || true
+
+  # ============================================================================
+  # Ruby Development Tasks
+  # ============================================================================
+
+  ruby-install:
+    desc: Install Ruby dependencies
+    dir: openc3
+    cmds:
+      - bundle install
+
+  ruby-build:
+    desc: Compile Ruby C extensions
+    dir: openc3
+    cmds:
+      - bundle exec rake build
+
+  ruby-test:
+    desc: Run Ruby RSpec tests
+    summary: |
+      Run Ruby RSpec tests locally (not in Docker).
+
+      Usage:
+        task ruby-test                           # Run all tests
+        task ruby-test -- spec/path/to/spec.rb   # Run specific file
+        task ruby-test -- spec/path/to/spec.rb:42  # Run specific line
+    dir: openc3
+    cmds:
+      - bundle exec rspec {{.CLI_ARGS}}
+
+  # ============================================================================
+  # Python Development Tasks
+  # ============================================================================
+
+  python-install:
+    desc: Install Python dependencies
+    dir: openc3/python
+    cmds:
+      - poetry install
+
+  python-lint:
+    desc: Run Python linter (ruff)
+    dir: openc3/python
+    cmds:
+      - poetry run ruff check openc3 {{.CLI_ARGS}}
+
+  python-test:
+    desc: Run Python tests
+    summary: |
+      Run Python pytest tests locally.
+
+      Usage:
+        task python-test                           # Run all tests
+        task python-test -- test/path/to/test.py   # Run specific file
+    dir: openc3/python
+    cmds:
+      - poetry run pytest {{.CLI_ARGS}}
+
+  python-coverage:
+    desc: Run Python tests with coverage
+    dir: openc3/python
+    cmds:
+      - poetry run coverage run -m pytest
+      - poetry run coverage report
+
+  # ============================================================================
+  # Frontend Development Tasks
+  # ============================================================================
+
+  frontend-install:
+    desc: Install frontend dependencies
+    dir: openc3-cosmos-init/plugins
+    cmds:
+      - pnpm install
+
+  frontend-build:
+    desc: Build frontend shared packages
+    dir: openc3-cosmos-init/plugins
+    cmds:
+      - pnpm build:common
+
+  frontend-lint:
+    desc: Run ESLint on frontend code
+    summary: |
+      Run ESLint on frontend code.
+
+      Run from the specific tool directory for best results.
+    dir: openc3-cosmos-init/plugins
+    cmds:
+      - pnpm lint {{.CLI_ARGS}}
+
+  # ============================================================================
+  # API Development Tasks
+  # ============================================================================
+
+  api-cmd-tlm-test:
+    desc: Run cmd-tlm-api RSpec tests
+    dir: openc3-cosmos-cmd-tlm-api
+    cmds:
+      - bundle exec rspec {{.CLI_ARGS}}
+
+  api-script-runner-test:
+    desc: Run script-runner-api RSpec tests
+    dir: openc3-cosmos-script-runner-api
+    cmds:
+      - bundle exec rspec {{.CLI_ARGS}}
+
+  # ============================================================================
+  # Git Hooks
+  # ============================================================================
+
+  hooks-install:
+    desc: Install git hooks
+    cmds:
+      - ./hooks/install.sh
+
+  # ============================================================================
+  # Internal Tasks
+  # ============================================================================
+
+  _check-root:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ "$(id -u)" -eq 0 ]; then
+          echo "WARNING: COSMOS should not be run as the root user, as permissions for Local Mode will be affected."
+          echo "Do not use sudo when running COSMOS. See more: https://docs.openc3.com/docs/guides/local-mode"
+        fi
