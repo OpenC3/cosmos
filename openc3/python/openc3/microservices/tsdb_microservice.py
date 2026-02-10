@@ -38,6 +38,15 @@ class TsdbMicroservice(Microservice):
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
+        # Extract retain time options from microservice config
+        self.cmd_decom_retain_time = None
+        self.tlm_decom_retain_time = None
+        for option in self.config.get("options", []):
+            if option[0] == "CMD_DECOM_RETAIN_TIME":
+                self.cmd_decom_retain_time = option[1]
+            elif option[0] == "TLM_DECOM_RETAIN_TIME":
+                self.tlm_decom_retain_time = option[1]
+
         # Use shared QuestDB client
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
         self.questdb.connect_ingest()
@@ -57,10 +66,12 @@ class TsdbMicroservice(Microservice):
         if "__DECOMCMD__" in topic:
             packet = get_cmd(target_name, packet_name)
             cmd_or_tlm = "CMD"
+            retain_time = self.cmd_decom_retain_time
         else:
             packet = get_tlm(target_name, packet_name)
             cmd_or_tlm = "TLM"
-        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm)
+            retain_time = self.tlm_decom_retain_time
+        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time)
 
     def sync_topics(self):
         """Update local topics based on config events"""
@@ -142,6 +153,11 @@ class TsdbMicroservice(Microservice):
                     self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
+                # Extract extra field from message hash
+                extra_data = msg_hash.get(b"extra")
+                if extra_data:
+                    values["COSMOS_EXTRA"] = extra_data.decode()
+
                 # Write to QuestDB with packet timestamp and received timestamp
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
 
@@ -149,7 +165,7 @@ class TsdbMicroservice(Microservice):
             self.questdb.flush()
 
         except IngressError as error:
-            # Try to handle the error (may alter schema for real-time ingestion)
+            # Cast the value to fit the column type and retry
             self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
 
     def run(self):

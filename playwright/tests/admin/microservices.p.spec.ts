@@ -31,12 +31,6 @@ test('displays microservice names', async ({ page, utils }) => {
     'DEFAULT__COMMANDLOG__INST2',
   )
   await expect(page.locator('[data-test="microserviceList"]')).toContainText(
-    'DEFAULT__DECOMCMDLOG__INST2',
-  )
-  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
-    'DEFAULT__DECOMLOG__INST2',
-  )
-  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__DECOM__INST2',
   )
   await expect(page.locator('[data-test="microserviceList"]')).toContainText(
@@ -47,9 +41,6 @@ test('displays microservice names', async ({ page, utils }) => {
   )
   await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__PACKETLOG__INST2',
-  )
-  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
-    'DEFAULT__REDUCER__INST2',
   )
 })
 

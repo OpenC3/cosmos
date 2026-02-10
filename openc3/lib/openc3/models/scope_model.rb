@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -95,7 +95,7 @@ module OpenC3
       text_log_cycle_size: 50_000_000,
       text_log_retain_time: nil,
       tool_log_retain_time: nil,
-      cleanup_poll_time: 600,
+      cleanup_poll_time: 3600,
       command_authority: false,
       critical_commanding: "OFF",
       shard: 0,

@@ -909,7 +909,6 @@ RSpec.describe StorageController, type: :controller do
       it "extracts target from logs bucket paths" do
         expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/decom_logs/tlm/INST')).to eq('INST')
         expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/raw_logs/cmd/INST/20251220')).to eq('INST')
-        expect(controller.send(:extract_target_from_path, 'OPENC3_LOGS_BUCKET', 'DEFAULT/reduced_minute_logs/tlm/INST2')).to eq('INST2')
       end
 
       it "returns nil for non-target paths in logs bucket" do

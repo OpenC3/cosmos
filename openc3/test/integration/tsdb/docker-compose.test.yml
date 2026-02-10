@@ -8,7 +8,7 @@
 
 services:
   questdb:
-    image: questdb/questdb:9.3.0
+    image: questdb/questdb:9.3.2
     ports:
       - "127.0.0.1:9000:9000" # HTTP ILP ingest + Console
       - "127.0.0.1:8812:8812" # PostgreSQL wire protocol
