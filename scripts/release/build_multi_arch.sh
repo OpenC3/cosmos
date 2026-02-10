@@ -93,7 +93,6 @@ fi
 
 cd ../openc3
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
