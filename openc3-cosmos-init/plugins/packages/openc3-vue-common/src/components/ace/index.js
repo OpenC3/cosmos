@@ -11,7 +11,19 @@
 # if purchased from OpenC3, Inc.
 */
 
-import AceEditorModes from './AceEditorModes'
+import AceEditorModes, {
+  buildRubyMode,
+  buildPythonMode,
+  buildJsonMode,
+  buildMarkdownMode,
+} from './AceEditorModes'
 import AceEditorUtils from './AceEditorUtils'
 
-export { AceEditorModes, AceEditorUtils }
+export {
+  AceEditorModes,
+  AceEditorUtils,
+  buildRubyMode,
+  buildPythonMode,
+  buildJsonMode,
+  buildMarkdownMode,
+}

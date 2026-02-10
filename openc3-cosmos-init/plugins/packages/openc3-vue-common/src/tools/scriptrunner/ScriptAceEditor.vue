@@ -55,7 +55,8 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { AceEditorModes, AceEditorUtils } from '@/components'
+import { buildRubyMode, buildPythonMode } from '@/components/ace/AceEditorModes'
+import { AceEditorUtils } from '@/components'
 import { CmdCompleter, TlmCompleter } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import { Api } from '@openc3/js-common/services'
@@ -109,9 +110,6 @@ const contextMenuVisible = ref(false)
 const menuX = ref(0)
 const menuY = ref(0)
 const currentLineHasCommand = ref(false)
-
-// Build modes using the mixin
-const { buildRubyMode, buildPythonMode } = AceEditorModes.mixins[0].methods
 
 onMounted(() => {
   // Build modes
