@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,7 +26,7 @@ import FormatValueBase from './FormatValueBase'
 export default {
   mixins: [Widget, TimeFilters, FormatValueBase],
   // ValueWidget can either get it's value and limitsState directly through props
-  // or it will register itself in the Vuex store and be updated asynchronously
+  // or it will register itself in the store and be updated asynchronously
   props: {
     value: {
       default: null,
