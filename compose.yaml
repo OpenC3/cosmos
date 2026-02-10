@@ -143,7 +143,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
-      - "openc3-gems-v:/gems"
+      - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
     logging:
@@ -171,7 +171,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
-      - "openc3-gems-v:/gems"
+      - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
       # Add access to the entire C drive on Windows
