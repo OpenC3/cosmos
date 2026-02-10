@@ -16,6 +16,7 @@ from requests.exceptions import ChunkedEncodingError
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from openc3.io.json_api_object import JsonApiError, JsonApiObject
+from openc3.top_level import CriticalCmdError, DisabledError, HazardousError  # noqa: F401
 from openc3.utilities.logger import Logger
 
 from .json_rpc import (

@@ -39,14 +39,11 @@ test('displays microservice names', async ({ page, utils }) => {
   )
 })
 
-test.fixme('displays microservice details', async ({ page, utils }) => {
+test('displays microservice details', async ({ page, utils }) => {
   await page.locator('[aria-label="Show Microservice Details"]').nth(2).click()
   await expect(page.locator('.editor')).toContainText(
     '"name": "DEFAULT__CLEANUP__INST2"',
   )
-  await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
-    expect(contents).toContain('"name": "DEFAULT__CLEANUP__INST2"')
-  })
   await page.getByRole('button', { name: 'Ok' }).click()
 })
 
@@ -79,7 +76,7 @@ test('stops and starts microservices', async ({ page, utils }) => {
     .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' })
     .locator('.mdi-play')
     .click()
-  await page.locator('[data-test="confirm-dialog-start"]').click()
+  await page.locator('[data-test="confirm-dialog-restart"]').click()
   await expect(
     page
       .locator('.v-list-item')

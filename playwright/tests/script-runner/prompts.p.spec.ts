@@ -298,6 +298,7 @@ file.delete`)
     'Choose something interesting',
   )
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
   )
