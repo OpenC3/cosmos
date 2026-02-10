@@ -95,19 +95,29 @@ store.install = (app) => {
       {},
       {
         get(_, key) {
-          // Map 'module/getter' style access
-          const [mod, getter] = key.split('/')
-          return piniaStore[getter]
+          if (key.includes('/')) {
+            const [, getter] = key.split('/')
+            return piniaStore[getter]
+          }
+          return piniaStore[key]
         },
       },
     ),
     commit(type, payload) {
-      const [mod, mutation] = type.split('/')
-      piniaStore[mutation]?.(payload)
+      if (type.includes('/')) {
+        const [, mutation] = type.split('/')
+        piniaStore[mutation]?.(payload)
+      } else {
+        piniaStore[type]?.(payload)
+      }
     },
     dispatch(type, payload) {
-      const [mod, action] = type.split('/')
-      return piniaStore[action]?.(payload)
+      if (type.includes('/')) {
+        const [, action] = type.split('/')
+        return piniaStore[action]?.(payload)
+      } else {
+        return piniaStore[type]?.(payload)
+      }
     },
   }
 }

@@ -140,9 +140,11 @@ def run_roundtrip_test(questdb_client, clean_table, wait_for_data):
         bit_size=None,
         array_size=None,
         comparator=None,
+        read_conversion=None,
     ):
         target_name = "ROUNDTRIP"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         # Build item definition
         item = {"name": "VALUE", "data_type": data_type}
@@ -150,9 +152,11 @@ def run_roundtrip_test(questdb_client, clean_table, wait_for_data):
             item["bit_size"] = bit_size
         if array_size is not None:
             item["array_size"] = array_size
+        if read_conversion is not None:
+            item["read_conversion"] = read_conversion
 
         packet_def = {"items": [item]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         # Insert test values
         ts = int(time.time() * 1e9)
@@ -384,16 +388,88 @@ class TestDerivedRoundtrip:
     """Tests for DERIVED type round-trip through QuestDB."""
 
     def test_derived_int_roundtrip(self, run_roundtrip_test):
-        """DERIVED integer values round-trip correctly."""
+        """DERIVED integer values round-trip correctly (JSON fallback)."""
         run_roundtrip_test("DERIVED_INT", "DERIVED", [42, -100, 0, 999999])
 
     def test_derived_float_roundtrip(self, run_roundtrip_test):
-        """DERIVED float values round-trip correctly."""
+        """DERIVED float values round-trip correctly (JSON fallback)."""
         run_roundtrip_test("DERIVED_FLOAT", "DERIVED", [3.14159, -2.71828, 0.0, 1e10])
 
     def test_derived_string_roundtrip(self, run_roundtrip_test):
-        """DERIVED string values round-trip correctly."""
+        """DERIVED string values round-trip correctly (JSON fallback)."""
         run_roundtrip_test("DERIVED_STR", "DERIVED", ["hello", "world", "CONNECTED"])
+
+
+@requires_questdb
+class TestDerivedTypedConversionRoundtrip:
+    """Tests for DERIVED items with typed conversions (native QuestDB types)."""
+
+    def test_derived_float32_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with FLOAT 32-bit conversion uses native float column."""
+        run_roundtrip_test(
+            "DERIVED_FLOAT32_CONV",
+            "DERIVED",
+            [-3.4028235e38, -1.0, 0.0, 1.0, 3.4028235e38],
+            read_conversion={"converted_type": "FLOAT", "converted_bit_size": 32},
+            comparator=float32_comparator,
+        )
+
+    def test_derived_float64_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with FLOAT 64-bit conversion uses native double column."""
+        run_roundtrip_test(
+            "DERIVED_FLOAT64_CONV",
+            "DERIVED",
+            [-1.7976931348623157e308, -1.0, 0.0, 1.0, 1.7976931348623157e308],
+            read_conversion={"converted_type": "FLOAT", "converted_bit_size": 64},
+            comparator=float64_comparator,
+        )
+
+    def test_derived_int16_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with INT 16-bit conversion uses native int column."""
+        run_roundtrip_test(
+            "DERIVED_INT16_CONV",
+            "DERIVED",
+            [-32768, -1, 0, 1, 32767],
+            read_conversion={"converted_type": "INT", "converted_bit_size": 16},
+        )
+
+    def test_derived_uint32_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with UINT 32-bit conversion uses native long column."""
+        run_roundtrip_test(
+            "DERIVED_UINT32_CONV",
+            "DERIVED",
+            [0, 1, 2147483647, 2147483648, 4294967295],
+            read_conversion={"converted_type": "UINT", "converted_bit_size": 32},
+        )
+
+    def test_derived_string_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with STRING conversion uses native varchar column (no JSON)."""
+        run_roundtrip_test(
+            "DERIVED_STRING_CONV",
+            "DERIVED",
+            ["", "hello", "world", "with\nnewline"],
+            read_conversion={"converted_type": "STRING", "converted_bit_size": 0},
+        )
+
+    def test_derived_array_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with ARRAY conversion still uses JSON serialization."""
+        run_roundtrip_test(
+            "DERIVED_ARRAY_CONV",
+            "DERIVED",
+            [[1, 2, 3], [4.5, 5.5], ["a", "b"]],
+            read_conversion={"converted_type": "ARRAY", "converted_bit_size": 0},
+            comparator=json_comparator,
+        )
+
+    def test_derived_object_conversion_roundtrip(self, run_roundtrip_test):
+        """DERIVED with OBJECT conversion still uses JSON serialization."""
+        run_roundtrip_test(
+            "DERIVED_OBJECT_CONV",
+            "DERIVED",
+            [{"key": "value"}, {"nested": {"a": 1}}, {}],
+            read_conversion={"converted_type": "OBJECT", "converted_bit_size": 0},
+            comparator=json_comparator,
+        )
 
 
 @requires_questdb
@@ -476,11 +552,12 @@ class TestTimestampItemsRoundtrip:
         """Helper to run timestamp item tests."""
         target_name = "ROUNDTRIP"
         packet_name = f"TS_{item_name}"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         # Build a simple packet definition
         packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         # Insert test values with known timestamps
         base_ts = int(time.time() * 1e9)
@@ -586,10 +663,11 @@ class TestTimestampItemsRoundtrip:
         """Timestamp items work correctly alongside regular items."""
         target_name = "ROUNDTRIP"
         packet_name = "TS_MIXED"
-        clean_table(f"{target_name}__{packet_name}")
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
 
         packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
-        table_name = questdb_client.create_table(target_name, packet_name, packet_def)
+        questdb_client.create_table(target_name, packet_name, packet_def)
 
         base_ts = int(time.time() * 1e9)
         test_values = [100, 200]

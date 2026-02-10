@@ -45,7 +45,6 @@ module OpenC3
           json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED, packet.buffer, given_raw) if item.format_string
         end
       end
-      json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)
       msg_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       EphemeralStoreQueued.write_topic(topic, msg_hash)

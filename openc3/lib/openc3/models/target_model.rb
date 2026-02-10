@@ -72,16 +72,12 @@ module OpenC3
     attr_accessor :cmd_log_cycle_time
     attr_accessor :cmd_log_cycle_size
     attr_accessor :cmd_log_retain_time
-    attr_accessor :cmd_decom_log_cycle_time
-    attr_accessor :cmd_decom_log_cycle_size
-    attr_accessor :cmd_decom_log_retain_time
     attr_accessor :tlm_buffer_depth
     attr_accessor :tlm_log_cycle_time
     attr_accessor :tlm_log_cycle_size
     attr_accessor :tlm_log_retain_time
-    attr_accessor :tlm_decom_log_cycle_time
-    attr_accessor :tlm_decom_log_cycle_size
-    attr_accessor :tlm_decom_log_retain_time
+    attr_accessor :cmd_decom_retain_time
+    attr_accessor :tlm_decom_retain_time
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
@@ -387,17 +383,13 @@ module OpenC3
       cmd_log_cycle_time: 600,
       cmd_log_cycle_size: 50_000_000,
       cmd_log_retain_time: nil,
-      cmd_decom_log_cycle_time: 600,
-      cmd_decom_log_cycle_size: 50_000_000,
-      cmd_decom_log_retain_time: nil,
       tlm_buffer_depth: 60,
       tlm_log_cycle_time: 600,
       tlm_log_cycle_size: 50_000_000,
       tlm_log_retain_time: nil,
-      tlm_decom_log_cycle_time: 600,
-      tlm_decom_log_cycle_size: 50_000_000,
-      tlm_decom_log_retain_time: nil,
-      cleanup_poll_time: 600,
+      cmd_decom_retain_time: nil,
+      tlm_decom_retain_time: nil,
+      cleanup_poll_time: 3600,
       needs_dependencies: false,
       target_microservices: {},
       disable_erb: nil,
@@ -407,12 +399,9 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
         cmd_buffer_depth: cmd_buffer_depth, cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,
         cmd_log_retain_time: cmd_log_retain_time,
-        cmd_decom_log_cycle_time: cmd_decom_log_cycle_time, cmd_decom_log_cycle_size: cmd_decom_log_cycle_size,
-        cmd_decom_log_retain_time: cmd_decom_log_retain_time,
         tlm_buffer_depth: tlm_buffer_depth, tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
         tlm_log_retain_time: tlm_log_retain_time,
-        tlm_decom_log_cycle_time: tlm_decom_log_cycle_time, tlm_decom_log_cycle_size: tlm_decom_log_cycle_size,
-        tlm_decom_log_retain_time: tlm_decom_log_retain_time,
+        cmd_decom_retain_time: cmd_decom_retain_time, tlm_decom_retain_time: tlm_decom_retain_time,
         cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
         scope: scope)
       @folder_name = folder_name
@@ -426,16 +415,12 @@ module OpenC3
       @cmd_log_cycle_time = cmd_log_cycle_time
       @cmd_log_cycle_size = cmd_log_cycle_size
       @cmd_log_retain_time = cmd_log_retain_time
-      @cmd_decom_log_cycle_time = cmd_decom_log_cycle_time
-      @cmd_decom_log_cycle_size = cmd_decom_log_cycle_size
-      @cmd_decom_log_retain_time = cmd_decom_log_retain_time
       @tlm_buffer_depth = tlm_buffer_depth
       @tlm_log_cycle_time = tlm_log_cycle_time
       @tlm_log_cycle_size = tlm_log_cycle_size
       @tlm_log_retain_time = tlm_log_retain_time
-      @tlm_decom_log_cycle_time = tlm_decom_log_cycle_time
-      @tlm_decom_log_cycle_size = tlm_decom_log_cycle_size
-      @tlm_decom_log_retain_time = tlm_decom_log_retain_time
+      @cmd_decom_retain_time = cmd_decom_retain_time
+      @tlm_decom_retain_time = tlm_decom_retain_time
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
@@ -461,16 +446,12 @@ module OpenC3
         'cmd_log_cycle_time' => @cmd_log_cycle_time,
         'cmd_log_cycle_size' => @cmd_log_cycle_size,
         'cmd_log_retain_time' => @cmd_log_retain_time,
-        'cmd_decom_log_cycle_time' => @cmd_decom_log_cycle_time,
-        'cmd_decom_log_cycle_size' => @cmd_decom_log_cycle_size,
-        'cmd_decom_log_retain_time' => @cmd_decom_log_retain_time,
         'tlm_buffer_depth' => @tlm_buffer_depth,
         'tlm_log_cycle_time' => @tlm_log_cycle_time,
         'tlm_log_cycle_size' => @tlm_log_cycle_size,
         'tlm_log_retain_time' => @tlm_log_retain_time,
-        'tlm_decom_log_cycle_time' => @tlm_decom_log_cycle_time,
-        'tlm_decom_log_cycle_size' => @tlm_decom_log_cycle_size,
-        'tlm_decom_log_retain_time' => @tlm_decom_log_retain_time,
+        'cmd_decom_retain_time' => @cmd_decom_retain_time,
+        'tlm_decom_retain_time' => @tlm_decom_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
@@ -492,19 +473,11 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
         @cmd_log_cycle_size = parameters[0].to_i
       when 'CMD_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for cmd log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for raw cmd log files in seconds - nil = Forever>")
         @cmd_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @cmd_log_retain_time = @cmd_log_retain_time.to_i if @cmd_log_retain_time
-      when 'CMD_DECOM_LOG_CYCLE_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Maximum time between files in seconds>")
-        @cmd_decom_log_cycle_time = parameters[0].to_i
-      when 'CMD_DECOM_LOG_CYCLE_SIZE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
-        @cmd_decom_log_cycle_size = parameters[0].to_i
-      when 'CMD_DECOM_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for cmd decom log files in seconds - nil = Forever>")
-        @cmd_decom_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        @cmd_decom_log_retain_time = @cmd_decom_log_retain_time.to_i if @cmd_decom_log_retain_time
+      when 'CMD_DECOM_LOG_CYCLE_TIME', 'CMD_DECOM_LOG_CYCLE_SIZE', 'CMD_DECOM_LOG_RETAIN_TIME'
+        # DEPRECATED keywords - do nothing
       when 'TLM_BUFFER_DEPTH'
         parser.verify_num_parameters(1, 1, "#{keyword} <Number of telemetry packets to buffer to ensure logged in order>")
         @tlm_buffer_depth = parameters[0].to_i
@@ -515,39 +488,41 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
         @tlm_log_cycle_size = parameters[0].to_i
       when 'TLM_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for tlm log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for raw tlm log files in seconds - nil = Forever>")
         @tlm_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @tlm_log_retain_time = @tlm_log_retain_time.to_i if @tlm_log_retain_time
-      when 'TLM_DECOM_LOG_CYCLE_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Maximum time between files in seconds>")
-        @tlm_decom_log_cycle_time = parameters[0].to_i
-      when 'TLM_DECOM_LOG_CYCLE_SIZE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Maximum file size in bytes>")
-        @tlm_decom_log_cycle_size = parameters[0].to_i
-      when 'TLM_DECOM_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for tlm decom log files in seconds - nil = Forever>")
-        @tlm_decom_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        @tlm_decom_log_retain_time = @tlm_decom_log_retain_time.to_i if @tlm_decom_log_retain_time
+      when 'TLM_DECOM_LOG_CYCLE_TIME', 'TLM_DECOM_LOG_CYCLE_SIZE', 'TLM_DECOM_LOG_RETAIN_TIME'
+        # DEPRECATED keywords - do nothing
+      when 'CMD_DECOM_RETAIN_TIME'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
+        @cmd_decom_retain_time = ConfigParser.handle_nil(parameters[0])
+        if @cmd_decom_retain_time and !@cmd_decom_retain_time.match?(/^\d+[hdwMy]$/)
+          raise ConfigParser::Error.new(parser, "CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
+        end
+      when 'TLM_DECOM_RETAIN_TIME'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
+        @tlm_decom_retain_time = ConfigParser.handle_nil(parameters[0])
+        if @tlm_decom_retain_time and !@tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
+          raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
+        end
       when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
         # DEPRECATED
       when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'
         # DEPRECATED
       when 'LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all log files in seconds - nil = Forever>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all raw log files in seconds - nil = Forever>")
         log_retain_time = ConfigParser.handle_nil(parameters[0])
         if log_retain_time
           @cmd_log_retain_time = log_retain_time.to_i
-          @cmd_decom_log_retain_time = log_retain_time.to_i
           @tlm_log_retain_time = log_retain_time.to_i
-          @tlm_decom_log_retain_time = log_retain_time.to_i
         end
       when 'CLEANUP_POLL_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Cleanup polling period in seconds>")
         @cleanup_poll_time = parameters[0].to_i
       when 'TARGET_MICROSERVICE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Type: DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG CLEANUP>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Type: DECOM COMMANDLOG PACKETLOG CLEANUP>")
         type = parameters[0].to_s.upcase
-        unless %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG CLEANUP).include?(type)
+        unless %w(DECOM COMMANDLOG PACKETLOG CLEANUP).include?(type)
           raise "Unknown TARGET_MICROSERVICE #{type}"
         end
         @target_microservices[type] ||= []
@@ -671,7 +646,7 @@ module OpenC3
       Store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
       # Note: these match the names of the services in deploy_microservices
-      %w(MULTI DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG CLEANUP).each do |type|
+      %w(MULTI DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
         target_microservices = @target_microservices[type]
         if target_microservices
           max_instances = target_microservices.length + 1
@@ -920,15 +895,11 @@ module OpenC3
       if cmd_or_tlm == :TELEMETRY
         Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
         add_topics_to_microservice("#{@scope}__PACKETLOG__#{@name}", raw_topics)
-        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
-        add_topics_to_microservice("#{@scope}__DECOMLOG__#{@name}", decom_topics)
         Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
         add_topics_to_microservice("#{@scope}__DECOM__#{@name}", raw_topics)
       else
         Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
         add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
-        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMCMDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
-        add_topics_to_microservice("#{@scope}__DECOMCMDLOG__#{@name}", decom_topics)
       end
     end
 
@@ -967,33 +938,6 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
-    def deploy_decomcmdlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
-      microservice_name = "#{@scope}__DECOMCMDLOG#{instance}__#{@name}"
-      microservice = MicroserviceModel.new(
-        name: microservice_name,
-        folder_name: @folder_name,
-        cmd: ["ruby", "log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
-        options: [
-          ["RAW_OR_DECOM", "DECOM"],
-          ["CMD_OR_TLM", "CMD"],
-          ["CYCLE_TIME", @cmd_decom_log_cycle_time],
-          ["CYCLE_SIZE", @cmd_decom_log_cycle_size],
-          ["BUFFER_DEPTH", @cmd_buffer_depth]
-        ],
-        topics: topics,
-        plugin: @plugin,
-        parent: parent,
-        needs_dependencies: @needs_dependencies,
-        shard: @shard,
-        scope: @scope
-      )
-      microservice.create
-      microservice.deploy(gem_path, variables)
-      @children << microservice_name if parent
-      Logger.info "Configured microservice #{microservice_name}"
-    end
-
     def deploy_packetlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__PACKETLOG#{instance}__#{@name}"
       microservice = MicroserviceModel.new(
@@ -1006,33 +950,6 @@ module OpenC3
           ["CMD_OR_TLM", "TLM"],
           ["CYCLE_TIME", @tlm_log_cycle_time],
           ["CYCLE_SIZE", @tlm_log_cycle_size],
-          ["BUFFER_DEPTH", @tlm_buffer_depth]
-        ],
-        topics: topics,
-        plugin: @plugin,
-        parent: parent,
-        needs_dependencies: @needs_dependencies,
-        shard: @shard,
-        scope: @scope
-      )
-      microservice.create
-      microservice.deploy(gem_path, variables)
-      @children << microservice_name if parent
-      Logger.info "Configured microservice #{microservice_name}"
-    end
-
-    def deploy_decomlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
-      microservice_name = "#{@scope}__DECOMLOG#{instance}__#{@name}"
-      microservice = MicroserviceModel.new(
-        name: microservice_name,
-        folder_name: @folder_name,
-        cmd: ["ruby", "log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
-        options: [
-          ["RAW_OR_DECOM", "DECOM"],
-          ["CMD_OR_TLM", "TLM"],
-          ["CYCLE_TIME", @tlm_decom_log_cycle_time],
-          ["CYCLE_SIZE", @tlm_decom_log_cycle_size],
           ["BUFFER_DEPTH", @tlm_buffer_depth]
         ],
         topics: topics,
@@ -1079,11 +996,15 @@ module OpenC3
 
     def deploy_tsdb_microservice(gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__TSDB#{instance}__#{@name}"
+      options = []
+      options << ["CMD_DECOM_RETAIN_TIME", @cmd_decom_retain_time] if @cmd_decom_retain_time
+      options << ["TLM_DECOM_RETAIN_TIME", @tlm_decom_retain_time] if @tlm_decom_retain_time
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
         cmd: ["python", "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
+        options: options,
         topics: topics,
         plugin: @plugin,
         parent: nil,
@@ -1199,7 +1120,7 @@ module OpenC3
       end
 
       @parent = nil
-      %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG CLEANUP).each do |type|
+      %w(DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
         unless @target_microservices[type]
           @parent = "#{@scope}__MULTI__#{@name}"
           break
@@ -1211,22 +1132,12 @@ module OpenC3
         deploy_target_microservices('COMMANDLOG', command_topic_list, "#{@scope}__COMMAND__{#{@name}}") do |topics, instance, parent|
           deploy_commmandlog_microservice(gem_path, variables, topics, instance, parent)
         end
-
-        # DecomCmdLog Microservice
-        deploy_target_microservices('DECOMCMDLOG', decom_command_topic_list, "#{@scope}__DECOMCMD__{#{@name}}") do |topics, instance, parent|
-          deploy_decomcmdlog_microservice(gem_path, variables, topics, instance, parent)
-        end
       end
 
       unless packet_topic_list.empty?
         # PacketLog Microservice
         deploy_target_microservices('PACKETLOG', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_packetlog_microservice(gem_path, variables, topics, instance, parent)
-        end
-
-        # DecomLog Microservice
-        deploy_target_microservices('DECOMLOG', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
-          deploy_decomlog_microservice(gem_path, variables, topics, instance, parent)
         end
 
         # Decommutation Microservice
@@ -1243,7 +1154,7 @@ module OpenC3
         end
       end
 
-      if @cmd_log_retain_time or @cmd_decom_log_retain_time or @tlm_log_retain_time or @tlm_decom_log_retain_time
+      if @cmd_log_retain_time or @tlm_log_retain_time
         # Cleanup Microservice
         deploy_target_microservices('CLEANUP', nil, nil) do |_, instance, parent|
           deploy_cleanup_microservice(gem_path, variables, instance, parent)

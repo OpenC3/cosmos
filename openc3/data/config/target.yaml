@@ -47,27 +47,6 @@ TARGET:
           required: true
           description: Number of seconds to keep raw command logs (default = nil = Forever)
           values: \d+
-    CMD_DECOM_LOG_CYCLE_TIME:
-      summary: Command decommutation logs can be cycled on a time interval.
-      parameters:
-        - name: Time
-          required: true
-          description: Maximum time between files in seconds (default = 600)
-          values: \d+
-    CMD_DECOM_LOG_CYCLE_SIZE:
-      summary: Command decommutation logs can be cycled after a certain log file size is reached.
-      parameters:
-        - name: Size
-          required: true
-          description: Maximum file size in bytes (default = 50_000_000)
-          values: \d+
-    CMD_DECOM_LOG_RETAIN_TIME:
-      summary: How long to keep decom command logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep decom command logs (default = nil = Forever)
-          values: \d+
     TLM_BUFFER_DEPTH:
       summary: Number of telemetry packets to buffer to ensure logged in order
       since: 5.2.0
@@ -97,27 +76,32 @@ TARGET:
           required: true
           description: Number of seconds to keep raw telemetry logs (default = nil = Forever)
           values: \d+
-    TLM_DECOM_LOG_CYCLE_TIME:
-      summary: Telemetry decommutation logs can be cycled on a time interval.
+    CMD_DECOM_RETAIN_TIME:
+      summary: How long to keep command decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
       parameters:
         - name: Time
           required: true
-          description: Maximum time between files in seconds (default = 600)
-          values: \d+
-    TLM_DECOM_LOG_CYCLE_SIZE:
-      summary: Telemetry decommutation logs can be cycled after a certain log file size is reached.
-      parameters:
-        - name: Size
-          required: true
-          description: Maximum file size in bytes (default = 50_000_000)
-          values: \d+
-    TLM_DECOM_LOG_RETAIN_TIME:
-      summary: How long to keep decom telemetry logs in seconds.
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
+    TLM_DECOM_RETAIN_TIME:
+      summary: How long to keep telemetry decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
       parameters:
         - name: Time
           required: true
-          description: Number of seconds to keep decom telemetry logs (default = nil = Forever)
-          values: \d+
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:
@@ -130,7 +114,7 @@ TARGET:
       parameters:
         - name: Time
           required: true
-          description: Number of seconds between runs of the cleanup process (default = 600 = 10 minutes)
+          description: Number of seconds between runs of the cleanup process (default = 3600 = 1 hour)
           values: \d+
     TARGET_MICROSERVICE:
       summary: Breaks a target microservice out into its own process.
@@ -142,7 +126,7 @@ TARGET:
       parameters:
         - name: Type
           required: true
-          description: The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG or CLEANUP
+          description: The target microservice type. Must be one of DECOM, COMMANDLOG, PACKETLOG, or CLEANUP
           values: .*
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.

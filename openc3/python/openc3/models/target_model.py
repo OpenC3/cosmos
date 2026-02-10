@@ -460,21 +460,15 @@ class TargetModel(Model):
         cmd_log_cycle_time=600,
         cmd_log_cycle_size=50_000_000,
         cmd_log_retain_time=None,
-        cmd_decom_log_cycle_time=600,
-        cmd_decom_log_cycle_size=50_000_000,
-        cmd_decom_log_retain_time=None,
         tlm_buffer_depth=60,
         tlm_log_cycle_time=600,
         tlm_log_cycle_size=50_000_000,
         tlm_log_retain_time=None,
-        tlm_decom_log_cycle_time=600,
-        tlm_decom_log_cycle_size=50_000_000,
-        tlm_decom_log_retain_time=None,
-        cleanup_poll_time=600,
+        cmd_decom_retain_time=None,
+        tlm_decom_retain_time=None,
+        cleanup_poll_time=3600,
         needs_dependencies=False,
-        target_microservices={},
-        reducer_disable=False,
-        reducer_max_cpu_utilization=30.0,
+        target_microservices=None,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
@@ -599,11 +593,6 @@ class TargetModel(Model):
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMLOG__{self.name}", decom_topics)
-            Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
@@ -614,11 +603,6 @@ class TargetModel(Model):
                 {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
-            Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMCMDLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMCMDLOG__{self.name}", decom_topics)
 
     def add_topics_to_microservice(self, microservice_name, topics):
         model = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)

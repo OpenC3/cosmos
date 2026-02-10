@@ -32,7 +32,8 @@ module OpenC3
   # Packet adds is the ability to apply formatting to PacketItem values as well
   # as managing PacketItem's limit states.
   class Packet < Structure
-    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze].freeze
+    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze,
+      'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze, 'COSMOS_EXTRA'.freeze].freeze
     ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with
@@ -1286,13 +1287,6 @@ module OpenC3
     def decom
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
-
-      # Decom extra into the values (all raw)
-      if @extra
-        @extra.each do |key, value|
-          json_hash[key.upcase] = value
-        end
-      end
 
       # Now read all other value types - no accessor required
       @sorted_items.each do |item|

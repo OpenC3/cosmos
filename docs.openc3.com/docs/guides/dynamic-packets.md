@@ -77,6 +77,6 @@ When this method is called several things happen:
 
 1. The COSMOS Redis database is updated with the new packets and the current value table is initialized
 2. A configuration file for the packets is created and stored at &lt;SCOPE&gt;/targets_modified/&lt;TARGET&gt;/cmd_tlm/dynamic_tlm.txt. Note that if you call `dynamic_update` multiple times you should update the filename so it is not written over.
-3. The COSMOS microservices are informed of the new streaming topics which will contain the raw and decommuted packet data. Part of this action is to restart the microservices so they pickup these changes. For COMMANDS the following are restarted: &lt;SCOPE&gt;\_\_COMMANDLOG\_\_&lt;TARGET&gt; and &lt;SCOPE&gt;\_\_DECOMCMDLOG\_\_&lt;TARGET&gt;. For TELEMETRY the following are restarted: &lt;SCOPE&gt;\_\_PACKET_LOG\_\_&lt;TARGET&gt;, &lt;SCOPE&gt;\_\_DECOMLOG\_\_&lt;TARGET&gt;, and &lt;SCOPE&gt;\_\_DECOM\_\_&lt;TARGET&gt;.
+3. The COSMOS microservices are informed of the new streaming topics which will contain the raw and decommuted packet data. Part of this action is to restart the microservices so they pickup these changes. For COMMANDS the following are restarted: &lt;SCOPE&gt;\_\_COMMANDLOG\_\_&lt;TARGET&gt;. For TELEMETRY the following are restarted: &lt;SCOPE&gt;\_\_PACKET_LOG\_\_&lt;TARGET&gt;, &lt;SCOPE&gt;\_\_DECOM\_\_&lt;TARGET&gt;.
 
 Since `dynamic_update` restarts the LOG microservices there is a potential for a loss of packets during the restart. Thus you should not call `dynamic_update` during critical telemetry processing periods.
