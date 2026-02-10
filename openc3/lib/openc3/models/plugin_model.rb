@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -56,6 +56,7 @@ module OpenC3
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
+    attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
     attr_accessor :store_id
     attr_accessor :title
@@ -102,6 +103,8 @@ module OpenC3
         # Extract gem and process plugin.txt to determine what VARIABLEs need to be filled in
         pkg = Gem::Package.new(gem_file_path)
 
+        minimum_cosmos_version = pkg.spec.metadata['openc3_cosmos_minimum_version']
+
         if existing_plugin_txt_lines and process_existing
           # This is only used in openc3cli load when everything is known
           plugin_txt_lines = existing_plugin_txt_lines
@@ -125,11 +128,13 @@ module OpenC3
 
         # Phase 1 Gather Variables
         variables = {}
+        current_variable_name = nil
         parser.parse_file(plugin_txt_path,
                           false,
                           true,
                           false) do |keyword, params|
-          if keyword == 'VARIABLE'
+          case keyword
+          when 'VARIABLE'
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]
@@ -137,15 +142,38 @@ module OpenC3
               raise "VARIABLE name '#{variable_name}' is reserved"
             end
             value = params[1..-1].join(" ")
-            variables[variable_name] = value
+            variables[variable_name] = { 'value' => value }
+            current_variable_name = variable_name
             if existing_variables && existing_variables.key?(variable_name)
-              variables[variable_name] = existing_variables[variable_name]
+              existing = existing_variables[variable_name]
+              # Handle both old format (string) and new format (hash)
+              if existing.is_a?(Hash)
+                variables[variable_name]['value'] = existing['value']
+              else
+                variables[variable_name]['value'] = existing
+              end
             end
+          when 'VARIABLE_DESCRIPTION'
+            usage = "#{keyword} <Description>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_DESCRIPTION must follow a VARIABLE definition"
+            end
+            variables[current_variable_name]['description'] = params[0]
+          when 'VARIABLE_STATE'
+            usage = "#{keyword} <Display Text> <Value>"
+            parser.verify_num_parameters(2, 2, usage)
+            unless current_variable_name
+              raise "VARIABLE_STATE must follow a VARIABLE definition"
+            end
+            variables[current_variable_name]['options'] ||= []
+            option = { 'value' => params[1], 'text' => params[0] }
+            variables[current_variable_name]['options'] << option
           end
         end
 
         store_id = Integer(store_id) if store_id
-        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, scope: scope)
+        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
         result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
@@ -192,6 +220,8 @@ module OpenC3
             raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
+
+        plugin_model.minimum_cosmos_version = pkg.spec.metadata['openc3_cosmos_minimum_version']
 
         # Process app store metadata
         plugin_model.title = pkg.spec.metadata['openc3_store_title'] || pkg.spec.summary.strip
@@ -285,20 +315,26 @@ module OpenC3
           plugin_txt_path = tf.path
           variables = plugin_hash['variables']
           variables ||= {}
-          variables['scope'] = scope
+          # Extract simple key-value pairs for ERB substitution
+          # Variables can be either new format (hash with 'value' key) or old format (string)
+          erb_variables = {}
+          variables.each do |name, var|
+            erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
+          end
+          erb_variables['scope'] = scope
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
             current_model = nil
-            parser.parse_file(plugin_txt_path, false, true, true, variables) do |keyword, params|
+            parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
               case keyword
-              when 'VARIABLE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
                   if current_model
                     current_model.create unless validate_only
-                    current_model.deploy(gem_path, variables, validate_only: validate_only)
+                    current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
                   end
                 # If something goes wrong in create, or more likely in deploy,
                 # we want to clear the current_model and try to instantiate the next
@@ -318,7 +354,7 @@ module OpenC3
             end
             if current_model
               current_model.create unless validate_only
-              current_model.deploy(gem_path, variables, validate_only: validate_only)
+              current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
               current_model = nil
             end
           end
@@ -342,6 +378,7 @@ module OpenC3
       name:,
       variables: {},
       plugin_txt_lines: [],
+      minimum_cosmos_version: nil,
       needs_dependencies: false,
       store_id: nil,
       title: nil,
@@ -357,6 +394,7 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @variables = variables
       @plugin_txt_lines = plugin_txt_lines
+      @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
       @store_id = store_id
       @title = title
@@ -383,6 +421,7 @@ module OpenC3
         'name' => @name,
         'variables' => @variables,
         'plugin_txt_lines' => @plugin_txt_lines,
+        'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
         'store_id' => @store_id,
         'title' => @title,

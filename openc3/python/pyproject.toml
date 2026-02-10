@@ -1,81 +1,82 @@
 [project]
 name = "openc3"
-version = "6.10.4-beta0"
+version = "6.10.5-beta0"
 description = "Python support for OpenC3 COSMOS"
-authors = [
-  {name = "Support", email = "support@openc3.com"}
-]
-readme = "README.md"
+authors = [{ name = "Support", email = "support@openc3.com" }]
+maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
+license = { file = "LICENSE.txt" }
 requires-python = ">=3.10,<4.0"
+readme = "README.md"
+keywords = [
+    "cosmos",
+    "command-and-control",
+    "embedded-systems",
+    "telemetry",
+    "spacecraft",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Embedded Systems",
+]
 dependencies = [
     "boto3 (>=1.36.13,<2.0.0)",
     "cbor2 (>=5.6.5,<6.0.0)",
     "jsonpath-ng (>=1.7.0,<2.0.0)",
+    "orjson>=3.10.0,<4.0.0",
     "lxml (>=6.0.0,<7.0.0)",
     "numpy (>= 2.0, < 3.0)",
     "paho-mqtt (>=2.1.0,<3.0.0)",
     "psycopg[binary,pool] (>=3.2.9,<4.0.0)",
-    "questdb (>= 3.0.0, < 4.0.0)",
-    "redis[hiredis] (>=5.0.0,<6.0.0)",
+    "questdb (>= 4.0.0, < 5.0.0)",
+    "valkey[libvalkey] (>=6.0.0,<7.0.0)",
     "requests (>=2.32.3,<3.0.0)",
     "schedule (>=1.2.2,<2.0.0)",
     "watchdog (>=6.0.0,<7.0.0)",
-    "websockets (>=14.2,<16.0)",
+    "websockets (>=16.0,<17.0)",
     "pyserial>=3.5",
 ]
+
+[project.urls]
+Homepage = "https://openc3.com"
+Documentation = "https://docs.openc3.com"
+Repository = "https://github.com/OpenC3/cosmos"
+Issues = "https://github.com/OpenC3/cosmos/issues"
 
 [project.scripts]
 openc3pycli = "openc3.cli:main"
 
-[tool.poetry.requires-plugins]
-poetry-plugin-export = ">=1.9"
-
-[tool.poetry.group.dev.dependencies]
-black = "^25.9"
-coverage = "^7.10"
-fakeredis = "^2.31"
-pytest = "^9.0"
-ruff = "^0.14"
-pytest-profiling = "^1.8"
-pylint = "^4.0.2"
+[dependency-groups]
+dev = [
+    "coverage>=7.10,<8",
+    "fakeredis>=2.31,<3",
+    "pytest>=9.0,<10",
+    "pytest-profiling>=1.8,<2",
+    "ruff>=0.14,<0.15",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.black]
-line-length = 120
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
-)
-'''
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
-# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
-lint.select = ["E", "F"]
-lint.ignore = ["E402","E501","F402","F403","F405"]
+# Line length to match Black
+line-length = 120
 
-# Allow autofix for all enabled rules (when `--fix`) is provided.
-lint.fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
-lint.unfixable = []
+# Assume Python 3.10 (minimum supported version)
+target-version = "py310"
 
-# Exclude a variety of commonly ignored directories.
+# Exclude a variety of commonly ignored directories
 exclude = [
     ".bzr",
     ".direnv",
@@ -100,11 +101,76 @@ exclude = [
     "venv",
 ]
 
-# Same as Black.
-line-length = 120
+[tool.ruff.lint]
+# Enable multiple rule sets:
+# E/F: pycodestyle + Pyflakes (core Python errors)
+# I: isort (import sorting)
+# N: pep8-naming (naming conventions)
+# UP: pyupgrade (modern Python syntax)
+# B: flake8-bugbear (common bugs and design problems)
+# W: pycodestyle warnings
+# C4: flake8-comprehensions (better list/dict/set comprehensions)
+# SIM: flake8-simplify (simplification suggestions)
+select = ["E", "F", "I", "N", "UP", "B", "W", "C4", "SIM"]
+ignore = [
+    "E402",   # Module level import not at top of file
+    "E501",   # Line too long (handled by formatter)
+    "F402",   # Import shadowed by loop var
+    "F403",   # Star imports used
+    "F405",   # Name may be undefined due to star import
+    "N815",   # Mixed case variable in class scope (common in our codebase)
+    "SIM108", # Use ternary operator (not always more readable)
+]
 
-# Allow unused variables when underscore-prefixed.
-lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+# Allow auto-fixing for safe rules
+fixable = ["ALL"]
+unfixable = []
 
-# Assume Python 3.12
-target-version = "py312"
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.pydocstyle]
+# Use Google-style docstrings
+convention = "google"
+
+[tool.ruff.lint.isort]
+# Group imports: standard library, third-party, first-party
+known-first-party = ["openc3"]
+# Add blank line between import groups
+lines-after-imports = 2
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Use spaces for indentation
+indent-style = "space"
+# Maintain existing line endings
+line-ending = "auto"
+# Enable auto-formatting of docstrings
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["--verbose", "--strict-markers", "--strict-config", "--tb=short"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["openc3"]
+omit = ["*/test/*", "*/tests/*", "*/__pycache__/*", "*/site-packages/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]

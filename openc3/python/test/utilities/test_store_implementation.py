@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,9 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.utilities.store_implementation import Store
 
 
 class TestStoreImplementation(unittest.TestCase):
     def test_help(self):
-        help(Store) # NOSONAR
+        help(Store)

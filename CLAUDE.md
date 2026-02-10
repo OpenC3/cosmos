@@ -13,31 +13,37 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 ## Architecture
 
 ### Microservices (Docker Containers)
+
 - **openc3-cosmos-cmd-tlm-api** - Rails 7.2 REST API for command/telemetry operations
 - **openc3-cosmos-script-runner-api** - Rails 7.2 API for script execution
 - **openc3-operator** - Ruby operator managing interfaces and microservices
-- **openc3-minio** - S3-compatible object storage for logs and configurations
+- **openc3-buckets** - S3-compatible object storage for logs and configurations
 - **openc3-redis** - Data store and pub/sub messaging
 - **openc3-traefik** - Reverse proxy (access at http://localhost:2900)
 
 ### Core Library
+
 - **openc3/** - Ruby gem with ~40 C extensions for performance-critical operations
-- **openc3/python/** - Python library (Poetry-managed) with equivalent functionality
+- **openc3/python/** - Python library (uv-managed) with equivalent functionality
 
 ### Frontend (pnpm Workspace)
+
 Located in `openc3-cosmos-init/plugins/packages/`:
+
 - **openc3-tool-base** - Base Vue 3 components for tools
 - **openc3-vue-common** - Shared Vue 3 components (Vuetify 3)
 - **openc3-js-common** - Shared JavaScript utilities
-- **openc3-cosmos-tool-*** - Individual tool packages (cmdsender, scriptrunner, tlmviewer, etc.)
+- **openc3-cosmos-tool-\*** - Individual tool packages (cmdsender, scriptrunner, tlmviewer, etc.)
 - **openc3-cosmos-demo** - Demo plugin with test targets (INST, INST2, EXAMPLE, TEMPLATED)
 
 ### Communication Flow
+
 Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyCable.
 
 ## Common Commands
 
 ### Docker Management (Primary Development Method)
+
 ```bash
 ./openc3.sh build     # Build all containers from source
 ./openc3.sh start     # Build + run (first time setup)
@@ -47,6 +53,7 @@ Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyC
 ```
 
 ### CLI Commands
+
 ```bash
 ./openc3.sh cli help                          # Show CLI help
 ./openc3.sh cli generate plugin MyPlugin      # Generate new plugin
@@ -56,6 +63,7 @@ Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyC
 ```
 
 ### Ruby Tests
+
 ```bash
 cd openc3
 bundle install
@@ -65,17 +73,83 @@ bundle exec rspec spec/path/to/spec.rb           # Run single test file
 bundle exec rspec spec/path/to/spec.rb:42        # Run specific line
 ```
 
-### Python Tests
+### Python Development
+
+#### First Time Setup
+
+Install required tools (macOS):
+
 ```bash
-cd openc3/python
-poetry install
-poetry run ruff check openc3                     # Lint
-poetry run pytest                                # Run all tests
-poetry run pytest test/path/to/test.py           # Run single test file
-poetry run coverage run -m pytest && poetry run coverage report
+brew install uv ruff just
 ```
 
+Setup Python environment:
+
+```bash
+cd openc3/python
+uv python install                                # Install Python from .python-version
+uv sync                                          # Create venv and install dependencies
+```
+
+#### Common Python Commands
+
+**Using Just (recommended):**
+```bash
+just                                             # Show all available commands
+just test                                        # Run all tests
+just test-cov                                    # Run tests with coverage
+just lint                                        # Check code quality
+just format                                      # Format all code
+just verify                                      # Format, lint, and test everything
+just verify-changed                              # Fast check of only changed files
+just add PACKAGE                                 # Add new dependency
+just update                                      # Update all dependencies
+```
+
+**Manual commands:**
+```bash
+uv run pytest                                    # Run all tests
+uv run pytest test/path/to/test.py               # Run single test file
+uv run ruff check openc3                         # Lint
+uv run ruff format openc3                        # Format
+uv run ruff check openc3 --fix                   # Lint and auto-fix
+uv run coverage run -m pytest && uv run coverage report  # Coverage
+```
+
+#### UV Workflow Tips
+
+**Adding dependencies:**
+```bash
+uv add package-name                              # Add runtime dependency
+uv add --dev package-name                        # Add dev dependency
+uv sync                                          # Install after manual pyproject.toml edits
+```
+
+**Updating dependencies:**
+```bash
+uv lock --upgrade                                # Update uv.lock
+uv sync                                          # Install updated dependencies
+```
+
+**Managing Python versions:**
+```bash
+uv python list                                   # List available Python versions
+uv python install 3.13                           # Install specific Python version
+uv python pin 3.13                               # Update .python-version
+```
+
+**Troubleshooting:**
+```bash
+rm -rf .venv && uv sync                          # Reset virtual environment
+uv cache clean                                   # Clear uv cache
+uv python list --only-installed                  # Show installed Python versions
+```
+
+**Migration from Poetry:**
+See `openc3/python/README-DEV.md` for detailed migration instructions.
+
 ### Frontend (Vue.js/Vuetify)
+
 ```bash
 cd openc3-cosmos-init/plugins
 pnpm install
@@ -84,12 +158,14 @@ pnpm lint                     # ESLint, run from the openc3-cosmos-init/plugins/
 ```
 
 ### API Tests (Rails)
+
 ```bash
 cd openc3-cosmos-cmd-tlm-api && bundle exec rspec
 cd openc3-cosmos-script-runner-api && bundle exec rspec
 ```
 
 ### Playwright E2E Tests
+
 ```bash
 cd playwright
 pnpm install
@@ -105,6 +181,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 ```
 
 ### Test Commands via Docker
+
 ```bash
 ./openc3.sh test rspec        # Run Ruby tests in container
 ./openc3.sh test playwright   # Run Playwright tests
@@ -114,32 +191,64 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 - **Ruby 3.4** - Backend APIs and core library
 - **Rails 7.2** - REST APIs with AnyCable for WebSockets
-- **Python 3.10-3.12** - Alternative scripting language
+- **Python 3.10-3.14** - Alternative scripting language
+- **UV** - Python package manager (fast Rust-based replacement for pip/poetry)
+- **Ruff** - Python linter and formatter (fast Rust-based replacement for flake8/black)
 - **Vue.js 3 + Vuetify 3** - Frontend UI framework
 - **Vite** - Frontend build tool
 - **pnpm 10** - Frontend package management (monorepo workspace)
 - **Node.js 24** - JavaScript runtime
 - **Docker Compose** - Container orchestration
 - **Redis** - Caching, pub/sub, ephemeral state
-- **MinIO** - S3-compatible object storage
+- **Versitygw** - S3-compatible object storage
 - **Playwright** - E2E testing
 
 ## Code Style
 
+### Installing Hooks
+
+After cloning the repository, install git hooks to ensure code quality and consistency:
+
+```bash
+./hooks/install.sh
+```
+
+This installs:
+
+- **pre-commit** - Automatically updates copyright years in modified files to the current year
+
 ### File Headers
-- When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2025). Do NOT modify the Ball Aerospace copyright line.
+
+- When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2026). Do NOT modify the Ball Aerospace copyright line.
+- The pre-commit hook automatically handles this if installed.
 
 ### Ruby
+
 - RuboCop configured in `.rubocop.yml` (many rules disabled)
 - Target Ruby version: 3.4
 
 ### Python
-- Ruff for linting (pycodestyle E + Pyflakes F rules)
-- Line length: 120
-- Target Python: 3.12
-- Config in `openc3/python/pyproject.toml`
+
+- **Package Manager**: UV (fast Rust-based replacement for pip/poetry)
+- **Linter & Formatter**: Ruff (replaces flake8, black, isort)
+- **Active Rules**: E, F, I, N, UP, B, W, C4, SIM (pycodestyle, Pyflakes, isort, naming, pyupgrade, bugbear, simplify)
+- **Line Length**: 120
+- **Target Python**: 3.10 (minimum ruff target for backwards compatibility)
+- **Docker Python**: 3.12 (used in Alpine/UBI base images)
+- **Supported Versions**: 3.11, 3.12, 3.13 (Docker version ±1)
+- **Config**: `openc3/python/pyproject.toml`
+- **Lockfile**: `openc3/python/uv.lock` (replaces poetry.lock)
+- **Python Version**: `openc3/python/.python-version` (default: 3.12)
+
+**Important UV Notes:**
+- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
+- Use `uv sync --locked` in development (updates if out of sync)
+- Use `uv run` instead of activating the venv manually
+- The lockfile (`uv.lock`) must be committed to git
+- Don't commit `.venv` directory (it's in .gitignore)
 
 ### JavaScript/TypeScript
+
 - ESLint 9 with Vue parser
 - Prettier for formatting
 - Config in `openc3-cosmos-init/plugins/eslint.config.mjs`
@@ -149,6 +258,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 Plugins extend COSMOS with new targets, tools, and interfaces. Located in `openc3-cosmos-init/plugins/packages/`.
 
 Each plugin is a Ruby gem containing:
+
 - Target definitions (commands, telemetry, screens)
 - Optional Vue.js tools
 - Interface implementations

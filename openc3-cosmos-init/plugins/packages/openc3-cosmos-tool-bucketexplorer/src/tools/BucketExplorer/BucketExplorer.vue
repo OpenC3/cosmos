@@ -1,5 +1,5 @@
 <!--
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -192,6 +192,15 @@
             aria-label="Delete File"
             @click="deleteFile(item.name)"
           />
+          <v-btn
+            v-if="item.icon === 'mdi-folder'"
+            icon="mdi-delete"
+            variant="text"
+            density="compact"
+            data-test="delete-directory"
+            aria-label="Delete Directory"
+            @click.stop="deleteDirectory(item.name)"
+          />
         </template>
       </v-data-table>
     </v-card>
@@ -254,40 +263,49 @@
       @keydown.esc="cancelChangeRefreshInterval"
     >
       <v-card>
-        <v-toolbar height="24">
-          <v-spacer />
-          <span>Options</span>
-          <v-spacer />
-        </v-toolbar>
-        <v-card-text>
-          <div class="pa-3">
-            <v-text-field
-              v-model="refreshInterval"
-              min="1"
-              max="3600"
-              step="100"
-              type="number"
-              label="Refresh Interval (s)"
-              data-test="refresh-interval"
-            />
-          </div>
-        </v-card-text>
-        <v-card-actions class="px-2">
-          <v-btn
-            data-test="options-close-btn"
-            variant="outlined"
-            @click="saveRefreshInterval"
-          >
-            Save
-          </v-btn>
-          <v-btn
-            data-test="options-close-btn"
-            variant="outlined"
-            @click="cancelChangeRefreshInterval"
-          >
-            Cancel
-          </v-btn>
-        </v-card-actions>
+        <v-form v-model="optionsFormValid" @submit.prevent>
+          <v-toolbar height="24">
+            <v-spacer />
+            <span>Options</span>
+            <v-spacer />
+          </v-toolbar>
+          <v-card-text>
+            <div class="pa-3">
+              <v-row>
+                <v-text-field
+                  v-model="refreshInterval"
+                  min="1"
+                  max="3600"
+                  step="1"
+                  type="number"
+                  label="Refresh Interval (s)"
+                  :rules="[rules.required, rules.min]"
+                  data-test="refresh-interval"
+              /></v-row>
+              <v-row class="mt-5">
+                <v-spacer />
+                <v-btn
+                  variant="outlined"
+                  class="mx-2"
+                  data-test="options-cancel-btn"
+                  @click="cancelChangeRefreshInterval"
+                >
+                  Cancel
+                </v-btn>
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  class="mx-2"
+                  :disabled="!optionsFormValid"
+                  data-test="options-save-btn"
+                  @click="saveRefreshInterval"
+                >
+                  Save
+                </v-btn>
+              </v-row>
+            </div>
+          </v-card-text>
+        </v-form>
       </v-card>
     </v-dialog>
     <output-dialog
@@ -328,6 +346,7 @@ export default {
       volumes: [],
       uploadPathDialog: false,
       optionsDialog: false,
+      optionsFormValid: true,
       refreshInterval,
       refreshIntervalKey,
       updater: null,
@@ -384,6 +403,10 @@ export default {
           ],
         },
       ],
+      rules: {
+        required: (value) => !!value || 'Required',
+        min: (value) => value >= 1 || 'Must be at least 1',
+      },
     }
   },
   computed: {
@@ -696,6 +719,41 @@ export default {
           this.updateFiles()
         })
         .catch((err) => {})
+    },
+    deleteDirectory(dirname) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
+      this.$dialog
+        .confirm(
+          `Are you sure you want to delete the directory "${dirname}" and ALL its contents? This cannot be undone.`,
+          {
+            okText: 'Delete Directory',
+            cancelText: 'Cancel',
+          },
+        )
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/storage/delete_directory/${encodeURIComponent(
+              this.path,
+            )}${dirname}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
+          )
+        })
+        .then((response) => {
+          const count = response.data.deleted_count || 0
+          this.$notify.normal({
+            title: `Deleted directory "${dirname}" (${count} files)`,
+          })
+          this.updateFiles()
+        })
+        .catch((err) => {
+          if (err?.response?.data?.message) {
+            this.$notify.caution({
+              title: `Failed to delete directory: ${err.response.data.message}`,
+            })
+          }
+        })
     },
     updateFiles() {
       let root = this.root.toUpperCase()

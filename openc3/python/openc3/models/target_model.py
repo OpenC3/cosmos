@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -21,19 +21,19 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import json
-import time
 import threading
+import time
 from typing import Any
-from openc3.environment import OPENC3_SCOPE
-from openc3.topics.topic import Topic
-from openc3.models.model import Model
+
+from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
 from openc3.models.microservice_model import MicroserviceModel
-from openc3.utilities.json import JsonEncoder
-from openc3.utilities.store import Store, openc3_redis_cluster
-from openc3.utilities.logger import Logger
-from openc3.utilities.bucket import Bucket
+from openc3.models.model import Model
 from openc3.system.system import System
-from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.topics.topic import Topic
+from openc3.utilities.bucket import Bucket
+from openc3.utilities.json import JsonEncoder
+from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store, openc3_redis_cluster
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -47,10 +47,13 @@ class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
     VALID_TYPES = {"CMD", "TLM"}
     ITEM_MAP_CACHE_TIMEOUT = 10.0
+    PACKET_CACHE_TIMEOUT = 10.0
     item_map_cache = {}
+    packet_cache = {}
+    packet_cache_lock = threading.Lock()
     sync_packet_count_data = {}
     sync_packet_count_time = None
-    sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -78,11 +81,24 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
+        # Check cache first
+        cache_key = f"{scope}__{type}__{target_name}__{packet_name}"
+        with cls.packet_cache_lock:
+            cached = cls.packet_cache.get(cache_key)
+            if cached and (time.time() - cached["time"]) < cls.PACKET_CACHE_TIMEOUT:
+                return cached["packet"]
+
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
         json_data = Store.hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
-        return json.loads(json_data)
+        packet = json.loads(json_data)
+
+        # Store in cache
+        with cls.packet_cache_lock:
+            cls.packet_cache[cache_key] = {"packet": packet, "time": time.time()}
+
+        return packet
 
     @classmethod
     def packets(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
@@ -110,6 +126,11 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
+        # Invalidate cache entry
+        cache_key = f"{scope}__{type}__{target_name}__{packet_name}"
+        with cls.packet_cache_lock:
+            cls.packet_cache.pop(cache_key, None)
+
         try:
             Store.hset(
                 f"{scope}__openc3{type.lower()}__{target_name}",
@@ -119,6 +140,11 @@ class TargetModel(Model):
         except (TypeError, RuntimeError) as error:
             Logger.error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
             raise error
+
+    @classmethod
+    def clear_packet_cache(cls):
+        with cls.packet_cache_lock:
+            cls.packet_cache.clear()
 
     @classmethod
     def packet_item(
@@ -289,15 +315,17 @@ class TargetModel(Model):
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                 update_packet = System.telemetry.packet(target_name, packet_name.decode())
                 update_packet.received_count = int(count)
-        for packet_name, count in TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope).items():
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+        for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
+            update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
             update_packet.received_count = int(count)
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
         if cls.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
             # Perfect but slow method
-            packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
+            packet.received_count = TargetModel.increment_telemetry_count(
+                packet.target_name, packet.packet_name, 1, scope=scope
+            )
         else:
             # Eventually consistent method
             # Only sync every period (default 1 second) to avoid hammering Redis
@@ -315,7 +343,10 @@ class TargetModel(Model):
             packet.received_count = update_packet.received_count
 
             # Check if we need to sync the packet counts
-            if cls.sync_packet_count_time is None or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds:
+            if (
+                cls.sync_packet_count_time is None
+                or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
+            ):
                 cls.sync_packet_count_time = time.time()
 
                 result = []
@@ -336,7 +367,7 @@ class TargetModel(Model):
                         # Get all the packet counts with the global counters
                         for target_name in tlm_target_names:
                             TargetModel.get_all_telemetry_counts(target_name, scope=scope)
-                        TargetModel.get_all_telemetry_counts('UNKNOWN', scope=scope)
+                        TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope)
 
                         result = pipeline.execute()
                     finally:
@@ -347,7 +378,7 @@ class TargetModel(Model):
                         update_packet.received_count = int(count)
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())
+                    update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
                     update_packet.received_count = int(count)
 
     @classmethod
@@ -417,11 +448,11 @@ class TargetModel(Model):
         self,
         name: str,
         folder_name=None,
-        requires=[],
-        ignored_parameters=[],
-        ignored_items=[],
-        limits_groups=[],
-        cmd_tlm_files=[],
+        requires=None,
+        ignored_parameters=None,
+        ignored_items=None,
+        limits_groups=None,
+        cmd_tlm_files=None,
         id=None,
         updated_at=None,
         plugin=None,
@@ -444,13 +475,25 @@ class TargetModel(Model):
         reduced_day_log_retain_time=None,
         cleanup_poll_time=600,
         needs_dependencies=False,
-        target_microservices={"REDUCER": [[]]},
+        target_microservices=None,
         reducer_disable=False,
         reducer_max_cpu_utilization=30.0,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
     ):
+        if target_microservices is None:
+            target_microservices = {"REDUCER": [[]]}
+        if cmd_tlm_files is None:
+            cmd_tlm_files = []
+        if limits_groups is None:
+            limits_groups = []
+        if ignored_items is None:
+            ignored_items = []
+        if ignored_parameters is None:
+            ignored_parameters = []
+        if requires is None:
+            requires = []
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,
@@ -508,7 +551,7 @@ class TargetModel(Model):
         packet_hash = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not packet_hash.get(target_name, None):
+            if not packet_hash.get(target_name):
                 packet_hash[target_name] = {}
             packet_name = packet.packet_name.upper()
             packet_hash[target_name][packet_name] = packet
@@ -524,14 +567,14 @@ class TargetModel(Model):
         configs = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not configs.get(target_name, None):
+            if not configs.get(target_name):
                 configs[target_name] = ""
             config = configs[target_name]
             config += packet.to_config(cmd_or_tlm)
             config += "\n"
         for target_name, config in configs.items():
             bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
-            client = Bucket.getClient()
+            client = Bucket.get_client()
             client.put_object(
                 # Use targets_modified to save modifications
                 # This keeps the original target clean (read-only)

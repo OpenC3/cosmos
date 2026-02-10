@@ -4,7 +4,7 @@ set +e
 
 export DOCKER_COMPOSE_COMMAND="docker compose"
 ${DOCKER_COMPOSE_COMMAND} version
-if [ "$?" -ne 0 ]; then
+if [[ "$?" -ne 0 ]]; then
   export DOCKER_COMPOSE_COMMAND="docker-compose"
 fi
 
@@ -17,18 +17,18 @@ usage() {
   exit 1
 }
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   usage $0
 fi
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   usage $0
 fi
 
 case $1 in
   rspec )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 rspec"
       echo ""
       echo "Run RSpec tests against Ruby code in the openc3 directory."
@@ -43,7 +43,7 @@ case $1 in
     ;;
 
   playwright )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 playwright [COMMAND]"
       echo ""
       echo "Run Playwright end-to-end tests."
@@ -95,7 +95,7 @@ case $1 in
     ;;
 
   hash )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 hash"
       echo ""
       echo "Run comprehensive Playwright tests with coverage."

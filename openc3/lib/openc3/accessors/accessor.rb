@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -85,7 +85,7 @@ module OpenC3
 
     # This sets the short_buffer_allowed flag in the Packet class
     # which allows packets that have a buffer shorter than the defined size.
-    # Note that the buffer is still resized to the defined length
+    # Items outside the buffer bounds will return nil when read.
     def enforce_short_buffer_allowed
       return false
     end
@@ -135,7 +135,7 @@ module OpenC3
       when :STRING, :BLOCK
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value =  value.map { |v| v.to_s }
+          value = value.map { |v| v.to_s }
         else
           value = value.to_s
         end

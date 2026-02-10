@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -872,7 +872,7 @@ module OpenC3
           tf.puts '  READ_CONVERSION conversion2.rb'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01"
+          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01\x00"
           expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1")).to eql 2
           tf.unlink
 
@@ -898,7 +898,7 @@ module OpenC3
           tf.puts '  POLY_READ_CONVERSION 5 2'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01"
+          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01\x00"
           expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1")).to eql 7.0
           tf.unlink
 
@@ -923,9 +923,9 @@ module OpenC3
           tf.puts '  SEG_POLY_READ_CONVERSION 5 2 3'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01"
+          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01\x00"
           expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1")).to eql 3.0
-          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x05"
+          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x05\x00"
           expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1")).to eql 17.0
           tf.unlink
 
@@ -1002,7 +1002,7 @@ module OpenC3
           item = @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
           expect(item.limits.values.length).to eql 2
           # Verify the last defined DEFAULT limits wins
-          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04"
+          @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04\x00"
           @pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
           @pc.telemetry["TGT1"]["PKT1"].check_limits
           expect(item.limits.state).to eql :RED_LOW

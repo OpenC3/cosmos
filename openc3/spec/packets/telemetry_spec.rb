@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -623,8 +623,12 @@ module OpenC3
         items['TGT1 PKT1'] = %w(ITEM1 ITEM2 ITEM3 ITEM4)
         items['TGT1 PKT2'] = %w(ITEM1 ITEM2)
         items['TGT2 PKT1'] = %w(ITEM1 ITEM2)
+        # These are the items auto-added by define_reserved_items()
+        # Note: TIMESTAMP and RX_TIMESTAMP are in RESERVED_ITEM_NAMES but
+        # are not auto-added - they're just reserved to prevent user collision
+        auto_added_items = %w(PACKET_TIMESECONDS PACKET_TIMEFORMATTED RECEIVED_TIMESECONDS RECEIVED_TIMEFORMATTED RECEIVED_COUNT)
         items.each do |tgt_pkt, items|
-          Packet::RESERVED_ITEM_NAMES.each do |item|
+          auto_added_items.each do |item|
             expect(strings).to include("#{tgt_pkt} #{item}")
           end
           items.each do |item|

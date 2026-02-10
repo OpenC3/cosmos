@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: openc3_setup.sh"
   echo ""
   echo "Sets up OpenC3 dependencies and downloads necessary certificates."
@@ -39,14 +39,14 @@ then
   fi
 fi
 
-if [ ! -f ./cacert.pem ]; then
-  if [ ! -z "$SSL_CERT_FILE" ]; then
+if [[ ! -f ./cacert.pem ]]; then
+  if [[ -n "$SSL_CERT_FILE" ]]; then
     cp $SSL_CERT_FILE ./cacert.pem
     echo Using $SSL_CERT_FILE as cacert.pem
   else
     echo "Downloading cert from curl"
     curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
       echo "openc3_setup FAILED" 1>&2
       exit 1
@@ -61,11 +61,11 @@ fi
 cp ./cacert.pem openc3-ruby/cacert.pem
 cp ./cacert.pem openc3-redis/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
-cp ./cacert.pem openc3-minio/cacert.pem
+cp ./cacert.pem openc3-buckets/cacert.pem
 cp ./cacert.pem openc3-tsdb/cacert.pem
 
 docker --version
-if [ "$?" -ne 0 ]; then
+if [[ "$?" -ne 0 ]]; then
   echo "ERROR: docker is not installed, please install and try again." 1>&2
   echo "${0} FAILED" 1>&2
   exit 1

@@ -11,6 +11,12 @@ Log Explorer allows you to view, search, and export historical log data from you
 
 ![Log Explorer](/img/log_explorer/log_explorer.png)
 
+### Feature Highlight Video of Log Explorer
+
+<div style={{textAlign: 'center'}}>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/C2Nlrc9wmXk" title="COSMOS Feature Highlight - Log Explorer" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+</div>
+
 ## Features
 
 ### Log Viewing

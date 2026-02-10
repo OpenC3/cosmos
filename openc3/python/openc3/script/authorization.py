@@ -18,13 +18,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import logging
+import time
+
 import requests
 
 from openc3.__version__ import __title__
 from openc3.environment import *
+
 from .decorators import request_wrapper
+
 
 LOGGER = logging.getLogger(__title__)
 
@@ -90,9 +93,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
 
     def _time_logic(self):
         current_time = time.time()
-        if self.token is None:
-            self._make_token()
-        elif self.refresh_expires_at < current_time:
+        if self.token is None or self.refresh_expires_at < current_time:
             self._make_token()
         elif self.expires_at < current_time:
             self._refresh_token()

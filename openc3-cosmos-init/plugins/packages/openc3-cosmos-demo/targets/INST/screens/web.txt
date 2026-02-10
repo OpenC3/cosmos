@@ -1,5 +1,9 @@
 SCREEN AUTO AUTO 1.0
 
-VERTICAL
-  IFRAME https://openc3.com 900 450
+HORIZONTAL
+  SETTING RAW width 100%
+  SETTING RAW justify-content space-between
+  BUTTON 'App Store' "api.open_tab('https://store.openc3.com')"
+  BUTTON 'Github' "api.open_tab('https://github.com/OpenC3/cosmos', true)"
 END
+IFRAME https://openc3.com 900 450

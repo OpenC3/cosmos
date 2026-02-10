@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,44 +23,82 @@
 <template>
   <v-dialog v-model="show" persistent width="80vw" @keydown.esc="close">
     <v-card>
-      <v-card-text>
-        <v-card-title>{{ pluginName }} </v-card-title>
-        <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
-          <v-icon size="x-large" start color="yellow"> mdi-alert-box </v-icon>
-          <div style="flex: 1">
-            The existing plugin.txt is different from the {{ pluginName }}'s
-            plugin.txt. Navigate the diffs making whatever edits you want before
-            installing. You may want to update {{ pluginName }}'s plugin.txt
-            going forward.
-          </div>
-        </v-row>
-        <v-row class="pb-3 pr-3">
-          <v-tabs v-model="tab" class="ml-3">
-            <v-tab :key="0"> Variables </v-tab>
-            <v-tab :key="1"> plugin.txt </v-tab>
-          </v-tabs>
-        </v-row>
+      <v-card-title>{{ pluginName }}</v-card-title>
+      <v-card-text class="pt-0">
+        <v-alert
+          v-if="existingPluginTxt !== null"
+          type="warning"
+          variant="tonal"
+          class="mb-3"
+        >
+          The existing plugin.txt is different from the {{ pluginName }}'s
+          plugin.txt. Navigate the diffs making whatever edits you want before
+          installing. You may want to update {{ pluginName }}'s plugin.txt going
+          forward.
+        </v-alert>
+        <v-tabs v-model="tab" class="mb-3">
+          <v-tab :key="0"> Variables </v-tab>
+          <v-tab :key="1"> plugin.txt </v-tab>
+        </v-tabs>
         <form @submit.prevent="onSubmit">
           <v-window v-model="tab">
-            <v-window-item :key="0" eager="true" class="tab">
-              <div class="pa-3">
-                <v-row class="mt-3">
-                  <div v-for="(value, name) in localVariables" :key="name">
-                    <v-col style="width: 220px">
-                      <v-text-field
-                        v-model="localVariables[name]"
-                        clearable
-                        type="text"
-                        :label="name"
-                      />
-                    </v-col>
-                  </div>
-                </v-row>
+            <v-window-item :value="0" eager="true" class="tab">
+              <div
+                v-if="Object.keys(localVariables).length === 0"
+                class="text-body-1 text-medium-emphasis pa-3"
+              >
+                No variables defined for this plugin.
               </div>
+              <v-row v-else class="pt-2">
+                <v-col
+                  v-for="(variable, name) in localVariables"
+                  :key="name"
+                  cols="12"
+                  sm="6"
+                  md="3"
+                >
+                  <!-- Combobox for variables with options -->
+                  <v-combobox
+                    v-if="hasOptions(variable)"
+                    v-model="variable.value"
+                    :items="getOptionItems(variable)"
+                    item-title="text"
+                    item-value="value"
+                    :return-object="false"
+                    :label="name"
+                    :hint="getDescription(variable)"
+                    persistent-hint
+                    density="comfortable"
+                    variant="outlined"
+                    data-test="variable-combobox"
+                  >
+                    <template #item="{ item, props }">
+                      <v-list-item v-bind="props">
+                        <template #title>
+                          {{ item.raw.text }}
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-combobox>
+
+                  <!-- Text field for variables without options -->
+                  <v-text-field
+                    v-else
+                    v-model="variable.value"
+                    :label="name"
+                    :hint="getDescription(variable)"
+                    persistent-hint
+                    clearable
+                    density="comfortable"
+                    variant="outlined"
+                    data-test="variable-text"
+                  />
+                </v-col>
+              </v-row>
             </v-window-item>
             <v-window-item
               v-if="existingPluginTxt === null"
-              :key="1 + '-new'"
+              :value="1"
               eager="true"
               class="tab"
             >
@@ -88,12 +126,7 @@
                 </v-list>
               </v-menu>
             </v-window-item>
-            <v-window-item
-              v-else
-              :key="1 + '-existing'"
-              eager="true"
-              class="tab"
-            >
+            <v-window-item v-else :value="1" eager="true" class="tab">
               <v-row class="pa-3">
                 <v-col>
                   Existing plugin.txt. This can be edited before installation.
@@ -121,7 +154,11 @@
             >
               Cancel
             </v-btn>
-            <v-btn variant="flat" data-test="edit-submit" @click="submit">
+            <v-btn
+              variant="flat"
+              data-test="edit-submit"
+              @click="checkVersionAndSubmit"
+            >
               Install
             </v-btn>
           </v-card-actions>
@@ -137,9 +174,11 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import AceDiff from '@openc3/ace-diff'
-import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+import AceDiff from 'ace-diff'
+import 'ace-diff/dist/ace-diff-twilight.min.css'
+import { Api } from '@openc3/js-common/services'
 import { toRaw } from 'vue'
+import * as semver from 'semver'
 import { AceEditorUtils } from '../../components/ace'
 
 export default {
@@ -166,13 +205,19 @@ export default {
       required: false,
       default: null,
     },
+    minCosmosVersion: {
+      type: String,
+      required: false,
+      default: undefined,
+    },
     modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   emits: ['callback', 'update:modelValue'],
   data() {
     return {
+      installedCosmosVersion: null,
       tab: 0,
-      localVariables: [],
+      localVariables: {},
       localPluginTxt: '',
       localExistingPluginTxt: null,
       editor: null,
@@ -196,13 +241,30 @@ export default {
     value: {
       immediate: true,
       handler: function () {
-        this.localVariables = JSON.parse(JSON.stringify(this.variables)) // deep copy
+        // Deep copy and normalize variables to new format
+        // Handles both old format (string values) and new format (hash with value/description/options)
+        const rawVariables = JSON.parse(JSON.stringify(this.variables))
+        this.localVariables = {}
+        for (const [name, variable] of Object.entries(rawVariables)) {
+          if (typeof variable === 'string') {
+            // Old format: convert to new format
+            this.localVariables[name] = { value: variable }
+          } else {
+            // New format: use as-is
+            this.localVariables[name] = variable
+          }
+        }
         this.localPluginTxt = this.pluginTxt.slice()
         if (this.existingPluginTxt !== null) {
           this.localExistingPluginTxt = this.existingPluginTxt.slice()
         }
       },
     },
+  },
+  created() {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.installedCosmosVersion = data.version
+    })
   },
   mounted() {
     const pluginMode = this.buildPluginMode()
@@ -288,7 +350,7 @@ export default {
       ).RubyHighlightRules
 
       // TODO: Grab from code
-      let keywords = ['VARIABLE']
+      let keywords = ['VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE']
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
       let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
@@ -322,6 +384,30 @@ export default {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
+    },
+    checkVersionAndSubmit: function () {
+      const versionsAreCompatible =
+        !this.installedCosmosVersion ||
+        !this.minCosmosVersion ||
+        semver.gte(this.installedCosmosVersion, this.minCosmosVersion)
+      if (versionsAreCompatible) {
+        this.submit()
+      } else {
+        this.$dialog
+          .confirm(
+            `This plugin requires a minimum COSMOS version of ${this.minCosmosVersion}, which is greater than your installed version (${this.installedCosmosVersion}). Install anyway?`,
+            {
+              okText: 'Install',
+              cancelText: 'Cancel',
+            },
+          )
+          .then((dialog) => {
+            this.submit()
+          })
+          .catch((error) => {
+            this.close()
+          })
+      }
     },
     submit: function () {
       if (this.existingPluginTxt === null) {
@@ -385,6 +471,20 @@ export default {
         // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
       }
     },
+    // Helper methods for variable display
+    hasOptions(variable) {
+      return variable.options && variable.options.length > 0
+    },
+    getDescription(variable) {
+      return variable.description || ''
+    },
+    getOptionItems(variable) {
+      if (!variable.options) return []
+      return variable.options.map((opt) => ({
+        text: opt.text || opt.value,
+        value: opt.value,
+      }))
+    },
   },
 }
 </script>
@@ -394,11 +494,6 @@ export default {
   height: 50vh;
   position: relative;
   font-size: 16px;
-}
-
-.notice {
-  font-size: 20px;
-  margin: 10px;
 }
 .tab {
   background-color: var(--color-background-surface-default);

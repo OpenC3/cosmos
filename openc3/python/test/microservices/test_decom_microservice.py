@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,23 +14,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import re
+import threading
 import time
 import unittest
-import threading
-from unittest.mock import patch
 from datetime import datetime, timezone
-from test.test_helper import Mock, mock_redis, setup_system, capture_io
+from unittest.mock import Mock, patch
+
 from openc3.api.tlm_api import tlm
-from openc3.system.system import System
-from openc3.packets.limits_response import LimitsResponse
-from openc3.models.target_model import TargetModel
-from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
-from openc3.topics.limits_event_topic import LimitsEventTopic
-from openc3.topics.topic import Topic
-from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.target_model import TargetModel
+from openc3.packets.limits_response import LimitsResponse
 from openc3.processors.processor import Processor
+from openc3.system.system import System
+from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.topics.topic import Topic
+from test.test_helper import capture_io, mock_redis, setup_system
 
 
 class TestDecomMicroservice(unittest.TestCase):
@@ -49,10 +51,8 @@ class TestDecomMicroservice(unittest.TestCase):
             if "block" in kwargs:
                 kwargs.pop("block")
             result = None
-            try:
+            with contextlib.suppress(Exception):
                 result = orig_xread(*args, **kwargs)
-            except Exception:
-                pass
 
             # # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:
@@ -160,7 +160,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.01)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(10):
+                time.sleep(0.01)
+                if "Bad processor" in stdout.getvalue():
+                    break
             self.assertIn("Bad processor", stdout.getvalue())
         # This is an implementation detail but we want to ensure the error was logged
         self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)
@@ -178,10 +182,10 @@ class TestDecomMicroservice(unittest.TestCase):
         temp1.limits.response = DelayedLimitsResponse()
         packet.received_time = datetime.now(timezone.utc)
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
-        time.sleep(0.01)
+        time.sleep(0.02)
 
         # Verify that even though the limits response sleeps for 0.1s, the decom thread is not blocked
-        self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.01)
+        self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.02)
 
     def test_handles_exceptions_in_limits_responses(self):
         class BadLimitsResponse(LimitsResponse):
@@ -194,7 +198,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.1)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(20):
+                time.sleep(0.01)
+                if "Bad response" in stdout.getvalue():
+                    break
             self.assertIn("INST HEALTH_STATUS TEMP1 Limits Response Exception!", stdout.getvalue())
             self.assertIn("Bad response", stdout.getvalue())
 

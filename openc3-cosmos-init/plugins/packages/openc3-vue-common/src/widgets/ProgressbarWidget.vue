@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -51,14 +51,17 @@ export default {
     _value: function () {
       let value = this.value
       if (value === null) {
+        if (!this.screenValues[this.valueId]) {
+          return 0
+        }
         value = this.screenValues[this.valueId][0]
       }
-      return parseInt(parseFloat(value) * this.scaleFactor)
+      return Number.parseInt(Number.parseFloat(value) * this.scaleFactor)
     },
   },
   created: function () {
     if (this.parameters[3]) {
-      this.scaleFactor = parseFloat(this.parameters[3])
+      this.scaleFactor = Number.parseFloat(this.parameters[3])
     }
     this.width = this.setWidth(this.parameters[4], 'px', this.width)
     // If they're not passing us the value we have to register

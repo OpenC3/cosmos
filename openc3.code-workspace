@@ -1,62 +1,65 @@
 {
   "folders": [
     {
-      "path": "."
+      "path": ".",
     },
     {
-      "path": "../cosmos-project"
+      "path": "../cosmos-project",
     },
     {
-      "path": "../cosmos-enterprise"
+      "path": "../cosmos-enterprise",
     },
     {
-      "path": "../cosmos-enterprise-project"
+      "path": "../cosmos-enterprise-project",
     },
     {
-      "path": "../cosmos-enterprise-plugins"
+      "path": "../cosmos-enterprise-plugins",
     },
     {
-      "path": "../openc3-news"
+      "path": "../openc3-news",
     },
     {
-      "path": "../openc3-cosmos-cfdp"
+      "path": "../openc3-cosmos-cfdp",
     },
     {
-      "path": "../app-store"
+      "path": "../app-store",
     },
     {
-      "path": "../openc3-cosmos-load-sim"
+      "path": "../openc3-cosmos-load-sim",
     },
     {
-      "path": "../openc3-schedule"
+      "path": "../openc3-schedule",
     },
     {
-      "path": "../../Development/openc3-cosmos-zendir"
+      "path": "../../Development/openc3-cosmos-zendir",
     },
     {
-      "path": "../../Development/openc3-cosmos-vueflow"
+      "path": "../../Development/openc3-cosmos-vueflow",
     },
     {
-      "path": "../../Development/fprime"
+      "path": "../../Development/fprime",
     },
     {
-      "path": "../openc3-cosmos-fprime"
+      "path": "../openc3-cosmos-fprime",
     },
     {
-      "path": "../openc3-cosmos-script-engine-cstol"
+      "path": "../openc3-cosmos-script-engine-cstol",
     },
     {
-      "path": "../api_tutorial"
+      "path": "../api_tutorial",
     },
     {
-      "path": "../openc3-cosmos-nemesis"
+      "path": "../openc3-cosmos-nemesis",
     },
     {
-      "path": "../core"
+      "path": "../core",
     },
     {
-      "path": ".."
-    }
+      "path": "../ace-diff",
+    },
+    {
+      "path": "../openc3-cosmos-tsdb-migration",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
@@ -65,19 +68,19 @@
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "always"
+      "source.fixAll.eslint": "always",
     },
     "[vue]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[typescript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[json]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "explorer.confirmDragAndDrop": true,
     "editor.tabSize": 2,
@@ -87,7 +90,7 @@
     "git.ignoreLimitWarning": true,
     "python.analysis.stubPath": "/Users/jmthomas/Library/Application Support/Code/User/workspaceStorage/e00efcdc7e2d32a7200c7669166fd957/JakeHill.openc3/pystubs",
     "python.analysis.diagnosticSeverityOverrides": {
-      "reportMissingModuleSource": "none"
+      "reportMissingModuleSource": "none",
     },
     "python.analysis.extraPaths": [
       "cosmos-enterprise-plugins/openc3-cosmos-gems-interface/targets",
@@ -108,7 +111,8 @@
       "cosmos/openc3/spec/install/config/targets",
       "cosmos/openc3/python/test/install/config/targets",
       "cosmos/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets",
-      "app-store/openc3-cosmos-clam/targets"
-    ]
-  }
+      "app-store/openc3-cosmos-clam/targets",
+      "cosmos/plugins/openc3-cosmos-demo/openc3-cosmos-demo-5.21.0.pre.beta0.gem/targets",
+    ],
+  },
 }

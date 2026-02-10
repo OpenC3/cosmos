@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,14 +17,12 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
-import copy
 import base64
-import hashlib
+import copy
 import datetime
+import hashlib
 import traceback
-from .structure import Structure
-from .packet_item import PacketItem
-from .packet_item_limits import PacketItemLimits
+
 from openc3.conversions.packet_time_formatted_conversion import (
     PacketTimeFormattedConversion,
 )
@@ -40,19 +38,25 @@ from openc3.conversions.received_time_seconds_conversion import (
 )
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
-    simple_formatted,
     quote_if_necessary,
+    simple_formatted,
 )
+
+from .packet_item import PacketItem
+from .packet_item_limits import PacketItemLimits
+from .structure import Structure
 
 
 class Packet(Structure):
-    RESERVED_ITEM_NAMES = [
+    # Use sets for O(1) membership testing instead of O(n) with lists
+    RESERVED_ITEM_NAMES = {
         "PACKET_TIMESECONDS",
         "PACKET_TIMEFORMATTED",
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
-    ]
+        "COSMOS_DATA_TAG",  # Reserved for QuestDB time series database
+    }
     ANY_STATE = "ANY"
     # Valid format types
     VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED"]
@@ -405,12 +409,11 @@ class Packet(Structure):
                 next_offset = item.array_size
         else:
             next_offset = None
-            if item.bit_offset > 0:
-                if item.little_endian_bit_field:
-                    # Bit offset always refers to the most significant bit of a bitfield
-                    bits_remaining_in_last_byte = 8 - (item.bit_offset % 8)
-                    if item.bit_size > bits_remaining_in_last_byte:
-                        next_offset = item.bit_offset + bits_remaining_in_last_byte
+            if item.bit_offset > 0 and item.little_endian_bit_field:
+                # Bit offset always refers to the most significant bit of a bitfield
+                bits_remaining_in_last_byte = 8 - (item.bit_offset % 8)
+                if item.bit_size > bits_remaining_in_last_byte:
+                    next_offset = item.bit_offset + bits_remaining_in_last_byte
             if not next_offset:
                 if item.bit_size > 0:
                     next_offset = item.bit_offset + item.bit_size
@@ -608,7 +611,7 @@ class Packet(Structure):
                             key = item.states_by_value().get(value[index])
                             if key is not None:
                                 value[index] = key
-                            elif Packet.ANY_STATE in item.states_by_value().keys():
+                            elif Packet.ANY_STATE in item.states_by_value():
                                 value[index] = item.states_by_value()[Packet.ANY_STATE]
                             else:
                                 value[index] = self.apply_format_string_and_units(item, val, value_type)
@@ -616,7 +619,7 @@ class Packet(Structure):
                         key = item.states_by_value().get(value)
                         if key is not None:
                             value = key
-                        elif Packet.ANY_STATE in item.states_by_value().keys():
+                        elif Packet.ANY_STATE in item.states_by_value():
                             value = item.states_by_value()[Packet.ANY_STATE]
                         else:
                             value = self.apply_format_string_and_units(item, value, value_type)
@@ -634,9 +637,7 @@ class Packet(Structure):
                     if not value_type.isascii():
                         value_type = simple_formatted(value_type)
                     value_type += "..."
-                raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
-                )
+                raise ValueError(f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'")
         return value
 
     # Read a list of items in the structure
@@ -704,9 +705,7 @@ class Packet(Structure):
                     if not value_type.isascii():
                         value_type = simple_formatted(value_type)
                     value_type += "..."
-                raise ValueError(
-                    f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
-                )
+                raise ValueError(f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', or 'FORMATTED'")
         with self.synchronize():
             self.read_conversion_cache = {}
 
@@ -924,7 +923,7 @@ class Packet(Structure):
     def disable_limits(self, name):
         item = self.get_item(name)
         item.limits.enabled = False
-        if not item.limits.state == "STALE":
+        if item.limits.state != "STALE":
             old_limits_state = item.limits.state
             item.limits.state = None
             if self.limits_change_callback is not None:
@@ -935,10 +934,9 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items case
     # checking for limits.
     def update_limits_items_cache(self, item):
-        if item.limits.values or item.state_colors:
-            if not self.limits_items_hash.get(item.name):
-                self.limits_items.append(item)
-                self.limits_items_hash[item.name] = True
+        if (item.limits.values or item.state_colors) and not self.limits_items_hash.get(item.name):
+            self.limits_items.append(item)
+            self.limits_items_hash[item.name] = True
 
     # Add an item to the obfuscate items cache if necessary.
     # You MUST call this after adding obfuscation to an item
@@ -980,6 +978,10 @@ class Packet(Structure):
             if item.limits.enabled:
                 value = self.read_item(item)
 
+                # Skip limits checking if value is None (item outside buffer bounds)
+                if value is None:
+                    continue
+
                 # Handle state monitoring and value monitoring differently
                 if item.states is not None:
                     self.handle_limits_states(item, value)
@@ -1003,7 +1005,7 @@ class Packet(Structure):
             return
 
         for _, processor in self.processors:
-            processor.reset
+            processor.reset()
 
     # Make a light weight clone of this packet. This only creates a new buffer
     # of data and clones the processors. The defined packet items are the same.
@@ -1086,9 +1088,8 @@ class Packet(Structure):
             if item.data_type != "DERIVED":
                 config += item.to_config(cmd_or_tlm, self.default_endianness)
         for item in self.sorted_items:
-            if item.data_type == "DERIVED":
-                if item.name not in Packet.RESERVED_ITEM_NAMES:
-                    config += item.to_config(cmd_or_tlm, self.default_endianness)
+            if item.data_type == "DERIVED" and item.name not in Packet.RESERVED_ITEM_NAMES:
+                config += item.to_config(cmd_or_tlm, self.default_endianness)
 
         if self.response:
             config += f"  RESPONSE {quote_if_necessary(self.response[0])} {quote_if_necessary(self.response[1])}\n"
@@ -1313,6 +1314,10 @@ class Packet(Structure):
             item.limits.persistence_count = 0
 
     def apply_format_string_and_units(self, item, value, value_type):
+        # Return None as-is - can't format a value that doesn't exist
+        if value is None:
+            return None
+
         if value_type == "FORMATTED" or value_type == "WITH_UNITS":
             if item.format_string and value is not None:
                 value = f"{item.format_string}" % value

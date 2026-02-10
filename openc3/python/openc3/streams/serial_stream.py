@@ -14,31 +14,32 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import threading
 import logging
-from typing import Optional, Union
+import threading
 
-from openc3.streams.stream import Stream
-from openc3.io.serial_driver import SerialDriver
 from openc3.config.config_parser import ConfigParser
+from openc3.io.serial_driver import SerialDriver
+from openc3.streams.stream import Stream
 
 
 class SerialStream(Stream):
     """Stream that reads and writes to serial ports by using SerialDriver."""
-    
-    def __init__(self,
-                 write_port_name: Optional[str],
-                 read_port_name: Optional[str],
-                 baud_rate: int,
-                 parity: str,
-                 stop_bits: int,
-                 write_timeout: Optional[float],
-                 read_timeout: Optional[float],
-                 flow_control: str = 'NONE',
-                 data_bits: int = 8):
+
+    def __init__(
+        self,
+        write_port_name: str | None,
+        read_port_name: str | None,
+        baud_rate: int,
+        parity: str,
+        stop_bits: int,
+        write_timeout: float | None,
+        read_timeout: float | None,
+        flow_control: str = "NONE",
+        data_bits: int = 8,
+    ):
         """
         Initialize the serial stream
-        
+
         Args:
             write_port_name: The name of the serial port to write.
                 Pass None if the stream is to be read only. On Windows the port name
@@ -61,28 +62,28 @@ class SerialStream(Stream):
             data_bits: Number of data bits (default 8)
         """
         super().__init__()
-        
+
         # The SerialDriver class will validate the parameters
         self.write_port_name = ConfigParser.handle_none(write_port_name)
         self.read_port_name = ConfigParser.handle_none(read_port_name)
         self.baud_rate = int(baud_rate)
         self.parity = parity
         self.stop_bits = int(stop_bits)
-        
+
         self.write_timeout = ConfigParser.handle_none(write_timeout)
         if self.write_timeout is not None:
             self.write_timeout = float(self.write_timeout)
         else:
             logging.warning("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
-            
+
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
             self.read_timeout = float(self.read_timeout)
-            
+
         self.flow_control = flow_control
         self.data_bits = int(data_bits)
-        
+
         # Create write serial port if specified
         if self.write_port_name:
             self.write_serial_port = SerialDriver(
@@ -93,11 +94,11 @@ class SerialStream(Stream):
                 write_timeout=self.write_timeout,
                 read_timeout=self.read_timeout,
                 flow_control=self.flow_control,
-                data_bits=self.data_bits
+                data_bits=self.data_bits,
             )
         else:
             self.write_serial_port = None
-            
+
         # Create read serial port if specified
         if self.read_port_name:
             if self.read_port_name == self.write_port_name:
@@ -113,54 +114,56 @@ class SerialStream(Stream):
                     write_timeout=self.write_timeout,
                     read_timeout=self.read_timeout,
                     flow_control=self.flow_control,
-                    data_bits=self.data_bits
+                    data_bits=self.data_bits,
                 )
         else:
             self.read_serial_port = None
-            
+
         if self.read_serial_port is None and self.write_serial_port is None:
             raise ValueError("Either a write port or read port must be given")
-        
+
         # We 'connect' when we create the stream
         self._connected = True
-        
+
         # Mutex on write is needed to protect from commands coming in from more
         # than one tool
         self._write_mutex = threading.Lock()
-    
+
     def connect(self):
         """Connect the stream"""
         # N/A - Serial streams 'connect' on creation
         pass
-    
+
     def connected(self) -> bool:
         """
         Returns:
             Whether the serial stream is connected to the serial port
         """
         return self._connected
-    
+
     def disconnect(self):
         """Disconnect by closing the serial ports"""
         if self._connected:
             try:
                 if self.write_serial_port and not self.write_serial_port.closed():
                     self.write_serial_port.close()
-            except IOError:
+            except OSError:
                 # Ignore
                 pass
-            
+
             try:
-                if (self.read_serial_port and 
-                    self.read_serial_port != self.write_serial_port and
-                    not self.read_serial_port.closed()):
+                if (
+                    self.read_serial_port
+                    and self.read_serial_port != self.write_serial_port
+                    and not self.read_serial_port.closed()
+                ):
                     self.read_serial_port.close()
-            except IOError:
+            except OSError:
                 # Ignore
                 pass
-                
+
             self._connected = False
-    
+
     def read(self) -> bytes:
         """
         Returns:
@@ -168,10 +171,10 @@ class SerialStream(Stream):
         """
         if not self.read_serial_port:
             raise RuntimeError("Attempt to read from write only stream")
-        
+
         # No read mutex is needed because reads happen serially
         return self.read_serial_port.read()
-    
+
     def read_nonblock(self) -> bytes:
         """
         Returns:
@@ -179,19 +182,19 @@ class SerialStream(Stream):
         """
         if not self.read_serial_port:
             raise RuntimeError("Attempt to read from write only stream")
-        
+
         # No read mutex is needed because reads happen serially
         return self.read_serial_port.read_nonblock()
-    
-    def write(self, data: Union[str, bytes]) -> None:
+
+    def write(self, data: str | bytes) -> None:
         """
         Write data to the serial port
-        
+
         Args:
             data: Binary data to write to the serial port
         """
         if not self.write_serial_port:
             raise RuntimeError("Attempt to write to read only stream")
-        
+
         with self._write_mutex:
             self.write_serial_port.write(data)

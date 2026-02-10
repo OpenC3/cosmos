@@ -18,7 +18,9 @@
 
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 
-const settingName = 'store_url'
+const SETTING_NAME = 'store_url'
+const DEFAULT_STORE_URL = 'https://store.openc3.com'
+
 export default {
   props: {
     id: Number,
@@ -34,7 +36,6 @@ export default {
     licenses: Array,
     // rating: Number,
     // downloads: Number,
-    verified: Boolean,
     homepage: String,
     repository: String,
     gem_url: String,
@@ -63,7 +64,6 @@ export default {
         licenses: this.licenses,
         // rating: this.rating,
         // downloads: this.downloads,
-        verified: this.verified,
         homepage: this.homepage,
         repository: this.repository,
         gem_url: this.gem_url,
@@ -112,12 +112,11 @@ export default {
     },
   },
   created: async function () {
-    const defaultStoreUrl = 'https://store.openc3.com'
     try {
       this._storeUrl =
-        (await this._api.get_setting(settingName)) || defaultStoreUrl
+        (await this._api.get_setting(SETTING_NAME)) || DEFAULT_STORE_URL
     } catch {
-      this._storeUrl = defaultStoreUrl
+      this._storeUrl = DEFAULT_STORE_URL
     }
     if (this.img_path) {
       try {

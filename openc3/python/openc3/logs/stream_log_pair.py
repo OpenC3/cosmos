@@ -22,7 +22,9 @@ class StreamLogPair:
 
     # self.param name [String] name to be added to log filenames
     # self.param params [Array] stream log writer parameters or empty array
-    def __init__(self, name, params=[]):
+    def __init__(self, name, params=None):
+        if params is None:
+            params = []
         self.read_log = StreamLog(name, "READ", *params)
         self.write_log = StreamLog(name, "WRITE", *params)
 

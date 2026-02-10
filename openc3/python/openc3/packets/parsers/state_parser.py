@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,8 +15,8 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.packet_item import PacketItem
-from openc3.utilities.logger import Logger
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 
 
 class StateParser:
@@ -125,9 +125,9 @@ class StateParser:
 
     def _get_state_colors(self, item):
         color = self.parser.parameters[2].upper()
-        if color not in PacketItem.STATE_COLORS:
+        if color not in PacketItem.VALID_STATE_COLORS:
             raise self.parser.error(
-                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.STATE_COLORS)}.",
+                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.",
                 self.usage,
             )
 

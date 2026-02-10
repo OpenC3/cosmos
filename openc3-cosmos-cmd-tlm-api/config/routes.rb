@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -170,6 +170,7 @@ Rails.application.routes.draw do
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
       delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
+      delete '/storage/delete_directory/(*object_id)', to: 'storage#delete_directory', object_id: /.*/
     end
 
     get  '/tables', to: 'tables#index'
@@ -194,8 +195,13 @@ Rails.application.routes.draw do
     delete '/screen/:target/:screen', to: 'screens#destroy'
 
     get "/notebooks", to: "notebooks#index"
+    get "/notebooks/running", to: "notebooks#running"
+    get "/notebooks/completed", to: "notebooks#completed"
     get "/notebook/:target/:notebook", to: "notebooks#show"
+    get "/notebook/:target/:notebook/:id", to: "notebooks#show"
     post "/notebook", to: "notebooks#create"
+    post "/notebook/run", to: "notebooks#run"
+    post "/notebook/complete/:id", to: "notebooks#complete"
     delete '/notebook/:target/:notebook', to: 'notebooks#destroy'
 
     get "/secrets", to: "secrets#index"

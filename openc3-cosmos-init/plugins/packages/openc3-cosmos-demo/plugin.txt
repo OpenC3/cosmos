@@ -3,23 +3,69 @@
 # target per plugin
 
 VARIABLE inst_target_name INST
+  VARIABLE_DESCRIPTION "Name for the primary INST target (leave blank to exclude)"
 VARIABLE inst2_target_name INST2
+  VARIABLE_DESCRIPTION "Name for the secondary INST2 target (leave blank to exclude)"
 VARIABLE example_target_name EXAMPLE
+  VARIABLE_DESCRIPTION "Name for the EXAMPLE target (leave blank to exclude)"
 VARIABLE templated_target_name TEMPLATED
+  VARIABLE_DESCRIPTION "Name for the TEMPLATED target (leave blank to exclude)"
 VARIABLE system_target_name SYSTEM
+  VARIABLE_DESCRIPTION "Name for the SYSTEM target (leave blank to exclude)"
 VARIABLE inst_int_name INST_INT
+  VARIABLE_DESCRIPTION "Name for the INST interface"
 VARIABLE inst_router_name INST_ROUTER
+  VARIABLE_DESCRIPTION "Name for the INST router"
 VARIABLE inst2_int_name INST2_INT
+  VARIABLE_DESCRIPTION "Name for the INST2 interface"
 VARIABLE example_int_name EXAMPLE_INT
+  VARIABLE_DESCRIPTION "Name for the EXAMPLE interface"
 VARIABLE templated_int_name TEMPLATED_INT
+  VARIABLE_DESCRIPTION "Name for the TEMPLATED interface"
 VARIABLE demo_tool_name Demo
+  VARIABLE_DESCRIPTION "Name shown in the nav bar for the Demo tool"
 VARIABLE example_microservice_name openc3-example
+  VARIABLE_DESCRIPTION "Name for the EXAMPLE microservice"
 VARIABLE templated_microservice_name openc3-templated
+  VARIABLE_DESCRIPTION "Name for the TEMPLATED microservice"
 VARIABLE example_port 9999
+  VARIABLE_DESCRIPTION "Port for EXAMPLE target connection"
 VARIABLE templated_port 5025
+  VARIABLE_DESCRIPTION "Port for TEMPLATED target connection"
 VARIABLE inst_router_port 7779
+  VARIABLE_DESCRIPTION "Port for INST router"
 VARIABLE log_retain_time 172800
+  VARIABLE_DESCRIPTION "Raw log retention time in seconds (default: 48 hours)"
+  VARIABLE_STATE "24 hours" 86400
+  VARIABLE_STATE "48 hours" 172800
+  VARIABLE_STATE "1 week" 604800
+  VARIABLE_STATE "30 days" 2592000
 VARIABLE reduced_log_retain_time 2592000
+  VARIABLE_DESCRIPTION "Reduced log retention time in seconds (default: 30 days)"
+  VARIABLE_STATE "1 week" 604800
+  VARIABLE_STATE "30 days" 2592000
+  VARIABLE_STATE "90 days" 7776000
+  VARIABLE_STATE "1 year" 31536000
+
+### Throughput Server Configuration ###
+# The throughput server can be used to test the maximum command and telemetry throughput
+# To use it enable the use_throughput_server variable and start the throughput server separately
+# From the base of the cosmos directory, in a separate terminal run:
+#   cd examples/throughput_server/
+#   python throughput_server.py
+# Once the DEMO has been installed (or re-installed with use_throughput_server enabled) it will connect
+# to the throughput server instead of using the built-in simulator. You should see a single packet.
+# Run throughput_test.rb to test INST and throughput_test.py to test INST2 throughput.
+VARIABLE use_throughput_server false
+  VARIABLE_DESCRIPTION "Use external throughput server instead of built-in simulator"
+  VARIABLE_STATE "No (use simulator)" false
+  VARIABLE_STATE "Yes (use throughput server)" true
+VARIABLE throughput_server_host host.docker.internal
+  VARIABLE_DESCRIPTION "Hostname for the throughput server"
+VARIABLE inst_throughput_port 7778
+  VARIABLE_DESCRIPTION "Port for INST throughput server connection"
+VARIABLE inst2_throughput_port 7780
+  VARIABLE_DESCRIPTION "Port for INST2 throughput server connection"
 
 <% include_inst = (inst_target_name.to_s.strip.length > 0) %>
 <% include_inst2 = (inst2_target_name.to_s.strip.length > 0) %>
@@ -78,13 +124,28 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst and include_inst_int %>
-  INTERFACE <%= inst_int_name %> simulated_target_interface.rb sim_inst.rb
-    MAP_TARGET <%= inst_target_name %>
+  <% if use_throughput_server.to_s == "true" %>
+    # Connect to external throughput server using TCP/IP with LengthProtocol
+    # LengthProtocol params: bit_offset=32, bit_size=16, len_offset=7, bytes_per_count=1
+    INTERFACE <%= inst_int_name %> tcpip_client_interface.rb <%= throughput_server_host %> <%= inst_throughput_port %> <%= inst_throughput_port %> 10.0 nil LENGTH 32 16 7 1 BIG_ENDIAN 0 nil nil true
+      MAP_TARGET <%= inst_target_name %>
+  <% else %>
+    INTERFACE <%= inst_int_name %> simulated_target_interface.rb sim_inst.rb
+      MAP_TARGET <%= inst_target_name %>
+  <% end %>
 <% end %>
 
 <% if include_inst2 and include_inst2_int %>
-  INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
-    MAP_TARGET <%= inst2_target_name %>
+  <% if use_throughput_server.to_s == "true" %>
+    # Connect to external throughput server using Python TCP/IP with LengthProtocol
+    # Must use Python interface for INST2 because target uses Python conversions
+    # LengthProtocol params: bit_offset=32, bit_size=16, len_offset=7, bytes_per_count=1
+    INTERFACE <%= inst2_int_name %> openc3/interfaces/tcpip_client_interface.py <%= throughput_server_host %> <%= inst2_throughput_port %> <%= inst2_throughput_port %> 10.0 None LENGTH 32 16 7 1 BIG_ENDIAN 0 None None True
+      MAP_TARGET <%= inst2_target_name %>
+  <% else %>
+    INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
+      MAP_TARGET <%= inst2_target_name %>
+  <% end %>
 <% end %>
 
 <% if include_example and include_example_int %>
@@ -96,6 +157,8 @@ VARIABLE reduced_log_retain_time 2592000
     # Override the default log time of 600
     LOG_STREAM 60
     OPTION CONNECT_CMD LOG "<%= example_target_name %> START"
+    # Add encryption protocol with shared key (must match example_target.rb)
+    PROTOCOL READ_WRITE encryption_protocol.rb deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 <% end %>
 
 <% if include_templated and include_templated_int %>

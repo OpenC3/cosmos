@@ -36,7 +36,7 @@
               />
             </div>
           </template>
-          <span> View at store.openc3.com </span>
+          <span> View at {{ formattedStoreLink }} </span>
         </v-tooltip>
         <v-btn
           icon="mdi-close-box"
@@ -49,11 +49,6 @@
         class="d-flex align-center justify-content-space-between"
       >
         <div>{{ author }}</div>
-        <v-spacer />
-        <div v-if="verified">
-          Verified
-          <v-badge inline icon="mdi-shield-check" color="success" />
-        </div>
       </v-card-subtitle>
       <!--
       <v-card-subtitle
@@ -200,6 +195,9 @@ export default {
         this.showDialog = val
         this.$emit('update:modelValue', val)
       },
+    },
+    formattedStoreLink: function () {
+      return this._storeUrl.split('://').at(-1)
     },
   },
   methods: {

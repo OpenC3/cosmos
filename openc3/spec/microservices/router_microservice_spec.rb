@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -163,7 +163,7 @@ module OpenC3
 
       @api.router_cmd("TEST_INT", "DO_THE_THING", "PARAM1", 2, scope: "DEFAULT")
       uservice.shutdown
-      sleep 2
+      sleep 0.5
       expect(Thread.list.count).to eql init_threads
     end
 
@@ -182,7 +182,7 @@ module OpenC3
 
       @api.router_protocol_cmd("TEST_INT", "DO_THE_OTHER_THING", "PARAM1", 2, scope: "DEFAULT")
       uservice.shutdown
-      sleep 2
+      sleep 0.5
       expect(Thread.list.count).to eql init_threads
     end
 
@@ -194,7 +194,7 @@ module OpenC3
       packet = Packet.new(nil, nil, :BIG_ENDIAN)
       uservice.handle_packet(packet)
       uservice.shutdown
-      sleep 2
+      sleep 0.5
       expect(Thread.list.count).to eql init_threads
     end
   end

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -46,7 +46,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.10.4.pre.beta0'
+  s.version = '6.10.5.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -75,6 +75,7 @@ spec = Gem::Specification.new do |s|
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
 
   # Runtime Dependencies
+  s.add_runtime_dependency 'erb',       '~> 6.0'
   s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
@@ -89,17 +90,17 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
-  s.add_runtime_dependency 'rdoc',      '~> 6.5'
-  s.add_runtime_dependency 'redis',     '~> 5.0'
+  s.add_runtime_dependency 'rdoc',      '~> 7.0'
+  s.add_runtime_dependency 'redis',     '~> 5.4'
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
-  s.add_runtime_dependency 'uuidtools', '~> 2.2'
+  s.add_runtime_dependency 'uuidtools', '~> 3.0'
   s.add_runtime_dependency 'yard',      '~> 0.9'
   s.add_runtime_dependency 'argon2',    '~> 2.3'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.10'
   s.add_runtime_dependency 'childprocess', '~> 5.0'
-  s.add_runtime_dependency 'connection_pool', '~> 2.4'
+  s.add_runtime_dependency 'connection_pool', '~> 3.0'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
   s.add_runtime_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_runtime_dependency 'faraday-multipart',   '~> 1.0'
@@ -113,7 +114,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
-  s.add_runtime_dependency 'resolv-replace', '~> 0.1.1'
+  s.add_runtime_dependency 'resolv-replace', '~> 0.2'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'webrick', '~> 1.8'
@@ -132,7 +133,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'mock_redis', '~> 0.47'
   s.add_development_dependency 'reek', '~> 6.0'
   s.add_development_dependency 'rspec', '~> 3.10'
-  s.add_development_dependency 'rspec-rails', '~> 7.0'
+  s.add_development_dependency 'rspec-rails', '~> 8.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.22'

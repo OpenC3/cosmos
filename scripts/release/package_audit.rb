@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,13 +29,8 @@ version_tag = ARGV[0] || "latest"
 
 # Get versions from the Dockerfiles
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
-redis_version = get_docker_version("openc3-redis/Dockerfile")
-minio_version = get_docker_version("openc3-minio/Dockerfile", arg: 'OPENC3_MINIO_RELEASE')
-minio_ubi_version = get_docker_version("openc3-minio/Dockerfile-ubi", arg: 'OPENC3_MINIO_RELEASE')
-if minio_version != minio_ubi_version
-  puts "WARN: minio versions for standard and UBI do not match: #{minio_version} != #{minio_ubi_version}"
-end
-go_version = get_docker_version("openc3-minio/Dockerfile", arg: 'GO_VERSION')
+valkey_version = get_docker_version("openc3-redis/Dockerfile")
+versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
@@ -48,22 +43,22 @@ containers = [
     pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "golang:#{go_version}-alpine#{ENV['ALPINE_VERSION']}", apk: true },
+  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
 ]
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
   `rm Gemfile.lock 2>&1`
-  `bundle update`
+  `bundle update --all`
 end
 
 client = Faraday.new do |f|
@@ -75,12 +70,12 @@ report = build_report(containers, client)
 summary_report = build_summary_report(containers)
 
 # Now check for latest versions
-check_build_files(minio_version, traefik_version)
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
-check_minio(client, containers, minio_version, go_version)
-check_container_version(client, containers, 'redis')
-base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
+check_versitygw(client, versitygw_version)
+check_build_files(versitygw_version, traefik_version)
+check_container_version(client, containers, 'redis') # valkey base image
+base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
@@ -105,7 +100,11 @@ Dir.chdir(File.join(__dir__, '../../openc3/python')) do
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
   puts "\nChecking outdated wheels in openc3-cosmos-demo:"
-  puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
+  if system('which uv > /dev/null 2>&1')
+    puts `uv venv venv; source venv/bin/activate; uv pip install -r requirements.txt; uv pip list --outdated; deactivate; rm -rf venv`
+  else
+    puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
+  end
 end
 
 File.open("openc3_package_report.txt", "w") do |file|

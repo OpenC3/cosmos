@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,10 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import queue
+
 import requests
+
+from openc3.accessors.http_accessor import HttpAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import Interface
-from openc3.accessors.http_accessor import HttpAccessor
 from openc3.packets.packet import Packet
 
 
@@ -85,10 +87,7 @@ class HttpClientInterface(Interface):
         Returns:
             bool: True if the HTTP client is connected, False otherwise.
         """
-        if self.http:
-            return True
-        else:
-            return False
+        return bool(self.http)
 
     # Disconnects the interface from its target(s)
     def disconnect(self):
@@ -100,7 +99,7 @@ class HttpClientInterface(Interface):
         the response queue to allow the read_interface method to return.
         """
         if self.http:
-            self.http.close
+            self.http.close()
         self.http = None
         while not self.response_queue.empty():
             self.response_queue.get_nowait()
@@ -244,10 +243,10 @@ class HttpClientInterface(Interface):
 
     def details(self):
         result = super().details()
-        result['url'] = self.url
-        result['write_timeout'] = None  # Python version doesn't use write_timeout
-        result['read_timeout'] = self.read_timeout
-        result['connect_timeout'] = self.connect_timeout
-        result['include_request_in_response'] = self.include_request_in_response
-        result['request_queue_length'] = self.response_queue.qsize()
+        result["url"] = self.url
+        result["write_timeout"] = None  # Python version doesn't use write_timeout
+        result["read_timeout"] = self.read_timeout
+        result["connect_timeout"] = self.connect_timeout
+        result["include_request_in_response"] = self.include_request_in_response
+        result["request_queue_length"] = self.response_queue.qsize()
         return result

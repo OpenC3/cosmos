@@ -15,13 +15,15 @@
 # if purchased from OpenC3, Inc.
 
 import os
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.authorization import authorize
 from openc3.models.offline_access_model import OfflineAccessModel
 from openc3.utilities.authentication import (
     OpenC3KeycloakAuthentication,
 )
+from openc3.utilities.authorization import authorize
+
 
 try:
     from openc3enterprise.utilities.authorization import user_info

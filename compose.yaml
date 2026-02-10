@@ -14,23 +14,22 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 services:
-  openc3-minio:
+  openc3-buckets:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    # Uncomment to run unit tests against the minio server
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+    # Uncomment to run unit tests against the S3 server
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-bucket-v:/data"
+      - "openc3-object-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
-    command: server --address ":9000" --console-address ":9001" /data
     restart: "unless-stopped"
     logging:
       driver: "json-file"
@@ -38,12 +37,10 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      MINIO_ROOT_USER: "${OPENC3_BUCKET_USERNAME}"
-      MINIO_ROOT_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      # Domain doesn't really matter but it's required. We really want the /minio path.
-      # This is handled by our traefik configuration via rule: PathPrefix(`/minio`)
-      # and forwarded on to the console at http://openc3-minio:9001
-      MINIO_BROWSER_REDIRECT_URL: "http://openc3.com/minio"
+      ROOT_ACCESS_KEY: "${OPENC3_BUCKET_USERNAME}"
+      ROOT_SECRET_KEY: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
+      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
@@ -117,7 +114,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -131,11 +128,6 @@ services:
       RAILS_ENV: "production"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
@@ -149,7 +141,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -163,15 +155,6 @@ services:
       RAILS_ENV: "production"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SR_REDIS_USERNAME: "${OPENC3_SR_REDIS_USERNAME}"
-      OPENC3_SR_REDIS_PASSWORD: "${OPENC3_SR_REDIS_PASSWORD}"
-      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
-      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
@@ -186,7 +169,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
@@ -205,14 +188,9 @@ services:
       # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # By not setting a value it pases the environment variable from the shell
       # straight to the container and doesn't complain if CI is not set
-      - CI
-      - GEM_HOME=/gems
-      - PYTHONUSERBASE=/gems/python_packages
-      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      CI: "true"
+      GEM_HOME: "/gems"
+      PYTHONUSERBASE: "/gems/python_packages"
     env_file:
       - .env
     extra_hosts:
@@ -238,7 +216,7 @@ services:
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-buckets"
     logging:
       driver: "json-file"
       options:
@@ -258,7 +236,7 @@ services:
       - "openc3-traefik"
       - "openc3-redis"
       - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - "openc3-buckets"
     volumes:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
@@ -272,15 +250,9 @@ services:
       # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # By not setting a value it pases the environment variable from the shell
       # straight to the container and doesn't complain if CI is not set
-      - CI
-      - GEM_HOME=/gems
-      - PYTHONUSERBASE=/gems/python_packages
-      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
-      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
-      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
-      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
-      - OPENC3_SR_BUCKET_USERNAME=${OPENC3_SR_BUCKET_USERNAME}
-      - OPENC3_SR_BUCKET_PASSWORD=${OPENC3_SR_BUCKET_PASSWORD}
+      CI: "true"
+      GEM_HOME: "/gems"
+      PYTHONUSERBASE: "/gems/python_packages"
     env_file:
       - .env
 
@@ -288,5 +260,6 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-bucket-v: {}
+  openc3-object-v:
+    name: openc3-object-v # Fixed name to match migration script (no project prefix)
   openc3-gems-v: {}

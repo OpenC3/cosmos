@@ -18,7 +18,7 @@ const vueLifecycles = singleSpaVue({
     app.use(store)
     app.use(vuetify)
     app.use(Dialog)
-    app.use(Notify, { store })
+    app.use(Notify)
   },
 })
 

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -180,6 +180,7 @@ module OpenC3
                                     @converted_type,
                                     @converted_bit_size) if keyword.include? "WRITE"
             @building_generic_conversion = false
+            parser.set_preserve_lines(false)
           # Add the current config.line to the conversion being built
           else
             @proc_text << parser.line << "\n"
@@ -492,8 +493,8 @@ module OpenC3
           'APPEND_ARRAY_ITEM', 'APPEND_ARRAY_PARAMETER', 'STRUCTURE', 'APPEND_STRUCTURE'
         start_item(parser)
 
-      # Allow this packet to be received with less data than the defined length
-      # without generating a warning.
+      # Allow this packet to be received with less data than the defined length.
+      # Items that are beyond the buffer will return nil when read.
       when 'ALLOW_SHORT'
         @current_packet.short_buffer_allowed = true
 
@@ -712,6 +713,7 @@ module OpenC3
         parser.verify_num_parameters(0, 2, usage)
         @proc_text = ''
         @building_generic_conversion = true
+        parser.set_preserve_lines(true)
         @converted_type = nil
         @converted_bit_size = nil
         if params[0]

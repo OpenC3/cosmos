@@ -1,0 +1,25 @@
+SCREEN AUTO AUTO 1.0
+GLOBAL_SETTING LABELVALUE TEXTCOLOR "#bababa"
+
+VERTICAL
+  TITLE "<%= target_name %> Throughput Statistics"
+
+  VERTICALBOX "Server Status"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS UPTIME_SEC
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_TARGET_RATE
+  END
+
+  VERTICALBOX "Command Metrics"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS CMD_RECV_COUNT
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS CMD_RECV_RATE
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS BYTES_RECV
+  END
+
+  VERTICALBOX "Telemetry Metrics"
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_SENT_COUNT
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS TLM_SENT_RATE
+    LABELVALUE <%= target_name %> THROUGHPUT_STATUS BYTES_SENT
+  END
+
+  <%= render "_footer.txt" %>
+END

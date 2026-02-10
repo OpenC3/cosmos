@@ -35,7 +35,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-traefik-1                  | Provides a reverse proxy and load balancer with routes to the COSMOS endpoints                         |
 | cosmos-openc3-cosmos-cmd-tlm-api-1       | Rails server that provides all the COSMOS API endpoints                                                |
 | cosmos-openc3-cosmos-script-runner-api-1 | Rails server that provides the Script API endpoints                                                    |
-| cosmos-openc3-minio-1                    | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
+| cosmos-openc3-buckets-1                  | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                         |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://redis.io/docs/data-types/streams) containing the raw and decomutated data |
 
@@ -87,10 +87,66 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 [Redis](https://redis.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Redis to store both our configuration and data. If you look back at our [container list](/docs/getting-started/key-concepts#containers) you'll notice two redis containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1. The ephemeral container contains all the real-time data pushed into [Redis streams](https://redis.io/docs/data-types/streams/). The other redis container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Redis Cluster](https://redis.io/docs/management/scaling/) to perform horizontal scaling where data is shared across multiple Redis nodes.
 
-### MinIO
+### Versitygw
 
-[MinIO](https://min.io/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
+[Versitygw](https://github.com/versity/versitygw/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
 
 ### Ruby on Rails
 
 The COSMOS API and Script Runner backends are powered by [Ruby on Rails](https://rubyonrails.org/). Rails is a web application development framework written in the Ruby programming language. Rails (and our familiarity with Ruby) allows us to write less code while accomplishing more than many other languages and frameworks.
+
+### QuestDB
+
+COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets.
+
+While Redis stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax.
+
+### Keycloak (Enterprise)
+
+[COSMOS Enterprise](https://openc3.com/enterprise) uses [Keycloak](https://www.keycloak.org/) as its Single Sign-On (SSO) solution. Keycloak is an open-source Identity and Access Management system that provides authentication, authorization, and user federation capabilities. Keycloak implements the OAuth 2.0 and OpenID Connect protocols and issues several types of tokens to manage user sessions.
+
+#### Access Token
+
+The access token is a short-lived JSON Web Token (JWT) used to authenticate API requests. It is included in the `Authorization: Bearer <token>` header of HTTP requests and contains user identity and permissions (claims). When an access token expires, the client must obtain a new one using a refresh token. COSMOS Enterprise default: **5 minutes**.
+
+#### Refresh Token
+
+The refresh token is a longer-lived token used solely to obtain new access tokens. It is never sent to resource servers—only to Keycloak's token endpoint. Each refresh request typically returns a new refresh token (token rotation). The refresh token expires after a period of inactivity (SSO Session Idle) or after a maximum lifespan (SSO Session Max), at which point the user must re-authenticate. COSMOS Enterprise defaults: **30 minutes** idle timeout, **10 hours** max lifespan.
+
+#### Offline Access Token
+
+The offline access token is a special type of refresh token designed for long-lived sessions lasting days, weeks, or indefinitely. It is obtained by requesting the `offline_access` scope during authentication. Unlike regular refresh tokens, offline access tokens survive Keycloak server restarts and user session logouts. They are useful for automated scripts or services that need persistent access without user interaction. Offline tokens have separate configuration settings: "Offline Session Idle" and "Offline Session Max". COSMOS Enterprise defaults: **30 days** idle timeout, max lifespan not enforced (tokens can last indefinitely if used regularly).
+
+#### Token Lifecycle
+
+The typical token lifecycle works as follows:
+
+1. User authenticates with Keycloak and receives an access token and refresh token
+2. Client uses the access token for API calls
+3. Access token expires and client sends the refresh token to Keycloak
+4. Keycloak issues a new access token and new refresh token
+5. Steps 2-4 repeat until the refresh token expires or the user logs out
+
+For examples of using these tokens with curl see [Testing with Curl](/docs/guides/curl).
+
+#### Automatic Token Refresh
+
+COSMOS Enterprise automatically refreshes tokens to maintain user sessions. Every 60 seconds, the application checks if the access token will expire within the next 2 minutes. If so, it sends the current refresh token to Keycloak's token endpoint and receives both a new access token and a new refresh token.
+
+With the default 5-minute access token lifespan, this results in token refreshes approximately every 3-4 minutes. Each refresh resets the refresh token's idle timeout, keeping the session alive as long as the user has the application open.
+
+Important notes on idle timeout behavior:
+
+- The refresh token idle timeout is only reset when the application communicates with Keycloak (i.e., during token refresh)
+- Making API calls using the access token does **not** reset the refresh token idle timeout, because those requests never reach Keycloak
+- If a user closes the browser for longer than the idle timeout (default 30 minutes), they must re-authenticate
+
+#### Default Token Lifespans
+
+| Token Type    | Setting      | Default Value |
+| ------------- | ------------ | ------------- |
+| Access Token  | Lifespan     | 5 minutes     |
+| Refresh Token | Idle Timeout | 30 minutes    |
+| Refresh Token | Max Lifespan | 10 hours      |
+| Offline Token | Idle Timeout | 30 days       |
+| Offline Token | Max Lifespan | Not enforced  |

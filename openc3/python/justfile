@@ -1,0 +1,313 @@
+# OpenC3 Python Development Commands
+# Run `just` or `just --list` to see all available commands
+#
+# Quick Start:
+#   just install          - Install dependencies
+#   just verify-changed   - Quick pre-commit check (only changed files) ⚡
+#   just verify           - Full verification (format, lint, test)
+#   just test             - Run tests
+#
+# Note: Most linting commands don't fail on issues to provide a smooth
+# development experience. Use `just check` for CI/CD strict validation.
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Install dependencies
+install:
+    uv sync
+
+# Install dependencies including dev dependencies
+install-dev:
+    uv sync --all-groups
+
+# Format code with Ruff
+format:
+    uv run ruff format openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration
+
+# Check formatting without making changes
+format-check:
+    uv run ruff format --check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration
+
+# Format only changed files (staged and unstaged)
+format-changed:
+    #!/usr/bin/env bash
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD | grep '\.py$' || echo "")
+    STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' || echo "")
+    ALL_FILES=$(echo -e "$CHANGED_FILES\n$STAGED_FILES" | sort -u | grep -v '^$' || echo "")
+    if [ -z "$ALL_FILES" ]; then
+        echo "No Python files changed"
+    else
+        echo "Formatting changed files:"
+        echo "$ALL_FILES"
+        echo ""
+        echo "$ALL_FILES" | xargs uv run ruff format
+    fi
+
+# Lint code with Ruff (shows issues but doesn't fail)
+lint:
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
+
+# Lint code with Ruff (shows issues but doesn't fail)
+lint-all:
+    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
+
+# Lint and auto-fix issues (doesn't fail if unfixable issues remain)
+lint-fix:
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix
+
+# Lint code strictly (fails on any issues - for CI)
+lint-strict:
+    uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration
+
+# Lint only changed files (staged and unstaged)
+lint-changed:
+    #!/usr/bin/env bash
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD | grep '\.py$' || echo "")
+    STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' || echo "")
+    ALL_FILES=$(echo -e "$CHANGED_FILES\n$STAGED_FILES" | sort -u | grep -v '^$' || echo "")
+    if [ -z "$ALL_FILES" ]; then
+        echo "No Python files changed"
+    else
+        echo "Checking changed files:"
+        echo "$ALL_FILES"
+        echo ""
+        echo "$ALL_FILES" | xargs uv run ruff check || true
+    fi
+
+# Show linting statistics
+lint-stats:
+    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test ../../openc3-cosmos-migration --statistics
+
+# Lint and auto-fix unsafe issues including unsafe fixes (doesn't fail if unfixable issues remain)
+lint-unsafe:
+    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-migration --fix --unsafe-fixes
+
+# Run all tests
+test:
+    uv run pytest
+
+# Run tests that failed in the last run
+test-failed:
+    uv run pytest --last-failed
+
+# Run tests with coverage report
+test-cov:
+    uv run coverage run -m pytest && uv run coverage report
+
+# Run tests with HTML coverage report
+test-cov-html:
+    uv run coverage run -m pytest && uv run coverage html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+# Run specific test file
+test-file FILE:
+    uv run pytest {{ FILE }}
+
+# Run tests matching a pattern
+test-pattern PATTERN:
+    uv run pytest -k {{ PATTERN }}
+
+# Run only fast tests (exclude slow tests)
+test-fast:
+    uv run pytest -m "not slow"
+
+# Run only integration tests
+test-integration:
+    uv run pytest -m "integration"
+
+# Verify code is ready to commit (format, lint, test)
+verify: format lint-fix test
+    @echo "✅ Code is ready to commit!"
+
+# Verify only changed files (faster pre-commit check)
+verify-changed:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Get list of changed Python files (staged and unstaged)
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD | grep '\.py$' || echo "")
+    STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' || echo "")
+    ALL_FILES=$(echo -e "$CHANGED_FILES\n$STAGED_FILES" | sort -u | grep -v '^$' || echo "")
+
+    if [ -z "$ALL_FILES" ]; then
+        echo "No Python files changed"
+        exit 0
+    fi
+
+    echo "Changed files:"
+    echo "$ALL_FILES"
+    echo ""
+
+    # Format changed files
+    echo "Formatting changed files..."
+    echo "$ALL_FILES" | xargs uv run ruff format
+
+    # Lint changed files
+    echo "Linting changed files..."
+    echo "$ALL_FILES" | xargs uv run ruff check --fix || true
+
+    echo "✅ Changed files verified!"
+
+# Check code without making changes (for CI - fails on any issues)
+check: format-check lint-strict test
+    @echo "✅ All checks passed!"
+
+# Clean build artifacts and cache files
+clean:
+    rm -rf build/
+    rm -rf dist/
+    rm -rf *.egg-info
+    rm -rf .pytest_cache/
+    rm -rf .ruff_cache/
+    rm -rf htmlcov/
+    rm -rf .coverage
+    find . -type d -name __pycache__ -exec rm -rf {} +
+    find . -type f -name "*.pyc" -delete
+    rm -f .coverage
+
+# Build the package (wheel and sdist)
+build:
+    uv build
+
+# Build wheel only
+build-wheel:
+    uv build --wheel
+
+# Build source distribution only
+build-sdist:
+    uv build --sdist
+
+# Build and install the package locally (editable mode)
+install-editable:
+    uv pip install -e .
+
+# Build and show package info
+build-info: build
+    @echo ""
+    @echo "Built packages:"
+    @ls -lh dist/
+    @echo ""
+    @echo "Package contents:"
+    @tar -tzf dist/*.tar.gz 2>/dev/null | head -20 || unzip -l dist/*.whl | head -30
+
+# Show dependency tree
+deps:
+    uv tree
+
+# Update dependencies to latest compatible versions
+update:
+    uv lock --upgrade
+
+# Update a specific package
+update-package PACKAGE:
+    uv lock --upgrade-package {{ PACKAGE }}
+
+# Add a new dependency
+add PACKAGE:
+    uv add {{ PACKAGE }}
+
+# Add a new dev dependency
+add-dev PACKAGE:
+    uv add --dev {{ PACKAGE }}
+
+# Remove a dependency
+remove PACKAGE:
+    uv remove {{ PACKAGE }}
+
+# Run the OpenC3 CLI
+cli *ARGS:
+    uv run openc3pycli {{ ARGS }}
+
+# Show project info
+info:
+    @echo "Project: openc3"
+    @echo "Python: $(python --version)"
+    @echo "UV: $(uv --version)"
+    @uv tree --depth 1
+
+# Run Trivy security scan on dependencies (includes dev dependencies)
+trivy:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps uv.lock
+
+# Run Trivy security scan with dependency tree (only shows vulnerable packages)
+trivy-tree:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --dependency-tree uv.lock
+
+# Show full dependency tree with Trivy scan results
+trivy-full:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    echo "=== Dependency Tree ==="
+    uv tree
+    echo ""
+    echo "=== Trivy Vulnerability Scan ==="
+    trivy fs --scanners vuln --include-dev-deps uv.lock
+
+# Run Trivy security scan with JSON output (includes dev dependencies)
+trivy-json:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --format json uv.lock
+
+# Run Trivy security scan with only HIGH and CRITICAL vulnerabilities (includes dev dependencies)
+trivy-critical:
+    #!/usr/bin/env bash
+    if ! command -v trivy &> /dev/null; then
+        echo "Error: trivy is not installed"
+        echo "Install with: brew install trivy"
+        exit 1
+    fi
+    trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL uv.lock
+
+# Run PySentry security scan (checks PyPA Advisory Database, PyPI JSON API, and OSV.dev)
+pysentry:
+    uvx pysentry-rs .
+
+# Run PySentry security scan with JSON output
+pysentry-json:
+    uvx pysentry-rs . --format json
+
+# Run PySentry security scan with SARIF output (for GitHub Security tab)
+pysentry-sarif:
+    uvx pysentry-rs . --format sarif
+
+# Run PySentry security scan with only HIGH and CRITICAL vulnerabilities
+pysentry-critical:
+    uvx pysentry-rs . --severity high,critical
+
+# Run PySentry security scan with detailed output
+pysentry-verbose:
+    uvx pysentry-rs . --verbose
+
+# Watch for file changes and run tests
+watch:
+    #!/usr/bin/env bash
+    echo "Watching for changes... (Ctrl+C to stop)"
+    while true; do
+        inotifywait -r -e modify openc3/ test/ 2>/dev/null || \
+        fswatch -1 -r openc3/ test/ 2>/dev/null || \
+        (echo "Install fswatch or inotify-tools for watch functionality" && exit 1)
+        clear
+        just test
+    done

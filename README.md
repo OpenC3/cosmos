@@ -56,7 +56,7 @@ After configuring OpenC3 COSMOS to talk to your hardware, you can immediately us
 
 1. **Bucket Explorer**
 
-   - Used to view configuration and log data which is stored in either MinIO (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
+   - Used to view configuration and log data which is stored in either Versitygw (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
 
 1. **Table Manager**
 

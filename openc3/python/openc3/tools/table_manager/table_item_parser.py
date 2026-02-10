@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,6 +18,7 @@ from openc3.packets.packet_config import PacketConfig
 from openc3.packets.parsers.packet_item_parser import PacketItemParser
 from openc3.tools.table_manager.table_item import TableItem
 from openc3.utilities.logger import Logger
+
 
 class TableItemParser(PacketItemParser):
     """
@@ -39,7 +40,7 @@ class TableItemParser(PacketItemParser):
             The created TableItem
         """
         parser = cls(parser, table_config, warnings)
-        parser.verify_parameters(PacketConfig.COMMAND)
+        parser.verify_parameters(PacketConfig.COMMAND_STRING)
         return parser.create_table_item(table)
 
     def create_table_item(self, table):
@@ -56,7 +57,7 @@ class TableItemParser(PacketItemParser):
                 Logger.warn(msg)
                 self.warnings.append(msg)
 
-            if table.type == 'ROW_COLUMN':
+            if table.type == "ROW_COLUMN":
                 item_name = f"{item_name}0"
                 table.num_columns += 1
 
@@ -82,4 +83,4 @@ class TableItemParser(PacketItemParser):
                 item = table.define(item)
             return item
         except Exception as error:
-            raise self.parser.error(error, self.usage)
+            raise self.parser.error(error, self.usage) from error

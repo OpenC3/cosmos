@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -19,23 +19,26 @@
 
 import math
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.packets.packet import Packet
-from openc3.packets.packet_item import PacketItem
-from openc3.utilities.logger import Logger
-from openc3.processors.processor import Processor
-from openc3.conversions.generic_conversion import GenericConversion
-from openc3.accessors.json_accessor import JsonAccessor
+
+from cbor2 import dumps
+
 from openc3.accessors.cbor_accessor import CborAccessor
+from openc3.accessors.json_accessor import JsonAccessor
+from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,
 )
 from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
-from datetime import datetime, timezone
-from cbor2 import dumps, loads
+from openc3.packets.packet import Packet
+from openc3.packets.packet_item import PacketItem
+from openc3.processors.processor import Processor
+from openc3.utilities.logger import Logger
+from test.test_helper import *
+
 
 class TestPacket(unittest.TestCase):
     def test_sets_the_template(self):
@@ -1233,6 +1236,7 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.clear_all_non_derived_items()
         self.assertEqual(list(p.items.keys()), ["TEST3"])
 
+
 class PacketLimits(unittest.TestCase):
     def test_enables_limits_on_each_packet_item(self):
         p = Packet("tgt", "pkt")
@@ -1980,7 +1984,7 @@ class PacketObfuscation(unittest.TestCase):
         i = p.get_item("TEST1")
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
-        p.buffer = b"TESTTESTEST"
+        p.buffer = b"TESTTESTTEST"
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
@@ -2106,24 +2110,26 @@ class PacketObfuscation(unittest.TestCase):
         json_struct = Packet()
         json_struct.accessor = JsonAccessor(json_struct)
         json_struct.virtual = True
-        json_template = bytearray('{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}', "ascii")
+        json_template = bytearray(
+            '{"id_item":1,"item1":101,"more":{"item2":12,"item3":3.14,"item4":"Example","item5":[]}}', "ascii"
+        )
         json_struct.template = json_template
-        item = json_struct.append_item("ITEM0", 32, 'INT')
+        item = json_struct.append_item("ITEM0", 32, "INT")
         item.default = 1
         item.key = "$.id_item"
-        item = json_struct.append_item("ITEM1", 16, 'UINT')
+        item = json_struct.append_item("ITEM1", 16, "UINT")
         item.default = 101
         item.key = "$.item1"
-        item = json_struct.append_item("ITEM2", 16, 'UINT')
+        item = json_struct.append_item("ITEM2", 16, "UINT")
         item.default = 12
         item.key = "$.more.item2"
-        item = json_struct.append_item("ITEM3", 64, 'FLOAT')
+        item = json_struct.append_item("ITEM3", 64, "FLOAT")
         item.default = 3.14
         item.key = "$.more.item3"
-        item = json_struct.append_item("ITEM4", 128, 'STRING')
+        item = json_struct.append_item("ITEM4", 128, "STRING")
         item.default = "Example"
         item.key = "$.more.item4"
-        item = json_struct.append_item("ITEM5", 8, 'UINT')
+        item = json_struct.append_item("ITEM5", 8, "UINT")
         item.array_size = 0
         item.default = []
         item.key = "$.more.item5"
@@ -2131,40 +2137,50 @@ class PacketObfuscation(unittest.TestCase):
         cbor_struct = Packet()
         cbor_struct.accessor = CborAccessor(cbor_struct)
         cbor_struct.virtual = True
-        cbor_template = dumps({"id_item":2, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[] } })
+        cbor_template = dumps(
+            {"id_item": 2, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}}
+        )
         cbor_struct.template = cbor_template
-        item = cbor_struct.append_item("ITEM0", 32, 'INT')
+        item = cbor_struct.append_item("ITEM0", 32, "INT")
         item.default = 2
         item.key = "$.id_item"
-        item = cbor_struct.append_item("ITEM1", 16, 'UINT')
+        item = cbor_struct.append_item("ITEM1", 16, "UINT")
         item.default = 101
         item.key = "$.item1"
-        item = cbor_struct.append_item("ITEM2", 16, 'UINT')
+        item = cbor_struct.append_item("ITEM2", 16, "UINT")
         item.default = 12
         item.key = "$.more.item2"
-        item = cbor_struct.append_item("ITEM3", 64, 'FLOAT')
+        item = cbor_struct.append_item("ITEM3", 64, "FLOAT")
         item.default = 3.14
         item.key = "$.more.item3"
-        item = cbor_struct.append_item("ITEM4", 128, 'STRING')
+        item = cbor_struct.append_item("ITEM4", 128, "STRING")
         item.default = "Example"
         item.key = "$.more.item4"
-        item = cbor_struct.append_item("ITEM5", 8, 'UINT')
+        item = cbor_struct.append_item("ITEM5", 8, "UINT")
         item.array_size = 0
         item.default = []
         item.key = "$.more.item5"
 
         packet = Packet()
-        item = packet.append_item("JSON_LENGTH", 32, 'UINT')
+        item = packet.append_item("JSON_LENGTH", 32, "UINT")
         item.default = 0
-        item = packet.append_item("JSON", 0, 'BLOCK')
+        item = packet.append_item("JSON", 0, "BLOCK")
         item.default = ""
-        item.variable_bit_size = {'length_item_name': "JSON_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
+        item.variable_bit_size = {
+            "length_item_name": "JSON_LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
         packet.structurize_item(item, json_struct)
-        item = packet.append_item("CBOR_LENGTH", 32, 'UINT')
+        item = packet.append_item("CBOR_LENGTH", 32, "UINT")
         item.default = 0
-        item = packet.append_item("CBOR", 0, 'BLOCK')
+        item = packet.append_item("CBOR", 0, "BLOCK")
         item.default = ""
-        item.variable_bit_size = {'length_item_name': "CBOR_LENGTH", 'length_bits_per_count': 8, 'length_value_bit_offset': 0}
+        item.variable_bit_size = {
+            "length_item_name": "CBOR_LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
         packet.structurize_item(item, cbor_struct)
 
         packet.restore_defaults()

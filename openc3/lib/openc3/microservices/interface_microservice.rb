@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -573,7 +573,8 @@ module OpenC3
 
       @queued = false
       @interface.options.each do |option_name, option_values|
-        if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
+        # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
+        if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
           update_interval = option_values[0].to_f
           EphemeralStoreQueued.instance.set_update_interval(update_interval)

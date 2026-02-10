@@ -23,11 +23,11 @@ require "openc3/utilities/aws_bucket"
 module OpenC3
   describe AwsBucket do
     before(:all) do |example|
-    # These tests work if there's a local S3 or a MINIO service available. To enable
-    # access to MINIO for testing, change the compose.yaml services stanza to:
+    # These tests work if there's a local S3 or a S3 (versitygw) service available. To enable
+    # access to S3 (versitygw) for testing, change the compose.yaml services stanza to:
     #
     # services:
-    #   openc3-minio:
+    #   openc3-buckets:
     #     ports:
     #       - "127.0.0.1:9000:9000"
       begin
@@ -37,7 +37,7 @@ module OpenC3
         local_s3()
         Logger.info("No S3 listener - using local_s3 client")
       rescue Errno::EADDRINUSE;
-        Logger.info("Found listener on port 9000; presumably Minio")
+        Logger.info("Found listener on port 9000; presumably versitygw")
       end
 
       @bucket = Bucket.getClient.create("bucket#{rand(1000)}")

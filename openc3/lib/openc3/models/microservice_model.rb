@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,6 +23,7 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/metric_model'
+require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
 
 module OpenC3
@@ -268,8 +269,13 @@ module OpenC3
 
     def undeploy
       prefix = "#{@scope}/microservices/#{@name}/"
-      @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
-        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
+      objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
+      keys = objects.map(&:key)
+      if keys.length > 0
+        # Batch delete in chunks of 1000 (S3 limit)
+        keys.each_slice(1000) do |key_batch|
+          @bucket.delete_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], keys: key_batch)
+        end
       end
       config = { kind: 'deleted', type: 'microservice', name: @name }
       config[:plugin] = @plugin if @plugin

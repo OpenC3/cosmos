@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -324,72 +324,42 @@ def check_alpine(client)
   end
 end
 
-def check_minio(client, containers, minio_version, go_version)
-  puts "Checking minio against Minio version: #{minio_version}, Go version: #{go_version}"
-  resp = client.get('https://api.github.com/repos/minio/minio/tags').body
-  tags = JSON.parse(resp)
-  minio_versions = []
-  tags.each do |entry|
-    minio_versions << entry['name']
-  end
-  check_minio_version(minio_versions, minio_version, 'Minio')
-
-  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/golang/tags?name=alpine#{ENV['ALPINE_VERSION']}&page_size=1024").body
-  images = JSON.parse(resp)['results']
+def check_versitygw(client, versitygw_version)
+  puts "Checking versitygw against version: #{versitygw_version}"
+  resp = client.get('https://api.github.com/repos/versity/versitygw/releases').body
+  releases = JSON.parse(resp)
   versions = []
-  images.each do |image|
-    version = image['name'].split('-alpine')[0]
-    if version =~ /^\d+\.\d+(\.\d+)?$/
-      versions << version
-    end
+  releases.each do |release|
+    # Tags are like "v1.0.20"
+    versions << release['tag_name']#.sub(/^v/, '')
   end
-  validate_versions(versions, go_version, 'Go')
+  validate_versions(versions, versitygw_version, 'versitygw')
 end
 
-def check_minio_version(versions, requested_version, name)
-  if versions.include?(requested_version)
-    split_version = requested_version.split('.')
-    minio_time = DateTime.parse(split_version[1])
-    versions.each do |version|
-      split_version = version.split('.')
-      if split_version[0] == 'RELEASE'
-        version_time = DateTime.parse(split_version[1])
-        if version_time > minio_time
-          puts "NOTE: #{name} has a new version: #{version}, Current Version: #{requested_version}"
-          return
-        end
-      end
-    end
-    puts "#{name} up to date: #{requested_version}"
-  else
-    puts "ERROR: Could not find #{name} image: #{requested_version}"
-  end
-end
-
-def check_build_files(minio_version, traefik_version)
+def check_build_files(versitygw_version, traefik_version)
   File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
     file.each do |line|
-      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+      if line.include?('OPENC3_VERSITYGW_VERSION=v')
         parts = line.split('=')
-        if parts[1].strip != minio_version
-          puts "WARN: Update build_multi_arch.rb to match Minio Dockerfile: #{minio_version}, Current value: #{parts[1].strip}"
+        if parts[1].strip != versitygw_version
+          puts "WARN: Update build_multi_arch.sh to match openc3-buckets Dockerfile: #{versitygw_version}, Current value: #{parts[1].strip}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')
         parts = line.split('=')
         if parts[1].strip != traefik_version
-          puts "WARN: Update build_multi_arch.rb to match traefik Dockerfile: #{traefik_version}, Current value: #{parts[1].strip}"
+          puts "WARN: Update build_multi_arch.sh to match traefik Dockerfile: #{traefik_version}, Current value: #{parts[1].strip}"
         end
       end
     end
   end
   File.open(File.join(File.dirname(__FILE__), '../linux', 'openc3_build_ubi.sh')) do |file|
     file.each do |line|
-      if line.include?('OPENC3_MINIO_RELEASE=RELEASE')
+      if line.include?('OPENC3_VERSITYGW_VERSION=')
         parts = line.split('=')
         version = parts[1].strip[0..-2].strip # Removing trailing \
-        if version != minio_version
-          puts "WARN: Update openc3_build_ubi.rb to match Minio Dockerfile: #{minio_version}, Current value: #{version}"
+        if version != versitygw_version
+          puts "WARN: Update openc3_build_ubi.sh to match openc3-buckets Dockerfile: #{versitygw_version}, Current value: #{version}"
         end
       end
       if line.include?('OPENC3_TRAEFIK_RELEASE=v')
@@ -407,11 +377,12 @@ def validate_versions(versions, version, name)
   if versions.include?(version)
     new_version = false
     major, minor, patch = version.split('.')
-    if versions.include?("#{major.to_i + 1}.0")
+    # Check for next major version and two common patch versions (in case they skip a patch)
+    if versions.include?("#{major.to_i + 1}.0.0") || versions.include?("#{major.to_i + 1}.0.1") || versions.include?("#{major.to_i + 1}.1.0")
       puts "NOTE: #{name} has a new major version: #{major.to_i + 1}, Current Version: #{version}"
       new_version = true
     end
-    if versions.include?("#{major}.#{minor.to_i + 1}")
+    if versions.include?("#{major}.#{minor.to_i + 1}.0") || versions.include?("#{major}.#{minor.to_i + 1}.1")
       puts "NOTE: #{name} has a new minor version: #{major}.#{minor.to_i + 1}, Current Version: #{version}"
       new_version = true
     end
@@ -444,10 +415,14 @@ def check_keycloak(client, containers)
   validate_versions(versions, version, 'keycloak')
 end
 
-def check_container_version(client, containers, name)
-  container = containers.select { |val| val[:name].include?(name) }[0]
-  version = container[:base_image].split(':')[-1]
-  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024").body
+def check_container_version(client, containers, image_name)
+  container = containers.select { |val| val[:name].include?(image_name) }[0]
+  name, version = container[:base_image].split(':')
+  if image_name == 'traefik'
+    resp = client.get("https://registry.hub.docker.com/v2/repositories/library/traefik/tags?page_size=1024").body
+  elsif image_name == 'redis'
+    resp = client.get("https://registry.hub.docker.com/v2/repositories/valkey/valkey/tags?page_size=1024").body
+  end
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|

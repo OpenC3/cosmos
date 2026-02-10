@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,7 +32,7 @@ module OpenC3
   # Packet adds is the ability to apply formatting to PacketItem values as well
   # as managing PacketItem's limit states.
   class Packet < Structure
-    RESERVED_ITEM_NAMES = ['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze]
+    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze].freeze
     ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with
@@ -219,7 +219,7 @@ module OpenC3
           if !(Time === received_time)
             raise(ArgumentError, "received_time must be a Time but is a #{received_time.class}")
           end
-          @received_time = received_time.clone.freeze
+          @received_time = received_time
         else
           @received_time = nil
         end
@@ -1049,6 +1049,9 @@ module OpenC3
         if item.limits.enabled
           value = read_item(item)
 
+          # Skip limits checking if value is nil (item outside buffer bounds)
+          next if value.nil?
+
           # Handle state monitoring and value monitoring differently
           if item.states
             handle_limits_states(item, value)
@@ -1095,7 +1098,7 @@ module OpenC3
         end
       end
       packet.instance_variable_set("@read_conversion_cache".freeze, nil)
-      packet.extra = JSON.parse(packet.extra.as_json().to_json(allow_nan: true), allow_nan: true, create_additions: true) if packet.extra # Deep copy using JSON
+      packet.extra = packet.extra.deep_dup if packet.extra
       packet
     end
     alias dup clone
@@ -1297,10 +1300,16 @@ module OpenC3
           json_hash.delete(item.name)
         else
           given_raw = json_hash[item.name]
-          json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
-          json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string or item.units
+          if item.states or (item.read_conversion and item.data_type != :DERIVED)
+            json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw)
+          end
+          if item.format_string or item.units
+            json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw)
+          end
           limits_state = item.limits.state
-          json_hash["#{item.name}__L"] = limits_state if limits_state
+          if limits_state
+            json_hash["#{item.name}__L"] = limits_state
+          end
         end
       end
 
@@ -1520,6 +1529,9 @@ module OpenC3
     end
 
     def apply_format_string_and_units(item, value, value_type)
+      # Return nil as-is - can't format a value that doesn't exist
+      return nil if value.nil?
+
       if value_type == :FORMATTED or value_type == :WITH_UNITS
         if item.format_string && value
           value = sprintf(item.format_string, value)

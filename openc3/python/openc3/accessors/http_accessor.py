@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,9 +18,11 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import re
-from .accessor import Accessor
+
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import class_name_to_filename, filename_to_module, filename_to_class_name
+from openc3.utilities.string import class_name_to_filename, filename_to_class_name, filename_to_module
+
+from .accessor import Accessor
 
 
 class HttpAccessor(Accessor):
@@ -163,7 +165,7 @@ class HttpAccessor(Accessor):
 
     # This sets the short_buffer_allowed flag in the Packet class
     # which allows packets that have a buffer shorter than the defined size.
-    # Note that the buffer is still resized to the defined length
+    # Items outside the buffer bounds will return None when read.
     def enforce_short_buffer_allowed(self):
         return self.body_accessor.enforce_short_buffer_allowed()
 

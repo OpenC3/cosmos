@@ -1,7 +1,18 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 name: COSMOS Core Release
 
@@ -22,15 +33,14 @@ on:
         type: boolean
         default: true
 
-permissions:
-  id-token: write  # Required for OIDC
-  contents: read
-  packages: write  # Required for pushing to ghcr.io
-
 jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC
+      contents: read
+      packages: write # Required for pushing to ghcr.io
     environment: Release
     steps:
       - uses: actions/checkout@v6
@@ -58,7 +68,12 @@ jobs:
       - name: login to ironbank
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: echo ${{ secrets.IRONBANK_REGISTRY_CLI }} | docker login registry1.dso.mil -u jmthomas --password-stdin
+        env:
+          # Create ENV variable for the IronBank registry CLI token, which is stored as a secret in GitHub
+          # This is done to avoid expanding secrets directly in a run block
+          # where they may be exposed in process lists, shell history, or files.
+          IRONBANK_REGISTRY_CLI: ${{ secrets.IRONBANK_REGISTRY_CLI }}
+        run: echo "$IRONBANK_REGISTRY_CLI" | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:

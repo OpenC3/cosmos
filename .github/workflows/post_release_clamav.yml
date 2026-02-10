@@ -1,7 +1,18 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 name: Post Release ClamAV Scan
 
@@ -16,6 +27,8 @@ on:
 jobs:
   openc3-clamav-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Need write permission to upload release asset
     steps:
       - uses: actions/checkout@v6 # Latest version is fine here because we are scanning released containers not built from code
       - name: Set up Ruby 3.4
@@ -48,8 +61,8 @@ jobs:
       - name: ClamAV scan image redis
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} pull clamav_results/openc3-redis.txt
         working-directory: scripts/release
-      - name: ClamAV scan image minio
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }} pull clamav_results/openc3-minio.txt
+      - name: ClamAV scan image bucket
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }} pull clamav_results/openc3-buckets.txt
         working-directory: scripts/release
       - name: ClamAV scan image tsdb
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }} pull clamav_results/openc3-tsdb.txt

@@ -14,16 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
-from datetime import datetime, timezone
+import contextlib
 import threading
+import time
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.interfaces.stream_interface import StreamInterface
+
 from openc3.interfaces.protocols.ignore_packet_protocol import IgnorePacketProtocol
+from openc3.interfaces.stream_interface import StreamInterface
 from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
+from test.test_helper import *
 
 
 class TestIgnorePacketProtocol(unittest.TestCase):
@@ -105,10 +107,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it blocks and calls it continuously
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()
@@ -142,10 +142,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it calls it continuously
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()
@@ -172,10 +170,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Try to read the interface
         # We put this in a thread because it calls it continuously
         def my_read2():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read2)
         thread.start()
@@ -254,10 +250,8 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.assertIsNone(TestIgnorePacketProtocol.buffer)
 
         def my_read():
-            try:
+            with contextlib.suppress(Exception):
                 TestIgnorePacketProtocol.packet = self.interface.read()
-            except Exception:
-                pass
 
         thread = threading.Thread(target=my_read)
         thread.start()

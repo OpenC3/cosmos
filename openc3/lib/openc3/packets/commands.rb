@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -190,9 +190,15 @@ module OpenC3
       target_upcase = target_name.to_s.upcase
       packet_upcase = packet_name.to_s.upcase
 
-      # Lookup the command and create a light weight copy
-      pkt = packet(target_upcase, packet_upcase)
-      command = pkt.clone
+      # Lookup the command directly - avoid redundant upcase in packet()/packets()
+      target_packets = @config.commands[target_upcase]
+      raise "Command target '#{target_upcase}' does not exist" unless target_packets
+      pkt = target_packets[packet_upcase]
+      raise "Command packet '#{target_upcase} #{packet_upcase}' does not exist" unless pkt
+      # Use deep_copy to avoid shared item modifications affecting the template
+      # This is critical for variable_bit_size items where handle_write_variable_bit_size
+      # modifies item.bit_offset and item.array_size during writes
+      command = pkt.deep_copy
 
       # Restore the command's buffer to a zeroed string of defined length
       # This will undo any side effects from earlier commands that may have altered the size
@@ -294,8 +300,25 @@ module OpenC3
 
     def set_parameters(command, params, range_checking)
       given_item_names = []
+
+      # Identify length fields that are auto-managed by variable_bit_size arrays
+      # These should not be written directly - the array write will auto-update them
+      auto_length_fields = Set.new
+      command.sorted_items.each do |item|
+        if item.variable_bit_size
+          auto_length_fields << item.variable_bit_size['length_item_name'].upcase
+        end
+      end
+
       params.each do |item_name, value|
         item_upcase = item_name.to_s.upcase
+
+        # Skip auto-managed length fields - they will be set when the array is written
+        if auto_length_fields.include?(item_upcase)
+          given_item_names << item_upcase
+          next
+        end
+
         item = command.get_item(item_upcase)
         range_check_value = value
 
@@ -327,11 +350,11 @@ module OpenC3
           end
         end
 
-        # Update parameter in command
+        # Update parameter in command - use write_item directly to avoid redundant get_item call
         if command.raw
-          command.write(item_upcase, value, :RAW)
+          command.write_item(item, value, :RAW)
         else
-          command.write(item_upcase, value, :CONVERTED)
+          command.write_item(item, value, :CONVERTED)
         end
 
         given_item_names << item_upcase

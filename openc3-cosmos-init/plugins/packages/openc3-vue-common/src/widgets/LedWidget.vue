@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -109,12 +109,15 @@ export default {
   },
   computed: {
     width() {
-      return this.parameters[4] ? parseInt(this.parameters[4]) : 20
+      return this.parameters[4] ? Number.parseInt(this.parameters[4]) : 20
     },
     height() {
-      return this.parameters[5] ? parseInt(this.parameters[5]) : 20
+      return this.parameters[5] ? Number.parseInt(this.parameters[5]) : 20
     },
     cssProps() {
+      if (!this.screenValues[this.valueId]) {
+        return { '--color': 'openc3-black' }
+      }
       let value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
@@ -134,7 +137,10 @@ export default {
     },
     getClass() {
       let result = 'ledwidget mt-2'
-      if (this.screenValues[this.valueId][1] === 'STALE') {
+      if (
+        this.screenValues[this.valueId] &&
+        this.screenValues[this.valueId][1] === 'STALE'
+      ) {
         result += ' stale'
       }
       return result

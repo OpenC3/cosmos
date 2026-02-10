@@ -1,9 +1,25 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 name: eslint
 
 on:
   pull_request:
     branches-ignore:
-      - 'dependabot/**'
+      - "dependabot/**"
     types:
       - opened
       - reopened
@@ -11,11 +27,13 @@ on:
     paths:
       - "openc3-cosmos-init/plugins/packages/**"
 
+# All jobs need permission to read repo contents
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
     outputs:
       plugins: ${{ steps.filter.outputs.plugins }}
       demo: ${{ steps.filter.outputs.demo }}

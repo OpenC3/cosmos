@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -890,6 +890,70 @@ module OpenC3
         item = s.get_item("data")
         item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
         s.set_item(item)
+      end
+
+      it "does not treat arrays with zero size as QUIC integers" do
+        # This test ensures arrays with original_array_size=0 are NOT treated as QUIC integers.
+        # In Ruby, `not 0` is false (0 is truthy), so this works correctly.
+        # This test exists for parity with the Python test which caught a bug where
+        # `not item.original_array_size` incorrectly returned True for arrays with original_array_size=0
+        # (in Python, `not 0` is True because 0 is falsy).
+        s = Structure.new(:BIG_ENDIAN)
+        # Define ARRAY1_LENGTH (32 bits)
+        s.append_item("ARRAY1_LENGTH", 32, :UINT)
+        # Define ARRAY1 as an array with 0 initial size
+        item = s.append_item("ARRAY1", 8, :UINT, 0) # array_size=0
+        item.variable_bit_size = {'length_item_name' => 'ARRAY1_LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+
+        # ARRAY1 is at bit_offset 32 (after ARRAY1_LENGTH)
+        expect(s.get_item("ARRAY1").bit_offset).to eql 32
+
+        # defined_length_bits should still be 32 (ARRAY1_LENGTH only, since ARRAY1 has 0 size)
+        # If arrays were incorrectly treated as QUIC integers, it would be 38 (32 + 6 for QUIC minimum)
+        expect(s.defined_length_bits).to eql 32
+
+        # Now append ARRAY2_LENGTH - it should be at bit_offset 32 (same as ARRAY1 since ARRAY1 has 0 size)
+        s.append_item("ARRAY2_LENGTH", 32, :UINT)
+        expect(s.get_item("ARRAY2_LENGTH").bit_offset).to eql 32
+
+        # Define ARRAY2 as an array with 0 initial size
+        item2 = s.append_item("ARRAY2", 8, :UINT, 0) # array_size=0
+        item2.variable_bit_size = {'length_item_name' => 'ARRAY2_LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item2)
+
+        # ARRAY2 should be at bit_offset 64 (after both LENGTH fields)
+        expect(s.get_item("ARRAY2").bit_offset).to eql 64
+
+        # Total defined_length should be 8 bytes (64 bits)
+        expect(s.defined_length_bits).to eql 64
+        expect(s.defined_length).to eql 8
+      end
+    end
+
+    describe "short_buffer_allowed" do
+      it "returns nil for items outside buffer bounds when short_buffer_allowed is true" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        s.append_item("item3", 16, :UINT)
+        s.short_buffer_allowed = true
+        # Set a short buffer that only contains data for item1
+        s.buffer = "\x00\x01"
+        # item1 should read successfully
+        expect(s.read("item1")).to eq(1)
+        # item2 and item3 should return nil since they're outside the buffer
+        expect(s.read("item2")).to be_nil
+        expect(s.read("item3")).to be_nil
+        # Buffer should remain at its original size (not padded)
+        expect(s.buffer.length).to eq(2)
+      end
+
+      it "raises error when short_buffer_allowed is false" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        expect { s.buffer = "\x00\x01" }.to raise_error(RuntimeError, /Buffer length less than defined length/)
       end
     end
   end # describe Structure

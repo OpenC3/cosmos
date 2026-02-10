@@ -179,7 +179,7 @@ module LocalS3
       # no-op: this space intentionally left blank
     end
 
-    def put_object(bucket:, key:, body:, content_type:, cache_control:, metadata:, checksum_algorithm:)
+    def put_object(bucket:, key:, body:, content_type:, cache_control:, metadata:, checksum_algorithm: nil)
       bucket_obj = get_bucket(bucket)
       if !bucket_obj
         # Lazily create a bucket.  Make this return the proper error.

@@ -5,7 +5,7 @@ AVAILABLE_IMAGES=(
   "openc3-ruby-ubi"
   "openc3-base-ubi"
   "openc3-node-ubi"
-  "openc3-minio-ubi"
+  "openc3-buckets-ubi"
   "openc3-redis-ubi"
   "openc3-tsdb-ubi"
   "openc3-cosmos-cmd-tlm-api-ubi"
@@ -16,12 +16,12 @@ AVAILABLE_IMAGES=(
 )
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: openc3_build_ubi.sh [IMAGE_NAME...]"
   echo ""
-  echo "Builds OpenC3 UBI (Universal Base Image) containers for enterprise deployments."
+  echo "Builds OpenC3 Core UBI (Universal Base Image) containers for enterprise deployments."
   echo ""
-  echo "This script builds all OpenC3 services using Red Hat UBI base images,"
+  echo "This script builds all OpenC3 Core services using Red Hat UBI base images,"
   echo "suitable for air-gapped and government environments."
   echo ""
   echo "Arguments:"
@@ -34,12 +34,12 @@ if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
   done
   echo ""
   echo "Environment variables required:"
+  echo "  OPENC3_REGISTRY          - OpenC3 base registry URL"
+  echo "  OPENC3_NAMESPACE         - OpenC3 base namespace"
+  echo "  OPENC3_TAG               - OpenC3 base tag"
   echo "  OPENC3_UBI_REGISTRY      - UBI registry URL"
   echo "  OPENC3_UBI_IMAGE         - UBI image name"
   echo "  OPENC3_UBI_TAG           - UBI image tag"
-  echo "  OPENC3_REGISTRY          - Target registry for built images"
-  echo "  OPENC3_NAMESPACE         - Target namespace"
-  echo "  OPENC3_TAG               - Tag for built images"
   echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
   echo "  PYPI_URL                 - PyPI mirror URL (optional)"
   echo "  NPM_URL                  - NPM registry URL (optional)"
@@ -61,7 +61,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Parse command line arguments to determine which images to build
 IMAGES_TO_BUILD=()
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
   # No arguments provided, build all images
   IMAGES_TO_BUILD=("${AVAILABLE_IMAGES[@]}")
   echo "No images specified, building all images..."
@@ -72,7 +72,7 @@ else
     if [[ " ${AVAILABLE_IMAGES[@]} " =~ " ${arg} " ]]; then
       IMAGES_TO_BUILD+=("$arg")
     else
-      echo "Error: Unknown image '${arg}'"
+      echo "Error: Unknown image '${arg}'" >&2
       echo "Available images:"
       for img in "${AVAILABLE_IMAGES[@]}"; do
         echo "  - $img"
@@ -97,9 +97,19 @@ then
   fi
 fi
 
+# Detect host architecture and set platform flag
+# On ARM Macs, some x86 images use x86-64-v3 which can't be emulated
+if [[ "$(uname -m)" == "arm64" ]]; then
+  echo "Detected ARM architecture - building native images"
+  PLATFORM_FLAG=""
+else
+  echo "Detected x86 architecture - building linux/amd64 images"
+  PLATFORM_FLAG="--platform linux/amd64"
+fi
+
 # Function to check and perform registry login
 check_registry_login() {
-  if [ -z "$OPENC3_UBI_REGISTRY" ]; then
+  if [[ -z "$OPENC3_UBI_REGISTRY" ]]; then
     echo "Warning: OPENC3_UBI_REGISTRY not set, skipping registry login check"
     return 0
   fi
@@ -107,7 +117,7 @@ check_registry_login() {
   echo "Logging into registry: $OPENC3_UBI_REGISTRY"
 
   # Attempt login with credentials if provided, otherwise prompt
-  if [ -n "$OPENC3_UBI_USERNAME" ] && [ -n "$OPENC3_UBI_PASSWORD" ]; then
+  if [[ -n "$OPENC3_UBI_USERNAME" ]] && [[ -n "$OPENC3_UBI_PASSWORD" ]]; then
     echo "Using provided credentials for login..."
     if echo "$OPENC3_UBI_PASSWORD" | docker login "$OPENC3_UBI_REGISTRY" --username "$OPENC3_UBI_USERNAME" --password-stdin; then
       echo "Successfully authenticated with registry: $OPENC3_UBI_REGISTRY"
@@ -138,6 +148,7 @@ chmod -R +r . 2>/dev/null || echo "Warning: Could not set all files readable (th
 should_build() {
   local image_name="$1"
   [[ " ${IMAGES_TO_BUILD[@]} " =~ " ${image_name} " ]]
+  return $?
 }
 
 # Helper function to format duration in human-readable format
@@ -145,11 +156,12 @@ format_duration() {
   local total_seconds=$1
   local minutes=$((total_seconds / 60))
   local seconds=$((total_seconds % 60))
-  if [ $minutes -gt 0 ]; then
+  if [[ $minutes -gt 0 ]]; then
     echo "${minutes}m ${seconds}s"
   else
     echo "${seconds}s"
   fi
+  return 0
 }
 
 # Arrays to track build times for final report
@@ -162,6 +174,7 @@ record_build() {
   local duration="$2"
   BUILT_IMAGES+=("$image_name")
   BUILD_TIMES+=("$duration")
+  return 0
 }
 
 if should_build "openc3-ruby-ubi"; then
@@ -176,7 +189,7 @@ if should_build "openc3-ruby-ubi"; then
     --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
     --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
     --build-arg PYPI_URL=$PYPI_URL \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -199,7 +212,7 @@ if should_build "openc3-base-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -220,7 +233,7 @@ if should_build "openc3-node-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg NPM_URL=$NPM_URL \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -229,25 +242,23 @@ if should_build "openc3-node-ubi"; then
   record_build "openc3-node-ubi" "$DURATION"
 fi
 
-if should_build "openc3-minio-ubi"; then
-  echo "Building openc3-minio-ubi..."
+if should_build "openc3-buckets-ubi"; then
+  echo "Building openc3-buckets-ubi..."
   START_TIME=$SECONDS
-  # NOTE: Ensure the release is on IronBank:
-  # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fminio
-  # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
-  cd openc3-minio
+  cd openc3-buckets
   docker build \
     -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-    --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-10-15T17-29-55Z \
-    --platform linux/amd64 \
-    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
+    --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
+    --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+    --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    $PLATFORM_FLAG \
+    -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets-ubi:${OPENC3_TAG}" \
     .
   cd ..
   DURATION=$((SECONDS - START_TIME))
-  echo "✓ openc3-minio-ubi completed in $(format_duration $DURATION)"
-  record_build "openc3-minio-ubi" "$DURATION"
+  echo "✓ openc3-buckets-ubi completed in $(format_duration $DURATION)"
+  record_build "openc3-buckets-ubi" "$DURATION"
 fi
 
 if should_build "openc3-redis-ubi"; then
@@ -255,11 +266,12 @@ if should_build "openc3-redis-ubi"; then
   START_TIME=$SECONDS
   cd openc3-redis
   docker build \
+    -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/redis \
-    --build-arg OPENC3_REDIS_IMAGE=redis7 \
-    --build-arg OPENC3_REDIS_VERSION="7.2.5" \
-    --platform linux/amd64 \
+    --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
+    --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
+    --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -276,7 +288,7 @@ if should_build "openc3-tsdb-ubi"; then
     --network host \
     --build-arg OPENC3_TSDB_VERSION_EXT="-rhel" \
     --build-arg OPENC3_DEPENDENCY_REGISTRY="${OPENC3_DEPENDENCY_REGISTRY}" \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -299,7 +311,7 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -323,7 +335,7 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -343,7 +355,7 @@ if should_build "openc3-operator-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -360,13 +372,13 @@ if should_build "openc3-traefik-ubi"; then
   fi
   # NOTE: Ensure OPENC3_TRAEFIK_RELEASE is on IronBank:
   # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
-cd openc3-traefik
+  cd openc3-traefik
   docker build \
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
     --build-arg OPENC3_TRAEFIK_RELEASE=v3.6.5 \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -389,7 +401,7 @@ if should_build "openc3-cosmos-init-ubi"; then
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
-    --platform linux/amd64 \
+    $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -407,7 +419,7 @@ echo "       BUILD SUMMARY REPORT"
 echo "========================================"
 echo ""
 
-if [ ${#BUILT_IMAGES[@]} -eq 0 ]; then
+if [[ ${#BUILT_IMAGES[@]} -eq 0 ]]; then
   echo "No images were built."
 else
   echo "Images built: ${#BUILT_IMAGES[@]}"

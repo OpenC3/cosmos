@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -693,7 +693,8 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "handles errors" do
-      allow(ENV).to receive(:[]).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
 
       delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
       expect(response).to have_http_status(:internal_server_error)
@@ -702,6 +703,157 @@ RSpec.describe StorageController, type: :controller do
 
     it "requires bucket or volume parameter" do
       delete :delete, params: {object_id: "file.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("Must pass bucket or volume parameter!")
+    end
+  end
+
+  describe "DELETE delete_directory" do
+    describe "bucket directory deletion" do
+      let(:bucket_client) { instance_double(OpenC3::Bucket) }
+
+      before do
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      end
+
+      it "deletes a bucket directory with admin authorization" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        objects = [
+          double(key: "scope/targets_modified/INST/file1.txt"),
+          double(key: "scope/targets_modified/INST/file2.txt"),
+        ]
+        allow(bucket_client).to receive(:list_objects).and_return(objects)
+        allow(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(2)
+      end
+
+      it "deletes an empty directory and returns 0 count" do
+        allow(bucket_client).to receive(:list_objects).and_return([])
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/EMPTY", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(0)
+      end
+
+      it "deletes directory in batches for large directories" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        # Create 1500 objects to test batching
+        objects = (1..1500).map { |i| double(key: "scope/targets_modified/INST/file#{i}.txt") }
+        allow(bucket_client).to receive(:list_objects).and_return(objects)
+        allow(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(1500)
+        # Should have been called twice (1000 + 500)
+        expect(bucket_client).to have_received(:delete_objects).twice
+      end
+
+      it "handles local mode for bucket directories" do
+        ENV["OPENC3_LOCAL_MODE"] = "true"
+        objects = [double(key: "scope/targets_modified/INST/file1.txt")]
+        allow(bucket_client).to receive(:list_objects).and_return(objects)
+        allow(bucket_client).to receive(:delete_objects)
+        allow(OpenC3::LocalMode).to receive(:delete_local)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        expect(OpenC3::LocalMode).to have_received(:delete_local).with("scope/targets_modified/INST/file1.txt")
+      end
+
+      it "requires admin for most bucket directories" do
+        # Non-targets_modified or tmp directories require admin
+        # Without admin auth, it returns unauthorized (handled by authorization method)
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets/INST"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "allows non-admin for targets_modified directories" do
+        objects = [double(key: "scope/targets_modified/INST/file1.txt")]
+        allow(bucket_client).to receive(:list_objects).and_return(objects)
+        allow(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(1)
+      end
+
+      it "allows non-admin for tmp directories" do
+        objects = [double(key: "scope/tmp/tempfile.txt")]
+        allow(bucket_client).to receive(:list_objects).and_return(objects)
+        allow(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/tmp", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(1)
+      end
+
+      it "returns 403 for unauthorized scope" do
+        allow(controller).to receive(:authorize) do |args|
+          if args[:scope] == 'DEFAULT'
+            'authorized_user'
+          else
+            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+          end
+        end
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)["message"]).to eq("Not authorized for scope: SCOPE2")
+      end
+
+      it "returns nothing without authorization" do
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "handles errors" do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with("OPENC3_CONFIG_BUCKET").and_raise(StandardError.new("General error"))
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)["message"]).to eq("General error")
+      end
+    end
+
+    describe "volume directory deletion" do
+      it "deletes a volume directory with admin authorization" do
+        allow(File).to receive(:directory?).and_return(true)
+        allow(Dir).to receive(:glob).and_return(["/data-volume/test/file1.txt", "/data-volume/test/file2.txt"])
+        allow(File).to receive(:file?).and_return(true)
+        allow(FileUtils).to receive(:rm_rf)
+
+        delete :delete_directory, params: {volume: "OPENC3_DATA_VOLUME", object_id: "test", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        result = JSON.parse(response.body)
+        expect(result["deleted_count"]).to eq(2)
+      end
+
+      it "returns 400 for non-directory path on volume" do
+        allow(File).to receive(:directory?).and_return(false)
+
+        delete :delete_directory, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:bad_request)
+        expect(JSON.parse(response.body)["message"]).to eq("Not a directory: file.txt")
+      end
+
+      it "returns nothing without admin authorization for volume delete" do
+        delete :delete_directory, params: {volume: "OPENC3_DATA_VOLUME", object_id: "test"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    it "requires bucket or volume parameter" do
+      delete :delete_directory, params: {object_id: "test", scope: "DEFAULT"}
       expect(response).to have_http_status(:internal_server_error)
       expect(JSON.parse(response.body)["message"]).to eq("Must pass bucket or volume parameter!")
     end

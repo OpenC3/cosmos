@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,8 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
+
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
+
 
 # This file implements the SLIP protocol as documented in RFC 1055
 # https://datatracker.ietf.org/doc/html/rfc1055
@@ -50,8 +53,8 @@ class SlipProtocol(TerminatedProtocol):
         if self.start_char is not None:
             try:
                 self.start_char = int(start_char, 0).to_bytes(1, byteorder="big")
-            except ValueError:
-                raise ValueError(f"invalid value {start_char} for start_char")
+            except ValueError as e:
+                raise ValueError(f"invalid value {start_char} for start_char") from e
         self.end_char = int(end_char, 0).to_bytes(1, byteorder="big")
         self.esc_char = int(esc_char, 0).to_bytes(1, byteorder="big")
         self.esc_esc_char = int(esc_esc_char, 0).to_bytes(1, byteorder="big")
@@ -124,10 +127,8 @@ class SlipProtocol(TerminatedProtocol):
             except ValueError:
                 pass
         else:
-            try:
+            with contextlib.suppress(ValueError):
                 index = self.data.index(self.read_termination_characters)
-            except ValueError:
-                pass
 
         # Reduce to packet data and setup current_data for next packet
         if index is not None:

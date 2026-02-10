@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -935,6 +935,11 @@ export default class OpenC3Api {
 
   get_metrics() {
     return this.exec('get_metrics', [])
+  }
+
+  // Opens a new browser tab with the given URL
+  open_tab(url) {
+    window.open(url, '_blank')
   }
 
   // TODO: Currently unused but seemed like a useful function

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,11 +36,11 @@ module OpenC3
   describe TargetModel, type: :model do
     @fsys_s3 = false
     before(:all) do |example|
-      # These tests work if there's a local S3 or a MINIO service available. To enable
-      # access to MINIO for testing, change the compose.yaml services stanza to:
+      # These tests work if there's a local S3 or a S3 (versitygw) service available. To enable
+      # access to S3 (versitygw) for testing, change the compose.yaml services stanza to:
       #
       # services:
-      #   openc3-minio:
+      #   openc3-buckets:
       #     ports:
       #       - "127.0.0.1:9000:9000"
       begin
@@ -50,7 +50,7 @@ module OpenC3
         @fsys_s3 = true
         Logger.info("No S3 listener - using local_s3 client")
       rescue Errno::EADDRINUSE;
-        Logger.info("Found listener on port 9000; presumably Minio")
+        Logger.info("Found listener on port 9000; presumably versitygw")
       end
 
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
@@ -332,6 +332,84 @@ module OpenC3
         pkt = TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
         expect(pkt['target_name']).to eql "INST"
         expect(pkt['packet_name']).to eql "ABORT"
+      end
+
+      it "caches packet lookups" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # First call should hit the Store
+        expect(Store).to receive(:hget).once.and_call_original
+        pkt1 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Second call should hit cache and NOT call Store
+        expect(Store).not_to receive(:hget)
+        pkt2 = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Both packets should be equivalent
+        expect(pkt1).to eql pkt2
+      end
+
+      it "expires cache after timeout" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # First call populates cache
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Set timeout to 0 to force expiration
+        timeout = TargetModel::PACKET_CACHE_TIMEOUT
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = 0
+        end
+
+        # Next call should miss cache due to expiration and hit Store again
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Restore timeout
+        OpenC3.disable_warnings do
+          TargetModel::PACKET_CACHE_TIMEOUT = timeout
+        end
+      end
+
+      it "invalidates cache on set_packet" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # Populate cache
+        expect(Store).to receive(:hget).once.and_call_original
+        pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # set_packet should invalidate the cache entry
+        TargetModel.set_packet("INST", "HEALTH_STATUS", pkt, type: :TLM, scope: "DEFAULT")
+
+        # Next get should miss cache and hit Store again
+        expect(Store).to receive(:hget).once.and_call_original
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+      end
+
+      it "caches different packet types separately" do
+        # Clear cache before test
+        TargetModel.clear_packet_cache
+
+        # Get telemetry packet - should hit Store
+        expect(Store).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original
+        tlm_pkt = TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+
+        # Get command packet - should also hit Store (different cache key)
+        expect(Store).to receive(:hget).with("DEFAULT__openc3cmd__INST", "ABORT").once.and_call_original
+        cmd_pkt = TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
+
+        # Verify they are different packets
+        expect(tlm_pkt['packet_name']).to eql "HEALTH_STATUS"
+        expect(cmd_pkt['packet_name']).to eql "ABORT"
+
+        # Getting them again should NOT hit Store (cache hit)
+        expect(Store).not_to receive(:hget)
+        TargetModel.packet("INST", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT")
+        TargetModel.packet("INST", "ABORT", type: :CMD, scope: "DEFAULT")
       end
     end
 
@@ -703,6 +781,38 @@ module OpenC3
           "#{@scope}__DECOM__#{@target}",
           "#{@scope}__REDUCER__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
+      end
+
+      it "deploys TSDB microservice with both telemetry and command topics" do
+        # Set TSDB environment variables
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_HOSTNAME').and_return('localhost')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_QUERY_PORT').and_return('8086')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_INGEST_PORT').and_return('8087')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_USERNAME').and_return('admin')
+        allow(ENV).to receive(:[]).with('OPENC3_TSDB_PASSWORD').and_return('password')
+
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.create
+        capture_io do |stdout|
+          model.deploy(@target_dir, {})
+          expect(stdout.string).to include("#{@scope}__TSDB__#{@target}")
+        end
+
+        # Verify TSDB microservice was created with both telemetry and command topics
+        tsdb_model = MicroserviceModel.get_model(name: "#{@scope}__TSDB__#{@target}", scope: @scope)
+        expect(tsdb_model).to_not be_nil
+
+        # Check that TSDB topics include both DECOM (telemetry) and DECOMCMD (commands)
+        decom_topics = tsdb_model.topics.select { |t| t.include?("__DECOM__") }
+        decomcmd_topics = tsdb_model.topics.select { |t| t.include?("__DECOMCMD__") }
+
+        expect(decom_topics).to_not be_empty
+        expect(decomcmd_topics).to_not be_empty
+
+        # Verify specific topic patterns
+        expect(decom_topics.first).to match(/#{@scope}__DECOM__\{#{@target}\}__/)
+        expect(decomcmd_topics.first).to match(/#{@scope}__DECOMCMD__\{#{@target}\}__/)
       end
     end
 

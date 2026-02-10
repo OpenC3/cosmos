@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -70,14 +70,16 @@
         </v-card>
       </v-col>
       <v-col v-if="screenDefinition" md="auto">
-        <openc3-screen
-          :target="screenTarget"
-          :screen="screenName"
-          :definition="screenDefinition"
-          :keywords="keywords"
-          :count="screenCount"
-          :show-close="false"
-        />
+        <div style="position: relative">
+          <openc3-screen
+            :target="screenTarget"
+            :screen="screenName"
+            :definition="screenDefinition"
+            :keywords="keywords"
+            :count="screenCount"
+            :show-close="false"
+          />
+        </div>
       </v-col>
     </v-row>
     <div style="height: 15px" />
@@ -436,7 +438,7 @@ export default {
           let jstr = { json_class: 'String', raw: [] }
           for (let i = 0; i < hexStr.length; i += 2) {
             let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
-            jstr.raw.push(parseInt(nibble, 16))
+            jstr.raw.push(Number.parseInt(nibble, 16))
           }
           return jstr
         } else {
@@ -447,14 +449,14 @@ export default {
           } else if (upcaseStr === 'NAN') {
             return NaN
           } else if (this.isFloat(str)) {
-            return parseFloat(str)
+            return Number.parseFloat(str)
           } else if (this.isInt(str)) {
             // If this is a number that is too large for a JS number
             // then we convert it to a BigInt which gets serialized in openc3Api.js
             if (!Number.isSafeInteger(Number(str))) {
               return BigInt(str)
             } else {
-              return parseInt(str)
+              return Number.parseInt(str)
             }
           } else if (this.isArray(str)) {
             return eval(str)
@@ -861,7 +863,9 @@ export default {
         if (this.status.includes(msg)) {
           let parts = this.status.split('sent.')
           if (parts[1].includes('(')) {
-            let num = parseInt(parts[1].substr(2, parts[1].indexOf(')') - 2))
+            let num = Number.parseInt(
+              parts[1].substr(2, parts[1].indexOf(')') - 2),
+            )
             msg = parts[0] + 'sent. (' + (num + 1) + ')'
           } else {
             msg += ' (2)'

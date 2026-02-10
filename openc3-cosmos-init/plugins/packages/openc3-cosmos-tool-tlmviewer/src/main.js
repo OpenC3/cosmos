@@ -1,6 +1,7 @@
 import { createApp, h } from 'vue'
 import singleSpaVue from 'single-spa-vue'
 
+import '@openc3/vue-common/styles'
 import App from './App.vue'
 import router from './router'
 import { Dialog, Notify, store, vuetify } from '@openc3/vue-common/plugins'
@@ -18,7 +19,7 @@ const vueLifecycles = singleSpaVue({
     app.use(store)
     app.use(vuetify)
     app.use(Dialog)
-    app.use(Notify, { store })
+    app.use(Notify)
   },
 })
 

@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -151,7 +151,7 @@ export default {
 
       // Calculate position for current value
       let position = 50 // default to middle
-      if (this.value !== null && !isNaN(this.value)) {
+      if (this.value !== null && Number.isFinite(this.value)) {
         const lowValue = this.redLow - 10 * scale
         position = Math.round((this.value - lowValue) / scale)
         if (position > 100) position = 100

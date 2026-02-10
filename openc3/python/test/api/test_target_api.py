@@ -16,10 +16,11 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.target_api import *
-from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
+from openc3.models.target_model import TargetModel
+from test.test_helper import *
 
 
 class TestTargetApi(unittest.TestCase):

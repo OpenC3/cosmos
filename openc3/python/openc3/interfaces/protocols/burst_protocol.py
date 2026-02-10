@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,13 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.protocol import Protocol
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.packet import Packet
+from openc3.utilities.extract import convert_to_value, hex_to_byte_string
 from openc3.utilities.logger import Logger
-from openc3.utilities.extract import hex_to_byte_string
-from openc3.utilities.extract import convert_to_value
 
 
 # Reads all data available on the interface and creates a packet
@@ -51,7 +50,6 @@ class BurstProtocol(Protocol):
     def reset(self):
         super().reset()
         self.data = b""
-        # self.data.force_encoding('ASCII-8BIT')
         self.sync_state = "SEARCHING"
 
     # Reads from the interface. It can look for a sync pattern before
@@ -200,8 +198,7 @@ class BurstProtocol(Protocol):
             pdata = self.data[:]
             pdata += b"\x00\x00\x00\x00\x00\x00"
         Logger.error(
-            "Starting 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n"
-            % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
+            f"Starting 0x{pdata[0]:02X} 0x{pdata[1]:02X} 0x{pdata[2]:02X} 0x{pdata[3]:02X} 0x{pdata[4]:02X} 0x{pdata[5]:02X}\n"
         )
 
     def reduce_to_single_packet(self):

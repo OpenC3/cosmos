@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -51,10 +51,10 @@ export default {
       }
     },
     min() {
-      return parseInt(this.parameters[3])
+      return Number.parseInt(this.parameters[3])
     },
     max() {
-      return parseInt(this.parameters[4])
+      return Number.parseInt(this.parameters[4])
     },
     range() {
       return this.max - this.min
@@ -73,6 +73,9 @@ export default {
   },
   methods: {
     calcPosition() {
+      if (!this.screenValues[this.valueId]) {
+        return 0
+      }
       let value = this.screenValues[this.valueId][0]
       if (!value) {
         return 0

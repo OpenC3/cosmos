@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from openc3.topics.topic import Topic
-from openc3.utilities.store_queued import EphemeralStoreQueued
+
 from openc3.environment import OPENC3_SCOPE
+from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonEncoder
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
 
@@ -32,20 +33,26 @@ class CommandDecomTopic(Topic):
         topic = f"{scope}__DECOMCMD__{{{packet.target_name}}}__{packet.packet_name}"
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
+            "received_time": to_nsec_from_epoch(packet.received_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "stored": str(packet.stored),
             "received_count": packet.received_count,
         }
-        json_hash = {}
+        # Read all RAW values at once - optimized by accessor
+        json_hash = packet.read_items(packet.sorted_items)
+        # Read additional value types using given_raw to avoid re-reading from buffer
         for item in packet.sorted_items:
-            json_hash[item.name] = packet.read_item(item, "RAW")
+            given_raw = json_hash[item.name]
             if item.write_conversion or item.states:
-                json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED")
-            if item.format_string or item.units:
-                json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
-        json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
+                json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED", packet.buffer, given_raw)
+            if item.format_string:
+                json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED", packet.buffer, given_raw)
+        if packet.extra:
+            json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
+        if packet.extra:
+            msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod

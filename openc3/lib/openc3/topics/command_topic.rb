@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,14 +41,23 @@ module OpenC3
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic
+    # @param timeout [Float] Timeout in seconds. Set to 0 or negative for fire-and-forget mode (no ACK waiting).
     def self.send_command(command, timeout: COMMAND_ACK_TIMEOUT_S, scope:, obfuscated_items: [])
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
-      ack_topic = "{#{scope}__ACKCMD}TARGET__#{command['target_name']}"
-      Topic.update_topic_offsets([ack_topic])
       # Save the existing cmd_params Hash and JSON generate before writing to the topic
       cmd_params = command['cmd_params']
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json, allow_nan: true)
       OpenC3.inject_context(command)
+
+      # Fire-and-forget mode: skip ACK waiting when timeout <= 0
+      if timeout <= 0
+        Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
+        command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
+        return command
+      end
+
+      ack_topic = "{#{scope}__ACKCMD}TARGET__#{command['target_name']}"
+      Topic.update_topic_offsets([ack_topic])
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
       time = Time.now

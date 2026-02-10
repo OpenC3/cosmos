@@ -257,3 +257,32 @@ COMMAND <%= target_name %> HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"
     HIDDEN
   APPEND_STRUCTURE CBOR 0 CMD <%= target_name %> CBORSTRUCT
     VARIABLE_BIT_SIZE CBOR_LENGTH
+
+COMMAND <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Command with variable length arrays"
+  <%= render "_ccsds_cmd.txt", locals: {id: 15} %>
+  APPEND_PARAMETER ARRAY1_LENGTH 32 UINT MIN MAX 0 "Length of data array in bytes"
+  APPEND_ARRAY_PARAMETER ARRAY1 8 UINT 0 "Array of data"
+    VARIABLE_BIT_SIZE ARRAY1_LENGTH
+  APPEND_PARAMETER ARRAY2_LENGTH 32 UINT MIN MAX 0 "Length of data array in bytes"
+  APPEND_ARRAY_PARAMETER ARRAY2 8 UINT 0 "Array of data"
+    VARIABLE_BIT_SIZE ARRAY2_LENGTH
+
+# Throughput Testing Commands (for use with external throughput server)
+COMMAND <%= target_name %> START_STREAM BIG_ENDIAN "Start telemetry streaming from throughput server"
+  <%= render "_ccsds_cmd.txt", locals: {id: 200} %>
+  APPEND_PARAMETER RATE 32 UINT 1 100000 100 "Packets per second"
+  APPEND_PARAMETER PACKET_TYPES 32 UINT 0 0xFFFFFFFF 0x01 "Bitmask of packet types to stream"
+  RELATED_ITEM <%= target_name %> THROUGHPUT_STATUS TLM_TARGET_RATE
+
+COMMAND <%= target_name %> STOP_STREAM BIG_ENDIAN "Stop telemetry streaming from throughput server"
+  <%= render "_ccsds_cmd.txt", locals: {id: 201} %>
+
+COMMAND <%= target_name %> GET_STATS BIG_ENDIAN "Request throughput statistics from server"
+  <%= render "_ccsds_cmd.txt", locals: {id: 202} %>
+
+COMMAND <%= target_name %> GET_STATS_NO_MSG BIG_ENDIAN "Request throughput statistics from server"
+  <%= render "_ccsds_cmd.txt", locals: {id: 203} %>
+  DISABLE_MESSAGES
+
+COMMAND <%= target_name %> RESET_STATS BIG_ENDIAN "Reset throughput statistics on server"
+  <%= render "_ccsds_cmd.txt", locals: {id: 204} %>

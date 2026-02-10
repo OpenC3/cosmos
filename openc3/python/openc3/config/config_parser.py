@@ -15,10 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import sys
 import re
+import sys
 import traceback
-from typing import Any, Generator, Optional, Union
+from collections.abc import Generator
+from typing import Any
+
 from openc3.utilities.extract import remove_quotes
 
 
@@ -50,28 +52,29 @@ class ConfigParser:
             self, config_parser: "ConfigParser", message: str = "Configuration Error", usage: str = "", url: str = ""
         ) -> None:
             super().__init__(message)
-            self.keyword: Optional[str] = config_parser.keyword
-            self.parameters: Optional[list[str]] = config_parser.parameters
-            self.filename: Optional[str] = config_parser.filename
-            self.line: Optional[str] = config_parser.line
-            self.line_number: Optional[int] = config_parser.line_number
+            self.keyword: str | None = config_parser.keyword
+            self.parameters: list[str] | None = config_parser.parameters
+            self.filename: str | None = config_parser.filename
+            self.line: str | None = config_parser.line
+            self.line_number: int | None = config_parser.line_number
             self.usage: str = usage
             self.url: str = url
 
     # self.param url [String] The url to link to in error messages
     def __init__(self, url: str = "https://docs.openc3.com/docs") -> None:
         self.url: str = url
-        self.keyword: Optional[str] = None
-        self.parameters: Optional[list[str]] = None
-        self.filename: Optional[str] = None
-        self.line: Optional[str] = None
-        self.line_number: Optional[int] = None
+        self.keyword: str | None = None
+        self.parameters: list[str] | None = None
+        self.filename: str | None = None
+        self.line: str | None = None
+        self.line_number: int | None = None
+        self.preserve_lines: bool = False
 
     # self.param message [String] The string to set the Exception message to
     # self.param usage [String] The usage message
     # self.param url [String] Where to get help about this error
     # self.return [Error] The constructed error
-    def error(self, message: str, usage: str = "", url: Optional[str] = None) -> "ConfigParser.Error":
+    def error(self, message: str, usage: str = "", url: str | None = None) -> "ConfigParser.Error":
         if not url:
             url = self.url
         return self.Error(self, message, usage, url)
@@ -96,8 +99,8 @@ class ConfigParser:
         yield_non_keyword_lines: bool = False,
         remove_quotes_arg: bool = True,
         run_erb: bool = True,
-        variables: dict[str, Any] = {},
-    ) -> Generator[tuple[Optional[str], list[str]], None, None]:
+        variables: dict[str, Any] = None,
+    ) -> Generator[tuple[str | None, list[str]], None, None]:
         """Parse a file and call the callback for each line
 
         Args:
@@ -110,11 +113,13 @@ class ConfigParser:
         Returns:
             Generator yielding (keyword, parameters) tuples
         """
+        if variables is None:
+            variables = {}
         if filename and not os.path.exists(filename):
             raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
 
         self.filename = filename
-        with open(filename, "r") as file:
+        with open(filename) as file:
             # Loop through each line of the data
             yield from self.parse_loop(
                 file,
@@ -124,7 +129,7 @@ class ConfigParser:
                 ConfigParser.PARSING_REGEX,
             )
 
-    def verify_num_parameters(self, min_num_params: int, max_num_params: Optional[int], usage: str = "") -> None:
+    def verify_num_parameters(self, min_num_params: int, max_num_params: int | None, usage: str = "") -> None:
         """
         Verifies the parameters in the ConfigParser have the specified number of arguments
 
@@ -217,7 +222,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [None|Object]
     @classmethod
-    def handle_none(cls, value: Any) -> Optional[Any]:
+    def handle_none(cls, value: Any) -> Any | None:
         if isinstance(value, str):
             match value.upper():
                 case "" | "NIL" | "NONE" | "NULL":
@@ -231,7 +236,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [True|False|Object]
     @classmethod
-    def handle_true_false(cls, value: Any) -> Union[bool, Any]:
+    def handle_true_false(cls, value: Any) -> bool | Any:
         if isinstance(value, str):
             match value.upper():
                 case "TRUE":
@@ -246,7 +251,7 @@ class ConfigParser:
     # self.param value [Object]
     # self.return [True|False|None|Object]
     @classmethod
-    def handle_true_false_none(cls, value: Any) -> Optional[Union[bool, Any]]:
+    def handle_true_false_none(cls, value: Any) -> bool | Any | None:
         if isinstance(value, str):
             match value.upper():
                 case "TRUE":
@@ -269,8 +274,8 @@ class ConfigParser:
     # self.return [Numeric] The converted value. Either a Fixnum or Float.
     @classmethod
     def handle_defined_constants(
-        cls, value: Any, data_type: Optional[str] = None, bit_size: Optional[int] = None
-    ) -> Union[int, float, Any]:
+        cls, value: Any, data_type: str | None = None, bit_size: int | None = None
+    ) -> int | float | Any:
         if isinstance(value, str):
             match value.upper():
                 case "MIN" | "MAX":
@@ -321,7 +326,7 @@ class ConfigParser:
         return value
 
     @classmethod
-    def calculate_range_value(cls, type: str, data_type: Optional[str], bit_size: Optional[int]) -> Union[int, float]:
+    def calculate_range_value(cls, type: str, data_type: str | None, bit_size: int | None) -> int | float:
         """
         Calculate the min or max value for a given data type and bit size
 
@@ -383,10 +388,13 @@ class ConfigParser:
         message += "\n"
         raise ConfigParser.Error(self, message)
 
+    def set_preserve_lines(self, state):
+        self.preserve_lines = state
+
     # Iterates over each line of the io object and yields the keyword and parameters
     def parse_loop(
         self, io: Any, yield_non_keyword_lines: bool, remove_quotes_arg: bool, size: int, rx: str
-    ) -> Generator[tuple[Optional[str], list[str]], None, None]:
+    ) -> Generator[tuple[str | None, list[str]], None, None]:
         string_concat = False
         self.line_number = 0
         self.keyword = None
@@ -400,35 +408,44 @@ class ConfigParser:
         while line := io.readline():
             self.line_number += 1
 
-            line = line.strip()
-            # Ensure the line length is not 0
-            if len(line) == 0:
-                continue
+            if not self.preserve_lines:
+                line = line.strip()
+                # Ensure the line length is not 0
+                if len(line) == 0:
+                    if yield_non_keyword_lines:
+                        try:
+                            yield None, []
+                        except Exception as error:
+                            errors.append(error)
+                    continue
 
-            if string_concat:
-                # Skip comment lines after a string concatenation
-                if line[0] == "#":
-                    continue
-                # Remove the opening quote if we're continuing the line
-                line = line[1:]
+                if string_concat:
+                    # Skip comment lines after a string concatenation
+                    if line[0] == "#":
+                        continue
+                    # Remove the opening quote if we're continuing the line
+                    line = line[1:]
 
-            # Check for string continuation
-            match line[-1]:
-                case "+" | "\\":  # String concatenation
-                    newline = line[-1] == "+"
-                    # Trim off the concat character plus any spaces, e.g. "line" \
-                    trim = line[0:-1].strip()
-                    # Now trim off the last quote so it will flow into the next line
-                    line_buffer += trim[0:-1]
-                    if newline:
-                        line_buffer += "\n"
-                    string_concat = True
-                    continue
-                case "&":  # Line continuation
-                    line_buffer += line[0:-1]
-                    continue
-                case _:
-                    line_buffer += line
+                # Check for string continuation
+                match line[-1]:
+                    case "+" | "\\":  # String concatenation
+                        newline = line[-1] == "+"
+                        # Trim off the concat character plus any spaces, e.g. "line" \
+                        trim = line[0:-1].strip()
+                        # Now trim off the last quote so it will flow into the next line
+                        line_buffer += trim[0:-1]
+                        if newline:
+                            line_buffer += "\n"
+                        string_concat = True
+                        continue
+                    case "&":  # Line continuation
+                        line_buffer += line[0:-1]
+                        continue
+                    case _:
+                        line_buffer += line
+            else:
+                line = line.rstrip("\r\n")
+                line_buffer = line
             string_concat = False
 
             # Update self.line for external access
@@ -465,9 +482,8 @@ class ConfigParser:
                     # KEYWORD PARAM #This is a comment
                     # But still process Ruby string interpolations such as:
                     # KEYWORD PARAM {var}
-                    if (len(string) > 0) and (string[0] == "#"):
-                        if not ((len(string) > 1) and (string[1] == "{")):
-                            break
+                    if (len(string) > 0) and (string[0] == "#") and not ((len(string) > 1) and (string[1] == "{")):
+                        break
 
                     if remove_quotes_arg:
                         self.parameters.append(remove_quotes(string))

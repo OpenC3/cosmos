@@ -10,7 +10,7 @@ fi
 
 # Determine if this is Core or Enterprise installation
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-if [ -d "$REPO_ROOT/openc3-enterprise-traefik" ]; then
+if [[ -d "$REPO_ROOT/openc3-enterprise-traefik" ]]; then
   IS_ENTERPRISE=true
 else
   IS_ENTERPRISE=false
@@ -20,7 +20,7 @@ usage() {
   echo "Usage: openc3.sh upgrade <tag> --preview" >&2
   echo "e.g. openc3.sh upgrade v6.4.1" >&2
   echo "The '--preview' flag will show the diff without applying changes." >&2
-  if [ "$IS_ENTERPRISE" = false ]; then
+  if [[ "$IS_ENTERPRISE" == false ]]; then
     echo "" >&2
     echo "You can also upgrade to Enterprise versions of OpenC3 if you have access" >&2
     echo "e.g. openc3.sh upgrade enterprise-v6.4.1" >&2
@@ -30,19 +30,19 @@ usage() {
   exit 1
 }
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   usage $0
 fi
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   usage $0
 fi
 
 tag="$1"
 
 # Setup the 'cosmos' remote based on IS_ENTERPRISE or if upgrading to enterprise
-if [ "$IS_ENTERPRISE" = true ] || echo "$1" | grep -qi "enterprise"; then
+if [[ "$IS_ENTERPRISE" == true ]] || echo "$1" | grep -qi "enterprise"; then
   COSMOS_URL="https://github.com/OpenC3/cosmos-enterprise-project.git"
   if git remote -v | grep -q '^cosmos[[:space:]]'; then
     echo "Setting 'cosmos' remote to the enterprise repository."
@@ -53,7 +53,7 @@ if [ "$IS_ENTERPRISE" = true ] || echo "$1" | grep -qi "enterprise"; then
   fi
 
   # Warn if upgrading from core to enterprise (but not if just previewing)
-  if [ "$IS_ENTERPRISE" = false ] && echo "$1" | grep -qi "enterprise" && [ "$2" != "--preview" ]; then
+  if [[ "$IS_ENTERPRISE" == false ]] && echo "$1" | grep -qi "enterprise" && [[ "$2" != "--preview" ]]; then
     echo "" >&2
     echo "WARNING: You are upgrading from OpenC3 Core to OpenC3 Enterprise." >&2
     echo "This is a ONE-WAY operation and CANNOT be undone." >&2
@@ -100,7 +100,7 @@ fi
 hash="$(git ls-remote cosmos refs/tags/$tag | awk '{print $1}')"
 
 # If the --preview flag is set, show the diff without applying changes
-if [ "$2" == "--preview" ]; then
+if [[ "$2" == "--preview" ]]; then
   git diff -R $hash
   exit 0
 fi

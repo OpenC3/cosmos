@@ -1,11 +1,18 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
-# For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
 
-# Reference environment variables: https://docs.github.com/en/actions/reference/environment-variables
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 name: API Tests
 
@@ -36,6 +43,8 @@ jobs:
     strategy:
       matrix:
         ruby-version: ["3.4"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -79,6 +88,8 @@ jobs:
       matrix:
         # Note that the report-coverage job needs this value hard coded
         ruby-version: ["3.4"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -117,31 +128,29 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7
         with:
-          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
-        working-directory: openc3/python
-      - name: Lint with ruff
-        run: |
-          poetry run ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv sync --locked
         working-directory: openc3/python
       - name: Run unit tests
         run: |
-          poetry run coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
-          poetry run coverage xml -i
+          uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
+          uv run --frozen coverage xml -i
         working-directory: openc3/python
       - uses: codecov/codecov-action@v5
         with:
@@ -159,6 +168,8 @@ jobs:
   # report-coverage:
   #   needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
   #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
   #   steps:
   #     - uses: actions/checkout@v6
   #       with:

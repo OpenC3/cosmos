@@ -8,8 +8,8 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 gem 'rails', '~> 8.1.0'
 
 # Use anycable instead of actioncable
-gem "anycable-rails", "~> 1.6"
-gem "anycable", "~> 1.6"
+gem 'anycable-rails', '~> 1.6'
+gem 'anycable', '~> 1.6'
 
 # The following gems are installed in the OpenC3 base container openc3-base
 # which this Dockerfile depends on: puma, redis, nokogiri
@@ -28,7 +28,7 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 3.0'
 
 # Use gem to get JSON logs
-gem "rails_semantic_logger", '~> 4.17'
+gem 'rails_semantic_logger', '~> 4.17'
 
 # For downloading files to the server (e.g. plugin install from the app store)
 gem 'down', '~> 5.4', '>= 5.4.2'
@@ -39,7 +39,7 @@ unless ENV['SKIP_DEV_GEMS']
   group :development, :test do
     # Call 'byebug' anywhere in the code to stop execution and get a debugger console
     gem 'byebug', platforms: [:mri, :windows]
-    gem 'rspec-rails', '~> 7.0'
+    gem 'rspec-rails', '~> 8.0'
     gem 'simplecov', '~> 0.22'
     gem 'simplecov-cobertura', '~> 3.0'
     gem 'rexml', '~> 3.4'
@@ -60,5 +60,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '6.10.4.pre.beta0'
+  gem 'openc3', '6.10.5.pre.beta0'
 end

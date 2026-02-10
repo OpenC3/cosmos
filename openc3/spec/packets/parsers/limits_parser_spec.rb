@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -261,7 +261,7 @@ module OpenC3
         @pc.process_file(tf.path, "TGT1")
         item = @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         expect(item.limits.values[:DEFAULT]).not_to be_nil
-        @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04"
+        @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04\x00"
         @pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
         @pc.telemetry["TGT1"]["PKT1"].check_limits
         expect(item.limits.state).to eql :GREEN
@@ -278,7 +278,7 @@ module OpenC3
         @pc.process_file(tf.path, "TGT1")
         item = @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         expect(item.limits.values[:DEFAULT]).not_to be_nil
-        @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04"
+        @pc.telemetry["TGT1"]["PKT1"].buffer = "\x04\x00"
         @pc.telemetry["TGT1"]["PKT1"].enable_limits("ITEM1")
         @pc.telemetry["TGT1"]["PKT1"].check_limits
         expect(item.limits.state).to eql :BLUE

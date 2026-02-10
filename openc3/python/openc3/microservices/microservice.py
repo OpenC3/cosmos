@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,13 +14,20 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import atexit
+import contextlib
+import json
+import os
+import sys
 import tempfile
 import threading
 import traceback
-import json
+
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.microservice_status_model import MicroserviceStatusModel
 from openc3.system.system import System
+from openc3.topics.topic import Topic
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.utilities.metric import Metric
@@ -28,10 +35,7 @@ from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.topics.topic import Topic
-from openc3.environment import OPENC3_CONFIG_BUCKET
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.models.microservice_status_model import MicroserviceStatusModel
+
 
 # TODO:
 # OpenC3.require_file 'openc3/utilities/open_telemetry'
@@ -107,7 +111,7 @@ class Microservice:
         self.logger = Logger()
         self.logger.scope = self.scope
         self.logger.microservice_name = self.name
-        self.secrets = Secrets.getClient()
+        self.secrets = Secrets.get_client()
 
         # OpenC3.setup_open_telemetry(self.name, False)
 
@@ -151,7 +155,7 @@ class Microservice:
             # Get Microservice files from bucket storage
             temp_dir = tempfile.TemporaryDirectory()
             bucket = OPENC3_CONFIG_BUCKET
-            client = Bucket.getClient()
+            client = Bucket.get_client()
 
             prefix = f"{self.scope}/microservices/{self.name}/"
             file_count = 0
@@ -196,16 +200,22 @@ class Microservice:
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
-        self.logger.info(f"Shutting down microservice: {self.name}")
+        with contextlib.suppress(Exception):
+            # Ignore logging failures during shutdown (e.g. Redis unavailable)
+            self.logger.info(f"Shutting down microservice: {self.name}")
         self.state = state
         self.cancel_thread = True
         if self.microservice_status_sleeper:
             self.microservice_status_sleeper.cancel()
-        MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
+        with contextlib.suppress(Exception):
+            # Ignore Redis failures during shutdown
+            MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
         self.metric.shutdown()
-        self.logger.debug(f"Shutting down microservice complete: {self.name}")
+        with contextlib.suppress(Exception):
+            # Ignore Redis failures during shutdown
+            self.logger.debug(f"Shutting down microservice complete: {self.name}")
         self.shutdown_complete = True
 
     def setup_microservice_topic(self):
@@ -239,5 +249,9 @@ class Microservice:
                 if self.microservice_status_sleeper.sleep(self.microservice_status_period_seconds):
                     break
             except Exception as error:
-                self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
+                try:
+                    self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
+                except Exception:
+                    # If logging also fails (e.g. Redis unavailable), print to stderr
+                    print(f"{self.name} status thread died: {traceback.format_exc()}", file=sys.stderr)
                 raise error

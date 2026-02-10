@@ -14,14 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'redis'
-require "hiredis-client"
+require 'hiredis-client'
 require 'json'
 require 'connection_pool'
 
@@ -34,13 +34,11 @@ end
 
 module OpenC3
   class StoreConnectionPool < ConnectionPool
-    NO_OPTIONS = {}
-
     def pipelined
       if $openc3_redis_cluster
         yield # TODO: Update keys to support pipelining in cluster
       else
-        with(NO_OPTIONS) do |redis|
+        with do |redis|
           redis.pipelined do |pipeline|
             Thread.current[:pipeline] = pipeline
             begin
@@ -53,12 +51,12 @@ module OpenC3
       end
     end
 
-    def with(options = NO_OPTIONS, &block)
+    def with(**options, &block)
       pipeline = Thread.current[:pipeline]
       if pipeline
         yield pipeline
       else
-        super(options, &block)
+        super(**options, &block)
       end
     end
   end

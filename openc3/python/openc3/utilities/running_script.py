@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,21 +14,23 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import glob
-from openc3.script.suite_runner import SuiteRunner
-from openc3.utilities.string import build_timestamped_filename
-from openc3.utilities.bucket_utilities import BucketUtilities
-from openc3.script.storage import (
-    _get_storage_file,
-    _get_download_url,
-)
+import os
+
 from openc3.models.script_status_model import ScriptStatusModel
-from openc3.top_level import get_class_from_module, add_to_search_path
-from openc3.utilities.string import (
-    filename_to_module,
-    filename_to_class_name,
+from openc3.script.storage import (
+    _get_download_url,
+    _get_storage_file,
 )
+from openc3.script.suite_runner import SuiteRunner
+from openc3.top_level import add_to_search_path, get_class_from_module
+from openc3.utilities.bucket_utilities import BucketUtilities
+from openc3.utilities.string import (
+    build_timestamped_filename,
+    filename_to_class_name,
+    filename_to_module,
+)
+
 
 SCRIPT_API = "script-api"
 
@@ -88,39 +90,43 @@ def _openc3_script_sleep(sleep_time=None):
                 return True
 
             if RunningScript.instance.stop:
-                raise StopScript
+                raise StopScriptError
     return False
 
 
 import openc3.script.api_shared
 
-setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
-from io import StringIO
+openc3.script.api_shared.openc3_script_sleep = _openc3_script_sleep
+
 import ast
 import json
-import uuid
 import re
-import time
 import sys
-import traceback
 import threading
-from datetime import datetime as cdatetime, timezone
+import time
+import traceback
+import uuid
+from datetime import datetime as cdatetime
+from datetime import timezone
+from io import StringIO
 from threading import Lock
+
+import openc3.utilities.target_file_importer  # DO NOT REMOVE - Makes import target lib work
 from openc3.environment import *
-from openc3.utilities.store import Store
-from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.message_log import MessageLog
-from openc3.utilities.logger import Logger
-from openc3.utilities.target_file import TargetFile
-from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
-from openc3.top_level import kill_thread
-from openc3.script.exceptions import StopScript, SkipScript
-from openc3.tools.test_runner.test import SkipTestCase
+from openc3.io.stdout import Stdout
+from openc3.script.exceptions import CheckError, SkipScriptError, StopScriptError
 from openc3.script.suite import Group
+from openc3.tools.test_runner.test import SkipTestCase
+from openc3.top_level import kill_thread
+from openc3.utilities.logger import Logger
+from openc3.utilities.message_log import MessageLog
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
-import openc3.utilities.target_file_importer # DO NOT REMOVE - Makes import target lib work
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
+from openc3.utilities.target_file import TargetFile
+
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
 # Note: This list matches the list in run_script.rb:151
@@ -157,9 +163,9 @@ def running_script_method(method, *args, **kwargs):
             else:
                 if "open_file" in method:
                     files = []
-                    for theFilename in user_input:
-                        file = _get_storage_file(f"tmp/{theFilename}", scope=RunningScript.instance.scope())
-                        file._filename = theFilename
+                    for the_filename in user_input:
+                        file = _get_storage_file(f"tmp/{the_filename}", scope=RunningScript.instance.scope())
+                        file._filename = the_filename
                         files.append(file)
 
                     def filename(self):
@@ -187,6 +193,7 @@ for method in SCRIPT_METHODS:
     setattr(openc3.script, method, globals()[method])
 
 from openc3.script import *
+
 
 rails_root = os.getenv("RAILS_ROOT")
 if rails_root is not None:
@@ -441,7 +448,7 @@ class RunningScript:
         self.execute_while_paused_info = None
 
     def unique_filename(self):
-        if self.script_status.filename and not self.script_status.filename == "":
+        if self.script_status.filename and self.script_status.filename != "":
             return self.script_status.filename
         else:
             return "Untitled" + str(RunningScript.instance.id())
@@ -492,7 +499,7 @@ class RunningScript:
 
     @classmethod
     def instrument_script(cls, text, filename, line_offset=0, cache=True):
-        if cache and filename and not filename == "":
+        if cache and filename and filename != "":
             cls.file_cache[filename] = text
 
         parsed = ast.parse(text)
@@ -512,7 +519,7 @@ class RunningScript:
 
             # Handle stopping mid-script if necessary
             if self.stop:
-                raise StopScript
+                raise StopScriptError
 
             self.handle_potential_tab_change(filename)
 
@@ -543,8 +550,8 @@ class RunningScript:
     def exception_instrumentation(self, filename, line_number):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         if (
-            exc_type == StopScript
-            or exc_type == SkipScript
+            exc_type == StopScriptError
+            or exc_type == SkipScriptError
             or exc_type == SkipTestCase  # DEPRECATED but still valid
             or not self.use_instrumentation
         ):
@@ -679,8 +686,7 @@ class RunningScript:
                 out_filename = os.path.basename(filename)
 
             # Build each line to write
-            line_count = 0
-            for out_line in string.splitlines():
+            for _line_count, out_line in enumerate(string.splitlines()):
                 out_line = out_line.rstrip()
                 try:
                     json_hash = json.loads(out_line)
@@ -703,7 +709,6 @@ class RunningScript:
                         line_to_write = time_formatted + " (SCRIPTRUNNER): " + out_line
                         color = "BLUE"
                 lines_to_write = lines_to_write + line_to_write + "\n"
-                line_count += 1
 
             if len(lines_to_write) > RunningScript.max_output_characters:
                 # We want the full @@max_output_characters so don't subtract the additional "ERROR: ..." text
@@ -758,7 +763,7 @@ class RunningScript:
         self.go = False
         self.mark_running()
         if self.stop:
-            raise StopScript
+            raise StopScriptError
         if error and not self.continue_after_error:
             raise error
 
@@ -782,7 +787,7 @@ class RunningScript:
         self.go = False
         self.mark_running()
         if self.stop:
-            raise StopScript
+            raise StopScriptError
         if error and not self.continue_after_error:
             raise error
 
@@ -1027,7 +1032,7 @@ class RunningScript:
             self.scriptrunner_puts(f"Script completed: {self.script_status.filename}")
 
         except Exception as error:
-            if isinstance(error, StopScript) or isinstance(error, SkipScript):
+            if isinstance(error, (StopScriptError, SkipScriptError)):
                 self.handle_output_io()
                 self.scriptrunner_puts(f"Script stopped: {self.script_status.filename}")
             else:
@@ -1120,6 +1125,8 @@ class RunningScript:
 
         if exc_type.__name__ == "DRbConnError":
             Logger.error("Error Connecting to Command and Telemetry Server")
+        elif exc_type == CheckError:
+            Logger.error(str(exc_value))
         else:
             formatted_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
             # Print the last 4 lines to show the exception, the ^^^^ line,
@@ -1220,14 +1227,14 @@ def step_mode():
     RunningScript.instance.do_step()
 
 
-setattr(openc3.script, "step_mode", step_mode)
+openc3.script.step_mode = step_mode
 
 
 def run_mode():
     RunningScript.instance.do_go()
 
 
-setattr(openc3.script, "run_mode", run_mode)
+openc3.script.run_mode = run_mode
 
 
 def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, complete=False):
@@ -1251,9 +1258,8 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
     instrumented_script = None
     instrumented_cache = None
     text = None
-    if line_no == 1 and end_line_no is None:
-        if path in RunningScript.instrumented_cache:
-            instrumented_cache, text = RunningScript.instrumented_cache[path]
+    if line_no == 1 and end_line_no is None and path in RunningScript.instrumented_cache:
+        instrumented_cache, text = RunningScript.instrumented_cache[path]
 
     if instrumented_cache:
         # Use cached instrumentation
@@ -1388,13 +1394,13 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         )
         RunningScript.instance.script_status.update(queued=True)
-        raise StopScript
+        raise StopScriptError
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached
 
 
-setattr(openc3.script, "start", start)
+openc3.script.start = start
 
 
 def goto(line_no_or_procedure_name, line_no=None):
@@ -1409,7 +1415,7 @@ def goto(line_no_or_procedure_name, line_no=None):
         start(line_no_or_procedure_name, line_no=line_no, bind_variables=True, complete=True)
 
 
-setattr(openc3.script, "goto", goto)
+openc3.script.goto = goto
 
 
 # Load an additional python file
@@ -1437,8 +1443,8 @@ def load_utility(procedure_name):
 ###########################################################################
 
 
-setattr(openc3.script, "load_utility", load_utility)
-setattr(openc3.script, "require_utility", load_utility)
+openc3.script.load_utility = load_utility
+openc3.script.require_utility = load_utility
 
 
 def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
@@ -1456,7 +1462,7 @@ def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE)
     )
 
 
-setattr(openc3.script, "display_screen", display_screen)
+openc3.script.display_screen = display_screen
 
 
 def clear_screen(target_name, screen_name):
@@ -1470,7 +1476,7 @@ def clear_screen(target_name, screen_name):
     )
 
 
-setattr(openc3.script, "clear_screen", clear_screen)
+openc3.script.clear_screen = clear_screen
 
 
 def clear_all_screens():
@@ -1480,7 +1486,7 @@ def clear_all_screens():
     )
 
 
-setattr(openc3.script, "clear_all_screens", clear_all_screens)
+openc3.script.clear_all_screens = clear_all_screens
 
 
 def local_screen(screen_name, definition, x=None, y=None):
@@ -1497,7 +1503,7 @@ def local_screen(screen_name, definition, x=None, y=None):
     )
 
 
-setattr(openc3.script, "local_screen", local_screen)
+openc3.script.local_screen = local_screen
 
 
 def download_file(path, scope=OPENC3_SCOPE):
@@ -1508,4 +1514,14 @@ def download_file(path, scope=OPENC3_SCOPE):
     )
 
 
-setattr(openc3.script, "download_file", download_file)
+openc3.script.download_file = download_file
+
+
+def open_tab(url):
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id()}",
+        {"type": "opentab", "url": url},
+    )
+
+
+openc3.script.open_tab = open_tab

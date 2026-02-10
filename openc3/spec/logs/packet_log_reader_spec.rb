@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -95,8 +95,8 @@ module OpenC3
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[1], true, data, nil, '0-0')
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[2], true, data, nil, '0-0')
         @logfile = plw.filename
-        plw.shutdown
-        sleep 1
+        threads = plw.shutdown
+        threads.each { |t| t.join }
 
         # Calculate the size of a single packet entry
         tmp = Array.new(PacketLogReader::OPENC3_PACKET_PACK_ITEMS, 0)

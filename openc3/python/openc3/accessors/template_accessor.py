@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.accessors.accessor import Accessor
 import re
+
+from openc3.accessors.accessor import Accessor
 
 
 class TemplateAccessor(Accessor):
@@ -108,9 +109,9 @@ class TemplateAccessor(Accessor):
                     key = item.key if item.key is not None else item.name
                     index = self.item_keys.index(key)
                     result[item.name] = self.__class__.convert_to_type(values[index], item)
-                except ValueError:
+                except ValueError as error:
                     key = item.key if item.key is not None else item.name
-                    raise RuntimeError(f"Unknown item with key {key} requested")
+                    raise RuntimeError(f"Unknown item with key {key} requested") from error
 
         return result
 
@@ -157,7 +158,7 @@ class TemplateAccessor(Accessor):
 
     # This sets the short_buffer_allowed flag in the Packet class
     # which allows packets that have a buffer shorter than the defined size.
-    # Note that the buffer is still resized to the defined length
+    # Items outside the buffer bounds will return None when read.
     def enforce_short_buffer_allowed(self):
         return True
 

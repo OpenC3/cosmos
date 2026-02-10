@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -68,7 +68,9 @@ class SegmentedPolynomialConversion(Conversion):
     #   Format similar to the following: [[15, [3, 2]], [10, [1, 2]]]
     #   Where each entry is an array with the first value as the lower_bound
     #   and the other entry is an array of the coefficients for that segment.
-    def __init__(self, segments=[]):
+    def __init__(self, segments=None):
+        if segments is None:
+            segments = []
         super().__init__()
         self.segments = []
         self.params = []
@@ -92,6 +94,10 @@ class SegmentedPolynomialConversion(Conversion):
     # @param (see Conversion#call)
     # @return [Float] The value with the polynomial applied
     def call(self, value, packet, buffer):
+        # Return None if value is None (item outside buffer bounds)
+        if value is None:
+            return None
+
         # Try to find correct segment
         for segment in self.segments:
             if value >= segment.lower_bound:
@@ -108,8 +114,7 @@ class SegmentedPolynomialConversion(Conversion):
     #   the polynomial segments.
     def __str__(self):
         result = ""
-        count = 0
-        for segment in self.segments:
+        for count, segment in enumerate(self.segments):
             if count > 0:
                 result += "\n"
             result += f"Lower Bound= {segment.lower_bound} Polynomial= "
@@ -120,7 +125,6 @@ class SegmentedPolynomialConversion(Conversion):
                     result += f" + {segment.coeffs[index]}x"
                 else:
                     result += f" + {segment.coeffs[index]}x^{index}"
-            count += 1
         return result
 
     # @param (see Conversion#to_config)

@@ -1,3 +1,19 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 version: 2
 updates:
   # Maintain dependencies for GitHub Actions
@@ -5,18 +21,19 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "npm"
-    directories: # Location of package manifests
-      - "/openc3-cosmos-init/plugins/*"
-      - "/playwright/*"
-      - "/docs.openc3.com/*"
-    schedule:
-      interval: "weekly"
-    ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
-      - dependency-name: "import-map-overrides"
-      - dependency-name: "single-spa"
-      - dependency-name: "systemjs"
-      - dependency-name: "vue"
-      - dependency-name: "vue-router"
-      - dependency-name: "vuetify"
-      - dependency-name: "vuex"
+# Ignore all npm updates as we have a process for uding them with package_audit.rb
+#   - package-ecosystem: "npm"
+#     directories: # Location of package manifests
+#       - "/openc3-cosmos-init/plugins/*"
+#       - "/playwright/*"
+#       - "/docs.openc3.com/*"
+#     schedule:
+#       interval: "weekly"
+#     ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
+#       - dependency-name: "import-map-overrides"
+#       - dependency-name: "pinia"
+#       - dependency-name: "single-spa"
+#       - dependency-name: "systemjs"
+#       - dependency-name: "vue"
+#       - dependency-name: "vue-router"
+#       - dependency-name: "vuetify"

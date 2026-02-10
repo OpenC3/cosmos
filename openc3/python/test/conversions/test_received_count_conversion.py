@@ -16,9 +16,10 @@
 
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.conversions.received_count_conversion import ReceivedCountConversion
 from openc3.packets.packet import Packet
+from test.test_helper import *
 
 
 class TestReceivedCountConversion(unittest.TestCase):

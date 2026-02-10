@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,27 +23,71 @@
 require 'openc3/utilities/process_manager'
 require 'openc3/models/plugin_store_model'
 require 'openc3/models/plugin_model'
+require 'openc3/models/setting_model'
 require 'down'
 require 'fileutils'
 require 'tmpdir'
 require 'digest'
+require 'net/http'
+require 'uri'
 
 class PluginsController < ModelController
   def initialize
     @model_class = OpenC3::PluginModel
   end
 
+  def check_localhost_reachability(gem_url, store_id)
+    uri = URI.parse(gem_url)
+    return gem_url unless ['localhost', '127.0.0.1'].include? uri.host
+
+    api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
+    api_key = api_key_setting['data'] if api_key_setting
+
+    test_url = "http://#{uri.host}:#{uri.port}/api/v1.1/cosmos_plugins/#{store_id}"
+    begin
+      uri_obj = URI(test_url)
+      req = Net::HTTP::Get.new(uri_obj)
+      req['Authorization'] = "Bearer #{api_key}" if api_key && !api_key.strip.empty?
+
+      response = Net::HTTP.start(uri_obj.hostname, uri_obj.port) do |http|
+        http.request(req)
+      end
+      return gem_url if response.code.to_i < 400
+    rescue
+      # localhost not reachable, try host.docker.internal
+    end
+
+    docker_gem_url = gem_url.gsub(uri.host, 'host.docker.internal')
+    docker_test_url = test_url.gsub(uri.host, 'host.docker.internal')
+    begin
+      uri_obj = URI(docker_test_url)
+      req = Net::HTTP::Get.new(uri_obj)
+      req['Authorization'] = "Bearer #{api_key}" if api_key && !api_key.strip.empty?
+
+      response = Net::HTTP.start(uri_obj.hostname, uri_obj.port) do |http|
+        http.request(req)
+      end
+      return docker_gem_url if response.code.to_i < 400
+    rescue
+      # host.docker.internal not reachable either
+    end
+
+    nil # indicates unreachable download location
+  end
+
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
+      plugins = @model_class.all(scope: params[:scope])
       OpenC3::PluginStoreModel.ensure_exists()
       store_plugins = OpenC3::PluginStoreModel.all()
       store_plugins = JSON.parse(store_plugins)
-      plugins = @model_class.all(scope: params[:scope])
-      plugins.each do |plugin_name, plugin|
-        if plugin['store_id']
-          store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
-          plugin.merge!(store_data) if store_data
+      if store_plugins.is_a?(Array) # as opposed to a Hash, which indicates an error
+        plugins.each do |plugin_name, plugin|
+          if plugin['store_id']
+            store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
+            plugin.merge!(store_data) if store_data
+          end
         end
       end
 
@@ -71,9 +115,22 @@ class PluginsController < ModelController
         render json: { status: 'error', message: 'Unable to fetch requested plugin.' }, status: 500
         return
       end
-      tempfile = Down.download(store_data['gem_url'])
-      original_filename = File.basename(store_data['gem_url'])
 
+      # Try to find the correct hostname (in case it's localhost and needs to be host.docker.internal)
+      adjusted_gem_url = check_localhost_reachability(store_data['gem_url'], params[:store_id])
+      if adjusted_gem_url.nil?
+        render json: { status: 'error', message: 'Gem could not be downloaded. Host is not reachable.' }, status: 500
+        return
+      end
+
+      api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
+      api_key = api_key_setting['data'] if api_key_setting
+
+      if api_key && !api_key.strip.empty?
+        tempfile = Down.download(adjusted_gem_url, headers: { 'Authorization' => "Bearer #{api_key}" })
+      else
+        tempfile = Down.download(adjusted_gem_url)
+      end
       checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
       expected = store_data['checksum'].downcase
       unless checksum == expected
@@ -81,6 +138,7 @@ class PluginsController < ModelController
         return
       end
 
+      original_filename = File.basename(store_data['gem_filename'])
       tempfile
     else
       params[:plugin]

@@ -1,7 +1,7 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_VERSION=3.22
-ARG ALPINE_BUILD=2
+ARG ALPINE_BUILD=3
 
 # Should be loaded from ARG
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
@@ -86,13 +86,10 @@ RUN apk update \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
-  && python3 -m venv /openc3/venv \
-  && source /openc3/venv/bin/activate \
-  && pip3 config --global set global.index $PYPI_URL/pypi \
-  && pip3 config --global set global.index-url $PYPI_URL/simple \
-  && pip3 install --upgrade pip setuptools \
-  && pip3 install poetry \
-  && pip3 install poetry-plugin-export \
+  && python3 -m pip install --break-system-packages uv \
+  && uv venv /openc3/venv --python python3 --seed \
+  && /openc3/venv/bin/pip install --index-url $PYPI_URL/simple --upgrade pip setuptools \
+  # Note: UV has built-in export command, no plugin needed
   # Note this is needed to prevent pip disappearing in some build environments
   && cp /openc3/venv/bin/pip* /openc3
 

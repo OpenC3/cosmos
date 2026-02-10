@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.config.config_parser import ConfigParser
+from test.test_helper import *
 
 
 class TestConfigParser(unittest.TestCase):
@@ -293,15 +294,18 @@ class TestConfigParser(unittest.TestCase):
     def test_optionally_yields_comment_lines(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD1 PARAM1\n")
-        tf.writelines("# This is a comment\n")
-        tf.writelines("KEYWORD2 PARAM1\n")
+        tf.writelines("  # This is a comment\n")
+        tf.writelines("    KEYWORD2 PARAM1\n")
         tf.seek(0)
 
         lines = []
+        self.cp.set_preserve_lines(True)
         for _, _ in self.cp.parse_file(tf.name, True):
             lines.append(self.cp.line)
 
-        self.assertIn("# This is a comment", lines)
+        self.assertIn("KEYWORD1 PARAM1", lines)
+        self.assertIn("  # This is a comment", lines)
+        self.assertIn("    KEYWORD2 PARAM1", lines)
         tf.close()
 
     #   def test_callbacks for messages(self):

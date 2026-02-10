@@ -16,15 +16,17 @@
 
 
 import threading
-import schedule
-import traceback
 import time
+import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
+
+import schedule
+
 from openc3.api import *
+from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.utilities.logger import Logger
 from openc3.utilities.secrets import Secrets
-from openc3.logs.stream_log_pair import StreamLogPair
 
 
 class WriteRejectError(RuntimeError):
@@ -73,7 +75,7 @@ class Interface:
         self.config_params = []
         self.interfaces = []
         self.stream_log_pair = None
-        self.secrets = Secrets.getClient()
+        self.secrets = Secrets.get_client()
         self.name = self.__class__.__name__
         self.scheduler = None
         self.scheduler_thread = None
@@ -375,7 +377,7 @@ class Interface:
                 other_interface.set_option(option_name, option_values)
         other_interface.protocol_info = []
         for protocol_class, protocol_args, read_write in self.protocol_info:
-            if not read_write == "PARAMS":
+            if read_write != "PARAMS":
                 other_interface.add_protocol(protocol_class, protocol_args, read_write)
 
     # Set an interface or router specific option

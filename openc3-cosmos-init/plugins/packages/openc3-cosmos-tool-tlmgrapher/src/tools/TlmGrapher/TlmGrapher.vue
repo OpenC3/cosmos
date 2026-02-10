@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,16 +36,54 @@
 
         <v-container v-else class="d-flex pb-0">
           <target-packet-item-chooser
+            ref="chooser"
             class="flex-grow-1"
             :initial-target-name="$route.params.target"
             :initial-packet-name="$route.params.packet"
             :initial-item-name="$route.params.item"
-            button-text="Add Item"
             choose-item
             select-types
             show-latest
-            @add-item="addItem"
+            @on-set="updateCurrentItem"
           />
+          <div class="mt-4 ml-2">
+            <v-btn-group density="comfortable" class="split-button">
+              <v-btn
+                color="primary"
+                data-test="add-item"
+                :disabled="!hasValidItem"
+                @click="addItem(getCurrentItem())"
+              >
+                Add Item
+              </v-btn>
+              <v-menu location="bottom end">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    color="primary"
+                    class="split-button-dropdown"
+                    data-test="add-item-menu"
+                    :disabled="!hasValidItem"
+                  >
+                    <v-icon>mdi-chevron-down</v-icon>
+                  </v-btn>
+                </template>
+                <v-list data-test="add-item-graph-list">
+                  <v-list-subheader>Add to Graph</v-list-subheader>
+                  <v-list-item
+                    v-for="graph in graphs"
+                    :key="graph"
+                    :data-test="`add-to-graph-${graph}`"
+                    @click="addItemToGraph(getCurrentItem(), graph)"
+                  >
+                    <v-list-item-title>
+                      {{ getGraphTitle(graph) }}
+                    </v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </v-btn-group>
+          </div>
           <v-btn
             :class="{
               blink: isPaused,
@@ -123,6 +161,7 @@
     v-if="showSettingsDialog"
     v-model="showSettingsDialog"
     :settings="settings"
+    @save="updateSettings"
   />
 </template>
 
@@ -169,6 +208,7 @@ export default {
       counter: 1,
       applyingConfig: false,
       observer: null,
+      hasValidItem: false,
       menus: [
         {
           label: 'File',
@@ -348,6 +388,11 @@ export default {
     this.observer.disconnect()
   },
   methods: {
+    updateSettings(newValues) {
+      for (const key in newValues) {
+        this.settings[key].value = newValues[key]
+      }
+    },
     setup: function () {
       this.grid = new Muuri('.grid', {
         dragEnabled: true,
@@ -410,8 +455,44 @@ export default {
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
-    addItem: function (newItem, startGraphing = true) {
-      for (const item of this.$refs[`graph${this.selectedGraphId}`][0].items) {
+    updateCurrentItem: function (item) {
+      this.hasValidItem = !!(
+        item.targetName &&
+        item.packetName &&
+        item.itemName
+      )
+    },
+    getGraphTitle: function (graphId) {
+      const graphRef = this.$refs[`graph${graphId}`]
+      if (graphRef && graphRef[0]) {
+        const title = graphRef[0].title
+        if (title) {
+          return title
+        }
+      }
+      // Find the index of this graph in the graphs array for display
+      const index = this.graphs.indexOf(graphId)
+      return `Graph ${index + 1}`
+    },
+    getCurrentItem: function () {
+      const chooser = this.$refs.chooser
+      if (!chooser) return null
+      return {
+        targetName: chooser.selectedTargetName,
+        packetName: chooser.selectedPacketName,
+        itemName: chooser.selectedItemNameWIndex,
+        valueType: chooser.selectedValueType,
+        reduced: chooser.selectedReduced,
+        reducedType: chooser.selectedReducedType,
+      }
+    },
+    addItemToGraph: function (item, graphId) {
+      // Add item to a specific graph
+      this.addItem(item, true, graphId)
+    },
+    addItem: function (newItem, startGraphing = true, graphId = null) {
+      const targetGraphId = graphId ?? this.selectedGraphId
+      for (const item of this.$refs[`graph${targetGraphId}`][0].items) {
         if (
           newItem.targetName === item.targetName &&
           newItem.packetName === item.packetName &&
@@ -429,7 +510,7 @@ export default {
           return
         }
       }
-      this.$refs[`graph${this.selectedGraphId}`][0].addItems([newItem])
+      this.$refs[`graph${targetGraphId}`][0].addItems([newItem])
       if (startGraphing === true) {
         this.state = 'start'
       }
@@ -639,5 +720,8 @@ export default {
   cursor: pointer;
   border-radius: 6px;
   margin: 6px;
+}
+.split-button-dropdown {
+  border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 </style>

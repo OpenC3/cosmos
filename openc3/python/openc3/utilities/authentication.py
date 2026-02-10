@@ -14,12 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import threading
 import time
-import json
 from urllib.parse import urlencode
-from openc3.environment import *
+
 from requests import Session
+
+from openc3.environment import *
 
 
 # Basic exception for known errors
@@ -38,10 +40,14 @@ class OpenC3Authentication:
         if not password:
             raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
         self.service = password == OPENC3_SERVICE_PASSWORD
-        response = Session().post(self._generate_auth_url(), json={"password": password}, headers={"Content-Type": "application/json"})
+        response = Session().post(
+            self._generate_auth_url(), json={"password": password}, headers={"Content-Type": "application/json"}
+        )
         self._token = response.text
         if not self._token:
-            raise OpenC3AuthenticationError("Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD")
+            raise OpenC3AuthenticationError(
+                "Authentication failed. Please check the password in the environment variable OPENC3_API_PASSWORD"
+            )
 
     def token(self, include_bearer=True):
         return self._token
@@ -87,9 +93,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
-            if self._token is None:
-                self._make_token(current_time, openid_scope=openid_scope)
-            elif self.refresh_expires_at < current_time:
+            if self._token is None or self.refresh_expires_at < current_time:
                 self._make_token(current_time, openid_scope=openid_scope)
             elif self.expires_at < current_time:
                 self._refresh_token(current_time)

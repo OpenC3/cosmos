@@ -17,10 +17,11 @@
 import time
 import unittest
 from unittest.mock import *
-from test.test_helper import *
+
 from openc3.api.router_api import *
 from openc3.interfaces.interface import Interface
 from openc3.models.router_model import RouterModel
+from test.test_helper import *
 
 
 class TestRouterApi(unittest.TestCase):
@@ -174,7 +175,7 @@ class TestRouterApi(unittest.TestCase):
         mock_router.map_target.side_effect = Exception("Map failed")
         mock_get_model.side_effect = None
         mock_get_model.return_value = mock_router
-        
+
         with self.assertRaises(Exception):
             map_target_to_router("INST", "ROUTE_INT")
 
@@ -190,7 +191,7 @@ class TestRouterApi(unittest.TestCase):
         mock_router.unmap_target.side_effect = Exception("Unmap failed")
         mock_get_model.side_effect = None
         mock_get_model.return_value = mock_router
-        
+
         with self.assertRaises(Exception):
             unmap_target_from_router("INST", "ROUTE_INT")
 

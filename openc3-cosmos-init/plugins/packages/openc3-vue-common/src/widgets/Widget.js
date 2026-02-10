@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,6 +22,7 @@
 
 import { ConfigParserError } from '@openc3/js-common/services'
 import WidgetComponents from './WidgetComponents'
+import { useStore } from '@/plugins/store'
 
 export default {
   mixins: [WidgetComponents],
@@ -58,6 +59,10 @@ export default {
       type: Number,
       default: 0,
     },
+  },
+  setup() {
+    const store = useStore()
+    return { store }
   },
   data() {
     return {
@@ -107,9 +112,7 @@ export default {
       const that = this
       return {
         getNamedWidget: function (widgetName) {
-          return that.$store.getters.namedWidget(
-            that.toQualifiedWidgetName(widgetName),
-          )
+          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
         },
         open: function (target, screen) {
           that.$emit('open', target, screen)
@@ -139,17 +142,6 @@ export default {
       }, {})
     },
   },
-  watch: {
-    widgetName: function (newName, oldName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(oldName),
-      )
-      this.$store.commit('setNamedWidget', {
-        [this.toQualifiedWidgetName(newName)]: this,
-      })
-    },
-  },
   created() {
     // Look through the settings and get a reference to the screen
     this.screenId = this.settings
@@ -160,13 +152,19 @@ export default {
       .find((setting) => setting[0] === 'NAMED_WIDGET')
       ?.at(1)
 
+    if (this.widgetName) {
+      this.store.setNamedWidget({
+        [this.toQualifiedWidgetName(this.widgetName)]: this,
+      })
+    }
+
     // Figure out any subsettings that apply
     this.appliedSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
         // then it's not a subsetting so just return the setting
-        if (isNaN(index) || this.widgetIndex === null) {
+        if (Number.isNaN(index) || this.widgetIndex === null) {
           return setting
         }
         // This is our setting so slice off the index and return
@@ -181,10 +179,7 @@ export default {
   },
   beforeUnmount() {
     if (this.widgetName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(this.widgetName),
-      )
+      this.store.clearNamedWidget(this.toQualifiedWidgetName(this.widgetName))
     }
   },
   methods: {
@@ -196,13 +191,13 @@ export default {
           this.appliedStyle['--text-align'] = setting[1].toLowerCase()
           break
         case 'PADDING':
-          if (!isNaN(Number(setting[1]))) {
+          if (Number.isFinite(Number(setting[1]))) {
             setting[1] += 'px'
           }
           this.appliedStyle['padding'] = setting[1] + ' !important'
           break
         case 'MARGIN':
-          if (!isNaN(Number(setting[1]))) {
+          if (Number.isFinite(Number(setting[1]))) {
             setting[1] += 'px'
           }
           this.appliedStyle['margin'] = setting[1] + ' !important'
@@ -222,13 +217,13 @@ export default {
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'WIDTH':
-          if (!isNaN(Number(setting[1]))) {
+          if (Number.isFinite(Number(setting[1]))) {
             setting[1] += 'px'
           }
           this.appliedStyle['width'] = setting[1] + ' !important'
           break
         case 'HEIGHT':
-          if (!isNaN(Number(setting[1]))) {
+          if (Number.isFinite(Number(setting[1]))) {
             setting[1] += 'px'
           }
           this.appliedStyle['height'] = setting[1] + ' !important'

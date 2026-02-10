@@ -181,6 +181,17 @@ TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
+TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
+  <%= render "_ccsds_tlm.txt", locals: {apid: 7} %>
+  APPEND_ITEM ARRAY1_LENGTH 32 UINT "Length of array 1"
+  APPEND_ARRAY_ITEM ARRAY1 8 UINT 0 "Array 1 data"
+    VARIABLE_BIT_SIZE ARRAY1_LENGTH
+  APPEND_ITEM ARRAY2_LENGTH 32 UINT "Length of array 2"
+  APPEND_ARRAY_ITEM ARRAY2 8 UINT 0 "Array 2 data"
+    VARIABLE_BIT_SIZE ARRAY2_LENGTH
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
   # Template is not required for telemetry, but is useful for simulation
@@ -297,3 +308,25 @@ TELEMETRY <%= target_name %> HYBRIDTLM BIG_ENDIAN "Hybrid Accessor Telemetry"
   APPEND_ITEM CBOR_LENGTH 32 UINT
   APPEND_STRUCTURE CBOR 0 CMD <%= target_name %> CBORSTRUCT
     VARIABLE_BIT_SIZE CBOR_LENGTH
+
+# Throughput Status Telemetry (from external throughput server)
+TELEMETRY <%= target_name %> THROUGHPUT_STATUS BIG_ENDIAN "Throughput statistics from server"
+  <%= render "_ccsds_tlm.txt", locals: {apid: 100} %>
+  APPEND_ITEM CMD_RECV_COUNT 32 UINT "Commands received by server"
+  APPEND_ITEM CMD_RECV_RATE 32 FLOAT "Commands per second"
+    FORMAT_STRING "%.1f"
+    UNITS Hz Hz
+  APPEND_ITEM TLM_SENT_COUNT 32 UINT "Telemetry packets sent by server"
+  APPEND_ITEM TLM_SENT_RATE 32 FLOAT "Telemetry packets per second"
+    FORMAT_STRING "%.1f"
+    UNITS Hz Hz
+  APPEND_ITEM TLM_TARGET_RATE 32 UINT "Configured streaming rate"
+    UNITS Hz Hz
+  APPEND_ITEM BYTES_RECV 64 UINT "Total bytes received by server"
+    UNITS Bytes B
+  APPEND_ITEM BYTES_SENT 64 UINT "Total bytes sent by server"
+    UNITS Bytes B
+  APPEND_ITEM UPTIME_SEC 32 UINT "Server uptime"
+    UNITS Seconds s
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS

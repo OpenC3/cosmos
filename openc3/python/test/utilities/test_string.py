@@ -14,13 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import importlib
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import *
-from test.test_helper import *
-from openc3.utilities.string import *
+
 from openc3.utilities.logger import Logger
+from openc3.utilities.string import *
+from test.test_helper import *
 
 
 class QuoteIfNecessary(unittest.TestCase):

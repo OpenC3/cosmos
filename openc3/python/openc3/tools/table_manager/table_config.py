@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,12 +16,14 @@
 
 import os
 from ast import literal_eval
+
 from openc3.config.config_parser import ConfigParser
+from openc3.conversions.generic_conversion import GenericConversion
 from openc3.packets.packet_config import PacketConfig
 from openc3.tools.table_manager.table import Table
-from openc3.tools.table_manager.table_parser import TableParser
 from openc3.tools.table_manager.table_item_parser import TableItemParser
-from openc3.conversions.generic_conversion import GenericConversion
+from openc3.tools.table_manager.table_parser import TableParser
+
 
 class TableConfig(PacketConfig):
     """
@@ -109,16 +111,16 @@ class TableConfig(PacketConfig):
             filename: The name of the configuration file
         """
         # Partial files are included into another file and thus aren't directly processed
-        if os.path.basename(filename)[0] == '_':  # Partials start with underscore
+        if os.path.basename(filename)[0] == "_":  # Partials start with underscore
             return
 
         self.filename = filename
-        with open(filename, 'r') as file:
+        with open(filename) as file:
             self.last_config = [os.path.basename(filename), file.read()]
 
         self.converted_type = None
         self.converted_bit_size = None
-        self.proc_text = ''
+        self.proc_text = ""
         self.building_generic_conversion = False
         self.defaults = []
 
@@ -126,19 +128,15 @@ class TableConfig(PacketConfig):
 
         for keyword, params in parser.parse_file(filename):
             if self.building_generic_conversion:
-                if keyword in ('GENERIC_READ_CONVERSION_END', 'GENERIC_WRITE_CONVERSION_END'):
+                if keyword in ("GENERIC_READ_CONVERSION_END", "GENERIC_WRITE_CONVERSION_END"):
                     parser.verify_num_parameters(0, 0, keyword)
-                    if 'READ' in keyword:
+                    if "READ" in keyword:
                         self.current_item.read_conversion = GenericConversion(
-                            self.proc_text,
-                            self.converted_type,
-                            self.converted_bit_size
+                            self.proc_text, self.converted_type, self.converted_bit_size
                         )
-                    if 'WRITE' in keyword:
+                    if "WRITE" in keyword:
                         self.current_item.write_conversion = GenericConversion(
-                            self.proc_text,
-                            self.converted_type,
-                            self.converted_bit_size
+                            self.proc_text, self.converted_type, self.converted_bit_size
                         )
                     self.building_generic_conversion = False
                 else:
@@ -146,7 +144,7 @@ class TableConfig(PacketConfig):
                     self.proc_text += parser.line + "\n"
             else:
                 # not building generic conversion
-                if keyword == 'TABLEFILE':
+                if keyword == "TABLEFILE":
                     usage = f"{keyword} <File name>"
                     parser.verify_num_parameters(1, 1, usage)
                     table_filename = os.path.join(os.path.dirname(filename), params[0])
@@ -157,15 +155,15 @@ class TableConfig(PacketConfig):
                         )
                     self._process_file(table_filename)
 
-                elif keyword == 'TABLE':
+                elif keyword == "TABLE":
                     self.finish_packet()
                     self.current_packet = TableParser.parse_table(parser, self.commands, self.warnings)
                     self.definitions[self.current_packet.packet_name] = self.last_config
-                    self.current_cmd_or_tlm = self.COMMAND
+                    self.current_cmd_or_tlm = PacketConfig.COMMAND_STRING
                     self.default_index = 0
 
                 # Select an existing table for editing
-                elif keyword == 'SELECT_TABLE':
+                elif keyword == "SELECT_TABLE":
                     usage = f"{keyword} <TABLE NAME>"
                     self.finish_packet()
                     parser.verify_num_parameters(1, 1, usage)
@@ -175,30 +173,59 @@ class TableConfig(PacketConfig):
                         raise parser.error(f"Table {table_name} not found", usage)
 
                 # All the following keywords must have a current packet defined
-                elif keyword in ('SELECT_PARAMETER', 'PARAMETER', 'ID_PARAMETER',
-                            'ARRAY_PARAMETER', 'APPEND_PARAMETER', 'APPEND_ID_PARAMETER',
-                            'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS',
-                            'PROCESSOR', 'META', 'DISABLE_MESSAGES', 'DISABLED'):
+                elif keyword in (
+                    "SELECT_PARAMETER",
+                    "PARAMETER",
+                    "ID_PARAMETER",
+                    "ARRAY_PARAMETER",
+                    "APPEND_PARAMETER",
+                    "APPEND_ID_PARAMETER",
+                    "APPEND_ARRAY_PARAMETER",
+                    "ALLOW_SHORT",
+                    "HAZARDOUS",
+                    "PROCESSOR",
+                    "META",
+                    "DISABLE_MESSAGES",
+                    "DISABLED",
+                ):
                     if not self.current_packet:
                         raise parser.error(f"No current packet for {keyword}")
                     self.process_current_packet(parser, keyword, params)
 
                 # All the following keywords must have a current item defined
-                elif keyword in ('STATE', 'READ_CONVERSION', 'WRITE_CONVERSION',
-                            'POLY_READ_CONVERSION', 'POLY_WRITE_CONVERSION',
-                            'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',
-                            'GENERIC_READ_CONVERSION_START',
-                            'GENERIC_WRITE_CONVERSION_START', 'REQUIRED', 'LIMITS',
-                            'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',
-                            'HIDDEN', 'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE',
-                            'OVERFLOW', 'UNEDITABLE', 'OBFUSCATE'):
+                elif keyword in (
+                    "STATE",
+                    "READ_CONVERSION",
+                    "WRITE_CONVERSION",
+                    "POLY_READ_CONVERSION",
+                    "POLY_WRITE_CONVERSION",
+                    "SEG_POLY_READ_CONVERSION",
+                    "SEG_POLY_WRITE_CONVERSION",
+                    "GENERIC_READ_CONVERSION_START",
+                    "GENERIC_WRITE_CONVERSION_START",
+                    "REQUIRED",
+                    "LIMITS",
+                    "LIMITS_RESPONSE",
+                    "UNITS",
+                    "FORMAT_STRING",
+                    "DESCRIPTION",
+                    "HIDDEN",
+                    "MINIMUM_VALUE",
+                    "MAXIMUM_VALUE",
+                    "DEFAULT_VALUE",
+                    "OVERFLOW",
+                    "UNEDITABLE",
+                    "OBFUSCATE",
+                ):
                     if not self.current_item:
                         raise parser.error(f"No current item for {keyword}")
                     self.process_current_item(parser, keyword, params)
 
-                elif keyword == 'DEFAULT':
+                elif keyword == "DEFAULT":
                     if len(params) != len(self.current_packet.sorted_items):
-                        raise parser.error(f"DEFAULT {' '.join(params)} length of {len(params)} doesn't match item length of {len(self.current_packet.sorted_items)}")
+                        raise parser.error(
+                            f"DEFAULT {' '.join(params)} length of {len(params)} doesn't match item length of {len(self.current_packet.sorted_items)}"
+                        )
                     self.defaults.extend(params)
 
                 else:
@@ -224,8 +251,8 @@ class TableConfig(PacketConfig):
             if "not found" in str(err):
                 raise parser.error(
                     f"{params[0]} not found in table {self.current_packet.table_name}",
-                    'SELECT_PARAMETER <PARAMETER NAME>',
-                )
+                    "SELECT_PARAMETER <PARAMETER NAME>",
+                ) from err
             else:
                 raise
 
@@ -240,11 +267,11 @@ class TableConfig(PacketConfig):
             params: Parameters for the keyword
         """
         super().process_current_item(parser, keyword, params)
-        if keyword == 'UNEDITABLE':
+        if keyword == "UNEDITABLE":
             usage = f"{keyword}"
             parser.verify_num_parameters(0, 0, usage)
             self.current_item.editable = False
-        elif keyword == 'HIDDEN':
+        elif keyword == "HIDDEN":
             usage = f"{keyword}"
             parser.verify_num_parameters(0, 0, usage)
             self.current_item.hidden = True
@@ -291,7 +318,9 @@ class TableConfig(PacketConfig):
                             if value is not None:
                                 item.default = value
                             else:
-                                raise Exception(f"Unknown DEFAULT {self.defaults[index]} for item {item.name}. Valid states are {', '.join(item.states.keys())}.")
+                                raise Exception(
+                                    f"Unknown DEFAULT {self.defaults[index]} for item {item.name}. Valid states are {', '.join(item.states.keys())}."
+                                ) from None
                     elif item.data_type == "FLOAT":
                         item.default = float(self.defaults[index])
                     elif item.data_type in ("STRING", "BLOCK"):

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -53,7 +53,10 @@ module OpenC3
     VALID_TYPES = %i(CMD TLM)
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
+    PACKET_CACHE_TIMEOUT = 10.0
     @@item_map_cache = {}
+    @@packet_cache = {}
+    @@packet_cache_mutex = Mutex.new
     @@sync_packet_count_data = {}
     @@sync_packet_count_time = nil
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
@@ -208,11 +211,33 @@ module OpenC3
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
 
+      # Check cache first
+      cache_key = "#{scope}__#{type}__#{target_name}__#{packet_name}"
+      @@packet_cache_mutex.synchronize do
+        cached = @@packet_cache[cache_key]
+        if cached && (Time.now - cached[:time]) < PACKET_CACHE_TIMEOUT
+          return cached[:packet]
+        end
+      end
+
       # Assume it exists and just try to get it to avoid an extra call to Store.exist?
       json = Store.hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
 
-      JSON.parse(json, allow_nan: true, create_additions: true)
+      packet = JSON.parse(json, allow_nan: true, create_additions: true)
+
+      # Store in cache
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache[cache_key] = { packet: packet, time: Time.now }
+      end
+
+      packet
+    end
+
+    def self.clear_packet_cache
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache.clear
+      end
     end
 
     # @return [Array<Hash>] All packet hashes under the target_name
@@ -235,6 +260,12 @@ module OpenC3
 
     def self.set_packet(target_name, packet_name, packet, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
+
+      # Invalidate cache entry
+      cache_key = "#{scope}__#{type}__#{target_name}__#{packet_name}"
+      @@packet_cache_mutex.synchronize do
+        @@packet_cache.delete(cache_key)
+      end
 
       begin
         Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
@@ -654,8 +685,13 @@ module OpenC3
 
     def undeploy
       prefix = "#{@scope}/targets/#{@name}/"
-      @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
-        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
+      objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
+      keys = objects.map(&:key)
+      if keys.length > 0
+        # Batch delete in chunks of 1000 (S3 limit)
+        keys.each_slice(1000) do |key_batch|
+          @bucket.delete_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], keys: key_batch)
+        end
       end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
@@ -1267,19 +1303,20 @@ module OpenC3
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
 
-        # TSDB Microservice
-        if ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
-          deploy_target_microservices('TSDB', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
-            deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
-          end
-        end
-
         # Reducer Microservice
         unless @reducer_disable
           # TODO: Does Reducer even need a topic list?
           deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
             deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
           end
+        end
+      end
+
+      # TSDB Microservice - subscribes to both decommutated telemetry and commands
+      tsdb_topic_list = decom_topic_list + decom_command_topic_list
+      if !tsdb_topic_list.empty? and ENV['OPENC3_TSDB_HOSTNAME'] and ENV['OPENC3_TSDB_QUERY_PORT'] and ENV['OPENC3_TSDB_INGEST_PORT'] and ENV['OPENC3_TSDB_USERNAME'] and ENV['OPENC3_TSDB_PASSWORD']
+        deploy_target_microservices('TSDB', tsdb_topic_list, "#{@scope}__DECOM") do |topics, instance, parent|
+          deploy_tsdb_microservice(gem_path, variables, topics, instance, parent)
         end
       end
 

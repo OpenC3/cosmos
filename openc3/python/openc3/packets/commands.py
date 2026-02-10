@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,7 +18,9 @@
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
+
 from openc3.utilities.cmd_log import _build_cmd_output_string
+
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -146,7 +148,6 @@ class Commands:
                         identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
-
                 identified_packet = identified_packet.clone()
                 identified_packet.received_time = None
                 identified_packet.stored = False
@@ -175,18 +176,28 @@ class Commands:
         self,
         target_name,
         packet_name,
-        params={},
+        params=None,
         range_checking=True,
         raw=False,
         check_required_params=True,
     ):
+        if params is None:
+            params = {}
         target_upcase = target_name.upper()
         packet_upcase = packet_name.upper()
 
-        # Lookup the command and create a light weight copy
-        pkt = self.packet(target_upcase, packet_upcase)
+        # Inline packet lookup to avoid redundant .upper() calls through method chain
+        target_packets = self.config.commands.get(target_upcase)
+        if target_packets is None:
+            raise RuntimeError(f"Command target '{target_upcase}' does not exist")
+        pkt = target_packets.get(packet_upcase)
+        if pkt is None:
+            raise RuntimeError(f"Command packet '{target_upcase} {packet_upcase}' does not exist")
 
-        command = pkt.clone()
+        # Use deep_copy to avoid shared item modifications affecting the template
+        # This is critical for variable_bit_size items where handle_write_variable_bit_size
+        # modifies item.bit_offset and item.array_size during writes
+        command = pkt.deep_copy()
 
         # Restore the command's buffer to a zeroed string of defined length
         # This will undo any side effects from earlier commands that may have altered the size
@@ -208,7 +219,9 @@ class Commands:
         return command
 
     # Formatted version of a command
-    def format(self, packet, ignored_parameters=[]):
+    def format(self, packet, ignored_parameters=None):
+        if ignored_parameters is None:
+            ignored_parameters = []
         if packet.raw:
             items = packet.read_all("RAW")
             raw = True
@@ -221,11 +234,10 @@ class Commands:
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False, packet=None):
         method_name = "cmd_raw" if raw else "cmd"
-        target_name = "UNKNOWN" if not target_name else target_name
-        cmd_name = "UNKNOWN" if not cmd_name else cmd_name
+        target_name = target_name if target_name else "UNKNOWN"
+        cmd_name = cmd_name if cmd_name else "UNKNOWN"
         packet_hash = packet.as_json() if packet else {}
         return _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet_hash)
-
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states
@@ -258,9 +270,11 @@ class Commands:
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
     # @param params (see #build_cmd)
-    def cmd_hazardous(self, target_name, packet_name, params={}):
+    def cmd_hazardous(self, target_name, packet_name, params=None):
         # Build a command without range checking, perform conversions, and don't
         # check required parameters since we're not actually using the command.
+        if params is None:
+            params = {}
         return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
     def all(self):
@@ -277,8 +291,22 @@ class Commands:
 
     def _set_parameters(self, command, params, range_checking):
         given_item_names = []
+
+        # Identify length fields that are auto-managed by variable_bit_size arrays
+        # These should not be written directly - the array write will auto-update them
+        auto_length_fields = set()
+        for item in command.sorted_items:
+            if item.variable_bit_size:
+                auto_length_fields.add(item.variable_bit_size["length_item_name"].upper())
+
         for item_name, value in params.items():
             item_upcase = item_name.upper()
+
+            # Skip auto-managed length fields - they will be set when the array is written
+            if item_upcase in auto_length_fields:
+                given_item_names.append(item_upcase)
+                continue
+
             item = command.get_item(item_upcase)
             range_check_value = value
 
@@ -302,14 +330,20 @@ class Commands:
                 # Only range check if we have a min, max and not a string default value
                 minimum = item.minimum
                 maximum = item.maximum
-                if minimum is not None and maximum is not None and not isinstance(item.default, str):
-                    # Perform Range Check on command parameter
-                    if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
-                        if isinstance(range_check_value, str):
-                            range_check_value = f"'{range_check_value}'"
-                        raise RuntimeError(
-                            f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
-                        )
+                # Perform Range Check on command parameter
+                if (
+                    minimum is not None
+                    and maximum is not None
+                    and not isinstance(item.default, str)
+                    and (
+                        isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum
+                    )
+                ):
+                    if isinstance(range_check_value, str):
+                        range_check_value = f"'{range_check_value}'"
+                    raise RuntimeError(
+                        f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
+                    )
 
             # Update parameter in command
             if command.raw:

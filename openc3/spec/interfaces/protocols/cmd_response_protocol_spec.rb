@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -155,9 +155,9 @@ module OpenC3
         @interface.connect
         read_result = nil
         $read_buffer = "\x31\x30" # ASCII 31, 30 is '10'
-        Thread.new { sleep(0.5); read_result = @interface.read }
+        Thread.new { sleep(0.1); read_result = @interface.read }
         @interface.write(packet)
-        sleep 0.55
+        sleep 0.15
         expect($write_buffer).to eql("SOUR:VOLT 11, (@1)")
         expect(read_result.read("VOLTAGE")).to eql(10)
       end

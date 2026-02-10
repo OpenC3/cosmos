@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,6 +16,7 @@
 
 import unittest
 from unittest.mock import *
+
 from openc3.packets.structure import Structure
 from openc3.packets.structure_item import StructureItem
 
@@ -807,6 +808,62 @@ class TestStructureSetItemVariableBitSize(unittest.TestCase):
         # defined_length_bits should increase due to minimum_data_bits
         self.assertGreater(s.defined_length_bits, original_length)
 
+    def test_array_with_zero_size_not_treated_as_quic_integer(self):
+        """
+        Test that arrays with original_array_size=0 are NOT treated as QUIC integers.
+
+        This test ensures the fix for the Python-specific bug where:
+        - `not item.original_array_size` incorrectly returned True for arrays with original_array_size=0
+        - In Python, `not 0` is True, but 0 means "this is an array with zero initial size"
+        - This was causing arrays to be treated as QUIC integers, adding 6 bits to defined_length_bits
+
+        Without the fix (using `not item.original_array_size`):
+        - ARRAY1 would be treated as QUIC integer, adding 6 bits
+        - ARRAY2_LENGTH would be at bit_offset 38 instead of 32
+
+        With the fix (using `item.original_array_size is None`):
+        - ARRAY1 is correctly identified as an array
+        - ARRAY2_LENGTH is at bit_offset 32 (same as ARRAY1 since ARRAY1 has 0 size)
+        """
+        s = Structure("BIG_ENDIAN")
+        # Define ARRAY1_LENGTH (32 bits)
+        s.append_item("ARRAY1_LENGTH", 32, "UINT")
+        # Define ARRAY1 as an array with 0 initial size
+        item = s.append_item("ARRAY1", 8, "UINT", 0)  # array_size=0
+        item.variable_bit_size = {
+            "length_item_name": "ARRAY1_LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item)
+
+        # ARRAY1 is at bit_offset 32 (after ARRAY1_LENGTH)
+        self.assertEqual(s.get_item("ARRAY1").bit_offset, 32)
+
+        # defined_length_bits should still be 32 (ARRAY1_LENGTH only, since ARRAY1 has 0 size)
+        # If the bug were present, it would be 38 (32 + 6 for QUIC minimum)
+        self.assertEqual(s.defined_length_bits, 32)
+
+        # Now append ARRAY2_LENGTH - it should be at bit_offset 32 (same as ARRAY1 since ARRAY1 has 0 size)
+        s.append_item("ARRAY2_LENGTH", 32, "UINT")
+        self.assertEqual(s.get_item("ARRAY2_LENGTH").bit_offset, 32)
+
+        # Define ARRAY2 as an array with 0 initial size
+        item2 = s.append_item("ARRAY2", 8, "UINT", 0)  # array_size=0
+        item2.variable_bit_size = {
+            "length_item_name": "ARRAY2_LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item2)
+
+        # ARRAY2 should be at bit_offset 64 (after both LENGTH fields)
+        self.assertEqual(s.get_item("ARRAY2").bit_offset, 64)
+
+        # Total defined_length should be 8 bytes (64 bits)
+        self.assertEqual(s.defined_length_bits, 64)
+        self.assertEqual(s.defined_length, 8)
+
 
 class TestStructureDeleteItemError(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
@@ -1020,8 +1077,6 @@ class TestStructureReadItemsNoBuffer(unittest.TestCase):
 
 class TestStructureSynchronizeAllowReadsMutexHeld(unittest.TestCase):
     def test_yields_when_mutex_already_held(self):
-        import threading
-
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 8, "UINT")
         s.write("test1", 42)
@@ -1052,9 +1107,9 @@ class TestStructureDefineItemRecalculateBitOffsets(unittest.TestCase):
         s.append_item("test2", 0, "BLOCK")
         s.define_item("test3", -32, 16, "UINT")
         s.define_item("test4", -16, 16, "UINT")
-        s.buffer = b"\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        s.buffer = b"\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xaa\x55\xbb\x66"
         self.assertEqual(s.read("test1"), b"\x01\x02\x03\x04\x05")
-        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66")
+        self.assertEqual(s.read("test2"), b"\x0a\x0b\x0b\x0a\xaa\x55\xbb\x66")
         self.assertEqual(s.read("test3"), 0xAA55)
         self.assertEqual(s.read("test4"), 0xBB66)
 
@@ -1062,6 +1117,7 @@ class TestStructureDefineItemRecalculateBitOffsets(unittest.TestCase):
 class TestStructureWriteFullSize64BitIntegers(unittest.TestCase):
     def test_writes_full_size_64_bit_integers(self):
         from openc3.accessors.binary_accessor import BinaryAccessor
+
         s = Structure("BIG_ENDIAN")
         s.define_item("test1", 0, 64, "UINT")
         s.define_item("test2", 64, 64, "INT")
@@ -1084,7 +1140,7 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
+        s.write("test3", b"\x07\x08\x09\x0a")
         self.assertIn("    TEST1: [1, 2]", s.formatted("CONVERTED", 4))
         self.assertIn("    TEST2: 3456", s.formatted("CONVERTED", 4))
         self.assertIn("    TEST3", s.formatted("CONVERTED", 4))
@@ -1097,8 +1153,8 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
-        buffer = b"\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
+        s.write("test3", b"\x07\x08\x09\x0a")
+        buffer = b"\x0a\x0b\x0c\x0d\xde\xad\xbe\xef"
         self.assertIn("TEST1: [10, 11]", s.formatted("CONVERTED", 0, buffer))
         self.assertIn("TEST2: 3085", s.formatted("CONVERTED", 0, buffer))
         self.assertIn("TEST3", s.formatted("CONVERTED", 0, buffer))
@@ -1111,7 +1167,7 @@ class TestStructureFormattedIndentation(unittest.TestCase):
         s.append_item("test2", 16, "UINT")
         s.write("test2", 3456)
         s.append_item("test3", 32, "BLOCK")
-        s.write("test3", b"\x07\x08\x09\x0A")
+        s.write("test3", b"\x07\x08\x09\x0a")
         self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST3"]), "TEST2: 3456\n")
         self.assertEqual(s.formatted("CONVERTED", 0, s.buffer, ["TEST1", "TEST2", "TEST3"]), "")
 
@@ -1122,10 +1178,32 @@ class TestStructureBufferRecalculateBitOffsets(unittest.TestCase):
         s.append_item("test1", 80, "BLOCK")
         s.append_item("test2", 0, "BLOCK")
         s.define_item("test3", -16, 16, "UINT")
-        s.buffer = (
-            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
-            b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
-        )
+        s.buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
         self.assertEqual(s.read("test1"), b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09")
         self.assertEqual(s.read("test2"), b"\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55")
         self.assertEqual(s.read("test3"), 0xAA55)
+
+
+class TestStructureShortBufferAllowed(unittest.TestCase):
+    def test_returns_none_for_items_outside_buffer_bounds(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        s.append_item("item3", 16, "UINT")
+        s.short_buffer_allowed = True
+        # Set a short buffer that only contains data for item1
+        s.buffer = b"\x00\x01"
+        # item1 should read successfully
+        self.assertEqual(s.read("item1"), 1)
+        # item2 and item3 should return None since they're outside the buffer
+        self.assertIsNone(s.read("item2"))
+        self.assertIsNone(s.read("item3"))
+        # Buffer should remain at its original size (not padded)
+        self.assertEqual(len(s.buffer), 2)
+
+    def test_raises_error_when_short_buffer_allowed_is_false(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        with self.assertRaisesRegex(ValueError, "Buffer length less than defined length"):
+            s.buffer = b"\x00\x01"

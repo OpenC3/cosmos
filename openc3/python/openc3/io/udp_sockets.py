@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import socket
-import select
 import ipaddress
+import select
+import socket
 
 
 class UdpReadWriteSocket:
@@ -84,11 +84,11 @@ class UdpReadWriteSocket:
         while True:
             try:
                 bytes_sent = self.socket.send(data_to_send)
-            except socket.error as e:
+            except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([], [self.socket], [], write_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise socket.timeout
+                        raise TimeoutError from e
             total_bytes_sent += bytes_sent
             if total_bytes_sent >= num_bytes_to_send:
                 break
@@ -102,11 +102,11 @@ class UdpReadWriteSocket:
         while True:
             try:
                 data, _ = self.socket.recvfrom(65536, socket.MSG_DONTWAIT)
-            except socket.error as e:
+            except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
-                        raise socket.timeout
+                        raise TimeoutError from e
                     else:
                         continue
             break
@@ -127,6 +127,8 @@ class UdpReadWriteSocket:
         if host is None or port is None:
             return False
         host_ip = socket.gethostbyname(host)
+        # "224.0.0.0/4 is the CIDR notation for the range of IPv4 multicast addresses,
+        # which includes all addresses from 224.0.0.0 to 239.255.255.255.
         return ipaddress.ip_address(host_ip) in ipaddress.ip_network("224.0.0.0/4")
 
 

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,20 +17,22 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1957
 
-import time
-from datetime import datetime, timezone, timedelta
-import unittest
-import threading
-from unittest.mock import *
+import contextlib
 import re
-from test.test_helper import mock_redis, setup_system, System
+import threading
+import time
+import unittest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import *
+
 from openc3.api.tlm_api import *
+from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.models.interface_model import InterfaceModel
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.models.interface_model import InterfaceModel
-from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.utilities.time import formatted
+from test.test_helper import System, mock_redis, setup_system
 
 
 class TestTlmApi(unittest.TestCase):
@@ -45,10 +47,8 @@ class TestTlmApi(unittest.TestCase):
         def xread_side_effect(*args, **kwargs):
             result = None
             if self.process:
-                try:
+                with contextlib.suppress(Exception):
                     result = orig_xread(*args)
-                except Exception:
-                    pass
 
             # # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:
@@ -637,7 +637,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[14][0], "TEMP4")
         self.assertEqual(vals[14][1], -100.0)
         self.assertEqual(vals[14][2], "RED_LOW")
-        # Derived items are last
+        # Derived items are last (after BRACKET[0], 1BIT, 63BITS, 64BITS)
         self.assertEqual(vals[27][0], "PACKET_TIMESECONDS")
         self.assertGreater(vals[27][1], 0)
         self.assertIsNone(vals[27][2])

@@ -58,7 +58,7 @@ export default {
     try {
       this.widgetType = await System.import(this.url)
     } catch (e) {
-      throw new Error(`Unknown widget: ${this.name}`)
+      throw new Error(`Unknown widget: ${this.name}: ${e}`)
     }
   },
 }

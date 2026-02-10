@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -309,6 +309,7 @@ import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
 import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
 
@@ -399,6 +400,10 @@ export default {
     'start',
     'started',
   ],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data() {
     return {
       api: null,
@@ -548,13 +553,13 @@ export default {
       return this.itemSubscriptionKeys.includes(this.actualXAxisItem)
     },
     playbackMode: function () {
-      return this.$store.state.playback.playbackMode
+      return this.store.playback.playbackMode
     },
     playbackDateTime: function () {
-      return this.$store.state.playback.playbackDateTime
+      return this.store.playback.playbackDateTime
     },
     playbackStep: function () {
-      return this.$store.state.playback.playbackStep
+      return this.store.playback.playbackStep
     },
   },
   watch: {
@@ -594,8 +599,8 @@ export default {
         } else {
           // Track that we're waiting for playback data
           // Increment store counter so skip buttons are disabled until all graphs finish loading
-          this.$store.commit('playback', {
-            playbackLoading: this.$store.state.playback.playbackLoading + 1,
+          this.store.updatePlayback({
+            playbackLoading: this.store.playback.playbackLoading + 1,
           })
           this.api
             .get_tlm_values(
@@ -633,10 +638,10 @@ export default {
                 }
               }
               // Decrement store counter now that playback data has been processed
-              this.$store.commit('playback', {
+              this.store.updatePlayback({
                 playbackLoading: Math.max(
                   0,
-                  this.$store.state.playback.playbackLoading - 1,
+                  this.store.playback.playbackLoading - 1,
                 ),
               })
               this.dataChanged = true
@@ -650,15 +655,15 @@ export default {
       this.dataChanged = true
     },
     graphMinY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
         this.graphMinY = val
       }
       this.setGraphRange()
     },
     graphMaxY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
         this.graphMaxY = val
       }
       this.setGraphRange()
@@ -793,7 +798,7 @@ export default {
           },
           width: 2,
           value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || isNaN(rawValue)) {
+            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
               return 'NaN'
             } else {
               return rawValue == null ? '--' : rawValue.toFixed(3)
@@ -1598,7 +1603,7 @@ export default {
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
         width: 2,
         value: (self, rawValue) => {
-          if (typeof rawValue === 'string' || isNaN(rawValue)) {
+          if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
           } else if (rawValue == null) {
             return '--'

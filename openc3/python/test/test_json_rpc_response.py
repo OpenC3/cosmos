@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+
 from openc3.io.json_rpc import (
+    JsonRpcErrorResponse,
     JsonRpcResponse,
     JsonRpcSuccessResponse,
-    JsonRpcErrorResponse,
 )
 
 

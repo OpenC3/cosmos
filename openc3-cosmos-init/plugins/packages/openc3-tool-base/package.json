@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "6.10.4-beta0",
+  "version": "6.10.5-beta0",
   "type": "module",
   "scripts": {
     "serve": "vite build --watch --mode dev-server",
@@ -12,25 +12,25 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.13.2",
+    "axios": "1.13.4",
     "date-fns": "4.1.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
-    "vuetify": "3.11.5"
+    "vuetify": "3.11.8"
   },
   "devDependencies": {
-    "@babel/plugin-transform-modules-systemjs": "7.28.5",
+    "@babel/plugin-transform-modules-systemjs": "7.29.0",
     "@types/systemjs": "6.15.4",
-    "@vitejs/plugin-vue": "5.2.3",
-    "prettier": "3.7.4",
-    "sass": "1.97.1",
+    "@vitejs/plugin-vue": "6.0.3",
+    "prettier": "3.8.1",
+    "sass": "1.97.3",
     "serve": "14.2.5",
-    "vite": "6.4.1",
-    "vue": "3.5.26"
+    "vite": "7.3.1",
+    "vue": "3.5.27"
   },
   "peerDependencies": {
     "single-spa": "6.0.3",
     "vue-router": "4.4.4",
-    "vuex": "4.1.0"
+    "pinia": "3.0.4"
   }
 }

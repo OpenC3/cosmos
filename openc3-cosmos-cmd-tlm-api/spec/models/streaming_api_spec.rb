@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -65,6 +65,7 @@ RSpec.describe StreamingApi, type: :model do
 
     @file_start_time = 1614890937274290500 # these are the unix epoch values for the timestamps in the file names in spec/fixtures/files
     @file_end_time = 1614891537276524900
+
     s3 = double("AwsS3Client").as_null_object
     allow(Aws::S3::Client).to receive(:new).and_return(s3)
     allow(s3).to receive(:head_bucket).and_return(true)
@@ -147,8 +148,8 @@ RSpec.describe StreamingApi, type: :model do
     base_data = { 'scope' => 'DEFAULT' }
     modes = [
       { 'description' => 'items in decom mode', 'data' => { 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'] } },
-      { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] } },
-      { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['RAW__TLM__INST__PARAMS'] } },
+      # { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] } },
+      # { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['RAW__TLM__INST__PARAMS'] } },
     ]
 
     describe 'bad modes' do
@@ -298,7 +299,41 @@ RSpec.describe StreamingApi, type: :model do
         end
 
         context 'from files' do
+          before(:each) do
+            # Reset the class variable to prevent leaking between tests
+            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            # Mock get_tlm_available since the TargetModel isn't populated in mock redis
+            allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
+              items.map { |item| item.gsub('CONVERTED', 'RAW') }
+            end
+          end
+
+          after(:each) do
+            # Clean up the class variable after each test
+            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+          end
+
           it 'has start time and end time within the file time range' do
+            mock_conn = instance_double(PG::Connection)
+            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            # Data format: each row is array of [column_name, value] pairs
+            # Query selects item columns plus timestamp as last column
+            pg_data = [ [["VALUE1", 10], ["PACKET_TIMESECONDS", Time.at(@file_start_time / 1_000_000_000)]] ]
+            pg_data.define_singleton_method(:ntuples) do
+              return 1
+            end
+            $exec_cnt = 0
+            allow(mock_conn).to receive(:exec) do
+              $exec_cnt += 1
+              result = nil
+              if $exec_cnt == 1
+                result = pg_data
+              end
+              result
+            end
+            # Return non-TypeMapAllStrings so it doesn't try to set the type map
+            allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
@@ -315,6 +350,35 @@ RSpec.describe StreamingApi, type: :model do
           end
 
           it 'has start time within the file time range and end time after the file' do
+            mock_conn = instance_double(PG::Connection)
+            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            # Data format: each row is array of [column_name, value] pairs
+            # Multiple rows with timestamp values spread across file time range
+            base_time = @file_start_time / 1_000_000_000
+            pg_data = [
+              [["VALUE1", 10], ["PACKET_TIMESECONDS", Time.at(base_time)]],
+              [["VALUE1", 20], ["PACKET_TIMESECONDS", Time.at(base_time + 100)]],
+              [["VALUE1", 30], ["PACKET_TIMESECONDS", Time.at(base_time + 200)]],
+              [["VALUE1", 40], ["PACKET_TIMESECONDS", Time.at(base_time + 300)]],
+              [["VALUE1", 50], ["PACKET_TIMESECONDS", Time.at(base_time + 400)]],
+              [["VALUE1", 60], ["PACKET_TIMESECONDS", Time.at(base_time + 500)]],
+              [["VALUE1", 70], ["PACKET_TIMESECONDS", Time.at(base_time + 600)]]
+            ]
+            pg_data.define_singleton_method(:ntuples) do
+              return 7
+            end
+            $exec_cnt = 0
+            allow(mock_conn).to receive(:exec) do
+              $exec_cnt += 1
+              result = nil
+              if $exec_cnt == 1
+                result = pg_data
+              end
+              result
+            end
+            # Return non-TypeMapAllStrings so it doesn't try to set the type map
+            allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
             msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
             allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
@@ -325,11 +389,159 @@ RSpec.describe StreamingApi, type: :model do
             data['end_time'] = @start_time.to_i * 1_000_000_000 # now
             @api.add(data)
             sleep 2.65 # Allow the threads to run (files need a long time)
-            # We expect at least 9 messages: 7 from the fixture file, at least one from redis, and the empty one at the end
-            expect(@messages.length).to be >= 9
+            # We expect 2 messages: 1 batch with all 7 DB rows, and the empty completion message
+            # (DB rows are batched into a single message, not sent individually)
+            expect(@messages.length).to eq(2)
+            expect(@messages[0].length).to eq(7) # First message should have 7 items from DB
             expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
         end
+      end
+    end
+  end
+
+  context 'streaming packets' do
+    before(:each) do
+      # Reset the class variable to prevent leaking between tests
+      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+    end
+
+    after(:each) do
+      # Clean up the class variable after each test
+      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+    end
+
+    context 'for packets in raw mode (from files)' do
+      let(:data) { { 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT' } }
+
+      it 'streams raw packets from log files' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000 # 1 second of data
+        @api.add(data)
+        sleep 2.5 # Allow the threads to run (files need a long time)
+
+        # Should have received packet messages plus the empty completion message
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([]) # empty message to say we're done
+
+        # Verify packet format - raw packets have buffer field
+        first_packet = @messages[0][0]
+        expect(first_packet['__type']).to eq('PACKET')
+        expect(first_packet['__packet']).to eq('RAW__TLM__INST__PARAMS')
+        expect(first_packet['buffer']).to_not be_nil
+        expect(first_packet['__time']).to_not be_nil
+      end
+
+      it 'streams all raw packets within time range' do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_end_time
+        @api.add(data)
+        sleep 3.5 # Allow time for full file read
+
+        expect(@messages.length).to be >= 2
+        expect(@messages[-1]).to eq([])
+
+        # Count total packets received (excluding empty completion message)
+        total_packets = @messages[0..-2].sum { |batch| batch.length }
+        expect(total_packets).to be > 0
+      end
+    end
+
+    context 'for packets in decom mode (from TSDB)' do
+      let(:data) { { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT' } }
+
+      it 'streams decom packets from TSDB' do
+        mock_conn = instance_double(PG::Connection)
+        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        # Return non-TypeMapAllStrings so it doesn't try to set the type map
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+        base_time = @file_start_time / 1_000_000_000
+        # Mock data with all packet columns - including __C suffix for CONVERTED values
+        pg_data = [
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.5], ["VALUE2", 200], ["VALUE2__C", 20.5]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 1 }
+
+        $exec_cnt = 0
+        allow(mock_conn).to receive(:exec) do
+          $exec_cnt += 1
+          $exec_cnt == 1 ? pg_data : nil
+        end
+
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000 # 1 second of data
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(@messages.length).to eq(2)
+        expect(@messages[-1]).to eq([])
+
+        # Verify packet format - decom packets have item values
+        first_packet = @messages[0][0]
+        expect(first_packet['__type']).to eq('PACKET')
+        expect(first_packet['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+        expect(first_packet['__time']).to_not be_nil
+        # Decom packets should have converted values (from __C columns)
+        expect(first_packet['VALUE1']).to eq(10.5)
+        expect(first_packet['VALUE2']).to eq(20.5)
+        # Should NOT have buffer field
+        expect(first_packet['buffer']).to be_nil
+      end
+
+      it 'streams all decom packets within time range' do
+        mock_conn = instance_double(PG::Connection)
+        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+        base_time = @file_start_time / 1_000_000_000
+        # Multiple packets with different timestamps
+        pg_data = [
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.0]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 100)], ["tag", "test"], ["VALUE1", 200], ["VALUE1__C", 20.0]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 200)], ["tag", "test"], ["VALUE1", 300], ["VALUE1__C", 30.0]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 300)], ["tag", "test"], ["VALUE1", 400], ["VALUE1__C", 40.0]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 400)], ["tag", "test"], ["VALUE1", 500], ["VALUE1__C", 50.0]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 5 }
+
+        $exec_cnt = 0
+        allow(mock_conn).to receive(:exec) do
+          $exec_cnt += 1
+          $exec_cnt == 1 ? pg_data : nil
+        end
+
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_end_time
+        @api.add(data)
+        sleep 1.5 # Allow time for DB query
+
+        expect(@messages.length).to eq(2) # One batch + empty completion
+        expect(@messages[-1]).to eq([])
+
+        # Count total packets received (excluding empty completion message)
+        total_packets = @messages[0..-2].sum { |batch| batch.length }
+        expect(total_packets).to eq(5)
       end
     end
   end

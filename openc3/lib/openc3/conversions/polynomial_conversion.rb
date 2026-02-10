@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -45,6 +45,9 @@ module OpenC3
       # @param (see Conversion#call)
       # @return [Float] The value with the polynomial applied
       def call(value, myself, buffer)
+        # Return nil if value is nil (item outside buffer bounds)
+        return nil if value.nil?
+
         value = value.to_f
 
         # Handle C0

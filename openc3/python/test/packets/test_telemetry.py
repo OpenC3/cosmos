@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,14 +17,16 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import Mock
-from test.test_helper import mock_redis, setup_system, capture_io
-from openc3.system.target import Target
-from openc3.system.system import System
+
 from openc3.packets.packet import Packet
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
-from datetime import datetime, timedelta
+from openc3.system.system import System
+from openc3.system.target import Target
+from test.test_helper import capture_io, mock_redis, setup_system
+
 
 class TestTelemetry(unittest.TestCase):
     def setUp(self):
@@ -127,21 +129,21 @@ class TestTelemetry(unittest.TestCase):
 
     def test_item_names_returns_all_the_items_for_a_given_target_and_packet(self):
         items = self.tlm.item_names("TGT1", "PKT1")
-        self.assertIn('PACKET_TIMEFORMATTED', items)
-        self.assertIn('PACKET_TIMESECONDS', items)
-        self.assertIn('RECEIVED_TIMEFORMATTED', items)
-        self.assertIn('RECEIVED_TIMESECONDS', items)
-        self.assertIn('RECEIVED_COUNT', items)
-        self.assertIn('ITEM1', items)
-        self.assertIn('ITEM2', items)
-        self.assertIn('ITEM3', items)
-        self.assertIn('ITEM4', items)
+        self.assertIn("PACKET_TIMEFORMATTED", items)
+        self.assertIn("PACKET_TIMESECONDS", items)
+        self.assertIn("RECEIVED_TIMEFORMATTED", items)
+        self.assertIn("RECEIVED_TIMESECONDS", items)
+        self.assertIn("RECEIVED_COUNT", items)
+        self.assertIn("ITEM1", items)
+        self.assertIn("ITEM2", items)
+        self.assertIn("ITEM3", items)
+        self.assertIn("ITEM4", items)
 
         items = self.tlm.item_names("TGT1", "LATEST")
-        self.assertIn('ITEM1', items)
-        self.assertIn('ITEM2', items)
-        self.assertIn('ITEM3', items)
-        self.assertIn('ITEM4', items)
+        self.assertIn("ITEM1", items)
+        self.assertIn("ITEM2", items)
+        self.assertIn("ITEM3", items)
+        self.assertIn("ITEM4", items)
 
     def test_packet_and_item_complains_about_non_existent_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
@@ -315,7 +317,7 @@ class TestTelemetry(unittest.TestCase):
 
     def test_identify_and_define_returns_None_for_unidentified(self):
         unknown = Packet(None, None)
-        unknown.buffer = b"\xFF\xFF\xFF\xFF"
+        unknown.buffer = b"\xff\xff\xff\xff"
         pkt = self.tlm.identify_and_define_packet(unknown)
         self.assertIsNone(pkt)
 
@@ -438,16 +440,18 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]])
 
     def test_values_and_limits_states_complains_about_non_existent_value_types(self):
-        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"):
-            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], 'MINE')
+        with self.assertRaisesRegex(
+            ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
+        ):
+            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], "MINE")
 
     def test_values_and_limits_states_complains_if_passed_a_single_array(self):
-        with self.assertRaisesRegex(ValueError, 'item_array must be a nested array'):
+        with self.assertRaisesRegex(ValueError, "item_array must be a nested array"):
             self.tlm.values_and_limits_states(["TGT1", "PKT1", "ITEM1"])
 
     def test_values_and_limits_states_complains_about_the_wrong_number_of_parameters(self):
-        with self.assertRaisesRegex(TypeError, 'takes from 2 to 3 positional arguments but 4 were given'):
-            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], 'RAW', 'RAW')
+        with self.assertRaisesRegex(TypeError, "takes from 2 to 3 positional arguments but 4 were given"):
+            self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], "RAW", "RAW")
 
     def test_values_and_limits_states_reads_all_the_specified_values(self):
         self.tlm.update("TGT1", "PKT1", b"\x01\x02\x03\x04")
@@ -457,14 +461,14 @@ class TestTelemetry(unittest.TestCase):
         self.tlm.packet("TGT1", "PKT2").check_limits()
         self.tlm.packet("TGT2", "PKT1").check_limits()
         items = []
-        items.append(['TGT1', 'PKT1', 'ITEM1'])
-        items.append(['TGT1', 'PKT2', 'ITEM2'])
-        items.append(['TGT2', 'PKT1', 'ITEM1'])
+        items.append(["TGT1", "PKT1", "ITEM1"])
+        items.append(["TGT1", "PKT2", "ITEM2"])
+        items.append(["TGT2", "PKT1", "ITEM1"])
         vals = self.tlm.values_and_limits_states(items)
         self.assertEqual(vals[0][0], 1)
         self.assertEqual(vals[0][1], 6)
         self.assertEqual(vals[0][2], 7)
-        self.assertEqual(vals[1][0], 'RED_LOW')
+        self.assertEqual(vals[1][0], "RED_LOW")
         self.assertEqual(vals[1][1], None)
         self.assertEqual(vals[1][2], None)
         self.assertEqual(vals[2][0], [1.0, 2.0, 4.0, 5.0])
@@ -479,13 +483,13 @@ class TestTelemetry(unittest.TestCase):
         self.tlm.packet("TGT1", "PKT2").check_limits()
         self.tlm.packet("TGT2", "PKT1").check_limits()
         items = []
-        items.append(['TGT1', 'PKT1', 'ITEM1'])
-        items.append(['TGT1', 'PKT1', 'ITEM2'])
-        items.append(['TGT1', 'PKT1', 'ITEM3'])
-        items.append(['TGT1', 'PKT1', 'ITEM4'])
-        items.append(['TGT1', 'PKT2', 'ITEM2'])
-        items.append(['TGT2', 'PKT1', 'ITEM1'])
-        formats = ['CONVERTED', 'RAW', 'CONVERTED', 'RAW', 'CONVERTED', 'CONVERTED']
+        items.append(["TGT1", "PKT1", "ITEM1"])
+        items.append(["TGT1", "PKT1", "ITEM2"])
+        items.append(["TGT1", "PKT1", "ITEM3"])
+        items.append(["TGT1", "PKT1", "ITEM4"])
+        items.append(["TGT1", "PKT2", "ITEM2"])
+        items.append(["TGT2", "PKT1", "ITEM1"])
+        formats = ["CONVERTED", "RAW", "CONVERTED", "RAW", "CONVERTED", "CONVERTED"]
         vals = self.tlm.values_and_limits_states(items, formats)
         self.assertEqual(vals[0][0], 1)
         self.assertEqual(vals[0][1], 2)
@@ -493,8 +497,8 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(vals[0][3], 4)
         self.assertEqual(vals[0][4], 6)
         self.assertEqual(vals[0][5], 7)
-        self.assertEqual(vals[1][0], 'RED_LOW')
-        self.assertEqual(vals[1][1], 'YELLOW_LOW')
+        self.assertEqual(vals[1][0], "RED_LOW")
+        self.assertEqual(vals[1][1], "YELLOW_LOW")
         self.assertEqual(vals[1][2], None)
         self.assertEqual(vals[1][3], None)
         self.assertEqual(vals[1][4], None)
@@ -523,22 +527,32 @@ class TestTelemetry(unittest.TestCase):
     def test_all_item_strings_returns_hidden_TGT_PKT_ITEMs_in_the_system(self):
         self.tlm.packet("TGT1", "PKT1").hidden = True
         self.tlm.packet("TGT1", "PKT2").disabled = True
-        default = self.tlm.all_item_strings() # Return only those not hidden or disabled
-        strings = self.tlm.all_item_strings(True) # Return everything, even hidden & disabled
+        default = self.tlm.all_item_strings()  # Return only those not hidden or disabled
+        strings = self.tlm.all_item_strings(True)  # Return everything, even hidden & disabled
         self.assertNotEqual(default, strings)
         # Spot check the default
         self.assertIn("TGT2 PKT1 ITEM1", default)
         self.assertIn("TGT2 PKT1 ITEM2", default)
-        self.assertNotIn("TGT1 PKT1 ITEM1", default) # hidden
-        self.assertNotIn("TGT1 PKT2 ITEM1", default) # disabled
+        self.assertNotIn("TGT1 PKT1 ITEM1", default)  # hidden
+        self.assertNotIn("TGT1 PKT2 ITEM1", default)  # disabled
 
         items = {}
         # Built from the before(:each) section
-        items['TGT1 PKT1'] = ['ITEM1', 'ITEM2', 'ITEM3', 'ITEM4']
-        items['TGT1 PKT2'] = ['ITEM1', 'ITEM2']
-        items['TGT2 PKT1'] = ['ITEM1', 'ITEM2']
+        items["TGT1 PKT1"] = ["ITEM1", "ITEM2", "ITEM3", "ITEM4"]
+        items["TGT1 PKT2"] = ["ITEM1", "ITEM2"]
+        items["TGT2 PKT1"] = ["ITEM1", "ITEM2"]
+        # These are the items auto-added by define_reserved_items()
+        # Note: TIMESTAMP and RX_TIMESTAMP are in RESERVED_ITEM_NAMES but
+        # are not auto-added - they're just reserved to prevent user collision
+        auto_added_items = [
+            "PACKET_TIMESECONDS",
+            "PACKET_TIMEFORMATTED",
+            "RECEIVED_TIMESECONDS",
+            "RECEIVED_TIMEFORMATTED",
+            "RECEIVED_COUNT",
+        ]
         for tgt_pkt, sitems in items.items():
-            for item in Packet.RESERVED_ITEM_NAMES:
+            for item in auto_added_items:
                 self.assertIn(f"{tgt_pkt} {item}", strings)
             for item in sitems:
                 self.assertIn(f"{tgt_pkt} {item}", strings)
@@ -546,6 +560,7 @@ class TestTelemetry(unittest.TestCase):
     def test_identify_with_subpackets_false_excludes_subpackets(self):
         # Create config with normal packet and subpacket
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -574,6 +589,7 @@ class TestTelemetry(unittest.TestCase):
     def test_identify_with_subpackets_true_only_identifies_subpackets(self):
         # Create config with normal packet and subpacket
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -594,7 +610,7 @@ class TestTelemetry(unittest.TestCase):
         tlm = Telemetry(pc, System)
 
         # Packet with ID 10 should identify as SUB1
-        packet_data = b"\x0A"
+        packet_data = b"\x0a"
         identified = tlm.identify(packet_data, ["TGT1"], subpackets=True)
         self.assertIsNotNone(identified)
         self.assertEqual(identified.packet_name, "SUB1")
@@ -606,6 +622,7 @@ class TestTelemetry(unittest.TestCase):
 
     def test_tlm_unique_id_mode_returns_mode_for_target(self):
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()
@@ -627,6 +644,7 @@ class TestTelemetry(unittest.TestCase):
 
     def test_tlm_subpacket_unique_id_mode_returns_mode_for_target(self):
         import tempfile
+
         from openc3.packets.packet_config import PacketConfig
 
         pc = PacketConfig()

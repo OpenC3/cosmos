@@ -68,6 +68,38 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 | Variable Name | The name of the variable | True |
 | Default Value | Default value of the variable | True |
 
+## VARIABLE_DESCRIPTION
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a description to a plugin variable**
+
+The VARIABLE_DESCRIPTION keyword adds a human-readable description to a previously defined VARIABLE. This description appears as hint text below the variable input field during plugin installation. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Description | Human-readable description of the variable's purpose | True |
+
+Example Usage:
+```ruby
+VARIABLE port 8080
+VARIABLE_DESCRIPTION "TCP port for the target connection"
+```
+
+## VARIABLE_STATE
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a selectable state for a plugin variable**
+
+The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE. When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| State Description | Human-readable description of what this state represents. Appears as option in the dropdown. | False |
+| State Value | The value that will be used when this state is selected | True |
+
+Example Usage:
+```ruby
+VARIABLE log_retain_time 172800
+VARIABLE_STATE "24 hours" 86400
+VARIABLE_STATE "48 hours" 172800
+```
+
 ## NEEDS_DEPENDENCIES
 <span class="badge badge--secondary since-right">Since 5.5.0</span>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 

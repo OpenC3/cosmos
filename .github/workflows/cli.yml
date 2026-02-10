@@ -1,7 +1,18 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 name: CLI Tests
 
@@ -22,6 +33,8 @@ jobs:
   openc3-cli:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - name: openc3.sh build
@@ -68,7 +81,7 @@ jobs:
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-script-runner-api | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-init | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-operator | grep mine
-          docker image ls | grep localhost:12345/openc3/openc3-minio | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-buckets | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-redis | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-traefik | grep mine
       - name: openc3.sh util generate
@@ -148,14 +161,14 @@ jobs:
       #     ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
       #     ls tmp | grep openc3-cosmos-init-latest.tar
       #     ls tmp | grep openc3-operator-latest.tar
-      #     ls tmp | grep openc3-minio-latest.tar
+      #     ls tmp | grep openc3-buckets-latest.tar
       #     ls tmp | grep openc3-redis-latest.tar
       #     ls tmp | grep openc3-traefik-latest.tar
       #     docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
       #     docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
       #     docker image rm openc3inc/openc3-cosmos-init:latest
       #     docker image rm openc3inc/openc3-operator:latest
-      #     docker image rm openc3inc/openc3-minio:latest
+      #     docker image rm openc3inc/openc3-buckets:latest
       #     docker image rm openc3inc/openc3-redis:latest
       #     docker image rm openc3inc/openc3-traefik:latest
       #     ./openc3.sh util load
@@ -164,7 +177,7 @@ jobs:
       #     docker image ls | grep openc3-cosmos-script-runner-api
       #     docker image ls | grep openc3-cosmos-init
       #     docker image ls | grep openc3-operator
-      #     docker image ls | grep openc3-minio
+      #     docker image ls | grep openc3-buckets
       #     docker image ls | grep openc3-redis
       #     docker image ls | grep openc3-traefik
       - name: Cleanup volumes

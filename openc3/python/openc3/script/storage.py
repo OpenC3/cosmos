@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,15 +14,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 import io
-import os
 import json
+import os
 import tempfile
 import traceback
+
 import requests
-from openc3.utilities.extract import *
+
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.extract import *
 from openc3.utilities.local_mode import LocalMode
+
 
 OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 
@@ -115,7 +118,7 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
                     print(f"Reading local {scope}/{part}/{path}")
-                    file = tempfile.NamedTemporaryFile(mode="w+b")
+                    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
                     file.write(local_file.read())
                     file.seek(0)  # Rewind so the file is ready to read
                     return file
@@ -165,7 +168,7 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Create Tempfile to store data
-    file = tempfile.NamedTemporaryFile(mode="w+b")
+    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
     result = _get_presigned_request(endpoint, scope=scope)
@@ -185,7 +188,7 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-minio:9000")
+                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
                 return f"{bucket_url}{url}"
             case "aws":
                 return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"

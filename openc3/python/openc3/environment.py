@@ -18,6 +18,7 @@ import os
 
 from openc3.__version__ import __title__, __version__
 
+
 _openc3_api_schema = "OPENC3_API_SCHEMA"
 _openc3_api_hostname = "OPENC3_API_HOSTNAME"
 _openc3_api_port = "OPENC3_API_PORT"
@@ -62,6 +63,7 @@ _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
 _openc3_redis_cluster = "OPENC3_REDIS_CLUSTER"
 
+
 def get_env_bool(key: str, default: bool = False) -> bool:
     """
     Helper function to read boolean values from environment variables.
@@ -83,22 +85,22 @@ def get_env_bool(key: str, default: bool = False) -> bool:
         bool: True if the environment variable is set to a truthy value, False otherwise
 
     Examples:
-        >>> os.environ['DEBUG'] = 'true'
-        >>> get_env_bool('DEBUG')
+        >>> os.environ["DEBUG"] = "true"
+        >>> get_env_bool("DEBUG")
         True
-        >>> get_env_bool('MISSING_VAR', default=True)
+        >>> get_env_bool("MISSING_VAR", default=True)
         True
-        >>> os.environ['FLAG'] = '1'
-        >>> get_env_bool('FLAG')
+        >>> os.environ["FLAG"] = "1"
+        >>> get_env_bool("FLAG")
         True
-        >>> os.environ['FLAG'] = 'false'
-        >>> get_env_bool('FLAG')
+        >>> os.environ["FLAG"] = "false"
+        >>> get_env_bool("FLAG")
         False
     """
     value = os.environ.get(key)
     if value is None:
         return default
-    return value.lower() in ('true', '1', 'yes', 'on')
+    return value.lower() in ("true", "1", "yes", "on")
 
 
 OPENC3_API_SCHEMA = os.environ.get(_openc3_api_schema, "http")

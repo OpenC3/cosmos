@@ -30,7 +30,7 @@ usage() {
 }
 
 saveTar() {
-  if [ "$#" -lt 3 ]; then
+  if [[ "$#" -lt 3 ]]; then
     echo "Usage: save <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. save docker.io openc3inc 5.1.0" >&2
   fi
@@ -53,7 +53,7 @@ saveTar() {
   docker pull $repo/$namespace/openc3-traefik$suffix:$tag
   docker pull $repo/$namespace/openc3-redis$suffix:$tag
   docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
-  docker pull $repo/$namespace/openc3-minio$suffix:$tag
+  docker pull $repo/$namespace/openc3-buckets$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
 
   docker save $repo/$namespace/openc3-ruby$suffix:$tag -o tmp/openc3-ruby$suffix-$tag.tar
@@ -65,13 +65,13 @@ saveTar() {
   docker save $repo/$namespace/openc3-traefik$suffix:$tag -o tmp/openc3-traefik$suffix-$tag.tar
   docker save $repo/$namespace/openc3-redis$suffix:$tag -o tmp/openc3-redis$suffix-$tag.tar
   docker save $repo/$namespace/openc3-tsdb$suffix:$tag -o tmp/openc3-tsdb$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-minio$suffix:$tag -o tmp/openc3-minio$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-buckets$suffix:$tag -o tmp/openc3-buckets$suffix-$tag.tar
   docker save $repo/$namespace/openc3-cosmos-init$suffix:$tag -o tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
 
 loadTar() {
-  if [ -z "$1" ]; then
+  if [[ -z "$1" ]]; then
     tag="latest"
   else
     tag=$1
@@ -90,13 +90,13 @@ loadTar() {
   docker load -i tmp/openc3-traefik$suffix-$tag.tar
   docker load -i tmp/openc3-redis$suffix-$tag.tar
   docker load -i tmp/openc3-tsdb$suffix-$tag.tar
-  docker load -i tmp/openc3-minio$suffix-$tag.tar
+  docker load -i tmp/openc3-buckets$suffix-$tag.tar
   docker load -i tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
 
 tag() {
-  if [ "$#" -lt 4 ]; then
+  if [[ "$#" -lt 4 ]]; then
     echo "Usage: tag <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2> <SUFFIX>" >&2
     echo "e.g. tag docker.io localhost:12345 openc3 latest" >&2
     echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" >&2
@@ -130,13 +130,13 @@ tag() {
   docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-tsdb$suffix:$tag1 $repo2/$namespace2/openc3-tsdb$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-minio$suffix:$tag1 $repo2/$namespace2/openc3-minio$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-buckets$suffix:$tag1 $repo2/$namespace2/openc3-buckets$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-cosmos-init$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-init$suffix:$tag2
   set +x
 }
 
 push() {
-  if [ "$#" -lt 3 ]; then
+  if [[ "$#" -lt 3 ]]; then
     echo "Usage: push <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. push localhost:12345 openc3 latest" >&2
     exit 1
@@ -159,7 +159,7 @@ push() {
   docker push $repo/$namespace/openc3-traefik$suffix:$tag
   docker push $repo/$namespace/openc3-redis$suffix:$tag
   docker push $repo/$namespace/openc3-tsdb$suffix:$tag
-  docker push $repo/$namespace/openc3-minio$suffix:$tag
+  docker push $repo/$namespace/openc3-buckets$suffix:$tag
   docker push $repo/$namespace/openc3-cosmos-init$suffix:$tag
   set +x
 }
@@ -173,18 +173,18 @@ cleanFiles() {
   find . -type f -name "Gemfile.lock" | xargs -I {} rm -i {}
 }
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   usage $0
 fi
 
 # Check for help flag
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   usage $0
 fi
 
 case $1 in
   encode )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 encode STRING"
       echo ""
       echo "Encode a string to base64."
@@ -202,7 +202,7 @@ case $1 in
     echo -n $2 | base64
     ;;
   hash )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 hash STRING"
       echo ""
       echo "Hash a string using SHA-256."
@@ -220,7 +220,7 @@ case $1 in
     echo -n $2 | shasum -a 256 | sed 's/-//'
     ;;
   save )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 save REPO NAMESPACE TAG [SUFFIX]"
       echo ""
       echo "Pull and save all OpenC3 docker images to tar files in tmp/ directory."
@@ -241,7 +241,7 @@ case $1 in
     saveTar "${@:2}"
     ;;
   load )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 load [TAG] [SUFFIX]"
       echo ""
       echo "Load OpenC3 docker images from tar files in tmp/ directory."
@@ -260,7 +260,7 @@ case $1 in
     loadTar "${@:2}"
     ;;
   tag )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 tag REPO1 REPO2 NAMESPACE1 TAG1 [NAMESPACE2] [TAG2] [SUFFIX]"
       echo ""
       echo "Tag OpenC3 images from one repository to another."
@@ -284,7 +284,7 @@ case $1 in
     tag "${@:2}"
     ;;
   push )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 push REPO NAMESPACE TAG [SUFFIX]"
       echo ""
       echo "Push all OpenC3 images to a docker repository."
@@ -305,7 +305,7 @@ case $1 in
     push "${@:2}"
     ;;
   clean )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 clean"
       echo ""
       echo "Clean up development files from the project."
@@ -323,7 +323,7 @@ case $1 in
     cleanFiles
     ;;
   hostsetup )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 hostsetup REPO NAMESPACE TAG"
       echo ""
       echo "Configure Docker host for Redis optimal performance."
@@ -344,7 +344,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    if [ "$#" -ne 4 ]; then
+    if [[ "$#" -ne 4 ]]; then
       echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" >&2
       echo "e.g. hostsetup docker.io openc3inc latest" >&2
       exit 1
@@ -357,7 +357,7 @@ case $1 in
     docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=262144"
     ;;
   hostenter )
-    if [ "$2" == "--help" ] || [ "$2" == "-h" ]; then
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 hostenter"
       echo ""
       echo "Enter a shell on the Docker VM host."

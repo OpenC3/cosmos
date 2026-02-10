@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,11 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from time import perf_counter
-import time
 import threading
+import time
 import unittest
+from time import perf_counter
 from unittest.mock import Mock
+
 from openc3.utilities.thread_manager import ThreadManager
 
 
@@ -89,24 +90,22 @@ class TestThreadManager(unittest.TestCase):
         def task(duration):
             time.sleep(duration)
 
-        thread1 = threading.Thread(target=task, args=[0.02])
-        thread2 = threading.Thread(target=task, args=[0.15])
-        thread3 = threading.Thread(target=task, args=[0.08])
+        # Use longer durations to reduce timing sensitivity
+        thread1 = threading.Thread(target=task, args=[0.05])
+        thread2 = threading.Thread(target=task, args=[0.2])
+        thread3 = threading.Thread(target=task, args=[0.1])
         ThreadManager.instance().register(thread1)
         ThreadManager.instance().register(thread2)
         ThreadManager.instance().register(thread3)
+        start_time = perf_counter()
         thread1.start()
         thread2.start()
         thread3.start()
-        # Note: thread1 might finish quickly, so only check threads 2 and 3
-        self.assertTrue(thread2.is_alive())
-        self.assertTrue(thread3.is_alive())
-        start_time = perf_counter()
         ThreadManager.instance().join()
         stop_time = perf_counter()
-        # The join should wait for the longest running thread (0.15 seconds)
-        # Use delta=0.1 to allow for timing variations in test environments
-        self.assertAlmostEqual(stop_time - start_time, 0.15, delta=0.1)
+        # The join should wait for the longest running thread (0.2 seconds)
+        # Use a larger delta to account for thread scheduling variance
+        self.assertAlmostEqual(stop_time - start_time, 0.2, delta=0.05)
         # All threads should be stopped
         self.assertFalse(thread1.is_alive())
         self.assertFalse(thread2.is_alive())

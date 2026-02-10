@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,6 +25,7 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
+      :disabled="disabled"
       hide-details
       density="compact"
       variant="filled"
@@ -35,6 +36,7 @@
       <v-select
         :items="stateOptions"
         :model-value="selectValue"
+        :disabled="disabled"
         item-title="label"
         :class="stateClass"
         hide-details
@@ -76,6 +78,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ['update:modelValue', 'hazardous-change'],
   computed: {
@@ -105,6 +111,9 @@ export default {
       })
     },
     hazardous() {
+      if (!this.states) {
+        return false
+      }
       return (
         Object.entries(this.states)
           .find(([label, state]) => state.value === this.modelValue)
