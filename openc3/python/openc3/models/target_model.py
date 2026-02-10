@@ -468,7 +468,7 @@ class TargetModel(Model):
         tlm_decom_retain_time=None,
         cleanup_poll_time=3600,
         needs_dependencies=False,
-        target_microservices={},
+        target_microservices=None,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
