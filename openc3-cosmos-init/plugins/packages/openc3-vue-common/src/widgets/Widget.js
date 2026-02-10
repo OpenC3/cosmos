@@ -60,10 +60,6 @@ export default {
       default: 0,
     },
   },
-  setup() {
-    const store = useStore()
-    return { store }
-  },
   data() {
     return {
       // The settings that apply to the current widget based on widgetIndex
@@ -143,6 +139,10 @@ export default {
     },
   },
   created() {
+    // Initialize the Pinia store using the app's Pinia instance ($pinia global property)
+    // This is more reliable than useStore() in setup() for async components in single-spa
+    this.store = useStore(this.$pinia)
+
     // Look through the settings and get a reference to the screen
     this.screenId = this.settings
       .find((setting) => setting[0] === '__SCREEN_ID__')
