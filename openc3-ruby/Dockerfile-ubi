@@ -90,6 +90,9 @@ ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
 
+# Set Python executable path for microservices (uses venv to support editable installs)
+ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
+
 # rbspy - https://github.com/rbspy/rbspy
 COPY rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz
 RUN cd /opt \

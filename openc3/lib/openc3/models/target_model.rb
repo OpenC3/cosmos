@@ -976,7 +976,7 @@ module OpenC3
         work_dir.sub!('openc3/lib', 'openc3/python')
         parent = nil
         # Use venv Python to ensure editable packages are found
-        language_cmd = '/openc3/python/.venv/bin/python'
+        language_cmd = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       end
       microservice = MicroserviceModel.new(
         name: microservice_name,
@@ -1005,7 +1005,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["/openc3/python/.venv/bin/python", "tsdb_microservice.py", microservice_name],
+        cmd: [ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python', "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
         options: options,
         topics: topics,

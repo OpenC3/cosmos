@@ -93,6 +93,9 @@ ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
 
+# Set Python executable path for microservices (uses venv to support editable installs)
+ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
+
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
 RUN cd /opt \
