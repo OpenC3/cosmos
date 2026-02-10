@@ -388,11 +388,63 @@
       padding: 0px;
     "
   >
-    <v-tabs v-model="inlineTab" density="compact">
-      <v-tab value="script" text="Script" data-test="script-tab" />
-      <v-tab value="messages" text="Messages" data-test="messages-tab" />
-    </v-tabs>
-
+    <v-row no-gutters justify="right">
+      <v-tabs v-model="inlineTab" density="compact">
+        <v-tab value="script" text="Script" data-test="script-tab" />
+        <v-tab value="messages" text="Messages" data-test="messages-tab" />
+      </v-tabs>
+      <v-tooltip
+        location="bottom"
+        :text="filenameSelect"
+        :disabled="!filenameSelect || filenameSelect.length <= 45"
+      >
+        <template #activator="{ props }">
+          <div v-bind="props" style="width: 32rem">
+            <v-select
+              id="inline-filename"
+              v-model="filenameSelect"
+              :items="fileList"
+              :disabled="fileList.length <= 1"
+              label="Filename"
+              data-test="filename"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @update:model-value="fileNameChanged"
+            />
+          </div>
+        </template>
+      </v-tooltip>
+      <v-text-field
+        v-model="scriptId"
+        label="Script ID"
+        data-test="id"
+        class="shrink ml-2 script-state"
+        style="max-width: 100px"
+        density="compact"
+        variant="outlined"
+        readonly
+        hide-details
+      />
+      <v-text-field
+        v-model="stateTimer"
+        label="Script State"
+        data-test="state"
+        :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
+        style="max-width: 120px"
+        density="compact"
+        variant="outlined"
+        readonly
+        hide-details
+      />
+      <v-progress-circular
+        v-if="state === 'Connecting...'"
+        :size="40"
+        class="mx-2"
+        indeterminate
+        color="primary"
+      />
+    </v-row>
     <v-tabs-window v-model="inlineTab">
       <v-tabs-window-item value="script">
         <v-row>
@@ -709,6 +761,12 @@ export default {
       default: false,
     },
     body: {
+      type: String,
+      default: null,
+    },
+    // Optional filename to use when running inline scripts
+    // This allows relative path resolution to work correctly
+    initialFilename: {
       type: String,
       default: null,
     },
@@ -1367,6 +1425,10 @@ export default {
       if (this.body) {
         this.editor.setValue(this.body)
         this.editor.clearSelection()
+        // If initialFilename is provided, use it for path resolution
+        if (this.initialFilename) {
+          this.filename = this.initialFilename
+        }
       }
     }
     this.updateInterval = setInterval(async () => {

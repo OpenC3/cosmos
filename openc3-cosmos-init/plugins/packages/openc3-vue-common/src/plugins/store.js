@@ -1,5 +1,5 @@
 /*
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -11,57 +11,105 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
-import { createStore } from 'vuex'
+import { createPinia, defineStore } from 'pinia'
 
 const NOTIFY_HISTORY_MAX_LENGTH = 100
 
-export default createStore({
-  state() {
-    return {
-      notifyHistory: [],
-      namedWidgets: {},
-      playback: {
-        playbackMode: null,
-        playbackDateTime: null,
-        playbackStep: 1,
-        playbackLoading: 0, // Counter for number of graphs loading playback data
-      },
-    }
-  },
+export const useStore = defineStore('app', {
+  state: () => ({
+    notifyHistory: [],
+    namedWidgets: {},
+    playback: {
+      playbackMode: null,
+      playbackDateTime: null,
+      playbackStep: 1,
+      playbackLoading: 0, // Counter for number of graphs loading playback data
+    },
+  }),
   getters: {
-    // Method style access: https://vuex.vuejs.org/guide/getters.html#method-style-access
     namedWidget: (state) => (widgetName) => {
       return state.namedWidgets[widgetName]
     },
   },
-  mutations: {
-    notifyAddHistory(state, notification) {
-      if (state.notifyHistory.length >= NOTIFY_HISTORY_MAX_LENGTH) {
-        state.notifyHistory.length = NOTIFY_HISTORY_MAX_LENGTH - 1
+  actions: {
+    notifyAddHistory(notification) {
+      if (this.notifyHistory.length >= NOTIFY_HISTORY_MAX_LENGTH) {
+        this.notifyHistory.length = NOTIFY_HISTORY_MAX_LENGTH - 1
       }
-      state.notifyHistory.unshift(notification)
+      this.notifyHistory.unshift(notification)
     },
-    notifyClearHistory(state) {
-      state.notifyHistory = []
+    notifyClearHistory() {
+      this.notifyHistory = []
     },
-    setNamedWidget(state, namedWidget) {
-      Object.assign(state.namedWidgets, namedWidget)
+    setNamedWidget(namedWidget) {
+      Object.assign(this.namedWidgets, namedWidget)
     },
-    clearNamedWidget(state, widgetName) {
-      delete state.namedWidgets[widgetName]
+    clearNamedWidget(widgetName) {
+      delete this.namedWidgets[widgetName]
     },
-    playback(state, playback) {
-      Object.assign(state.playback, playback)
+    updatePlayback(playback) {
+      Object.assign(this.playback, playback)
     },
   },
-  modules: {},
 })
+
+const store = createPinia()
+
+// Add a global $store property like Vuex
+store.use(({ store }) => {
+  // Mimic Vuex's commit/dispatch on each store
+  store.commit = (mutation, payload) => {
+    if (typeof store[mutation] === 'function') {
+      store[mutation](payload)
+    }
+  }
+  store.dispatch = (action, payload) => {
+    if (typeof store[action] === 'function') {
+      return store[action](payload)
+    }
+  }
+})
+
+// Wrap the original install to also set up $store global property
+const originalInstall = store.install.bind(store)
+store.install = (app) => {
+  // Call Pinia's original install
+  originalInstall(app)
+  // Create the store instance and make it available as $store
+  const piniaStore = useStore(store)
+  app.config.globalProperties.$store = {
+    state: new Proxy(
+      {},
+      {
+        get(_, module) {
+          return piniaStore.$state
+        },
+      },
+    ),
+    getters: new Proxy(
+      {},
+      {
+        get(_, key) {
+          // Map 'module/getter' style access
+          const [mod, getter] = key.split('/')
+          return piniaStore[getter]
+        },
+      },
+    ),
+    commit(type, payload) {
+      const [mod, mutation] = type.split('/')
+      piniaStore[mutation]?.(payload)
+    },
+    dispatch(type, payload) {
+      const [mod, action] = type.split('/')
+      return piniaStore[action]?.(payload)
+    },
+  }
+}
+
+export default store
