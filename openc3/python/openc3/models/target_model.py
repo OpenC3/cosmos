@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -358,7 +353,10 @@ class TargetModel(Model):
                     Store.instance().redis_pool.pipelines[thread_id] = pipeline
                     try:
                         # Increment global counters for packets received
-                        for target_name, packet_data in cls.sync_packet_count_data.items():
+                        for (
+                            target_name,
+                            packet_data,
+                        ) in cls.sync_packet_count_data.items():
                             for packet_name, count in packet_data.items():
                                 TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
                                 inc_count += 1
@@ -502,7 +500,11 @@ class TargetModel(Model):
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(f"{self.scope}__openc3tlm__{target_name}", packet_name, json.dumps(packet.as_json()))
+                    Store.hset(
+                        f"{self.scope}__openc3tlm__{target_name}",
+                        packet_name,
+                        json.dumps(packet.as_json()),
+                    )
                 except Exception as e:
                     Logger.error(f"Invalid text present in {target_name} {packet_name} tlm packet")
                     raise e
@@ -525,7 +527,11 @@ class TargetModel(Model):
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(f"{self.scope}__openc3cmd__{target_name}", packet_name, json.dumps(packet.as_json()))
+                    Store.hset(
+                        f"{self.scope}__openc3cmd__{target_name}",
+                        packet_name,
+                        json.dumps(packet.as_json()),
+                    )
                 except Exception as e:
                     Logger.error(f"Invalid text present in {target_name} {packet_name} cmd packet")
                     raise e
@@ -589,18 +595,27 @@ class TargetModel(Model):
         if cmd_or_tlm == "TELEMETRY":
             Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__PACKETLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
         else:
             Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__COMMANDLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
 

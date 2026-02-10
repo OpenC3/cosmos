@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -47,7 +42,7 @@ spec = Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3.0'
 
   s.version = '6.10.5.pre.beta0'
-  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+  s.license = "OpenC3"
 
   # Executables
   s.executables << 'openc3cli'
@@ -71,7 +66,7 @@ spec = Gem::Specification.new do |s|
   end
 
   # Files are defined in Manifest.txt
-  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
+  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.md Rakefile README.md)
 
   # Runtime Dependencies
   s.add_runtime_dependency 'erb',       '~> 6.0'

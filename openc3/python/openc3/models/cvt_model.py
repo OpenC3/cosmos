@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -61,7 +56,14 @@ class CvtModel(Model):
         Store.hdel(key, packet_name)
 
     @classmethod
-    def set(cls, hash: dict, target_name: str, packet_name: str, queued: bool = False, scope: str = OPENC3_SCOPE):
+    def set(
+        cls,
+        hash: dict,
+        target_name: str,
+        packet_name: str,
+        queued: bool = False,
+        scope: str = OPENC3_SCOPE,
+    ):
         """Set the current value table for a target, packet"""
         packet_json = json.dumps(hash, cls=JsonEncoder)
         key = f"{scope}__tlm__{target_name}"
@@ -99,7 +101,13 @@ class CvtModel(Model):
     # Get the dict for packet in the CVT
     # Note: Does not apply overrides
     @classmethod
-    def get(cls, target_name: str, packet_name: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE):
+    def get(
+        cls,
+        target_name: str,
+        packet_name: str,
+        cache_timeout: float = 0.1,
+        scope: str = OPENC3_SCOPE,
+    ):
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         now = time.time()
@@ -140,7 +148,13 @@ class CvtModel(Model):
                 pkt_hash[item_name] = value
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
-        cls.set(pkt_hash, target_name=target_name, packet_name=packet_name, queued=queued, scope=scope)
+        cls.set(
+            pkt_hash,
+            target_name=target_name,
+            packet_name=packet_name,
+            queued=queued,
+            scope=scope,
+        )
 
     # Get an item from the current value table
     @classmethod
@@ -177,7 +191,13 @@ class CvtModel(Model):
             return None
 
     @classmethod
-    def tsdb_lookup(cls, items: list, start_time: str, end_time: str | None = None, scope: str = OPENC3_SCOPE):
+    def tsdb_lookup(
+        cls,
+        items: list,
+        start_time: str,
+        end_time: str | None = None,
+        scope: str = OPENC3_SCOPE,
+    ):
         """Query historical telemetry data from TSDB"""
         if not PSYCOPG_AVAILABLE:
             raise RuntimeError("psycopg is required for database operations but is not available")
@@ -222,7 +242,10 @@ class CvtModel(Model):
             if item_name in stored_timestamp_items:
                 col_name = f"T{index}.{item_name}"
                 names.append(f'"{col_name}"')
-                stored_timestamp_positions[current_position] = {"column": col_name, "table_index": index}
+                stored_timestamp_positions[current_position] = {
+                    "column": col_name,
+                    "table_index": index,
+                }
                 current_position += 1
                 continue
 
@@ -277,7 +300,10 @@ class CvtModel(Model):
                         }
                     elif item_def.get("states"):
                         # State values are strings
-                        item_types[col_name] = {"data_type": "STRING", "array_size": None}
+                        item_types[col_name] = {
+                            "data_type": "STRING",
+                            "array_size": None,
+                        }
                     else:
                         item_types[col_name] = {
                             "data_type": item_def.get("data_type"),
@@ -308,7 +334,10 @@ class CvtModel(Model):
             for ts_col in ts_columns:
                 alias_name = f"T{table_index}___ts_{ts_col}"
                 names.append(f"T{table_index}.{ts_col} as {alias_name}")
-                timestamp_columns[alias_name] = {"table_index": table_index, "source": ts_col}
+                timestamp_columns[alias_name] = {
+                    "table_index": table_index,
+                    "source": ts_col,
+                }
 
         # Build the SQL query
         query = f"SELECT {', '.join(names)} FROM "
@@ -372,7 +401,11 @@ class CvtModel(Model):
                                     elif (
                                         col_name.endswith(".PACKET_TIMESECONDS")
                                         or col_name.endswith(".RECEIVED_TIMESECONDS")
-                                        or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS")
+                                        or col_name
+                                        in (
+                                            "PACKET_TIMESECONDS",
+                                            "RECEIVED_TIMESECONDS",
+                                        )
                                     ):
                                         # Stored timestamp column - convert from datetime to float seconds
                                         ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)

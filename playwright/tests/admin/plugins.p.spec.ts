@@ -1,16 +1,11 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 */
 
 // @ts-check
@@ -215,7 +210,10 @@ test.describe(() => {
   // Must be the operator to modify files
   test.use({ storageState: 'storageState.json' })
 
-  test.fixme('installs, modifies, and deletes a plugin', async ({ page, utils }) => {
+  test.fixme('installs, modifies, and deletes a plugin', async ({
+    page,
+    utils,
+  }) => {
     test.setTimeout(5 * 60 * 1000) // 5 minutes
     // This test goes through the gamut of plugin functionality: install, upgrade, modify, delete.
     // It is one test so that it works with Playwright's parallelization and optional order randomization.

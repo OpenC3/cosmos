@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -27,7 +22,10 @@ from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.utilities.running_script import RunningScript, running_script_anycable_publish
+from openc3.utilities.running_script import (
+    RunningScript,
+    running_script_anycable_publish,
+)
 from openc3.utilities.store import EphemeralStore, Store
 from openc3.utilities.store_queued import StoreQueued
 
@@ -237,13 +235,19 @@ finally:
 
         # Inform script channel it is complete
         running_script_anycable_publish(
-            f"running-script-channel:{id}", {"type": "complete", "state": script_status.state}
+            f"running-script-channel:{id}",
+            {"type": "complete", "state": script_status.state},
         )
 
         # Inform frontend of number of running scripts in this scope
         running_script_anycable_publish(
             "all-scripts-channel",
-            {"type": "complete", "filename": script_status.filename, "active_scripts": len(running), "scope": scope},
+            {
+                "type": "complete",
+                "filename": script_status.filename,
+                "active_scripts": len(running),
+                "scope": scope,
+            },
         )
     finally:
         if running_script:

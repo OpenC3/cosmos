@@ -7,7 +7,7 @@ Update this comment with your own description.
 ## Getting Started
 
 1. Edit the .gemspec file fields: name, summary, description, authors, email, and homepage
-1. Update the LICENSE.txt file with your company name
+1. Update the LICENSE.md file with your company name
 
 ## Building non-tool / widget plugins
 
@@ -63,4 +63,4 @@ This protects both you and us and you retain full rights to any code you write.
 
 ## License
 
-This OpenC3 plugin is released under the MIT License. See [LICENSE.txt](LICENSE.txt)
+This OpenC3 plugin is released under the MIT License. See [LICENSE.md](LICENSE.md)

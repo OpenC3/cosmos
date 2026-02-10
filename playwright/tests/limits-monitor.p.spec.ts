@@ -2,18 +2,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -73,7 +68,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
       () =>
         page
           .locator('[data-test=limits-table]')
-          .getByText("GROUND1STATUS")
+          .getByText('GROUND1STATUS')
           .count(),
       {
         timeout: 60000,
@@ -85,7 +80,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
       () =>
         page
           .locator('[data-test=limits-table]')
-          .getByText("GROUND2STATUS")
+          .getByText('GROUND2STATUS')
           .count(),
       {
         timeout: 60000,
@@ -97,7 +92,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   // Open the menu and click "Ignore Item"
   await page
     .locator('[data-test=limits-table]')
-    .getByText("GROUND1STATUS")
+    .getByText('GROUND1STATUS')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -108,7 +103,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 
   await page
     .locator('[data-test=limits-table]')
-    .getByText("GROUND2STATUS")
+    .getByText('GROUND2STATUS')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -163,7 +158,7 @@ test('temporarily hides items', async ({ page, utils }) => {
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("TEMP1").count(),
+      () => page.locator('[data-test=limits-table]').getByText('TEMP1').count(),
       {
         timeout: 60000,
       },
@@ -173,7 +168,7 @@ test('temporarily hides items', async ({ page, utils }) => {
   // Hide both TEMP1s
   await page
     .locator('[data-test=limits-table]')
-    .getByText("TEMP1")
+    .getByText('TEMP1')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -184,7 +179,7 @@ test('temporarily hides items', async ({ page, utils }) => {
 
   await page
     .locator('[data-test=limits-table]')
-    .getByText("TEMP1")
+    .getByText('TEMP1')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -197,7 +192,7 @@ test('temporarily hides items', async ({ page, utils }) => {
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("TEMP1").count(),
+      () => page.locator('[data-test=limits-table]').getByText('TEMP1').count(),
       {
         timeout: 60000,
       },
@@ -209,7 +204,7 @@ test('ignores items', async ({ page, utils }) => {
   test.setTimeout(300000) // 5 min
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("TEMP1").count(),
+      () => page.locator('[data-test=limits-table]').getByText('TEMP1').count(),
       {
         timeout: 60000,
       },
@@ -219,7 +214,7 @@ test('ignores items', async ({ page, utils }) => {
   // Ignore both TEMP1s
   await page
     .locator('[data-test=limits-table]')
-    .getByText("TEMP1")
+    .getByText('TEMP1')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -230,7 +225,7 @@ test('ignores items', async ({ page, utils }) => {
 
   await page
     .locator('[data-test=limits-table]')
-    .getByText("TEMP1")
+    .getByText('TEMP1')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -239,7 +234,7 @@ test('ignores items', async ({ page, utils }) => {
   await page.waitForSelector('.v-list-item:has-text("Ignore Item")')
   await page.click('.v-list-item:has-text("Ignore Item")')
   await expect(
-    page.locator('[data-test=limits-table]').getByText("TEMP1"),
+    page.locator('[data-test=limits-table]').getByText('TEMP1'),
   ).not.toBeVisible()
   expect(await page.inputValue('[data-test=overall-state] input')).toMatch(
     'Some items ignored',
@@ -262,7 +257,7 @@ test('ignores items', async ({ page, utils }) => {
   // Wait for the TEMP1 to show up again
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("TEMP1").count(),
+      () => page.locator('[data-test=limits-table]').getByText('TEMP1').count(),
       {
         timeout: 60000,
       },
@@ -273,16 +268,16 @@ test('ignores items', async ({ page, utils }) => {
 test('ignores entire packets', async ({ page, utils }) => {
   // The INST and INST2 targets both have VALUE2 and VALUE4 as red
   await expect(
-    page.locator('[data-test=limits-table]').getByText("VALUE2")
+    page.locator('[data-test=limits-table]').getByText('VALUE2'),
   ).toHaveCount(2)
   await expect(
-    page.locator('[data-test=limits-table]').getByText("VALUE4")
+    page.locator('[data-test=limits-table]').getByText('VALUE4'),
   ).toHaveCount(2)
 
   // Ignore the entire VALUE2 packet
   await page
     .locator('[data-test=limits-table]')
-    .getByText("VALUE2")
+    .getByText('VALUE2')
     .first()
     .locator('xpath=ancestor::tr')
     .getByRole('button')
@@ -291,10 +286,10 @@ test('ignores entire packets', async ({ page, utils }) => {
   await page.waitForSelector('.v-list-item:has-text("Ignore Entire Packet")')
   await page.click('.v-list-item:has-text("Ignore Entire Packet")')
   await expect(
-    page.locator('[data-test=limits-table]').getByText("VALUE2")
+    page.locator('[data-test=limits-table]').getByText('VALUE2'),
   ).toHaveCount(1)
   await expect(
-    page.locator('[data-test=limits-table]').getByText("VALUE4")
+    page.locator('[data-test=limits-table]').getByText('VALUE4'),
   ).toHaveCount(1)
 
   // Check the menu
@@ -309,7 +304,8 @@ test('ignores entire packets', async ({ page, utils }) => {
   // Now we find both items again
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("VALUE2").count(),
+      () =>
+        page.locator('[data-test=limits-table]').getByText('VALUE2').count(),
       {
         timeout: 10000,
       },
@@ -317,7 +313,8 @@ test('ignores entire packets', async ({ page, utils }) => {
     .toBe(2)
   await expect
     .poll(
-      () => page.locator('[data-test=limits-table]').getByText("VALUE4").count(),
+      () =>
+        page.locator('[data-test=limits-table]').getByText('VALUE4').count(),
       {
         timeout: 10000,
       },

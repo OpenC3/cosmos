@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -50,7 +45,12 @@ class GenericConversion(Conversion):
             self.converted_bit_size = int(converted_bit_size)
         if ConfigParser.handle_none(converted_array_size):
             self.converted_array_size = int(converted_array_size)
-        self.params = [code_to_eval, converted_type, converted_bit_size, converted_array_size]
+        self.params = [
+            code_to_eval,
+            converted_type,
+            converted_bit_size,
+            converted_array_size,
+        ]
 
         # Setup multiline eval where the last line defines the return value for eval
         # Use dedent to strip common leading whitespace from config file indentation
@@ -63,7 +63,12 @@ class GenericConversion(Conversion):
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
         if myself:  # Remove unused variable warning for myself
-            generic_globals = {"value": value, "myself": myself, "packet": packet, "buffer": buffer}
+            generic_globals = {
+                "value": value,
+                "myself": myself,
+                "packet": packet,
+                "buffer": buffer,
+            }
             exec(self.exec_lines, generic_globals)
             return eval(self.eval_line, generic_globals)
 

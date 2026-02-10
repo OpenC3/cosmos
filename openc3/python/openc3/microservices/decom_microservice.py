@@ -1,15 +1,10 @@
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -24,7 +19,11 @@ import traceback
 from datetime import datetime, timezone
 
 from openc3.config.config_parser import ConfigParser
-from openc3.microservices.interface_decom_common import handle_build_cmd, handle_get_tlm_buffer, handle_inject_tlm
+from openc3.microservices.interface_decom_common import (
+    handle_build_cmd,
+    handle_get_tlm_buffer,
+    handle_inject_tlm,
+)
 from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.microservices.microservice import Microservice
 from openc3.models.target_model import TargetModel
@@ -74,7 +73,11 @@ class LimitsResponseThread:
                     item.limits.response.call(packet, item, old_limits_state)
                 except Exception:
                     self.error_count += 1
-                    self.metric.set(name="limits_response_error_total", value=self.error_count, type="counter")
+                    self.metric.set(
+                        name="limits_response_error_total",
+                        value=self.error_count,
+                        type="counter",
+                    )
                     self.logger.error(
                         f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!"
                     )

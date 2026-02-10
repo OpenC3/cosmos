@@ -258,4 +258,4 @@ See the [COSMOS Development Guide](https://docs.openc3.com/docs/development/deve
 
 ## License
 
-AGPLv3 - See [LICENSE.txt](LICENSE.txt) for details.
+OpenC3 COSMOS is released under the OpenC3 Builder's License. See [LICENSE.md](LICENSE.md)

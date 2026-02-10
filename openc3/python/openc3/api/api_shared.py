@@ -1,15 +1,10 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -470,7 +465,13 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     return time_diff
 
 
-def wait_check_expression(exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, globals=None, locals=None):
+def wait_check_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None,
+):
     """Wait on an expression to be true.  On a timeout, the script will pause"""
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)

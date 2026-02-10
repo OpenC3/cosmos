@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -60,10 +55,30 @@ class TestPacketLogWriter(unittest.TestCase):
         self.assertEqual(plw.file_size, 0)
 
         # Mark the first packet as "stored" (True)
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", first_time, True, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            first_time,
+            True,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         self.assertNotEqual(plw.file_size, 0)
 
-        plw.write("RAW_PACKET", "TLM", "TGT2", "PKT2", last_time, False, b"\x03\x04", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT2",
+            "PKT2",
+            last_time,
+            False,
+            b"\x03\x04",
+            None,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -101,7 +116,17 @@ class TestPacketLogWriter(unittest.TestCase):
 
         # Write JSON packet
         json_data = {"ITEM1": 100, "ITEM2": 200.5, "ITEM3": "text"}
-        plw.write("JSON_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, json_data, None, "0-0")
+        plw.write(
+            "JSON_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec,
+            False,
+            json_data,
+            None,
+            "0-0",
+        )
 
         filename = plw.filename
         plw.shutdown()
@@ -125,7 +150,17 @@ class TestPacketLogWriter(unittest.TestCase):
         time_nsec = int(time.time() * 1e9)
 
         plw = PacketLogWriter(self.temp_dir, "test")
-        plw.write("RAW_PACKET", "CMD", "TGT1", "CMD1", time_nsec, False, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "CMD",
+            "TGT1",
+            "CMD1",
+            time_nsec,
+            False,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -151,18 +186,58 @@ class TestPacketLogWriter(unittest.TestCase):
         self.assertEqual(plw.file_size, 0)
 
         # Write first file
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", first_time, True, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            first_time,
+            True,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         self.assertNotEqual(plw.file_size, 0)
-        plw.write("RAW_PACKET", "TLM", "TGT2", "PKT2", last_time, False, b"\x03\x04", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT2",
+            "PKT2",
+            last_time,
+            False,
+            b"\x03\x04",
+            None,
+            "0-0",
+        )
         filename1 = plw.filename
 
         # Start new file
         plw.start_new_file()
         self.assertEqual(plw.file_size, len(OPENC3_FILE_HEADER))
 
-        plw.write("RAW_PACKET", "TLM", "TGT2", "PKT2", first_time2, False, b"\x03\x04", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT2",
+            "PKT2",
+            first_time2,
+            False,
+            b"\x03\x04",
+            None,
+            "0-0",
+        )
         self.assertNotEqual(plw.file_size, len(OPENC3_FILE_HEADER))
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", last_time2, True, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            last_time2,
+            True,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         filename2 = plw.filename
         plw.shutdown()
 
@@ -203,7 +278,17 @@ class TestPacketLogWriter(unittest.TestCase):
     def test_shutdown_closes_file(self):
         """shutdown closes the file"""
         plw = PacketLogWriter(self.temp_dir, "test")
-        plw.write("RAW_PACKET", "CMD", "TGT", "CMD", int(time.time() * 1e9), True, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "CMD",
+            "TGT",
+            "CMD",
+            int(time.time() * 1e9),
+            True,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         self.assertNotEqual(plw.file_size, 0)
         filename = plw.filename
 
@@ -217,7 +302,17 @@ class TestPacketLogWriter(unittest.TestCase):
         packet_id = "a" * 64  # 64 hex characters
 
         plw = PacketLogWriter(self.temp_dir, "test")
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, b"\x01\x02", packet_id, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec,
+            False,
+            b"\x01\x02",
+            packet_id,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -236,7 +331,15 @@ class TestPacketLogWriter(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             plw.write(
-                "RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", "short_id", "0-0"
+                "RAW_PACKET",
+                "TLM",
+                "TGT1",
+                "PKT1",
+                int(time.time() * 1e9),
+                False,
+                b"\x01\x02",
+                "short_id",
+                "0-0",
             )
 
         self.assertIn("64", str(context.exception))
@@ -279,7 +382,18 @@ class TestPacketLogWriter(unittest.TestCase):
         extra = {"custom_field": "value", "count": 42}
 
         plw = PacketLogWriter(self.temp_dir, "test")
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, b"\x01\x02", None, "0-0", extra=extra)
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec,
+            False,
+            b"\x01\x02",
+            None,
+            "0-0",
+            extra=extra,
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -299,7 +413,17 @@ class TestPacketLogWriter(unittest.TestCase):
         # Write max + 2 targets (0 to max are valid, so +1 is ok, +2 errors)
         with self.assertRaises(ValueError) as context:
             for i in range(OPENC3_MAX_TARGET_INDEX + 2):
-                plw.write("RAW_PACKET", "TLM", f"TGT{i}", "PKT", int(time.time() * 1e9), True, b"\x01\x02", None, "0-0")
+                plw.write(
+                    "RAW_PACKET",
+                    "TLM",
+                    f"TGT{i}",
+                    "PKT",
+                    int(time.time() * 1e9),
+                    True,
+                    b"\x01\x02",
+                    None,
+                    "0-0",
+                )
 
         self.assertIn("Target Index Overflow", str(context.exception))
         plw.shutdown()
@@ -311,7 +435,17 @@ class TestPacketLogWriter(unittest.TestCase):
         # Write max + 2 packets (0 to max are valid, so +1 is ok, +2 errors)
         with self.assertRaises(ValueError) as context:
             for i in range(OPENC3_MAX_PACKET_INDEX + 2):
-                plw.write("RAW_PACKET", "TLM", "TGT", f"PKT{i}", int(time.time() * 1e9), True, b"\x01\x02", None, "0-0")
+                plw.write(
+                    "RAW_PACKET",
+                    "TLM",
+                    "TGT",
+                    f"PKT{i}",
+                    int(time.time() * 1e9),
+                    True,
+                    b"\x01\x02",
+                    None,
+                    "0-0",
+                )
 
         self.assertIn("Packet Index Overflow", str(context.exception))
         plw.shutdown()
@@ -322,7 +456,17 @@ class TestPacketLogWriter(unittest.TestCase):
 
         plw = PacketLogWriter(self.temp_dir, "test", data_format="CBOR")
         json_data = {"ITEM1": 100, "ITEM2": 200.5}
-        plw.write("JSON_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, json_data, None, "0-0")
+        plw.write(
+            "JSON_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec,
+            False,
+            json_data,
+            None,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -340,7 +484,17 @@ class TestPacketLogWriter(unittest.TestCase):
 
         plw = PacketLogWriter(self.temp_dir, "test", data_format="JSON")
         json_data = {"ITEM1": 100, "ITEM2": 200.5}
-        plw.write("JSON_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, json_data, None, "0-0")
+        plw.write(
+            "JSON_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec,
+            False,
+            json_data,
+            None,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
 
@@ -357,7 +511,17 @@ class TestPacketLogWriter(unittest.TestCase):
         plw = PacketLogWriter(self.temp_dir, "test")
         self.assertIsNone(plw.filename)  # No file yet
 
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            int(time.time() * 1e9),
+            False,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         self.assertIsNotNone(plw.filename)
         self.assertTrue(plw.filename.endswith(".bin"))
         self.assertIn("test", plw.filename)
@@ -369,11 +533,31 @@ class TestPacketLogWriter(unittest.TestCase):
         plw = PacketLogWriter(self.temp_dir, "test")
         self.assertEqual(plw.file_size, 0)
 
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            int(time.time() * 1e9),
+            False,
+            b"\x01\x02",
+            None,
+            "0-0",
+        )
         size_after_one = plw.file_size
         self.assertGreater(size_after_one, len(OPENC3_FILE_HEADER))
 
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x03\x04", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            int(time.time() * 1e9),
+            False,
+            b"\x03\x04",
+            None,
+            "0-0",
+        )
         size_after_two = plw.file_size
         self.assertGreater(size_after_two, size_after_one)
 
@@ -389,7 +573,17 @@ class TestPacketLogWriter(unittest.TestCase):
         plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, b"\x01", None, "0-0")
         size_after_first = plw.file_size
 
-        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", time_nsec + 1000, False, b"\x02", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TGT1",
+            "PKT1",
+            time_nsec + 1000,
+            False,
+            b"\x02",
+            None,
+            "0-0",
+        )
         size_increase = plw.file_size - size_after_first
 
         # Second write should be smaller than first (no declarations)
@@ -404,7 +598,17 @@ class TestPacketLogWriter(unittest.TestCase):
         plw = PacketLogWriter(self.temp_dir, "test")
 
         with self.assertRaises(ValueError) as context:
-            plw.write("UNKNOWN_TYPE", "TLM", "TGT1", "PKT1", int(time.time() * 1e9), False, b"\x01\x02", None, "0-0")
+            plw.write(
+                "UNKNOWN_TYPE",
+                "TLM",
+                "TGT1",
+                "PKT1",
+                int(time.time() * 1e9),
+                False,
+                b"\x01\x02",
+                None,
+                "0-0",
+            )
 
         self.assertIn("Unknown entry_type", str(context.exception))
         plw.shutdown()
@@ -429,10 +633,50 @@ class TestPacketLogWriterRoundTrip(unittest.TestCase):
 
         # Use unique target/packet names to avoid conflicts with System definitions
         # that may be set up by other tests (which would cause buffer size mismatches)
-        plw.write("RAW_PACKET", "TLM", "TEST_TGT1", "TEST_PKT1", time_nsec, False, b"\x01\x02\x03\x04", None, "0-0")
-        plw.write("RAW_PACKET", "TLM", "TEST_TGT1", "TEST_PKT2", time_nsec + 1000, True, b"\x05\x06", None, "0-0")
-        plw.write("RAW_PACKET", "TLM", "TEST_TGT2", "TEST_PKT1", time_nsec + 2000, False, b"\x07\x08", None, "0-0")
-        plw.write("RAW_PACKET", "CMD", "TEST_TGT1", "TEST_CMD1", time_nsec + 3000, False, b"\x09", None, "0-0")
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TEST_TGT1",
+            "TEST_PKT1",
+            time_nsec,
+            False,
+            b"\x01\x02\x03\x04",
+            None,
+            "0-0",
+        )
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TEST_TGT1",
+            "TEST_PKT2",
+            time_nsec + 1000,
+            True,
+            b"\x05\x06",
+            None,
+            "0-0",
+        )
+        plw.write(
+            "RAW_PACKET",
+            "TLM",
+            "TEST_TGT2",
+            "TEST_PKT1",
+            time_nsec + 2000,
+            False,
+            b"\x07\x08",
+            None,
+            "0-0",
+        )
+        plw.write(
+            "RAW_PACKET",
+            "CMD",
+            "TEST_TGT1",
+            "TEST_CMD1",
+            time_nsec + 3000,
+            False,
+            b"\x09",
+            None,
+            "0-0",
+        )
 
         filename = plw.filename
         plw.shutdown()
@@ -470,7 +714,15 @@ class TestPacketLogWriterRoundTrip(unittest.TestCase):
         for i in range(3):
             json_data = {"COLLECTS": 100 + i, "TEMP1": 25.5 + i, "STATUS": "NOMINAL"}
             plw.write(
-                "JSON_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec + i * 1000, False, json_data, None, "0-0"
+                "JSON_PACKET",
+                "TLM",
+                "INST",
+                "HEALTH_STATUS",
+                time_nsec + i * 1000,
+                False,
+                json_data,
+                None,
+                "0-0",
             )
 
         filename = plw.filename

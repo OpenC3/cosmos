@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 """Throughput metrics tracking and reporting."""
 
@@ -59,12 +54,8 @@ class ThroughputMetrics:
             elapsed = now - self._last_rate_time
 
             if elapsed >= 1.0:  # Update every second
-                self._cmd_rate = (
-                    self.cmd_recv_count - self._last_cmd_count
-                ) / elapsed
-                self._tlm_rate = (
-                    self.tlm_sent_count - self._last_tlm_count
-                ) / elapsed
+                self._cmd_rate = (self.cmd_recv_count - self._last_cmd_count) / elapsed
+                self._tlm_rate = (self.tlm_sent_count - self._last_tlm_count) / elapsed
 
                 self._last_rate_time = now
                 self._last_cmd_count = self.cmd_recv_count

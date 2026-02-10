@@ -1,7 +1,6 @@
 {
   "name": "playwright",
   "version": "1.0.0",
-  "license": "ISC",
   "description": "OpenC3 integration testing",
   "scripts": {
     "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet",

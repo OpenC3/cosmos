@@ -2,18 +2,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -57,7 +52,10 @@ test('creates a single binary file', async ({ page, utils }) => {
   )
 })
 
-test('shows confirmation dialog when binary exists', async ({ page, utils }) => {
+test('shows confirmation dialog when binary exists', async ({
+  page,
+  utils,
+}) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'configtables_def.txt')
@@ -65,14 +63,18 @@ test('shows confirmation dialog when binary exists', async ({ page, utils }) => 
 
   await expect(page.locator('text=already exists')).toBeVisible()
   await expect(page.locator('text=Binary file')).toBeVisible()
-  await expect(page.locator('text=INST/tables/bin/ConfigTables.bin')).toBeVisible()
+  await expect(
+    page.locator('text=INST/tables/bin/ConfigTables.bin'),
+  ).toBeVisible()
   await expect(page.locator('text=Do you want to overwrite it?')).toBeVisible()
 
   await page.locator('button:has-text("Cancel")').click()
   await utils.sleep(500)
   await expect(page.locator('text=already exists')).not.toBeVisible()
 
-  await expect(page.locator('id=openc3-tool')).not.toContainText('MC_CONFIGURATION')
+  await expect(page.locator('id=openc3-tool')).not.toContainText(
+    'MC_CONFIGURATION',
+  )
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
