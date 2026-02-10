@@ -528,40 +528,12 @@ The following keywords must follow a TARGET keyword.
 |-----------|-------------|----------|
 | Time | Number of seconds to keep decom telemetry logs (default = nil = Forever) | True |
 
-### REDUCED_MINUTE_LOG_RETAIN_TIME
-**How long to keep reduced minute telemetry logs in seconds.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Number of seconds to keep reduced minute telemetry logs (default = nil = Forever) | True |
-
-### REDUCED_HOUR_LOG_RETAIN_TIME
-**How long to keep reduced hour telemetry logs in seconds.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Number of seconds to keep reduced hour telemetry logs (default = nil = Forever) | True |
-
-### REDUCED_DAY_LOG_RETAIN_TIME
-**How long to keep reduced day telemetry logs in seconds.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Number of seconds to keep reduced day telemetry logs (default = nil = Forever) | True |
-
 ### LOG_RETAIN_TIME
 **How long to keep all regular telemetry logs in seconds.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Time | Number of seconds to keep all regular telemetry logs (default = nil = Forever) | True |
-
-### REDUCED_LOG_RETAIN_TIME
-**How long to keep all reduced telemetry logs in seconds.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Number of seconds to keep all reduced telemetry logs (default = nil = Forever) | True |
 
 ### CLEANUP_POLL_TIME
 **Period at which to run the cleanup process.**
@@ -570,17 +542,6 @@ The following keywords must follow a TARGET keyword.
 |-----------|-------------|----------|
 | Time | Number of seconds between runs of the cleanup process (default = 600 = 10 minutes) | True |
 
-### REDUCER_DISABLE
-**Disables the data reduction microservice for the target**
-
-
-### REDUCER_MAX_CPU_UTILIZATION
-**Maximum amount of CPU utilization to apply to data reduction**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Percentage | 0 to 100 percent (default = 30) | True |
-
 ### TARGET_MICROSERVICE
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Breaks a target microservice out into its own process.**
 
@@ -588,14 +549,14 @@ Can be used to give more resources to processing that is falling behind. If defi
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Type | The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP | True |
+| Type | The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG or CLEANUP | True |
 
 ### PACKET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Packet Name to allocate to the current TARGET_MICROSERVICE.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Packet Name | The packet name. Does not apply to REDUCER or CLEANUP target microservice types. | True |
+| Packet Name | The packet name. Does not apply to CLEANUP target microservice type. | True |
 
 ### DISABLE_ERB
 <span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
