@@ -241,8 +241,8 @@ This installs:
 - **Python Version**: `openc3/python/.python-version` (default: 3.12)
 
 **Important UV Notes:**
-- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
-- Use `uv sync --locked` in development (updates if out of sync)
+- Always use `uv sync --locked` in CI/CD and Dockerfiles (production-recommended flag)
+- Use `uv sync` in development (creates/updates lockfile as needed)
 - Use `uv run` instead of activating the venv manually
 - The lockfile (`uv.lock`) must be committed to git
 - Don't commit `.venv` directory (it's in .gitignore)
