@@ -30,7 +30,7 @@ class WebSocketApi:
     Base class - Do not use directly
     """
 
-    USER_AGENT = "OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)"
+    USER_AGENT = "OpenC3 / v7 (ruby/openc3/lib/io/web_socket_api)"
 
     def __init__(
         self,

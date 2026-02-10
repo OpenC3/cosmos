@@ -49,7 +49,7 @@ class JsonApiObject:
 
     """
 
-    USER_AGENT = "OpenC3 v5 (python/openc3/io/json_api_object)"
+    USER_AGENT = "OpenC3 v7 (python/openc3/io/json_api_object)"
 
     def __init__(
         self,

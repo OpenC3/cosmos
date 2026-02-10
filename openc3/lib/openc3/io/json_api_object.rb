@@ -51,7 +51,7 @@ module OpenC3
     attr_reader :request_data
     attr_reader :response_data
 
-    USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/json_api_object)'.freeze
+    USER_AGENT = 'OpenC3 / v7 (ruby/openc3/lib/io/json_api_object)'.freeze
 
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0

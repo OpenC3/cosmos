@@ -18,7 +18,7 @@ require 'openc3/io/json_rpc'
 module OpenC3
   # Base class - Do not use directly
   class WebSocketApi
-    USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)'.freeze
+    USER_AGENT = 'OpenC3 / v7 (ruby/openc3/lib/io/web_socket_api)'.freeze
 
     # Create the WebsocketApi object. If a block is given will automatically connect/disconnect
     def initialize(url:, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope, &block)

@@ -18,8 +18,8 @@ class RequestError(RuntimeError):
     RequestError
 
     Parameters:
-        message (str): The Request Error from Cosmos v5
-        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
+        message (str): The Request Error from Cosmos
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest
     """
 
     def __init__(self, message: str, request):
@@ -32,8 +32,8 @@ class ResponseError(RuntimeError):
     ResponseError
 
     Parameters:
-        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
-        response (openc3.exceptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse v5
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest
+        response (openc3.exceptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse
     """
 
     def __init__(self, request, response):
