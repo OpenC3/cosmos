@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -15,8 +15,7 @@
   <v-card>
     <v-card-title> Source code URL </v-card-title>
     <v-card-subtitle>
-      This sets the URL for the "Source" link in the footer. This is required
-      under the AGPL license.
+      This sets the URL for the "Source" link in the footer.
     </v-card-subtitle>
     <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}
