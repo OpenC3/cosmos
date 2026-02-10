@@ -458,27 +458,6 @@ The following keywords must follow a TARGET keyword.
 |-----------|-------------|----------|
 | Time | Number of seconds to keep raw command logs (default = nil = Forever) | True |
 
-### CMD_DECOM_LOG_CYCLE_TIME
-**Command decommutation logs can be cycled on a time interval.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
-
-### CMD_DECOM_LOG_CYCLE_SIZE
-**Command decommutation logs can be cycled after a certain log file size is reached.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
-
-### CMD_DECOM_LOG_RETAIN_TIME
-**How long to keep decom command logs in seconds.**
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Time | Number of seconds to keep decom command logs (default = nil = Forever) | True |
-
 ### TLM_BUFFER_DEPTH
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Number of telemetry packets to buffer to ensure logged in order**
 
@@ -507,26 +486,23 @@ The following keywords must follow a TARGET keyword.
 |-----------|-------------|----------|
 | Time | Number of seconds to keep raw telemetry logs (default = nil = Forever) | True |
 
-### TLM_DECOM_LOG_CYCLE_TIME
-**Telemetry decommutation logs can be cycled on a time interval.**
+### CMD_DECOM_RETAIN_TIME
+**How long to keep command decommutation records in the TSDB.**
+
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
+| Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
 
-### TLM_DECOM_LOG_CYCLE_SIZE
-**Telemetry decommutation logs can be cycled after a certain log file size is reached.**
+### TLM_DECOM_RETAIN_TIME
+**How long to keep telemetry decommutation records in the TSDB.**
 
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
-
-### TLM_DECOM_LOG_RETAIN_TIME
-**How long to keep decom telemetry logs in seconds.**
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep decom telemetry logs (default = nil = Forever) | True |
+| Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
 
 ### LOG_RETAIN_TIME
 **How long to keep all regular telemetry logs in seconds.**
@@ -540,7 +516,7 @@ The following keywords must follow a TARGET keyword.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Time | Number of seconds between runs of the cleanup process (default = 600 = 10 minutes) | True |
+| Time | Number of seconds between runs of the cleanup process (default = 3600 = 1 hour) | True |
 
 ### TARGET_MICROSERVICE
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Breaks a target microservice out into its own process.**
@@ -549,7 +525,7 @@ Can be used to give more resources to processing that is falling behind. If defi
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Type | The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG or CLEANUP | True |
+| Type | The target microservice type. Must be one of DECOM, COMMANDLOG, PACKETLOG, or CLEANUP | True |
 
 ### PACKET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Packet Name to allocate to the current TARGET_MICROSERVICE.**
