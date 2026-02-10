@@ -1,62 +1,40 @@
-# The OpenC3 Non-Commercial License
-
-Version 1.0
+# OpenC3 Builder’s License
 
 ## Acceptance
 
 By using the software, you agree to all of the terms and conditions below.
 
-## Definitions
+## Copyright License
 
-**"Commercial Activity"** means any activity intended for or directed toward commercial advantage or monetary compensation. This includes, but is not limited to:
+The licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations and conditions below.
 
-- Selling, licensing, sublicensing, or distributing the software for a fee
-- Including the software as a component, module, feature, or dependency of any product or service that is sold, licensed, or offered for a fee—regardless of whether the software itself is characterized as "free," "included," "bundled," or "no additional charge"
-- Using the software to provide paid services, including but not limited to consulting, hosting, managed services, support, training, or implementation services
-- Offering the software through any subscription, Software as a Service (SaaS), Platform as a Service (PaaS), or similar service model where users pay for access
-- Using the software as a loss-leader, promotional item, or value-add to attract customers to paid products or services
-- Any arrangement where the software's availability or functionality is contingent upon, or associated with, the purchase of other products or services
+## Limitations
 
-**"Contribution"** means any original work of authorship, including any modification or addition to existing work, that is submitted for inclusion in the Software. A Contribution is considered "submitted" when any form of electronic, verbal, or written communication is received by Licensor, including but not limited to communications on electronic mailing lists, source code control systems, issue tracking systems, and pull requests that are managed by or on behalf of Licensor for the purpose of discussing or improving the Software. Communications conspicuously marked "Not a Contribution" are excluded.
+- You may not provide the software or its functionality to third parties as any part of a hosted or managed service.
+- You may not distribute any changes made to the software on a commercial basis.
+- You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor’s trademarks is subject to applicable law.
 
-**"Licensor"** means the individual or entity that offers the software under these terms, for this license this is always OpenC3, Inc.
+## Patents
 
-**"Software"** means the software the Licensor makes available under these terms, including any portion of it.
+The licensor grants you a license, under any patent claims the licensor can license, or becomes able to license, to make, have made, use, sell, offer for sale, import and have imported the software, in each case subject to the limitations and conditions in this license. This license does not cover any patent claims that you cause to be infringed by modifications or additions to the software. If you or your company make any written claim that the software infringes or contributes to infringement of any patent, your patent license for the software granted under these terms ends immediately. If your company makes such a claim, your patent license ends immediately for work on behalf of your company.
 
-**"You"** means the individual or entity agreeing to these terms.
+## Notices
 
-**"Your Company"** means any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization. Control means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise.
+You must ensure that anyone who gets a copy of any part of the software from you also gets a copy of these terms.
 
-## License Grant
+If you modify the software, you must include in any modified copies of the software prominent notices stating that you have modified the software.
 
-Subject to the terms and conditions of this license, the Licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to:
+# No Other Rights
 
-1. Use the software for personal, educational, research, or internal business purposes, provided such use does not constitute or support Commercial Activity as defined above
-2. Modify the software and create derivative works for the purposes permitted above
-3. Distribute the software or derivative works to others, provided that:
-   - Distribution is free of charge
-   - Distribution is not part of any Commercial Activity
-   - Recipients receive a copy of this license
-   - You do not misrepresent the origin of the software
-   - You include prominent notice of any modifications you have made
+These terms do not imply any licenses other than those expressly granted in these terms.
 
-## Restrictions
+## Termination
 
-You may NOT:
+If you use the software in violation of these terms, such use is not licensed, and your licenses will automatically terminate. If the licensor provides you with a notice of your violation, and you cease all violation of this license no later than 30 days after you receive that notice, your licenses may be reinstated retroactively. However, if you violate these terms after such reinstatement, any additional violation of these terms will cause your licenses to terminate automatically and permanently.
 
-1. **Sell the Software**: You may not sell, license for a fee, or otherwise commercially distribute the software or any derivative works.
+## No Liability
 
-2. **Bundle or Include in Commercial Products**: You may not include the software in, bundle it with, or make it a component of any product, service, or offering that is sold or provided for a fee—even if the software itself is described as "free," "included at no charge," "open source," or similar.
-
-3. **Provide Commercial Services**: You may not use the software to provide services for which you receive compensation, including but not limited to hosting, consulting, support, implementation, customization, training, or managed services.
-
-4. **Indirect Commercialization**: You may not use the software in any arrangement where its presence or functionality is used to attract, retain, or service paying customers, or where it adds value to a commercial offering.
-
-5. **Circumvent License Terms**: You may not use technical measures, contractual arrangements, organizational structures, or other means to circumvent the restrictions of this license.
-
-6. **Remove Notices**: You may not alter, remove, or obscure any licensing, copyright, or other notices included in the software.
-
-7. **Trademark Use**: You may not use the Licensor's trademarks, service marks, trade names, or logos without prior written consent, except as required for reasonable and customary use in describing the origin of the software.
+As far as the law allows, the software comes as is, without any warranty or condition, without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE and the licensor will not be liable to you, or any recipients of the software, for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.
 
 ## Contributions
 
@@ -74,60 +52,34 @@ By submitting a Contribution, you agree to the following terms:
 
 6. **No Expectation of Compensation**: Contributions are provided voluntarily. You have no expectation of compensation, royalties, or other payment for any Contribution, regardless of how OpenC3, Inc. uses it.
 
-## Examples for Clarity
-
-The following are **NOT permitted** under this license:
-
-- Offering a "free tier" that includes this software while charging for premium features
-- Selling a hardware device that comes with this software pre-installed
-- Including this software in a commercial software suite, even as a "bonus" or "free add-on"
-- Providing paid consulting or implementation services for this software
-- Running a SaaS platform that uses this software, even if the software component is "free"
-
-The following **ARE permitted** under this license:
-
-- Personal use and learning
-- Use by non-profit organizations for non-commercial purposes
-- Academic and research use
-- Internal business use that does not result in Commercial Activity (e.g., internal tools not sold or offered to customers)
-- Sharing the software with others for free, non-commercial purposes
-
-## Patents
-
-The Licensor grants you a license, under any patent claims the Licensor can license or becomes able to license, to make, have made, use, sell, offer for sale, import, and have imported the software, solely to the extent necessary to exercise the rights granted under this license and subject to the same restrictions.
-
-If you make a claim against anyone alleging that the software infringes any patent, your license under this agreement terminates immediately.
-
-## No Warranty
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-## Termination
-
-Your license terminates automatically if you violate any terms of this license.
-
-If the Licensor notifies you of a violation and you cease all violations within 30 days of receiving notice, your license is reinstated retroactively. However, if you violate this license after such reinstatement, any subsequent violation causes your license to terminate permanently and immediately.
-
-The Licensor may also offer you a separate, written license agreement with different terms at their sole discretion.
-
-## Interpretation
-
-This license shall be interpreted to prohibit all forms of commercial exploitation of the software. If any provision of this license is found to be unenforceable, the remaining provisions shall remain in full force and effect, and the unenforceable provision shall be modified to the minimum extent necessary to make it enforceable while preserving the intent to prohibit commercial use.
-
-Any ambiguity in this license shall be resolved in favor of restricting commercial use of the software.
-
 ## Governing Law
 
 This license shall be governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict of law provisions.
 
-## Contact
+## Commercial Licensing and Contact Information
 
-For licensing inquiries, including requests for commercial use licenses, please contact:
+This software may also be used under the terms of a commercial license purchased from OpenC3, Inc.
+
+For licensing inquiries, including requests for commercial licenses, please contact:
 
 sales@openc3.com
 
----
+## Definitions
 
-Copyright (c) 2026 OpenC3, Inc.
+**Contribution** means any original work of authorship, including any modification or addition to existing work, that is submitted for inclusion in the Software. A Contribution is considered "submitted" when any form of electronic, verbal, or written communication is received by Licensor, including but not limited to communications on electronic mailing lists, source code control systems, issue tracking systems, and pull requests that are managed by or on behalf of Licensor for the purpose of discussing or improving the Software. Communications conspicuously marked "Not a Contribution" are excluded.
 
-All rights reserved except as explicitly granted herein.
+The **licensor** is the entity offering these terms, and the **software** is the software the licensor makes available under these terms, including any portion of it.
+
+**you** refers to the individual or entity agreeing to these terms.
+
+**your company** is any legal entity, sole proprietorship, or other kind of organization that you work for or with, plus all organizations that have control over, are under the control of, or are under common control with that organization. control means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise. Control can be direct or indirect.
+
+**your licenses** are all the licenses granted to you for the software under these terms.
+
+**use** means anything you do with the software requiring one of your licenses.
+
+**trademark** means trademarks, service marks, and similar rights.
+
+## Attribution
+
+This license is based on the Elastic License 2.0, modified by OpenC3, Inc.
