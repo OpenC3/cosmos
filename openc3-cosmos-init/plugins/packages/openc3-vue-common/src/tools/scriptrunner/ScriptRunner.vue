@@ -268,7 +268,7 @@
     :message="file.message"
     :multiple="file.multiple"
     :filter="file.filter"
-    @response="fileDialogCallback"
+    @response="(files) => fileDialogCallback(files, scriptId)"
   />
   <bucket-dialog
     v-if="bucket.show"
@@ -323,12 +323,12 @@
     :width="1000"
   />
   <critical-cmd-dialog
-    v-model="displayCriticalCmd"
-    :uuid="criticalCmdUuid"
-    :cmd-string="criticalCmdString"
-    :cmd-user="criticalCmdUser"
+    v-model="criticalCmd.display"
+    :uuid="criticalCmd.uuid"
+    :cmd-string="criticalCmd.string"
+    :cmd-user="criticalCmd.user"
     :persistent="true"
-    @status="promptDialogCallback"
+    @status="(value) => promptDialogCallback(value, scriptId)"
   />
   <command-editor-dialog ref="commandEditorDialog" @insert="insertCommand" />
   <v-bottom-sheet v-model="showScripts">
@@ -348,7 +348,6 @@
 </template>
 
 <script>
-import axios from 'axios'
 import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
@@ -391,6 +390,7 @@ import {
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
+import { useScriptPrompts } from '@/tools/scriptrunner/useScriptPrompts'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -459,10 +459,42 @@ export default {
     const state = ref(null)
     const { handleWaiting, waitingTime } = useHandleWaiting(state)
 
+    // Script prompts and dialogs
+    const {
+      activePromptId,
+      ask,
+      bucket,
+      file,
+      prompt,
+      information,
+      inputMetadata,
+      results,
+      criticalCmd,
+      bucketDialogCallback,
+      fileDialogCallback,
+      handleScript,
+      promptDialogCallback,
+    } = useScriptPrompts()
+
     return {
       containerHeight,
       state,
       handleWaiting,
+      waitingTime,
+      // Script prompts
+      activePromptId,
+      ask,
+      bucket,
+      file,
+      prompt,
+      information,
+      inputMetadata,
+      results,
+      criticalCmd,
+      bucketDialogCallback,
+      fileDialogCallback,
+      handleScript,
+      promptDialogCallback,
     }
   },
   data() {
@@ -523,52 +555,6 @@ export default {
       messagesNewestOnTop: true,
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
-      ask: {
-        show: false,
-        question: '',
-        default: null,
-        password: false,
-        answerRequired: true,
-        callback: () => {},
-      },
-      file: {
-        show: false,
-        message: '',
-        directory: null,
-        filter: '*',
-        multiple: false,
-        callback: () => {},
-      },
-      bucket: {
-        show: false,
-        title: '',
-        message: '',
-      },
-      prompt: {
-        show: false,
-        title: '',
-        subtitle: '',
-        message: '',
-        details: '',
-        buttons: null,
-        layout: 'horizontal',
-        callback: () => {},
-      },
-      information: {
-        show: false,
-        title: '',
-        text: [],
-        width: '600',
-      },
-      inputMetadata: {
-        show: false,
-        events: [],
-        callback: () => {},
-      },
-      results: {
-        show: false,
-        text: '',
-      },
       scriptEnvironment: {
         show: false,
         env: [],
@@ -583,7 +569,6 @@ export default {
       showOverrides: false,
       overridesCount: 0,
       currentLineHasCommand: false,
-      activePromptId: '',
       api: null,
       timeZone: 'local',
       screens: [],
@@ -591,10 +576,6 @@ export default {
       idCounter: 0,
       updateCounter: 0,
       recent: [],
-      criticalCmdUuid: null,
-      criticalCmdString: null,
-      criticalCmdUser: null,
-      displayCriticalCmd: false,
       editorBoxSize: 50,
     }
   },
@@ -1719,7 +1700,7 @@ export default {
             }
             break
           case 'script':
-            this.handleScript(data)
+            this.handleScript(data, this.scriptId, this.showMetadata)
             break
           // DEPRECATED because the 'complete' message now includes the report
           case 'report':
@@ -1810,242 +1791,6 @@ export default {
     received(data) {
       this.cable.recordPing()
       this.receivedEvents.push(data)
-    },
-    promptDialogCallback(value) {
-      this.prompt.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: this.prompt.method,
-          answer: value,
-          prompt_id: this.activePromptId,
-          multiple: this.prompt.multiple,
-        },
-      })
-    },
-    handleScript(data) {
-      if (data.prompt_complete) {
-        this.activePromptId = ''
-        this.prompt.show = false
-        this.ask.show = false
-        this.file.show = false
-        this.bucket.show = false
-        return
-      }
-      this.activePromptId = data.prompt_id
-      this.prompt.method = data.method // Set it here since all prompts use this
-      this.prompt.layout = 'horizontal' // Reset the layout since most are horizontal
-      this.prompt.title = 'Prompt'
-      this.prompt.subtitle = ''
-      this.prompt.details = ''
-      this.prompt.buttons = []
-      this.prompt.multiple = null
-      switch (data.method) {
-        case 'ask':
-        case 'ask_string':
-          // Reset values since this dialog can be reused
-          this.ask.default = null
-          this.ask.answerRequired = true
-          this.ask.password = false
-          this.ask.question = data.args[0]
-          // If the second parameter is not true or false it indicates a default value
-          if (data.args[1] && data.args[1] !== true && data.args[1] !== false) {
-            this.ask.default = data.args[1].toString()
-          } else if (data.args[1] === true) {
-            // If the second parameter is true it means no value is required to be entered
-            this.ask.answerRequired = false
-          }
-          // The third parameter indicates a password textfield
-          if (data.args[2] === true) {
-            this.ask.password = true
-          }
-          this.ask.callback = (value) => {
-            this.ask.show = false // Close the dialog
-            if (this.ask.password) {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  password: value, // Using password as a key automatically filters it from rails logs
-                  prompt_id: this.activePromptId,
-                },
-              })
-            } else {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  answer: value,
-                  prompt_id: this.activePromptId,
-                },
-              })
-            }
-          }
-          this.ask.show = true // Display the dialog
-          break
-        case 'prompt_for_hazardous':
-          this.prompt.title = 'Hazardous Command'
-          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. `
-          if (data.args[2]) {
-            this.prompt.message += data.args[2] + ' '
-          }
-          this.prompt.message += 'Send?'
-          this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'prompt_for_critical_cmd':
-          this.criticalCmdUuid = data.args[0]
-          this.criticalCmdString = data.args[5]
-          this.criticalCmdUser = data.args[1]
-          this.displayCriticalCmd = true
-          break
-        case 'prompt':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          this.prompt.message = data.args[0]
-          this.prompt.buttons = [{ text: 'Ok', value: 'Ok' }]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'combo_box':
-        case 'check_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
-            this.prompt.multiple = true
-          }
-          this.prompt.message = data.args[0]
-          data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ title: v, value: v })
-          })
-          this.prompt.layout = data.method.split('_')[0]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'message_box':
-        case 'vertical_message_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          this.prompt.message = data.args[0]
-          data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ text: v, value: v })
-          })
-          if (data.method.includes('vertical')) {
-            this.prompt.layout = 'vertical'
-          }
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'backtrace':
-          this.information.title = 'Call Stack'
-          this.information.text = data.args
-          this.information.show = true
-          this.information.width = '600'
-          break
-        case 'metadata_input':
-          this.inputMetadata.callback = (value) => {
-            this.inputMetadata.show = false
-            Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-              data: {
-                method: data.method,
-                answer: value,
-                prompt_id: this.activePromptId,
-              },
-            })
-          }
-          this.showMetadata()
-          break
-        case 'open_bucket_dialog':
-          this.bucket.title = data.args[0]
-          this.bucket.message = data.args[1]
-          this.bucket.show = true
-          break
-        // This is called continuously by the backend
-        case 'open_file_dialog':
-        case 'open_files_dialog':
-          this.file.title = data.args[0]
-          this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
-            this.file.filter = data.kwargs.filter
-          }
-          if (data.method == 'open_files_dialog') {
-            this.file.multiple = true
-          }
-          this.file.show = true
-          break
-        default:
-          // console.log(
-          // 'Unknown script method:' + data.method + ' with args:' + data.args
-          // )
-          break
-      }
-    },
-    async fileDialogCallback(files) {
-      // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
-      // otherwise we will populate it with the file names they selected
-      let fileNames = 'COSMOS__CANCEL'
-      // Record all the API request promises so we can ensure they complete
-      let promises = []
-      if (files != 'COSMOS__CANCEL') {
-        fileNames = []
-        files.forEach((file) => {
-          fileNames.push(file.name)
-          promises.push(async () => {
-            const response = await Api.get(
-              `/openc3-api/storage/upload/${encodeURIComponent(
-                `${window.openc3Scope}/tmp/${file.name}`,
-              )}?bucket=OPENC3_CONFIG_BUCKET`,
-            )
-            // This pushes the file into storage by using the fields in the presignedRequest
-            // See storage_controller.rb get_upload_presigned_request()
-            promises.push(
-              axios({
-                ...response.data,
-                data: file,
-              }),
-            )
-          })
-        })
-      }
-      // We have to wait for all the upload API requests to finish before notifying the prompt
-      await Promise.all(promises)
-      Api.post(
-        `/script-api/running-script/${this.scriptId}/prompt`,
-        {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
-        })
-      })
-      this.file.show = false // Close the dialog immediately to avoid race condition
-    },
-    bucketDialogCallback(response) {
-      this.bucket.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: 'open_bucket_dialog',
-          answer: response,
-          prompt_id: this.activePromptId,
-        },
-      })
     },
     setError(event) {
       this.alertType = 'error'
