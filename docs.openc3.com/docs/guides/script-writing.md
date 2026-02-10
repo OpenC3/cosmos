@@ -181,6 +181,7 @@ end
 ```python
 def power_on_subsystem():
     # 100 lines of cmd(), wait_check(), etc
+    pass
 ```
 
 </TabItem>
@@ -847,17 +848,19 @@ For many COSMOS APIs, they can be imported from either the API or Script library
 
 ```ruby
 require 'openc3/api/api'
-  or
+# or
 require 'openc3/script'
 ```
+
 </TabItem>
 <TabItem value="python" label="Python">
 
 ```python
 from openc3.api import *
-  or
+# or
 from openc3.script import *
 ```
+
 </TabItem>
 </Tabs>
 
@@ -867,5 +870,4 @@ Examples: [microservice.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/te
 
 When writing a script that connects to COSMOS from outside of the COSMOS cluster the _openc3/script_ library should be used. Since the running script is external to COSMOS, it will also need environment variables set to ensure the script knows where to connect to. It will also need to authenticate, and therefore the `OPENC3_API_PASSWORD` (and `OPENC3_API_USER` for Enterprise) environment variables are needed.
 
-Examples: [external_script.rb](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.rb) and [external_script.py](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.py). 
-
+Examples: [external_script.rb](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.rb) and [external_script.py](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.py).

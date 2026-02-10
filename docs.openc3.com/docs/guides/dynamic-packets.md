@@ -23,14 +23,14 @@ Here is the method signature:
 <TabItem value="ruby" label="Ruby Method">
 
 ```ruby
-def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
+dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
 ```
 
 </TabItem>
 <TabItem value="python" label="Python Method">
 
 ```python
-def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
+dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt")
 ```
 
 </TabItem>

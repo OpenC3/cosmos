@@ -3613,23 +3613,23 @@ id, packets = get_packets(id, block=None, count=1000)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| id        | Unique id returned by subscribe_packets or the previous call to get_packets                                  |
-| block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block)      |
-| count     | Maximum number of packets to return from EACH packet stream                                                  |
+| Parameter | Description                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| id        | Unique id returned by subscribe_packets or the previous call to get_packets                             |
+| block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block) |
+| count     | Maximum number of packets to return from EACH packet stream                                             |
 
 Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
 
 **Metadata keys:**
 
-| Key            | Type    | Description                                                         |
-| -------------- | ------- | ------------------------------------------------------------------- |
-| target_name    | String  | Target name, e.g. "INST"                                           |
-| packet_name    | String  | Packet name, e.g. "HEALTH_STATUS"                                  |
-| time           | Integer | Packet time as nanoseconds since the Unix epoch                    |
-| received_time  | Integer | Time the packet was received as nanoseconds since the Unix epoch   |
-| received_count | Integer | Running count of packets received                                  |
+| Key            | Type    | Description                                                          |
+| -------------- | ------- | -------------------------------------------------------------------- |
+| target_name    | String  | Target name, e.g. "INST"                                             |
+| packet_name    | String  | Packet name, e.g. "HEALTH_STATUS"                                    |
+| time           | Integer | Packet time as nanoseconds since the Unix epoch                      |
+| received_time  | Integer | Time the packet was received as nanoseconds since the Unix epoch     |
+| received_count | Integer | Running count of packets received                                    |
 | stored         | String  | "true" or "false" indicating if the packet was stored (not realtime) |
 
 **Telemetry item keys:**
@@ -3973,7 +3973,7 @@ wait_expression(
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil,
   quiet: false
-) -> boolean
+) # -> boolean
 ```
 
 </TabItem>
@@ -3989,7 +3989,7 @@ wait_expression(
     globals=None,
     locals=None,
     quiet=False,
-) -> bool
+) # -> bool
 ```
 
 </TabItem>
@@ -4200,7 +4200,7 @@ wait_check_expression(
   timeout,
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil
-) -> int
+) # -> int
 ```
 
 </TabItem>
@@ -4215,7 +4215,7 @@ wait_check_expression(
     polling_rate=DEFAULT_TLM_POLLING_RATE,
     globals=None,
     locals=None
-) -> int
+) # -> int
 ```
 
 </TabItem>
@@ -5228,9 +5228,8 @@ end
 
 ```python
 target_ints = get_target_interfaces()
-target_ints.each do |target_name, interfaces|
-  puts "Target: #{target_name}, Interfaces: #{interfaces}"
-end
+for target_name, interfaces in target_ints:
+    print(f"Target: {target_name}, Interfaces: {interfaces}")
 ```
 
 </TabItem>
@@ -7191,7 +7190,7 @@ create_screen("INST", "LOCAL", screen_def)
 <TabItem value="python" label="Python Example">
 
 ```python
-screen_def = '
+screen_def = """
   SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "New Screen"
@@ -7199,7 +7198,7 @@ screen_def = '
       LABELVALUE INST HEALTH_STATUS TEMP1
     END
   END
-'
+"""
 # Here we pass in the screen definition as a string
 create_screen("INST", "LOCAL", screen_def)
 ```
@@ -8547,6 +8546,7 @@ end
 with disable_instrumentation():
     for x in range(1000):
         # Don't want this to have to highlight 1000 times
+        pass
 ```
 
 </TabItem>
