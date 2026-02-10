@@ -17,33 +17,34 @@ from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 class LocalMode:
     LOCAL_MODE_PATH = OPENC3_LOCAL_MODE_PATH or "/plugins"
-    # When updating update local_mode.rb, PluginsTab.vue, plugins.spec.ts
+    # When updating update local_mode.rb, PluginsTab.vue, plugins.p.spec.ts
     DEFAULT_PLUGINS = [
-        "openc3-cosmos-tool-admin",
-        "openc3-cosmos-tool-bucketexplorer",
-        "openc3-cosmos-tool-cmdsender",
-        "openc3-cosmos-tool-cmdqueue",
-        "openc3-cosmos-tool-cmdhistory",
-        "openc3-cosmos-tool-cmdtlmserver",
-        "openc3-cosmos-tool-dataextractor",
-        "openc3-cosmos-tool-dataviewer",
-        "openc3-cosmos-tool-docs",
-        "openc3-cosmos-tool-handbooks",
-        "openc3-cosmos-tool-iframe",
-        "openc3-cosmos-tool-limitsmonitor",
-        "openc3-cosmos-tool-packetviewer",
-        "openc3-cosmos-tool-scriptrunner",
-        "openc3-cosmos-tool-tablemanager",
-        "openc3-cosmos-tool-tlmgrapher",
-        "openc3-cosmos-tool-tlmviewer",
-        "openc3-cosmos-enterprise-tool-admin",
-        "openc3-cosmos-tool-autonomic",
-        "openc3-cosmos-tool-calendar",
-        "openc3-cosmos-tool-grafana",
-        "openc3-cosmos-tool-systemhealth",
-        "openc3-cosmos-tool-logexplorer",
-        "openc3-enterprise-tool-base",
-        "openc3-tool-base",
+      'openc3-cosmos-tool-admin',
+      'openc3-cosmos-tool-bucketexplorer',
+      'openc3-cosmos-tool-cmdsender',
+      'openc3-cosmos-tool-cmdqueue', # Enterprise only
+      'openc3-cosmos-tool-cmdhistory', # Enterprise only
+      'openc3-cosmos-tool-cmdtlmserver',
+      'openc3-cosmos-tool-dataextractor',
+      'openc3-cosmos-tool-dataviewer',
+      'openc3-cosmos-tool-docs',
+      'openc3-cosmos-tool-handbooks',
+      'openc3-cosmos-tool-iframe',
+      'openc3-cosmos-tool-limitsmonitor',
+      'openc3-cosmos-tool-packetviewer',
+      'openc3-cosmos-tool-scriptrunner',
+      'openc3-cosmos-tool-tablemanager',
+      'openc3-cosmos-tool-tlmgrapher',
+      'openc3-cosmos-tool-tlmviewer',
+      'openc3-cosmos-enterprise-tool-admin', # Enterprise only
+      'openc3-cosmos-tool-autonomic', # Enterprise only
+      'openc3-cosmos-tool-calendar', # Enterprise only
+      'openc3-cosmos-tool-grafana', # Enterprise only
+      'openc3-cosmos-tool-logexplorer', # Enterprise only
+      'openc3-cosmos-tool-notebooks', # Enterprise only
+      'openc3-cosmos-tool-systemhealth', # Enterprise only
+      'openc3-enterprise-tool-base', # Enterprise only
+      'openc3-tool-base',
     ]
 
     @classmethod
