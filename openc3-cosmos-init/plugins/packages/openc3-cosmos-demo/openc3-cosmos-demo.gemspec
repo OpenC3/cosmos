@@ -38,7 +38,7 @@ spec = Gem::Specification.new do |s|
   end
   s.license = "OpenC3"
 
-  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt requirements.txt)
+  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile LICENSE.md README.md plugin.txt requirements.txt)
 
   s.metadata = {
     "openc3_store_title" => "Demo",

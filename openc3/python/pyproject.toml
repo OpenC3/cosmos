@@ -4,7 +4,7 @@ version = "6.10.5-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = [{ name = "Support", email = "support@openc3.com" }]
 maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
-license = { file = "LICENSE.txt" }
+license = { file = "LICENSE.md" }
 requires-python = ">=3.10,<4.0"
 readme = "README.md"
 keywords = [

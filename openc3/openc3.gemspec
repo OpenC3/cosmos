@@ -66,7 +66,7 @@ spec = Gem::Specification.new do |s|
   end
 
   # Files are defined in Manifest.txt
-  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
+  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.md Rakefile README.md)
 
   # Runtime Dependencies
   s.add_runtime_dependency 'erb',       '~> 6.0'
