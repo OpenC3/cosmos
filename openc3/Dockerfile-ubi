@@ -28,7 +28,10 @@ RUN mkdir -p lib/openc3/ext \
 
 WORKDIR /openc3/python
 
-RUN uv sync --frozen
+# Install openc3 Python package and dependencies using UV
+# --no-editable ensures the package is installed properly, not as an editable link
+RUN rm -rf .venv \
+  && uv sync --frozen --no-editable
 
 WORKDIR /openc3/
 

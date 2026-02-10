@@ -86,15 +86,7 @@ RUN apk update \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
-  && python3 -m pip install --break-system-packages uv \
-  && uv venv /openc3/venv --python python3 --seed \
-  && /openc3/venv/bin/pip install --index-url $PYPI_URL/simple --upgrade pip setuptools \
-  # Note: UV has built-in export command, no plugin needed
-  # Note this is needed to prevent pip disappearing in some build environments
-  && cp /openc3/venv/bin/pip* /openc3
-
-# Note this is needed to fix pip files disappearing in some build environments
-RUN mv /openc3/pip* /openc3/venv/bin/.
+  && python3 -m pip install --break-system-packages uv
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
@@ -132,9 +124,9 @@ ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
 ENV USER_ID=1001
 ENV GROUP_ID=1001
-# The build time venv is at /openc3/venv and the runtime venv is at /gems/python_packages
+# The build time venv is at /openc3/python/.venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
-ENV PYTHONPATH=/openc3/venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
+ENV PYTHONPATH=/openc3/python/.venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
 RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
 RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
 
