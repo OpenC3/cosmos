@@ -135,7 +135,7 @@
           @file-name-changed="fileNameChanged"
           @toggle-overrides="showOverrides = !showOverrides"
           @toggle-environment="scriptEnvironment.show = !scriptEnvironment.show"
-          @start="startHandler"
+          @start="start"
           @go="go"
           @pause-or-retry="pauseOrRetry"
           @stop="stop"
@@ -158,42 +158,22 @@
         >
           Saving...
         </v-snackbar>
-        <pre
+        <script-ace-editor
           ref="editor"
-          class="editor"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-          <v-list>
-            <v-list-item
-              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
-              @click="openCommandEditor"
-            />
-            <v-divider />
-            <v-list-item title="Execute Selection" @click="executeSelection" />
-            <v-list-item
-              v-if="scriptId"
-              title="Goto Line"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptId"
-              title="Run From Line"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptId"
-              title="Clear Local Breakpoints"
-              @click="clearBreakpoints"
-            />
-            <v-divider />
-            <v-list-item
-              title="Toggle Vim mode"
-              prepend-icon="extras:vim"
-              @click="toggleVimMode"
-            />
-          </v-list>
-        </v-menu>
+          v-model="editorContent"
+          :filename-select="filenameSelect"
+          :hide-cursor="readOnlyUser || inline"
+          :language="editorLanguage"
+          :read-only="readOnlyUser || inline"
+          :script-id="scriptId"
+          show-context-menu
+          @change="onChange"
+          @command-editor="handleCommandEditor"
+          @ready="onEditorReady"
+          @save="saveFile"
+          @start="start(...$event)"
+          @tokenizer-update="onChange"
+        />
       </pane>
       <pane :size="100 - editorBoxSize">
         <script-debug-panel
@@ -224,7 +204,7 @@
     :stop-disabled="stopDisabled"
     :messages-newest-on-top="messagesNewestOnTop"
     @show-execute-selection-menu="showExecuteSelectionMenu"
-    @start="startHandler"
+    @start="start"
     @go="go"
     @pause-or-retry="pauseOrRetry"
     @stop="stop"
@@ -354,10 +334,8 @@ import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
-import { ref } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 import {
-  AceEditorModes,
-  AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
   FileOpenSaveDialog,
@@ -382,13 +360,9 @@ import ScriptControlBar from '@/tools/scriptrunner/ScriptControlBar.vue'
 import ScriptDebugPanel from '@/tools/scriptrunner/ScriptDebugPanel.vue'
 import ScriptRunnerInline from '@/tools/scriptrunner/ScriptRunnerInline.vue'
 import CommandEditorDialog from '@/tools/scriptrunner/Dialogs/CommandEditorDialog.vue'
-import {
-  CmdCompleter,
-  TlmCompleter,
-  MnemonicChecker,
-} from '@/tools/scriptrunner/autocomplete'
-import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
+import { MnemonicChecker } from '@/tools/scriptrunner/autocomplete'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import ScriptAceEditor from '@/tools/scriptrunner/ScriptAceEditor.vue'
 import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
 import { useScriptPrompts } from '@/tools/scriptrunner/useScriptPrompts'
 
@@ -402,6 +376,7 @@ const RETRY = 'Retry'
 
 export default {
   components: {
+    ScriptAceEditor,
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
@@ -426,7 +401,7 @@ export default {
     ScriptDebugPanel,
     ScriptRunnerInline,
   },
-  mixins: [AceEditorModes, ClassificationBanners],
+  mixins: [ClassificationBanners],
   beforeRouteUpdate: async function (to, from, next) {
     if (to.params.id) {
       await this.tryLoadRunningScript(to.params.id)
@@ -459,6 +434,10 @@ export default {
     const state = ref(null)
     const { handleWaiting, waitingTime } = useHandleWaiting(state)
 
+    // Template refs
+    const editorRef = useTemplateRef('editor')
+    const editor = editorRef?.value?.editor || null
+
     // Script prompts and dialogs
     const {
       activePromptId,
@@ -478,6 +457,8 @@ export default {
 
     return {
       containerHeight,
+      editor,
+      editorRef,
       state,
       handleWaiting,
       waitingTime,
@@ -561,14 +542,10 @@ export default {
       },
       showSuiteError: false,
       suiteError: '',
-      executeSelectionMenu: false,
-      menuX: 0,
-      menuY: 0,
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
       overridesCount: 0,
-      currentLineHasCommand: false,
       api: null,
       timeZone: 'local',
       screens: [],
@@ -577,6 +554,8 @@ export default {
       updateCounter: 0,
       recent: [],
       editorBoxSize: 50,
+      editorContent: '',
+      editorLanguage: 'ruby',
     }
   },
   computed: {
@@ -967,38 +946,6 @@ export default {
     this.screenKeywords = keywordsResponse.data
   },
   mounted: async function () {
-    // Build modes using the mixin methods
-    const RubyMode = this.buildRubyMode()
-    const PythonMode = this.buildPythonMode()
-    this.rubyMode = new RubyMode()
-    this.pythonMode = new PythonMode()
-    const language = AceEditorUtils.getDefaultScriptingLanguage()
-
-    // Initialize editor with common settings
-    this.editor = AceEditorUtils.initializeEditor(this.$refs.editor, {
-      mode: language === 'python' ? this.pythonMode : this.rubyMode,
-      completers: [new CmdCompleter(), new TlmCompleter()],
-      vimModeSaveFn: this.saveFile,
-      readOnly: this.readOnlyUser || this.inline,
-      hideCursor: this.readOnlyUser || this.inline,
-    })
-
-    // Add ScriptRunner-specific event listeners and annotations
-    this.editor.on('guttermousedown', this.toggleBreakpoint)
-    // We listen to tokenizerUpdate rather than change because this
-    // is the background process that updates as changes are processed
-    // while change fires immediately before the UndoManager is updated.
-    this.editor.session.on('tokenizerUpdate', this.onChange)
-
-    const sleepAnnotator = new SleepAnnotator(this.editor)
-    this.editor.session.on('change', ($event, session) => {
-      sleepAnnotator.annotate($event, session)
-      this.updateBreakpoints($event, session)
-    })
-
-    this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
-
     this.cable = new Cable('/script-api/cable')
 
     if (!this.inline && localStorage['script_runner__recent']) {
@@ -1029,8 +976,7 @@ export default {
       }
     } else {
       if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
+        this.editorContent = this.body
         // If initialFilename is provided, use it for path resolution
         if (this.initialFilename) {
           this.filename = this.initialFilename
@@ -1045,8 +991,6 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
-    this.editor.destroy()
-    this.editor.container.remove()
   },
   unmounted() {
     this.unlockFile()
@@ -1064,32 +1008,16 @@ export default {
       const result = await this.api.get_overrides()
       this.overridesCount = result.length
     },
-    toggleVimMode() {
-      AceEditorUtils.toggleVimMode(this.editor)
-    },
-    openCommandEditor() {
-      this.executeSelectionMenu = false
-      const position = this.editor.getCursorPosition()
-      const line = this.editor.session.getLine(position.row)
-
-      if (this.currentLineHasCommand) {
-        // Extract and parse the command from the line
-        const cmdString = this.parseCommandFromLine(line)
-        this.$refs.commandEditorDialog.open({
-          cmdString,
-          isEditing: true,
-          editLine: position.row,
-        })
-      } else {
-        // Inserting a new command
-        this.$refs.commandEditorDialog.open({
-          cmdString: null,
-          isEditing: false,
-          editLine: null,
-        })
-      }
+    handleCommandEditor({ cmdString, isEditing, editLine }) {
+      this.$refs.commandEditorDialog.open({
+        cmdString,
+        isEditing,
+        editLine,
+      })
     },
     insertCommand({ commandString, isEditing, editLine }) {
+      if (!this.editor) return
+
       if (isEditing && editLine !== null) {
         // Replace the existing line
         const line = this.editor.session.getLine(editLine)
@@ -1112,7 +1040,7 @@ export default {
       this.fileModified = true
     },
     doResize() {
-      this.editor.resize()
+      this.editorRef?.resize()
     },
     scriptDisconnect() {
       if (this.subscription) {
@@ -1155,9 +1083,9 @@ export default {
     fileNameChanged(filename) {
       // Split off the '*' which indicates modified
       filename = filename.split('*')[0]
-      this.editor.setValue(this.files[filename].content)
+      this.editorContent = this.files[filename].content
       this.restoreBreakpoints(filename)
-      this.editor.clearSelection()
+      this.editorRef?.clearSelection()
       this.removeAllMarkers()
       this.editor.session.addMarker(
         new this.Range(
@@ -1218,119 +1146,11 @@ export default {
       }
       this.doResize()
     },
-    showExecuteSelectionMenu: function ($event) {
-      this.menuX = $event.pageX
-      this.menuY = $event.pageY
-      // Check if the current line contains a command
-      const position = this.editor.getCursorPosition()
-      const line = this.editor.session.getLine(position.row)
-      this.currentLineHasCommand = this.isCommandLine(line)
-      this.executeSelectionMenu = true
-    },
-    isCommandLine: function (line) {
-      // Check if line contains cmd() or cmd_no_hazardous_check() or similar command patterns
-      const trimmedLine = line.trim()
-      // Match patterns like: cmd("...", cmd_no_hazardous_check("...", cmd_raw("...", etc.
-      return /^\s*cmd(_\w+)?\s*\(/.test(trimmedLine)
-    },
-    parseCommandFromLine: function (line) {
-      // Extract the command string from patterns like: cmd("TARGET COMMAND with PARAM value")
-      const match = line.match(/cmd(_\w+)?\s*\(\s*["'](.+?)["']\s*\)/)
-      if (match) {
-        return match[2] // Return the command string
-      }
-      return null
-    },
-    runFromCursor: function () {
-      const start_row = this.editor.getCursorPosition().row + 1
-      if (!this.scriptId) {
-        this.start(null, null, start_row)
-      } else {
-        Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
-          {
-            data: {
-              args: [this.filenameSelect, start_row],
-            },
-          },
-        )
-      }
-    },
-    executeSelection: function () {
-      const range = this.editor.getSelectionRange()
-      let start_row = range.start.row + 1
-      let end_row = range.end.row + 1
-      if (range.end.column === 0) {
-        end_row -= 1
-      }
-      if (!this.scriptId) {
-        this.start(null, null, start_row, end_row)
-      } else {
-        Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
-          {
-            data: {
-              args: [this.filenameSelect, start_row, end_row],
-            },
-          },
-        )
-      }
-    },
-    clearBreakpoints: function () {
-      this.editor.session.clearBreakpoints()
-    },
-    toggleBreakpoint: function ($event) {
-      // Don't allow setting breakpoints while running
-      if (!this.scriptId) {
-        const row = $event.getDocumentPosition().row
-        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-          $event.editor.session.clearBreakpoint(row)
-        } else {
-          $event.editor.session.setBreakpoint(row)
-        }
-      }
-    },
-    updateBreakpoints: function ($event, session) {
-      if ($event.lines.length <= 1) {
-        return
-      }
-      const rowsToUpdate = this.getBreakpointRows(session).filter(
-        (row) =>
-          ($event.start.column === 0 && row === $event.start.row) ||
-          row > $event.start.row,
-      )
-      let rowsToDelete = []
-      let offset = 0
-      switch ($event.action) {
-        case 'insert':
-          offset = $event.lines.length - 1
-          rowsToUpdate.reverse() // shift the lower ones down out of the way first
-          break
-        case 'remove':
-          offset = -$event.lines.length + 1
-          rowsToDelete = [...Array($event.lines.length).keys()].map(
-            (row) => row + $event.start.row,
-          )
-          break
-      }
-      rowsToUpdate.forEach((row) => {
-        session.clearBreakpoint(row)
-        if (!rowsToDelete.includes(row)) {
-          session.setBreakpoint(row + offset)
-        }
-      })
-    },
-    getBreakpointRows: function (session = this.editor.session) {
-      return session
-        .getBreakpoints()
-        .map((breakpoint, row) => breakpoint && row) // [empty, 'ace_breakpoint', 'ace_breakpoint', empty] -> [empty, 1, 2, empty]
-        .filter(Number.isInteger) // [empty, 1, 2, empty] -> [1, 2]
+    getBreakpointRows: function () {
+      return this.editorRef?.getBreakpointRows() || []
     },
     restoreBreakpoints: function (filename) {
-      this.clearBreakpoints()
-      this.breakpoints[filename]?.forEach((breakpoint) => {
-        this.editor.session.setBreakpoint(breakpoint)
-      })
+      this.editorRef?.restoreBreakpoints(this.breakpoints[filename])
     },
     deleteAllBreakpoints: async function () {
       await this.$dialog.confirm(
@@ -1341,7 +1161,7 @@ export default {
         },
       )
       await Api.delete('/script-api/breakpoints/delete/all')
-      this.clearBreakpoints()
+      this.editorRef?.clearBreakpoints()
     },
     suiteRunnerButton(event) {
       if (this.startOrGoButton === START) {
@@ -1352,7 +1172,7 @@ export default {
     },
     async keydown(event) {
       // Don't ever save if running or readonly
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptId || this.editor?.getReadOnly()) {
         return
       }
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
@@ -1370,12 +1190,12 @@ export default {
         }
       }
     },
-    onChange(event) {
+    onChange() {
       // Don't track changes when we're running or read-only (locked)
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptId || this.editor?.getReadOnly()) {
         return
       }
-      if (this.editor.session.getUndoManager().canUndo()) {
+      if (this.editor?.session.getUndoManager().canUndo()) {
         this.fileModified = '*'
       } else {
         this.fileModified = ''
@@ -1391,7 +1211,7 @@ export default {
         const response = await Api.post(
           `/script-api/scripts/${this.filename}/mnemonics`,
           {
-            data: this.editor.getValue(),
+            data: this.editorContent,
             headers: {
               Accept: 'application/json',
               'Content-Type': 'plain/text',
@@ -1404,7 +1224,7 @@ export default {
         this.$dialog.alert(alertText.trim(), { html: true })
       } else {
         const { skipped, problems } = await this.mnemonicChecker.checkText(
-          this.editor.getValue(),
+          this.editorContent,
         )
         let alertText = ''
         if (problems.length) {
@@ -1481,9 +1301,6 @@ export default {
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
-    },
-    startHandler: function () {
-      this.start()
     },
     async start(
       event = null,
@@ -1580,13 +1397,13 @@ export default {
             })
         } else {
           this.currentFilename = data.filename
-          this.editor.setValue(this.files[data.filename].content)
+          this.editorContent = this.files[data.filename].content
           this.restoreBreakpoints(data.filename)
-          this.editor.clearSelection()
+          this.editorRef?.clearSelection()
         }
       }
       this.state = data.state
-      const markers = this.editor.session.getMarkers()
+      const markers = this.editor?.session.getMarkers() || {}
       switch (this.state) {
         // Handle all the script states, see script_status_model for details
         // spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
@@ -1598,12 +1415,14 @@ export default {
           this.pauseOrRetryButton = PAUSE
 
           this.removeAllMarkers()
-          this.editor.session.addMarker(
-            new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
-            'runningMarker',
-            'fullLine',
-          )
-          this.editor.gotoLine(data.line_no)
+          if (this.editor) {
+            this.editor.session.addMarker(
+              new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
+              'runningMarker',
+              'fullLine',
+            )
+            this.editor.gotoLine(data.line_no)
+          }
           this.files[data.filename].lineNo = data.line_no
           break
         case 'error':
@@ -1624,12 +1443,14 @@ export default {
           if (existing.length === 0) {
             this.removeAllMarkers()
             let line = data.line_no > 0 ? data.line_no : 1
-            this.editor.session.addMarker(
-              new this.Range(line - 1, 0, line - 1, 1),
-              `${this.state}Marker`,
-              'fullLine',
-            )
-            this.editor.gotoLine(line)
+            if (this.editor) {
+              this.editor.session.addMarker(
+                new this.Range(line - 1, 0, line - 1, 1),
+                `${this.state}Marker`,
+                'fullLine',
+              )
+              this.editor.gotoLine(line)
+            }
             // Fatal errors don't always have a filename set
             if (data.filename) {
               this.files[data.filename].lineNo = line
@@ -1822,7 +1643,7 @@ export default {
       this.currentFilename = null
       this.tempFilename = null
       this.files = {} // Clear the cached file list
-      this.editor.session.setValue('')
+      this.editorContent = ''
       this.saveAllowed = true
       this.fileModified = ''
       this.suiteRunner = false
@@ -1843,7 +1664,7 @@ export default {
       const confirmed = await this.confirmUnsavedChanges()
       if (!confirmed) return
       this.newFile()
-      this.editor.session.setValue(`require 'openc3/script/suite.rb'
+      this.editorContent = `require 'openc3/script/suite.rb'
 
 # Group class name should indicate what the scripts are testing
 class Power < OpenC3::Group
@@ -1883,14 +1704,14 @@ class TestSuite < OpenC3::Suite
     # Run after all groups when Suite Start is pressed
   end
 end
-`)
+`
       await this.saveFile('auto')
     },
     async newPythonTestSuite() {
       const confirmed = await this.confirmUnsavedChanges()
       if (!confirmed) return
       this.newFile()
-      this.editor.session.setValue(`from openc3.script.suite import Suite, Group
+      this.editorContent = `from openc3.script.suite import Suite, Group
 
 # Group class name should indicate what the scripts are testing
 class Power(Group):
@@ -1928,7 +1749,7 @@ class TestSuite(Suite):
         # Run when Suite Teardown button is pressed
         # Run after all groups when Suite Start is pressed
         pass
-`)
+`
       await this.saveFile('auto')
     },
     addToRecent(filename) {
@@ -2048,12 +1869,12 @@ class TestSuite(Suite):
       }
 
       if (this.filename.split('.').pop() === 'py') {
-        this.editor.session.setMode(this.pythonMode)
+        this.editorLanguage = 'python'
       } else {
-        this.editor.session.setMode(this.rubyMode)
+        this.editorLanguage = 'ruby'
       }
       this.currentFilename = null
-      this.editor.session.setValue(file.contents)
+      this.editorContent = file.contents
       this.breakpoints[this.filename] = breakpoints
       this.restoreBreakpoints(this.filename)
       this.fileModified = ''
@@ -2096,7 +1917,7 @@ class TestSuite(Suite):
       // we make sure the line doesn't end in ':' which indicates Python
       // (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
       let rubyRegex3 = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
-      let text = this.editor.getValue()
+      let text = this.editorContent
       let lines = text.split('\n')
       for (let line of lines) {
         if (line.match(rubyRegex1)) {
@@ -2172,7 +1993,7 @@ class TestSuite(Suite):
             `/script-api/scripts/${this.filename}`,
             {
               data: {
-                text: this.editor.getValue(), // Pass in the raw file text
+                text: this.editorContent, // Pass in the raw file text
                 breakpoints,
               },
             },
@@ -2258,7 +2079,7 @@ class TestSuite(Suite):
       }
     },
     download() {
-      const blob = new Blob([this.editor.getValue()], {
+      const blob = new Blob([this.editorContent], {
         type: 'text/plain',
       })
       // Make a link and then 'click' on it to start the download
@@ -2272,7 +2093,7 @@ class TestSuite(Suite):
       const response = await Api.post(
         `/script-api/scripts/${this.filename}/syntax`,
         {
-          data: this.editor.getValue(),
+          data: this.editorContent,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'plain/text',
@@ -2288,7 +2109,7 @@ class TestSuite(Suite):
       const response = await Api.post(
         `/script-api/scripts/${this.filename}/instrumented`,
         {
-          data: this.editor.getValue(),
+          data: this.editorContent,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'plain/text',
@@ -2323,6 +2144,7 @@ class TestSuite(Suite):
       })
     },
     removeAllMarkers: function () {
+      if (!this.editor) return
       const allMarkers = this.editor.session.getMarkers()
       Object.keys(allMarkers)
         .filter((key) => allMarkers[key].type === 'fullLine')
@@ -2369,6 +2191,15 @@ class TestSuite(Suite):
           break
         }
         index += 1
+      }
+    },
+    // ACE Editor event handlers
+    onEditorReady() {
+      // Editor is ready and initialized
+      // Get the editor instance and add event listeners
+      if (this.editor) {
+        this.editor.container.addEventListener('resize', this.doResize)
+        this.editor.container.addEventListener('keydown', this.keydown)
       }
     },
   },
