@@ -588,17 +588,9 @@ module OpenC3
         tf.puts "TLM_BUFFER_DEPTH 13"
         tf.puts "TLM_LOG_RETAIN_TIME 14"
         tf.puts "TLM_DECOM_LOG_RETAIN_TIME 15"
-        tf.puts "REDUCED_MINUTE_LOG_RETAIN_TIME 16"
-        tf.puts "REDUCED_HOUR_LOG_RETAIN_TIME 17"
-        tf.puts "REDUCED_DAY_LOG_RETAIN_TIME 18"
         tf.puts "LOG_RETAIN_TIME 19"
-        tf.puts "REDUCED_LOG_RETAIN_TIME 20"
-        tf.puts "REDUCER_DISABLED 21"
-        tf.puts "REDUCER_MAX_CPU_UTILIZATION 22"
-        tf.puts "REDUCED_MAX_CPU_UTILIZATION 23"
         tf.puts "CLEANUP_POLL_TIME 24"
         tf.puts "TARGET_MICROSERVICE DECOM"
-        tf.puts "PACKET REDUCER"
         tf.puts "PACKET DECOM"
         tf.puts "DISABLE_ERB"
         tf.puts "SHARD 9"
@@ -661,8 +653,8 @@ module OpenC3
       it "creates and deploys Target microservices" do
         variables = { "test" => "example" }
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:create).exactly(8).times
-        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(8).times
+        expect(umodel).to receive(:create).exactly(7).times
+        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(7).times
         # Verify the microservices that are started
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__COMMANDLOG__#{@target}",
@@ -690,11 +682,6 @@ module OpenC3
                                                           scope: @scope
                                                         )).and_return(umodel)
         expect(MicroserviceModel).to receive(:new).with(hash_including(
-                                                          name: "#{@scope}__REDUCER__#{@target}",
-                                                          plugin: 'PLUGIN',
-                                                          scope: @scope
-                                                        )).and_return(umodel)
-        expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__MULTI__#{@target}",
                                                           plugin: 'PLUGIN',
                                                           scope: @scope
@@ -713,7 +700,8 @@ module OpenC3
           expect(stdout.string).to include("#{@scope}__PACKETLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOM__#{@target}")
-          expect(stdout.string).to include("#{@scope}__REDUCER__#{@target}")
+          expect(stdout.string).to include("#{@scope}__MULTI__#{@target}")
+          expect(stdout.string).to include("#{@scope}__CLEANUP__#{@target}")
         end
       end
 
@@ -728,7 +716,6 @@ module OpenC3
           expect(stdout.string).to_not include("#{@scope}__PACKETLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOM__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__REDUCER__#{@target}")
         end
         expect(MicroserviceModel.names()).to be_empty
       end
@@ -749,7 +736,6 @@ module OpenC3
           expect(stdout.string).to_not include("#{@scope}__PACKETLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__DECOM__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__REDUCER__#{@target}")
         end
         expect(MicroserviceModel.names()).to include(
           "#{@scope}__COMMANDLOG__#{@target}",
@@ -773,13 +759,11 @@ module OpenC3
           expect(stdout.string).to include("#{@scope}__PACKETLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOMLOG__#{@target}")
           expect(stdout.string).to include("#{@scope}__DECOM__#{@target}")
-          expect(stdout.string).to include("#{@scope}__REDUCER__#{@target}")
         end
         expect(MicroserviceModel.names()).to include(
           "#{@scope}__PACKETLOG__#{@target}",
           "#{@scope}__DECOMLOG__#{@target}",
-          "#{@scope}__DECOM__#{@target}",
-          "#{@scope}__REDUCER__#{@target}")
+          "#{@scope}__DECOM__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
       end
 
@@ -844,8 +828,8 @@ module OpenC3
         orig_keys << "openc3_microservices"
 
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:destroy).exactly(18).times
-        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(18).times
+        expect(umodel).to receive(:destroy).exactly(14).times
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(14).times
         inst_model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: "INST_PLUGIN")
         inst_model.create
         inst_model.deploy(@target_dir, {})

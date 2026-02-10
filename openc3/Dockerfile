@@ -28,7 +28,7 @@ RUN mkdir -p lib/openc3/ext \
 
 WORKDIR /openc3/python
 
-RUN uv sync --frozen
+RUN UV_PROJECT_ENVIRONMENT=/openc3/venv uv sync --frozen --no-editable
 
 WORKDIR /openc3/
 

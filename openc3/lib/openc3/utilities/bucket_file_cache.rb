@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -51,9 +51,6 @@ class BucketFile
     path_split = @bucket_path.split("/")
     scope = path_split[0].to_s.upcase
     stream_mode = path_split[1].to_s.split("_")[0].to_s.upcase
-    if stream_mode == 'REDUCED'
-      stream_mode << '_' << path_split[1].to_s.split("_")[1].to_s.upcase
-    end
     cmd_or_tlm = path_split[2].to_s.upcase
     target_name = path_split[3].to_s.upcase
     if stream_mode == 'RAW'
@@ -61,8 +58,6 @@ class BucketFile
     else
       if stream_mode == 'DECOM'
         type = (cmd_or_tlm == 'CMD') ? 'DECOMCMD' : 'DECOM'
-      else
-        type = stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
       end
     end
     @topic_prefix = "#{scope}__#{type}__{#{target_name}}"
