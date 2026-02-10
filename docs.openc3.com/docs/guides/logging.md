@@ -9,7 +9,7 @@ The COSMOS [Bucket Explorer](../tools/bucket-explorer.md) tool provides a way to
 
 ![Bucket Explorer](/img/guides/logging/logs.png)
 
-Note the config and logs buckets are organized by scopes of which there initially is just one: DEFAULT. Clicking the DEFAULT folder in the logs bucket shows the decom_logs, raw_logs, reduced_xxx_logs, text_logs and tool_logs.
+Note the config and logs buckets are organized by scopes of which there initially is just one: DEFAULT. Clicking the DEFAULT folder in the logs bucket shows the decom_logs, raw_logs, text_logs and tool_logs.
 
 ### decom_logs & raw_logs
 

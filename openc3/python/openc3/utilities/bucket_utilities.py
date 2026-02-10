@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -20,7 +20,6 @@ import time
 import zlib
 
 from openc3.environment import OPENC3_LOGS_BUCKET
-from openc3.models.reducer_model import ReducerModel
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 
@@ -90,7 +89,6 @@ class BucketUtilities:
                     time.sleep(1)
 
             Logger.debug(f"wrote {OPENC3_LOGS_BUCKET}/{bucket_key}")
-            ReducerModel.add_file(bucket_key)  # Record the new file for data reduction
 
             if orig_filename:
                 os.remove(orig_filename)

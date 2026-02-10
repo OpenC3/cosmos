@@ -42,9 +42,6 @@ test('displays microservice names', async ({ page, utils }) => {
   await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__PACKETLOG__INST2',
   )
-  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
-    'DEFAULT__REDUCER__INST2',
-  )
 })
 
 test.fixme('displays microservice details', async ({ page, utils }) => {

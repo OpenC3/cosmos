@@ -76,9 +76,6 @@ module OpenC3
     attr_accessor :tlm_log_cycle_time
     attr_accessor :tlm_log_cycle_size
     attr_accessor :tlm_log_retain_time
-    attr_accessor :reduced_minute_log_retain_time
-    attr_accessor :reduced_hour_log_retain_time
-    attr_accessor :reduced_day_log_retain_time
     attr_accessor :cmd_decom_retain_time
     attr_accessor :tlm_decom_retain_time
     attr_accessor :cleanup_poll_time
@@ -390,16 +387,11 @@ module OpenC3
       tlm_log_cycle_time: 600,
       tlm_log_cycle_size: 50_000_000,
       tlm_log_retain_time: nil,
-      reduced_minute_log_retain_time: nil,
-      reduced_hour_log_retain_time: nil,
-      reduced_day_log_retain_time: nil,
       cmd_decom_retain_time: nil,
       tlm_decom_retain_time: nil,
       cleanup_poll_time: 3600,
       needs_dependencies: false,
-      target_microservices: {'REDUCER' => [[]]},
-      reducer_disable: false,
-      reducer_max_cpu_utilization: 30.0,
+      target_microservices: {},
       disable_erb: nil,
       shard: 0,
       scope:
@@ -409,11 +401,8 @@ module OpenC3
         cmd_log_retain_time: cmd_log_retain_time,
         tlm_buffer_depth: tlm_buffer_depth, tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
         tlm_log_retain_time: tlm_log_retain_time,
-        reduced_minute_log_retain_time: reduced_minute_log_retain_time,
-        reduced_hour_log_retain_time: reduced_hour_log_retain_time, reduced_day_log_retain_time: reduced_day_log_retain_time,
         cmd_decom_retain_time: cmd_decom_retain_time, tlm_decom_retain_time: tlm_decom_retain_time,
         cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
-        reducer_disable: reducer_disable, reducer_max_cpu_utilization: reducer_max_cpu_utilization,
         scope: scope)
       @folder_name = folder_name
       @requires = requires
@@ -430,16 +419,11 @@ module OpenC3
       @tlm_log_cycle_time = tlm_log_cycle_time
       @tlm_log_cycle_size = tlm_log_cycle_size
       @tlm_log_retain_time = tlm_log_retain_time
-      @reduced_minute_log_retain_time = reduced_minute_log_retain_time
-      @reduced_hour_log_retain_time = reduced_hour_log_retain_time
-      @reduced_day_log_retain_time = reduced_day_log_retain_time
       @cmd_decom_retain_time = cmd_decom_retain_time
       @tlm_decom_retain_time = tlm_decom_retain_time
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
-      @reducer_disable = reducer_disable
-      @reducer_max_cpu_utilization = reducer_max_cpu_utilization
       @disable_erb = disable_erb
       @shard = shard.to_i # to_i to handle nil
       @bucket = Bucket.getClient()
@@ -466,16 +450,11 @@ module OpenC3
         'tlm_log_cycle_time' => @tlm_log_cycle_time,
         'tlm_log_cycle_size' => @tlm_log_cycle_size,
         'tlm_log_retain_time' => @tlm_log_retain_time,
-        'reduced_minute_log_retain_time' => @reduced_minute_log_retain_time,
-        'reduced_hour_log_retain_time' => @reduced_hour_log_retain_time,
-        'reduced_day_log_retain_time' => @reduced_day_log_retain_time,
         'cmd_decom_retain_time' => @cmd_decom_retain_time,
         'tlm_decom_retain_time' => @tlm_decom_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
-        'reducer_disable' => @reducer_disable,
-        'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization,
         'disable_erb' => @disable_erb,
         'shard' => @shard,
       }
@@ -514,18 +493,6 @@ module OpenC3
         @tlm_log_retain_time = @tlm_log_retain_time.to_i if @tlm_log_retain_time
       when 'TLM_DECOM_LOG_CYCLE_TIME', 'TLM_DECOM_LOG_CYCLE_SIZE', 'TLM_DECOM_LOG_RETAIN_TIME'
         # DEPRECATED keywords - do nothing
-      when 'REDUCED_MINUTE_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for reduced minute log files in seconds - nil = Forever>")
-        @reduced_minute_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        @reduced_minute_log_retain_time = @reduced_minute_log_retain_time.to_i if @reduced_minute_log_retain_time
-      when 'REDUCED_HOUR_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for reduced hour log files in seconds - nil = Forever>")
-        @reduced_hour_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        @reduced_hour_log_retain_time = @reduced_hour_log_retain_time.to_i if @reduced_hour_log_retain_time
-      when 'REDUCED_DAY_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for reduced day log files in seconds - nil = Forever>")
-        @reduced_day_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        @reduced_day_log_retain_time = @reduced_day_log_retain_time.to_i if @reduced_day_log_retain_time
       when 'CMD_DECOM_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time with unit (e.g., 30d, 1y) - nil = Forever>")
         @cmd_decom_retain_time = ConfigParser.handle_nil(parameters[0])
@@ -538,6 +505,10 @@ module OpenC3
         if @tlm_decom_retain_time and !@tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
           raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
         end
+      when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
+        # DEPRECATED
+      when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'
+        # DEPRECATED
       when 'LOG_RETAIN_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all raw log files in seconds - nil = Forever>")
         log_retain_time = ConfigParser.handle_nil(parameters[0])
@@ -545,26 +516,13 @@ module OpenC3
           @cmd_log_retain_time = log_retain_time.to_i
           @tlm_log_retain_time = log_retain_time.to_i
         end
-      when 'REDUCED_LOG_RETAIN_TIME'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for all reduced log files in seconds - nil = Forever>")
-        reduced_log_retain_time = ConfigParser.handle_nil(parameters[0])
-        if reduced_log_retain_time
-          @reduced_minute_log_retain_time = reduced_log_retain_time.to_i
-          @reduced_hour_log_retain_time = reduced_log_retain_time.to_i
-          @reduced_day_log_retain_time = reduced_log_retain_time.to_i
-        end
-      when 'REDUCER_DISABLE', 'REDUCER_DISABLED' # Handle typos
-        @reducer_disable = true
-      when 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION' # Handle typos
-        parser.verify_num_parameters(1, 1, "#{keyword} <Max cpu utilization to allocate to the reducer microservice - 0.0 to 100.0>")
-        @reducer_max_cpu_utilization = Float(parameters[0])
       when 'CLEANUP_POLL_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Cleanup polling period in seconds>")
         @cleanup_poll_time = parameters[0].to_i
       when 'TARGET_MICROSERVICE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Type: DECOM COMMANDLOG PACKETLOG REDUCER CLEANUP>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <Type: DECOM COMMANDLOG PACKETLOG CLEANUP>")
         type = parameters[0].to_s.upcase
-        unless %w(DECOM COMMANDLOG PACKETLOG REDUCER CLEANUP).include?(type)
+        unless %w(DECOM COMMANDLOG PACKETLOG CLEANUP).include?(type)
           raise "Unknown TARGET_MICROSERVICE #{type}"
         end
         @target_microservices[type] ||= []
@@ -573,7 +531,7 @@ module OpenC3
       when 'PACKET'
         if @current_target_microservice
           parser.verify_num_parameters(1, 1, "#{keyword} <Packet Name>")
-          if @current_target_microservice == 'REDUCER' or @current_target_microservice == 'CLEANUP'
+          if @current_target_microservice == 'CLEANUP'
             raise ConfigParser::Error.new(parser, "PACKET cannot be used with target microservice #{@current_target_microservice}")
           end
           @target_microservices[@current_target_microservice][-1] << parameters[0].to_s.upcase
@@ -679,9 +637,6 @@ module OpenC3
       self.class.packets(@name, scope: @scope).each do |packet|
         Topic.del("#{@scope}__TELEMETRY__{#{@name}}__#{packet['packet_name']}")
         Topic.del("#{@scope}__DECOM__{#{@name}}__#{packet['packet_name']}")
-        Topic.del("#{@scope}__REDUCED_MINUTE__{#{@name}}__#{packet['packet_name']}")
-        Topic.del("#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet['packet_name']}")
-        Topic.del("#{@scope}__REDUCED_DAY__{#{@name}}__#{packet['packet_name']}")
         CvtModel.del(target_name: @name, packet_name: packet['packet_name'], scope: @scope)
       end
       LimitsEventTopic.delete(@name, scope: @scope)
@@ -691,7 +646,7 @@ module OpenC3
       Store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
       # Note: these match the names of the services in deploy_microservices
-      %w(MULTI DECOM COMMANDLOG PACKETLOG REDUCER CLEANUP).each do |type|
+      %w(MULTI DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
         target_microservices = @target_microservices[type]
         if target_microservices
           max_instances = target_microservices.length + 1
@@ -1062,30 +1017,6 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
-    def deploy_reducer_microservice(gem_path, variables, topics, instance = nil, parent = nil)
-      microservice_name = "#{@scope}__REDUCER#{instance}__#{@name}"
-      microservice = MicroserviceModel.new(
-        name: microservice_name,
-        folder_name: @folder_name,
-        cmd: ["ruby", "reducer_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
-        options: [
-          ["MAX_CPU_UTILIZATION", @reducer_max_cpu_utilization],
-          ["BUFFER_DEPTH", @tlm_buffer_depth]
-        ],
-        topics: topics,
-        plugin: @plugin,
-        parent: parent,
-        needs_dependencies: @needs_dependencies,
-        shard: @shard,
-        scope: @scope
-      )
-      microservice.create
-      microservice.deploy(gem_path, variables)
-      @children << microservice_name if parent
-      Logger.info "Configured microservice #{microservice_name}"
-    end
-
     def deploy_cleanup_microservice(gem_path, variables, instance = nil, parent = nil)
       microservice_name = "#{@scope}__CLEANUP#{instance}__#{@name}"
       microservice = MicroserviceModel.new(
@@ -1189,7 +1120,7 @@ module OpenC3
       end
 
       @parent = nil
-      %w(DECOM COMMANDLOG PACKETLOG REDUCER CLEANUP).each do |type|
+      %w(DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
         unless @target_microservices[type]
           @parent = "#{@scope}__MULTI__#{@name}"
           break
@@ -1213,14 +1144,6 @@ module OpenC3
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
-
-        # Reducer Microservice
-        unless @reducer_disable
-          # TODO: Does Reducer even need a topic list?
-          deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
-            deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
-          end
-        end
       end
 
       # TSDB Microservice - subscribes to both decommutated telemetry and commands
@@ -1231,7 +1154,7 @@ module OpenC3
         end
       end
 
-      if @cmd_log_retain_time or @tlm_log_retain_time or @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time
+      if @cmd_log_retain_time or @tlm_log_retain_time
         # Cleanup Microservice
         deploy_target_microservices('CLEANUP', nil, nil) do |_, instance, parent|
           deploy_cleanup_microservice(gem_path, variables, instance, parent)

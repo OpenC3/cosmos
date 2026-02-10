@@ -40,12 +40,6 @@ VARIABLE log_retain_time 172800
   VARIABLE_STATE "48 hours" 172800
   VARIABLE_STATE "1 week" 604800
   VARIABLE_STATE "30 days" 2592000
-VARIABLE reduced_log_retain_time 2592000
-  VARIABLE_DESCRIPTION "Reduced log retention time in seconds (default: 30 days)"
-  VARIABLE_STATE "1 week" 604800
-  VARIABLE_STATE "30 days" 2592000
-  VARIABLE_STATE "90 days" 7776000
-  VARIABLE_STATE "1 year" 31536000
 
 ### Throughput Server Configuration ###
 # The throughput server can be used to test the maximum command and telemetry throughput
@@ -89,34 +83,22 @@ VARIABLE inst2_throughput_port 7780
       TLM_LOG_CYCLE_TIME 300
     <% end %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
-    # Allow the reducer microservice to take 50% of the cpu (default 30%)
-    REDUCER_MAX_CPU_UTILIZATION 50
 <% end %>
 
 <% if include_inst2 %>
   TARGET INST2 <%= inst2_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
     TLM_LOG_CYCLE_TIME 600
 <% end %>
 
 <% if include_example %>
   TARGET EXAMPLE <%= example_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    # Disable data reduction (min, hour, day) on this target data
-    # No 'ruby reducer_microservice.rb DEFAULT__REDUCER__EXAMPLE'
-    # will appear in the the process list
-    REDUCER_DISABLE
 <% end %>
 
 <% if include_templated %>
   TARGET TEMPLATED <%= templated_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    # Disable data reduction (min, hour, day) on this target data
-    # No 'ruby reducer_microservice.rb DEFAULT__REDUCER__TEMPLATED'
-    # will appear in the the process list
-    REDUCER_DISABLE
 <% end %>
 
 <% if include_system %>
