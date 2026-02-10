@@ -55,6 +55,8 @@ class Packet(Structure):
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
+        "COSMOS_DATA_TAG",
+        "COSMOS_EXTRA",
     }
     ANY_STATE = "ANY"
     # Valid format types
@@ -1197,11 +1199,6 @@ class Packet(Structure):
     def decom(self):
         # Read all the RAW at once because this could be optimized by the accessor
         json_hash = self.read_items(self.sorted_items)
-
-        # Decom extra into the values (overrides packet items)
-        if self.extra is not None:
-            for key, value in self.extra.items():
-                json_hash[key.upper()] = value
 
         # Now read all other value types - no accessor required
         for item in self.sorted_items:

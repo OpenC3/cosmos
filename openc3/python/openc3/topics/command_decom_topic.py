@@ -48,8 +48,6 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__C"] = packet.read_item(item, "CONVERTED", packet.buffer, given_raw)
             if item.format_string:
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED", packet.buffer, given_raw)
-        if packet.extra:
-            json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)

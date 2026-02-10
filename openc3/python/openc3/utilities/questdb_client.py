@@ -617,8 +617,7 @@ class QuestDBClient:
                             alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
                             cur.execute(alter)
                             self._log_info(
-                                f"QuestDB: Altered column type: {alter} "
-                                f"(was {existing_type}, now {desired_canonical})"
+                                f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
                             )
                             altered = True
             except psycopg.Error as error:
@@ -635,29 +634,27 @@ class QuestDBClient:
 
             try:
                 with self.query.cursor() as cur:
-                    # NOTE: Since __ is not allowed in item names we can safely use COSMOS__ as a prefix
-                    # for reserved metadata columns without worrying about name collisions with actual item names.
-                    # Create table with COSMOS__TAG as a symbol for use as filtering/indexing column,
-                    # COSMOS__STORED as a boolean to indicate if the packet had the stored flag set
+                    # Create table with COSMOS_DATA_TAG as a symbol for use as filtering/indexing column,
                     sql = f"""
                         CREATE TABLE IF NOT EXISTS "{table_name}" (
                             PACKET_TIMESECONDS timestamp_ns,
                             RECEIVED_TIMESECONDS timestamp_ns,
-                            COSMOS__TAG symbol,
-                            COSMOS__STORED boolean,
-                            COSMOS__EXTRA varchar,
-                            RECEIVED_COUNT long"""
+                            RECEIVED_COUNT long,
+                            COSMOS_DATA_TAG symbol """
 
+                    # COSMOS command packets have an extra field for command information: user, approver, etc
+                    if cmd_or_tlm == "CMD":
+                        sql += ",\nCOSMOS_EXTRA varchar"
                     if columns_sql:
                         sql += f",\n{columns_sql}"
 
                     # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
                     # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
-                    # explicitly include COSMOS__TAG as well.
+                    # explicitly include COSMOS_DATA_TAG as well.
                     sql += """
                         ) TIMESTAMP(PACKET_TIMESECONDS)
                             PARTITION BY DAY
-                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS__TAG)
+                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
                     """
 
                     # Add TTL clause if specified
