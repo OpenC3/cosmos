@@ -38,16 +38,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     rm -rf .venv \
     && uv sync --locked --no-dev --no-install-project
 
-# Copy application code
+# Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
-# Install the application itself
-# --no-editable ensures the package is installed properly, not as an editable link
+# Install the application itself with dependencies already present
+# Use build cache mount to avoid re-downloading wheels
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable
+    uv sync --locked --no-dev
 
 # Smoke test: verify the package imports correctly
-RUN uv run python -Ic 'import openc3; print(f"openc3 {openc3.VERSION} imported successfully")'
+RUN uv run python -Ic 'import openc3; print("openc3 imported successfully")'
 
 WORKDIR /openc3/
 

@@ -970,15 +970,18 @@ module OpenC3
       # Assume Ruby initially
       filename = 'decom_microservice.rb'
       work_dir = '/openc3/lib/openc3/microservices'
+      language_cmd = target.language
       if target.language == 'python'
         filename = 'decom_microservice.py'
         work_dir.sub!('openc3/lib', 'openc3/python')
         parent = nil
+        # Use venv Python to ensure editable packages are found
+        language_cmd = '/openc3/python/.venv/bin/python'
       end
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: [target.language, filename, microservice_name],
+        cmd: [language_cmd, filename, microservice_name],
         work_dir: work_dir,
         topics: topics,
         target_names: [@name],
@@ -1002,7 +1005,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["python", "tsdb_microservice.py", microservice_name],
+        cmd: ["/openc3/python/.venv/bin/python", "tsdb_microservice.py", microservice_name],
         work_dir: "/openc3/python/openc3/microservices",
         options: options,
         topics: topics,

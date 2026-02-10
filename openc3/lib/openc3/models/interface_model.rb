@@ -169,7 +169,8 @@ module OpenC3
         microservice_name = "#{@scope}__#{type}__#{@name}"
         if config_params[0] and File.extname(config_params[0]) == '.py'
           work_dir.sub!('openc3/lib', 'openc3/python')
-          @cmd = ["python", "#{type.downcase}_microservice.py", microservice_name]
+          # Use venv Python to ensure editable packages are found
+          @cmd = ["/openc3/python/.venv/bin/python", "#{type.downcase}_microservice.py", microservice_name]
         else
           # If there are no config_params we assume ruby
           @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
