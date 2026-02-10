@@ -47,7 +47,7 @@ spec = Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3.0'
 
   s.version = '6.10.5.pre.beta0'
-  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+  s.license = "OpenC3"
 
   # Executables
   s.executables << 'openc3cli'

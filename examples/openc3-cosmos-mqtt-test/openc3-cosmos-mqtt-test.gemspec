@@ -35,7 +35,7 @@ spec = Gem::Specification.new do |s|
     time = Time.now.strftime("%Y%m%d%H%M%S")
     s.version = '0.0.0' + ".#{time}"
   end
-  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+  s.license = "OpenC3"
 
   s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile plugin.txt)
 end

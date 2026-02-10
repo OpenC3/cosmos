@@ -38,7 +38,7 @@ setup(
     author="Ryan Melton",
     author_email="ryan@openc3.com",
     # Choose your license
-    license="AGPLv3, Nonstandard",
+    license="OpenC3",
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
         # How mature is this project? Common values are

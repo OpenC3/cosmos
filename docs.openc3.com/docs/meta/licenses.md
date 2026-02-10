@@ -1,39 +1,23 @@
 ---
 title: Licenses
-description: COSMOS licenses including the AGPLv3 vs Commercial
+description: COSMOS licenses including OpenC3 vs Commercial
 sidebar_custom_props:
   myEmoji: 🕵️
 ---
 
 OpenC3 COSMOS is offered under a tri-licensing model allowing users to choose between the following three options:
 
-## AGPLv3
+## OpenC3 Builder License
 
-This is our default open source license and the license that most free users use. The AGPLv3 is a modification of the GPLv3 which is what is known as a copy-left license or a viral license. You can read the whole thing here: [OpenC3 AGPLv3](https://github.com/OpenC3/cosmos/blob/main/LICENSE.txt)
+This is our default open source license and the license that most free users use. The OpenC3 Builder License is a modification of the Elastic License 2.0. You can read the whole thing here: [OpenC3 License](https://github.com/OpenC3/cosmos/blob/main/LICENSE.md)
 
-Obviously, the actual license text applies, but here is a short summary:
+Obviously, the total license text applies, but the Limitations is the key section:
 
-- The AGPL allows users to use the code however they want: For business, personal, etc., as long as they follow the other terms:
+1. You may not provide the software or its functionality to third parties as any part of a hosted or managed service.
+2. You may not distribute any changes made to the software on a commercial basis.
+3. You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor’s trademarks is subject to applicable law.
 
-  1. Users are anyone who could access the web-app. On the public internet, that is the whole world. On a private network, it is anyone with access to that network.
-
-  2. The software is provided as-is, no warranty
-
-  3. Users must be given access to all the source code and are also allowed to use it however they want under the same terms of the AGPLv3. This includes any modifications made, anything added, and all plugins.
-
-  4. For web applications (like COSMOS), a link must be provided to all of the source code.
-
-- There are some key implications of the above:
-
-  1. You cannot keep anything proprietary from your users. They have the rights to take the code (and configuration) and do anything they want with it. You CANNOT impede these rights or you are violating the AGPLv3 and YOU lose the rights to use our software.
-
-  2. You must provide a digital link to all source code for your users, including plugins.
-
-  3. All plugins must be licensed in an AGPLv3 compatible fashion. We recommend the MIT license because that allows your plugins to be compatible with the AGPLv3 and our commercial license. You can also use a dual license similar to what we do indicating the AGPLv3 or a purchased OpenC3 Commercial license.
-
-The AGPLv3 license is often chosen because it works well for open core products like COSMOS. Competitors cannot take the open source product and license it under different terms. They would be forever locked into the AGPLv3 which is difficult to monetize, because your customers can take any code you provide and publish it on the internet for free use by everyone.
-
-As the copyright holder, OpenC3 is able to license the product and derivatives commercially. No-one else can do this. (OpenC3 is also able to license legacy Ball Aerospace COSMOS code under IP agreement)
+As the copyright holder, OpenC3 is able to license the product and derivatives commercially. No-one else can do this. OpenC3 is also able to license legacy Ball Aerospace COSMOS code under IP agreement.
 
 ## Evaluation and Education Use Only
 
@@ -66,7 +50,7 @@ This license is pretty straight forward, but the key is you can't use this code 
 
 ## Commercial License
 
-This license is a signed contract with OpenC3. It allows use of our code for a program under contractual terms where you do not have to follow the AGPLv3.
+This license is a signed contract with OpenC3. It allows use of our code for a program under contractual terms.
 
 Generally we license to a specific project with terms that allow for unlimited users, and installs as needed by that project. Any code and plugins that you develop under the commercial license can be kept proprietary.
 
@@ -88,14 +72,10 @@ Of course with our commercial license, you also get all the extra functionality 
    6. The right to use CFDP and other Enterprise Only plugins
    7. Grafana Support
    8. Support from the COSMOS Developers
-   9. Lots more - See our [Enterprise](https://openc3.com/enterprise) page
+   9. Calendar, Autonomic, Command History, Log Explorer, System Health
+   10. Lots more - See our [Enterprise](https://openc3.com/enterprise) page
 
-3. You don't want to follow the AGPLv3
-
-   1. You want to keep the code and plugins you develop proprietary
-   2. You don't want to publish an accessible link to your source code
-
-4. You want to support the continued development and innovation of the COSMOS product
+3. You want to support the continued development and innovation of the COSMOS product
 
 **_We appreciate all of our commercial customers. You make OpenC3 possible. Thank you._**
 

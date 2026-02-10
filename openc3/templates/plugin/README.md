@@ -63,4 +63,4 @@ This protects both you and us and you retain full rights to any code you write.
 
 ## License
 
-This OpenC3 plugin is released under the MIT License. See [LICENSE.txt](LICENSE.txt)
+This OpenC3 plugin is released under the MIT License. See [LICENSE.md](LICENSE.md)

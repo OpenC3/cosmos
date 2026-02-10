@@ -21,7 +21,7 @@ RSpec.describe InfoController, type: :controller do
       get :info
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["license"]).to eql("AGPLv3")
+      expect(json["license"]).to eql("OpenC3")
     end
   end
 end

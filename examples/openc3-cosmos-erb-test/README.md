@@ -25,4 +25,4 @@ This protects both you and us and you retain full rights to any code you write.
 
 ## License
 
-This OpenC3 COSMOS plugin is released under the AGPLv3.0 with a few addendums. See [LICENSE.txt](LICENSE.txt)
+OpenC3 COSMOS is released under the OpenC3 Builder's License. See [LICENSE.md](LICENSE.md)

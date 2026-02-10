@@ -22,7 +22,7 @@ spec = Gem::Specification.new do |s|
   s.description = <<-EOF
     Provides an example target using the HttpClientInterface and HttpServerInterface
   EOF
-  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+  s.license = "OpenC3"
   s.authors = ['Ryan Melton']
   s.email = ['ryan@openc3.com']
   s.homepage = 'https://github.com/OpenC3/cosmos'

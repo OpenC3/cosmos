@@ -22,7 +22,7 @@ begin
 rescue LoadError
   class InfoController < ApplicationController
     def info
-      render json: { version: OPENC3_VERSION, license: 'AGPLv3', enterprise: false }
+      render json: { version: OPENC3_VERSION, license: 'OpenC3', enterprise: false }
     end
   end
 end
