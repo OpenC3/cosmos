@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -159,14 +154,18 @@ class InterfaceCmdHandlerThread:
                         # A raw interface write results in an UNKNOWN packet
                         command = System.commands.packet("UNKNOWN", "UNKNOWN")
                         command.received_count = TargetModel.increment_command_count(
-                            command.target_name, command.packet_name, 1, scope=self.scope
+                            command.target_name,
+                            command.packet_name,
+                            1,
+                            scope=self.scope,
                         )
                         command = command.clone()
                         command.buffer = msg_hash[b"raw"]
                         command.received_time = datetime.now(timezone.utc)
                         CommandTopic.write_packet(command, scope=self.scope)
                         self.logger.info(
-                            f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}", scope=self.scope
+                            f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}",
+                            scope=self.scope,
                         )
                         self.interface.write_raw(msg_hash[b"raw"])
                     except Exception as e:
@@ -368,7 +367,9 @@ class InterfaceCmdHandlerThread:
                     log_message = ConfigParser.handle_true_false(msg_hash[b"log_message"].decode())
                     if log_message:
                         self.logger.info(
-                            msg_hash[b"cmd_string"].decode(), user=msg_hash[b"username"].decode(), scope=self.scope
+                            msg_hash[b"cmd_string"].decode(),
+                            user=msg_hash[b"username"].decode(),
+                            scope=self.scope,
                         )
 
                     self.interface.write(command)

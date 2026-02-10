@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -82,12 +77,26 @@ WHITELIST.extend(
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
-    return _cmd_implementation("cmd", *args, range_check=True, hazardous_check=True, raw=False, manual=False, **kwargs)
+    return _cmd_implementation(
+        "cmd",
+        *args,
+        range_check=True,
+        hazardous_check=True,
+        raw=False,
+        manual=False,
+        **kwargs,
+    )
 
 
 def cmd_raw(*args, **kwargs):
     return _cmd_implementation(
-        "cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, manual=False, **kwargs
+        "cmd_raw",
+        *args,
+        range_check=True,
+        hazardous_check=True,
+        raw=True,
+        manual=False,
+        **kwargs,
     )
 
 
@@ -593,7 +602,13 @@ def _cmd_implementation(
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
-    user = authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope, manual=manual)
+    user = authorize(
+        permission="cmd",
+        target_name=target_name,
+        packet_name=cmd_name,
+        scope=scope,
+        manual=manual,
+    )
     if not user:
         user = {}
         user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")

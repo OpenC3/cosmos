@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -642,7 +637,11 @@ class RunningScript:
             or self.script_status.state == "error"
             or self.script_status.state == "breakpoint"
         ):
-            self.execute_while_paused_info = {"filename": filename, "line_no": line_no, "end_line_no": end_line_no}
+            self.execute_while_paused_info = {
+                "filename": filename,
+                "line_no": line_no,
+                "end_line_no": end_line_no,
+            }
         else:
             self.scriptrunner_puts(
                 "Cannot execute selection or goto unless script is paused, breakpoint, or in error state"
@@ -997,7 +996,11 @@ class RunningScript:
                 if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
                     if self.script_status.end_line_no is None:
                         # Goto line
-                        start(self.script_status.filename, line_no=self.script_status.start_line_no, complete=True)
+                        start(
+                            self.script_status.filename,
+                            line_no=self.script_status.start_line_no,
+                            complete=True,
+                        )
                     else:
                         # Execute selection
                         start(
@@ -1367,7 +1370,10 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             else:
                 # Execute selection
                 RunningScript.instance.script_engine.run_text(
-                    instrumented_script, filename=procedure_name, line_no=line_no, end_line_no=end_line_no
+                    instrumented_script,
+                    filename=procedure_name,
+                    line_no=line_no,
+                    end_line_no=end_line_no,
                 )
         else:
             RunningScript.instance.script_engine.run_text(instrumented_script, filename=procedure_name)
@@ -1379,7 +1385,9 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             )
             RunningScript.instance.script_binding[0]["__file__"] = procedure_name
             exec(
-                instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1]
+                instrumented_script,
+                RunningScript.instance.script_binding[0],
+                RunningScript.instance.script_binding[1],
             )
         else:
             RunningScript.instance.script_globals["__name__"] = RunningScript.instance.script_globals.get(
@@ -1412,7 +1420,12 @@ def goto(line_no_or_procedure_name, line_no=None):
             complete=True,
         )
     else:
-        start(line_no_or_procedure_name, line_no=line_no, bind_variables=True, complete=True)
+        start(
+            line_no_or_procedure_name,
+            line_no=line_no,
+            bind_variables=True,
+            complete=True,
+        )
 
 
 openc3.script.goto = goto

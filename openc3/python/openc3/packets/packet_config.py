@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -49,7 +44,18 @@ class PacketConfig:
     COMMAND_STRING = "Command"
     TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
-    CONVERTED_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
+    CONVERTED_DATA_TYPES = [
+        "INT",
+        "UINT",
+        "FLOAT",
+        "STRING",
+        "BLOCK",
+        "BOOL",
+        "OBJECT",
+        "ARRAY",
+        "ANY",
+        "TIME",
+    ]
 
     def __init__(self):
         self.name = None
@@ -455,7 +461,10 @@ class PacketConfig:
                     )
                 else:
                     self.build_id_metadata(
-                        packet, self.cmd_id_value_hash, self.cmd_id_signature, self.cmd_unique_id_mode
+                        packet,
+                        self.cmd_id_value_hash,
+                        self.cmd_id_signature,
+                        self.cmd_unique_id_mode,
                     )
         else:
             self.telemetry[packet.target_name][packet.packet_name] = packet
@@ -479,7 +488,10 @@ class PacketConfig:
                     )
                 else:
                     self.build_id_metadata(
-                        packet, self.tlm_id_value_hash, self.tlm_id_signature, self.tlm_unique_id_mode
+                        packet,
+                        self.tlm_id_value_hash,
+                        self.tlm_id_signature,
+                        self.tlm_unique_id_mode,
                     )
 
     def build_id_metadata(self, packet, id_value_hash, id_signature_hash, unique_id_mode_hash):
@@ -720,7 +732,11 @@ class PacketConfig:
 
                 keyword_attr = keyword.lower()
                 if len(params) > 1:
-                    setattr(self.current_packet, keyword_attr, klass(self.current_packet, *params[1:]))
+                    setattr(
+                        self.current_packet,
+                        keyword_attr,
+                        klass(self.current_packet, *params[1:]),
+                    )
                 else:
                     setattr(self.current_packet, keyword_attr, klass(self.current_packet))
 
@@ -983,7 +999,10 @@ class PacketConfig:
                     "VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>",
                 )
 
-                variable_bit_size = {"length_bits_per_count": 8, "length_value_bit_offset": 0}
+                variable_bit_size = {
+                    "length_bits_per_count": 8,
+                    "length_value_bit_offset": 0,
+                }
                 variable_bit_size["length_item_name"] = params[0].upper()
                 if len(params) > 1:
                     variable_bit_size["length_bits_per_count"] = int(params[1])

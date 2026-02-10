@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -568,7 +563,9 @@ class TestTimestampItemsRoundtrip:
             columns["RECEIVED_COUNT"] = i
             # Each row is 1 second apart
             row_ts = base_ts + i * 1_000_000_000
-            questdb_client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+            questdb_client.write_row(
+                table_name, columns, row_ts, rx_timestamp_ns=row_ts
+            )
         questdb_client.flush()
         wait_for_data(questdb_client, table_name, len(test_values))
 
@@ -579,7 +576,9 @@ class TestTimestampItemsRoundtrip:
 
         with patch("openc3.models.cvt_model.TargetModel") as mock_target:
             mock_target.packet.return_value = packet_def
-            result = CvtModel.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+            result = CvtModel.tsdb_lookup(
+                items, start_time=start_time, end_time=end_time
+            )
 
         assert len(result) == len(
             test_values
@@ -603,6 +602,7 @@ class TestTimestampItemsRoundtrip:
                 ), f"Expected string at index {i}, got {type(actual)}"
                 # Verify it's ISO 8601 format with Z timezone suffix
                 import re
+
                 assert re.match(
                     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$", actual
                 ), f"Expected ISO 8601 format at index {i}, got {actual}"
@@ -613,17 +613,13 @@ class TestTimestampItemsRoundtrip:
                     abs(parsed_ts - expected_ts_seconds) < 0.001
                 ), f"Timestamp formatted mismatch at index {i}: expected {expected_ts_seconds}, got {actual}"
 
-    def test_packet_timeseconds(
-        self, questdb_client, clean_table, wait_for_data
-    ):
+    def test_packet_timeseconds(self, questdb_client, clean_table, wait_for_data):
         """PACKET_TIMESECONDS returns correct Unix timestamp in seconds."""
         self.run_timestamp_test(
             questdb_client, clean_table, wait_for_data, "PACKET_TIMESECONDS", "seconds"
         )
 
-    def test_packet_timeformatted(
-        self, questdb_client, clean_table, wait_for_data
-    ):
+    def test_packet_timeformatted(self, questdb_client, clean_table, wait_for_data):
         """PACKET_TIMEFORMATTED returns correct formatted timestamp string."""
         self.run_timestamp_test(
             questdb_client,
@@ -633,9 +629,7 @@ class TestTimestampItemsRoundtrip:
             "formatted",
         )
 
-    def test_received_timeseconds(
-        self, questdb_client, clean_table, wait_for_data
-    ):
+    def test_received_timeseconds(self, questdb_client, clean_table, wait_for_data):
         """RECEIVED_TIMESECONDS returns correct Unix timestamp in seconds."""
         self.run_timestamp_test(
             questdb_client,
@@ -645,9 +639,7 @@ class TestTimestampItemsRoundtrip:
             "seconds",
         )
 
-    def test_received_timeformatted(
-        self, questdb_client, clean_table, wait_for_data
-    ):
+    def test_received_timeformatted(self, questdb_client, clean_table, wait_for_data):
         """RECEIVED_TIMEFORMATTED returns correct formatted timestamp string."""
         self.run_timestamp_test(
             questdb_client,
@@ -676,7 +668,9 @@ class TestTimestampItemsRoundtrip:
             columns = questdb_client.process_json_data({"VALUE": val}, table_name)
             columns["RECEIVED_COUNT"] = i
             row_ts = base_ts + i * 1_000_000_000
-            questdb_client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+            questdb_client.write_row(
+                table_name, columns, row_ts, rx_timestamp_ns=row_ts
+            )
         questdb_client.flush()
         wait_for_data(questdb_client, table_name, len(test_values))
 
@@ -691,7 +685,9 @@ class TestTimestampItemsRoundtrip:
 
         with patch("openc3.models.cvt_model.TargetModel") as mock_target:
             mock_target.packet.return_value = packet_def
-            result = CvtModel.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+            result = CvtModel.tsdb_lookup(
+                items, start_time=start_time, end_time=end_time
+            )
 
         assert len(result) == 2
 

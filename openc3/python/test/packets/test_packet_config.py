@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -230,7 +225,15 @@ class TestPacketConfig(unittest.TestCase):
             # The following have 0 parameters
             ignore.append("OVERLAP")
             # The following are command only
-            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE", "OBFUSCATE"])
+            ignore.extend(
+                [
+                    "REQUIRED",
+                    "MINIMUM_VALUE",
+                    "MAXIMUM_VALUE",
+                    "DEFAULT_VALUE",
+                    "OBFUSCATE",
+                ]
+            )
             if keyword in ignore:
                 continue
 
@@ -586,8 +589,14 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ACCESSOR CborAccessor\n")  # Still works with the deprecated class name syntax
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
-            self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__, "XmlAccessor")
-            self.assertEqual(self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__, "CborAccessor")
+            self.assertEqual(
+                self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__,
+                "XmlAccessor",
+            )
+            self.assertEqual(
+                self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__,
+                "CborAccessor",
+            )
 
     def test_handles_bad_accessors(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -595,7 +604,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ACCESSOR openc3/accessors/nope_accessor.py\n")
             tf.seek(0)
             with self.assertRaisesRegex(
-                ConfigParser.Error, "ModuleNotFoundError parsing openc3/accessors/nope_accessor.py. Usage: ACCESSOR"
+                ConfigParser.Error,
+                "ModuleNotFoundError parsing openc3/accessors/nope_accessor.py. Usage: ACCESSOR",
             ):
                 self.pc.process_file(tf.name, "SYSTEM")
 
@@ -796,7 +806,12 @@ class TestPacketConfig(unittest.TestCase):
                 data = {
                     "id_item": 2,
                     "item1": 101,
-                    "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+                    "more": {
+                        "item2": 12,
+                        "item3": 3.14,
+                        "item4": "Example",
+                        "item5": [4, 3, 2, 1],
+                    },
                 }
                 dump(data, fp)
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -828,7 +843,12 @@ class TestPacketConfig(unittest.TestCase):
             {
                 "id_item": 2,
                 "item1": 101,
-                "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+                "more": {
+                    "item2": 12,
+                    "item3": 3.14,
+                    "item4": "Example",
+                    "item5": [4, 3, 2, 1],
+                },
             },
         )
         self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
@@ -839,7 +859,16 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             loads(self.pc.commands["TGT1"]["PKT1"].buffer),
             # id_item remains 2 from template since it wasn't written
-            {"id_item": 2, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
+            {
+                "id_item": 2,
+                "item1": 202,
+                "more": {
+                    "item2": 333,
+                    "item3": 7.89,
+                    "item4": "TEST",
+                    "item5": [6, 7, 8, 9],
+                },
+            },
         )
         os.remove(os.path.join(os.getcwd(), "unittest.txt"))
 
@@ -1144,8 +1173,15 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("    VARIABLE_BIT_SIZE LEN 16 8\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            vbs = {"length_item_name": "LEN", "length_bits_per_count": 16, "length_value_bit_offset": 8}
-            self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size, vbs)
+            vbs = {
+                "length_item_name": "LEN",
+                "length_bits_per_count": 16,
+                "length_value_bit_offset": 8,
+            }
+            self.assertEqual(
+                self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size,
+                vbs,
+            )
 
     def test_allows_item_overlap(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:

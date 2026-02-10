@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -102,20 +97,26 @@ class TestIntToFloat:
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as INT 32 (long), write an integer
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
         _write_value(questdb_client, table_name, 42, base_ts)
         wait_for_data(questdb_client, table_name, 1)
 
         # Phase B: Restart with FLOAT 64 — create_table should ALTER LONG -> DOUBLE
-        _restart_and_create(questdb_client, target, packet, _make_packet_def("FLOAT", bit_size=64))
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"
 
         _write_value(questdb_client, table_name, 3.14, base_ts + 1_000_000_000)
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert rows[0] == 42.0  # Original int widened to double
@@ -133,7 +134,9 @@ class TestIntToString:
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as INT 32 (long), write an integer
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
         _write_value(questdb_client, table_name, 42, base_ts)
         wait_for_data(questdb_client, table_name, 1)
@@ -146,7 +149,9 @@ class TestIntToString:
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert rows[0] == "42"  # Original int converted to string representation
@@ -164,7 +169,9 @@ class TestFloatToString:
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as FLOAT 64 (double), write a float
-        questdb_client.create_table(target, packet, _make_packet_def("FLOAT", bit_size=64))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"
         _write_value(questdb_client, table_name, 3.14, base_ts)
         wait_for_data(questdb_client, table_name, 1)
@@ -177,7 +184,9 @@ class TestFloatToString:
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert rows[0] == "3.14"  # Original double converted to string representation
@@ -195,20 +204,26 @@ class TestFloatToInt:
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as FLOAT 64 (double), write a float
-        questdb_client.create_table(target, packet, _make_packet_def("FLOAT", bit_size=64))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"
         _write_value(questdb_client, table_name, 3.14, base_ts)
         wait_for_data(questdb_client, table_name, 1)
 
         # Phase B: Restart with INT 32 — create_table should ALTER DOUBLE -> LONG
-        _restart_and_create(questdb_client, target, packet, _make_packet_def("INT", bit_size=32))
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         _write_value(questdb_client, table_name, 100, base_ts + 1_000_000_000)
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert rows[0] == 3  # Original double truncated to long
@@ -232,14 +247,18 @@ class TestStringToInt:
         wait_for_data(questdb_client, table_name, 1)
 
         # Phase B: Restart with INT 32 — create_table should ALTER VARCHAR -> LONG
-        _restart_and_create(questdb_client, target, packet, _make_packet_def("INT", bit_size=32))
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         _write_value(questdb_client, table_name, 100, base_ts + 1_000_000_000)
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert rows[0] == 42  # Numeric string "42" survives as int
@@ -263,14 +282,18 @@ class TestStringToFloat:
         wait_for_data(questdb_client, table_name, 1)
 
         # Phase B: Restart with FLOAT 64 — create_table should ALTER VARCHAR -> DOUBLE
-        _restart_and_create(questdb_client, target, packet, _make_packet_def("FLOAT", bit_size=64))
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"
 
         _write_value(questdb_client, table_name, 2.718, base_ts + 1_000_000_000)
         wait_for_data(questdb_client, table_name, 2)
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 2
         assert abs(rows[0] - 3.14) < 1e-10  # Numeric string "3.14" survives as double

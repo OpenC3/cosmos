@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -203,12 +198,20 @@ class TestStructureDefineItem(unittest.TestCase):
         self.s.append_item("item1", 8, "UINT")
         self.s.append_item("item2", 2, "UINT")
         item = self.s.append_item("item3", 6, "UINT")
-        item.variable_bit_size = {"length_item_name": "item2", "length_bits_per_count": 8, "length_value_bit_offset": 0}
+        item.variable_bit_size = {
+            "length_item_name": "item2",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
         self.s.append_item("item4", 32, "UINT")
         self.s.append_item("item5", 32, "UINT")
         self.s.append_item("item6", 8, "UINT")
         item = self.s.append_item("item7", 0, "STRING")
-        item.variable_bit_size = {"length_item_name": "item6", "length_bits_per_count": 8, "length_value_bit_offset": 0}
+        item.variable_bit_size = {
+            "length_item_name": "item6",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
         self.s.append_item("item8", 16, "UINT")
 
         bit_offsets = []
@@ -1093,7 +1096,11 @@ class TestStructureItemComparison(unittest.TestCase):
     def test_lt_other_has_variable_bit_size_self_does_not(self):
         si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
         si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
-        si2.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si2.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         # si2 has variable_bit_size, si1 does not
         # Variable bit size items should come before regular items, so si2 < si1 is True, si1 < si2 is False
         self.assertFalse(si1 < si2)

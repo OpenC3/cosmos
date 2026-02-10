@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -94,7 +89,10 @@ class TestTargetModelPackets(unittest.TestCase):
         itpm = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         self.assertIsInstance(itpm, dict)
         self.assertIsInstance(itpm["CCSDSVER"], list)
-        self.assertEqual(itpm["CCSDSVER"], ["HEALTH_STATUS", "ADCS", "PARAMS", "IMAGE", "MECH", "HIDDEN"])
+        self.assertEqual(
+            itpm["CCSDSVER"],
+            ["HEALTH_STATUS", "ADCS", "PARAMS", "IMAGE", "MECH", "HIDDEN"],
+        )
         # Copy cache
         cache = dict(TargetModel.item_map_cache)
         TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
@@ -359,7 +357,10 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn(b"ABORT", pkts.keys())
 
         self.model.dynamic_update([packet], "COMMAND")
-        self.assertIn("DEFAULT/targets_modified/INST/cmd_tlm/dynamic_tlm.txt", self.mock_s3.files())
+        self.assertIn(
+            "DEFAULT/targets_modified/INST/cmd_tlm/dynamic_tlm.txt",
+            self.mock_s3.files(),
+        )
 
         # Make sure the Store gets updated with the new packet
         pkts = Store.hgetall(f"{self.scope}__openc3cmd__{self.target}")
@@ -380,7 +381,10 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn(b"HEALTH_STATUS", pkts.keys())
 
         self.model.dynamic_update([packet], "TELEMETRY")
-        self.assertIn("DEFAULT/targets_modified/INST/cmd_tlm/dynamic_tlm.txt", self.mock_s3.files())
+        self.assertIn(
+            "DEFAULT/targets_modified/INST/cmd_tlm/dynamic_tlm.txt",
+            self.mock_s3.files(),
+        )
 
         # Make sure the Store gets updated with the new packet
         pkts = Store.hgetall(f"{self.scope}__openc3tlm__{self.target}")

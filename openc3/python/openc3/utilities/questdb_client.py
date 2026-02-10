@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -134,7 +129,10 @@ class QuestDBClient:
     # are derived from these timestamp columns.
     TIMESTAMP_ITEMS = {
         "PACKET_TIMEFORMATTED": {"source": "PACKET_TIMESECONDS", "format": "formatted"},
-        "RECEIVED_TIMEFORMATTED": {"source": "RECEIVED_TIMESECONDS", "format": "formatted"},
+        "RECEIVED_TIMEFORMATTED": {
+            "source": "RECEIVED_TIMESECONDS",
+            "format": "formatted",
+        },
     }
 
     # QuestDB name restrictions - characters that need to be replaced
@@ -587,7 +585,10 @@ class QuestDBClient:
                     converted_type = rc.get("converted_type") if rc else None
                     converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
                     col_type, _ = self._get_column_type_from_conversion(
-                        table_name, f"{item_name}__C", converted_type, converted_bit_size
+                        table_name,
+                        f"{item_name}__C",
+                        converted_type,
+                        converted_bit_size,
                     )
                     desired_columns[f"{item_name}__C"] = col_type
 
