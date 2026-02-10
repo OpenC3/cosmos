@@ -9,4 +9,6 @@ WORKDIR /openc3/lib/openc3/operators/
 
 USER ${USER_ID}:${GROUP_ID}
 
+STOPSIGNAL SIGINT
+
 CMD [ "ruby", "microservice_operator.rb"]

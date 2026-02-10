@@ -29,9 +29,22 @@ RUN mkdir -p lib/openc3/ext \
 WORKDIR /openc3/python
 
 # Install openc3 Python package and dependencies using UV
+# Copy dependency files first for better layer caching
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock python/.python-version ./
+
+# Install dependencies only (cached when deps don't change)
+# Use build cache mount to avoid re-downloading wheels
+RUN --mount=type=cache,target=/root/.cache/uv \
+    rm -rf .venv \
+    && uv sync --frozen --no-dev --no-install-project
+
+# Copy application code
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
+
+# Install the application itself
 # --no-editable ensures the package is installed properly, not as an editable link
-RUN rm -rf .venv \
-  && uv sync --frozen --no-editable
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
 
 WORKDIR /openc3/
 

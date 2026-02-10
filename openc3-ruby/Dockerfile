@@ -88,6 +88,11 @@ RUN apk update \
   && bundle config git.allow_insecure true \
   && python3 -m pip install --break-system-packages uv
 
+# Configure UV for production container usage
+ENV UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_PYTHON_DOWNLOADS=never
+
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
 RUN cd /opt \
