@@ -45,9 +45,7 @@ answer = combo_box(
     details=DETAILS,
 )
 print(f"answer:{answer}")
-answer = combo_box(
-    "This is a multi-select combo box", "one", "two", "three", multiple=True
-)
+answer = combo_box("This is a multi-select combo box", "one", "two", "three", multiple=True)
 print(f"answer:{answer} len:{len(answer)}")
 answer = prompt(
     "This is a test",

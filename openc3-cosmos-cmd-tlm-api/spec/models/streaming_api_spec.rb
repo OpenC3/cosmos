@@ -544,5 +544,123 @@ RSpec.describe StreamingApi, type: :model do
         expect(total_packets).to eq(5)
       end
     end
+
+    context 'for reduced items (aggregated from TSDB)' do
+      let(:data) { { 'items' => ['REDUCED_MINUTE__TLM__INST__PARAMS__VALUE1__CONVERTED__AVG'], 'scope' => 'DEFAULT' } }
+
+      before(:each) do
+        # Mock get_tlm_available since the TargetModel isn't populated in mock redis
+        allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
+          items.map { |item| item.gsub('CONVERTED', 'RAW') }
+        end
+      end
+
+      it 'streams reduced minute data using SAMPLE BY' do
+        mock_conn = instance_double(PG::Connection)
+        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+        base_time = @file_start_time / 1_000_000_000
+        # Mock aggregated data with min, max, avg, stddev columns
+        pg_data = [
+          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 5.0], ["VALUE1__CX", 15.0], ["VALUE1__CA", 10.0], ["VALUE1__CS", 2.5]],
+          [["timestamp", Time.at(base_time + 60)], ["VALUE1__CN", 8.0], ["VALUE1__CX", 22.0], ["VALUE1__CA", 15.0], ["VALUE1__CS", 3.5]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 2 }
+
+        $exec_cnt = 0
+        allow(mock_conn).to receive(:exec) do |query|
+          $exec_cnt += 1
+          # Verify the query uses SAMPLE BY
+          expect(query).to include('SAMPLE BY 1m') if $exec_cnt == 1
+          expect(query).to include('ALIGN TO CALENDAR') if $exec_cnt == 1
+          $exec_cnt == 1 ? pg_data : nil
+        end
+
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 120_000_000_000 # 2 minutes of data
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(@messages.length).to eq(2) # One batch + empty completion
+        expect(@messages[-1]).to eq([])
+
+        # Verify first message contains aggregated data
+        first_entry = @messages[0][0]
+        expect(first_entry['__type']).to eq('items')
+        expect(first_entry['__time']).to_not be_nil
+      end
+
+      it 'streams reduced hour data using SAMPLE BY 1h' do
+        mock_conn = instance_double(PG::Connection)
+        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+        base_time = @file_start_time / 1_000_000_000
+        pg_data = [
+          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 1.0], ["VALUE1__CX", 100.0], ["VALUE1__CA", 50.0], ["VALUE1__CS", 25.0]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 1 }
+
+        $exec_cnt = 0
+        allow(mock_conn).to receive(:exec) do |query|
+          $exec_cnt += 1
+          expect(query).to include('SAMPLE BY 1h') if $exec_cnt == 1
+          $exec_cnt == 1 ? pg_data : nil
+        end
+
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        hour_data = { 'items' => ['REDUCED_HOUR__TLM__INST__PARAMS__VALUE1__CONVERTED__AVG'], 'scope' => 'DEFAULT' }
+        hour_data['start_time'] = @file_start_time
+        hour_data['end_time'] = @file_start_time + 3600_000_000_000 # 1 hour of data
+        @api.add(hour_data)
+        sleep 1.5
+
+        expect(@messages.length).to eq(2)
+        expect(@messages[-1]).to eq([])
+      end
+
+      it 'streams reduced day data using SAMPLE BY 1d' do
+        mock_conn = instance_double(PG::Connection)
+        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+        base_time = @file_start_time / 1_000_000_000
+        pg_data = [
+          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 0.0], ["VALUE1__CX", 1000.0], ["VALUE1__CA", 500.0], ["VALUE1__CS", 250.0]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 1 }
+
+        $exec_cnt = 0
+        allow(mock_conn).to receive(:exec) do |query|
+          $exec_cnt += 1
+          expect(query).to include('SAMPLE BY 1d') if $exec_cnt == 1
+          $exec_cnt == 1 ? pg_data : nil
+        end
+
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+        day_data = { 'items' => ['REDUCED_DAY__TLM__INST__PARAMS__VALUE1__CONVERTED__AVG'], 'scope' => 'DEFAULT' }
+        day_data['start_time'] = @file_start_time
+        day_data['end_time'] = @file_start_time + 86400_000_000_000 # 1 day of data
+        @api.add(day_data)
+        sleep 1.5
+
+        expect(@messages.length).to eq(2)
+        expect(@messages[-1]).to eq([])
+      end
+    end
   end
 end

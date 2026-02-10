@@ -9,8 +9,7 @@ TARGET:
       values: .*
     - name: Name
       required: true
-      description:
-        The target name. While this typically matches the Folder Name
+      description: The target name. While this typically matches the Folder Name
         it can be different to create multiple targets based on the same target definition.
         As in the Example Usage, the target folder is KEYSIGHT_N6700 but the target name is PWR_SUPPLY1.
         To create multiple targets from the same folder, just define multiple TARGET entries
@@ -48,27 +47,6 @@ TARGET:
           required: true
           description: Number of seconds to keep raw command logs (default = nil = Forever)
           values: \d+
-    CMD_DECOM_LOG_CYCLE_TIME:
-      summary: Command decommutation logs can be cycled on a time interval.
-      parameters:
-        - name: Time
-          required: true
-          description: Maximum time between files in seconds (default = 600)
-          values: \d+
-    CMD_DECOM_LOG_CYCLE_SIZE:
-      summary: Command decommutation logs can be cycled after a certain log file size is reached.
-      parameters:
-        - name: Size
-          required: true
-          description: Maximum file size in bytes (default = 50_000_000)
-          values: \d+
-    CMD_DECOM_LOG_RETAIN_TIME:
-      summary: How long to keep decom command logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep decom command logs (default = nil = Forever)
-          values: \d+
     TLM_BUFFER_DEPTH:
       summary: Number of telemetry packets to buffer to ensure logged in order
       since: 5.2.0
@@ -98,48 +76,32 @@ TARGET:
           required: true
           description: Number of seconds to keep raw telemetry logs (default = nil = Forever)
           values: \d+
-    TLM_DECOM_LOG_CYCLE_TIME:
-      summary: Telemetry decommutation logs can be cycled on a time interval.
+    CMD_DECOM_RETAIN_TIME:
+      summary: How long to keep command decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
       parameters:
         - name: Time
           required: true
-          description: Maximum time between files in seconds (default = 600)
-          values: \d+
-    TLM_DECOM_LOG_CYCLE_SIZE:
-      summary: Telemetry decommutation logs can be cycled after a certain log file size is reached.
-      parameters:
-        - name: Size
-          required: true
-          description: Maximum file size in bytes (default = 50_000_000)
-          values: \d+
-    TLM_DECOM_LOG_RETAIN_TIME:
-      summary: How long to keep decom telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep decom telemetry logs (default = nil = Forever)
-          values: \d+
-    REDUCED_MINUTE_LOG_RETAIN_TIME:
-      summary: How long to keep reduced minute telemetry logs in seconds.
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
+    TLM_DECOM_RETAIN_TIME:
+      summary: How long to keep telemetry decommutation records in the TSDB.
+      description:
+        Sets the retention time directly on QuestDB tables for automatic data expiration.
+        QuestDB will automatically remove data older than this retention time.
       parameters:
         - name: Time
           required: true
-          description: Number of seconds to keep reduced minute telemetry logs (default = nil = Forever)
-          values: \d+
-    REDUCED_HOUR_LOG_RETAIN_TIME:
-      summary: How long to keep reduced hour telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep reduced hour telemetry logs (default = nil = Forever)
-          values: \d+
-    REDUCED_DAY_LOG_RETAIN_TIME:
-      summary: How long to keep reduced day telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep reduced day telemetry logs (default = nil = Forever)
-          values: \d+
+          description:
+            Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year).
+            Supported units are h (hours), d (days), w (weeks), M (months), y (years).
+            Default = nil = Forever
+          values: \d+[hdwMy]
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:
@@ -147,28 +109,12 @@ TARGET:
           required: true
           description: Number of seconds to keep all regular telemetry logs (default = nil = Forever)
           values: \d+
-    REDUCED_LOG_RETAIN_TIME:
-      summary: How long to keep all reduced telemetry logs in seconds.
-      parameters:
-        - name: Time
-          required: true
-          description: Number of seconds to keep all reduced telemetry logs (default = nil = Forever)
-          values: \d+
     CLEANUP_POLL_TIME:
       summary: Period at which to run the cleanup process.
       parameters:
         - name: Time
           required: true
-          description: Number of seconds between runs of the cleanup process (default = 600 = 10 minutes)
-          values: \d+
-    REDUCER_DISABLE:
-      summary: Disables the data reduction microservice for the target
-    REDUCER_MAX_CPU_UTILIZATION:
-      summary: Maximum amount of CPU utilization to apply to data reduction
-      parameters:
-        - name: Percentage
-          required: true
-          description: 0 to 100 percent (default = 30)
+          description: Number of seconds between runs of the cleanup process (default = 3600 = 1 hour)
           values: \d+
     TARGET_MICROSERVICE:
       summary: Breaks a target microservice out into its own process.
@@ -180,8 +126,7 @@ TARGET:
       parameters:
         - name: Type
           required: true
-          description: The target microservice type. Must be one of
-            DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP
+          description: The target microservice type. Must be one of DECOM, COMMANDLOG, PACKETLOG, or CLEANUP
           values: .*
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
@@ -190,7 +135,7 @@ TARGET:
         - name: Packet Name
           required: true
           description: The packet name. Does not apply to
-            REDUCER or CLEANUP target microservice types.
+            CLEANUP target microservice type.
           values: .*
     DISABLE_ERB:
       summary: Disable ERB processing

@@ -124,12 +124,15 @@ module OpenC3
         end
       end
 
-      # DERIVED items are JSON-encoded (could be any type)
+      # DERIVED items with declared converted_type are stored as typed columns
+      # (float, int, etc.) and will be returned as non-strings, handled above.
+      # DERIVED items without declared type or with complex types (ARRAY, OBJECT, ANY)
+      # are stored as VARCHAR and JSON-encoded.
       if data_type == 'DERIVED'
         begin
           return JSON.parse(value, allow_nan: true, create_additions: true)
         rescue JSON::ParserError
-          # Could be a plain string from DERIVED
+          # Could be a plain string from DERIVED with converted_type=STRING
           return value
         end
       end
@@ -177,22 +180,6 @@ module OpenC3
     # ILP protocol special characters that must be sanitized in column names
     def self.sanitize_column_name(item_name)
       item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
-    end
-
-    # Get the column suffix for a given value type.
-    # Used when building SQL queries to select the appropriate column.
-    #
-    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED'
-    # @return [String, nil] Column suffix ('__C', '__F') or nil for RAW
-    def self.column_suffix_for_value_type(value_type)
-      case value_type
-      when 'FORMATTED'
-        '__F'
-      when 'CONVERTED'
-        '__C'
-      else
-        nil
-      end
     end
 
     # Convert a PG timestamp to UTC.
