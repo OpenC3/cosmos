@@ -79,7 +79,6 @@
         v-for="def in screens"
         :id="screenId(def.id)"
         :key="def.id"
-        ref="gridItem"
         class="item"
       >
         <div class="item-content">
@@ -198,7 +197,6 @@
       </pane>
       <pane :size="100 - editorBoxSize">
         <script-debug-panel
-          ref="debugPanel"
           v-model:debug="debug"
           v-model:messages="messages"
           :show-debug="showDebug"
@@ -517,10 +515,8 @@ export default {
       lockedBy: null,
       showEditingToast: false,
       showSaveAs: false,
-      areYouSure: false,
       subscription: null,
       cable: null,
-      fatal: false,
       updateInterval: null,
       receivedEvents: [],
       messages: [],
@@ -988,10 +984,6 @@ export default {
       '/openc3-api/autocomplete/keywords/screen',
     )
     this.screenKeywords = keywordsResponse.data
-
-    if (this.inline) {
-      this.readOnly = true
-    }
   },
   mounted: async function () {
     // Build modes using the mixin methods
@@ -2608,11 +2600,7 @@ class TestSuite(Suite):
       }
     },
     unlockFile: function () {
-      if (
-        this.filename !== NEW_FILENAME &&
-        !this.readOnly &&
-        !this.readOnlyUser
-      ) {
+      if (this.filename !== NEW_FILENAME && !this.readOnlyUser) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
     },
