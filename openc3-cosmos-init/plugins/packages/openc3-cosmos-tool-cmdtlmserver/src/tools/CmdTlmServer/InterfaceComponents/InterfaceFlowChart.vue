@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -35,6 +35,9 @@ const {
   onEdgesChange,
   applyEdgeChanges,
   fitView,
+  findNode,
+  getViewport,
+  setViewport,
 } = useVueFlow()
 
 const dialog = inject('dialog')
@@ -48,11 +51,13 @@ const nodes = ref([])
 const edges = ref([])
 
 let layoutNeeded = false
+let structureChanged = false
 
 async function layoutGraph(direction, force = false) {
   if (layoutNeeded || force) {
     nodes.value = layout(nodes.value, edges.value, direction)
     layoutNeeded = false
+    structureChanged = false
     nextTick(() => {
       fitView()
     })
@@ -293,7 +298,7 @@ onNodesChange(async (changes) => {
       // Allow changes except remove
       nextChanges.push(change)
     }
-    if (change.type === 'dimensions') {
+    if (change.type === 'dimensions' && structureChanged) {
       layoutNeeded = true
       nextTick(() => {
         layoutGraph('LR')
@@ -456,6 +461,17 @@ function onNodeClick(event) {
 }
 
 function updateFlowChart() {
+  // Save current node positions from VueFlow's internal state (includes drag positions)
+  const oldNodeIds = new Set(nodes.value.map((n) => n.id))
+  const positionMap = new Map()
+  const savedViewport = oldNodeIds.size > 0 ? getViewport() : null
+  nodes.value.forEach((n) => {
+    const graphNode = findNode(n.id)
+    if (graphNode) {
+      positionMap.set(n.id, { x: graphNode.position.x, y: graphNode.position.y })
+    }
+  })
+
   nodes.value = []
   edges.value = []
   const targetNames = []
@@ -875,7 +891,32 @@ function updateFlowChart() {
     nodes.value.push(targetNode)
   })
 
-  layoutNeeded = true
+  // Check if the graph structure changed (nodes added or removed)
+  const newNodeIds = new Set(nodes.value.map((n) => n.id))
+  const hasStructureChange =
+    oldNodeIds.size === 0 ||
+    oldNodeIds.size !== newNodeIds.size ||
+    [...newNodeIds].some((id) => !oldNodeIds.has(id)) ||
+    [...oldNodeIds].some((id) => !newNodeIds.has(id))
+
+  if (hasStructureChange) {
+    structureChanged = true
+    layoutNeeded = true
+  } else if (!structureChanged) {
+    // Same structure with no pending layout: restore saved node positions and viewport
+    nodes.value = nodes.value.map((n) => {
+      const savedPos = positionMap.get(n.id)
+      if (savedPos) {
+        return { ...n, position: savedPos }
+      }
+      return n
+    })
+    if (savedViewport) {
+      nextTick(() => {
+        setViewport(savedViewport)
+      })
+    }
+  }
 }
 
 watch(
@@ -883,9 +924,6 @@ watch(
   async () => {
     if (props.interfaceDetails !== null) {
       updateFlowChart()
-      nextTick(() => {
-        layoutGraph('LR')
-      })
     }
   },
   { immediate: true },
@@ -896,9 +934,6 @@ watch(
   async () => {
     if (props.routerDetails !== null) {
       updateFlowChart()
-      nextTick(() => {
-        layoutGraph('LR')
-      })
     }
   },
   { immediate: true },
