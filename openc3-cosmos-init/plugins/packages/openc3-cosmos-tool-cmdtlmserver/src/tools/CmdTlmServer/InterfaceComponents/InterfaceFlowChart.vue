@@ -468,7 +468,10 @@ function updateFlowChart() {
   nodes.value.forEach((n) => {
     const graphNode = findNode(n.id)
     if (graphNode) {
-      positionMap.set(n.id, { x: graphNode.position.x, y: graphNode.position.y })
+      positionMap.set(n.id, {
+        x: graphNode.position.x,
+        y: graphNode.position.y,
+      })
     }
   })
 
