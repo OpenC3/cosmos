@@ -9,7 +9,19 @@ sidebar_custom_props:
 Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
 :::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
+Read protocols execute in the order specified (first specified runs first). Write protocols execute in the reverse order (last specified executes first).
+
+This ordering is critical when combining packet delineation protocols (e.g. Length, Terminated) with helper protocols (e.g. CRC, Ignore). Delineation protocols must run before helper protocols on reads so they can assemble complete packets first. On writes, delineation protocols must run after helper protocols so fields like the length are filled in before the CRC is calculated. Since write protocols execute in reverse order, the helper protocol must be listed before the delineation protocol for writes.
+
+To satisfy both directions, you may need to define a helper protocol twice — once for WRITE (before the delineation protocol) and once for READ (after it). For example, with a Length protocol and CRC protocol:
+
+```ruby
+PROTOCOL WRITE CrcProtocol ...
+PROTOCOL READ_WRITE LengthProtocol ...
+PROTOCOL READ CrcProtocol ...
+```
+
+On read: Length runs first (assembles a complete packet from the byte stream), then CRC runs (verifies the CRC over the complete packet). On write: CRC is listed before Length, so since write order is reversed, Length runs first (fills in the length field) and then CRC runs (calculates the CRC over the final packet including the correct length).
 :::
 
 Protocols are typically used to define the logic to delineate packets and manipulate data as it written to and read from Interfaces. COSMOS includes Interfaces for TCP/IP Client, TCP/IP Server, Udp Client / Server, and Serial connections. For 99% of use cases these Interfaces should not require any changes as they universally handle the low-level details of reading and writing from these types of connections. All unique behavior should now be defined in Protocols.
@@ -533,6 +545,10 @@ For a full example, please see the [openc3-cosmos-scpi-power-supply](https://git
 ### CRC Protocol
 
 The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets. Note: You either have to give all the parameters for Poly, Seed, Xor, Reflect or just use the defaults. You can't mix and match setting some and not others.
+
+:::warning CRC Protocol Ordering
+The CRC Protocol must run after packet delineation protocols (e.g. Length, Terminated) for both reads and writes. On reads, the delineation protocol must assemble a complete packet before the CRC can be verified — otherwise the CRC protocol may operate on partial or multiple packets. On writes, the delineation protocol must fill in fields like the length before the CRC is calculated — otherwise the CRC will be computed over incorrect data. Because read and write protocols execute in opposite orders, this typically requires defining the CRC protocol twice — once for WRITE before the delineation protocol, and once for READ after it. See [Protocol Run Order](#protocol-run-order) for a full example.
+:::
 
 | Parameter       | Description                                                                                                 | Required | Default                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
