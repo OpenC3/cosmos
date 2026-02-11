@@ -317,6 +317,17 @@ def check_alpine(client)
   else
     puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}"
   end
+
+  # Verify the roadmap.md documents the current Alpine version
+  roadmap_path = File.join(File.dirname(__FILE__), '../../docs.openc3.com/docs/development/roadmap.md')
+  if File.exist?(roadmap_path)
+    roadmap = File.read(roadmap_path)
+    unless roadmap.include?("Alpine-#{ENV['ALPINE_VERSION']}")
+      puts "WARN: roadmap.md Alpine version does not match ALPINE_VERSION=#{ENV['ALPINE_VERSION']}. Update the Alpine version in docs.openc3.com/docs/development/roadmap.md"
+    end
+  else
+    puts "WARN: Could not find roadmap.md at #{roadmap_path}"
+  end
 end
 
 def check_versitygw(client, versitygw_version)
