@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Check code examples in markdown documentation files for syntax errors.
+Check code examples in markdown documentation files for syntax errors,
+and optionally check external URLs for broken links (404s).
 
 Parses fenced code blocks from .md files and runs language-appropriate
 syntax checks (Python, Ruby, Bash, JavaScript, JSON).
@@ -16,6 +17,8 @@ Options:
     --verbose       Show all checked blocks, not just errors
     --include-bare  Also attempt to check untagged code blocks (experimental)
     --json          Output results as JSON
+    --check-urls    Check external URLs for broken links (404s)
+    --file FILE     Check only this specific .md file
     --help          Show this help message
 
 Examples:
@@ -30,6 +33,12 @@ Examples:
 
     # Include untagged code blocks (tries to auto-detect language)
     python scripts/check_doc_code_examples.py --include-bare
+
+    # Check external URLs for broken links
+    python scripts/check_doc_code_examples.py --check-urls
+
+    # Check URLs in a single file
+    python scripts/check_doc_code_examples.py --check-urls --file docs.openc3.com/docs/guides/troubleshooting.md
 """
 
 import argparse
@@ -41,6 +50,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -67,12 +79,23 @@ class SyntaxError_:
 
 
 @dataclass
+class BrokenUrl:
+    file: str
+    line: int
+    url: str
+    status_code: int  # 0 for connection errors
+    error_message: str
+
+
+@dataclass
 class CheckResult:
     total_files: int = 0
     total_blocks: int = 0
     blocks_checked: int = 0
     blocks_skipped: int = 0
     errors: list = field(default_factory=list)
+    url_errors: list = field(default_factory=list)
+    urls_checked: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -407,6 +430,252 @@ def guess_language(code: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# URL extraction and checking
+# ---------------------------------------------------------------------------
+
+# Matches markdown links [text](url) and bare URLs starting with http(s)
+URL_MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\((https?://[^\s)]+)\)")
+URL_BARE = re.compile(r"(?<!\()(https?://[^\s)\]>\"'`,]+)")
+
+# Domains to skip — localhost, example domains, placeholders
+SKIP_URL_DOMAINS = {
+    "localhost", "127.0.0.1", "0.0.0.0",
+    "example.com", "example.org", "example.net",
+    "your-bucket", "mycompany.com"
+}
+
+# URL substrings known to be valid but that block automated requests (403/404).
+# Any URL containing one of these substrings is skipped.
+WHITELISTED_URLS = [
+    "raspberrypi.com/software",
+    "npmjs.com/package",
+    "github.com/OpenC3/cosmos/assets",
+    "www.computerhope.com",
+    "mydomain.com"
+]
+
+# Domains that receive a GitHub auth token
+GITHUB_DOMAINS = {"github.com", "raw.githubusercontent.com", "api.github.com"}
+
+
+def _get_github_token() -> str | None:
+    """Get a GitHub token from GITHUB_TOKEN env var or `gh auth token`."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    if shutil.which("gh"):
+        try:
+            result = subprocess.run(
+                ["gh", "auth", "token"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    return None
+
+
+def _is_github_url(url: str) -> bool:
+    """Check if a URL is a GitHub domain that should receive auth.
+    Excludes release download URLs which use redirect-based auth."""
+    try:
+        domain = url.split("//", 1)[1].split("/", 1)[0].split(":")[0]
+    except IndexError:
+        return False
+    if domain not in GITHUB_DOMAINS:
+        return False
+    # Release asset downloads redirect to S3 and reject token auth
+    if "/releases/download/" in url:
+        return False
+    return True
+
+
+# Matches github.com/:owner/:repo/blob/:ref/:path or /tree/:ref/:path
+_GITHUB_BLOB_TREE = re.compile(
+    r"^https://github\.com/([^/]+)/([^/]+)/(blob|tree)/([^/]+)/(.+)$"
+)
+# Matches github.com/:owner/:repo/releases/tag/:tag
+_GITHUB_RELEASE_TAG = re.compile(
+    r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/([^/]+)$"
+)
+# Matches github.com/:owner/:repo (with optional trailing slash, .git, or ?query)
+_GITHUB_REPO = re.compile(
+    r"^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?(?:\?.*)?$"
+)
+
+
+def _github_api_url(url: str) -> str | None:
+    """Convert a github.com web URL to an API URL for auth-friendly checking.
+    Returns None if the URL doesn't match a convertible pattern."""
+    m = _GITHUB_BLOB_TREE.match(url)
+    if m:
+        owner, repo, kind, ref, path = m.groups()
+        return f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}"
+    m = _GITHUB_RELEASE_TAG.match(url)
+    if m:
+        owner, repo, tag = m.groups()
+        return f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}"
+    m = _GITHUB_REPO.match(url)
+    if m:
+        owner, repo = m.groups()
+        return f"https://api.github.com/repos/{owner}/{repo}"
+    return None
+
+
+def extract_urls(filepath: str) -> list[tuple[int, str]]:
+    """Extract external URLs from a markdown file. Returns list of (line_number, url)."""
+    urls = []
+    try:
+        with open(filepath, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except OSError:
+        return urls
+
+    in_code_block = False
+    for i, line in enumerate(lines, 1):
+        stripped = line.rstrip()
+        # Track code fences to skip URLs inside code blocks
+        if FENCE_OPEN.match(stripped):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block:
+            continue
+
+        # Extract from markdown links [text](url)
+        for m in URL_MARKDOWN_LINK.finditer(line):
+            urls.append((i, m.group(2)))
+        # Extract bare URLs not already captured by markdown links
+        link_spans = [(m.start(2), m.end(2)) for m in URL_MARKDOWN_LINK.finditer(line)]
+        for m in URL_BARE.finditer(line):
+            # Skip if this URL is part of a markdown link already found
+            if any(s <= m.start() < e for s, e in link_spans):
+                continue
+            urls.append((i, m.group(0)))
+
+    return urls
+
+
+def should_skip_url(url: str) -> bool:
+    """Check if a URL should be skipped (localhost, example domains, whitelisted, etc)."""
+    if any(pattern in url for pattern in WHITELISTED_URLS):
+        return True
+    try:
+        # Extract domain from URL
+        domain = url.split("//", 1)[1].split("/", 1)[0].split(":")[0]
+    except IndexError:
+        return True
+    if domain in SKIP_URL_DOMAINS:
+        return True
+    # Skip URLs with obvious placeholders
+    if "<" in url or "{" in url or "HOSTNAME" in url or "PASSWORD" in url:
+        return True
+    # Skip URLs with HTML entities (e.g. http://&lt;Your...)
+    if "&lt;" in url or "&gt;" in url:
+        return True
+    # Skip URLs with a port number (e.g. http://host:2900) — local/test URLs
+    host_port = url.split("//", 1)[1].split("/", 1)[0]
+    if re.match(r"^.+:\d+$", host_port):
+        return True
+    return False
+
+
+def check_url(url: str, timeout: int = 15, github_token: str | None = None) -> tuple[int, str]:
+    """Check if a URL is reachable. Returns (status_code, error_message).
+    status_code 0 means connection error. Empty error_message means success."""
+    # Strip trailing punctuation that may have been captured
+    url = url.rstrip(".,;:!?")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; OpenC3-DocChecker/1.0)",
+    }
+    check_url_actual = url
+    if github_token and _is_github_url(url):
+        headers["Authorization"] = f"token {github_token}"
+        # GitHub web pages return 404 for private repos even with a token.
+        # Convert to an API URL that properly respects token auth.
+        api_url = _github_api_url(url)
+        if api_url:
+            check_url_actual = api_url
+            headers["Accept"] = "application/vnd.github.v3+json"
+    req = urllib.request.Request(check_url_actual, method="HEAD", headers=headers)
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+        return (resp.status, "")
+    except urllib.error.HTTPError as e:
+        if e.code == 405:
+            # HEAD not allowed, retry with GET
+            req = urllib.request.Request(check_url_actual, method="GET", headers=headers)
+            try:
+                resp = urllib.request.urlopen(req, timeout=timeout)
+                return (resp.status, "")
+            except urllib.error.HTTPError as e2:
+                return (e2.code, str(e2.reason))
+            except Exception as e2:
+                return (0, str(e2))
+        return (e.code, str(e.reason))
+    except urllib.error.URLError as e:
+        return (0, str(e.reason))
+    except Exception as e:
+        return (0, str(e))
+
+
+def check_urls_in_files(
+    md_files: list[str],
+    verbose: bool = False,
+    max_workers: int = 10,
+) -> tuple[int, list[BrokenUrl]]:
+    """Check all external URLs across markdown files. Returns (urls_checked, broken_urls)."""
+    # Resolve GitHub token once for all URL checks
+    github_token = _get_github_token()
+    if github_token and verbose:
+        print("  Using GitHub authentication for github.com URLs")
+
+    # Collect all unique URLs with their locations
+    url_locations: dict[str, list[tuple[str, int]]] = {}  # url -> [(file, line), ...]
+    for fp in md_files:
+        for line_num, url in extract_urls(fp):
+            if should_skip_url(url):
+                continue
+            clean_url = url.rstrip(".,;:!?")
+            url_locations.setdefault(clean_url, []).append((fp, line_num))
+
+    unique_urls = list(url_locations.keys())
+    if not unique_urls:
+        return (0, [])
+
+    broken = []
+    checked = 0
+
+    def _check_one(url):
+        return url, check_url(url, github_token=github_token)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_check_one, url): url for url in unique_urls}
+        for future in as_completed(futures):
+            url, (status, error_msg) = future.result()
+            checked += 1
+            is_error = status == 0 or status >= 400
+            if is_error:
+                for filepath, line_num in url_locations[url]:
+                    broken.append(BrokenUrl(
+                        file=filepath,
+                        line=line_num,
+                        url=url,
+                        status_code=status,
+                        error_message=error_msg or f"HTTP {status}",
+                    ))
+            if verbose:
+                if is_error:
+                    print(f"  [BROKEN] {url} — {error_msg or f'HTTP {status}'}")
+                else:
+                    print(f"  [ok] {url}")
+
+    # Sort broken URLs by file then line
+    broken.sort(key=lambda b: (b.file, b.line))
+    return (checked, broken)
+
+
+# ---------------------------------------------------------------------------
 # Main logic
 # ---------------------------------------------------------------------------
 
@@ -512,34 +781,53 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Show all checked blocks")
     parser.add_argument("--include-bare", action="store_true", help="Try to check untagged blocks")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Output as JSON")
+    parser.add_argument("--check-urls", action="store_true", help="Check external URLs for broken links (404s)")
+    parser.add_argument("--file", help="Check only this specific .md file")
     args = parser.parse_args()
 
-    # Resolve path relative to script location or cwd
-    search_path = args.path
-    if not os.path.isabs(search_path):
-        # Try relative to repo root (parent of scripts/)
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        candidate = os.path.join(repo_root, search_path)
-        if os.path.isdir(candidate):
-            search_path = candidate
-        elif not os.path.isdir(search_path):
-            print(f"Error: directory not found: {search_path}")
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Single-file mode
+    if args.file:
+        file_path = args.file
+        if not os.path.isabs(file_path):
+            candidate = os.path.join(repo_root, file_path)
+            if os.path.isfile(candidate):
+                file_path = candidate
+        if not os.path.isfile(file_path):
+            print(f"Error: file not found: {file_path}")
+            sys.exit(1)
+        md_files = [file_path]
+        search_path = os.path.dirname(file_path)
+    else:
+        # Resolve path relative to script location or cwd
+        search_path = args.path
+        if not os.path.isabs(search_path):
+            # Try relative to repo root (parent of scripts/)
+            candidate = os.path.join(repo_root, search_path)
+            if os.path.isdir(candidate):
+                search_path = candidate
+            elif not os.path.isdir(search_path):
+                print(f"Error: directory not found: {search_path}")
+                sys.exit(1)
+
+        if not os.path.isdir(search_path):
+            print(f"Error: not a directory: {search_path}")
             sys.exit(1)
 
-    if not os.path.isdir(search_path):
-        print(f"Error: not a directory: {search_path}")
-        sys.exit(1)
+        # Find files
+        md_files = find_markdown_files(search_path)
+        if not md_files:
+            print(f"No .md files found under {search_path}")
+            sys.exit(0)
 
     lang_filter = normalize_lang(args.lang) if args.lang else None
 
-    # Find files
-    md_files = find_markdown_files(search_path)
-    if not md_files:
-        print(f"No .md files found under {search_path}")
-        sys.exit(0)
-
     if not args.json_output:
-        print(f"Scanning {len(md_files)} markdown files under {search_path} ...")
+        if args.file:
+            print(f"Checking {md_files[0]} ...")
+        else:
+            print(f"Scanning {len(md_files)} markdown files under {search_path} ...")
         if lang_filter:
             print(f"  Filtering to language: {lang_filter}")
         if args.include_bare:
@@ -554,6 +842,15 @@ def main():
     result = check_blocks(all_blocks, lang_filter, args.include_bare, args.verbose)
     result.total_files = len(md_files)
 
+    # URL checking
+    if args.check_urls:
+        if not args.json_output:
+            print(f"Checking external URLs for broken links ...")
+            print()
+        urls_checked, url_errors = check_urls_in_files(md_files, args.verbose)
+        result.urls_checked = urls_checked
+        result.url_errors = url_errors
+
     # Output
     if args.json_output:
         output = {
@@ -564,6 +861,10 @@ def main():
             "error_count": len(result.errors),
             "errors": [asdict(e) for e in result.errors],
         }
+        if args.check_urls:
+            output["urls_checked"] = result.urls_checked
+            output["broken_url_count"] = len(result.url_errors)
+            output["broken_urls"] = [asdict(e) for e in result.url_errors]
         print(json_mod.dumps(output, indent=2))
     else:
         # Print errors grouped by file
@@ -585,6 +886,24 @@ def main():
         else:
             print("No syntax errors found!")
 
+        # Print broken URLs
+        if args.check_urls:
+            print()
+            if result.url_errors:
+                current_file = None
+                for err in result.url_errors:
+                    if err.file != current_file:
+                        current_file = err.file
+                        rel = os.path.relpath(err.file, search_path)
+                        print(f"\n{'='*70}")
+                        print(f"BROKEN URLs in: {rel}")
+                        print(f"{'='*70}")
+                    status = f"HTTP {err.status_code}" if err.status_code else "Connection error"
+                    print(f"\n  Line {err.line}: {err.url}")
+                    print(f"  Status: {status} — {err.error_message}")
+            else:
+                print("No broken URLs found!")
+
         # Summary
         print(f"\n{'─'*70}")
         print(f"Summary:")
@@ -592,10 +911,14 @@ def main():
         print(f"  Code blocks:      {result.total_blocks}")
         print(f"  Blocks checked:   {result.blocks_checked}")
         print(f"  Blocks skipped:   {result.blocks_skipped}")
-        print(f"  Errors found:     {len(result.errors)}")
+        print(f"  Syntax errors:    {len(result.errors)}")
+        if args.check_urls:
+            print(f"  URLs checked:     {result.urls_checked}")
+            print(f"  Broken URLs:      {len(result.url_errors)}")
         print(f"{'─'*70}")
 
-    sys.exit(1 if result.errors else 0)
+    has_errors = bool(result.errors) or bool(result.url_errors)
+    sys.exit(1 if has_errors else 0)
 
 
 if __name__ == "__main__":
