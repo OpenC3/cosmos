@@ -38,7 +38,9 @@ APPEND_PARAMETER:
 ID_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
-  summary: Defines an identification command parameter in the current command packet
+  summary: Defines an identification command parameter in the current command packet.
+    Note, packets defined without one or more ID_PARAMETERs are "catch-all" packets which
+    will match all incoming data. A warning will be generated for packets without ID_PARAMETERs.
   description: ID parameters are used to identify the binary block of data as a
     particular command. A command packet may have one or more ID_PARAMETERs and all
     must match the binary data for the command to be identified.

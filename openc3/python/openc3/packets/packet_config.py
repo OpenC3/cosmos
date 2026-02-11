@@ -408,6 +408,16 @@ class PacketConfig:
             warnings = self.current_packet.check_bit_offsets()
             if len(warnings) > 0:
                 self.warnings += warnings
+            if (
+                not self.current_packet.virtual
+                and not self.current_packet.disabled
+                and self.current_packet.target_name != "UNKNOWN"
+                and not self.current_packet.id_items
+            ):
+                pkt_type = "Command" if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING else "Telemetry"
+                self.warnings.append(
+                    f"{pkt_type} packet {self.current_packet.target_name} {self.current_packet.packet_name} has no ID_ITEMS and will match all buffers"
+                )
             if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet

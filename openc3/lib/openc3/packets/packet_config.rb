@@ -336,6 +336,10 @@ module OpenC3
       finish_item()
       if @current_packet
         @warnings += @current_packet.check_bit_offsets
+        if !@current_packet.virtual && !@current_packet.disabled && @current_packet.target_name != 'UNKNOWN' && @current_packet.id_items.empty?
+          type = @current_cmd_or_tlm == COMMAND ? "Command" : "Telemetry"
+          @warnings << "#{type} packet #{@current_packet.target_name} #{@current_packet.packet_name} has no ID_ITEMS and will match all buffers"
+        end
         if @current_cmd_or_tlm == COMMAND
           PacketParser.check_item_data_types(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet

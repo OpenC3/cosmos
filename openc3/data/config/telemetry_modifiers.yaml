@@ -35,6 +35,7 @@ ID_ITEM:
   summary: Defines a telemetry item in the current telemetry packet.
     Note, packets defined without one or more ID_ITEMs are "catch-all" packets which
     will match all incoming data. Normally this is the job of the UNKNOWN packet.
+    A warning will be generated for packets without ID_ITEMs.
   example: ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
   parameters:
     - name: Name
