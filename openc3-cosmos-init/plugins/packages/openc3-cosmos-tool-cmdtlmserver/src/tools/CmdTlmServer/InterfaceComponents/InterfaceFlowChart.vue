@@ -957,6 +957,16 @@ watch(
       @node-click="onNodeClick"
     >
       <Background pattern-color="#aaa" :gap="16" />
+      <div class="docs-overlay">
+        <a
+          href="/tools/staticdocs/docs/tools/cmd-tlm-server#data-flows-tab"
+          target="_blank"
+          class="docs-link"
+        >
+          <v-icon size="small" class="mr-1">mdi-file-document-outline</v-icon>
+          Docs
+        </a>
+      </div>
       <Controls>
         <ControlButton title="Reset" @click="layoutGraph('LR', true)">
           <svg width="16" height="16" viewBox="0 0 32 32">
@@ -1050,5 +1060,32 @@ watch(
 
 .vue-flow__edges path {
   stroke-width: 2;
+}
+
+.docs-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+}
+
+.docs-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background-color: rgba(30, 50, 70, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ffffffcc;
+  text-decoration: none;
+  font-size: 13px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.docs-link:hover {
+  background-color: rgba(40, 70, 100, 0.95);
+  color: #fff;
 }
 </style>
