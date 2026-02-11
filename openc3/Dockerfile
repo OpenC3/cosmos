@@ -22,7 +22,7 @@ RUN mkdir -p lib/openc3/ext \
     && openc3_gem=$(dirname `gem which openc3`) \
     && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
     && mkdir -p gems \
-    && mv *.gem gems/. \
+    && mv ./*.gem gems/. \
     && gem cleanup \
     && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
