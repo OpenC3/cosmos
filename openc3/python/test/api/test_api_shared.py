@@ -20,7 +20,6 @@ from openc3.api import (
     check_formatted,
     check_raw,
     check_tolerance,
-    check_with_units,
     wait,
     wait_check,
     wait_check_expression,
@@ -159,11 +158,6 @@ class TestApiShared(unittest.TestCase):
             check_raw("INST HEALTH_STATUS TEMP1 == 1")
             self.assertIn("CHECK: INST HEALTH_STATUS TEMP1 == 1 success", stdout.getvalue())
             check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 C'")
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success",
-                stdout.getvalue(),
-            )
-            check_with_units("INST HEALTH_STATUS TEMP1 == '10.000 C'")
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success",
                 stdout.getvalue(),

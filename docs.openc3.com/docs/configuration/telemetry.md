@@ -383,7 +383,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 ```
 
 ### ID_ITEM
-**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet.**
+**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet. A warning will be generated for packets without ID_ITEMs.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

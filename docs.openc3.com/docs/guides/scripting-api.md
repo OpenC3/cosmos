@@ -43,108 +43,127 @@ When writing a script that connects to COSMOS from outside of the COSMOS cluster
 For more information see [API vs Script](./script-writing.md#api-vs-script)
 :::
 
+### Migration from COSMOS v6 to v7
+
+See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migrating-from-cosmos-6-to-cosmos-7) guide for other changes including password hashing, JSON API session tokens, and configuration changes.
+
+The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result.
+
+| Method                   | API        | Status                                                                     |
+| ------------------------ | ---------- | -------------------------------------------------------------------------- |
+| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm_formatted)                            |
+| check_with_units         | api_shared | Deprecated, use [check_formatted](#check_formatted)                        |
+| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm) and pass type                                     |
+| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type             |
+| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                   |
+| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                       |
+| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type               |
+| wait_check_tolerance_raw | api_shared | Removed, use [wwait_check_tolerancet](#wait_check_tolerance) and pass type |
+
 ### Migration from COSMOS v5 to v6
+
+See the [Migrating From COSMOS 5 to COSMOS 6](../getting-started/upgrading#migrating-from-cosmos-5-to-cosmos-6) guide for other changes including migrating to Vue 3 and Vuetify 3.
 
 The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
 
-| Method              | Tool                         | Status                             |
-| ------------------- | ---------------------------- | ---------------------------------- |
-| get_all_target_info | Command and Telemetry Server | Removed, use get_target_interfaces |
-| play_wav_file       | Script Runner                | Removed                            |
-| status_bar          | Script Runner                | Removed                            |
+| Method              | Tool                         | Status                                                       |
+| ------------------- | ---------------------------- | ------------------------------------------------------------ |
+| get_all_target_info | Command and Telemetry Server | Removed, use [get_target_interfaces](#get_target_interfaces) |
+| play_wav_file       | Script Runner                | Removed                                                      |
+| status_bar          | Script Runner                | Removed                                                      |
 
 ### Migration from COSMOS v4 to v5
 
-The following API methods are deprecated (will not be ported to COSMOS 5):
+The following API methods are removed (will not be ported to COSMOS 5):
 
-| Method                                | Tool                         | Status                                                              |
-| ------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
-| clear                                 | Telemetry Viewer             | Deprecated, use clear_screen                                        |
-| clear_all                             | Telemetry Viewer             | Deprecated, use clear_all_screens                                   |
-| close_local_screens                   | Telemetry Viewer             | Deprecated, use clear_screen                                        |
-| clear_disconnected_targets            | Script Runner                | Deprecated                                                          |
-| cmd_tlm_clear_counters                | Command and Telemetry Server | Deprecated                                                          |
-| cmd_tlm_reload                        | Command and Telemetry Server | Deprecated                                                          |
-| display                               | Telemetry Viewer             | Deprecated, use display_screen                                      |
-| get_all_packet_logger_info            | Command and Telemetry Server | Deprecated                                                          |
-| get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                               |
-| get_background_tasks                  | Command and Telemetry Server | Deprecated                                                          |
-| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
-| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_tlm                                         |
-| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
-| get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
-| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_cmd                                             |
-| get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                         |
-| get_disconnected_targets              | Script Runner                | Deprecated                                                          |
-| get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                       |
-| get_interface_targets                 | Command and Telemetry Server | Deprecated                                                          |
-| get_output_logs_filenames             | Command and Telemetry Server | Deprecated                                                          |
-| get_packet                            | Command and Telemetry Server | Deprecated, use get_packets                                         |
-| get_packet_data                       | Command and Telemetry Server | Deprecated, use get_packets                                         |
-| get_packet_logger_info                | Command and Telemetry Server | Deprecated                                                          |
-| get_packet_loggers                    | Command and Telemetry Server | Deprecated                                                          |
-| get_replay_mode                       | Replay                       | Deprecated                                                          |
-| get_router_info                       | Command and Telemetry Server | Deprecated, use get_router                                          |
-| get_scriptrunner_message_log_filename | Command and Telemetry Server | Deprecated                                                          |
-| get_server_message                    | Command and Telemetry Server | Deprecated                                                          |
-| get_server_message_log_filename       | Command and Telemetry Server | Deprecated                                                          |
-| get_server_status                     | Command and Telemetry Server | Deprecated                                                          |
-| get_stale                             | Command and Telemetry Server | Deprecated                                                          |
-| get_target_ignored_items              | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_ignored_parameters         | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_info                       | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_list                       | Command and Telemetry Server | Deprecated, use get_target_names                                    |
-| get_tlm_details                       | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_item_list                     | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_list                          | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
-| interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
-| override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
-| open_directory_dialog                 | Script Runner                | Deprecated                                                          |
-| play_wav_file                         | Script Runner                | Deprecated                                                          |
-| replay_move_end                       | Replay                       | Deprecated                                                          |
-| replay_move_index                     | Replay                       | Deprecated                                                          |
-| replay_move_start                     | Replay                       | Deprecated                                                          |
-| replay_play                           | Replay                       | Deprecated                                                          |
-| replay_reverse_play                   | Replay                       | Deprecated                                                          |
-| replay_select_file                    | Replay                       | Deprecated                                                          |
-| replay_set_playback_delay             | Replay                       | Deprecated                                                          |
-| replay_status                         | Replay                       | Deprecated                                                          |
-| replay_step_back                      | Replay                       | Deprecated                                                          |
-| replay_step_forward                   | Replay                       | Deprecated                                                          |
-| replay_stop                           | Replay                       | Deprecated                                                          |
-| require_utility                       | Script Runner                | Deprecated but exists for backwards compatibility, use load_utility |
-| router_state                          | Command and Telemetry Server | Deprecated, use get_router                                          |
-| save_file_dialog                      | Script Runner                | Deprecated                                                          |
-| save_setting                          | Command and Telemetry Server | Deprecated but exists for backwards compatibility, use set_setting  |
-| set_cmd_tlm_disconnect                | Script Runner                | Deprecated, use disconnect_script                                   |
-| set_disconnected_targets              | Script Runner                | Deprecated                                                          |
-| set_replay_mode                       | Replay                       | Deprecated                                                          |
-| set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
-| set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
-| show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
-| status_bar                            | Script Runner                | Deprecated                                                          |
-| shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
-| start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
-| start_logging                         | Command and Telemetry Server | Deprecated                                                          |
-| start_new_scriptrunner_message_log    | Command and Telemetry Server | Deprecated                                                          |
-| start_new_server_message_log          | Command and Telemetry Server | Deprecated                                                          |
-| start_tlm_log                         | Command and Telemetry Server | Deprecated                                                          |
-| stop_background_task                  | Command and Telemetry Server | Deprecated                                                          |
-| stop_cmd_log                          | Command and Telemetry Server | Deprecated                                                          |
-| stop_logging                          | Command and Telemetry Server | Deprecated                                                          |
-| stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                          |
-| subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                          |
-| subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                   |
-| subscribe_server_messages             | Command and Telemetry Server | Deprecated                                                          |
-| tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                 |
-| unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                          |
-| unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                          |
-| unsubscribe_server_messages           | Command and Telemetry Server | Deprecated                                                          |
-| wait_raw                              | Script Runner                | Deprecated, use wait(..., type: :RAW)                               |
-| wait_check_raw                        | Script Runner                | Deprecated, use wait_check(..., type: :RAW)                         |
-| wait_tolerance_raw                    | Script Runner                | Deprecated, use wait_tolerance(..., type: :RAW)                     |
-| wait_check_tolerance_raw              | Script Runner                | Deprecated, use wait_check_tolerance(..., type: :RAW)               |
+| Method                                | Tool                         | Status                                                                         |
+| ------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| clear                                 | Telemetry Viewer             | Removed, use [clear_screen](#clear_screen)                                     |
+| clear_all                             | Telemetry Viewer             | Removed, use [clear_all_screens](#clear_all_screens)                           |
+| close_local_screens                   | Telemetry Viewer             | Removed, use [clear_screen](#clear_screen)                                     |
+| clear_disconnected_targets            | Script Runner                | Removed                                                                        |
+| cmd_tlm_clear_counters                | Command and Telemetry Server | Removed                                                                        |
+| cmd_tlm_reload                        | Command and Telemetry Server | Removed                                                                        |
+| display                               | Telemetry Viewer             | Removed, use [display_screen](#display_screen)                                 |
+| get_all_packet_logger_info            | Command and Telemetry Server | Removed                                                                        |
+| get_all_target_info                   | Command and Telemetry Server | Removed, use [get_target_interfaces](#get_target_interfaces)                   |
+| get_background_tasks                  | Command and Telemetry Server | Removed                                                                        |
+| get_all_cmd_info                      | Command and Telemetry Server | Removed, use [get_all_cmds](#get_all_cmds)                                     |
+| get_all_tlm_info                      | Command and Telemetry Server | Removed, use [get_all_tlm](#get_all_tlm)                                       |
+| get_cmd_list                          | Command and Telemetry Server | Removed, use [get_all_cmds](#get_all_cmds)                                     |
+| get_cmd_log_filename                  | Command and Telemetry Server | Removed                                                                        |
+| get_cmd_param_list                    | Command and Telemetry Server | Removed, use [get_cmd](#get_cmd)                                               |
+| get_cmd_tlm_disconnect                | Script Runner                | Removed, use $disconnect                                                       |
+| get_disconnected_targets              | Script Runner                | Removed                                                                        |
+| get_interface_info                    | Command and Telemetry Server | Removed, use [get_interface](#get_interface)                                   |
+| get_interface_targets                 | Command and Telemetry Server | Removed                                                                        |
+| get_output_logs_filenames             | Command and Telemetry Server | Removed                                                                        |
+| get_packet                            | Command and Telemetry Server | Removed, use [get_packets](#get_packets)                                       |
+| get_packet_data                       | Command and Telemetry Server | Removed, use [get_packets](#get_packets)                                       |
+| get_packet_logger_info                | Command and Telemetry Server | Removed                                                                        |
+| get_packet_loggers                    | Command and Telemetry Server | Removed                                                                        |
+| get_replay_mode                       | Replay                       | Removed                                                                        |
+| get_router_info                       | Command and Telemetry Server | Removed, use [get_router](#get_router)                                         |
+| get_scriptrunner_message_log_filename | Command and Telemetry Server | Removed                                                                        |
+| get_server_message                    | Command and Telemetry Server | Removed                                                                        |
+| get_server_message_log_filename       | Command and Telemetry Server | Removed                                                                        |
+| get_server_status                     | Command and Telemetry Server | Removed                                                                        |
+| get_stale                             | Command and Telemetry Server | Removed                                                                        |
+| get_target_ignored_items              | Command and Telemetry Server | Removed, use [get_target](#get_target)                                         |
+| get_target_ignored_parameters         | Command and Telemetry Server | Removed, use [get_target](#get_target)                                         |
+| get_target_info                       | Command and Telemetry Server | Removed, use [get_target](#get_target)                                         |
+| get_target_list                       | Command and Telemetry Server | Removed, use [get_target_names](#get_target_names)                             |
+| get_tlm_details                       | Command and Telemetry Server | Removed                                                                        |
+| get_tlm_item_list                     | Command and Telemetry Server | Removed                                                                        |
+| get_tlm_list                          | Command and Telemetry Server | Removed                                                                        |
+| get_tlm_log_filename                  | Command and Telemetry Server | Removed                                                                        |
+| interface_state                       | Command and Telemetry Server | Removed, use [get_interface](#get_interface)                                   |
+| override_tlm_raw                      | Command and Telemetry Server | Removed, use [override_tlm](#override_tlm)                                     |
+| open_directory_dialog                 | Script Runner                | Removed                                                                        |
+| play_wav_file                         | Script Runner                | Removed                                                                        |
+| replay_move_end                       | Replay                       | Removed                                                                        |
+| replay_move_index                     | Replay                       | Removed                                                                        |
+| replay_move_start                     | Replay                       | Removed                                                                        |
+| replay_play                           | Replay                       | Removed                                                                        |
+| replay_reverse_play                   | Replay                       | Removed                                                                        |
+| replay_select_file                    | Replay                       | Removed                                                                        |
+| replay_set_playback_delay             | Replay                       | Removed                                                                        |
+| replay_status                         | Replay                       | Removed                                                                        |
+| replay_step_back                      | Replay                       | Removed                                                                        |
+| replay_step_forward                   | Replay                       | Removed                                                                        |
+| replay_stop                           | Replay                       | Removed                                                                        |
+| require_utility                       | Script Runner                | Deprecated, use [load_utility](#load_utility)                                  |
+| router_state                          | Command and Telemetry Server | Removed, use [get_router](#get_router)                                         |
+| save_file_dialog                      | Script Runner                | Removed, use [put_target_file](#put_target_file)                               |
+| save_setting                          | Command and Telemetry Server | Deprecated, use [set_setting](#set_setting)                                    |
+| set_cmd_tlm_disconnect                | Script Runner                | Removed, use [disconnect_script](#disconnect_script)                           |
+| set_disconnected_targets              | Script Runner                | Removed                                                                        |
+| set_replay_mode                       | Replay                       | Removed                                                                        |
+| set_stdout_max_lines                  | Script Runner                | Removed                                                                        |
+| set_tlm_raw                           | Script Runner                | Removed, use [set_tlm](#set_tlm)                                               |
+| show_backtrace                        | Script Runner                | Removed, backtrace always shown                                                |
+| status_bar                            | Script Runner                | Removed                                                                        |
+| shutdown_cmd_tlm                      | Command and Telemetry Server | Removed                                                                        |
+| start_cmd_log                         | Command and Telemetry Server | Removed                                                                        |
+| start_logging                         | Command and Telemetry Server | Removed                                                                        |
+| start_new_scriptrunner_message_log    | Command and Telemetry Server | Removed                                                                        |
+| start_new_server_message_log          | Command and Telemetry Server | Removed                                                                        |
+| start_tlm_log                         | Command and Telemetry Server | Removed                                                                        |
+| stop_background_task                  | Command and Telemetry Server | Removed                                                                        |
+| stop_cmd_log                          | Command and Telemetry Server | Removed                                                                        |
+| stop_logging                          | Command and Telemetry Server | Removed                                                                        |
+| stop_tlm_log                          | Command and Telemetry Server | Removed                                                                        |
+| subscribe_limits_events               | Command and Telemetry Server | Removed                                                                        |
+| subscribe_packet_data                 | Command and Telemetry Server | Removed, use [subscribe_packets](#subscribe_packets)                           |
+| subscribe_server_messages             | Command and Telemetry Server | Removed                                                                        |
+| tlm_variable                          | Script Runner                | Deprecated, use [tlm](#tlm) and pass type                                      |
+| unsubscribe_limits_events             | Command and Telemetry Server | Removed                                                                        |
+| unsubscribe_packet_data               | Command and Telemetry Server | Removed                                                                        |
+| unsubscribe_server_messages           | Command and Telemetry Server | Removed                                                                        |
+| wait_raw                              | Script Runner                | Deprecated, use [wait](#wait)(..., type: :RAW)                                 |
+| wait_check_raw                        | Script Runner                | Deprecated, use [wait_check](#wait_check)(..., type: :RAW)                     |
+| wait_tolerance_raw                    | Script Runner                | Deprecated, use [wait_tolerance](#wait_tolerance)(..., type: :RAW)             |
+| wait_check_tolerance_raw              | Script Runner                | Deprecated, use [wait_check_tolerance](#wait_check_tolerance)(..., type: :RAW) |
 
 ## Retrieving User Input
 
@@ -3613,23 +3632,23 @@ id, packets = get_packets(id, block=None, count=1000)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| id        | Unique id returned by subscribe_packets or the previous call to get_packets                                  |
-| block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block)      |
-| count     | Maximum number of packets to return from EACH packet stream                                                  |
+| Parameter | Description                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| id        | Unique id returned by subscribe_packets or the previous call to get_packets                             |
+| block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block) |
+| count     | Maximum number of packets to return from EACH packet stream                                             |
 
 Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
 
 **Metadata keys:**
 
-| Key            | Type    | Description                                                         |
-| -------------- | ------- | ------------------------------------------------------------------- |
-| target_name    | String  | Target name, e.g. "INST"                                           |
-| packet_name    | String  | Packet name, e.g. "HEALTH_STATUS"                                  |
-| time           | Integer | Packet time as nanoseconds since the Unix epoch                    |
-| received_time  | Integer | Time the packet was received as nanoseconds since the Unix epoch   |
-| received_count | Integer | Running count of packets received                                  |
+| Key            | Type    | Description                                                          |
+| -------------- | ------- | -------------------------------------------------------------------- |
+| target_name    | String  | Target name, e.g. "INST"                                             |
+| packet_name    | String  | Packet name, e.g. "HEALTH_STATUS"                                    |
+| time           | Integer | Packet time as nanoseconds since the Unix epoch                      |
+| received_time  | Integer | Time the packet was received as nanoseconds since the Unix epoch     |
+| received_count | Integer | Running count of packets received                                    |
 | stored         | String  | "true" or "false" indicating if the packet was stored (not realtime) |
 
 **Telemetry item keys:**

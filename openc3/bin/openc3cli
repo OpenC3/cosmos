@@ -73,7 +73,6 @@ def print_usage
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
   puts "  cli pkginstall PKGFILENAME SCOPE  # Install loaded package (Ruby gem or python package)"
   puts "  cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)"
-  puts "  cli rubysloc                      # DEPRECATED: Please use scc (https://github.com/boyter/scc)"
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts ""
@@ -1100,9 +1099,6 @@ if not ARGV[0].nil? # argument(s) given
     # To test against a local copy call this file from the root cosmos directory like this:
     # ruby -Iopenc3/lib openc3/bin/openc3cli generate ...
     OpenC3::CliGenerator.generate(ARGV[1..-1])
-
-  when 'rubysloc'
-    puts `ruby /openc3/bin/rubysloc #{ARGV[1..-1].join(' ')}`
 
   when 'cstol_converter'
     puts `ruby /openc3/bin/cstol_converter #{ARGV[1..-1].join(' ')}`

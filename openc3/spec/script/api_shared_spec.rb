@@ -180,14 +180,12 @@ module OpenC3
       end
     end
 
-    describe "check_raw, check_formatted, check_with_units" do
+    describe "check_raw, check_formatted" do
       it "checks against the specified type" do
         capture_io do |stdout|
           check_raw("INST HEALTH_STATUS TEMP1 == 1")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success/)
           check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 C'")
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success/)
-          check_with_units("INST HEALTH_STATUS TEMP1 == '10.000 C'")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success/)
         end
       end
@@ -296,15 +294,6 @@ module OpenC3
         end
         expect { check_tolerance("INST HEALTH_STATUS ARY", 3, [0.1, 0.1, 2]) }.to raise_error(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
         expect { check_tolerance("INST HEALTH_STATUS ARY", 3, [0.1, 0.1, 2, 3]) }.to raise_error(/ERROR: Invalid array size for tolerance/)
-      end
-    end
-
-    describe "check_tolerance_raw" do
-      it "checks that a value is within a tolerance" do
-        capture_io do |stdout|
-          check_tolerance_raw("INST HEALTH_STATUS TEMP2", 1.55, 0.1)
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65\d+ with value == 1.5/)
-        end
       end
     end
 

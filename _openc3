@@ -183,7 +183,6 @@ _openc3_cli() {
             'pkguninstall:uninstall loaded package'
             'geminstall:install gem package'
             'gemuninstall:uninstall gem package'
-            'rubysloc:DEPRECATED - use scc'
             'xtce_converter:convert to/from XTCE format'
             'cstol_converter:convert CSTOL files to COSMOS'
             'redis:interact with redis database'
@@ -502,7 +501,7 @@ _openc3_cli() {
                 _describe 'options' options
             fi
             ;;
-        irb|help|rubysloc)
+        irb|help)
             # These commands don't have specific completions
             ;;
     esac

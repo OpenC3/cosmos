@@ -341,7 +341,7 @@ module OpenC3
       when 'DONT_LOG'
         Logger.warn "DONT_LOG is deprecated and does nothing."
 
-      when 'LOG_STREAM', 'LOG_RAW'
+      when 'LOG_STREAM'
         parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
         @log_stream = parameters.dup # Even if it is empty we copy it to set it as not nil
 

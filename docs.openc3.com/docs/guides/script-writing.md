@@ -426,7 +426,7 @@ print(f"Math:{result}")
 
 COSMOS scripts are normally “instrumented”. This means that each line has some extra code added behind the scenes that primarily highlights the current executing line and catches exceptions if things fail such as a wait_check. If your script needs to use code in other files, there are a few ways to bring in that code. Some techniques bring in instrumented code and others bring in uninstrumented code. There are reasons to use both.
 
-load_utility (and the deprecated require_utility), bring in instrumented code from other files. When COSMOS runs the code in the other file, Script Runner will dive into the other file and show each line highlighted as it executes. This should be the default way to bring in other files, as it allows continuing if something fails, and provides better visibility to operators.
+load_utility brings in instrumented code from other files. When COSMOS runs the code in the other file, Script Runner will dive into the other file and show each line highlighted as it executes. This should be the default way to bring in other files, as it allows continuing if something fails, and provides better visibility to operators.
 
 However, sometimes you don't want to display code executing from other files. Externally developed libraries generally do not like to be instrumented, and code that contains large loops or that just takes a long time to execute when highlighting lines, will be much faster if included in a method that does not instrument lines. Ruby provides two ways to bring in uninstrumented code. The first is the “load” keyword. Load will bring in the code from another file and will bring in any changes to the file if it is updated on the next call to load. “require” is like load but is optimized to only bring in the code from another file once. Therefore, if you use require and then change the file it requires, you must restart Script Runner to re-require the file and bring in the changes. In general, load is recommended over require for COSMOS scripting. One gotcha with load is that it requires the full filename including extension, while the require keyword does not.
 
@@ -850,6 +850,7 @@ require 'openc3/api/api'
   or
 require 'openc3/script'
 ```
+
 </TabItem>
 <TabItem value="python" label="Python">
 
@@ -858,6 +859,7 @@ from openc3.api import *
   or
 from openc3.script import *
 ```
+
 </TabItem>
 </Tabs>
 
@@ -867,5 +869,4 @@ Examples: [microservice.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/te
 
 When writing a script that connects to COSMOS from outside of the COSMOS cluster the _openc3/script_ library should be used. Since the running script is external to COSMOS, it will also need environment variables set to ensure the script knows where to connect to. It will also need to authenticate, and therefore the `OPENC3_API_PASSWORD` (and `OPENC3_API_USER` for Enterprise) environment variables are needed.
 
-Examples: [external_script.rb](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.rb) and [external_script.py](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.py). 
-
+Examples: [external_script.rb](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.rb) and [external_script.py](https://github.com/OpenC3/cosmos/blob/main/examples/external_script.py).
