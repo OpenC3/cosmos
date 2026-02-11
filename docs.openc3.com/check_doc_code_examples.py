@@ -54,7 +54,7 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -64,13 +64,13 @@ from pathlib import Path
 class CodeBlock:
     file: str
     line_start: int  # 1-based line number where the opening ``` is
-    language: str     # language tag, or "" if bare
+    language: str  # language tag, or "" if bare
     code: str
     line_end: int = 0
 
 
 @dataclass
-class SyntaxError_:
+class SyntaxError:
     file: str
     line_start: int
     language: str
@@ -130,17 +130,21 @@ def extract_code_blocks(filepath: str) -> list[CodeBlock]:
             while i < len(lines):
                 cl = lines[i].rstrip()
                 # Closing fence must use same char and be at least as long
-                if cl.startswith(fence_char * fence_len) and cl.strip() == fence_char * max(fence_len, len(cl.strip())):
+                if cl.startswith(
+                    fence_char * fence_len
+                ) and cl.strip() == fence_char * max(fence_len, len(cl.strip())):
                     break
                 code_lines.append(lines[i])
                 i += 1
-            blocks.append(CodeBlock(
-                file=filepath,
-                line_start=start,
-                line_end=i + 1,
-                language=lang,
-                code="".join(code_lines),
-            ))
+            blocks.append(
+                CodeBlock(
+                    file=filepath,
+                    line_start=start,
+                    line_end=i + 1,
+                    language=lang,
+                    code="".join(code_lines),
+                )
+            )
         i += 1
     return blocks
 
@@ -187,7 +191,9 @@ def check_ruby(code: str) -> str | None:
     try:
         result = subprocess.run(
             ["ruby", "-c", "-e", code],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             # Extract meaningful part of error
@@ -207,7 +213,10 @@ def check_bash(code: str) -> str | None:
     try:
         result = subprocess.run(
             ["bash", "-n"],
-            input=code, capture_output=True, text=True, timeout=10,
+            input=code,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             err = result.stderr.strip()
@@ -227,7 +236,9 @@ def check_javascript(code: str) -> str | None:
             tmp = f.name
         result = subprocess.run(
             ["node", "--check", tmp],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             err = result.stderr.strip()
@@ -263,11 +274,40 @@ CHECKERS = {
 }
 
 # Languages we recognize but intentionally skip (no good syntax-only checker)
-SKIPPED_LANGS = {"yaml", "html", "css", "typescript", "c", "cpp", "go", "java",
-                 "xml", "sql", "markdown", "md", "text", "txt", "diff", "csv",
-                 "toml", "ini", "dockerfile", "makefile", "plaintext", "vue",
-                 "erb", "awk", "sed", "batch", "powershell", "lua", "kotlin",
-                 "swift", "rust", "csharp"}
+SKIPPED_LANGS = {
+    "yaml",
+    "html",
+    "css",
+    "typescript",
+    "c",
+    "cpp",
+    "go",
+    "java",
+    "xml",
+    "sql",
+    "markdown",
+    "md",
+    "text",
+    "txt",
+    "diff",
+    "csv",
+    "toml",
+    "ini",
+    "dockerfile",
+    "makefile",
+    "plaintext",
+    "vue",
+    "erb",
+    "awk",
+    "sed",
+    "batch",
+    "powershell",
+    "lua",
+    "kotlin",
+    "swift",
+    "rust",
+    "csharp",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -277,32 +317,114 @@ SKIPPED_LANGS = {"yaml", "html", "css", "typescript", "c", "cpp", "go", "java",
 # COSMOS configuration DSL keywords — blocks starting with these are config
 # files, not Ruby/Python code, even if tagged as such.
 COSMOS_CONFIG_KEYWORDS = {
-    "COMMAND", "TELEMETRY", "PARAMETER", "APPEND_PARAMETER", "ID_PARAMETER",
-    "APPEND_ID_PARAMETER", "ITEM", "APPEND_ITEM", "ID_ITEM", "APPEND_ID_ITEM",
-    "TARGET", "INTERFACE", "ROUTER", "DECLARE_TARGET", "DECLARE_PLUGIN",
-    "SCREEN", "SETTING", "STATE", "LIMITS", "SELECT_COMMAND", "SELECT_TELEMETRY",
-    "SELECT_PARAMETER", "SELECT_ITEM", "REQUIRE", "ACCESSOR", "TEMPLATE",
-    "VARIABLE", "WIDGET", "VERTICAL", "VERTICALBOX", "HORIZONTAL", "HORIZONTALBOX",
-    "MATRIXBYCOLUMNS", "TABBOOK", "TABITEM", "CANVAS", "CANVASIMAGE",
-    "CANVASLINE", "CANVASLABEL", "CANVASLINEVALUE", "CANVASVALUE",
-    "LABELVALUE", "LABEL", "VALUE", "BUTTON", "TITLE", "NAMED_WIDGET",
-    "TEXTFIELD", "COMBOBOX", "CHECKBUTTON", "RADIOBUTTON",
-    "END", "SCROLLWINDOW", "STALE_TIME", "GLOBAL_SETTING",
-    "CANVASLABELVALUE", "CANVASIMAGEVALUE", "SPACER",
-    "META", "HAZARDOUS", "DISABLED", "HIDDEN", "IGNORE_OVERLAP",
-    "OVERLAP", "ALLOW_ACCESS", "DENY_ACCESS", "POLY_READ_CONVERSION",
-    "POLY_WRITE_CONVERSION", "READ_CONVERSION", "WRITE_CONVERSION",
-    "FORMAT_STRING", "UNITS", "DESCRIPTION", "GENERIC_READ_CONVERSION_START",
-    "GENERIC_WRITE_CONVERSION_START", "GENERIC_READ_CONVERSION_END",
-    "GENERIC_WRITE_CONVERSION_END", "SELECT_COMMAND", "SELECT_TELEMETRY",
-    "LIMITS_RESPONSE", "PROCESSOR", "STALE_TIME", "KEY",
-    "MICROSERVICE", "ENV", "WORK_DIR", "CMD", "OPTION", "CONTAINER",
-    "ROUTE", "PORT", "SECRET", "SCOPE", "DISABLE_ERB",
-    "LOG_RETAIN_TIME", "REDUCED_LOG_RETAIN_TIME", "CLEANUP_POLL_TIME",
-    "LOG_RAW", "LOG", "PROTOCOL",
-    "SUBPACKET", "TABLE",
-    "ARRAY_PARAMETER", "ARRAY_ITEM", "APPEND_ARRAY_ITEM", "APPEND_ARRAY_PARAMETER",
-    "SELECT_ARRAY_ITEM", "SELECT_ARRAY_PARAMETER",
+    "COMMAND",
+    "TELEMETRY",
+    "PARAMETER",
+    "APPEND_PARAMETER",
+    "ID_PARAMETER",
+    "APPEND_ID_PARAMETER",
+    "ITEM",
+    "APPEND_ITEM",
+    "ID_ITEM",
+    "APPEND_ID_ITEM",
+    "TARGET",
+    "INTERFACE",
+    "ROUTER",
+    "DECLARE_TARGET",
+    "DECLARE_PLUGIN",
+    "SCREEN",
+    "SETTING",
+    "STATE",
+    "LIMITS",
+    "SELECT_COMMAND",
+    "SELECT_TELEMETRY",
+    "SELECT_PARAMETER",
+    "SELECT_ITEM",
+    "REQUIRE",
+    "ACCESSOR",
+    "TEMPLATE",
+    "VARIABLE",
+    "WIDGET",
+    "VERTICAL",
+    "VERTICALBOX",
+    "HORIZONTAL",
+    "HORIZONTALBOX",
+    "MATRIXBYCOLUMNS",
+    "TABBOOK",
+    "TABITEM",
+    "CANVAS",
+    "CANVASIMAGE",
+    "CANVASLINE",
+    "CANVASLABEL",
+    "CANVASLINEVALUE",
+    "CANVASVALUE",
+    "LABELVALUE",
+    "LABEL",
+    "VALUE",
+    "BUTTON",
+    "TITLE",
+    "NAMED_WIDGET",
+    "TEXTFIELD",
+    "COMBOBOX",
+    "CHECKBUTTON",
+    "RADIOBUTTON",
+    "END",
+    "SCROLLWINDOW",
+    "STALE_TIME",
+    "GLOBAL_SETTING",
+    "CANVASLABELVALUE",
+    "CANVASIMAGEVALUE",
+    "SPACER",
+    "META",
+    "HAZARDOUS",
+    "DISABLED",
+    "HIDDEN",
+    "IGNORE_OVERLAP",
+    "OVERLAP",
+    "ALLOW_ACCESS",
+    "DENY_ACCESS",
+    "POLY_READ_CONVERSION",
+    "POLY_WRITE_CONVERSION",
+    "READ_CONVERSION",
+    "WRITE_CONVERSION",
+    "FORMAT_STRING",
+    "UNITS",
+    "DESCRIPTION",
+    "GENERIC_READ_CONVERSION_START",
+    "GENERIC_WRITE_CONVERSION_START",
+    "GENERIC_READ_CONVERSION_END",
+    "GENERIC_WRITE_CONVERSION_END",
+    "SELECT_COMMAND",
+    "SELECT_TELEMETRY",
+    "LIMITS_RESPONSE",
+    "PROCESSOR",
+    "STALE_TIME",
+    "KEY",
+    "MICROSERVICE",
+    "ENV",
+    "WORK_DIR",
+    "CMD",
+    "OPTION",
+    "CONTAINER",
+    "ROUTE",
+    "PORT",
+    "SECRET",
+    "SCOPE",
+    "DISABLE_ERB",
+    "LOG_RETAIN_TIME",
+    "REDUCED_LOG_RETAIN_TIME",
+    "CLEANUP_POLL_TIME",
+    "LOG_RAW",
+    "LOG",
+    "PROTOCOL",
+    "SUBPACKET",
+    "TABLE",
+    "ARRAY_PARAMETER",
+    "ARRAY_ITEM",
+    "APPEND_ARRAY_ITEM",
+    "APPEND_ARRAY_PARAMETER",
+    "SELECT_ARRAY_ITEM",
+    "SELECT_ARRAY_PARAMETER",
     "CONVERSIONS_IN_THE_COMMAND",  # doc fragments
 }
 
@@ -325,9 +447,27 @@ def is_cosmos_config(code: str) -> bool:
         # but NOT common Ruby/Python keywords
         if re.match(r"^[A-Z][A-Z_]{2,}(\s+|$)", stripped):
             lower = stripped.split()[0].lower()
-            if lower not in ("for", "if", "def", "end", "class", "module", "begin",
-                             "return", "raise", "rescue", "ensure", "yield", "case",
-                             "when", "while", "until", "unless", "break", "next"):
+            if lower not in (
+                "for",
+                "if",
+                "def",
+                "end",
+                "class",
+                "module",
+                "begin",
+                "return",
+                "raise",
+                "rescue",
+                "ensure",
+                "yield",
+                "case",
+                "when",
+                "while",
+                "until",
+                "unless",
+                "break",
+                "next",
+            ):
                 return True
         return False
     return False
@@ -367,7 +507,7 @@ def is_output_not_code(code: str, lang: str) -> bool:
     lines = stripped.splitlines()
     if lines and re.match(r"^[%$]\s+\w+", lines[0]):
         # Check if subsequent lines look like output (not commands)
-        non_prompt = [l for l in lines[1:] if l.strip() and not re.match(r"^[%$]\s", l)]
+        non_prompt = [line for line in lines[1:] if line.strip() and not re.match(r"^[%$]\s", line)]
         if len(non_prompt) > len(lines) // 2:
             return True
     # Help/usage text output
@@ -411,19 +551,27 @@ def guess_language(code: str) -> str:
         return ""
 
     # Python indicators
-    if re.search(r"^\s*(def |class |import |from .+ import |print\()", stripped, re.MULTILINE):
+    if re.search(
+        r"^\s*(def |class |import |from .+ import |print\()", stripped, re.MULTILINE
+    ):
         return "python"
 
     # Ruby indicators
-    if re.search(r"^\s*(require |def |end$|puts |\.each |do\s*\|)", stripped, re.MULTILINE):
+    if re.search(
+        r"^\s*(require |def |end$|puts |\.each |do\s*\|)", stripped, re.MULTILINE
+    ):
         return "ruby"
 
     # Bash indicators
-    if stripped.startswith("#!") or re.search(r"^\s*(export |echo |sudo |apt |brew |npm |pip |cd )", stripped, re.MULTILINE):
+    if stripped.startswith("#!") or re.search(
+        r"^\s*(export |echo |sudo |apt |brew |npm |pip |cd )", stripped, re.MULTILINE
+    ):
         return "bash"
 
     # JSON
-    if (stripped.startswith("{") and stripped.endswith("}")) or (stripped.startswith("[") and stripped.endswith("]")):
+    if (stripped.startswith("{") and stripped.endswith("}")) or (
+        stripped.startswith("[") and stripped.endswith("]")
+    ):
         return "json"
 
     return ""
@@ -439,9 +587,14 @@ URL_BARE = re.compile(r"(?<!\()(https?://[^\s)\]>\"'`,]+)")
 
 # Domains to skip — localhost, example domains, placeholders
 SKIP_URL_DOMAINS = {
-    "localhost", "127.0.0.1", "0.0.0.0",
-    "example.com", "example.org", "example.net",
-    "your-bucket", "mycompany.com"
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "example.com",
+    "example.org",
+    "example.net",
+    "your-bucket",
+    "mycompany.com",
 }
 
 # URL substrings known to be valid but that block automated requests (403/404).
@@ -451,7 +604,7 @@ WHITELISTED_URLS = [
     "npmjs.com/package",
     "github.com/OpenC3/cosmos/assets",
     "www.computerhope.com",
-    "mydomain.com"
+    "mydomain.com",
 ]
 
 # Domains that receive a GitHub auth token
@@ -467,7 +620,9 @@ def _get_github_token() -> str | None:
         try:
             result = subprocess.run(
                 ["gh", "auth", "token"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0:
                 return result.stdout.strip()
@@ -510,7 +665,7 @@ def _github_api_url(url: str) -> str | None:
     Returns None if the URL doesn't match a convertible pattern."""
     m = _GITHUB_BLOB_TREE.match(url)
     if m:
-        owner, repo, kind, ref, path = m.groups()
+        owner, repo, _, ref, path = m.groups()
         return f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}"
     m = _GITHUB_RELEASE_TAG.match(url)
     if m:
@@ -580,7 +735,9 @@ def should_skip_url(url: str) -> bool:
     return False
 
 
-def check_url(url: str, timeout: int = 15, github_token: str | None = None) -> tuple[int, str]:
+def check_url(url: str, timeout: int = 15, github_token: str | None = None) -> (
+    tuple[int, str]
+):
     """Check if a URL is reachable. Returns (status_code, error_message).
     status_code 0 means connection error. Empty error_message means success."""
     # Strip trailing punctuation that may have been captured
@@ -604,7 +761,9 @@ def check_url(url: str, timeout: int = 15, github_token: str | None = None) -> t
     except urllib.error.HTTPError as e:
         if e.code == 405:
             # HEAD not allowed, retry with GET
-            req = urllib.request.Request(check_url_actual, method="GET", headers=headers)
+            req = urllib.request.Request(
+                check_url_actual, method="GET", headers=headers
+            )
             try:
                 resp = urllib.request.urlopen(req, timeout=timeout)
                 return (resp.status, "")
@@ -657,13 +816,15 @@ def check_urls_in_files(
             is_error = status == 0 or status >= 400
             if is_error:
                 for filepath, line_num in url_locations[url]:
-                    broken.append(BrokenUrl(
-                        file=filepath,
-                        line=line_num,
-                        url=url,
-                        status_code=status,
-                        error_message=error_msg or f"HTTP {status}",
-                    ))
+                    broken.append(
+                        BrokenUrl(
+                            file=filepath,
+                            line=line_num,
+                            url=url,
+                            status_code=status,
+                            error_message=error_msg or f"HTTP {status}",
+                        )
+                    )
             if verbose:
                 if is_error:
                     print(f"  [BROKEN] {url} — {error_msg or f'HTTP {status}'}")
@@ -685,7 +846,10 @@ def find_markdown_files(root: str) -> list[str]:
     for dirpath, _dirnames, filenames in os.walk(root):
         # Skip common non-doc directories
         parts = dirpath.split(os.sep)
-        if any(p in ("node_modules", ".git", "vendor", ".venv", "__pycache__") for p in parts):
+        if any(
+            p in ("node_modules", ".git", "vendor", ".venv", "__pycache__")
+            for p in parts
+        ):
             continue
         for fn in sorted(filenames):
             if fn.endswith(".md"):
@@ -733,13 +897,17 @@ def check_blocks(
         checker = CHECKERS.get(lang)
         if not checker:
             if lang not in SKIPPED_LANGS and verbose:
-                print(f"  [skip] {block.file}:{block.line_start} — no checker for '{lang}'")
+                print(
+                    f"  [skip] {block.file}:{block.line_start} — no checker for '{lang}'"
+                )
             result.blocks_skipped += 1
             continue
 
         # Skip trivially small blocks (single comments, blank, etc.)
         stripped = block.code.strip()
-        if not stripped or all(l.strip().startswith("#") or not l.strip() for l in stripped.splitlines()):
+        if not stripped or all(
+            line.strip().startswith("#") or not line.strip() for line in stripped.splitlines()
+        ):
             result.blocks_skipped += 1
             continue
 
@@ -754,13 +922,15 @@ def check_blocks(
         result.blocks_checked += 1
         error = checker(block.code)
         if error:
-            result.errors.append(SyntaxError_(
-                file=block.file,
-                line_start=block.line_start,
-                language=lang,
-                error_message=error,
-                code_snippet=snippet(block.code),
-            ))
+            result.errors.append(
+                SyntaxError(
+                    file=block.file,
+                    line_start=block.line_start,
+                    language=lang,
+                    error_message=error,
+                    code_snippet=snippet(block.code),
+                )
+            )
         elif verbose:
             print(f"  [ok] {block.file}:{block.line_start} ({lang})")
 
@@ -774,14 +944,26 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument(
-        "path", nargs="?", default="docs.openc3.com",
+        "path",
+        nargs="?",
+        default="docs.openc3.com",
         help="Directory to search for .md files (default: docs.openc3.com)",
     )
     parser.add_argument("--lang", help="Only check blocks of this language")
-    parser.add_argument("--verbose", action="store_true", help="Show all checked blocks")
-    parser.add_argument("--include-bare", action="store_true", help="Try to check untagged blocks")
-    parser.add_argument("--json", action="store_true", dest="json_output", help="Output as JSON")
-    parser.add_argument("--check-urls", action="store_true", help="Check external URLs for broken links (404s)")
+    parser.add_argument(
+        "--verbose", action="store_true", help="Show all checked blocks"
+    )
+    parser.add_argument(
+        "--include-bare", action="store_true", help="Try to check untagged blocks"
+    )
+    parser.add_argument(
+        "--json", action="store_true", dest="json_output", help="Output as JSON"
+    )
+    parser.add_argument(
+        "--check-urls",
+        action="store_true",
+        help="Check external URLs for broken links (404s)",
+    )
     parser.add_argument("--file", help="Check only this specific .md file")
     args = parser.parse_args()
 
@@ -831,7 +1013,7 @@ def main():
         if lang_filter:
             print(f"  Filtering to language: {lang_filter}")
         if args.include_bare:
-            print(f"  Including untagged code blocks (auto-detect)")
+            print("  Including untagged code blocks (auto-detect)")
         print()
 
     # Extract and check
@@ -845,7 +1027,7 @@ def main():
     # URL checking
     if args.check_urls:
         if not args.json_output:
-            print(f"Checking external URLs for broken links ...")
+            print("Checking external URLs for broken links ...")
             print()
         urls_checked, url_errors = check_urls_in_files(md_files, args.verbose)
         result.urls_checked = urls_checked
@@ -879,7 +1061,7 @@ def main():
                     print(f"{'='*70}")
                 print(f"\n  [{err.language}] Line {err.line_start}")
                 print(f"  Error: {err.error_message}")
-                print(f"  Code:")
+                print("  Code:")
                 for cl in err.code_snippet.splitlines():
                     print(f"    | {cl}")
                 print()
@@ -898,7 +1080,11 @@ def main():
                         print(f"\n{'='*70}")
                         print(f"BROKEN URLs in: {rel}")
                         print(f"{'='*70}")
-                    status = f"HTTP {err.status_code}" if err.status_code else "Connection error"
+                    status = (
+                        f"HTTP {err.status_code}"
+                        if err.status_code
+                        else "Connection error"
+                    )
                     print(f"\n  Line {err.line}: {err.url}")
                     print(f"  Status: {status} — {err.error_message}")
             else:
@@ -906,7 +1092,7 @@ def main():
 
         # Summary
         print(f"\n{'─'*70}")
-        print(f"Summary:")
+        print("Summary:")
         print(f"  Files scanned:    {result.total_files}")
         print(f"  Code blocks:      {result.total_blocks}")
         print(f"  Blocks checked:   {result.blocks_checked}")
