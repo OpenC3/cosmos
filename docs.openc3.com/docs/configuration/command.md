@@ -412,7 +412,7 @@ APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
 ```
 
 ### ID_PARAMETER
-**Defines an identification command parameter in the current command packet. Note, packets defined without one or more ID_PARAMETERs are "catch-all" packets which will match all incoming data. A warning will be generated for packets without ID_PARAMETERs.**
+**Defines an identification command parameter in the current command packet**
 
 ID parameters are used to identify the binary block of data as a particular command. A command packet may have one or more ID_PARAMETERs and all must match the binary data for the command to be identified.
 
