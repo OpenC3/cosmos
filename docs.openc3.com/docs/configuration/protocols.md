@@ -813,6 +813,10 @@ We recommend using authenticated encryption modes like GCM (Galois/Counter Mode)
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
 
+:::info Stored Telemetry
+Custom protocols that handle non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` in the `read_packet()` method. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See [Stored Packets](../guides/packet-types#stored-packets) for more details. The [Preidentified Protocol](#preidentified-protocol) is one example that encodes and decodes the stored flag in its packet header.
+:::
+
 All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
 :::info Ruby Protocol APIs
