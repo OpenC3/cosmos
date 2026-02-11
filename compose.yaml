@@ -255,6 +255,5 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-object-v:
-    name: openc3-object-v # Fixed name to match migration script (no project prefix)
+  openc3-object-v: {}
   openc3-gems-v: {}
