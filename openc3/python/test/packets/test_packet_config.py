@@ -632,6 +632,16 @@ class TestPacketConfig(unittest.TestCase):
             no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
             self.assertEqual(len(no_id_warnings), 0)
 
+    def test_does_not_warn_for_catchall_packets(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  CATCHALL\n")
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
+            self.assertEqual(len(no_id_warnings), 0)
+
     def test_sets_the_accessor_for_the_packet(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')

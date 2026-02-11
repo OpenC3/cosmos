@@ -596,6 +596,17 @@ module OpenC3
           expect(@pc.warnings.select { |w| w.include?("no ID_ITEMS") }).to be_empty
           tf.unlink
         end
+
+        it "does not warn for catchall packets" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  CATCHALL'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings.select { |w| w.include?("no ID_ITEMS") }).to be_empty
+          tf.unlink
+        end
       end
 
       context "with ACCESSOR" do

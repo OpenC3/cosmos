@@ -35,7 +35,7 @@ ID_ITEM:
   summary: Defines a telemetry item in the current telemetry packet.
     Note, packets defined without one or more ID_ITEMs are "catch-all" packets which
     will match all incoming data. Normally this is the job of the UNKNOWN packet.
-    A warning will be generated for packets without ID_ITEMs.
+    A warning will be generated for packets without ID_ITEMs unless the CATCHALL keyword is used.
   example: ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
   parameters:
     - name: Name
@@ -272,6 +272,11 @@ IGNORE_OVERLAP:
   description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.
     This ignores overlaps across the entire packet.
   since: 5.16.0
+CATCHALL:
+  summary: Marks this packet as an intentional catch-all packet
+  description: Suppresses the warning that is normally generated for packets defined without ID_ITEMs.
+    Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
+  since: 7.0.0
 VIRTUAL:
   summary: Marks this packet as virtual and not participating in identification
   description: Used for packet definitions that can be used as structures for items with a given packet.
