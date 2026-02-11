@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -258,7 +253,10 @@ class TestCommands(unittest.TestCase):
     def test_build_cmd_complains_about_missing_required_parameters(self):
         for range_checking in [True, False]:
             for raw in [True, False]:
-                with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Required command parameter 'TGT2 PKT3 ITEM2' not given",
+                ):
                     self.cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw)
 
     def test_creates_a_command_packet_with_mixed_endianness(self):
@@ -586,7 +584,9 @@ class TestCommands(unittest.TestCase):
         cmd = Commands(pc, System)
         self.assertTrue(cmd.cmd_subpacket_unique_id_mode("TGT1"))
 
-    def test_build_cmd_skips_auto_managed_length_fields_for_variable_bit_size_arrays(self):
+    def test_build_cmd_skips_auto_managed_length_fields_for_variable_bit_size_arrays(
+        self,
+    ):
         """
         Test that build_cmd skips writing length fields that are auto-managed by
         variable_bit_size arrays. This prevents the bug where writing the length

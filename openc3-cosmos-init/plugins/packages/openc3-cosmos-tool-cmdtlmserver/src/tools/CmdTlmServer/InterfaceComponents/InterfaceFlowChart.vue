@@ -1,16 +1,11 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -40,6 +35,9 @@ const {
   onEdgesChange,
   applyEdgeChanges,
   fitView,
+  findNode,
+  getViewport,
+  setViewport,
 } = useVueFlow()
 
 const dialog = inject('dialog')
@@ -53,11 +51,13 @@ const nodes = ref([])
 const edges = ref([])
 
 let layoutNeeded = false
+let structureChanged = false
 
 async function layoutGraph(direction, force = false) {
   if (layoutNeeded || force) {
     nodes.value = layout(nodes.value, edges.value, direction)
     layoutNeeded = false
+    structureChanged = false
     nextTick(() => {
       fitView()
     })
@@ -298,7 +298,7 @@ onNodesChange(async (changes) => {
       // Allow changes except remove
       nextChanges.push(change)
     }
-    if (change.type === 'dimensions') {
+    if (change.type === 'dimensions' && structureChanged) {
       layoutNeeded = true
       nextTick(() => {
         layoutGraph('LR')
@@ -461,6 +461,20 @@ function onNodeClick(event) {
 }
 
 function updateFlowChart() {
+  // Save current node positions from VueFlow's internal state (includes drag positions)
+  const oldNodeIds = new Set(nodes.value.map((n) => n.id))
+  const positionMap = new Map()
+  const savedViewport = oldNodeIds.size > 0 ? getViewport() : null
+  nodes.value.forEach((n) => {
+    const graphNode = findNode(n.id)
+    if (graphNode) {
+      positionMap.set(n.id, {
+        x: graphNode.position.x,
+        y: graphNode.position.y,
+      })
+    }
+  })
+
   nodes.value = []
   edges.value = []
   const targetNames = []
@@ -880,7 +894,32 @@ function updateFlowChart() {
     nodes.value.push(targetNode)
   })
 
-  layoutNeeded = true
+  // Check if the graph structure changed (nodes added or removed)
+  const newNodeIds = new Set(nodes.value.map((n) => n.id))
+  const hasStructureChange =
+    oldNodeIds.size === 0 ||
+    oldNodeIds.size !== newNodeIds.size ||
+    [...newNodeIds].some((id) => !oldNodeIds.has(id)) ||
+    [...oldNodeIds].some((id) => !newNodeIds.has(id))
+
+  if (hasStructureChange) {
+    structureChanged = true
+    layoutNeeded = true
+  } else if (!structureChanged) {
+    // Same structure with no pending layout: restore saved node positions and viewport
+    nodes.value = nodes.value.map((n) => {
+      const savedPos = positionMap.get(n.id)
+      if (savedPos) {
+        return { ...n, position: savedPos }
+      }
+      return n
+    })
+    if (savedViewport) {
+      nextTick(() => {
+        setViewport(savedViewport)
+      })
+    }
+  }
 }
 
 watch(
@@ -888,9 +927,6 @@ watch(
   async () => {
     if (props.interfaceDetails !== null) {
       updateFlowChart()
-      nextTick(() => {
-        layoutGraph('LR')
-      })
     }
   },
   { immediate: true },
@@ -901,9 +937,6 @@ watch(
   async () => {
     if (props.routerDetails !== null) {
       updateFlowChart()
-      nextTick(() => {
-        layoutGraph('LR')
-      })
     }
   },
   { immediate: true },
@@ -924,6 +957,16 @@ watch(
       @node-click="onNodeClick"
     >
       <Background pattern-color="#aaa" :gap="16" />
+      <div class="docs-overlay">
+        <a
+          href="/tools/staticdocs/docs/tools/cmd-tlm-server#data-flows-tab"
+          target="_blank"
+          class="docs-link"
+        >
+          <v-icon size="small" class="mr-1">mdi-file-document-outline</v-icon>
+          Docs
+        </a>
+      </div>
       <Controls>
         <ControlButton title="Reset" @click="layoutGraph('LR', true)">
           <svg width="16" height="16" viewBox="0 0 32 32">
@@ -1017,5 +1060,32 @@ watch(
 
 .vue-flow__edges path {
   stroke-width: 2;
+}
+
+.docs-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+}
+
+.docs-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background-color: rgba(30, 50, 70, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ffffffcc;
+  text-decoration: none;
+  font-size: 13px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.docs-link:hover {
+  background-color: rgba(40, 70, 100, 0.95);
+  color: #fff;
 }
 </style>

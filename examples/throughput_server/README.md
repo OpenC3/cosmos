@@ -172,8 +172,3 @@ examples/throughput_server/
 ├── requirements.txt        # Dependencies (none required)
 └── README.md               # This file
 ```
-
-## License
-
-Copyright 2026 OpenC3, Inc.
-Licensed under the GNU Affero General Public License v3.

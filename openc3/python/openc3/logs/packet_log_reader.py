@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -210,7 +205,13 @@ class PacketLogReader:
 
         elif entry_type == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK:
             return self._read_raw_packet(
-                entry, cmd_or_tlm, stored, is_cbor, has_received_time, has_extra, identify_and_define
+                entry,
+                cmd_or_tlm,
+                stored,
+                is_cbor,
+                has_received_time,
+                has_extra,
+                identify_and_define,
             )
 
         elif entry_type == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK:
@@ -268,7 +269,12 @@ class PacketLogReader:
             raise ValueError("OpenC3 file header not found")
 
     def _handle_received_time_extra_and_data(
-        self, entry: bytes, time_nsec: int, has_received_time: bool, has_extra: bool, is_cbor: bool
+        self,
+        entry: bytes,
+        time_nsec: int,
+        has_received_time: bool,
+        has_extra: bool,
+        is_cbor: bool,
     ):
         """
         Handle optional received_time and extra fields, then return the data portion.
@@ -306,7 +312,13 @@ class PacketLogReader:
         return received_time_nsec, extra, data
 
     def _read_json_packet(
-        self, entry: bytes, cmd_or_tlm: str, stored: bool, is_cbor: bool, has_received_time: bool, has_extra: bool
+        self,
+        entry: bytes,
+        cmd_or_tlm: str,
+        stored: bool,
+        is_cbor: bool,
+        has_received_time: bool,
+        has_extra: bool,
     ) -> JsonPacket:
         """Read a JSON packet entry."""
         # Parse packet_index (2 bytes) and timestamp (8 bytes)

@@ -1,15 +1,10 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -384,7 +379,10 @@ class TestConfigParser(unittest.TestCase):
 
         for keyword, params in self.cp.parse_file(tf.name):
             self.assertEqual(keyword, "KEYWORD")
-            self.assertListEqual(params, ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"])
+            self.assertListEqual(
+                params,
+                ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"],
+            )
 
     def test_verifies_parameters_do_not_have_bad_characters(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")

@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -407,13 +402,21 @@ class TestStructureItem(unittest.TestCase):
 
     def test_variable_bit_size_setter_validates_length_item_name(self):
         si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
-        with self.assertRaisesRegex(TypeError, "TEST: variable_bit_size\\['length_item_name'\\] must be a String"):
-            si.variable_bit_size = {"length_item_name": 123, "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        with self.assertRaisesRegex(
+            TypeError,
+            "TEST: variable_bit_size\\['length_item_name'\\] must be a String",
+        ):
+            si.variable_bit_size = {
+                "length_item_name": 123,
+                "length_value_bit_offset": 0,
+                "length_bits_per_count": 8,
+            }
 
     def test_variable_bit_size_setter_validates_length_value_bit_offset(self):
         si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
         with self.assertRaisesRegex(
-            ValueError, "TEST: variable_bit_size\\['length_value_bit_offset'\\] must be an Integer"
+            ValueError,
+            "TEST: variable_bit_size\\['length_value_bit_offset'\\] must be an Integer",
         ):
             si.variable_bit_size = {
                 "length_item_name": "LENGTH",
@@ -424,7 +427,8 @@ class TestStructureItem(unittest.TestCase):
     def test_variable_bit_size_setter_validates_length_bits_per_count(self):
         si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
         with self.assertRaisesRegex(
-            ValueError, "TEST: variable_bit_size\\['length_bits_per_count'\\] must be an Integer"
+            ValueError,
+            "TEST: variable_bit_size\\['length_bits_per_count'\\] must be an Integer",
         ):
             si.variable_bit_size = {
                 "length_item_name": "LENGTH",
@@ -434,7 +438,11 @@ class TestStructureItem(unittest.TestCase):
 
     def test_variable_bit_size_setter_accepts_valid_dict(self):
         si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
-        si.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         self.assertEqual(si.variable_bit_size["length_item_name"], "LENGTH")
 
     def test_eq_with_derived_items(self):
@@ -468,14 +476,22 @@ class TestStructureItem(unittest.TestCase):
 
     def test_lt_with_variable_bit_size_same_offset(self):
         si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
-        si1.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si1.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
         # Variable bit size items come before regular items at same offset
         self.assertTrue(si1 < si2)
 
     def test_lt_both_variable_bit_size_same_offset(self):
         si1 = StructureItem("si1", 0, 8, "UINT", "BIG_ENDIAN", None)
-        si1.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si1.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         si2 = StructureItem("si2", 0, 8, "UINT", "BIG_ENDIAN", None)
         si2.variable_bit_size = {
             "length_item_name": "LENGTH2",
@@ -522,7 +538,11 @@ class TestStructureItem(unittest.TestCase):
 
     def test_as_json_with_variable_bit_size(self):
         si = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None)
-        si.variable_bit_size = {"length_item_name": "LENGTH", "length_value_bit_offset": 0, "length_bits_per_count": 8}
+        si.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
         result = si.as_json()
         self.assertIn("variable_bit_size", result)
         self.assertEqual(result["variable_bit_size"]["length_item_name"], "LENGTH")

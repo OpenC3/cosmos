@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -50,7 +45,8 @@ class TestBinaryAccessorRead(unittest.TestCase):
 
     def test_complains_about_a_negative_bit_offset_and_negative_bit_size(self):
         with self.assertRaisesRegex(
-            ValueError, r"negative or zero bit_sizes \(-8\) cannot be given with negative bit_offsets \(-8\)"
+            ValueError,
+            r"negative or zero bit_sizes \(-8\) cannot be given with negative bit_offsets \(-8\)",
         ):
             BinaryAccessor.read(-8, -8, "STRING", self.data, "BIG_ENDIAN")
 
@@ -67,15 +63,18 @@ class TestBinaryAccessorRead(unittest.TestCase):
         self,
     ):
         with self.assertRaisesRegex(
-            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+            ValueError,
+            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
         ):
             BinaryAccessor.read(0, -8, "INT", self.data, "BIG_ENDIAN")
         with self.assertRaisesRegex(
-            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+            ValueError,
+            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
         ):
             BinaryAccessor.read(0, -8, "UINT", self.data, "BIG_ENDIAN")
         with self.assertRaisesRegex(
-            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+            ValueError,
+            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
         ):
             BinaryAccessor.read(0, -8, "FLOAT", self.data, "BIG_ENDIAN")
 

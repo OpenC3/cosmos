@@ -23,7 +23,7 @@ Ensure your plugin has the correct directory structure:
 
 ```
 your-plugin/
-├── LICENSE.txt
+├── LICENSE.md
 ├── your-plugin.gemspec
 ├── package.json
 ├── plugin.txt

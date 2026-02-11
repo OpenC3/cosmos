@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -52,7 +47,9 @@ class ScriptStatusModel(Model):
     def all(cls, scope, offset=0, limit=10, type="running"):
         if type == "running":
             keys = cls.store().zrevrange(
-                f"{cls.RUNNING_PRIMARY_KEY}__{scope}__LIST", int(offset), int(offset) + int(limit) - 1
+                f"{cls.RUNNING_PRIMARY_KEY}__{scope}__LIST",
+                int(offset),
+                int(offset) + int(limit) - 1,
             )
             if len(keys) == 0:
                 return []
@@ -74,7 +71,9 @@ class ScriptStatusModel(Model):
                 return result
         else:
             keys = cls.store().zrevrange(
-                f"{cls.COMPLETED_PRIMARY_KEY}__{scope}__LIST", int(offset), int(offset) + int(limit) - 1
+                f"{cls.COMPLETED_PRIMARY_KEY}__{scope}__LIST",
+                int(offset),
+                int(offset) + int(limit) - 1,
             )
             if len(keys) == 0:
                 return []
@@ -130,11 +129,19 @@ class ScriptStatusModel(Model):
         self.__state = state
         if self.is_complete():
             super().__init__(
-                f"{self.COMPLETED_PRIMARY_KEY}__{scope}", name=name, updated_at=updated_at, plugin=None, scope=scope
+                f"{self.COMPLETED_PRIMARY_KEY}__{scope}",
+                name=name,
+                updated_at=updated_at,
+                plugin=None,
+                scope=scope,
             )
         else:
             super().__init__(
-                f"{self.RUNNING_PRIMARY_KEY}__{scope}", name=name, updated_at=updated_at, plugin=None, scope=scope
+                f"{self.RUNNING_PRIMARY_KEY}__{scope}",
+                name=name,
+                updated_at=updated_at,
+                plugin=None,
+                scope=scope,
             )
         self.shard = int(shard)
         self.filename = filename

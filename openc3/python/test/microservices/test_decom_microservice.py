@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -92,12 +87,30 @@ class TestDecomMicroservice(unittest.TestCase):
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             time.sleep(0.01)
-            self.assertIn("INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)", stdout.getvalue())
-            self.assertIn("INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)", stdout.getvalue())
-            self.assertIn("INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)", stdout.getvalue())
-            self.assertIn("INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)", stdout.getvalue())
-            self.assertIn("INST HEALTH_STATUS GROUND1STATUS = UNAVAILABLE is YELLOW", stdout.getvalue())
-            self.assertIn("INST HEALTH_STATUS GROUND2STATUS = UNAVAILABLE is YELLOW", stdout.getvalue())
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
+                stdout.getvalue(),
+            )
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)",
+                stdout.getvalue(),
+            )
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)",
+                stdout.getvalue(),
+            )
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)",
+                stdout.getvalue(),
+            )
+            self.assertIn(
+                "INST HEALTH_STATUS GROUND1STATUS = UNAVAILABLE is YELLOW",
+                stdout.getvalue(),
+            )
+            self.assertIn(
+                "INST HEALTH_STATUS GROUND2STATUS = UNAVAILABLE is YELLOW",
+                stdout.getvalue(),
+            )
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), -100.0)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), -100.0)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP3"), -100.0)
@@ -112,12 +125,30 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1].get("item_name"), "TEMP1")
         self.assertEqual(events[0][1].get("old_limits_state"), "None")
         self.assertEqual(events[0][1].get("new_limits_state"), "RED_LOW")
-        self.assertEqual(events[0][1].get("message"), "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)")
-        self.assertEqual(events[1][1].get("message"), "INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)")
-        self.assertEqual(events[2][1].get("message"), "INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)")
-        self.assertEqual(events[3][1].get("message"), "INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)")
-        self.assertEqual(events[4][1].get("message"), "INST HEALTH_STATUS GROUND1STATUS = UNAVAILABLE is YELLOW")
-        self.assertEqual(events[5][1].get("message"), "INST HEALTH_STATUS GROUND2STATUS = UNAVAILABLE is YELLOW")
+        self.assertEqual(
+            events[0][1].get("message"),
+            "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
+        )
+        self.assertEqual(
+            events[1][1].get("message"),
+            "INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)",
+        )
+        self.assertEqual(
+            events[2][1].get("message"),
+            "INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)",
+        )
+        self.assertEqual(
+            events[3][1].get("message"),
+            "INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)",
+        )
+        self.assertEqual(
+            events[4][1].get("message"),
+            "INST HEALTH_STATUS GROUND1STATUS = UNAVAILABLE is YELLOW",
+        )
+        self.assertEqual(
+            events[5][1].get("message"),
+            "INST HEALTH_STATUS GROUND2STATUS = UNAVAILABLE is YELLOW",
+        )
 
         packet.disable_limits("TEMP3")
         packet.write("TEMP1", 0.0)
@@ -126,8 +157,14 @@ class TestDecomMicroservice(unittest.TestCase):
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             time.sleep(0.01)
-            assert re.search(r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)", stdout.getvalue())
-            assert re.search(r"INST HEALTH_STATUS TEMP2 = .* is GREEN \(-55.0 to 30.0\)", stdout.getvalue())
+            assert re.search(
+                r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)",
+                stdout.getvalue(),
+            )
+            assert re.search(
+                r"INST HEALTH_STATUS TEMP2 = .* is GREEN \(-55.0 to 30.0\)",
+                stdout.getvalue(),
+            )
 
         # Start reading from the last event's ID
         events = LimitsEventTopic.read(events[-1][0], scope="DEFAULT")
@@ -139,14 +176,25 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1]["old_limits_state"], "RED_LOW")
         self.assertEqual(events[0][1]["new_limits_state"], "None")
         self.assertEqual(events[0][1]["message"], "INST HEALTH_STATUS TEMP3 is disabled")
-        assert re.search(r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)", events[1][1]["message"])
-        assert re.search(r"INST HEALTH_STATUS TEMP2 = .* is GREEN \(-55.0 to 30.0\)", events[2][1]["message"])
+        assert re.search(
+            r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)",
+            events[1][1]["message"],
+        )
+        assert re.search(
+            r"INST HEALTH_STATUS TEMP2 = .* is GREEN \(-55.0 to 30.0\)",
+            events[2][1]["message"],
+        )
 
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")
             for stdout in capture_io():
-                Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST_INT", {"connect": "true"}, "*", 100)
+                Topic.write_topic(
+                    "MICROSERVICE__DEFAULT__DECOM__INST_INT",
+                    {"connect": "true"},
+                    "*",
+                    100,
+                )
                 time.sleep(0.01)
                 self.assertIn("Exception: Bad command", stdout.getvalue())
             # This is an implementation detail but we want to ensure the error was logged
@@ -206,4 +254,7 @@ class TestDecomMicroservice(unittest.TestCase):
             self.assertIn("INST HEALTH_STATUS TEMP1 Limits Response Exception!", stdout.getvalue())
             self.assertIn("Bad response", stdout.getvalue())
 
-        self.assertEqual(self.dm.limits_response_thread.metric.data["limits_response_error_total"]["value"], 1)
+        self.assertEqual(
+            self.dm.limits_response_thread.metric.data["limits_response_error_total"]["value"],
+            1,
+        )

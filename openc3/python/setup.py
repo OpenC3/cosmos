@@ -38,7 +38,7 @@ setup(
     author="Ryan Melton",
     author_email="ryan@openc3.com",
     # Choose your license
-    license="AGPLv3, Nonstandard",
+    license="OpenC3",
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
         # How mature is this project? Common values are
@@ -50,8 +50,7 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Libraries :: Python Modules",
         # Pick your license as you wish (should match "license" above)
-        "License :: OSI Approved :: GNU Affero General Public License v3",
-        "License :: Other/Proprietary License",
+        "License :: OpenC3 Builder License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         "Programming Language :: Python :: 3.10",

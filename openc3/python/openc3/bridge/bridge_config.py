@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -159,7 +154,9 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
 
                         case "OPTION":
                             parser.verify_num_parameters(
-                                2, None, f"{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>"
+                                2,
+                                None,
+                                f"{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>",
                             )
                             current_interface_or_router.set_option(params[0], params[1:])
 
@@ -171,7 +168,8 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
 
                             try:
                                 protocol_class = get_class_from_module(
-                                    filename_to_module(params[1]), filename_to_class_name(params[1])
+                                    filename_to_module(params[1]),
+                                    filename_to_class_name(params[1]),
                                 )
                                 current_interface_or_router.add_protocol(protocol_class, params[2:], params[0].upper())
                             except Exception as error:

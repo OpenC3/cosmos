@@ -4,15 +4,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -110,7 +105,7 @@ def xtce_converter(args)
   options = {}
   option_parser = OptionParser.new do |opts|
     opts.banner = "Usage: xtce_converter [options] --import input_xtce_filename --output output_dir\n"+
-      "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir "+ 
+      "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir "+
       "              --variables variables.txt --root_target root_target_name --time_association_name time_association_name"
     opts.separator("")
     opts.on("-h", "--help", "Show this message") do

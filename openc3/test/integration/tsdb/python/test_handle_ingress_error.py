@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -101,12 +96,16 @@ class TestCastFloatToIntColumn:
         base_ts = int(time.time() * 1e9)
 
         # Create table as INT 32 (LONG column)
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         # Write a float value directly — ILP rejects float -> LONG
         columns = {"VALUE": 3.14, "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True, "Float -> LONG should trigger IngressError"
         wait_for_data(questdb_client, table_name, 1)
@@ -121,16 +120,22 @@ class TestCastFloatToIntColumn:
         assert len(rows) == 1
         assert rows[0] == 3
 
-    def test_negative_float_cast_to_int(self, questdb_client, clean_table, wait_for_data):
+    def test_negative_float_cast_to_int(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         target = "CAST"
         packet = "NEG_FLOAT_TO_INT"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
 
         columns = {"VALUE": -7.9, "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True
         wait_for_data(questdb_client, table_name, 1)
@@ -148,18 +153,24 @@ class TestCastFloatToIntColumn:
 class TestCastStringToIntColumn:
     """Writing a string value to a LONG column: handle_ingress_error casts numeric strings to int."""
 
-    def test_numeric_string_cast_to_int(self, questdb_client, clean_table, wait_for_data):
+    def test_numeric_string_cast_to_int(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         target = "CAST"
         packet = "NUMSTR_TO_INT"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         # Write a numeric string to a LONG column
         columns = {"VALUE": "42", "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True, "String -> LONG should trigger IngressError"
         wait_for_data(questdb_client, table_name, 1)
@@ -172,18 +183,24 @@ class TestCastStringToIntColumn:
         assert len(rows) == 1
         assert rows[0] == 42
 
-    def test_nonnumeric_string_becomes_null(self, questdb_client, clean_table, wait_for_data):
+    def test_nonnumeric_string_becomes_null(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         """Non-numeric string can't be cast to int, stored as NULL."""
         target = "CAST"
         packet = "BADSTR_TO_INT"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
 
         # Write a non-numeric string — can't cast to int
         columns = {"VALUE": "hello", "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True
         wait_for_data(questdb_client, table_name, 1)
@@ -201,17 +218,23 @@ class TestCastStringToIntColumn:
 class TestCastStringToFloatColumn:
     """Writing a string value to a DOUBLE column: handle_ingress_error casts numeric strings to float."""
 
-    def test_numeric_string_cast_to_float(self, questdb_client, clean_table, wait_for_data):
+    def test_numeric_string_cast_to_float(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         target = "CAST"
         packet = "NUMSTR_TO_FLOAT"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("FLOAT", bit_size=64))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"
 
         columns = {"VALUE": "3.14", "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True, "String -> DOUBLE should trigger IngressError"
         wait_for_data(questdb_client, table_name, 1)
@@ -224,16 +247,22 @@ class TestCastStringToFloatColumn:
         assert len(rows) == 1
         assert abs(rows[0] - 3.14) < 1e-10
 
-    def test_nonnumeric_string_becomes_null_in_float_column(self, questdb_client, clean_table, wait_for_data):
+    def test_nonnumeric_string_becomes_null_in_float_column(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         target = "CAST"
         packet = "BADSTR_TO_FLOAT"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("FLOAT", bit_size=64))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("FLOAT", bit_size=64)
+        )
 
         columns = {"VALUE": "not_a_number", "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         assert was_handled is True
         wait_for_data(questdb_client, table_name, 1)
@@ -262,7 +291,9 @@ class TestCastToStringColumn:
 
         # Write an int value to a VARCHAR column
         columns = {"VALUE": 42, "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         # ILP may or may not auto-cast int to string — either path is acceptable
         wait_for_data(questdb_client, table_name, 1)
@@ -285,7 +316,9 @@ class TestCastToStringColumn:
         assert _get_column_type(questdb_client, table_name) == "VARCHAR"
 
         columns = {"VALUE": 3.14, "RECEIVED_COUNT": 0}
-        success, was_handled = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, was_handled = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         wait_for_data(questdb_client, table_name, 1)
 
@@ -302,39 +335,51 @@ class TestCastToStringColumn:
 class TestColumnTypeUnchanged:
     """Verify that handle_ingress_error never alters column types."""
 
-    def test_column_type_preserved_after_multiple_casts(self, questdb_client, clean_table, wait_for_data):
+    def test_column_type_preserved_after_multiple_casts(
+        self, questdb_client, clean_table, wait_for_data
+    ):
         """Write multiple mismatched values — column type must stay LONG throughout."""
         target = "CAST"
         packet = "TYPE_PRESERVED"
         table_name = clean_table(f"TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
-        questdb_client.create_table(target, packet, _make_packet_def("INT", bit_size=32))
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         # Write a float — should be cast to int
         columns = {"VALUE": 1.5, "RECEIVED_COUNT": 0}
-        success, _ = _write_with_error_handling(questdb_client, table_name, columns, base_ts)
+        success, _ = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts
+        )
         assert success is True
         wait_for_data(questdb_client, table_name, 1)
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         # Write a numeric string — should be cast to int
         columns = {"VALUE": "99", "RECEIVED_COUNT": 0}
-        success, _ = _write_with_error_handling(questdb_client, table_name, columns, base_ts + 1_000_000_000)
+        success, _ = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts + 1_000_000_000
+        )
         assert success is True
         wait_for_data(questdb_client, table_name, 2)
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         # Write a non-numeric string — should become NULL
         columns = {"VALUE": "abc", "RECEIVED_COUNT": 0}
-        success, _ = _write_with_error_handling(questdb_client, table_name, columns, base_ts + 2_000_000_000)
+        success, _ = _write_with_error_handling(
+            questdb_client, table_name, columns, base_ts + 2_000_000_000
+        )
         assert success is True
         wait_for_data(questdb_client, table_name, 3)
         assert _get_column_type(questdb_client, table_name) == "LONG"
 
         with questdb_client.query.cursor() as cur:
-            cur.execute(f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS')
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
             rows = [r[0] for r in cur.fetchall()]
         assert len(rows) == 3
         assert rows[0] == 1  # int(1.5) = 1

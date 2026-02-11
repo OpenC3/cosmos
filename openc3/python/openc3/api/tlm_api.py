@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -307,7 +302,12 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
                 target_name, item_name, cache_timeout=1, scope=scope
             )
 
-        authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
+        authorize(
+            permission="tlm",
+            target_name=target_name,
+            packet_name=packet_name,
+            scope=scope,
+        )
 
         try:
             item_config = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
@@ -354,7 +354,14 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
 # @return [Array<Object, Symbol>]
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
-def get_tlm_values(items, stale_time=30, cache_timeout=0.1, start_time=None, end_time=None, scope=OPENC3_SCOPE):
+def get_tlm_values(
+    items,
+    stale_time=30,
+    cache_timeout=0.1,
+    start_time=None,
+    end_time=None,
+    scope=OPENC3_SCOPE,
+):
     if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
@@ -496,7 +503,12 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
-        authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
+        authorize(
+            permission="tlm",
+            target_name=target_name,
+            packet_name=packet_name,
+            scope=scope,
+        )
         topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
         id_, _ = Topic.get_newest_message(topic)
         result[topic] = id_ if id_ else "0-0"
@@ -551,7 +563,12 @@ def get_tlm_cnt(*args, scope: str = OPENC3_SCOPE):
         [Numeric] Receive count for the telemetry packet
     """
     target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
-    authorize(permission="system", target_name=target_name, packet_name=packet_name, scope=scope)
+    authorize(
+        permission="system",
+        target_name=target_name,
+        packet_name=packet_name,
+        scope=scope,
+    )
     TargetModel.packet(target_name, packet_name, scope=scope)
     return TargetModel.get_telemetry_count(target_name, packet_name, scope=scope)
 

@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -62,7 +57,11 @@ class TestAutonomic(unittest.TestCase):
         self.mock_response.text = '{"name": "test_group"}'
         result = autonomic_group_create("test_group")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/group", data={"name": "test_group"}, json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/group",
+            data={"name": "test_group"},
+            json=True,
+            scope="DEFAULT",
         )
         self.assertEqual(result, {"name": "test_group"})
 
@@ -110,10 +109,19 @@ class TestAutonomic(unittest.TestCase):
 
         result = autonomic_trigger_create(left=left, operator=operator, right=right, group="test_group")
 
-        expected_config = {"group": "test_group", "left": left, "operator": operator, "right": right}
+        expected_config = {
+            "group": "test_group",
+            "left": left,
+            "operator": operator,
+            "right": right,
+        }
 
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/test_group/trigger", data=expected_config, json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/test_group/trigger",
+            data=expected_config,
+            json=True,
+            scope="DEFAULT",
         )
 
         self.assertEqual(result, {"name": "test_trigger", "enabled": "true"})
@@ -124,7 +132,9 @@ class TestAutonomic(unittest.TestCase):
         self.mock_response.text = '{"name": "test_trigger", "enabled": "true"}'
         result = autonomic_trigger_show("test_trigger", group="test_group")
         mock_api_server.request.assert_called_with(
-            "get", "/openc3-api/autonomic/test_group/trigger/test_trigger", scope="DEFAULT"
+            "get",
+            "/openc3-api/autonomic/test_group/trigger/test_trigger",
+            scope="DEFAULT",
         )
         self.assertEqual(result, {"name": "test_trigger", "enabled": "true"})
 
@@ -133,7 +143,10 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_trigger_enable("test_trigger", group="test_group")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/test_group/trigger/test_trigger/enable", json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/test_group/trigger/test_trigger/enable",
+            json=True,
+            scope="DEFAULT",
         )
 
     @patch("openc3.script.API_SERVER")
@@ -141,7 +154,10 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_trigger_disable("test_trigger", group="test_group")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/test_group/trigger/test_trigger/disable", json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/test_group/trigger/test_trigger/disable",
+            json=True,
+            scope="DEFAULT",
         )
 
     @patch("openc3.script.API_SERVER")
@@ -173,7 +189,9 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_trigger_destroy("test_trigger", group="test_group")
         mock_api_server.request.assert_called_with(
-            "delete", "/openc3-api/autonomic/test_group/trigger/test_trigger", scope="DEFAULT"
+            "delete",
+            "/openc3-api/autonomic/test_group/trigger/test_trigger",
+            scope="DEFAULT",
         )
 
     # Reaction Tests
@@ -209,7 +227,11 @@ class TestAutonomic(unittest.TestCase):
         }
 
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/reaction", data=expected_config, json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/reaction",
+            data=expected_config,
+            json=True,
+            scope="DEFAULT",
         )
 
         self.assertEqual(result, {"name": "test_reaction", "enabled": "true"})
@@ -229,7 +251,10 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_reaction_enable("test_reaction")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/reaction/test_reaction/enable", json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/reaction/test_reaction/enable",
+            json=True,
+            scope="DEFAULT",
         )
 
     @patch("openc3.script.API_SERVER")
@@ -237,7 +262,10 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_reaction_disable("test_reaction")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/reaction/test_reaction/disable", json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/reaction/test_reaction/disable",
+            json=True,
+            scope="DEFAULT",
         )
 
     @patch("openc3.script.API_SERVER")
@@ -245,7 +273,10 @@ class TestAutonomic(unittest.TestCase):
         mock_api_server.request.return_value = self.mock_response
         autonomic_reaction_execute("test_reaction")
         mock_api_server.request.assert_called_with(
-            "post", "/openc3-api/autonomic/reaction/test_reaction/execute", json=True, scope="DEFAULT"
+            "post",
+            "/openc3-api/autonomic/reaction/test_reaction/execute",
+            json=True,
+            scope="DEFAULT",
         )
 
     @patch("openc3.script.API_SERVER")
@@ -257,7 +288,11 @@ class TestAutonomic(unittest.TestCase):
         expected_config = {"trigger_level": "LEVEL", "snooze": 300}
 
         mock_api_server.request.assert_called_with(
-            "put", "/openc3-api/autonomic/reaction/test_reaction", data=expected_config, json=True, scope="DEFAULT"
+            "put",
+            "/openc3-api/autonomic/reaction/test_reaction",
+            data=expected_config,
+            json=True,
+            scope="DEFAULT",
         )
 
         self.assertEqual(result, {})
@@ -291,7 +326,12 @@ class TestAutonomic(unittest.TestCase):
         self.mock_response.text = '{"error": "Invalid trigger configuration"}'
         mock_api_server.request.return_value = self.mock_response
 
-        left = {"type": "item", "target": "INST", "packet": "HEALTH_STATUS", "item": "TEMP1"}
+        left = {
+            "type": "item",
+            "target": "INST",
+            "packet": "HEALTH_STATUS",
+            "item": "TEMP1",
+        }
         with self.assertRaises(RuntimeError):
             autonomic_trigger_create(left=left, operator=">", right={"type": "float", "float": 0})
 
@@ -303,7 +343,8 @@ class TestAutonomic(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             autonomic_reaction_create(
-                triggers=[{"name": "invalid", "group": "DEFAULT"}], actions=[{"type": "command", "value": "INST ABORT"}]
+                triggers=[{"name": "invalid", "group": "DEFAULT"}],
+                actions=[{"type": "command", "value": "INST ABORT"}],
             )
 
 

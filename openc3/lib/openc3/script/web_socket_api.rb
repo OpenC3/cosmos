@@ -1,17 +1,12 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -23,7 +18,7 @@ require 'openc3/io/json_rpc'
 module OpenC3
   # Base class - Do not use directly
   class WebSocketApi
-    USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)'.freeze
+    USER_AGENT = 'OpenC3 / v7 (ruby/openc3/lib/io/web_socket_api)'.freeze
 
     # Create the WebsocketApi object. If a block is given will automatically connect/disconnect
     def initialize(url:, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope, &block)

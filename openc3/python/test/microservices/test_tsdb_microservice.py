@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -351,7 +346,11 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Verify that key items are in the CREATE TABLE statement
         for item_name in expected_items:
-            self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
+            self.assertIn(
+                item_name,
+                create_table_sql,
+                f"Expected item '{item_name}' to be in CREATE TABLE statement",
+            )
 
     @patch("openc3.microservices.tsdb_microservice.get_cmd")
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
@@ -361,7 +360,14 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.microservices.tsdb_microservice.get_all_tlm_names")
     @patch("openc3.microservices.microservice.System")
     def test_sync_topics_creates_new_target(
-        self, mock_system, mock_get_all_tlm, mock_get_all_cmd, mock_psycopg, mock_sender, mock_get_tlm, mock_get_cmd
+        self,
+        mock_system,
+        mock_get_all_tlm,
+        mock_get_all_cmd,
+        mock_psycopg,
+        mock_sender,
+        mock_get_tlm,
+        mock_get_cmd,
     ):
         """Test sync_topics creates tables for new targets"""
         mock_ingest = Mock()
@@ -1103,7 +1109,12 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Mock packet with variable-length array (array_size=0)
         mock_get_tlm.return_value = {
             "items": [
-                {"name": "VAR_ARRAY", "data_type": "UINT", "bit_size": 8, "array_size": 0},
+                {
+                    "name": "VAR_ARRAY",
+                    "data_type": "UINT",
+                    "bit_size": 8,
+                    "array_size": 0,
+                },
             ]
         }
 
@@ -1140,8 +1151,18 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Mock packet with non-numeric array (data_type="ARRAY")
         mock_get_tlm.return_value = {
             "items": [
-                {"name": "MIXED_ARRAY", "data_type": "ARRAY", "bit_size": 8, "array_size": 0},
-                {"name": "STRING_ARRAY", "data_type": "STRING", "bit_size": 64, "array_size": 10},
+                {
+                    "name": "MIXED_ARRAY",
+                    "data_type": "ARRAY",
+                    "bit_size": 8,
+                    "array_size": 0,
+                },
+                {
+                    "name": "STRING_ARRAY",
+                    "data_type": "STRING",
+                    "bit_size": 64,
+                    "array_size": 10,
+                },
             ]
         }
 
@@ -1187,43 +1208,64 @@ class TestTsdbMicroservice(unittest.TestCase):
                 {
                     "name": "DERIVED_FLOAT32",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "FLOAT", "converted_bit_size": 32},
+                    "read_conversion": {
+                        "converted_type": "FLOAT",
+                        "converted_bit_size": 32,
+                    },
                 },
                 # DERIVED with FLOAT 64 conversion
                 {
                     "name": "DERIVED_FLOAT64",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "FLOAT", "converted_bit_size": 64},
+                    "read_conversion": {
+                        "converted_type": "FLOAT",
+                        "converted_bit_size": 64,
+                    },
                 },
                 # DERIVED with INT 16 conversion
                 {
                     "name": "DERIVED_INT16",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "INT", "converted_bit_size": 16},
+                    "read_conversion": {
+                        "converted_type": "INT",
+                        "converted_bit_size": 16,
+                    },
                 },
                 # DERIVED with UINT 32 conversion
                 {
                     "name": "DERIVED_UINT32",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "UINT", "converted_bit_size": 32},
+                    "read_conversion": {
+                        "converted_type": "UINT",
+                        "converted_bit_size": 32,
+                    },
                 },
                 # DERIVED with INT 64 conversion
                 {
                     "name": "DERIVED_INT64",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "INT", "converted_bit_size": 64},
+                    "read_conversion": {
+                        "converted_type": "INT",
+                        "converted_bit_size": 64,
+                    },
                 },
                 # DERIVED with STRING conversion
                 {
                     "name": "DERIVED_STRING",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "STRING", "converted_bit_size": 0},
+                    "read_conversion": {
+                        "converted_type": "STRING",
+                        "converted_bit_size": 0,
+                    },
                 },
                 # DERIVED with TIME conversion (e.g., PACKET_TIME from unix_time_conversion)
                 {
                     "name": "DERIVED_TIME",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "TIME", "converted_bit_size": 0},
+                    "read_conversion": {
+                        "converted_type": "TIME",
+                        "converted_bit_size": 0,
+                    },
                 },
                 # DERIVED with no conversion (should be VARCHAR/JSON)
                 {"name": "DERIVED_NO_CONV", "data_type": "DERIVED"},
@@ -1231,19 +1273,28 @@ class TestTsdbMicroservice(unittest.TestCase):
                 {
                     "name": "DERIVED_NIL_TYPE",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": None, "converted_bit_size": 0},
+                    "read_conversion": {
+                        "converted_type": None,
+                        "converted_bit_size": 0,
+                    },
                 },
                 # DERIVED with ARRAY type (should be VARCHAR/JSON)
                 {
                     "name": "DERIVED_ARRAY",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "ARRAY", "converted_bit_size": 0},
+                    "read_conversion": {
+                        "converted_type": "ARRAY",
+                        "converted_bit_size": 0,
+                    },
                 },
                 # DERIVED with OBJECT type (should be VARCHAR/JSON)
                 {
                     "name": "DERIVED_OBJECT",
                     "data_type": "DERIVED",
-                    "read_conversion": {"converted_type": "OBJECT", "converted_bit_size": 0},
+                    "read_conversion": {
+                        "converted_type": "OBJECT",
+                        "converted_bit_size": 0,
+                    },
                 },
             ]
         }
@@ -1526,7 +1577,11 @@ class TestTsdbMicroservice(unittest.TestCase):
             # Skip PACKET_TIMESECONDS and RECEIVED_TIMESECONDS as they're handled separately
             if item_name in ["PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"]:
                 continue
-            self.assertIn(item_name, create_table_sql, f"Expected item '{item_name}' to be in CREATE TABLE statement")
+            self.assertIn(
+                item_name,
+                create_table_sql,
+                f"Expected item '{item_name}' to be in CREATE TABLE statement",
+            )
 
         # Create a JSON data dictionary with values for all items
         json_data = {}
@@ -1585,14 +1640,22 @@ class TestTsdbMicroservice(unittest.TestCase):
                 pass
             else:
                 # Check if it was written with any value
-                self.assertIn(item_name, columns_written, f"Expected item '{item_name}' to be written as a column")
+                self.assertIn(
+                    item_name,
+                    columns_written,
+                    f"Expected item '{item_name}' to be written as a column",
+                )
 
         # Verify at least the key items are present
         # Note: PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored as timestamp_ns columns
         # but the values come from the topic message metadata (time, received_time), not json_data
         key_items = ["TEMP1", "TEMP2", "TEMP3", "TEMP4", "COLLECTS"]
         for key_item in key_items:
-            self.assertIn(key_item, columns_written, f"Key item '{key_item}' should be present in columns")
+            self.assertIn(
+                key_item,
+                columns_written,
+                f"Key item '{key_item}' should be present in columns",
+            )
 
         # Verify the table name is correct (TLM__ prefix for telemetry)
         self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")

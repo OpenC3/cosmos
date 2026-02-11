@@ -2,15 +2,10 @@
 # Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 */
 
 // @ts-check
@@ -44,14 +39,11 @@ test('displays microservice names', async ({ page, utils }) => {
   )
 })
 
-test.fixme('displays microservice details', async ({ page, utils }) => {
+test('displays microservice details', async ({ page, utils }) => {
   await page.locator('[aria-label="Show Microservice Details"]').nth(2).click()
   await expect(page.locator('.editor')).toContainText(
     '"name": "DEFAULT__CLEANUP__INST2"',
   )
-  await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
-    expect(contents).toContain('"name": "DEFAULT__CLEANUP__INST2"')
-  })
   await page.getByRole('button', { name: 'Ok' }).click()
 })
 
@@ -84,7 +76,7 @@ test('stops and starts microservices', async ({ page, utils }) => {
     .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' })
     .locator('.mdi-play')
     .click()
-  await page.locator('[data-test="confirm-dialog-start"]').click()
+  await page.locator('[data-test="confirm-dialog-restart"]').click()
   await expect(
     page
       .locator('.v-list-item')

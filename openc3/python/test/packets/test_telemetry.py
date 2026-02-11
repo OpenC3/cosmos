@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -204,7 +199,9 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(pkt.packet_name, "PKT2")
         self.assertEqual(pkt.received_time, time + timedelta(seconds=1))
 
-    def test_newest_packet_with_two_valid_timestamps_returns_the_last_packet_if_timestamps_are_equal(self):
+    def test_newest_packet_with_two_valid_timestamps_returns_the_last_packet_if_timestamps_are_equal(
+        self,
+    ):
         time = datetime.now()
         self.tlm.packet("TGT1", "PKT1").received_time = time
         self.tlm.packet("TGT1", "PKT2").received_time = time
@@ -212,7 +209,9 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(pkt.packet_name, "PKT2")
         self.assertEqual(pkt.received_time, time)
 
-    def test_with_one_or_more_None_timestamps_returns_the_last_packet_if_neither_has_a_timestamp(self):
+    def test_with_one_or_more_None_timestamps_returns_the_last_packet_if_neither_has_a_timestamp(
+        self,
+    ):
         pkt = self.tlm.newest_packet("TGT1", "ITEM1")
         self.assertEqual(pkt.packet_name, "PKT2")
         self.assertEqual(pkt.received_time, None)
@@ -441,7 +440,8 @@ class TestTelemetry(unittest.TestCase):
 
     def test_values_and_limits_states_complains_about_non_existent_value_types(self):
         with self.assertRaisesRegex(
-            ValueError, "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'"
+            ValueError,
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', or 'FORMATTED'",
         ):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], "MINE")
 
@@ -449,7 +449,9 @@ class TestTelemetry(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "item_array must be a nested array"):
             self.tlm.values_and_limits_states(["TGT1", "PKT1", "ITEM1"])
 
-    def test_values_and_limits_states_complains_about_the_wrong_number_of_parameters(self):
+    def test_values_and_limits_states_complains_about_the_wrong_number_of_parameters(
+        self,
+    ):
         with self.assertRaisesRegex(TypeError, "takes from 2 to 3 positional arguments but 4 were given"):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], "RAW", "RAW")
 
@@ -475,7 +477,9 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(vals[2][1], None)
         self.assertEqual(vals[2][2], None)
 
-    def test_values_and_limits_states_reads_all_the_specified_values_with_specified_value_types(self):
+    def test_values_and_limits_states_reads_all_the_specified_values_with_specified_value_types(
+        self,
+    ):
         self.tlm.update("TGT1", "PKT1", b"\x01\x02\x03\x04")
         self.tlm.update("TGT1", "PKT2", b"\x05\x06")
         self.tlm.update("TGT2", "PKT1", b"\x07\x08")
