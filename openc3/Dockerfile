@@ -14,17 +14,17 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} . .
 USER root
 
 RUN mkdir -p lib/openc3/ext \
-  && git config --global http.sslCAinfo /devel/cacert.pem \
-  && bundle config set --local without 'development test' \
-  && bundle install --quiet \
-  && rake gems \
-  && gem install --local ./openc3-*.gem \
-  && openc3_gem=$(dirname `gem which openc3`) \
-  && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
-  && mkdir -p gems \
-  && mv *.gem gems/. \
-  && gem cleanup \
-  && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
+    && git config --global http.sslCAinfo /devel/cacert.pem \
+    && bundle config set --local without 'development test' \
+    && bundle install --quiet \
+    && rake gems \
+    && gem install --local ./openc3-*.gem \
+    && openc3_gem=$(dirname `gem which openc3`) \
+    && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
+    && mkdir -p gems \
+    && mv *.gem gems/. \
+    && gem cleanup \
+    && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 WORKDIR /openc3/python
 
@@ -35,8 +35,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # Install dependencies only (cached when deps don't change)
 # Use build cache mount to avoid re-downloading wheels
 RUN --mount=type=cache,target=/root/.cache/uv \
-    rm -rf .venv \
-    && uv sync --locked --no-dev --no-install-project
+    uv sync --locked --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
