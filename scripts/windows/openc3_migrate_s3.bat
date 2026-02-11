@@ -148,12 +148,19 @@ echo [==>] Detecting environment...
 
 REM Check for old volume
 set "VOLUME_FOUND="
+set "VOLUME_PREFIX="
 for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
 if "%VOLUME_FOUND%"=="" (
-    REM Check with cosmos_ prefix
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%OLD_VOLUME%"') do (
-        set "OLD_VOLUME=cosmos_%OLD_VOLUME%"
+    REM Check for prefixed volume (docker compose adds project name)
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
+        set "PREFIXED_VOL=%%i"
         set "VOLUME_FOUND=1"
+    )
+    if "!VOLUME_FOUND!"=="1" (
+        REM Extract prefix by removing the old volume name from the end
+        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
+        set "OLD_VOLUME=!PREFIXED_VOL!"
+        echo [INFO] Found old volume with prefix: !OLD_VOLUME!
     )
 )
 if "%VOLUME_FOUND%"=="" (
@@ -162,17 +169,17 @@ if "%VOLUME_FOUND%"=="" (
     echo If you haven't run COSMOS 6 before, there's nothing to migrate.
     exit /b 1
 )
-echo [INFO] Found old MINIO volume: %OLD_VOLUME%
+if "%VOLUME_PREFIX%"=="" echo [INFO] Found old MINIO volume: %OLD_VOLUME%
+
+REM Apply the same prefix to new volume if one was detected
+if not "%VOLUME_PREFIX%"=="" (
+    set "NEW_VOLUME=%VOLUME_PREFIX%%NEW_VOLUME%"
+    echo [INFO] Using matching prefix for new volume: !NEW_VOLUME!
+)
 
 REM Check for new volume
 set "NEW_VOL_FOUND="
 for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%NEW_VOLUME%"') do set "NEW_VOL_FOUND=1"
-if "%NEW_VOL_FOUND%"=="" (
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%NEW_VOLUME%"') do (
-        set "NEW_VOLUME=cosmos_%NEW_VOLUME%"
-        set "NEW_VOL_FOUND=1"
-    )
-)
 if "%NEW_VOL_FOUND%"=="" (
     echo [INFO] New volume '%NEW_VOLUME%' will be created
 ) else (
@@ -440,6 +447,21 @@ echo.
 exit /b 0
 
 :cleanup
+REM Resolve volume names with prefix detection for display
+set "VOLUME_FOUND="
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
+if "%VOLUME_FOUND%"=="" (
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
+        set "PREFIXED_VOL=%%i"
+        set "VOLUME_FOUND=1"
+    )
+    if "!VOLUME_FOUND!"=="1" (
+        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
+        set "OLD_VOLUME=!PREFIXED_VOL!"
+        set "NEW_VOLUME=!VOLUME_PREFIX!%NEW_VOLUME%"
+    )
+)
+
 echo [==>] Cleaning up migration containers...
 
 set "CONTAINER_EXISTS="

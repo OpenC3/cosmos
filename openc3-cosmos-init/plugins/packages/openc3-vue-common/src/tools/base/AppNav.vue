@@ -20,13 +20,13 @@
     <v-navigation-drawer
       v-if="!chromeless"
       id="openc3-nav-drawer"
-      :model-value="drawer"
+      v-model="drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
       <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
         COSMOS
       </div>
-      <div style="text-align: center; font-size: 18pt">
+      <div class="cosmos">
         {{ subtitle }}
       </div>
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
@@ -127,23 +127,22 @@
             <span id="openc3-menu" />
           </v-row>
         </v-col>
-        <v-col>
-          <v-row class="clock flex-nowrap mt-0">
-            <rux-clock
-              v-if="!astro.hideClock"
-              date-in=""
-              :timezone="astroTimeZone"
-            />
+        <v-col style="margin: auto">
+          <v-row v-if="!astro.hideClock" class="clock flex-nowrap mt-0">
+            <rux-clock date-in="" :timezone="astroTimeZone" />
           </v-row>
         </v-col>
         <v-col align-self="center" class="mt-2">
           <v-row class="flex-nowrap">
             <v-spacer />
             <context-tag />
-            <scope-selector class="mr-6 mt-4" />
+            <div>
+              <scope-selector class="mr-6 mt-4" />
+            </div>
             <notifications class="mr-6" data-test="notifications" />
-            <user-menu class="mr-6" /> </v-row
-        ></v-col>
+            <user-menu class="mr-6" />
+          </v-row>
+        </v-col>
       </v-row>
     </v-app-bar>
     <upgrade-to-enterprise-dialog
@@ -388,16 +387,13 @@ export default {
 }
 div a {
   color: white;
+  font-size: 16px;
   display: block;
   height: 100%;
   width: 100%;
 }
 a.fixcenter {
   display: flex;
-}
-#openc3-app-toolbar .top-bar-divider-full-height {
-  margin: -4px 4px;
-  min-height: calc(100% + 8px);
 }
 </style>
 
@@ -446,6 +442,7 @@ header {
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item {
   padding-left: 0px;
+  padding-right: 8px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {
   width: 0px;

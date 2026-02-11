@@ -108,7 +108,7 @@ Migration workflow:
      ./openc3.sh run
 
 Configuration (via environment variables):
-  OLD_VOLUME    Old MINIO volume name (default: openc3-object-v)
+  OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
   NEW_VOLUME    New versitygw volume name (default: openc3-object-v)
   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
@@ -194,10 +194,14 @@ detect_environment() {
     log_step "Detecting environment..."
 
     # Check for old volume
+    local volume_prefix=""
     if ! volume_exists "$OLD_VOLUME"; then
-        # Check with cosmos_ prefix (docker compose adds project name)
-        if volume_exists "cosmos_${OLD_VOLUME}"; then
-            OLD_VOLUME="cosmos_${OLD_VOLUME}"
+        # Check with common prefixes (docker compose adds project name)
+        local prefixed_old
+        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
+        if [[ -n "$prefixed_old" ]]; then
+            volume_prefix="${prefixed_old%"${OLD_VOLUME}"}"
+            OLD_VOLUME="$prefixed_old"
             log_info "Found old volume with prefix: $OLD_VOLUME"
         else
             log_error "Old MINIO volume '$OLD_VOLUME' not found"
@@ -209,14 +213,15 @@ detect_environment() {
         log_info "Found old MINIO volume: $OLD_VOLUME"
     fi
 
+    # Apply the same prefix to new volume if one was detected
+    if [[ -n "$volume_prefix" ]]; then
+        NEW_VOLUME="${volume_prefix}${NEW_VOLUME}"
+        log_info "Using matching prefix for new volume: $NEW_VOLUME"
+    fi
+
     # Check for new volume (may not exist yet)
     if ! volume_exists "$NEW_VOLUME"; then
-        if volume_exists "cosmos_${NEW_VOLUME}"; then
-            NEW_VOLUME="cosmos_${NEW_VOLUME}"
-            log_info "Found new volume with prefix: $NEW_VOLUME"
-        else
-            log_info "New volume '$NEW_VOLUME' will be created"
-        fi
+        log_info "New volume '$NEW_VOLUME' will be created"
     else
         log_info "Found new versitygw volume: $NEW_VOLUME"
     fi
@@ -522,6 +527,16 @@ cmd_status() {
 
 # Cleanup command - remove temporary containers
 cmd_cleanup() {
+    # Resolve volume names with prefix detection for display
+    if ! volume_exists "$OLD_VOLUME"; then
+        local prefixed_old
+        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
+        if [[ -n "$prefixed_old" ]]; then
+            NEW_VOLUME="${prefixed_old%"${OLD_VOLUME}"}${NEW_VOLUME}"
+            OLD_VOLUME="$prefixed_old"
+        fi
+    fi
+
     log_step "Cleaning up migration containers..."
 
     if container_exists "$MINIO_MIGRATION_CONTAINER"; then
