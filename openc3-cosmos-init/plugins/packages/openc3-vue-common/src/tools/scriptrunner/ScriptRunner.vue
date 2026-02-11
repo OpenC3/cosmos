@@ -366,6 +366,8 @@ import ScriptAceEditor from '@/tools/scriptrunner/ScriptAceEditor.vue'
 import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
 import { useScriptPrompts } from '@/tools/scriptrunner/useScriptPrompts'
 
+import { detectLanguage, pythonTestSuiteText, rubyTestSuiteText } from './utils'
+
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
 const NEW_FILENAME = '<Untitled>'
@@ -609,14 +611,14 @@ export default {
                   label: 'Ruby',
                   icon: 'mdi-language-ruby',
                   command: () => {
-                    this.newRubyTestSuite()
+                    this.newTestSuite('ruby')
                   },
                 },
                 {
                   label: 'Python',
                   icon: 'mdi-language-python',
                   command: () => {
-                    this.newPythonTestSuite()
+                    this.newTestSuite('python')
                   },
                 },
               ],
@@ -1592,11 +1594,8 @@ export default {
             this.screens = []
             break
           case 'downloadfile':
-            // Make a link and then 'click' on it to start the download
-            const link = document.createElement('a')
-            link.href = window.location.origin + data.url
-            link.setAttribute('download', data.filename)
-            link.click()
+            const url = window.location.origin + data.url
+            this.downloadFile(url, data.filename)
             break
           case 'opentab':
             window.open(data.url, '_blank')
@@ -1662,96 +1661,15 @@ export default {
       }
       this.doResize()
     },
-    async newRubyTestSuite() {
+    async newTestSuite(language) {
       const confirmed = await this.confirmUnsavedChanges()
       if (!confirmed) return
       this.newFile()
-      this.editorContent = `require 'openc3/script/suite.rb'
-
-# Group class name should indicate what the scripts are testing
-class Power < OpenC3::Group
-  # Methods beginning with script_ are added to Script dropdown
-  def script_power_on
-    # Using OpenC3::Group.puts adds the output to the Test Report
-    # This can be useful for requirements verification, QA notes, etc
-    OpenC3::Group.puts "Verifying requirement SR-1"
-    configure()
-  end
-
-  # Other methods are not added to Script dropdown
-  def configure
-  end
-
-  def setup
-    # Run when Group Setup button is pressed
-    # Run before all scripts when Group Start is pressed
-  end
-
-  def teardown
-    # Run when Group Teardown button is pressed
-    # Run after all scripts when Group Start is pressed
-  end
-end
-
-class TestSuite < OpenC3::Suite
-  def initialize
-    add_group('Power')
-  end
-  def setup
-    # Run when Suite Setup button is pressed
-    # Run before all groups when Suite Start is pressed
-  end
-  def teardown
-    # Run when Suite Teardown button is pressed
-    # Run after all groups when Suite Start is pressed
-  end
-end
-`
-      await this.saveFile('auto')
-    },
-    async newPythonTestSuite() {
-      const confirmed = await this.confirmUnsavedChanges()
-      if (!confirmed) return
-      this.newFile()
-      this.editorContent = `from openc3.script.suite import Suite, Group
-
-# Group class name should indicate what the scripts are testing
-class Power(Group):
-    # Methods beginning with script_ are added to Script dropdown
-    def script_power_on(self):
-        # Using Group.print adds the output to the Test Report
-        # This can be useful for requirements verification, QA notes, etc
-        Group.print("Verifying requirement SR-1")
-        self.configure()
-
-    # Other methods are not added to Script dropdown
-    def configure(self):
-        pass
-
-    def setup(self):
-        # Run when Group Setup button is pressed
-        # Run before all scripts when Group Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Group Teardown button is pressed
-        # Run after all scripts when Group Start is pressed
-        pass
-
-class TestSuite(Suite):
-    def __init__(self):
-        self.add_group(Power)
-
-    def setup(self):
-        # Run when Suite Setup button is pressed
-        # Run before all groups when Suite Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Suite Teardown button is pressed
-        # Run after all groups when Suite Start is pressed
-        pass
-`
+      if (language === 'ruby') {
+        this.editorContent = rubyTestSuiteText
+      } else if (language === 'python') {
+        this.editorContent = pythonTestSuiteText
+      }
       await this.saveFile('auto')
     },
     addToRecent(filename) {
@@ -1907,42 +1825,6 @@ class TestSuite(Suite):
         localStorage['script_runner__recent'] = JSON.stringify(this.recent)
       }
     },
-    detectLanguage() {
-      let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
-      let pythonRegex1 = new RegExp('^\\s*(import|from) ')
-      let rubyRegex2 = new RegExp('^\\s*end\\s*$')
-      let pythonRegex2 = new RegExp(
-        '^\\s*(if|def|while|else|elif|class).*:\\s*$',
-      )
-      let pythonRegex3 = /\(f"/ // f strings
-      // Since python types are defined like "def method(string: str):"
-      // we make sure the line doesn't end in ':' which indicates Python
-      // (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
-      let rubyRegex3 = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
-      let text = this.editorContent
-      let lines = text.split('\n')
-      for (let line of lines) {
-        if (line.match(rubyRegex1)) {
-          return 'ruby'
-        }
-        if (line.match(pythonRegex1)) {
-          return 'python'
-        }
-        if (line.match(rubyRegex2)) {
-          return 'ruby'
-        }
-        if (line.match(pythonRegex2)) {
-          return 'python'
-        }
-        if (line.match(pythonRegex3)) {
-          return 'python'
-        }
-        if (line.match(rubyRegex3)) {
-          return 'ruby'
-        }
-      }
-      return 'unknown' // otherwise unknown
-    },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
@@ -1959,31 +1841,21 @@ class TestSuite(Suite):
           } else {
             // start or auto with NEW_FILENAME
             if (this.tempFilename === null) {
-              let language = this.detectLanguage()
+              let language = detectLanguage(this.editorContent)
               if (language === 'unknown') {
                 language = AceEditorUtils.getDefaultScriptingLanguage()
               }
               const uuid = crypto.randomUUID().split('-')[0]
+              let postfix
               if (language === 'ruby') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.rb'
+                postfix = '_temp.rb'
               } else if (language === 'python') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.py'
+                postfix = '_temp.py'
               } else {
                 // No autosave for unknown language
                 return
               }
+              this.tempFilename = `${TEMP_FOLDER}/${format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')}_${uuid}${postfix}`
               this.filename = this.tempFilename
               this.addToRecent(this.filename)
             }
@@ -2080,47 +1952,42 @@ class TestSuite(Suite):
         }
       }
     },
+    downloadFile(href, filename) {
+      // Make a link and then 'click' on it to start the download
+      const link = document.createElement('a')
+      link.href = href
+      link.setAttribute('download', filename)
+      link.click()
+    },
     download() {
       const blob = new Blob([this.editorContent], {
         type: 'text/plain',
       })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', this.filename)
-      link.click()
+      const url = URL.createObjectURL(blob)
+      this.downloadFile(url, this.filename)
+    },
+    fetchInformation: async function (path) {
+      const response = await Api.post(
+        `/script-api/scripts/${this.filename}/${path}`,
+        {
+          data: this.editorContent,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'plain/text',
+          },
+        },
+      )
+      this.information.title = response.data.title
+      this.information.text = JSON.parse(response.data.description)
+      this.information.show = true
     },
     // ScriptRunner Script menu actions
     syntaxCheck: async function () {
-      const response = await Api.post(
-        `/script-api/scripts/${this.filename}/syntax`,
-        {
-          data: this.editorContent,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'plain/text',
-          },
-        },
-      )
-      this.information.title = response.data.title
-      this.information.text = JSON.parse(response.data.description)
-      this.information.show = true
+      await this.fetchInformation('syntax')
       this.information.width = '600'
     },
     showInstrumented: async function () {
-      const response = await Api.post(
-        `/script-api/scripts/${this.filename}/instrumented`,
-        {
-          data: this.editorContent,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'plain/text',
-          },
-        },
-      )
-      this.information.title = response.data.title
-      this.information.text = JSON.parse(response.data.description)
-      this.information.show = true
+      await this.fetchInformation('instrumented')
       this.information.width = '90vw'
     },
     showCallStack() {
