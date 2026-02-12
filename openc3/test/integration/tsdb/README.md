@@ -21,14 +21,14 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 3. Run Python tests:
 
    ```bash
-   cd /cosmos/openc3/python
+   cd openc3/python
    poetry run pytest ../test/integration/tsdb/python/ -v
    ```
 
 4. Run Ruby tests:
 
    ```bash
-   cd /path/to/openc3/test/integration/tsdb/ruby
+   cd openc3/test/integration/tsdb/ruby
    bundle install
    bundle exec rspec . -fd
    ```

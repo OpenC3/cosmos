@@ -297,18 +297,15 @@ class LoggedStreamingThread < StreamingThread
         item_index += 1
       end
     end
-    names << "T0.PACKET_TIMESECONDS"
+    names << "CAST(T0.PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"
 
     # Add any additional timestamp source columns needed for calculated items (RECEIVED_TIMESECONDS if needed)
     timestamp_source_columns.each_key do |source_col|
-      # T0.PACKET_TIMESECONDS is already added above, but RECEIVED_TIMESECONDS needs to be added explicitly
       if source_col.include?('RECEIVED_TIMESECONDS')
         timestamp_source_columns[source_col] = names.length
         names << source_col
-      else
-        # T0.PACKET_TIMESECONDS was already added
-        timestamp_source_columns[source_col] = names.length - 1  # PACKET_TIMESECONDS is always the last item before this loop
       end
+      # PACKET_TIMESECONDS is derived from COSMOS_TIMESTAMP - no separate column needed
     end
 
     # Update calculated_timestamp_items with actual source column indices
@@ -368,17 +365,15 @@ class LoggedStreamingThread < StreamingThread
               timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
                 col_name = tuple[0]
-                if col_name == 'PACKET_TIMESECONDS' || col_name.end_with?('.PACKET_TIMESECONDS')
-                  # tuple[1] is a Ruby time object which we convert to nanoseconds
-                  entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
-                  timestamp_values['PACKET_TIMESECONDS'] = tuple[1]
-                  # Also store with table prefix for calculated items
-                  timestamp_values[col_name] = tuple[1] if col_name.include?('.')
-                  # If this was explicitly requested as an item, add converted value to entry
-                  if index < item_keys.length && stored_timestamp_item_keys.key?(item_keys[index])
-                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-                  end
+                if col_name == 'COSMOS_TIMESTAMP'
+                  # Use the nanosecond integer directly for full precision
+                  time_ns = tuple[1].to_i
+                  entry['__time'] = time_ns
+                  # Derive PACKET_TIMESECONDS Time object from nanoseconds for calculated items
+                  # Use Time.at with in: '+00:00' to create UTC time matching PG timestamp behavior
+                  pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
+                  timestamp_values['PACKET_TIMESECONDS'] = pkt_time
+                  next
                 elsif col_name == 'RECEIVED_TIMESECONDS' || col_name.end_with?('.RECEIVED_TIMESECONDS')
                   # Store for calculated items
                   timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
@@ -497,7 +492,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SELECT clause with aggregations
-      selects = ["PACKET_TIMESECONDS as timestamp"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"]
       column_mapping = {} # Maps result column name to [item_key, reduced_type, value_type]
 
       items_to_query.each do |item_name, info|
@@ -540,7 +535,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY timestamp"
+      query += " ORDER BY COSMOS_TIMESTAMP"
 
       min = 0
       max = @max_batch_size
@@ -559,7 +554,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB reduced query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB reduced query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -577,10 +571,9 @@ class LoggedStreamingThread < StreamingThread
                   col_name = tuple[0]
                   value = tuple[1]
 
-                  if col_name == 'timestamp'
-                    # Convert Ruby time to nanoseconds
-                    timestamp = (value.to_f * 1_000_000_000).to_i
-                    entry['__time'] = timestamp
+                  if col_name == 'COSMOS_TIMESTAMP'
+                    # Use nanosecond integer directly for full precision
+                    entry['__time'] = value.to_i
                     next
                   end
 
@@ -762,7 +755,8 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SQL query - select all columns from the table
-      query = "SELECT * FROM \"#{table_name}\""
+      # CAST designated timestamp to LONG for nanosecond precision (PG wire truncates to microseconds)
+      query = "SELECT *, CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP FROM \"#{table_name}\""
       query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
       if end_time
         query += " AND PACKET_TIMESECONDS < #{end_time}"
@@ -785,7 +779,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB packet query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB packet query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -888,7 +881,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build aggregation query for all numeric items in the packet
-      selects = ["PACKET_TIMESECONDS as timestamp"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"]
       numeric_items = []
 
       if packet_def && packet_def['items']
@@ -936,7 +929,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY timestamp"
+      query += " ORDER BY COSMOS_TIMESTAMP"
 
       min = 0
       max = @max_batch_size
@@ -955,7 +948,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB reduced packet query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB reduced packet query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -976,8 +968,9 @@ class LoggedStreamingThread < StreamingThread
                     col_name = tuple[0]
                     value = tuple[1]
 
-                    if col_name == 'timestamp'
-                      entry['__time'] = (value.to_f * 1_000_000_000).to_i
+                    if col_name == 'COSMOS_TIMESTAMP'
+                      # Use nanosecond integer directly for full precision
+                      entry['__time'] = value.to_i
                       next
                     end
 
@@ -1048,12 +1041,14 @@ class LoggedStreamingThread < StreamingThread
       column_name = tuple[0]
       raw_value = tuple[1]
 
-      # Handle PACKET_TIMESECONDS specially - this is the designated timestamp column
-      if column_name == 'PACKET_TIMESECONDS'
-        # Convert Ruby time to nanoseconds
-        entry['__time'] = (raw_value.to_f * 1_000_000_000).to_i
+      # Use the nanosecond integer from CAST for full precision
+      if column_name == 'COSMOS_TIMESTAMP'
+        entry['__time'] = raw_value.to_i
         next
       end
+
+      # Skip the original timestamp column (already handled via COSMOS_TIMESTAMP)
+      next if column_name == 'PACKET_TIMESECONDS'
 
       # Skip metadata columns
       next if column_name == 'COSMOS_DATA_TAG'

@@ -52,6 +52,7 @@ class Packet(Structure):
         "RECEIVED_COUNT",
         "COSMOS_DATA_TAG",
         "COSMOS_EXTRA",
+        "COSMOS_TIMESTAMP",
     }
     ANY_STATE = "ANY"
     # Valid format types
