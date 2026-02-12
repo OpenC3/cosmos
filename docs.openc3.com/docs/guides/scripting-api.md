@@ -3992,7 +3992,7 @@ wait_expression(
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil,
   quiet: false
-) -> boolean
+) # -> boolean
 ```
 
 </TabItem>
@@ -4008,7 +4008,7 @@ wait_expression(
     globals=None,
     locals=None,
     quiet=False,
-) -> bool
+) # -> bool
 ```
 
 </TabItem>
@@ -4219,7 +4219,7 @@ wait_check_expression(
   timeout,
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil
-) -> int
+) # -> int
 ```
 
 </TabItem>
@@ -4234,7 +4234,7 @@ wait_check_expression(
     polling_rate=DEFAULT_TLM_POLLING_RATE,
     globals=None,
     locals=None
-) -> int
+) # -> int
 ```
 
 </TabItem>
@@ -5247,9 +5247,8 @@ end
 
 ```python
 target_ints = get_target_interfaces()
-target_ints.each do |target_name, interfaces|
-  puts "Target: #{target_name}, Interfaces: #{interfaces}"
-end
+for target_name, interfaces in target_ints:
+    print(f"Target: {target_name}, Interfaces: {interfaces}")
 ```
 
 </TabItem>
@@ -7210,7 +7209,7 @@ create_screen("INST", "LOCAL", screen_def)
 <TabItem value="python" label="Python Example">
 
 ```python
-screen_def = '
+screen_def = """
   SCREEN AUTO AUTO 0.1
   VERTICAL
     TITLE "New Screen"
@@ -7218,7 +7217,7 @@ screen_def = '
       LABELVALUE INST HEALTH_STATUS TEMP1
     END
   END
-'
+"""
 # Here we pass in the screen definition as a string
 create_screen("INST", "LOCAL", screen_def)
 ```
@@ -8566,6 +8565,7 @@ end
 with disable_instrumentation():
     for x in range(1000):
         # Don't want this to have to highlight 1000 times
+        pass
 ```
 
 </TabItem>

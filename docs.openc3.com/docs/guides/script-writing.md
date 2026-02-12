@@ -181,6 +181,7 @@ end
 ```python
 def power_on_subsystem():
     # 100 lines of cmd(), wait_check(), etc
+    pass
 ```
 
 </TabItem>
@@ -847,7 +848,7 @@ For many COSMOS APIs, they can be imported from either the API or Script library
 
 ```ruby
 require 'openc3/api/api'
-  or
+# or
 require 'openc3/script'
 ```
 
@@ -856,7 +857,7 @@ require 'openc3/script'
 
 ```python
 from openc3.api import *
-  or
+# or
 from openc3.script import *
 ```
 

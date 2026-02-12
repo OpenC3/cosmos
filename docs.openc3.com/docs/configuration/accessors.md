@@ -42,7 +42,7 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status"
 
 The Concise Binary Object Representation ([CBOR](https://en.wikipedia.org/wiki/CBOR)) Accessor serializes data into a binary format loosely based on JSON. It is a subclass of the JSON Accessor and is what COSMOS uses natively to store log files.
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+For a full example see the [COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo). Both the Ruby INST and Python INST2 targets have `ACCESSOR CborAccessor` defined.
 
 #### Commands
 
@@ -72,7 +72,7 @@ Creating the template file requires the use of the Ruby or Python CBOR libraries
 
 ```ruby
 require 'cbor'
-data = {"id_item" : 2, "item1" : 101, "more" : { "item2" : 12, "item3" : 3.14, "item4" : "Example", "item5" : [4, 3, 2, 1] } }
+data = {"id_item" => 2, "item1" => 101, "more" => { "item2" => 12, "item3" => 3.14, "item4" => "Example", "item5" => [4, 3, 2, 1] } }
 File.open("_cbor_template.bin", 'wb') do |file|
   file.write(data.to_cbor)
 end
@@ -140,7 +140,7 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
 
 The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page.
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+For a full example see the [COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo). Both the Ruby INST and Python INST2 targets have `ACCESSOR HtmlAccessor` defined.
 
 #### Commands
 
@@ -243,7 +243,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+For a full example see the [COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo). Both the Ruby INST and Python INST2 targets have `ACCESSOR JsonAccessor` defined.
 
 #### Commands
 
@@ -340,7 +340,7 @@ TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Power supply status"
 
 The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server.
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+For a full example see the [COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo). Both the Ruby INST and Python INST2 targets have `ACCESSOR XmlAccessor` defined.
 
 #### Commands
 
