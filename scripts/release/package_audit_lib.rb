@@ -297,25 +297,36 @@ end
 
 def check_alpine(client)
   resp = client.get('http://dl-cdn.alpinelinux.org/alpine/').body
-  major, minor = ENV['ALPINE_VERSION'].split('.')
+  major, minor = ENV.fetch('ALPINE_VERSION').split('.')
   major = major.to_i
   minor = minor.to_i
-  if resp.include?(ENV['ALPINE_VERSION'])
+  if resp.include?(ENV.fetch('ALPINE_VERSION'))
     if resp.include?("#{major + 1}.0")
       puts "NOTE: Alpine has a new major version: #{major}.0. Read release notes at https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_#{major}.0.0"
     end
     if resp.include?("#{major}.#{minor + 1}")
       puts "NOTE: Alpine has a new minor version: #{major}.#{minor + 1}. Read release notes at https://alpinelinux.org/posts/Alpine-#{major}.#{minor + 1}.0-released.html"
     end
-    resp = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7").body
-    if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}-armv7.iso")
-      puts "NOTE: Alpine has a new patch version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
+    resp = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{ENV.fetch('ALPINE_VERSION')}/releases/armv7").body
+    if resp.include?("alpine-virt-#{ENV.fetch('ALPINE_VERSION')}.#{ENV.fetch('ALPINE_BUILD').to_i + 1}-armv7.iso")
+      puts "NOTE: Alpine has a new patch version: #{ENV.fetch('ALPINE_VERSION')}.#{ENV.fetch('ALPINE_BUILD').to_i + 1}"
     end
-    if !resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}-armv7.iso")
-      puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"
+    if !resp.include?("alpine-virt-#{ENV.fetch('ALPINE_VERSION')}.#{ENV.fetch('ALPINE_BUILD')}-armv7.iso")
+      puts "ERROR: Could not find Alpine build: #{ENV.fetch('ALPINE_VERSION')}.#{ENV.fetch('ALPINE_BUILD')}"
     end
   else
-    puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}"
+    puts "ERROR: Could not find Alpine build: #{ENV.fetch('ALPINE_VERSION')}"
+  end
+
+  # Verify the roadmap.md documents the current Alpine version
+  roadmap_path = File.join(File.dirname(__FILE__), '../../docs.openc3.com/docs/development/roadmap.md')
+  if File.exist?(roadmap_path)
+    roadmap = File.read(roadmap_path)
+    unless roadmap.include?("Alpine-#{ENV.fetch('ALPINE_VERSION')}")
+      puts "WARN: roadmap.md Alpine version does not match ALPINE_VERSION=#{ENV.fetch('ALPINE_VERSION')}. Update the Alpine version in docs.openc3.com/docs/development/roadmap.md"
+    end
+  else
+    puts "WARN: Could not find roadmap.md at #{roadmap_path}"
   end
 end
 

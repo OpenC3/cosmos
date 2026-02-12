@@ -129,11 +129,6 @@ module OpenC3
       end
     end
 
-    # @deprecated Use check_tolerance with type: :RAW
-    def check_tolerance_raw(*args, scope: $openc3_scope, token: $openc3_token)
-      check_tolerance(*args, type: :RAW, scope: scope, token: token)
-    end
-
     # Check to see if an expression is true without waiting.  If the expression
     # is not true, the script will pause.
     def check_expression(exp_to_eval, context = nil, scope: $openc3_scope, token: $openc3_token)
@@ -214,11 +209,6 @@ module OpenC3
       end
     end
 
-    # @deprecated Use wait with type: :RAW
-    def wait_raw(*args, quiet: false, scope: $openc3_scope, token: $openc3_token)
-      wait(*args, type: :RAW, quiet: quiet, scope: scope, token: token)
-    end
-
     # Wait on an expression to be true. On a timeout, the script will continue.
     #
     # Supports two signatures:
@@ -271,11 +261,6 @@ module OpenC3
       return success
     end
 
-    # @deprecated Use wait_tolerance with type: :RAW
-    def wait_tolerance_raw(*args, quiet: false, scope: $openc3_scope, token: $openc3_token)
-      wait_tolerance(*args, type: :RAW, quiet: quiet, scope: scope, token: token)
-    end
-
     # Wait on a custom expression to be true
     def wait_expression(exp_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, context = nil, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
@@ -320,11 +305,6 @@ module OpenC3
         end
       end
       return time_diff
-    end
-
-    # @deprecated use wait_check with type: :RAW
-    def wait_check_raw(*args, scope: $openc3_scope, token: $openc3_token, &block)
-      wait_check(*args, type: :RAW, scope: scope, token: token, &block)
     end
 
     # Wait for the value of a telmetry item to be within a tolerance of a value
@@ -387,11 +367,6 @@ module OpenC3
         end
       end
       return time_diff
-    end
-
-    # @deprecated Use wait_check_tolerance with type: :RAW
-    def wait_check_tolerance_raw(*args, scope: $openc3_scope, token: $openc3_token, &block)
-      wait_check_tolerance(*args, type: :RAW, scope: scope, token: token, &block)
     end
 
     # Wait on an expression to be true.  On a timeout, the script will pause.

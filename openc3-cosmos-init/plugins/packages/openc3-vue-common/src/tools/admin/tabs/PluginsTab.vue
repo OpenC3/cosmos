@@ -207,7 +207,7 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
-      // When updating update local_mode.rb, local_mode.py, plugins.spec.ts
+      // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
       defaultPlugins: [
         'openc3-cosmos-tool-admin',
         'openc3-cosmos-tool-bucketexplorer',
@@ -230,8 +230,9 @@ export default {
         'openc3-cosmos-tool-autonomic', // Enterprise only
         'openc3-cosmos-tool-calendar', // Enterprise only
         'openc3-cosmos-tool-grafana', // Enterprise only
-        'openc3-cosmos-tool-systemhealth', // Enterprise only
         'openc3-cosmos-tool-logexplorer', // Enterprise only
+        'openc3-cosmos-tool-notebooks', // Enterprise only
+        'openc3-cosmos-tool-systemhealth', // Enterprise only
         'openc3-enterprise-tool-base', // Enterprise only
         'openc3-tool-base',
       ],

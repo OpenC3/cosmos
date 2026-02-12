@@ -9,7 +9,19 @@ sidebar_custom_props:
 Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
 :::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
+Read protocols execute in the order specified (first specified runs first). Write protocols execute in the reverse order (last specified executes first).
+
+This ordering is critical when combining packet delineation protocols (e.g. Length, Terminated) with helper protocols (e.g. CRC, Ignore). Delineation protocols must run before helper protocols on reads so they can assemble complete packets first. On writes, delineation protocols must run after helper protocols so fields like the length are filled in before the CRC is calculated. Since write protocols execute in reverse order, the helper protocol must be listed before the delineation protocol for writes.
+
+To satisfy both directions, you may need to define a helper protocol twice — once for WRITE (before the delineation protocol) and once for READ (after it). For example, with a Length protocol and CRC protocol:
+
+```ruby
+PROTOCOL WRITE CrcProtocol ...
+PROTOCOL READ_WRITE LengthProtocol ...
+PROTOCOL READ CrcProtocol ...
+```
+
+On read: Length runs first (assembles a complete packet from the byte stream), then CRC runs (verifies the CRC over the complete packet). On write: CRC is listed before Length, so since write order is reversed, Length runs first (fills in the length field) and then CRC runs (calculates the CRC over the final packet including the correct length).
 :::
 
 Protocols are typically used to define the logic to delineate packets and manipulate data as it written to and read from Interfaces. COSMOS includes Interfaces for TCP/IP Client, TCP/IP Server, Udp Client / Server, and Serial connections. For 99% of use cases these Interfaces should not require any changes as they universally handle the low-level details of reading and writing from these types of connections. All unique behavior should now be defined in Protocols.
@@ -26,7 +38,7 @@ For more information about how Protocols fit with Interfaces and Accessors see [
 
 ## Packet Delineation Protocols
 
-COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
+COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
 COSMOS Enterprise provides the following packet delineation protocols: CCSDS CLTU (with BCH Encoding), CCSDS TCTF (with Randomizer), CCSDS TMTF (with Randomizer), and GEMS.
 
@@ -411,27 +423,6 @@ Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterp
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
 
-### Template Protocol (Deprecated)
-
-This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the Command Response Protocol instead.
-
-The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
-
-| Parameter                    | Description                                                                                                                                                                                  | Required | Default                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Write Termination Characters | The data to write after writing a command packet. Given as a hex string such as 0xABCD.                                                                                                      | Yes      |
-| Read Termination Characters  | The characters which delineate the end of a telemetry packet. Given as a hex string such as 0xABCD.                                                                                          | Yes      |
-| Ignore Lines                 | Number of response lines to ignore (completely drop)                                                                                                                                         | No       | 0 lines                  |
-| Initial Read Delay           | An initial delay after connecting after which the interface will be read till empty and data dropped. Useful for discarding connect headers and initial prompts.                             | No       | nil (no initial read)    |
-| Response Lines               | The number of lines that make up expected responses                                                                                                                                          | No       | 1 line                   |
-| Strip Read Termination       | Whether to remove the read termination characters before returning the telemetry packet                                                                                                      | No       | true                     |
-| Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
-| Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
-| Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
-| Response Timeout             | Number of seconds to wait for a response before timing out                                                                                                                                   | No       | 5.0                      |
-| Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
-| Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
-
 ### Preidentified Protocol
 
 The Preidentified Protocol delineates packets using the COSMOS header. This Protocol was created to allow tools to connect and receive the entire packet stream. It can be used with the [FileInterface](/docs/configuration/interfaces#file-interface) to process COSMOS 4 log files. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
@@ -533,6 +524,10 @@ For a full example, please see the [openc3-cosmos-scpi-power-supply](https://git
 ### CRC Protocol
 
 The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets. Note: You either have to give all the parameters for Poly, Seed, Xor, Reflect or just use the defaults. You can't mix and match setting some and not others.
+
+:::warning CRC Protocol Ordering
+The CRC Protocol must run after packet delineation protocols (e.g. Length, Terminated) for both reads and writes. On reads, the delineation protocol must assemble a complete packet before the CRC can be verified — otherwise the CRC protocol may operate on partial or multiple packets. On writes, the delineation protocol must fill in fields like the length before the CRC is calculated — otherwise the CRC will be computed over incorrect data. Because read and write protocols execute in opposite orders, this typically requires defining the CRC protocol twice — once for WRITE before the delineation protocol, and once for READ after it. See [Protocol Run Order](#protocol-run-order) for a full example.
+:::
 
 | Parameter       | Description                                                                                                 | Required | Default                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
@@ -812,6 +807,10 @@ We recommend using authenticated encryption modes like GCM (Galois/Counter Mode)
 ## Custom Protocols
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
+
+:::info Stored Telemetry
+Custom protocols that handle non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` in the `read_packet()` method. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See [Stored Packets](../guides/packet-types#stored-packets) for more details. The [Preidentified Protocol](#preidentified-protocol) is one example that encodes and decodes the stored flag in its packet header.
+:::
 
 All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
@@ -1198,13 +1197,13 @@ end
 
 The base class implementation returns a hash/dictionary with the following keys:
 
-| Key | Description |
-| --- | ----------- |
-| name | The protocol class name (e.g., "LengthProtocol") |
-| read_data_input_time | ISO8601 timestamp of when data was received by the protocol's `read_data()` method, or nil/None if no data has been received |
-| read_data_input | The raw data that was passed into the protocol's `read_data()` method |
-| read_data_output_time | ISO8601 timestamp of when data was output from the protocol's `read_data()` method, or nil/None if no data has been output |
-| read_data_output | The data that was returned from the protocol's `read_data()` method |
+| Key                   | Description                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| name                  | The protocol class name (e.g., "LengthProtocol")                                                                             |
+| read_data_input_time  | ISO8601 timestamp of when data was received by the protocol's `read_data()` method, or nil/None if no data has been received |
+| read_data_input       | The raw data that was passed into the protocol's `read_data()` method                                                        |
+| read_data_output_time | ISO8601 timestamp of when data was output from the protocol's `read_data()` method, or nil/None if no data has been output   |
+| read_data_output      | The data that was returned from the protocol's `read_data()` method                                                          |
 
 Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
 
@@ -1290,13 +1289,13 @@ end
 
 The base class implementation returns a hash/dictionary with the following keys:
 
-| Key | Description |
-| --- | ----------- |
-| name | The protocol class name (e.g., "LengthProtocol") |
-| write_data_input_time | ISO8601 timestamp of when data was received by the protocol's `write_data()` method, or nil/None if no data has been received |
-| write_data_input | The raw data that was passed into the protocol's `write_data()` method |
-| write_data_output_time | ISO8601 timestamp of when data was output from the protocol's `write_data()` method, or nil/None if no data has been output |
-| write_data_output | The data that was returned from the protocol's `write_data()` method |
+| Key                    | Description                                                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| name                   | The protocol class name (e.g., "LengthProtocol")                                                                              |
+| write_data_input_time  | ISO8601 timestamp of when data was received by the protocol's `write_data()` method, or nil/None if no data has been received |
+| write_data_input       | The raw data that was passed into the protocol's `write_data()` method                                                        |
+| write_data_output_time | ISO8601 timestamp of when data was output from the protocol's `write_data()` method, or nil/None if no data has been output   |
+| write_data_output      | The data that was returned from the protocol's `write_data()` method                                                          |
 
 Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
 

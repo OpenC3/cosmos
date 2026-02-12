@@ -18,7 +18,7 @@ The COSMOS documentation can be found at https://docs.openc3.com/docs. To get st
 - **openc3-cosmos-script-runner-api** - Rails 7.2 API for script execution
 - **openc3-operator** - Ruby operator managing interfaces and microservices
 - **openc3-buckets** - S3-compatible object storage for logs and configurations
-- **openc3-redis** - Data store and pub/sub messaging
+- **openc3-redis** - Valkey data store and pub/sub messaging
 - **openc3-traefik** - Reverse proxy (access at http://localhost:2900)
 
 ### Core Library
@@ -38,7 +38,7 @@ Located in `openc3-cosmos-init/plugins/packages/`:
 
 ### Communication Flow
 
-Services communicate via Redis pub/sub and HTTP APIs. WebSocket support via AnyCable.
+Services communicate via Valkey pub/sub and HTTP APIs. WebSocket support via AnyCable.
 
 ## Common Commands
 
@@ -94,6 +94,7 @@ uv sync                                          # Create venv and install depen
 #### Common Python Commands
 
 **Using Just (recommended):**
+
 ```bash
 just                                             # Show all available commands
 just test                                        # Run all tests
@@ -107,6 +108,7 @@ just update                                      # Update all dependencies
 ```
 
 **Manual commands:**
+
 ```bash
 uv run pytest                                    # Run all tests
 uv run pytest test/path/to/test.py               # Run single test file
@@ -119,6 +121,7 @@ uv run coverage run -m pytest && uv run coverage report  # Coverage
 #### UV Workflow Tips
 
 **Adding dependencies:**
+
 ```bash
 uv add package-name                              # Add runtime dependency
 uv add --dev package-name                        # Add dev dependency
@@ -126,12 +129,14 @@ uv sync                                          # Install after manual pyprojec
 ```
 
 **Updating dependencies:**
+
 ```bash
 uv lock --upgrade                                # Update uv.lock
 uv sync                                          # Install updated dependencies
 ```
 
 **Managing Python versions:**
+
 ```bash
 uv python list                                   # List available Python versions
 uv python install 3.13                           # Install specific Python version
@@ -139,6 +144,7 @@ uv python pin 3.13                               # Update .python-version
 ```
 
 **Troubleshooting:**
+
 ```bash
 rm -rf .venv && uv sync                          # Reset virtual environment
 uv cache clean                                   # Clear uv cache
@@ -199,7 +205,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 - **pnpm 10** - Frontend package management (monorepo workspace)
 - **Node.js 24** - JavaScript runtime
 - **Docker Compose** - Container orchestration
-- **Redis** - Caching, pub/sub, ephemeral state
+- **Valkey** - Caching, pub/sub, ephemeral state
 - **Versitygw** - S3-compatible object storage
 - **Playwright** - E2E testing
 
@@ -241,8 +247,9 @@ This installs:
 - **Python Version**: `openc3/python/.python-version` (default: 3.12)
 
 **Important UV Notes:**
-- Always use `uv sync --locked` in CI/CD and Dockerfiles (production-recommended flag)
-- Use `uv sync` in development (creates/updates lockfile as needed)
+
+- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
+- Use `uv sync --locked` in development (updates if out of sync)
 - Use `uv run` instead of activating the venv manually
 - The lockfile (`uv.lock`) must be committed to git
 - Don't commit `.venv` directory (it's in .gitignore)

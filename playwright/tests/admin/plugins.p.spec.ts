@@ -45,10 +45,13 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
       'openc3-cosmos-tool-grafana',
     )
     await expect(page.locator('id=openc3-tool')).not.toContainText(
-      'openc3-cosmos-tool-systemhealth',
+      'openc3-cosmos-tool-logexplorer',
     )
     await expect(page.locator('id=openc3-tool')).not.toContainText(
-      'openc3-cosmos-tool-logexplorer',
+      'openc3-cosmos-tool-notebooks',
+    )
+    await expect(page.locator('id=openc3-tool')).not.toContainText(
+      'openc3-cosmos-tool-systemhealth',
     )
   } else {
     await expect(page.locator('id=openc3-tool')).not.toContainText(
@@ -122,10 +125,13 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
       'openc3-cosmos-tool-grafana',
     )
     await expect(page.locator('id=openc3-tool')).toContainText(
-      'openc3-cosmos-tool-systemhealth',
+      'openc3-cosmos-tool-logexplorer',
     )
     await expect(page.locator('id=openc3-tool')).toContainText(
-      'openc3-cosmos-tool-logexplorer',
+      'openc3-cosmos-tool-notebooks',
+    )
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'openc3-cosmos-tool-systemhealth',
     )
   } else {
     await expect(page.locator('id=openc3-tool')).toContainText(

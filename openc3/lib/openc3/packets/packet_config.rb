@@ -239,7 +239,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'CATCHALL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
               'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER',\
               'STRUCTURE', 'APPEND_STRUCTURE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
@@ -336,6 +336,10 @@ module OpenC3
       finish_item()
       if @current_packet
         @warnings += @current_packet.check_bit_offsets
+        if !@current_packet.virtual && !@current_packet.disabled && !@current_packet.catchall && @current_packet.target_name != 'UNKNOWN' && @current_packet.id_items.empty?
+          type = @current_cmd_or_tlm == COMMAND ? "Command" : "Telemetry"
+          @warnings << "#{type} packet #{@current_packet.target_name} #{@current_packet.packet_name} has no ID_ITEMS and will match all buffers"
+        end
         if @current_cmd_or_tlm == COMMAND
           PacketParser.check_item_data_types(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet
@@ -562,6 +566,11 @@ module OpenC3
         usage = "#{keyword}"
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.restricted = true
+
+      when 'CATCHALL'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.catchall = true
 
       when 'ACCESSOR', 'VALIDATOR', 'SUBPACKETIZER'
         usage = "#{keyword} <Class name> <Optional parameters> ..."
