@@ -1,0 +1,166 @@
+// Dark Theme - Dark Grey with Indigo Accent
+// Astro design token and layout overrides for the cosmosDarkGrey Vuetify theme.
+// Vuetify colors (primary, surface, background, etc.) are handled by
+// cosmosThemeDarkGrey.js via the Vuetify theme API.
+// This file covers only what Vuetify can't reach: Astro web components,
+// hardcoded values, and layout chrome. Loaded last in layout.scss.
+//
+// All rules are scoped under html.theme-dark-grey so they only activate
+// when the ThemeSwitcher mixin adds that class to <html>.
+
+// ============================================================================
+// Color Palette — tweak these to experiment with the whole theme at once
+// ============================================================================
+
+// Backgrounds (darkest → lightest)
+$dg-bg-body:            #08080c;
+$dg-bg-chrome:          #0c0c12;  // sidebar, topbar, footer, GSB
+$dg-bg-surface:         #13131a;  // cards, tables, panels
+$dg-bg-surface-alt:     #14141c;  // sidebar gradient end
+$dg-bg-surface-header:  #1e1e28;  // card titles, toolbars, calendar
+$dg-bg-interactive-muted: #222230;
+$dg-bg-hover:           #2a2a38;
+$dg-bg-selected:        #32323f;
+
+// Borders
+$dg-border-muted:       #2e2e40;
+$dg-border-default:     #424258;
+
+// Accent (indigo)
+$dg-accent:             #4338CA;
+$dg-accent-hover:       #4F46E5;
+$dg-accent-light:       #6366F1;
+$dg-accent-muted:       #352E8C;  // buttons — darker so large fills don't overpower
+
+// Text
+$dg-text-primary:       #e4e8f0;
+$dg-text-secondary:     #a0aec4;
+$dg-text-muted:         #8892a6;
+$dg-text-sidebar:       #c8cdd8;
+
+// Semantic status
+$dg-green:              #56f000;
+$dg-yellow:             #fce83a;
+$dg-red:                #ff3838;
+$dg-blue:               #2dccff;
+$dg-purple:             rgb(200, 0, 200);
+
+// ============================================================================
+// Overrides
+// ============================================================================
+
+// === Astro Design Token Overrides ===
+html.theme-dark-grey {
+  // Backgrounds - layered dark grey palette with strong contrast steps
+  // Body (deepest) → Surface (cards/panels) → Headers → Hover/Selected → Interactive
+  --color-background-base-default: #{$dg-bg-body} !important;
+  --color-background-base-header: #{$dg-bg-body} !important;
+  --color-background-surface-default: #{$dg-bg-surface} !important;
+  --color-background-surface-header: #{$dg-bg-surface-header} !important;
+  --color-background-surface-hover: #{$dg-bg-hover} !important;
+  --color-background-surface-selected: #{$dg-bg-selected} !important;
+  --color-background-interactive-default: #{$dg-accent} !important;
+  --color-background-interactive-muted: #{$dg-bg-interactive-muted} !important;
+
+  // Text
+  --color-text-inverse: #{$dg-text-primary} !important;
+  --color-text-interactive-default: #{$dg-text-secondary} !important;
+  --color-text-primary: #{$dg-text-primary} !important;
+  --color-text-secondary: #{$dg-text-muted} !important;
+
+  // Borders
+  --color-border-interactive-muted: #{$dg-border-muted} !important;
+  --color-border-interactive-default: #{$dg-border-default} !important;
+
+  // Buttons — muted fill so large areas don't overpower
+  --button-color-background-primary-default: #{$dg-accent-muted} !important;
+  --button-color-background-primary-hover: #{$dg-accent} !important;
+  --button-color-border-primary-default: #{$dg-accent-muted} !important;
+  --button-color-border-primary-hover: #{$dg-accent} !important;
+  --button-color-border-interactive-default: #{$dg-accent-muted} !important;
+
+  // Astro Global Status Bar (footer bar)
+  --gsb-color-background: #{$dg-bg-chrome} !important;
+  --gsb-color-text: #{$dg-text-primary} !important;
+  --gsb-icon-color-fill-default: #{$dg-text-secondary} !important;
+  --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
+
+  // Astro Clock
+  --clock-datetime-color-background: #{$dg-bg-body} !important;
+}
+
+// === OpenC3 Semantic Color Overrides ===
+html.theme-dark-grey .openc3-green { color: #{$dg-green} !important; }
+html.theme-dark-grey .openc3-yellow { color: #{$dg-yellow} !important; }
+html.theme-dark-grey .openc3-red { color: #{$dg-red} !important; }
+html.theme-dark-grey .openc3-blue { color: #{$dg-blue} !important; }
+html.theme-dark-grey .openc3-purple { color: #{$dg-purple} !important; }
+
+// === Hardcoded color fixes from _overrides.scss ===
+// Calendar styles that used hardcoded hex values
+html.theme-dark-grey {
+  .v-calendar,
+  .v-calendar-weekly__day-label,
+  .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+    background-color: $dg-bg-surface-header !important;
+  }
+  .v-calendar-weekly__head-weekday {
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-top: 1px solid $dg-border-default !important;
+  }
+  .v-calendar-month__day {
+    background-color: $dg-bg-body !important;
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-bottom: 1px solid $dg-border-default !important;
+  }
+}
+
+// === Menu / Sidebar Overrides ===
+html.theme-dark-grey {
+  .layout-sidebar {
+    background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
+  }
+  .layout-sidebar .layout-menu a {
+    color: $dg-text-sidebar !important;
+  }
+  .layout-sidebar .layout-menu a:hover {
+    background-color: $dg-bg-hover !important;
+  }
+  .layout-sidebar .layout-menu a.active-route {
+    color: $dg-accent-light !important;
+    background-color: rgba($dg-accent, 0.1) !important;
+  }
+}
+
+// === Topbar / App Bar Overrides ===
+html.theme-dark-grey {
+  .layout-topbar,
+  #openc3-app-toolbar {
+    background-color: $dg-bg-chrome !important;
+  }
+  // Astro nav icon (hamburger/apps icon) in the app bar
+  #openc3-app-toolbar rux-icon {
+    color: $dg-accent !important;
+    cursor: pointer;
+  }
+  #openc3-app-toolbar rux-icon:hover {
+    color: $dg-accent-hover !important;
+  }
+}
+
+// === Footer Overrides ===
+html.theme-dark-grey #footer {
+  background-color: $dg-bg-chrome !important;
+}
+
+// === Vuetify theme variable overrides for tool micro-frontends ===
+// Tools create their own Vuetify instance defaulting to cosmosDark.
+// Override the CSS vars so color="primary"/color="secondary" resolve to dark-grey accent colors.
+html.theme-dark-grey .v-theme--cosmosDark {
+  --v-theme-primary: #{red($dg-accent)}, #{green($dg-accent)}, #{blue($dg-accent)};
+  --v-theme-on-primary: #{red($dg-text-primary)}, #{green($dg-text-primary)}, #{blue($dg-text-primary)};
+  --v-theme-secondary: #{red($dg-text-secondary)}, #{green($dg-text-secondary)}, #{blue($dg-text-secondary)};
+  --v-theme-on-secondary: #{red($dg-text-primary)}, #{green($dg-text-primary)}, #{blue($dg-text-primary)};
+}

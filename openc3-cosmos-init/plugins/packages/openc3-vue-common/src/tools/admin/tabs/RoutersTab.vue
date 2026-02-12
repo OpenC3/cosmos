@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -88,7 +88,7 @@ export default {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
 }
-.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+:is(.v-theme--cosmosDark, .v-theme--cosmosDarkGrey).v-list div:nth-child(odd) .v-list-item {
   background-color: var(--color-background-base-selected) !important;
 }
 </style>

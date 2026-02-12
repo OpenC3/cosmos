@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,6 +37,7 @@ import {
   AppFooter,
   AppNav,
   ClassificationBanners,
+  ThemeSwitcher,
   TimeCheck,
 } from '@openc3/vue-common/tools/base'
 
@@ -46,7 +47,7 @@ export default {
     AppNav,
     TimeCheck,
   },
-  mixins: [ClassificationBanners],
+  mixins: [ClassificationBanners, ThemeSwitcher],
   data() {
     return {
       mainStyle: {},

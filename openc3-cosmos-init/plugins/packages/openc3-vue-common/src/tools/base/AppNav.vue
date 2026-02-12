@@ -23,9 +23,12 @@
       v-model="drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
-      <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
-        COSMOS
-      </div>
+      <img
+        :src="wordmark"
+        class="cosmos-wordmark"
+        alt="COSMOS"
+        @click="showUpgradeToEnterpriseDialog = true"
+      />
       <div class="cosmos">
         {{ subtitle }}
       </div>
@@ -188,6 +191,7 @@ export default {
       drawer: true,
       appNav: {},
       logo: '/img/logo.png',
+      wordmark: '/img/COSMOS.png',
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
@@ -380,8 +384,14 @@ export default {
   margin-left: auto;
   margin-right: auto;
 }
-.cosmos {
+.cosmos-wordmark {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
   cursor: pointer;
+}
+.cosmos {
   text-align: center;
   font-size: 18pt;
 }
