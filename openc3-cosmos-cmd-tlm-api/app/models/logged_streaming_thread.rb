@@ -342,7 +342,7 @@ class LoggedStreamingThread < StreamingThread
         item_index += 1
       end
     end
-    names << "CAST(T0.PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"
+    names << "CAST(T0.PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
 
     # Add any additional timestamp source columns needed for calculated items (RECEIVED_TIMESECONDS if needed)
     timestamp_source_columns.each_key do |source_col|
@@ -350,7 +350,7 @@ class LoggedStreamingThread < StreamingThread
         timestamp_source_columns[source_col] = names.length
         names << source_col
       end
-      # PACKET_TIMESECONDS is derived from COSMOS_TIMESTAMP - no separate column needed
+      # PACKET_TIMESECONDS is already included as a CAST column above
     end
 
     # Update calculated_timestamp_items with actual source column indices
@@ -417,7 +417,7 @@ class LoggedStreamingThread < StreamingThread
               timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
                 col_name = tuple[0]
-                if col_name == 'COSMOS_TIMESTAMP'
+                if col_name == 'PACKET_TIMESECONDS'
                   # Use the nanosecond integer directly for full precision
                   time_ns = tuple[1].to_i
                   entry['__time'] = time_ns
@@ -547,7 +547,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SELECT clause with aggregations
-      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
       column_mapping = {} # Maps result column name to [item_key, reduced_type, value_type]
 
       items_to_query.each do |item_name, info|
@@ -590,7 +590,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY COSMOS_TIMESTAMP"
+      query += " ORDER BY PACKET_TIMESECONDS"
 
       min = 0
       max = @max_batch_size
@@ -625,7 +625,7 @@ class LoggedStreamingThread < StreamingThread
                   col_name = tuple[0]
                   value = tuple[1]
 
-                  if col_name == 'COSMOS_TIMESTAMP'
+                  if col_name == 'PACKET_TIMESECONDS'
                     # Use nanosecond integer directly for full precision
                     entry['__time'] = value.to_i
                     next
@@ -810,8 +810,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SQL query - select all columns from the table
-      # CAST designated timestamp to LONG for nanosecond precision (PG wire truncates to microseconds)
-      query = "SELECT *, CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP FROM \"#{table_name}\""
+      query = "SELECT * FROM \"#{table_name}\""
       query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
       if end_time
         query += " AND PACKET_TIMESECONDS < #{end_time}"
@@ -937,7 +936,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build aggregation query for all numeric items in the packet
-      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as COSMOS_TIMESTAMP"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
       numeric_items = []
 
       if packet_def && packet_def['items']
@@ -985,7 +984,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY COSMOS_TIMESTAMP"
+      query += " ORDER BY PACKET_TIMESECONDS"
 
       min = 0
       max = @max_batch_size
@@ -1024,7 +1023,7 @@ class LoggedStreamingThread < StreamingThread
                     col_name = tuple[0]
                     value = tuple[1]
 
-                    if col_name == 'COSMOS_TIMESTAMP'
+                    if col_name == 'PACKET_TIMESECONDS'
                       # Use nanosecond integer directly for full precision
                       entry['__time'] = value.to_i
                       next
@@ -1092,19 +1091,28 @@ class LoggedStreamingThread < StreamingThread
       columns[column_name] = value
     end
 
+    # Track timestamp values for computing derived items
+    cosmos_timestamp_ns = nil
+    received_time_pg = nil
+
     # Second pass: process columns based on value_type
     tuples.each do |tuple|
       column_name = tuple[0]
       raw_value = tuple[1]
 
-      # Use the nanosecond integer from CAST for full precision
-      if column_name == 'COSMOS_TIMESTAMP'
-        entry['__time'] = raw_value.to_i
+      # PACKET_TIMESECONDS is the designated timestamp - convert PG timestamp to nanoseconds
+      if column_name == 'PACKET_TIMESECONDS'
+        pkt_time = OpenC3::QuestDBClient.pg_timestamp_to_utc(raw_value)
+        cosmos_timestamp_ns = pkt_time.tv_sec * 1_000_000_000 + pkt_time.tv_nsec
+        entry['__time'] = cosmos_timestamp_ns
         next
       end
 
-      # Skip the original timestamp column (already handled via COSMOS_TIMESTAMP)
-      next if column_name == 'PACKET_TIMESECONDS'
+      # Capture RECEIVED_TIMESECONDS for conversion below
+      if column_name == 'RECEIVED_TIMESECONDS'
+        received_time_pg = raw_value
+        next
+      end
 
       # Skip metadata columns
       next if column_name == 'COSMOS_DATA_TAG'
@@ -1173,6 +1181,20 @@ class LoggedStreamingThread < StreamingThread
           entry[column_name] = value
         end
       end
+    end
+
+    # Compute PACKET_TIMESECONDS and PACKET_TIMEFORMATTED from packet timestamp nanoseconds
+    if cosmos_timestamp_ns
+      pkt_time = Time.at(cosmos_timestamp_ns / 1_000_000_000, cosmos_timestamp_ns % 1_000_000_000, :nsec, in: '+00:00')
+      entry['PACKET_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :seconds)
+      entry['PACKET_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :formatted)
+    end
+
+    # Compute RECEIVED_TIMESECONDS and RECEIVED_TIMEFORMATTED from PG timestamp
+    if received_time_pg
+      rcv_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(received_time_pg)
+      entry['RECEIVED_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :seconds)
+      entry['RECEIVED_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :formatted)
     end
 
     entry
