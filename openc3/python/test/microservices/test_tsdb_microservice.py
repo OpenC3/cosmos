@@ -22,6 +22,11 @@ from unittest.mock import Mock, patch
 from questdb.ingress import IngressError
 
 from openc3.microservices.tsdb_microservice import TsdbMicroservice
+from openc3.utilities.questdb_client import (
+    FLOAT64_NAN_SENTINEL,
+    FLOAT64_NEG_INF_SENTINEL,
+    FLOAT64_POS_INF_SENTINEL,
+)
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
 from openc3.topics.config_topic import ConfigTopic
@@ -606,8 +611,9 @@ class TestTsdbMicroservice(unittest.TestCase):
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
         self.assertEqual(call_args[1]["columns"]["TEMP1"], 3.14)
-        self.assertTrue(math.isnan(call_args[1]["columns"]["TEMP2"]))
-        self.assertTrue(math.isinf(call_args[1]["columns"]["TEMP3"]))
+        # NaN and Infinity are encoded as sentinel values because QuestDB stores them as NULL
+        self.assertEqual(call_args[1]["columns"]["TEMP2"], FLOAT64_NAN_SENTINEL)
+        self.assertEqual(call_args[1]["columns"]["TEMP3"], FLOAT64_POS_INF_SENTINEL)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
