@@ -412,7 +412,7 @@ class PacketConfig:
             if (
                 not self.current_packet.virtual
                 and not self.current_packet.disabled
-                and not self.current_packet_catchall
+                and not self.current_packet.catchall
                 and self.current_packet.target_name != "UNKNOWN"
                 and not self.current_packet.id_items
             ):
@@ -458,7 +458,6 @@ class PacketConfig:
 
             self.current_packet = None
             self.current_item = None
-            self.current_packet_catchall = False
 
     def dynamic_add_packet(self, packet, cmd_or_tlm="TELEMETRY", affect_ids=False):
         if cmd_or_tlm == "COMMAND":
@@ -574,7 +573,6 @@ class PacketConfig:
         self.current_packet = None
         self.current_item = None
         self.current_limits_group = None
-        self.current_packet_catchall = False
 
     def process_current_packet(self, parser, keyword, params):
         if not self.current_packet:
@@ -720,7 +718,7 @@ class PacketConfig:
                 parser.verify_num_parameters(0, 0, usage)
                 if not self.current_packet:
                     raise parser.error(f"{keyword} requires a current packet")
-                self.current_packet_catchall = True
+                self.current_packet.catchall = True
 
             case "ACCESSOR" | "VALIDATOR" | "SUBPACKETIZER":
                 usage = f"{keyword} <File name> <Optional parameters> ..."
