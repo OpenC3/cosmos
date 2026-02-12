@@ -36,7 +36,6 @@ module OpenC3
                        'tlm_raw',
                        'tlm_formatted',
                        'tlm_with_units', # DEPRECATED
-                       'tlm_variable', # DEPRECATED
                        'set_tlm',
                        'inject_tlm',
                        'override_tlm',
@@ -89,11 +88,6 @@ module OpenC3
     # @deprecated Use tlm_formatted
     def tlm_with_units(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
-    end
-
-    # @deprecated Use tlm with type:
-    def tlm_variable(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args[0..-2], type: args[-1].intern, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     # Set a telemetry item in the current value table.

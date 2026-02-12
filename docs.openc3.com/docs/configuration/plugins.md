@@ -210,10 +210,6 @@ If DONT_RECONNECT is not present the Server will try to reconnect to an interfac
 Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertently disconnect from a target.
 
 
-### LOG_RAW
-**Deprecated, use LOG_STREAM**
-
-
 ### LOG_STREAM
 <span class="badge badge--secondary since-right">Since 5.5.2</span>**Log all data on the interface exactly as it is sent and received**
 
