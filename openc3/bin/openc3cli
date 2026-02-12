@@ -591,33 +591,39 @@ end
 def cli_script_monitor(script_id)
   ret_code = ERROR_CODE
   require 'openc3/script'
-  OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
-    while (resp = api.read) do
-      # see ScriptRunner.vue for types and states
-      case resp['type']
-      when 'file'
-        puts "Filename #{resp['filename']} scope #{resp['scope']}"
-      when 'line'
-        fn = resp['filename'].nil? ? '<no file>' : resp['filename']
-        puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
-        if resp['state'] == 'error' or resp['state'] == 'crashed'
+  begin
+    OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
+      while (resp = api.read) do
+        # see ScriptRunner.vue for types and states
+        case resp['type']
+        when 'file'
+          puts "Filename #{resp['filename']} scope #{resp['scope']}"
+        when 'line'
+          fn = resp['filename'].nil? ? '<no file>' : resp['filename']
+          puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
+          if resp['state'] == 'error' or resp['state'] == 'crashed'
+            $script_interrupt_text = ''
+            puts 'script failed'
+            break
+          end
+        when 'output'
+          puts resp['line']
+        when 'complete'
           $script_interrupt_text = ''
-          puts 'script failed'
+          puts 'script complete'
+          ret_code = 0
           break
+        # These conditions are all handled by the else
+        # when 'running', 'breakpoint', 'waiting', 'time'
+        else
+          puts resp.pretty_inspect
         end
-      when 'output'
-        puts resp['line']
-      when 'complete'
-        $script_interrupt_text = ''
-        puts 'script complete'
-        ret_code = 0
-        break
-      # These conditions are all handled by the else
-      # when 'running', 'breakpoint', 'waiting', 'time'
-      else
-        puts resp.pretty_inspect
       end
     end
+  ensure
+    # Force flush output streams to ensure all data is written
+    STDOUT.flush
+    STDERR.flush
   end
   return ret_code
 end
@@ -873,6 +879,16 @@ def cli_script(args=[])
   else
     abort 'openc3cli internal error: parsing arguments'
   end
+  # Ensure output is flushed before exit
+  STDOUT.flush
+  STDERR.flush
+
+  # Kill any non-daemon threads that might prevent exit
+  # This is necessary because WebSocket/TCP streams may create background threads
+  Thread.list.each do |thread|
+    thread.kill unless thread == Thread.current || thread == Thread.main
+  end
+
   exit(ret_code)
 end
 

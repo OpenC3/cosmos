@@ -32,6 +32,7 @@ classifiers = [
 dependencies = [
     "boto3 (>=1.36.13,<2.0.0)",
     "cbor2 (>=5.6.5,<6.0.0)",
+    "Deprecated (>=1.2.15,<2.0.0)",
     "jsonpath-ng (>=1.7.0,<2.0.0)",
     "orjson>=3.10.0,<4.0.0",
     "lxml (>=6.0.0,<7.0.0)",

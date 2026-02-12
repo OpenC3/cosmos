@@ -339,7 +339,7 @@ case $1 in
   start )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
-        echo "Usage: $0 start"
+        echo "Usage: $0 start [BUILD_FLAGS...]"
         echo ""
         echo "Build and run $COSMOS_NAME containers."
         echo ""
@@ -348,7 +348,9 @@ case $1 in
         echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
         echo ""
         echo "Options:"
-        echo "  -h, --help    Show this help message"
+        echo "  -h, --help       Show this help message"
+        echo "  BUILD_FLAGS      Additional flags to pass to docker compose build"
+        echo "                   (e.g., --no-cache, --pull)"
       else
         echo "Usage: $0 start"
         echo ""
@@ -362,7 +364,7 @@ case $1 in
       exit 0
     fi
     if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
-      "$0" build
+      "$0" build "${@:2}"
       "$0" run
     else
       "$0" run
@@ -371,7 +373,7 @@ case $1 in
   start-ubi )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
-        echo "Usage: $0 start-ubi"
+        echo "Usage: $0 start-ubi [BUILD_FLAGS...]"
         echo ""
         echo "Build and run $COSMOS_NAME UBI containers."
         echo ""
@@ -380,7 +382,9 @@ case $1 in
         echo "  2. Starts all UBI containers (equivalent to 'openc3.sh run-ubi')"
         echo ""
         echo "Options:"
-        echo "  -h, --help    Show this help message"
+        echo "  -h, --help       Show this help message"
+        echo "  BUILD_FLAGS      Additional flags to pass to docker compose build"
+        echo "                   (e.g., --no-cache, --pull)"
       else
         echo "Usage: $0 start-ubi"
         echo ""
@@ -394,7 +398,7 @@ case $1 in
       exit 0
     fi
     if [[ "$OPENC3_DEVEL" -eq 1 ]]; then
-      "$0" build-ubi
+      "$0" build-ubi "${@:2}"
       "$0" run-ubi
     else
       "$0" run-ubi
@@ -480,7 +484,7 @@ case $1 in
       exit 1
     fi
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-      echo "Usage: $0 build"
+      echo "Usage: $0 build [BUILD_FLAGS...]"
       echo ""
       echo "Build all $COSMOS_NAME docker containers."
       echo ""
@@ -499,7 +503,14 @@ case $1 in
       fi
       echo ""
       echo "Options:"
-      echo "  -h, --help    Show this help message"
+      echo "  -h, --help       Show this help message"
+      echo "  BUILD_FLAGS      Additional flags to pass to docker compose build"
+      echo "                   (e.g., --no-cache, --pull, --progress=plain)"
+      echo ""
+      echo "Examples:"
+      echo "  $0 build                 # Build with cache"
+      echo "  $0 build --no-cache      # Build without using cache"
+      echo "  $0 build --pull          # Always pull newer base images"
       exit 0
     fi
     # Change to cosmos directory since openc3_setup.sh uses relative paths
@@ -508,14 +519,16 @@ case $1 in
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
+    # Collect any additional build flags from arguments (skip first arg which is "build")
+    BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-enterprise-gem
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-ruby
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-base
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build openc3-node
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
+      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then

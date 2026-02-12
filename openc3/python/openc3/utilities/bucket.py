@@ -11,6 +11,7 @@
 
 import importlib
 import inspect
+import warnings
 
 from openc3.environment import OPENC3_CLOUD
 
@@ -34,6 +35,14 @@ class Bucket:
         except ModuleNotFoundError:
             my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3enterprise.utilities")
         return getattr(my_module, bucket_class)()
+
+    @classmethod
+    def getClient(cls):  # noqa: N802
+        """Deprecated: Use get_client() instead. This camelCase method is provided for backwards compatibility."""
+        warnings.warn(
+            "Bucket.getClient() is deprecated, use Bucket.get_client() instead", DeprecationWarning, stacklevel=2
+        )
+        return cls.get_client()
 
     def create(self, bucket):
         raise NotImplementedError(
