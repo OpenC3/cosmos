@@ -40,9 +40,7 @@ class Bucket:
     def getClient(cls):  # noqa: N802
         """Deprecated: Use get_client() instead. This camelCase method is provided for backwards compatibility."""
         warnings.warn(
-            "Bucket.getClient() is deprecated, use Bucket.get_client() instead",
-            DeprecationWarning,
-            stacklevel=2
+            "Bucket.getClient() is deprecated, use Bucket.get_client() instead", DeprecationWarning, stacklevel=2
         )
         return cls.get_client()
 
