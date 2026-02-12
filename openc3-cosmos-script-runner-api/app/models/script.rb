@@ -120,6 +120,8 @@ class Script < OpenC3::TargetFile
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+      # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
+      process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
       ENV.each do |key, _value|

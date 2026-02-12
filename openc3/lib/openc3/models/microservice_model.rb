@@ -198,6 +198,11 @@ module OpenC3
       when 'CMD'
         parser.verify_num_parameters(1, nil, "#{keyword} <Args>")
         @cmd = parameters.dup
+        # Automatically use UV venv Python for user microservices to ensure openc3 module is found
+        # Replace 'python', 'python3', or 'python3.X' with the correct Python binary
+        if @cmd[0] =~ /^python3?(\.[\d]+)?$/
+          @cmd[0] = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        end
       when 'OPTION'
         parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Values>")
         @options << parameters.dup
