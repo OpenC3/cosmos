@@ -38,7 +38,10 @@ APPEND_PARAMETER:
 ID_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
-  summary: Defines an identification command parameter in the current command packet
+  summary: Defines an identification command parameter in the current command packet.
+    Note, packets defined without one or more ID_PARAMETERs are "catch-all" packets which
+    will match all incoming data. A warning will be generated for packets without ID_PARAMETERs
+    unless the CATCHALL keyword is used.
   description: ID parameters are used to identify the binary block of data as a
     particular command. A command packet may have one or more ID_PARAMETERs and all
     must match the binary data for the command to be identified.
@@ -325,6 +328,11 @@ SCREEN:
       description: Screen Name of related telemetry screen
       values: .+
   since: 5.14.0
+CATCHALL:
+  summary: Marks this packet as an intentional catch-all packet
+  description: Suppresses the warning that is normally generated for packets defined without ID_PARAMETERs.
+    Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
+  since: 7.0.0
 VIRTUAL:
   summary: Marks this packet as virtual and not participating in identification
   description: Used for packet definitions that can be used as structures for items with a given packet.

@@ -157,11 +157,6 @@ class TestApiShared(unittest.TestCase):
                 "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success",
                 stdout.getvalue(),
             )
-            check_with_units("INST HEALTH_STATUS TEMP1 == '10.000 C'")
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 C' success",
-                stdout.getvalue(),
-            )
 
     def test_checks_that_the_exception_is_raised_in_our_apis(self):
         for stdout in capture_io():

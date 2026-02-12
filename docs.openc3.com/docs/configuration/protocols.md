@@ -38,7 +38,7 @@ For more information about how Protocols fit with Interfaces and Accessors see [
 
 ## Packet Delineation Protocols
 
-COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
+COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
 COSMOS Enterprise provides the following packet delineation protocols: CCSDS CLTU (with BCH Encoding), CCSDS TCTF (with Randomizer), CCSDS TMTF (with Randomizer), and GEMS.
 
@@ -422,27 +422,6 @@ Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterp
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
-
-### Template Protocol (Deprecated)
-
-This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the Command Response Protocol instead.
-
-The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
-
-| Parameter                    | Description                                                                                                                                                                                  | Required | Default                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Write Termination Characters | The data to write after writing a command packet. Given as a hex string such as 0xABCD.                                                                                                      | Yes      |
-| Read Termination Characters  | The characters which delineate the end of a telemetry packet. Given as a hex string such as 0xABCD.                                                                                          | Yes      |
-| Ignore Lines                 | Number of response lines to ignore (completely drop)                                                                                                                                         | No       | 0 lines                  |
-| Initial Read Delay           | An initial delay after connecting after which the interface will be read till empty and data dropped. Useful for discarding connect headers and initial prompts.                             | No       | nil (no initial read)    |
-| Response Lines               | The number of lines that make up expected responses                                                                                                                                          | No       | 1 line                   |
-| Strip Read Termination       | Whether to remove the read termination characters before returning the telemetry packet                                                                                                      | No       | true                     |
-| Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
-| Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
-| Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
-| Response Timeout             | Number of seconds to wait for a response before timing out                                                                                                                                   | No       | 5.0                      |
-| Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
-| Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
 
 ### Preidentified Protocol
 
@@ -1218,13 +1197,13 @@ end
 
 The base class implementation returns a hash/dictionary with the following keys:
 
-| Key | Description |
-| --- | ----------- |
-| name | The protocol class name (e.g., "LengthProtocol") |
-| read_data_input_time | ISO8601 timestamp of when data was received by the protocol's `read_data()` method, or nil/None if no data has been received |
-| read_data_input | The raw data that was passed into the protocol's `read_data()` method |
-| read_data_output_time | ISO8601 timestamp of when data was output from the protocol's `read_data()` method, or nil/None if no data has been output |
-| read_data_output | The data that was returned from the protocol's `read_data()` method |
+| Key                   | Description                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| name                  | The protocol class name (e.g., "LengthProtocol")                                                                             |
+| read_data_input_time  | ISO8601 timestamp of when data was received by the protocol's `read_data()` method, or nil/None if no data has been received |
+| read_data_input       | The raw data that was passed into the protocol's `read_data()` method                                                        |
+| read_data_output_time | ISO8601 timestamp of when data was output from the protocol's `read_data()` method, or nil/None if no data has been output   |
+| read_data_output      | The data that was returned from the protocol's `read_data()` method                                                          |
 
 Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
 
@@ -1310,13 +1289,13 @@ end
 
 The base class implementation returns a hash/dictionary with the following keys:
 
-| Key | Description |
-| --- | ----------- |
-| name | The protocol class name (e.g., "LengthProtocol") |
-| write_data_input_time | ISO8601 timestamp of when data was received by the protocol's `write_data()` method, or nil/None if no data has been received |
-| write_data_input | The raw data that was passed into the protocol's `write_data()` method |
-| write_data_output_time | ISO8601 timestamp of when data was output from the protocol's `write_data()` method, or nil/None if no data has been output |
-| write_data_output | The data that was returned from the protocol's `write_data()` method |
+| Key                    | Description                                                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| name                   | The protocol class name (e.g., "LengthProtocol")                                                                              |
+| write_data_input_time  | ISO8601 timestamp of when data was received by the protocol's `write_data()` method, or nil/None if no data has been received |
+| write_data_input       | The raw data that was passed into the protocol's `write_data()` method                                                        |
+| write_data_output_time | ISO8601 timestamp of when data was output from the protocol's `write_data()` method, or nil/None if no data has been output   |
+| write_data_output      | The data that was returned from the protocol's `write_data()` method                                                          |
 
 Custom protocols can override this method to include additional protocol-specific diagnostic information by calling `super()` and adding to the returned hash/dictionary.
 

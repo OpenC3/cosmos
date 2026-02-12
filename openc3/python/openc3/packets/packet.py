@@ -106,6 +106,7 @@ class Packet(Structure):
         self.subpacketizer = None
         self.obfuscated_items = []
         self.obfuscated_items_hash = {}
+        self.catchall = False
 
     @property
     def target_name(self):
@@ -1060,6 +1061,8 @@ class Packet(Structure):
             config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
+        if self.catchall:
+            config += "  CATCHALL\n"
         if self.virtual:
             config += "  VIRTUAL\n"
         elif self.disabled:
@@ -1120,6 +1123,8 @@ class Packet(Structure):
             config["hazardous_description"] = self.hazardous_description
         if self.messages_disabled:
             config["messages_disabled"] = True
+        if self.catchall:
+            config["catchall"] = True
         if self.disabled:
             config["disabled"] = True
         if self.hidden:

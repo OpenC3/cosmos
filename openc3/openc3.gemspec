@@ -46,7 +46,6 @@ spec = Gem::Specification.new do |s|
 
   # Executables
   s.executables << 'openc3cli'
-  s.executables << 'rubysloc'
   s.executables << 'cstol_converter'
 
   if RUBY_ENGINE == 'ruby'

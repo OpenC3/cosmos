@@ -132,7 +132,7 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
                     current_interface_or_router.config_params = params[1:]
                     self.interfaces[interface_name] = current_interface_or_router
 
-                case "RECONNECT_DELAY" | "LOG_STREAM" | "LOG_RAW" | "OPTION" | "PROTOCOL":
+                case "RECONNECT_DELAY" | "LOG_STREAM" | "OPTION" | "PROTOCOL":
                     if current_interface_or_router is None:
                         raise parser.error(f"No current interface or router for {keyword}")
 
@@ -141,7 +141,7 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
                             parser.verify_num_parameters(1, 1, f"{keyword} <Delay in Seconds>")
                             current_interface_or_router.reconnect_delay = float(params[0])
 
-                        case "LOG_STREAM" | "LOG_RAW":
+                        case "LOG_STREAM":
                             parser.verify_num_parameters(
                                 0,
                                 None,

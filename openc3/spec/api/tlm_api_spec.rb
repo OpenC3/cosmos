@@ -159,47 +159,6 @@ module OpenC3
       end
     end
 
-    # DEPRECATED
-    describe "tlm_variable" do
-      it "complains about unknown targets, commands, and parameters" do
-        expect { @api.tlm_variable("BLAH HEALTH_STATUS COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST UNKNOWN COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST HEALTH_STATUS BLAH", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("BLAH", "HEALTH_STATUS", "COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST", "UNKNOWN", "COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "BLAH", :RAW) }.to raise_error(/does not exist/)
-      end
-
-      it "processes a string" do
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "returns the value using LATEST" do
-        expect(@api.tlm_variable("INST LATEST TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST LATEST TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST LATEST TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST LATEST TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "processes parameters" do
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "complains with too many parameters" do
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", "TEMP2", :CONVERTED) }.to raise_error(/Invalid number of arguments/)
-      end
-
-      it "complains with an unknown conversion" do
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :NOPE) }.to raise_error(/Unknown type 'NOPE'/)
-      end
-    end
-
     describe "set_tlm" do
       it "complains about unknown targets, packets, and parameters" do
         expect { @api.set_tlm("BLAH HEALTH_STATUS COLLECTS = 1") }.to raise_error(/does not exist/)

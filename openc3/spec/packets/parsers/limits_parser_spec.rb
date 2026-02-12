@@ -103,6 +103,7 @@ module OpenC3
       it "sets a warning if a new limits set persistence isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5'
@@ -115,6 +116,7 @@ module OpenC3
       it "sets a warning if a new limits set enable isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 3 DISABLED 1 2 6 7 3 5'
@@ -127,6 +129,7 @@ module OpenC3
       it "records 2 warnings if a new limits set persistence and enable isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5'

@@ -28,7 +28,6 @@ Usage:
   cli bridgesetup CONFIG_FILENAME   # Create a default config file
   cli pkginstall PKGFILENAME SCOPE  # Install loaded package (Ruby gem or python package)
   cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)
-  cli rubysloc                      # DEPRECATED: Please use scc (https://github.com/boyter/scc)
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
 ```
@@ -39,17 +38,17 @@ You can safely ignore `WARNING: daemon is not using the default seccomp profile`
 
 ### COSMOS Autocompletion in ZSH
 
-Create a directory in your home for the autocomplete file if you do not have one already. For example, create `~/.zsh/completions/` by running `mkdir -p ~/.zsh/completions`. 
+Create a directory in your home for the autocomplete file if you do not have one already. For example, create `~/.zsh/completions/` by running `mkdir -p ~/.zsh/completions`.
 
 Then, copy `_openc3` from a cloned [cosmos-project](https://github.com/OpenC3/cosmos-project) repository and add the following to your `~/.zshrc` file:
 
 ```shell
-fpath=(~/.zsh/completions $fpath) 
+fpath=(~/.zsh/completions $fpath)
 autoload -Uz compinit
 compinit
 ```
 
-Then, either run `exec zsh` in your current shell or open a new shell in your terminal application. 
+Then, either run `exec zsh` in your current shell or open a new shell in your terminal application.
 
 :::note issues getting argument completion
 If you are having issues getting "argument completion" working for `openc3.sh` try clearing the ZSH autocomplete cache running `rm ~/.zcompdump*` and then reinitialize the completion system with `compinit`.
@@ -319,10 +318,6 @@ Allows you to install or remove Ruby gems or Python wheels into COSMOS. These ar
 ```bash
 % openc3.sh cli pkginstall rspec-3.13.0.gem
 ```
-
-## Rubysloc (deprecated)
-
-Calculates the Ruby Source Lines of Code (SLOC) from the current directory recursively. We recommend using [scc](https://github.com/boyter/scc) as it works across any programming language, calculates many more statistics, and is blazing fast.
 
 ## XTCE Converter
 

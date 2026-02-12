@@ -67,7 +67,7 @@ This should create a new directory called "openc3-cosmos-bob" with a bunch of fi
 The cli runs as the default COSMOS container user which is the recommended practice. If you're having issues running as that user you can run as the root user (effectively `docker run --user=root` ) by running `cliroot` instead of `cli` in any of the examples.
 :::
 
-1. Starting with [COSMOS v5.5.0](https://openc3.com/news/2023/02/23/openc3-cosmos-5-5-0-released/), the plugin generator creates just the plugin framework (previously it would also create a target). From within the newly created plugin directory, we generate a target.
+1. Starting with [COSMOS v5.5.0](https://github.com/OpenC3/cosmos/releases/tag/v5.5.0), the plugin generator creates just the plugin framework (previously it would also create a target). From within the newly created plugin directory, we generate a target.
 
    ```batch
    C:\cosmos-project> cd openc3-cosmos-bob
@@ -93,7 +93,6 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
    ```
 
    What does this all mean?
-
    - We created a COMMAND for target BOB named EXAMPLE.
    - The command is made up of BIG_ENDIAN parameters and is described by "Packet description". Here we are using the append flavor of defining parameters which stacks them back to back as it builds up the packet and you don't have to worry about defining the bit offset into the packet.
    - First we APPEND_ID_PARAMETER a parameter that is used to identify the packet called ID that is an 16-bit signed integer (INT) with a minimum value of 1, a maximum value of 1, and a default value of 1, that is described as the "Identifier".
