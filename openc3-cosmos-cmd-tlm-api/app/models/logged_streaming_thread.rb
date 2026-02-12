@@ -176,16 +176,60 @@ class LoggedStreamingThread < StreamingThread
     start_time = nil
     end_time = nil
 
+    item_cmd_or_tlm = [] # Track CMD/TLM per item for type-aware lookups
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
-        _type, _cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
+        _type, cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
         items << "#{tgt}__#{pkt}__#{item}__#{value_type}"
+        item_cmd_or_tlm << cmd_tlm
       end
     end
 
-    # Figure out what is actually available
-    available = @local_api.get_tlm_available(items, scope: @scope, token: @token)
+    # Figure out what is actually available - handle CMD and TLM separately
+    available = Array.new(items.length)
+
+    # Resolve TLM items using get_tlm_available
+    tlm_indices = items.each_index.select { |i| item_cmd_or_tlm[i] == 'TLM' }
+    unless tlm_indices.empty?
+      tlm_results = @local_api.get_tlm_available(tlm_indices.map { |i| items[i] }, scope: @scope, token: @token)
+      tlm_indices.each_with_index do |orig_idx, result_idx|
+        available[orig_idx] = tlm_results[result_idx]
+      end
+    end
+
+    # Resolve CMD items manually (no get_cmd_available API exists)
+    items.each_with_index do |item_str, idx|
+      next unless item_cmd_or_tlm[idx] == 'CMD'
+      target_name, packet_name, item_name, value_type = item_str.split('__')
+      begin
+        item_def = OpenC3::TargetModel.packet_item(target_name, packet_name, item_name, type: :CMD, scope: @scope)
+        if item_def['array_size']
+          value_type = 'RAW'
+        end
+        resolved = case value_type
+          when 'FORMATTED', 'WITH_UNITS'
+            if item_def['format_string']
+              'FORMATTED'
+            elsif item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
+              'CONVERTED'
+            else
+              'RAW'
+            end
+          when 'CONVERTED'
+            if item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
+              'CONVERTED'
+            else
+              'RAW'
+            end
+          else
+            'RAW'
+          end
+        available[idx] = [target_name, packet_name, item_name, resolved].join('__')
+      rescue RuntimeError
+        available[idx] = nil
+      end
+    end
 
     item_index = 0
     objects_by_topic.each do |topic, objects|
@@ -194,7 +238,7 @@ class LoggedStreamingThread < StreamingThread
       objects.each do |object|
         break if @cancel_thread
         table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
-        tables[table_name] = 1
+        tables[table_name] = object.cmd_or_tlm
 
         if object.start_time
           if start_time.nil? or object.start_time < start_time
@@ -244,10 +288,11 @@ class LoggedStreamingThread < StreamingThread
         item_keys << object.item_key
 
         # Look up item type info from packet definition
-        cache_key = [tgt, pkt]
+        pkt_type = (item_cmd_or_tlm[item_index] == 'CMD') ? :CMD : :TLM
+        cache_key = [tgt, pkt, pkt_type]
         unless packet_cache.key?(cache_key)
           begin
-            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, scope: @scope)
+            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, type: pkt_type, scope: @scope)
           rescue RuntimeError
             packet_cache[cache_key] = nil
           end
@@ -314,6 +359,13 @@ class LoggedStreamingThread < StreamingThread
       info[:source_column_index] = timestamp_source_columns[source_col]
     end
 
+    # Add COSMOS_EXTRA for command tables
+    tables.each_with_index do |(table_name, cmd_or_tlm), index|
+      if cmd_or_tlm == :CMD
+        names << "T#{index}.COSMOS_EXTRA"
+      end
+    end
+
     # Build the SQL query
     query = "SELECT #{names.join(", ")} FROM "
     tables.each_with_index do |(table_name, _), index|
@@ -374,6 +426,9 @@ class LoggedStreamingThread < StreamingThread
                   pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
                   timestamp_values['PACKET_TIMESECONDS'] = pkt_time
                   next
+                elsif col_name == 'COSMOS_EXTRA' || col_name.end_with?('.COSMOS_EXTRA')
+                  entry['COSMOS_EXTRA'] = tuple[1]
+                  next
                 elsif col_name == 'RECEIVED_TIMESECONDS' || col_name.end_with?('.RECEIVED_TIMESECONDS')
                   # Store for calculated items
                   timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
@@ -432,7 +487,7 @@ class LoggedStreamingThread < StreamingThread
         retry
       end
     end
-    if end_time
+    if end_time and end_time <= Time.now.to_nsec_from_epoch
       return true
     else
       return false
@@ -565,7 +620,6 @@ class LoggedStreamingThread < StreamingThread
             else
               result.each do |tuples|
                 entry = { "__type" => "items" }
-                timestamp = nil
 
                 tuples.each do |tuple|
                   col_name = tuple[0]
@@ -618,7 +672,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done
@@ -749,7 +803,8 @@ class LoggedStreamingThread < StreamingThread
       # Look up packet definition for type info during decoding
       packet_def = nil
       begin
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, scope: @scope)
+        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
       rescue RuntimeError
         # Packet not found, will use heuristic decoding
       end
@@ -815,7 +870,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done
@@ -875,7 +930,8 @@ class LoggedStreamingThread < StreamingThread
       # Look up packet definition to find numeric columns
       packet_def = nil
       begin
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, scope: @scope)
+        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
       rescue RuntimeError
         # Packet not found
       end
@@ -1006,7 +1062,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done

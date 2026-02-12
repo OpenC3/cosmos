@@ -788,6 +788,13 @@ class QuestDBClient:
                 raw = value.get("raw")
                 if json_class == "Float" and raw is not None:
                     value = float(raw)
+                    # Must encode sentinel values here since match won't re-enter float() case
+                    if table_name:
+                        float_key = f"{table_name}__{item_name}"
+                        bit_size = self.float_bit_sizes.get(float_key, 64)
+                    else:
+                        bit_size = 64
+                    value = encode_float_special_values(value, bit_size)
                 elif json_class == "String" and isinstance(raw, list):
                     value = base64.b64encode(bytes(raw)).decode("ascii")
                 else:

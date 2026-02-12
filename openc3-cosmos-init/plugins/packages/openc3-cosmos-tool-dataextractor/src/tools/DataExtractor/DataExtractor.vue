@@ -846,16 +846,16 @@ export default {
         for (let packet of data) {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
-          // Don't count metadata keys (__type, __time, __extra)
-          let metadataCount = packetKeys.filter((k) =>
-            k.startsWith('__'),
+          // Don't count metadata keys (__type, __time, COSMOS_EXTRA)
+          let metadataCount = packetKeys.filter(
+            (k) => k.startsWith('__') || k === 'COSMOS_EXTRA',
           ).length
           this.itemsReceived += packetKeys.length - metadataCount
           this.totalItemsReceived += packetKeys.length - metadataCount
         }
         keys.delete('__type')
         keys.delete('__time')
-        keys.delete('__extra')
+        keys.delete('COSMOS_EXTRA')
         this.buildHeaders([...keys])
         dataExtractorRawData.push(data)
         this.progress = Math.ceil(
@@ -957,7 +957,7 @@ export default {
 
         // Get all the values from this packet
         Object.keys(packet).forEach((key) => {
-          if (key.slice(0, 2) === '__') return // Skip metadata
+          if (key.slice(0, 2) === '__' || key === 'COSMOS_EXTRA') return // Skip metadata
 
           // Update regularKey for use when we build the beginning of the row
           regularKey = key
@@ -1016,9 +1016,12 @@ export default {
             row[2] = packetName
             // Add username and approver columns for command data
             if (this.hasCommands) {
-              row[3] = packet['__extra']?.username || ''
+              const extra = packet['COSMOS_EXTRA']
+                ? JSON.parse(packet['COSMOS_EXTRA'])
+                : {}
+              row[3] = extra?.username || ''
               if (this.enterprise) {
-                row[4] = packet['__extra']?.approver || ''
+                row[4] = extra?.approver || ''
               }
             }
           }
