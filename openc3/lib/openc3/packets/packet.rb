@@ -115,6 +115,9 @@ module OpenC3
     # @return [Subpacketizer] Subpacketizer class (optional)
     attr_accessor :subpacketizer
 
+    # @return [Boolean] Catchall flag - Used to prevent warnings for catchall packets
+    attr_accessor :catchall
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
 
@@ -161,6 +164,7 @@ module OpenC3
         @subpacket = false
         @subpacketizer = nil
         @obfuscated_items = nil
+        @catchall = false
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -1143,6 +1147,7 @@ module OpenC3
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
+      config << "  CATCHALL" if @catchall
       if @virtual
         config << "  VIRTUAL\n"
       elsif @disabled
@@ -1213,6 +1218,7 @@ module OpenC3
       config['hazardous'] = true if @hazardous
       config['hazardous_description'] = @hazardous_description.to_s if @hazardous_description
       config['messages_disabled'] = true if @messages_disabled
+      config['catchall'] = true if @catchall
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['virtual'] = true if @virtual

@@ -81,6 +81,7 @@ TARGET:
       description:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
+      since: 7.0.0
       parameters:
         - name: Time
           required: true
@@ -94,6 +95,7 @@ TARGET:
       description:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
+      since: 7.0.0
       parameters:
         - name: Time
           required: true

@@ -96,7 +96,7 @@ class TestLimitsParser(unittest.TestCase):
     ):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
+        tf.write('  APPEND_ID_ITEM item1 16 UINT 1 "Item"\n')
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.write("    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5\n")
         tf.seek(0)
@@ -109,7 +109,7 @@ class TestLimitsParser(unittest.TestCase):
     ):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
+        tf.write('  APPEND_ID_ITEM item1 16 UINT 1 "Item"\n')
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.write("    LIMITS TVAC 3 DISABLED 1 2 6 7 3 5\n")
         tf.seek(0)
@@ -122,7 +122,7 @@ class TestLimitsParser(unittest.TestCase):
     ):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
-        tf.write('  APPEND_ITEM item1 16 UINT "Item"\n')
+        tf.write('  APPEND_ID_ITEM item1 16 UINT 1 "Item"\n')
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.write("    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5\n")
         tf.seek(0)
