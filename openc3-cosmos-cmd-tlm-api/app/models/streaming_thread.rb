@@ -154,14 +154,10 @@ class StreamingThread
     if first_object.stream_mode == :RAW
       return handle_raw_packet(msg_hash['buffer'], objects, time)
     else # @stream_mode == :DECOM
-      # Parse json_data to extract extra field containing username and other metadata
       json_data = msg_hash["json_data"]
       extra = nil
-      if json_data
-        parsed = JSON.parse(json_data, allow_nan: true, create_additions: true)
-        if parsed['extra']
-          extra = JSON.parse(parsed['extra'], allow_nan: true, create_additions: true)
-        end
+      if msg_hash["extra"]
+        extra = JSON.parse(msg_hash["extra"], allow_nan: true, create_additions: true)
       end
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
         time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data, extra: extra)
@@ -175,7 +171,7 @@ class StreamingThread
     return nil if objects.length <= 0
     result = {}
     result['__time'] = time.to_nsec_from_epoch
-    result['__extra'] = json_packet.extra if json_packet.extra
+    result['COSMOS_EXTRA'] = JSON.generate(json_packet.extra, allow_nan: true) if json_packet.extra
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
       if object.item_name

@@ -1056,7 +1056,11 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Skip metadata columns
-      next if column_name == 'tag'
+      next if column_name == 'COSMOS_DATA_TAG'
+      if column_name == 'COSMOS_EXTRA'
+        entry['COSMOS_EXTRA'] = raw_value
+        next
+      end
 
       # Determine the base item name (remove __C, __F, __U suffixes)
       base_name = column_name.sub(/(__C|__F|__U)$/, '')
