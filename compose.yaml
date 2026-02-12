@@ -40,6 +40,14 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test that S3-compatible storage (versitygw) is responding on port 9000
+      # A 403 Forbidden response means the server is healthy and responding
+      test: ["CMD-SHELL", "wget -O- http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   openc3-tsdb:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
@@ -62,6 +70,14 @@ services:
       QDB_PG_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
       QDB_HTTP_USER: "${OPENC3_TSDB_USERNAME}"
       QDB_HTTP_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
+    healthcheck:
+      # Test that QuestDB can actually execute queries via the REST API
+      # This verifies both the HTTP server and the database engine are working
+      test: ["CMD-SHELL", "curl -f -u \"$${QDB_HTTP_USER}:$${QDB_HTTP_PASSWORD}\" 'http://localhost:9000/exec?query=SELECT+1' | grep -q '\"query\":\"SELECT 1\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   openc3-redis:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -81,6 +97,14 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test Redis with PING command - use default connection (no auth in healthcheck)
+      # Redis will respond with NOAUTH if it's running, which is sufficient for health
+      test: ["CMD-SHELL", "redis-cli ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-redis-ephemeral:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -101,6 +125,14 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test ephemeral Redis with PING command on port 6380
+      # Redis will respond with NOAUTH if it's running, which is sufficient for health
+      test: ["CMD-SHELL", "redis-cli -p 6380 ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-cosmos-cmd-tlm-api:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -222,6 +254,13 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test that Traefik process is running - ping endpoint is not configured
+      test: ["CMD-SHELL", "pgrep traefik || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-cosmos-init:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
