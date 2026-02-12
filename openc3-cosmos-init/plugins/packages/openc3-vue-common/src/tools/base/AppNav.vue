@@ -389,6 +389,7 @@ export default {
   margin-left: auto;
   margin-right: auto;
   width: 50%;
+  padding: 8px 0;
   cursor: pointer;
 }
 .cosmos {
