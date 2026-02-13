@@ -62,7 +62,7 @@ RSpec.describe RunningScript, type: :model do
     end
 
     it "spawns a python script process" do
-      expect(ChildProcess).to receive(:build).with("python", anything, "1", "DEFAULT")
+      expect(ChildProcess).to receive(:build).with("/openc3/python/.venv/bin/python", anything, "1", "DEFAULT")
 
       result = RunningScript.spawn("DEFAULT", "script.py")
       expect(result).to eq(1)

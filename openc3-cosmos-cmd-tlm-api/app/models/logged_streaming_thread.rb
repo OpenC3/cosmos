@@ -176,16 +176,60 @@ class LoggedStreamingThread < StreamingThread
     start_time = nil
     end_time = nil
 
+    item_cmd_or_tlm = [] # Track CMD/TLM per item for type-aware lookups
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
-        _type, _cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
+        _type, cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
         items << "#{tgt}__#{pkt}__#{item}__#{value_type}"
+        item_cmd_or_tlm << cmd_tlm
       end
     end
 
-    # Figure out what is actually available
-    available = @local_api.get_tlm_available(items, scope: @scope, token: @token)
+    # Figure out what is actually available - handle CMD and TLM separately
+    available = Array.new(items.length)
+
+    # Resolve TLM items using get_tlm_available
+    tlm_indices = items.each_index.select { |i| item_cmd_or_tlm[i] == 'TLM' }
+    unless tlm_indices.empty?
+      tlm_results = @local_api.get_tlm_available(tlm_indices.map { |i| items[i] }, scope: @scope, token: @token)
+      tlm_indices.each_with_index do |orig_idx, result_idx|
+        available[orig_idx] = tlm_results[result_idx]
+      end
+    end
+
+    # Resolve CMD items manually (no get_cmd_available API exists)
+    items.each_with_index do |item_str, idx|
+      next unless item_cmd_or_tlm[idx] == 'CMD'
+      target_name, packet_name, item_name, value_type = item_str.split('__')
+      begin
+        item_def = OpenC3::TargetModel.packet_item(target_name, packet_name, item_name, type: :CMD, scope: @scope)
+        if item_def['array_size']
+          value_type = 'RAW'
+        end
+        resolved = case value_type
+          when 'FORMATTED', 'WITH_UNITS'
+            if item_def['format_string']
+              'FORMATTED'
+            elsif item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
+              'CONVERTED'
+            else
+              'RAW'
+            end
+          when 'CONVERTED'
+            if item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
+              'CONVERTED'
+            else
+              'RAW'
+            end
+          else
+            'RAW'
+          end
+        available[idx] = [target_name, packet_name, item_name, resolved].join('__')
+      rescue RuntimeError
+        available[idx] = nil
+      end
+    end
 
     item_index = 0
     objects_by_topic.each do |topic, objects|
@@ -194,7 +238,7 @@ class LoggedStreamingThread < StreamingThread
       objects.each do |object|
         break if @cancel_thread
         table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
-        tables[table_name] = 1
+        tables[table_name] = object.cmd_or_tlm
 
         if object.start_time
           if start_time.nil? or object.start_time < start_time
@@ -244,10 +288,11 @@ class LoggedStreamingThread < StreamingThread
         item_keys << object.item_key
 
         # Look up item type info from packet definition
-        cache_key = [tgt, pkt]
+        pkt_type = (item_cmd_or_tlm[item_index] == 'CMD') ? :CMD : :TLM
+        cache_key = [tgt, pkt, pkt_type]
         unless packet_cache.key?(cache_key)
           begin
-            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, scope: @scope)
+            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, type: pkt_type, scope: @scope)
           rescue RuntimeError
             packet_cache[cache_key] = nil
           end
@@ -297,24 +342,28 @@ class LoggedStreamingThread < StreamingThread
         item_index += 1
       end
     end
-    names << "T0.PACKET_TIMESECONDS"
+    names << "CAST(T0.PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
 
     # Add any additional timestamp source columns needed for calculated items (RECEIVED_TIMESECONDS if needed)
     timestamp_source_columns.each_key do |source_col|
-      # T0.PACKET_TIMESECONDS is already added above, but RECEIVED_TIMESECONDS needs to be added explicitly
       if source_col.include?('RECEIVED_TIMESECONDS')
         timestamp_source_columns[source_col] = names.length
         names << source_col
-      else
-        # T0.PACKET_TIMESECONDS was already added
-        timestamp_source_columns[source_col] = names.length - 1  # PACKET_TIMESECONDS is always the last item before this loop
       end
+      # PACKET_TIMESECONDS is already included as a CAST column above
     end
 
     # Update calculated_timestamp_items with actual source column indices
     calculated_timestamp_items.each do |item_key, info|
       source_col = "T#{info[:table_index]}.#{info[:source]}"
       info[:source_column_index] = timestamp_source_columns[source_col]
+    end
+
+    # Add COSMOS_EXTRA for command tables
+    tables.each_with_index do |(table_name, cmd_or_tlm), index|
+      if cmd_or_tlm == :CMD
+        names << "T#{index}.COSMOS_EXTRA"
+      end
     end
 
     # Build the SQL query
@@ -368,17 +417,18 @@ class LoggedStreamingThread < StreamingThread
               timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
                 col_name = tuple[0]
-                if col_name == 'PACKET_TIMESECONDS' || col_name.end_with?('.PACKET_TIMESECONDS')
-                  # tuple[1] is a Ruby time object which we convert to nanoseconds
-                  entry['__time'] = (tuple[1].to_f * 1_000_000_000).to_i
-                  timestamp_values['PACKET_TIMESECONDS'] = tuple[1]
-                  # Also store with table prefix for calculated items
-                  timestamp_values[col_name] = tuple[1] if col_name.include?('.')
-                  # If this was explicitly requested as an item, add converted value to entry
-                  if index < item_keys.length && stored_timestamp_item_keys.key?(item_keys[index])
-                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-                  end
+                if col_name == 'PACKET_TIMESECONDS'
+                  # Use the nanosecond integer directly for full precision
+                  time_ns = tuple[1].to_i
+                  entry['__time'] = time_ns
+                  # Derive PACKET_TIMESECONDS Time object from nanoseconds for calculated items
+                  # Use Time.at with in: '+00:00' to create UTC time matching PG timestamp behavior
+                  pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
+                  timestamp_values['PACKET_TIMESECONDS'] = pkt_time
+                  next
+                elsif col_name == 'COSMOS_EXTRA' || col_name.end_with?('.COSMOS_EXTRA')
+                  entry['COSMOS_EXTRA'] = tuple[1]
+                  next
                 elsif col_name == 'RECEIVED_TIMESECONDS' || col_name.end_with?('.RECEIVED_TIMESECONDS')
                   # Store for calculated items
                   timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
@@ -437,7 +487,7 @@ class LoggedStreamingThread < StreamingThread
         retry
       end
     end
-    if end_time
+    if end_time and end_time <= Time.now.to_nsec_from_epoch
       return true
     else
       return false
@@ -497,7 +547,7 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SELECT clause with aggregations
-      selects = ["PACKET_TIMESECONDS as timestamp"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
       column_mapping = {} # Maps result column name to [item_key, reduced_type, value_type]
 
       items_to_query.each do |item_name, info|
@@ -540,7 +590,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY timestamp"
+      query += " ORDER BY PACKET_TIMESECONDS"
 
       min = 0
       max = @max_batch_size
@@ -559,7 +609,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB reduced query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB reduced query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -571,16 +620,14 @@ class LoggedStreamingThread < StreamingThread
             else
               result.each do |tuples|
                 entry = { "__type" => "items" }
-                timestamp = nil
 
                 tuples.each do |tuple|
                   col_name = tuple[0]
                   value = tuple[1]
 
-                  if col_name == 'timestamp'
-                    # Convert Ruby time to nanoseconds
-                    timestamp = (value.to_f * 1_000_000_000).to_i
-                    entry['__time'] = timestamp
+                  if col_name == 'PACKET_TIMESECONDS'
+                    # Use nanosecond integer directly for full precision
+                    entry['__time'] = value.to_i
                     next
                   end
 
@@ -625,7 +672,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done
@@ -756,7 +803,8 @@ class LoggedStreamingThread < StreamingThread
       # Look up packet definition for type info during decoding
       packet_def = nil
       begin
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, scope: @scope)
+        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
       rescue RuntimeError
         # Packet not found, will use heuristic decoding
       end
@@ -785,7 +833,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB packet query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB packet query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -822,7 +869,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done
@@ -882,13 +929,14 @@ class LoggedStreamingThread < StreamingThread
       # Look up packet definition to find numeric columns
       packet_def = nil
       begin
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, scope: @scope)
+        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
       rescue RuntimeError
         # Packet not found
       end
 
       # Build aggregation query for all numeric items in the packet
-      selects = ["PACKET_TIMESECONDS as timestamp"]
+      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
       numeric_items = []
 
       if packet_def && packet_def['items']
@@ -936,7 +984,7 @@ class LoggedStreamingThread < StreamingThread
       query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY timestamp"
+      query += " ORDER BY PACKET_TIMESECONDS"
 
       min = 0
       max = @max_batch_size
@@ -955,7 +1003,6 @@ class LoggedStreamingThread < StreamingThread
             end
 
             query_offset = "#{query} LIMIT #{min}, #{max}"
-            puts "QuestDB reduced packet query: #{query_offset}"
             OpenC3::Logger.debug("QuestDB reduced packet query: #{query_offset}")
             results = []
             result = @@conn.exec(query_offset)
@@ -976,8 +1023,9 @@ class LoggedStreamingThread < StreamingThread
                     col_name = tuple[0]
                     value = tuple[1]
 
-                    if col_name == 'timestamp'
-                      entry['__time'] = (value.to_f * 1_000_000_000).to_i
+                    if col_name == 'PACKET_TIMESECONDS'
+                      # Use nanosecond integer directly for full precision
+                      entry['__time'] = value.to_i
                       next
                     end
 
@@ -1013,7 +1061,7 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      done = true if end_time
+      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
     end
 
     done
@@ -1043,20 +1091,35 @@ class LoggedStreamingThread < StreamingThread
       columns[column_name] = value
     end
 
+    # Track timestamp values for computing derived items
+    cosmos_timestamp_ns = nil
+    received_time_pg = nil
+
     # Second pass: process columns based on value_type
     tuples.each do |tuple|
       column_name = tuple[0]
       raw_value = tuple[1]
 
-      # Handle PACKET_TIMESECONDS specially - this is the designated timestamp column
+      # PACKET_TIMESECONDS is the designated timestamp - convert PG timestamp to nanoseconds
       if column_name == 'PACKET_TIMESECONDS'
-        # Convert Ruby time to nanoseconds
-        entry['__time'] = (raw_value.to_f * 1_000_000_000).to_i
+        pkt_time = OpenC3::QuestDBClient.pg_timestamp_to_utc(raw_value)
+        cosmos_timestamp_ns = pkt_time.tv_sec * 1_000_000_000 + pkt_time.tv_nsec
+        entry['__time'] = cosmos_timestamp_ns
+        next
+      end
+
+      # Capture RECEIVED_TIMESECONDS for conversion below
+      if column_name == 'RECEIVED_TIMESECONDS'
+        received_time_pg = raw_value
         next
       end
 
       # Skip metadata columns
-      next if column_name == 'tag'
+      next if column_name == 'COSMOS_DATA_TAG'
+      if column_name == 'COSMOS_EXTRA'
+        entry['COSMOS_EXTRA'] = raw_value
+        next
+      end
 
       # Determine the base item name (remove __C, __F, __U suffixes)
       base_name = column_name.sub(/(__C|__F|__U)$/, '')
@@ -1118,6 +1181,20 @@ class LoggedStreamingThread < StreamingThread
           entry[column_name] = value
         end
       end
+    end
+
+    # Compute PACKET_TIMESECONDS and PACKET_TIMEFORMATTED from packet timestamp nanoseconds
+    if cosmos_timestamp_ns
+      pkt_time = Time.at(cosmos_timestamp_ns / 1_000_000_000, cosmos_timestamp_ns % 1_000_000_000, :nsec, in: '+00:00')
+      entry['PACKET_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :seconds)
+      entry['PACKET_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :formatted)
+    end
+
+    # Compute RECEIVED_TIMESECONDS and RECEIVED_TIMEFORMATTED from PG timestamp
+    if received_time_pg
+      rcv_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(received_time_pg)
+      entry['RECEIVED_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :seconds)
+      entry['RECEIVED_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :formatted)
     end
 
     entry

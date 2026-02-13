@@ -19,9 +19,6 @@ services:
   openc3-buckets:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    # Uncomment to run unit tests against the S3 server
-    # ports:
-    #   - "127.0.0.1:9000:9000"
     volumes:
       - "openc3-object-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -51,12 +48,14 @@ services:
 
   openc3-tsdb:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    ports:
-      - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
-      # The Postgresql port doesn't typically need to be exposed to the host
-      # but if you have external software that needs to connect to QuestDB
-      # you can uncomment the following line to expose it.
-      # - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
+    # ports:
+    #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
+    #   - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
+    #   - "127.0.0.1:9003:9003" # QuestDB health endpoint
+    #   # The Postgresql port doesn't typically need to be exposed to the host
+    #   # but if you have external software that needs to connect to QuestDB
+    #   # you can uncomment the following line to expose it.
+    #   - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
     volumes:
       - "openc3-tsdb-v:/var/lib/questdb"
     restart: "unless-stopped"

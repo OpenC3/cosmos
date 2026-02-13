@@ -12,6 +12,7 @@ services:
     ports:
       - "127.0.0.1:9000:9000" # HTTP ILP ingest + Console
       - "127.0.0.1:8812:8812" # PostgreSQL wire protocol
+      - "127.0.0.1:9003:9003" # Monitoring and alerting (min server)
     environment:
       QDB_PG_USER: admin
       QDB_PG_PASSWORD: admin

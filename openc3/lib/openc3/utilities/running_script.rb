@@ -387,7 +387,7 @@ class RunningScript
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
-      process_name = 'python'
+      process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
     elsif extension == '.rb'
       process_name = 'ruby'
@@ -400,7 +400,7 @@ class RunningScript
       if script_engine_model
         script_engine = script_engine_model.filename
         if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = 'python'
+          process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
           runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
         else
           process_name = 'ruby'

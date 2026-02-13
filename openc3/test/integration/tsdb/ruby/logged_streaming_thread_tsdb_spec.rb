@@ -34,7 +34,7 @@ class MockStreamingObject
   attr_accessor :key, :target_name, :packet_name, :item_name, :value_type
   attr_accessor :start_time, :end_time, :offset, :item_key, :topic, :stream_mode, :cmd_or_tlm
 
-  def initialize(target:, packet:, item:, value_type: :RAW, start_time: nil, end_time: nil)
+  def initialize(target:, packet:, item: nil, value_type: :RAW, start_time: nil, end_time: nil)
     @target_name = target
     @packet_name = packet
     @item_name = item
@@ -44,8 +44,13 @@ class MockStreamingObject
     @stream_mode = :DECOM
     @cmd_or_tlm = :TLM
     @offset = '0-0'
-    @key = "DECOM__TLM__#{target}__#{packet}__#{item}__#{value_type}"
-    @item_key = "#{target}__#{packet}__#{item}__#{value_type}"
+    if item
+      @key = "DECOM__TLM__#{target}__#{packet}__#{item}__#{value_type}"
+      @item_key = "#{target}__#{packet}__#{item}__#{value_type}"
+    else
+      @key = "DECOM__TLM__#{target}__#{packet}__#{value_type}"
+      @item_key = nil
+    end
     @topic = "DEFAULT__DECOM__{#{target}}__#{packet}"
   end
 end
@@ -458,19 +463,24 @@ RSpec.describe LoggedStreamingThread, :questdb do
 
       streaming_api.transmitted_results.each_with_index do |result, i|
         expect(result['__type']).to eq('items')
+        expect(result['__time']).to be_a(Integer), "Expected __time to be Integer, got #{result['__time'].class}"
+        expect(result['__time']).to be > 1_000_000_000_000_000_000, "Expected nanosecond timestamp for __time, got #{result['__time']}"
         actual = result[obj.item_key]
         expected_time = expected_start + i
 
         case format_type
         when :seconds
           expect(actual).to be_a(Float), "Expected Float at index #{i}, got #{actual.class}"
+          # Verify format like 1770924878.8600922 (Unix timestamp with fractional seconds)
+          expect(actual.to_s).to match(/^\d{10}\.\d+$/),
+            "Expected Unix timestamp with fractional seconds (e.g., 1770924878.8600922) at index #{i}, got #{actual}"
           expect(actual).to be_within(0.001).of(expected_time.to_f),
             "Timestamp seconds mismatch at index #{i}: expected #{expected_time.to_f}, got #{actual}"
         when :formatted
           expect(actual).to be_a(String), "Expected String at index #{i}, got #{actual.class}"
-          # Verify it's ISO 8601 format with Z timezone suffix
+          # Verify it's ISO 8601 format: YYYY-MM-DDTHH:MM:SS.ffffffZ
           expect(actual).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
-            "Expected ISO 8601 format at index #{i}, got #{actual}"
+            "Expected ISO 8601 format (e.g., 2026-02-12T22:19:47.234298Z) at index #{i}, got #{actual}"
           parsed = Time.parse(actual)
           expect(parsed.to_f).to be_within(0.001).of(expected_time.to_f),
             "Timestamp formatted mismatch at index #{i}: expected #{expected_time}, got #{actual}"
@@ -549,6 +559,114 @@ RSpec.describe LoggedStreamingThread, :questdb do
     end
   end
 
+  describe 'Decom packet timestamp items' do
+    it 'includes correctly formatted timestamp items in decom packet results' do
+      test_params = write_test_data(
+        target: 'STREAM', packet: 'DECOM_TS', data_type: 'INT', bit_size: 32,
+        values: [100, 200, 300]
+      )
+      expect(test_params['success']).to be true
+
+      obj = MockStreamingObject.new(
+        target: test_params['target_name'],
+        packet: test_params['packet_name'],
+        value_type: :CONVERTED,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+      )
+
+      thread = create_thread([obj])
+
+      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+
+      objects_by_topic = { obj.topic => [obj] }
+      thread.send(:stream_decom_packets_from_tsdb, objects_by_topic)
+
+      expect(streaming_api.transmitted_results.length).to eq(3)
+
+      expected_start = Time.parse(test_params['start_time'])
+
+      streaming_api.transmitted_results.each_with_index do |result, i|
+        expect(result['__type']).to eq('PACKET')
+        expect(result['__packet']).to eq(obj.key)
+
+        # __time should be nanoseconds integer
+        expect(result['__time']).to be_a(Integer), "Expected __time to be Integer, got #{result['__time'].class}"
+        expect(result['__time']).to be > 1_000_000_000_000_000_000, "Expected nanosecond timestamp for __time"
+
+        expected_time = expected_start + i
+
+        # PACKET_TIMESECONDS: float like 1770924878.8600922
+        pkt_ts = result['PACKET_TIMESECONDS']
+        expect(pkt_ts).to be_a(Float), "Expected PACKET_TIMESECONDS to be Float, got #{pkt_ts.class}"
+        expect(pkt_ts.to_s).to match(/^\d{10}\.\d+$/),
+          "Expected PACKET_TIMESECONDS like 1770924878.8600922, got #{pkt_ts}"
+        expect(pkt_ts).to be_within(0.001).of(expected_time.to_f),
+          "PACKET_TIMESECONDS mismatch at index #{i}: expected #{expected_time.to_f}, got #{pkt_ts}"
+
+        # PACKET_TIMEFORMATTED: ISO 8601 like 2026-02-12T22:19:47.234298Z
+        pkt_tf = result['PACKET_TIMEFORMATTED']
+        expect(pkt_tf).to be_a(String), "Expected PACKET_TIMEFORMATTED to be String, got #{pkt_tf.class}"
+        expect(pkt_tf).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
+          "Expected PACKET_TIMEFORMATTED as ISO 8601 (e.g., 2026-02-12T22:19:47.234298Z), got #{pkt_tf}"
+        expect(Time.parse(pkt_tf).to_f).to be_within(0.001).of(expected_time.to_f),
+          "PACKET_TIMEFORMATTED value mismatch at index #{i}"
+
+        # RECEIVED_TIMESECONDS: float like 1770924878.8600922
+        rcv_ts = result['RECEIVED_TIMESECONDS']
+        expect(rcv_ts).to be_a(Float), "Expected RECEIVED_TIMESECONDS to be Float, got #{rcv_ts.class}"
+        expect(rcv_ts.to_s).to match(/^\d{10}\.\d+$/),
+          "Expected RECEIVED_TIMESECONDS like 1770924878.8600922, got #{rcv_ts}"
+        expect(rcv_ts).to be_within(0.001).of(expected_time.to_f),
+          "RECEIVED_TIMESECONDS mismatch at index #{i}: expected #{expected_time.to_f}, got #{rcv_ts}"
+
+        # RECEIVED_TIMEFORMATTED: ISO 8601 like 2026-02-12T22:19:47.234298Z
+        rcv_tf = result['RECEIVED_TIMEFORMATTED']
+        expect(rcv_tf).to be_a(String), "Expected RECEIVED_TIMEFORMATTED to be String, got #{rcv_tf.class}"
+        expect(rcv_tf).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
+          "Expected RECEIVED_TIMEFORMATTED as ISO 8601 (e.g., 2026-02-12T22:19:47.234298Z), got #{rcv_tf}"
+        expect(Time.parse(rcv_tf).to_f).to be_within(0.001).of(expected_time.to_f),
+          "RECEIVED_TIMEFORMATTED value mismatch at index #{i}"
+      end
+    end
+
+    it 'has consistent timestamps between __time and PACKET_TIMESECONDS' do
+      test_params = write_test_data(
+        target: 'STREAM', packet: 'DECOM_TS_CONSISTENT', data_type: 'INT', bit_size: 32,
+        values: [42]
+      )
+      expect(test_params['success']).to be true
+
+      obj = MockStreamingObject.new(
+        target: test_params['target_name'],
+        packet: test_params['packet_name'],
+        value_type: :RAW,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+      )
+
+      thread = create_thread([obj])
+
+      allow(OpenC3::TargetModel).to receive(:packet).and_return(test_params['packet_def'])
+
+      objects_by_topic = { obj.topic => [obj] }
+      thread.send(:stream_decom_packets_from_tsdb, objects_by_topic)
+
+      expect(streaming_api.transmitted_results.length).to eq(1)
+      result = streaming_api.transmitted_results[0]
+
+      # __time (nanoseconds) and PACKET_TIMESECONDS (float seconds) should represent the same time
+      time_from_ns = result['__time'] / 1_000_000_000.0
+      expect(time_from_ns).to be_within(0.001).of(result['PACKET_TIMESECONDS']),
+        "__time (#{result['__time']}) and PACKET_TIMESECONDS (#{result['PACKET_TIMESECONDS']}) are inconsistent"
+
+      # PACKET_TIMEFORMATTED should parse to the same time as PACKET_TIMESECONDS
+      formatted_time = Time.parse(result['PACKET_TIMEFORMATTED']).to_f
+      expect(formatted_time).to be_within(0.001).of(result['PACKET_TIMESECONDS']),
+        "PACKET_TIMEFORMATTED (#{result['PACKET_TIMEFORMATTED']}) and PACKET_TIMESECONDS (#{result['PACKET_TIMESECONDS']}) are inconsistent"
+    end
+  end
+
   describe 'Streaming behavior' do
     it 'includes timestamp in results' do
       test_params = write_test_data(
@@ -588,13 +706,16 @@ RSpec.describe LoggedStreamingThread, :questdb do
       )
       expect(test_params['success']).to be true
 
+      # Use current time as end_time so it's already in the past by the time stream_items returns
+      # The data was written with timestamps around "now", so this captures all rows
+      # and ensures the end_time <= Time.now check returns true
       obj = MockStreamingObject.new(
         target: test_params['target_name'],
         packet: test_params['packet_name'],
         item: 'VALUE',
         value_type: :RAW,
         start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
-        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+        end_time: Time.now.to_i * 1_000_000_000
       )
 
       thread = create_thread([obj])

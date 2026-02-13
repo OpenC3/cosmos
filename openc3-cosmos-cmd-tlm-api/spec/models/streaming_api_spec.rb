@@ -313,7 +313,7 @@ RSpec.describe StreamingApi, type: :model do
             allow(PG::Connection).to receive(:new).and_return(mock_conn)
             # Data format: each row is array of [column_name, value] pairs
             # Query selects item columns plus timestamp as last column
-            pg_data = [ [["VALUE1", 10], ["PACKET_TIMESECONDS", Time.at(@file_start_time / 1_000_000_000)]] ]
+            pg_data = [ [["PACKET_TIMESECONDS", @file_start_time], ["VALUE1", 10]] ]
             pg_data.define_singleton_method(:ntuples) do
               return 1
             end
@@ -351,13 +351,13 @@ RSpec.describe StreamingApi, type: :model do
             # Multiple rows with timestamp values spread across file time range
             base_time = @file_start_time / 1_000_000_000
             pg_data = [
-              [["VALUE1", 10], ["PACKET_TIMESECONDS", Time.at(base_time)]],
-              [["VALUE1", 20], ["PACKET_TIMESECONDS", Time.at(base_time + 100)]],
-              [["VALUE1", 30], ["PACKET_TIMESECONDS", Time.at(base_time + 200)]],
-              [["VALUE1", 40], ["PACKET_TIMESECONDS", Time.at(base_time + 300)]],
-              [["VALUE1", 50], ["PACKET_TIMESECONDS", Time.at(base_time + 400)]],
-              [["VALUE1", 60], ["PACKET_TIMESECONDS", Time.at(base_time + 500)]],
-              [["VALUE1", 70], ["PACKET_TIMESECONDS", Time.at(base_time + 600)]]
+              [["PACKET_TIMESECONDS", base_time * 1_000_000_000], ["VALUE1", 10]],
+              [["PACKET_TIMESECONDS", (base_time + 100) * 1_000_000_000], ["VALUE1", 20]],
+              [["PACKET_TIMESECONDS", (base_time + 200) * 1_000_000_000], ["VALUE1", 30]],
+              [["PACKET_TIMESECONDS", (base_time + 300) * 1_000_000_000], ["VALUE1", 40]],
+              [["PACKET_TIMESECONDS", (base_time + 400) * 1_000_000_000], ["VALUE1", 50]],
+              [["PACKET_TIMESECONDS", (base_time + 500) * 1_000_000_000], ["VALUE1", 60]],
+              [["PACKET_TIMESECONDS", (base_time + 600) * 1_000_000_000], ["VALUE1", 70]]
             ]
             pg_data.define_singleton_method(:ntuples) do
               return 7
@@ -558,8 +558,8 @@ RSpec.describe StreamingApi, type: :model do
         base_time = @file_start_time / 1_000_000_000
         # Mock aggregated data with min, max, avg, stddev columns
         pg_data = [
-          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 5.0], ["VALUE1__CX", 15.0], ["VALUE1__CA", 10.0], ["VALUE1__CS", 2.5]],
-          [["timestamp", Time.at(base_time + 60)], ["VALUE1__CN", 8.0], ["VALUE1__CX", 22.0], ["VALUE1__CA", 15.0], ["VALUE1__CS", 3.5]]
+          [["PACKET_TIMESECONDS", base_time * 1_000_000_000], ["VALUE1__CN", 5.0], ["VALUE1__CX", 15.0], ["VALUE1__CA", 10.0], ["VALUE1__CS", 2.5]],
+          [["PACKET_TIMESECONDS", (base_time + 60) * 1_000_000_000], ["VALUE1__CN", 8.0], ["VALUE1__CX", 22.0], ["VALUE1__CA", 15.0], ["VALUE1__CS", 3.5]]
         ]
         pg_data.define_singleton_method(:ntuples) { 2 }
 
@@ -598,7 +598,7 @@ RSpec.describe StreamingApi, type: :model do
 
         base_time = @file_start_time / 1_000_000_000
         pg_data = [
-          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 1.0], ["VALUE1__CX", 100.0], ["VALUE1__CA", 50.0], ["VALUE1__CS", 25.0]]
+          [["PACKET_TIMESECONDS", base_time * 1_000_000_000], ["VALUE1__CN", 1.0], ["VALUE1__CX", 100.0], ["VALUE1__CA", 50.0], ["VALUE1__CS", 25.0]]
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
@@ -631,7 +631,7 @@ RSpec.describe StreamingApi, type: :model do
 
         base_time = @file_start_time / 1_000_000_000
         pg_data = [
-          [["timestamp", Time.at(base_time)], ["VALUE1__CN", 0.0], ["VALUE1__CX", 1000.0], ["VALUE1__CA", 500.0], ["VALUE1__CS", 250.0]]
+          [["PACKET_TIMESECONDS", base_time * 1_000_000_000], ["VALUE1__CN", 0.0], ["VALUE1__CX", 1000.0], ["VALUE1__CA", 500.0], ["VALUE1__CS", 250.0]]
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
