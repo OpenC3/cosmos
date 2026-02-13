@@ -20,6 +20,8 @@ test.use({
   toolName: 'Table Manager',
 })
 
+test.describe.configure({ mode: 'serial' })
+
 async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.getByRole('progressbar')).not.toBeVisible()
@@ -42,6 +44,15 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'mcconfigurationtable_def.txt')
+  // Handle optional confirmation dialog if binary file already exists
+  await utils.sleep(500)
+  const confirmDialog = page.locator('.v-dialog:has-text("Confirm")')
+  if (await confirmDialog.isVisible()) {
+    await expect(confirmDialog).toContainText(
+      'Binary file INST/tables/bin/MCConfigurationTable.bin already exists.',
+    )
+    await page.locator('button:has-text("Overwrite")').click()
+  }
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   await expect(page.locator('.v-tab')).toHaveCount(1)
   await expect(

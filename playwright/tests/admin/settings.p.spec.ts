@@ -57,10 +57,15 @@ test('hides the astro clock', async ({ page, utils }) => {
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
   await page.reload()
+  // Wait for the page to re-render
+  await expect(page.getByText('Hide Astro Clock')).toBeVisible()
+  await utils.sleep(100)
   await expect(page.locator('.rux-clock')).not.toBeVisible()
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
   await page.reload()
+  await expect(page.getByText('Hide Astro Clock')).toBeVisible()
+  await utils.sleep(100)
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
 
@@ -123,6 +128,7 @@ test('changes the source url', async ({ page, utils }) => {
     .locator('input')
     .fill('https://openc3.com')
   await page.locator('[data-test=save-source-url]').click()
+  await expect(page.getByText('Source code URL').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('footer a')).toHaveAttribute(
     'href',
@@ -137,6 +143,7 @@ test('changes the rubygems url', async ({ page, utils }) => {
     .fill('https://myrubygems.com')
   await page.locator('[data-test=save-rubygems-url]').click()
   await page.reload()
+  await expect(page.getByText('Rubygems URL').first()).toBeVisible()
   await expect(
     page.locator('[data-test="rubygems-url"]').locator('input'),
   ).toHaveValue('https://myrubygems.com')
@@ -149,6 +156,7 @@ test('changes the pypi url', async ({ page, utils }) => {
     .fill('https://mypypi.com')
   await page.locator('[data-test=save-pypi-url]').click()
   await page.reload()
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
   await expect(
     page.locator('[data-test="pypi-url"]').locator('input'),
   ).toHaveValue('https://mypypi.com')

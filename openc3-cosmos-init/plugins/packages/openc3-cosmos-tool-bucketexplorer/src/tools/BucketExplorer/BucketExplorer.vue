@@ -339,6 +339,7 @@ export default {
       mode: 'bucket',
       buckets: [],
       volumes: [],
+      requestId: 0,
       uploadPathDialog: false,
       optionsDialog: false,
       optionsFormValid: true,
@@ -478,11 +479,9 @@ export default {
       ].includes(ext)
     },
     gotoPath(path) {
-      if (!this.updating) {
-        this.updating = true
-        this.path = path
-        this.update()
-      }
+      this.updating = true
+      this.path = path
+      this.update()
     },
     update() {
       this.updating = true
@@ -516,7 +515,8 @@ export default {
       this.clearUpdater()
       this.updater = setInterval(() => {
         // need to be in a bucket/volume otherwise updateFiles gets mad
-        if (this.root) {
+        // Don't refresh while a user-initiated navigation is in progress
+        if (this.root && !this.updating) {
           this.updateFiles()
         }
       }, this.refreshInterval * 1000)
@@ -548,17 +548,15 @@ export default {
     backArrow() {
       // Nothing to do if we're at the root so return
       if (this.path === '') return
-      if (!this.updating) {
-        this.updating = true
-        let parts = this.path.split('/')
-        this.path = parts.slice(0, parts.length - 2).join('/')
-        // Only append the last slash if we're not at the root
-        // The root is 2 because it's the path before clicking back
-        if (parts.length > 2) {
-          this.path += '/'
-        }
-        this.update()
+      this.updating = true
+      let parts = this.path.split('/')
+      this.path = parts.slice(0, parts.length - 2).join('/')
+      // Only append the last slash if we're not at the root
+      // The root is 2 because it's the path before clicking back
+      if (parts.length > 2) {
+        this.path += '/'
       }
+      this.update()
     },
     fileClick(_, { item }) {
       // Nothing to do if they click on a file
@@ -751,6 +749,7 @@ export default {
         })
     },
     updateFiles() {
+      const currentRequestId = ++this.requestId
       let root = this.root.toUpperCase()
       if (this.mode === 'volume') {
         root = root.slice(1)
@@ -761,6 +760,8 @@ export default {
         }`,
       )
         .then((response) => {
+          // Ignore stale responses from superseded requests
+          if (currentRequestId !== this.requestId) return
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
           })
@@ -777,6 +778,8 @@ export default {
           this.updating = false
         })
         .catch(({ response }) => {
+          // Ignore stale responses from superseded requests
+          if (currentRequestId !== this.requestId) return
           this.files = []
           if (response.data?.message) {
             this.$notify.caution({

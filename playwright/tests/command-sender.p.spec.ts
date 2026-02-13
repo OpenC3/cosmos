@@ -70,6 +70,9 @@ async function checkHistory(page, value) {
 //
 test('selects a target and packet', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ABORT')
+  await expect(page.locator('main')).toContainText(
+    'Aborts a collect on the INST instrument',
+  )
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   // Test the autocomplete by typing in a command
@@ -115,7 +118,9 @@ test('displays parameter units, ranges and description', async ({
 test('warns for hazardous commands', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
-  await expect(page.locator('main')).toContainText('Clears counters')
+  await expect(page.locator('main')).toContainText(
+    'Clears counters on the INST instrument (HAZARDOUS)',
+  )
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')
@@ -161,6 +166,9 @@ test('warns for hazardous commands', async ({ page, utils }) => {
 
 test('warns for required parameters', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await expect(page.locator('main')).toContainText(
+    'Starts a collect on the INST target',
+  )
   await page.locator('[data-test="select-send"]').click()
   // Break apart the checks so we have output flexibility in the future
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
@@ -174,6 +182,9 @@ test('warns for required parameters', async ({ page, utils }) => {
 test('warns for hazardous parameters', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await expect(page.locator('main')).toContainText(
+    'Starts a collect on the INST target',
+  )
   await selectValue(page, 'TYPE', 'SPECIAL')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
@@ -196,6 +207,9 @@ test('handles float values and scientific notation', async ({
 }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'FLTCMD')
+  await expect(page.locator('main')).toContainText(
+    'Command with float parameters',
+  )
   await setValue(page, 'FLOAT32', '123.456')
   await setValue(page, 'FLOAT64', '12e3')
   await page.locator('[data-test="select-send"]').click()
@@ -211,6 +225,9 @@ test('handles float values and scientific notation', async ({
 test('handles NaN and Infinite values', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'FLTCMD')
+  await expect(page.locator('main')).toContainText(
+    'Command with float parameters',
+  )
   await setValue(page, 'FLOAT32', 'NAN')
   await setValue(page, 'FLOAT64', 'nan')
   await page.locator('[data-test="select-send"]').click()
@@ -247,6 +264,7 @@ test('handles big integers', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   // Send a different command: INST SETPARAMS
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Sets numbered parameters')
   // Set the BIGINT value to the maximum value
   let value = '18446744073709551615'
   await setValue(page, 'BIGINT', value)
@@ -307,6 +325,9 @@ test('handles big integers', async ({ page, utils }) => {
 test('handles array values', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ARYCMD')
+  await expect(page.locator('main')).toContainText(
+    'Command with array parameter',
+  )
   await setValue(page, 'ARRAY', '10')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('.v-dialog')).toContainText('must be an Array')
@@ -324,7 +345,7 @@ test('handles array values', async ({ page, utils }) => {
 
 test('handles string values', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ASCIICMD')
-  await expect(page.locator('main')).toContainText('ASCII command')
+  await expect(page.locator('main')).toContainText('Enumerated ASCII command')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
@@ -349,6 +370,9 @@ test('handles string values', async ({ page, utils }) => {
 
 test('gets details with right click', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await expect(page.locator('main')).toContainText(
+    'Starts a collect on the INST target',
+  )
   await page.locator('text=Collect type').click({ button: 'right' })
   await page.locator('text=Details').click()
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
@@ -360,6 +384,9 @@ test('gets details with right click', async ({ page, utils }) => {
 test('executes commands from history', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await expect(page.locator('main')).toContainText(
+    'Clears counters on the INST instrument (HAZARDOUS)',
+  )
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
@@ -384,6 +411,8 @@ test('executes commands from history', async ({ page, utils }) => {
 
   // Send a different command: INST SETPARAMS
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Sets numbered parameters')
+  await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
@@ -454,11 +483,16 @@ test('executes commands from history', async ({ page, utils }) => {
 test('send vs history', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ABORT')
+  await expect(page.locator('main')).toContainText(
+    'Aborts a collect on the INST instrument',
+  )
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   await checkHistory(page, 'cmd("INST ABORT")')
   // Send a different command: INST SETPARAMS
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Sets numbered parameters')
+  await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
@@ -478,12 +512,16 @@ test('send vs history', async ({ page, utils }) => {
 test('hazardous commands from history', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await expect(page.locator('main')).toContainText(
+    'Clears counters on the INST instrument (HAZARDOUS)',
+  )
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await checkHistory(page, 'cmd("INST CLEAR")')
   // Send a different command: INST ASCIICMD
   await utils.selectTargetPacketItem('INST', 'ASCIICMD')
+  await expect(page.locator('main')).toContainText('Enumerated ASCII command')
   await selectValue(page, 'STRING', 'ARM LASER')
   await checkValue(page, 'STRING', 'ARM LASER')
   await page.locator('[data-test="select-send"]').click()
@@ -545,6 +583,9 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await page.getByText('Ignore Range Checks').click()
   await page.locator('[data-test=command-sender-mode]').click()
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
+  await expect(page.locator('main')).toContainText(
+    'Starts something on the example target',
+  )
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change
   await page.locator('[data-test=sender-history]').press('End')
@@ -602,6 +643,9 @@ test('displays state values in hex', async ({ page, utils }) => {
 
 test('shows ignored parameters', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ABORT')
+  await expect(page.locator('main')).toContainText(
+    'Aborts a collect on the INST instrument',
+  )
   // All the ABORT parameters are ignored so the table shouldn't appear
   await expect(page.locator('main')).not.toContainText('Parameters')
   await page.locator('[data-test=command-sender-mode]').click()
@@ -618,6 +662,8 @@ test('shows ignored parameters', async ({ page, utils }) => {
 test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Sets numbered parameters')
+  await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
   await page.locator('rux-icon-apps').getByRole('img').click()
 
@@ -650,6 +696,8 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test=command-sender-mode]').click()
 
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Sets numbered parameters')
+  await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
