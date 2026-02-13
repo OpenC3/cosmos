@@ -253,6 +253,7 @@ This installs:
 - Use `uv run` instead of activating the venv manually
 - The lockfile (`uv.lock`) must be committed to git
 - Don't commit `.venv` directory (it's in .gitignore)
+- Python microservices use `OPENC3_PYTHON_BIN` environment variable (defaults to `/openc3/python/.venv/bin/python`) to support UV's editable installs
 
 ### JavaScript/TypeScript
 

@@ -10,3 +10,10 @@ test/
 log/*
 tmp/*
 **/*.so
+# Python virtual environments and caches
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache

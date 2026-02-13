@@ -25,4 +25,7 @@ RUN ["chmod", "-R", "777", "/src/"]
 EXPOSE 2901
 
 USER ${USER_ID}:${GROUP_ID}
+
+STOPSIGNAL SIGINT
+
 CMD [ "shoreman" ]

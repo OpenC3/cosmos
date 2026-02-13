@@ -48,9 +48,13 @@ module OpenC3
       if microservice_config["needs_dependencies"]
         env['GEM_HOME'] = '/gems'
         env['PYTHONUSERBASE'] = '/gems/python_packages'
+        # Ensure PYTHONPATH includes both the UV venv (for base openc3 module) and user packages
+        # This is critical for UV-based Python installations where openc3 is installed as editable
+        env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
       else
         env['GEM_HOME'] = nil
         env['PYTHONUSERBASE'] = nil
+        env['PYTHONPATH'] = nil
       end
       env['OPENC3_MICROSERVICE_NAME'] = microservice_name
       container = microservice_config["container"]
