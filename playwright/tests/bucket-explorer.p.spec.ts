@@ -248,7 +248,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
   if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(23)
+    await expect(page.locator('tbody > tr')).toHaveCount(24)
   } else {
     await expect(page.locator('tbody > tr')).toHaveCount(17)
   }
