@@ -27,6 +27,4 @@ EXPOSE 2902
 
 USER ${USER_ID}:${GROUP_ID}
 
-STOPSIGNAL SIGINT
-
 CMD [ "shoreman" ]

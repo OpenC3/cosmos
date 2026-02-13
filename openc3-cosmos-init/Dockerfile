@@ -144,6 +144,4 @@ COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plu
 # Copy in other necessary code/config for the container
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
 
-STOPSIGNAL SIGINT
-
 CMD [ "/openc3/init.sh" ]
