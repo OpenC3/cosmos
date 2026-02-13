@@ -31,9 +31,9 @@
           <v-card-title>
             <v-row dense>
               <v-spacer />
-              <v-btn class="mr-3" color="primary" @click="getRunningScripts"
-                >Refresh</v-btn
-              >
+              <v-btn class="mr-3" color="primary" @click="getRunningScripts">
+                Refresh
+              </v-btn>
               <v-text-field
                 v-model="runningSearch"
                 class="pt-0 search"
@@ -70,8 +70,9 @@
                 color="primary"
                 density="comfortable"
                 @click="showScript(item)"
-                >{{ item.name }}</v-btn
               >
+                {{ item.name }}
+              </v-btn>
             </template>
             <template #item.connect="{ item }">
               <v-btn color="primary" @click="connectScript(item)">
@@ -93,9 +94,9 @@
           <v-card-title>
             <v-row dense>
               <v-spacer />
-              <v-btn class="mr-3" color="primary" @click="getCompletedScripts"
-                >Refresh</v-btn
-              >
+              <v-btn class="mr-3" color="primary" @click="getCompletedScripts">
+                Refresh
+              </v-btn>
               <v-text-field
                 v-model="completedSearch"
                 class="pt-0 search"
@@ -131,8 +132,9 @@
                 color="primary"
                 density="comfortable"
                 @click="showScript(item)"
-                >{{ item.name }}</v-btn
               >
+                {{ item.name }}
+              </v-btn>
             </template>
             <template #item.log="{ item }">
               <v-btn
