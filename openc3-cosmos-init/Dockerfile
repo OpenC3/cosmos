@@ -22,6 +22,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosm
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/*.json packages/openc3-cosmos-tool-cmdtlmserver/
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/*.json packages/openc3-cosmos-tool-dataextractor/
 COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/*.json packages/openc3-cosmos-tool-dataviewer/
+COPY ./plugins/packages/openc3-cosmos-tool-home/*.json packages/openc3-cosmos-tool-home/
 COPY ./plugins/packages/openc3-cosmos-tool-iframe/*.json packages/openc3-cosmos-tool-iframe/
 COPY ./plugins/packages/openc3-cosmos-tool-handbooks/*.json packages/openc3-cosmos-tool-handbooks/
 COPY ./plugins/packages/openc3-cosmos-tool-limitsmonitor/*.json packages/openc3-cosmos-tool-limitsmonitor/
@@ -79,8 +80,12 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataextracto
 COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/ packages/openc3-cosmos-tool-dataviewer/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataviewer"]
 
-# Build iframe tool
+# Build home tool
 FROM openc3-frontend-tmp AS openc3-tmp3
+COPY ./plugins/packages/openc3-cosmos-tool-home/ packages/openc3-cosmos-tool-home/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-home"]
+
+# Build iframe tool
 COPY ./plugins/packages/openc3-cosmos-tool-iframe/ packages/openc3-cosmos-tool-iframe/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-iframe"]
 

@@ -219,6 +219,7 @@ export default {
         'openc3-cosmos-tool-dataviewer',
         'openc3-cosmos-tool-docs',
         'openc3-cosmos-tool-handbooks',
+        'openc3-cosmos-tool-home',
         'openc3-cosmos-tool-iframe',
         'openc3-cosmos-tool-limitsmonitor',
         'openc3-cosmos-tool-packetviewer',

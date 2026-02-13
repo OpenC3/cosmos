@@ -1,0 +1,4 @@
+TOOL home Home
+  INLINE_URL main.js
+  ICON mdi-home
+  POSITION 1.5
