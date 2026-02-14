@@ -339,7 +339,6 @@ export default {
       mode: 'bucket',
       buckets: [],
       volumes: [],
-      requestId: 0,
       uploadPathDialog: false,
       optionsDialog: false,
       optionsFormValid: true,
@@ -435,7 +434,6 @@ export default {
       this.volumes = response.data
     })
     if (this.$route.params.path?.length) {
-      this.updating = true
       let parts = this.$route.params.path[0].split('/')
       if (parts[0] === '') {
         this.mode = 'volume'
@@ -479,12 +477,11 @@ export default {
       ].includes(ext)
     },
     gotoPath(path) {
-      this.updating = true
+      if (this.updating) return
       this.path = path
       this.update()
     },
     update() {
-      this.updating = true
       this.selectedFiles = []
       this.$router.push({
         name: 'Bucket Explorer',
@@ -528,27 +525,22 @@ export default {
       }
     },
     selectBucket(bucket) {
-      if (!this.updating) {
-        this.updating = true
-        this.mode = 'bucket'
-        this.root = bucket
-        this.path = ''
-        this.update()
-      }
+      if (this.updating) return
+      this.mode = 'bucket'
+      this.root = bucket
+      this.path = ''
+      this.update()
     },
     selectVolume(volume) {
-      if (!this.updating) {
-        this.updating = true
-        this.mode = 'volume'
-        this.root = volume
-        this.path = ''
-        this.update()
-      }
+      if (this.updating) return
+      this.mode = 'volume'
+      this.root = volume
+      this.path = ''
+      this.update()
     },
     backArrow() {
-      // Nothing to do if we're at the root so return
-      if (this.path === '') return
-      this.updating = true
+      // Nothing to do if we're at the root or updating so return
+      if (this.path === '' || this.updating) return
       let parts = this.path.split('/')
       this.path = parts.slice(0, parts.length - 2).join('/')
       // Only append the last slash if we're not at the root
@@ -561,16 +553,14 @@ export default {
     fileClick(_, { item }) {
       // Nothing to do if they click on a file
       if (item.icon !== 'mdi-folder') return
-      if (!this.updating) {
-        this.updating = true
-        if (this.root === '') {
-          // initial root click
-          this.root = item.name
-        } else {
-          this.path += `${item.name}/`
-        }
-        this.update()
+      if (this.updating) return
+      if (this.root === '') {
+        // initial root click
+        this.root = item.name
+      } else {
+        this.path += `${item.name}/`
       }
+      this.update()
     },
     viewFile(filename) {
       let root = this.root.toUpperCase()
@@ -749,7 +739,7 @@ export default {
         })
     },
     updateFiles() {
-      const currentRequestId = ++this.requestId
+      this.updating = true
       let root = this.root.toUpperCase()
       if (this.mode === 'volume') {
         root = root.slice(1)
@@ -760,8 +750,6 @@ export default {
         }`,
       )
         .then((response) => {
-          // Ignore stale responses from superseded requests
-          if (currentRequestId !== this.requestId) return
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
           })
@@ -778,8 +766,6 @@ export default {
           this.updating = false
         })
         .catch(({ response }) => {
-          // Ignore stale responses from superseded requests
-          if (currentRequestId !== this.requestId) return
           this.files = []
           if (response.data?.message) {
             this.$notify.caution({
