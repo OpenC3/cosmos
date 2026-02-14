@@ -330,14 +330,14 @@ test('displays the limits log', async ({ page, utils }) => {
   )
   // These have long timeouts just to allow the demo to hit another limit
   await expect(page.locator('[data-test=limits-events]')).toContainText('RED', {
-    timeout: 15000,
+    timeout: 20000,
   })
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'YELLOW',
-    { timeout: 15000 },
+    { timeout: 20000 },
   )
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'GREEN',
-    { timeout: 15000 },
+    { timeout: 20000 },
   )
 })

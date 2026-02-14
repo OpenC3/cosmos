@@ -24,7 +24,7 @@ test.use({
 // Thus we send the INST SET PARAMS command which has a parameter conversion,
 // check the raw buffer, then send it with parameter conversions disabled,
 // and re-check the raw buffer for a change.
-// This test has to run serially because other tests wich send SETPARAMS commands
+// This test has to run serially because other tests which send SETPARAMS commands
 // will break it due to the way we check the command buffer with get_cmd_buffer
 test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()

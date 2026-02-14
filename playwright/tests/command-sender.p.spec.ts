@@ -20,11 +20,6 @@ test.use({
   toolName: 'Command Sender',
 })
 
-// Most of these tests are super flaky when run in parallel with each other.
-// Just gonna disable parallelism for now.
-// TODO: This might actually be bugginess in the app? Not sure
-// test.describe.configure({ mode: 'serial' })
-
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   // Use exact text match with colon suffix to avoid partial matches (e.g., ARRAY1 vs ARRAY1_LENGTH)

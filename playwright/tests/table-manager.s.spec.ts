@@ -20,8 +20,6 @@ test.use({
   toolName: 'Table Manager',
 })
 
-test.describe.configure({ mode: 'serial' })
-
 async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.getByRole('progressbar')).not.toBeVisible()

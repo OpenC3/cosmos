@@ -339,6 +339,7 @@ export default {
       mode: 'bucket',
       buckets: [],
       volumes: [],
+      requestId: 0,
       uploadPathDialog: false,
       optionsDialog: false,
       optionsFormValid: true,
@@ -477,7 +478,6 @@ export default {
       ].includes(ext)
     },
     gotoPath(path) {
-      if (this.updating) return
       this.path = path
       this.update()
     },
@@ -539,8 +539,8 @@ export default {
       this.update()
     },
     backArrow() {
-      // Nothing to do if we're at the root or updating so return
-      if (this.path === '' || this.updating) return
+      // Nothing to do if we're at the root so return
+      if (this.path === '') return
       let parts = this.path.split('/')
       this.path = parts.slice(0, parts.length - 2).join('/')
       // Only append the last slash if we're not at the root
@@ -740,6 +740,7 @@ export default {
     },
     updateFiles() {
       this.updating = true
+      const currentRequestId = ++this.requestId
       let root = this.root.toUpperCase()
       if (this.mode === 'volume') {
         root = root.slice(1)
@@ -750,6 +751,8 @@ export default {
         }`,
       )
         .then((response) => {
+          // Ignore stale responses from superseded requests
+          if (currentRequestId !== this.requestId) return
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
           })
@@ -766,6 +769,8 @@ export default {
           this.updating = false
         })
         .catch(({ response }) => {
+          // Ignore stale responses from superseded requests
+          if (currentRequestId !== this.requestId) return
           this.files = []
           if (response.data?.message) {
             this.$notify.caution({
