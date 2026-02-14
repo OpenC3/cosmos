@@ -84,7 +84,19 @@ export default class OpenC3Api {
             (data) => {
               // parse the data with lossless-json ensuring that large numbers are parsed as BigInts
               // but all other numbers are parsed as regular numbers
-              return parse(data, undefined, customNumberParser)
+              try {
+                return parse(data, undefined, customNumberParser)
+              } catch (e) {
+                const preview =
+                  typeof data === 'string'
+                    ? data.substring(0, 200)
+                    : String(data)
+                const err = new Error(
+                  `Server returned non-JSON response: ${preview}`,
+                )
+                err.name = 'ServerError'
+                throw err
+              }
             },
           ],
         },

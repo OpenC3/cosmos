@@ -511,7 +511,7 @@ export default {
       }
       this.saveDefaultConfig(this.currentConfig)
     },
-    addGraph: function (checkExisting = true) {
+    addGraph: async function (checkExisting = true) {
       const id = this.counter
       let halfWidth = false
       let halfHeight = false
@@ -524,6 +524,10 @@ export default {
           halfHeight = true
         }
       }
+      // Set selectedGraphId before pushing so the expansion panel renders
+      // the full chooser content before the graph mounts and calls getSize()
+      this.selectedGraphId = id
+      await this.$nextTick()
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
@@ -531,7 +535,6 @@ export default {
           active: false,
         })
         this.grid.show(items)
-        this.selectedGraphId = id
         // Make the new graph match the first one
         if (halfWidth) {
           this.$refs[`graph${id}`][0].collapseWidth()
@@ -632,7 +635,7 @@ export default {
 
       let graphs = config.graphs
       for (let graph of graphs) {
-        this.addGraph(false) // Don't check existing graphs
+        await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
       const that = this

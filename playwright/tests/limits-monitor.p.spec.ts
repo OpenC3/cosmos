@@ -119,6 +119,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.locator('text=Save Configuration').click()
   await page.getByLabel('Configuration Name').fill('playwright')
   await page.locator('button:has-text("Ok")').click()
+  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()

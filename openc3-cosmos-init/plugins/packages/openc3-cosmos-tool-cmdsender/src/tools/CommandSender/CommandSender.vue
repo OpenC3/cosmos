@@ -27,6 +27,7 @@
       :show-ignored-params="showIgnoredParams"
       :cmd-raw="cmdRaw"
       @command-changed="commandChanged($event)"
+      @command-loaded="onCommandLoaded($event)"
       @build-cmd="buildCmd($event)"
     />
     <v-card class="pa-3">Status: {{ status }}</v-card>
@@ -470,7 +471,6 @@ export default {
       ) {
         this.targetName = event.targetName
         this.commandName = event.packetName
-        this.updateScreenInfo()
         if (this.targetName && this.commandName) {
           this.$router
             .replace({
@@ -498,41 +498,36 @@ export default {
       }
     },
 
-    updateScreenInfo() {
-      if (this.targetName && this.commandName) {
-        this.api.get_cmd(this.targetName, this.commandName).then(
-          (command) => {
-            if (command.screen) {
-              this.loadScreen(command.screen[0], command.screen[1]).then(
-                (response) => {
-                  this.screenTarget = command.screen[0]
-                  this.screenName = command.screen[1]
-                  this.screenDefinition = response.data
-                  this.screenCount += 1
-                },
-              )
-            } else {
-              if (command.related_items) {
-                this.screenTarget = 'LOCAL'
-                this.screenName = 'CMDSENDER'
-                let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                for (const item of command.related_items) {
-                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' FORMATTED 20\n`
-                }
-                this.screenDefinition = screenDefinition
-              } else {
-                this.screenTarget = null
-                this.screenName = null
-                this.screenDefinition = null
-              }
+    onCommandLoaded(command) {
+      if (command) {
+        this.commandDescription = command.description
+        if (command.screen) {
+          this.loadScreen(command.screen[0], command.screen[1]).then(
+            (response) => {
+              this.screenTarget = command.screen[0]
+              this.screenName = command.screen[1]
+              this.screenDefinition = response.data
               this.screenCount += 1
+            },
+          )
+        } else {
+          if (command.related_items) {
+            this.screenTarget = 'LOCAL'
+            this.screenName = 'CMDSENDER'
+            let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
+            for (const item of command.related_items) {
+              screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' FORMATTED 20\n`
             }
-          },
-          (error) => {
-            this.displayError('getting command for screen info', error)
-          },
-        )
+            this.screenDefinition = screenDefinition
+          } else {
+            this.screenTarget = null
+            this.screenName = null
+            this.screenDefinition = null
+          }
+          this.screenCount += 1
+        }
       } else {
+        this.commandDescription = ''
         this.screenTarget = null
         this.screenName = null
         this.screenDefinition = null
