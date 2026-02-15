@@ -39,7 +39,7 @@ test('can delete all temp files', async ({ page, utils }) => {
     },
   )
   await expect(page.locator('#sr-controls')).toContainText(
-    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
+    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_\w{8}_temp.rb/,
   )
   let tempFile1 = await page.locator('[data-test=filename] input').inputValue()
   tempFile1 = tempFile1.split('/')[1]
@@ -63,7 +63,7 @@ test('can delete all temp files', async ({ page, utils }) => {
     },
   )
   await expect(page.locator('#sr-controls')).toContainText(
-    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
+    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_\w{8}_temp.rb/,
   )
   let tempFile2 = await page.locator('[data-test=filename] input').inputValue()
   tempFile2 = tempFile2.split('/')[1]

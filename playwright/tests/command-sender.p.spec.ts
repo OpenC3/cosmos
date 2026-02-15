@@ -702,6 +702,7 @@ for (const target of ['INST', 'INST2']) {
     await page.locator('rux-icon-apps').getByRole('img').click()
     await page.locator('text=Packet Viewer').click()
     await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
+    await expect(page.locator('.v-table')).toContainText('PACKET_TIMESECONDS *')
 
     // Navigate to the VARIABLE_ARRAYS telemetry packet
     await utils.selectTargetPacketItem(target, 'VARIABLE_ARRAYS')
