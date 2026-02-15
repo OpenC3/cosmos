@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.

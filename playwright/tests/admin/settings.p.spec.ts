@@ -56,16 +56,16 @@ test('hides the astro clock', async ({ page, utils }) => {
   await expect(page.locator('.rux-clock')).toBeVisible()
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!')).toBeVisible()
   await page.reload()
   // Wait for the page to re-render
   await expect(page.getByText('Hide Astro Clock')).toBeVisible()
-  await utils.sleep(100)
   await expect(page.locator('.rux-clock')).not.toBeVisible()
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!')).toBeVisible()
   await page.reload()
   await expect(page.getByText('Hide Astro Clock')).toBeVisible()
-  await utils.sleep(100)
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
 

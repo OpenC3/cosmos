@@ -31,7 +31,7 @@ end
 class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
-  def initialize(streaming_api, collection, max_batch_size = 3600, scope:, token:)
+  def initialize(streaming_api, collection, max_batch_size = 600, scope:, token:)
     super(streaming_api, collection, max_batch_size)
     @thread_mode = :SETUP
     @scope = scope
@@ -39,6 +39,7 @@ class LoggedStreamingThread < StreamingThread
     @@conn_mutex = Mutex.new
     @@conn = nil unless defined?(@@conn)
     @local_api = OpenC3::LocalApi.new
+    @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
   end
 
   def thread_body
@@ -151,8 +152,122 @@ class LoggedStreamingThread < StreamingThread
       return
     end
 
+    # Bridge TSDB offsets to Valkey stream offsets before switching modes
+    bridge_tsdb_to_stream()
+
     # Switch to Redis
     @thread_mode = :STREAM
+  end
+
+  # Overlap buffer when bridging from TSDB to Valkey stream.
+  # The offset interpolation is approximate, so we start reading 2 seconds
+  # earlier to guarantee overlap. The redis_thread_body filter deduplicates.
+  TSDB_STREAM_OVERLAP_NSEC = 2 * 1_000_000_000
+
+  def bridge_tsdb_to_stream
+    return if @last_tsdb_times.empty?
+
+    # Calculate Valkey stream offset per topic
+    offset_by_topic = {}
+    @last_tsdb_times.each do |topic, last_time|
+      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic)
+      if oldest_msg_id
+        oldest_time = oldest_msg_hash['time'].to_i
+        # Use the same interpolation formula as setup_thread_body
+        redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
+        delta = redis_time - oldest_time
+        # Subtract overlap buffer to ensure no gaps from interpolation imprecision
+        offset_ms = (last_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
+        offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
+        offset_by_topic[topic] = offset
+        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
+      else
+        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} no Valkey messages, using 0-0"
+      end
+    end
+
+    # Apply per-topic offsets to objects
+    @collection.objects.each do |obj|
+      offset = offset_by_topic[obj.topic]
+      obj.offset = offset if offset
+    end
+  end
+
+  def redis_thread_body
+    if @last_tsdb_times.length > 0
+      # Override parent to filter overlap during TSDB→STREAM transition
+      topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
+      results = []
+      if topics.length > 0
+        xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
+          stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
+          next if stored
+
+          break if @cancel_thread
+
+          # Check per-topic overlap filter
+          last_time = @last_tsdb_times[topic]
+          if last_time
+            time = msg_hash['time'].to_i
+            if time <= last_time
+              # Skip messages already delivered from TSDB, but advance offsets
+              objects = item_objects_by_topic[topic]
+              objects.each { |object| object.offset = msg_id } if objects
+              objects = packet_objects_by_topic[topic]
+              objects.each { |object| object.offset = msg_id } if objects
+              next
+            end
+            # Past the overlap for this topic - clear its filter
+            @last_tsdb_times.delete(topic)
+          end
+
+          break if @cancel_thread
+
+          objects = item_objects_by_topic[topic]
+          break if @cancel_thread
+          if objects and objects.length > 0
+            objects.each do |object|
+              object.offset = msg_id
+            end
+            result_entry = handle_message(msg_hash, objects)
+            results << result_entry if result_entry
+          end
+          break if @cancel_thread
+
+          if results.length >= @max_batch_size
+            @streaming_api.transmit_results(results)
+            results.clear
+          end
+
+          objects = packet_objects_by_topic[topic]
+          if objects
+            objects.each do |object|
+              object.offset = msg_id
+            end
+            objects.each do |object|
+              break if @cancel_thread
+              result_entry = handle_message(msg_hash, [object])
+              results << result_entry if result_entry
+              if results.length >= @max_batch_size
+                @streaming_api.transmit_results(results)
+                results.clear
+              end
+            end
+          end
+
+          break if @cancel_thread
+        end
+
+        @streaming_api.transmit_results(results)
+        results.clear
+
+        check_for_completed_objects() if xread_result and xread_result.length == 0
+      else
+        @cancel_thread = true
+      end
+    else
+      super
+    end
   end
 
   def stream_items(objects_by_topic, topics, offsets)
@@ -463,6 +578,14 @@ class LoggedStreamingThread < StreamingThread
                 entry[item_key] = calculated_value if calculated_value
               end
 
+              # Track the latest timestamp per topic for TSDB→STREAM bridge
+              # ASOF JOIN means all topics in this query share T0's timestamp
+              if entry['__time']
+                objects_by_topic.each_key do |t|
+                  prev = @last_tsdb_times[t]
+                  @last_tsdb_times[t] = entry['__time'] if !prev or entry['__time'] > prev
+                end
+              end
               results << entry
             end
             @streaming_api.transmit_results(results)
@@ -649,7 +772,16 @@ class LoggedStreamingThread < StreamingThread
                   end
                 end
 
-                results << entry if entry.keys.length > 2 # Has more than __type and __time
+                if entry.keys.length > 2 # Has more than __type and __time
+                  # Track the latest timestamp per topic for TSDB→STREAM bridge
+                  if entry['__time']
+                    objects.each do |obj|
+                      prev = @last_tsdb_times[obj.topic]
+                      @last_tsdb_times[obj.topic] = entry['__time'] if !prev or entry['__time'] > prev
+                    end
+                  end
+                  results << entry
+                end
               end
               @streaming_api.transmit_results(results) unless results.empty?
               results.clear
@@ -732,6 +864,11 @@ class LoggedStreamingThread < StreamingThread
       objects = objects_by_topic[topic]
 
       if objects
+        # Track the latest timestamp per topic for TSDB→STREAM bridge
+        pkt_time_ns = packet.packet_time.to_nsec_from_epoch
+        prev = @last_tsdb_times[topic]
+        @last_tsdb_times[topic] = pkt_time_ns if !prev or pkt_time_ns > prev
+
         objects.each do |object|
           break if @cancel_thread
           result_entry = handle_packet(packet, [object])
@@ -845,7 +982,14 @@ class LoggedStreamingThread < StreamingThread
               result.each do |tuples|
                 objects.each do |object|
                   entry = build_packet_entry(tuples, object, value_type, packet_def)
-                  results << entry if entry
+                  if entry
+                    # Track the latest timestamp per topic for TSDB→STREAM bridge
+                    if entry['__time']
+                      prev = @last_tsdb_times[object.topic]
+                      @last_tsdb_times[object.topic] = entry['__time'] if !prev or entry['__time'] > prev
+                    end
+                    results << entry
+                  end
                 end
               end
               @streaming_api.transmit_results(results) unless results.empty?
@@ -1037,6 +1181,11 @@ class LoggedStreamingThread < StreamingThread
                     entry[col_name] = decoded_value
                   end
 
+                  # Track the latest timestamp per topic for TSDB→STREAM bridge
+                  if entry['__time']
+                    prev = @last_tsdb_times[object.topic]
+                    @last_tsdb_times[object.topic] = entry['__time'] if !prev or entry['__time'] > prev
+                  end
                   results << entry
                 end
               end

@@ -900,6 +900,8 @@ module OpenC3
         packet = Packet.new("INST", "NEW_CMD")
         cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
         cmd_log_model.create
+        tsdb_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__TSDB__INST", scope: @scope)
+        tsdb_model.create
 
         pkts = Store.hgetall("#{@scope}__openc3cmd__#{@target}")
         expect(pkts.keys).to_not include("NEW_CMD")
@@ -923,6 +925,8 @@ module OpenC3
         pkt_log_model.create
         decom_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOM__INST", scope: @scope)
         decom_model.create
+        tsdb_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__TSDB__INST", scope: @scope)
+        tsdb_model.create
 
         pkts = Store.hgetall("#{@scope}__openc3tlm__#{@target}")
         expect(pkts.keys).to_not include("NEW_TLM")
