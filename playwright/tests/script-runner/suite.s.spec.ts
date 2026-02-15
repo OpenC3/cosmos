@@ -342,6 +342,8 @@ class TestSuite(Suite):
     expect(contents).toContain('Fail: 0')
   })
 
+  // Wait for the download menu to fully close before reopening
+  await expect(page.locator('text=Download as Text')).not.toBeVisible()
   await page
     .locator('[data-test="completed-scripts"] >> tr >> nth=1')
     .getByRole('button')

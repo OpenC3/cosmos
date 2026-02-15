@@ -20,8 +20,6 @@ test.use({
   toolName: 'Script Runner',
 })
 
-test.describe.configure({ mode: 'serial' })
-
 test('prompts for hazardous commands', async ({ page, utils }) => {
   await page.locator('textarea').fill('cmd("INST CLEAR")')
   await page.locator('[data-test=start-button]').click()
@@ -297,11 +295,13 @@ file.delete`)
   await expect(page.locator('.v-dialog')).toContainText(
     'Choose something interesting',
   )
+  await utils.sleep(500)
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
   )
+  await utils.sleep(500)
   // Clicking Go re-executes the prompt
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible()

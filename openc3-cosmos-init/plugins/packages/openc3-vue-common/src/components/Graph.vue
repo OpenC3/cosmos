@@ -137,7 +137,7 @@
         />
       </v-toolbar>
 
-      <v-expand-transition>
+      <v-expand-transition @after-enter="resize">
         <div v-show="expand" id="chart" ref="chart" class="pa-1">
           <div :id="`chart${id}`"></div>
           <div id="betweenCharts"></div>
@@ -1210,6 +1210,7 @@ export default {
       this.$emit('edit')
     },
     resize: function () {
+      if (!this.graph) return
       this.graph.setSize(this.getSize('chart'))
       if (this.overview) {
         this.overview.setSize(this.getSize('overview'))

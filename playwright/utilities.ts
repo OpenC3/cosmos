@@ -43,6 +43,7 @@ export class Utilities {
     await expect(
       this.page.locator('[data-test="select-packet"] input'),
     ).toBeEnabled()
+    await this.sleep(100) // Give the menu a little more time to load
 
     if (packet) {
       await this.page.locator('[data-test=select-packet]').click()
@@ -56,6 +57,8 @@ export class Utilities {
         await expect(
           this.page.locator('[data-test="select-item"] input'),
         ).toBeEnabled()
+        await this.sleep(100) // Give the menu a little more time to load
+
         await this.page.locator('[data-test=select-item] i').click()
         // Fill to filter since the item list can be long
         await this.page

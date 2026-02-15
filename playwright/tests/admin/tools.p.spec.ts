@@ -69,6 +69,10 @@ test('adds a new tool', async ({ page, context, utils }) => {
   await page.getByLabel('Tool Name').fill('OpenC3Home')
   await page.getByLabel('Tool Url').fill('https://openc3.com')
   await page.locator('[data-test="toolAdd"]').click()
+  // Wait for the tool to be added before reloading
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'OpenC3Home',
+  )
   await page.reload()
   const pagePromise = context.waitForEvent('page')
   await page.getByRole('link', { name: 'OpenC3Home' }).click()
