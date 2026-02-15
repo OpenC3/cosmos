@@ -12,13 +12,13 @@
 import json
 import os
 import sys
-import traceback
 import time
+import traceback
 
 from questdb.ingress import IngressError
 
-from openc3.api.cmd_api import get_all_cmd_names, get_cmd
-from openc3.api.tlm_api import get_all_tlm_names, get_tlm
+from openc3.api.cmd_api import get_cmd
+from openc3.api.tlm_api import get_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
