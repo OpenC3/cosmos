@@ -896,6 +896,8 @@ module OpenC3
         Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
         add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
       end
+      Topic.write_topic("MICROSERVICE__#{@scope}__TSDB__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+      add_topics_to_microservice("#{@scope}__TSDB__#{@name}", decom_topics)
     end
 
     def add_topics_to_microservice(microservice_name, topics)
