@@ -412,7 +412,7 @@ APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
 ```
 
 ### ID_PARAMETER
-**Defines an identification command parameter in the current command packet**
+**Defines an identification command parameter in the current command packet. Note, packets defined without one or more ID_PARAMETERs are "catch-all" packets which will match all incoming data. A warning will be generated for packets without ID_PARAMETERs unless the CATCHALL keyword is used.**
 
 ID parameters are used to identify the binary block of data as a particular command. A command packet may have one or more ID_PARAMETERs and all must match the binary data for the command to be identified.
 
@@ -680,6 +680,12 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 |-----------|-------------|----------|
 | Target Name | Target Name of related telemetry screen | True |
 | Screen Name | Screen Name of related telemetry screen | True |
+
+### CATCHALL
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Marks this packet as an intentional catch-all packet**
+
+Suppresses the warning that is normally generated for packets defined without ID_PARAMETERs. Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
+
 
 ### VIRTUAL
 <span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks this packet as virtual and not participating in identification**

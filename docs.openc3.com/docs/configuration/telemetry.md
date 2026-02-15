@@ -383,7 +383,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 ```
 
 ### ID_ITEM
-**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet.**
+**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet. A warning will be generated for packets without ID_ITEMs unless the CATCHALL keyword is used.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -595,6 +595,12 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 <span class="badge badge--secondary since-right">Since 5.16.0</span>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
+
+### CATCHALL
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Marks this packet as an intentional catch-all packet**
+
+Suppresses the warning that is normally generated for packets defined without ID_ITEMs. Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
 
 
 ### VIRTUAL

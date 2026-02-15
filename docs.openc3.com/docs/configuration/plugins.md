@@ -483,7 +483,7 @@ The following keywords must follow a TARGET keyword.
 | Time | Number of seconds to keep raw telemetry logs (default = nil = Forever) | True |
 
 ### CMD_DECOM_RETAIN_TIME
-**How long to keep command decommutation records in the TSDB.**
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep command decommutation records in the TSDB.**
 
 Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
 
@@ -492,7 +492,7 @@ Sets the retention time directly on QuestDB tables for automatic data expiration
 | Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
 
 ### TLM_DECOM_RETAIN_TIME
-**How long to keep telemetry decommutation records in the TSDB.**
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep telemetry decommutation records in the TSDB.**
 
 Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
 
