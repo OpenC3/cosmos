@@ -37,7 +37,7 @@ class CmdResponseProtocol(Protocol):
     ):
         super().__init__(allow_empty_data)
         self.response_timeout = ConfigParser.handle_none(response_timeout)
-        if self.response_timeout:
+        if self.response_timeout is not None:
             self.response_timeout = float(response_timeout)
         self.response_polling_period = float(response_polling_period)
         self.raise_exceptions = ConfigParser.handle_true_false(raise_exceptions)
