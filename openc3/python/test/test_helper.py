@@ -127,6 +127,7 @@ def mock_redis(self):
     EphemeralStoreQueued.my_instance = None
     StoreQueued.my_instance = None
     redis = fakeredis.FakeRedis()
+    redis.flushall()
     patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
     self.addCleanup(patcher.stop)
