@@ -481,7 +481,7 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
                     type="CONVERTED",
                     scope=scope,
                 )
-                if not cur_time:
+                if cur_time is None:
                     continue
 
                 if cur_time > time:

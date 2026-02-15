@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -68,7 +68,7 @@ class TcpipClientStream(TcpipSocketStream):
                 read_socket = write_socket
 
         self.connect_timeout = ConfigParser.handle_none(connect_timeout)
-        if self.connect_timeout:
+        if self.connect_timeout is not None:
             self.connect_timeout = float(connect_timeout)
 
         super().__init__(write_socket, read_socket, write_timeout, read_timeout)

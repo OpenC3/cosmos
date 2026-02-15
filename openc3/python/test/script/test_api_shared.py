@@ -78,6 +78,37 @@ class TestApiSharedProxy(unittest.TestCase):
             wait_check("INST HEALTH_STATUS COLLECTS < 0", 1)
 
 
+class TestOpenc3ScriptSleep(unittest.TestCase):
+    @patch("openc3.script.api_shared.time.sleep")
+    def test_sleep_with_zero_calls_time_sleep(self, mock_sleep):
+        """Regression: sleep_time=0 should call time.sleep(0), not prompt for input"""
+        from openc3.script.api_shared import openc3_script_sleep
+
+        openc3_script_sleep(0)
+        mock_sleep.assert_called_once_with(0.0)
+
+    @patch("openc3.script.api_shared.time.sleep")
+    def test_sleep_with_positive_value_calls_time_sleep(self, mock_sleep):
+        from openc3.script.api_shared import openc3_script_sleep
+
+        openc3_script_sleep(0.25)
+        mock_sleep.assert_called_once_with(0.25)
+
+    @patch("builtins.input", return_value="")
+    def test_sleep_with_none_prompts_for_input(self, mock_input):
+        from openc3.script.api_shared import openc3_script_sleep
+
+        openc3_script_sleep(None)
+        mock_input.assert_called_once_with("Press any key to continue...")
+
+    @patch("builtins.input", return_value="")
+    def test_sleep_with_no_args_prompts_for_input(self, mock_input):
+        from openc3.script.api_shared import openc3_script_sleep
+
+        openc3_script_sleep()
+        mock_input.assert_called_once_with("Press any key to continue...")
+
+
 @patch("openc3.script.API_SERVER", Proxy)
 @patch("openc3.script.api_shared.openc3_script_sleep", my_openc3_script_sleep)
 class TestApiShared(unittest.TestCase):

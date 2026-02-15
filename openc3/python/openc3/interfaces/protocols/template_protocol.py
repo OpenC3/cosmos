@@ -103,7 +103,7 @@ class TemplateProtocol(TerminatedProtocol):
         except Empty:
             pass
 
-        if self.initial_read_delay:
+        if self.initial_read_delay is not None:
             self.connect_complete_time = time.time() + self.initial_read_delay
 
     def disconnect_reset(self):
@@ -117,7 +117,7 @@ class TemplateProtocol(TerminatedProtocol):
         # Drop all data until the initial_read_delay is complete.
         # This gets rid of unused welcome messages,
         # prompts, and other junk on initial connections
-        if self.initial_read_delay and self.initial_read_delay_needed and self.connect_complete_time:
+        if self.initial_read_delay is not None and self.initial_read_delay_needed and self.connect_complete_time:
             if time.time() < self.connect_complete_time:
                 return ("STOP", extra)
             self.initial_read_delay_needed = False
@@ -187,7 +187,7 @@ class TemplateProtocol(TerminatedProtocol):
     def write_packet(self, packet):
         # Make sure we are past the initial data dropping period
         if (
-            self.initial_read_delay
+            self.initial_read_delay is not None
             and self.initial_read_delay_needed
             and self.connect_complete_time
             and time.time() < self.connect_complete_time

@@ -491,7 +491,7 @@ class CvtModel(Model):
 
         # If a start_time is passed we're doing a QuestDB lookup and directly return the results
         # TODO: This currently does NOT support the override values
-        if start_time:
+        if start_time is not None:
             return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time)
 
         # First generate a lookup dict of all the items represented so we can query the CVT

@@ -31,13 +31,13 @@ class TcpipSocketStream(Stream):
         self.write_socket = write_socket
         self.read_socket = read_socket
         self.write_timeout = ConfigParser.handle_none(write_timeout)
-        if self.write_timeout:
+        if self.write_timeout is not None:
             self.write_timeout = float(write_timeout)
         else:
             Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
-        if self.read_timeout:
+        if self.read_timeout is not None:
             self.read_timeout = float(read_timeout)
 
         # Mutex on write is needed to protect from commands coming in from more
