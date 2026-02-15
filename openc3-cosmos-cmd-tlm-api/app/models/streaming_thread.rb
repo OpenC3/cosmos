@@ -236,7 +236,7 @@ class StreamingThread
       offset = offsets[index]
       my_index = my_topics.index(topic)
       if my_index
-        my_offset = my_offsets[index]
+        my_offset = my_offsets[my_index]
         if offset >= my_offset
           # Caught up
           handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)

@@ -94,8 +94,10 @@ class StreamingObjectCollection
 
   def topics_offsets_and_objects
     @mutex.synchronize do
+      @topics_and_offsets = {}
       @objects.each do |object|
-        @topics_and_offsets[object.topic] = object.offset
+        existing = @topics_and_offsets[object.topic]
+        @topics_and_offsets[object.topic] = object.offset if !existing or object.offset > existing
       end
       return @topics_and_offsets.keys, @topics_and_offsets.values, @item_objects_by_topic.dup, @packet_objects_by_topic.dup
     end
