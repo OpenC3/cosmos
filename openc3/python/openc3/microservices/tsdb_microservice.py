@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import traceback
+import time
 
 from questdb.ingress import IngressError
 
@@ -26,6 +27,8 @@ from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):
+    TRIM_KEEP_MS = 60000 # 1 minute
+
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -56,6 +59,9 @@ class TsdbMicroservice(Microservice):
                 continue
             self._create_table(target_name, packet_name, topic)
 
+        # Setup first trim time
+        self.next_trim_time_ms = int(time.time() * 1000) + self.TRIM_KEEP_MS
+
     def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
         if "__DECOMCMD__" in topic:
@@ -68,47 +74,16 @@ class TsdbMicroservice(Microservice):
             retain_time = self.tlm_decom_retain_time
         self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time)
 
-    def sync_topics(self):
-        """Update local topics based on config events"""
-        config = ConfigTopic.read(offset=self.topic_offset, scope=os.environ.get("OPENC3_SCOPE"))
-        if not config:
-            return
-
-        self.topic_offset = config[0][0]
-        config_data = config[0][1]
-
-        if config_data.get(b"type") == b"target":
-            kind_bytes = config_data.get(b"kind")
-            name_bytes = config_data.get(b"name")
-            if not kind_bytes or not name_bytes:
-                return
-            kind = kind_bytes.decode()
-            target_name = name_bytes.decode()
-
-            if kind == "created":
-                self.logger.info(f"New target {target_name} created")
-                # Add telemetry packets
-                tlm_packets = get_all_tlm_names(target_name)
-                for packet_name in tlm_packets:
-                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}"
-                    self._create_table(target_name, packet_name, topic)
-                    self.topics.append(topic)
-                # Add command packets
-                cmd_packets = get_all_cmd_names(target_name)
-                for packet_name in cmd_packets:
-                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOMCMD__{{{target_name}}}__{packet_name}"
-                    self._create_table(target_name, packet_name, topic)
-                    self.topics.append(topic)
-            elif kind == "deleted":
-                self.logger.info(f"Target {target_name} deleted")
-                self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
-
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            for topic, _, msg_hash, _ in Topic.read_topics(self.topics):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics):
                 if self.cancel_thread:
                     break
+
+                if topic == self.microservice_topic:
+                    self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    continue
 
                 target_name_bytes = msg_hash.get(b"target_name")
                 packet_name_bytes = msg_hash.get(b"packet_name")
@@ -163,14 +138,24 @@ class TsdbMicroservice(Microservice):
             # Cast the value to fit the column type and retry
             self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
 
+    def trim_topics(self):
+        current_time_ms = int(time.time() * 1000)
+        if current_time_ms > self.next_trim_time_ms:
+            self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
+            trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
+            trim_offset = f"{trim_time_ms}-0"
+            # TODO: Optimize this with pipeline
+            for topic in self.topics:
+                Topic.trim_topic(topic, trim_offset)
+
     def run(self):
         """Main run loop"""
         while True:
             if self.cancel_thread:
                 break
             try:
-                self.sync_topics()
                 self.read_topics()
+                self.trim_topics()
                 self.count += 1
             except Exception as error:
                 self.error = error

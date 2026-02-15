@@ -31,7 +31,7 @@ end
 class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
-  def initialize(streaming_api, collection, max_batch_size = 3600, scope:, token:)
+  def initialize(streaming_api, collection, max_batch_size = 600, scope:, token:)
     super(streaming_api, collection, max_batch_size)
     @thread_mode = :SETUP
     @scope = scope
