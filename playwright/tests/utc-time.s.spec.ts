@@ -22,10 +22,6 @@ import {
 
 test.use({ storageState: 'adminStorageState.json' })
 
-// Most of these tests are super flaky when run in parallel with each other.
-// Just gonna disable parallelism for now.
-test.describe.configure({ mode: 'serial' })
-
 test.beforeEach(async ({ page }) => {
   // Ensure local time
   await page.goto('/tools/admin/settings')
@@ -210,12 +206,8 @@ test.describe('Data Extractor', () => {
       }),
     ).toBeTruthy()
 
-    const start = sub(startTime, { minutes: 2 })
-    await page
-      .locator('[data-test=start-time] input')
-      .fill(format(start, 'HH:mm:ss'))
     await utils.addTargetPacketItem('INST', 'MECH')
-
+    await utils.sleep(500)
     await utils.download(page, 'text=Process', function (contents) {
       let lines = contents.split('\n')
       expect(lines[0]).toContain('SLRPNL1')

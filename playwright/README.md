@@ -30,6 +30,12 @@ playwright> pnpm playwright test ./tests/**/*.p.spec.ts --headed --project=firef
 
 Note the `--workers=1` passed to the serial (`*.s.spec.ts`) group. If you omit this argument, you will get very flaky test results from this group since Playwright defaults to running tests in parallel.
 
+NOTE: If you ever want to force a parallel group to run serially (for testing) you can add the following:
+
+```javascript
+test.describe.configure({ mode: 'serial' })
+```
+
 The following examples use the parallel group, but these apply to the serial group as well.
 
 1.  Open playwright and run tests. The first example is running against Core, the second against Enterprise.

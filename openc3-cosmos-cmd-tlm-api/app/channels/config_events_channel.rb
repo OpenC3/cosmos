@@ -22,7 +22,7 @@ class ConfigEventsChannel < ApplicationCable::Channel
 
   def unsubscribed
     subscription_key = "config_events_#{uuid}"
-    if @broadcasters[subscription_key]
+    if @@broadcasters[subscription_key]
       stop_stream_from subscription_key
       @@broadcasters[subscription_key].kill
       @@broadcasters[subscription_key] = nil

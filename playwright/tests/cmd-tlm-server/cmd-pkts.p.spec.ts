@@ -105,6 +105,14 @@ test('displays the command count', async ({ page, utils }) => {
 })
 
 test('displays a raw command', async ({ page, utils }) => {
+  // Preload an ABORT command
+  await page.goto('/tools/cmdsender/INST/ABORT/')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await page.locator('[data-test=select-send]').click()
+  await expect(page.locator('text=cmd("INST ABORT") sent')).toBeVisible()
+
+  await page.goto('/tools/cmdtlmserver/cmd-packets')
   await expect(page.locator('text=INSTABORT')).toBeVisible()
   await page
     .getByRole('row', { name: 'INST ABORT' })
