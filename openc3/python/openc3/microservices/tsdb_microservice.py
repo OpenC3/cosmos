@@ -24,7 +24,7 @@ from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
 from openc3.utilities.thread_manager import ThreadManager
-
+from openc3.utilities.store import EphemeralStore
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000 # 1 minute
@@ -144,9 +144,11 @@ class TsdbMicroservice(Microservice):
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
             trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
             trim_offset = f"{trim_time_ms}-0"
-            # TODO: Optimize this with pipeline
+            redis = EphemeralStore.instance()
+            pipeline = redis.pipeline(transaction=False)
             for topic in self.topics:
-                Topic.trim_topic(topic, trim_offset)
+                pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
+            pipeline.execute()
 
     def run(self):
         """Main run loop"""
