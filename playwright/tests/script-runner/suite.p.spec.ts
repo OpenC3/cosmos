@@ -230,7 +230,14 @@ end`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.getByText('Execution Status').click()
   await page.getByRole('tab', { name: 'Running Scripts' }).click()
-  await page.getByRole('button', { name: 'Connect' }).first().click()
+  await expect(
+    page.locator('tr', { hasText: 'test_suite_buttons.rb' }),
+  ).toBeVisible()
+  await utils.sleep(200) // Allow the tab to render fully
+  await page
+    .locator('tr', { hasText: 'test_suite_buttons.rb' })
+    .getByRole('button', { name: 'Connect' })
+    .click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
   )
@@ -326,11 +333,12 @@ class TestSuite(Suite):
   )
 
   // Verify we can download the report in the various formats
+  const scriptName = type === 'Ruby' ? 'test_suite1.rb' : 'test_suite1.py'
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
   await utils.sleep(1000)
   await page
-    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .locator('[data-test="completed-scripts"] tr', { hasText: scriptName })
     .getByRole('button')
     .nth(4)
     .click()
@@ -345,7 +353,7 @@ class TestSuite(Suite):
   // Wait for the download menu to fully close before reopening
   await expect(page.locator('text=Download as Text')).not.toBeVisible()
   await page
-    .locator('[data-test="completed-scripts"] >> tr >> nth=1')
+    .locator('[data-test="completed-scripts"] tr', { hasText: scriptName })
     .getByRole('button')
     .nth(4)
     .click()
