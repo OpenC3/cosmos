@@ -28,7 +28,7 @@ from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):
-    TRIM_KEEP_MS = 60000 # 1 minute
+    TRIM_KEEP_MS = 60000  # 1 minute
 
     def __init__(self, *args):
         super().__init__(*args)
