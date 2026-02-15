@@ -177,7 +177,8 @@ class LoggedStreamingThread < StreamingThread
         redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
         delta = redis_time - oldest_time
         # Subtract overlap buffer to ensure no gaps from interpolation imprecision
-        offset = ((last_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000).to_s + '-0'
+        offset_ms = (last_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
+        offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
         offset_by_topic[topic] = offset
         OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
       else
