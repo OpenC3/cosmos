@@ -170,12 +170,11 @@ if [[ "${1:-default}" == "ubi" ]]; then
   fi
 else
   # Standard build uses Valkey alpine image
+  # OPENC3_REDIS_IMAGE and OPENC3_REDIS_VERSION default in the Dockerfile
   docker buildx build \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
@@ -185,8 +184,6 @@ else
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
