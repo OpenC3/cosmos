@@ -426,19 +426,11 @@ cmd_migrate() {
     echo "  Destination: $VERSITY_DEST (volume: $NEW_VOLUME)"
     echo ""
 
-    # List buckets in MINIO
-    log_info "Buckets in MINIO (source):"
-    run_mc ls minio/ 2>/dev/null || true
-    echo ""
-
-    # Get list of buckets
-    local buckets
-    buckets=$(run_mc ls minio/ 2>/dev/null | awk '{print $NF}' | tr -d '/' | grep -v '^$' || true)
-
-    if [[ -z "$buckets" ]]; then
-        log_warn "No buckets found in MINIO - nothing to migrate"
-        return 0
-    fi
+    # Only migrate config and logs buckets
+    # Tools are installed and updated by the init container
+    local config_bucket="${OPENC3_CONFIG_BUCKET:-config}"
+    local logs_bucket="${OPENC3_LOGS_BUCKET:-logs}"
+    local buckets="$config_bucket $logs_bucket"
 
     # Migrate each bucket
     local bucket
@@ -463,12 +455,6 @@ cmd_migrate() {
 
     echo ""
     log_info "Migration complete!"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Verify data: $0 status"
-    echo "  2. If COSMOS 6 is still running, you can run '$0 migrate' again to sync new data"
-    echo "  3. When ready, stop COSMOS 6, run final '$0 migrate', then '$0 cleanup'"
-    echo "  4. Start COSMOS 7: ./openc3.sh run"
     echo ""
 }
 
@@ -510,16 +496,18 @@ cmd_status() {
         echo ""
         echo "Bucket sizes (source -> destination):"
         echo ""
+        local config_bucket="${OPENC3_CONFIG_BUCKET:-config}"
+        local logs_bucket="${OPENC3_LOGS_BUCKET:-logs}"
         echo "  MINIO (source):"
-        run_mc du minio/config 2>/dev/null | sed 's/^/    /' || echo "    config: (unable to get size)"
-        run_mc du minio/logs 2>/dev/null | sed 's/^/    /' || echo "    logs: (unable to get size)"
-        run_mc du minio/tools 2>/dev/null | sed 's/^/    /' || echo "    tools: (unable to get size)"
+        run_mc du "minio/${config_bucket}" 2>/dev/null | sed 's/^/    /' || echo "    ${config_bucket}: (unable to get size)"
+        run_mc du "minio/${logs_bucket}" 2>/dev/null | sed 's/^/    /' || echo "    ${logs_bucket}: (unable to get size)"
         echo ""
         echo "  versitygw (destination):"
         # versitygw uses POSIX storage, so check disk usage and file count directly
-        docker exec "$VERSITY_DEST" sh -c 'for dir in config logs tools; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf "    %sMiB\t%s files\t%s\n" "$size" "$count" "$dir"; done' 2>/dev/null || echo "    (unable to get size)"
+        docker exec "$VERSITY_DEST" sh -c "for dir in ${config_bucket} ${logs_bucket}; do size=\$(du -sm /data/\$dir 2>/dev/null | cut -f1); count=\$(find /data/\$dir -type f 2>/dev/null | wc -l); printf '    %sMiB\t%s files\t%s\n' \"\$size\" \"\$count\" \"\$dir\"; done" 2>/dev/null || echo "    (unable to get size)"
         echo ""
-        log_info "If file counts match, migration was successful!"
+        log_info "Tools are not migrated - they are installed and updated by the init container."
+        log_info "File counts will only match if running migration when COSMOS is shutdown. If COSMOS 6 is still running the MINIO (source) will be producing new log files. If COSMOS 7 is running the versitygw (destination) will be producing new log files."
     fi
 
     echo ""
