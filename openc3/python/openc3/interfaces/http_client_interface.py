@@ -55,10 +55,10 @@ class HttpClientInterface(Interface):
         else:
             self.url = f"{self.protocol}://{self.hostname}:{self.port}"
         self.read_timeout = ConfigParser.handle_none(read_timeout)
-        if self.read_timeout:
+        if self.read_timeout is not None:
             self.read_timeout = float(self.read_timeout)
         self.connect_timeout = ConfigParser.handle_none(connect_timeout)
-        if self.connect_timeout:
+        if self.connect_timeout is not None:
             self.connect_timeout = float(self.connect_timeout)
         self.include_request_in_response = ConfigParser.handle_true_false(include_request_in_response)
 

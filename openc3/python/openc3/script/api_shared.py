@@ -604,7 +604,7 @@ def load_utility(procedure_name):
 
 
 def openc3_script_sleep(sleep_time=None):
-    if sleep_time:
+    if sleep_time is not None:
         time.sleep(float(sleep_time))
     else:
         input("Press any key to continue...")

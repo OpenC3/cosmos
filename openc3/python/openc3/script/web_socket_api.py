@@ -87,7 +87,7 @@ class WebSocketApi:
                             raise RuntimeError("Unauthorized")
                         if msg_type == "reject_subscription":
                             raise RuntimeError("Subscription Rejected")
-                        if timeout:
+                        if timeout is not None:
                             end_time = time.time()
                             if (end_time - start_time) > timeout:
                                 raise TimeoutError("No Data Timeout")
@@ -618,6 +618,6 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                     break
                 else:
                     data += batch
-                if timeout and (time.time() - read_all_start_time) > timeout:
+                if timeout is not None and (time.time() - read_all_start_time) > timeout:
                     break
         return data
