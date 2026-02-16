@@ -417,7 +417,8 @@ class TestSuite(Suite):
   } else {
     await page.keyboard.press('Control+S')
   }
-  await utils.sleep(1000)
+  // Wait for save to complete before continuing
+  await expect(page.getByText('Saving...')).not.toBeVisible()
 
   // Verify the suite startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-suite]')).toBeDisabled()
@@ -541,7 +542,8 @@ end`)
   } else {
     await page.keyboard.press('Control+S')
   }
-  await utils.sleep(1000)
+  // Wait for save to complete before continuing
+  await expect(page.getByText('Saving...')).not.toBeVisible()
 
   // Verify the group startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()

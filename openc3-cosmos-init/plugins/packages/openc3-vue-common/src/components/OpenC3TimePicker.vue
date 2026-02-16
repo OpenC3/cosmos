@@ -160,9 +160,13 @@ export default {
     },
   },
   async created() {
+    // Capture current display before async call
+    const previousDisplay = this.inputValue
     await this.loadTimeFormat()
-    // Update display after loading time format
-    this.inputValue = this.formatForDisplay(this.modelValue)
+    // Only update display if it hasn't been changed externally during the await
+    if (this.inputValue === previousDisplay) {
+      this.inputValue = this.formatForDisplay(this.modelValue)
+    }
   },
   methods: {
     async loadTimeFormat() {

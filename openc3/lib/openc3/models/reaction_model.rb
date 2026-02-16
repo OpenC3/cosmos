@@ -230,16 +230,20 @@ module OpenC3
 
     def notify_enable
       @enabled = true
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'enabled')
-      # update() will be called by the reaction_microservice
+      # update() will also be called by the reaction_microservice
     end
 
     def notify_disable
       @enabled = false
       # disabling clears the snooze so when it's enabled it can immediately run
       @snoozed_until = nil
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'disabled')
-      # update() will be called by the reaction_microservice
+      # update() will also be called by the reaction_microservice
     end
 
     def notify_execute
