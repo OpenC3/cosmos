@@ -225,7 +225,13 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     '/ DEFAULT /',
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+  if (process.env.ENTERPRISE === '1') {
+    await expect(page.locator('tbody > tr').first()).toHaveText(/notebooks/)
+    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
+  } else {
+    await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
+  }
   // Reload and ensure we get to the same place
   await page.reload()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(

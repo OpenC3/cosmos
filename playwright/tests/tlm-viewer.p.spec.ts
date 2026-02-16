@@ -39,11 +39,18 @@ async function showScreen(
   await page.getByRole('option', { name: target, exact: true }).click()
   await page.locator('[data-test="select-screen"]').click()
   await page.getByRole('option', { name: screen, exact: true }).click()
-  await utils.sleep(500) // Allow screen to display so we don't double display
-  await page.locator('[data-test="show-screen"]').click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
-  ).toBeVisible()
+  // Navigating to a screen displays it automatically unless already selected
+  // In that case we need to click the Show button
+  try {
+    await expect(
+      page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+    ).toBeVisible({ timeout: 3000 })
+  } catch {
+    await page.locator('[data-test="show-screen"]').click()
+    await expect(
+      page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+    ).toBeVisible()
+  }
   await callback()
   await page.locator('[data-test=close-screen-icon]').click()
   await expect(

@@ -2786,17 +2786,22 @@ class TestSuite(Suite):
               if (language === 'unknown') {
                 language = AceEditorUtils.getDefaultScriptingLanguage()
               }
+              const uuid = crypto.randomUUID().split('-')[0]
               if (language === 'ruby') {
                 this.tempFilename =
                   TEMP_FOLDER +
                   '/' +
                   format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_' +
+                  uuid +
                   '_temp.rb'
               } else if (language === 'python') {
                 this.tempFilename =
                   TEMP_FOLDER +
                   '/' +
                   format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_' +
+                  uuid +
                   '_temp.py'
               } else {
                 // No autosave for unknown language
