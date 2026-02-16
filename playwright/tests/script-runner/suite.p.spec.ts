@@ -427,10 +427,12 @@ class TestSuite(Suite):
 }
 
 test('starts a ruby suite', async ({ page, utils }) => {
+  test.slow()
   await startsSuite(page, utils, 'Ruby')
 })
 
 test('starts a python suite', async ({ page, utils }) => {
+  test.slow()
   await startsSuite(page, utils, 'Python')
 })
 
