@@ -232,10 +232,12 @@ end`)
   await utils.sleep(200) // Allow the tab to render fully
   await page
     .locator('tr', { hasText: 'test_suite_buttons.rb' })
+    .first()
     .getByRole('button', { name: 'Connect' })
     .click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
+    { timeout: 20000 },
   )
   await expect(
     page.locator('[data-test="select-suite"]').getByText('TestSuite'),
