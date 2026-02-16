@@ -90,7 +90,7 @@ jobs:
 
       - name: Install Python dependencies
         working-directory: openc3/python
-        run: uv sync --locked
+        run: uv sync --frozen
 
       - name: Install Ruby dependencies
         working-directory: openc3/test/integration/tsdb/ruby

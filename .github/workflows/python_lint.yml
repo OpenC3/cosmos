@@ -43,7 +43,7 @@ jobs:
         run: uv python install
         working-directory: openc3/python
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync --frozen
         working-directory: openc3/python
       - name: Run ruff check on openc3/python
         run: uv run --frozen ruff check --output-format=github openc3
