@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "7.0.0-rc1",
+  "version": "7.0.0-rc2",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
