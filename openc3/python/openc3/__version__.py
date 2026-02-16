@@ -12,4 +12,4 @@
 __title__ = "openc3"
 __description__ = "Python Support for OpenC3 COSMOS"
 __url__ = "https://github.com/OpenC3/cosmos"
-__version__ = "6.10.5-beta0"
+__version__ = "7.0.0-rc1"
