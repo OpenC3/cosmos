@@ -195,6 +195,8 @@ module OpenC3
         unless gem_file_path
           gem_name = plugin_hash['name'].split("__")[0]
           gem_file_path = OpenC3::GemModel.get(gem_name)
+        else
+          gem_name = File.basename(gem_file_path)
         end
 
         # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
