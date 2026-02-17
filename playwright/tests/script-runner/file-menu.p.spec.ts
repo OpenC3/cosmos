@@ -37,9 +37,11 @@ test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.getByText('INST2', { exact: true })).toBeVisible()
-  await page.locator('[data-test=file-open-save-search] input').fill('disconnect')
-  await expect(page.locator('text=disconnect').first()).toBeVisible()
-  await page.locator('text=disconnect >> nth=0').click() // nth=0 because INST, INST2
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('disconnect.rb')
+  await expect(page.locator('text=disconnect.rb')).toBeVisible()
+  await page.locator('text=disconnect.rb').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(
@@ -55,9 +57,11 @@ test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.getByText('INST2', { exact: true })).toBeVisible()
-  await page.locator('[data-test=file-open-save-search] input').fill('metadata')
-  await expect(page.locator('text=metadata').first()).toBeVisible()
-  await page.locator('text=metadata >> nth=1').click() // nth=1 because INST, INST2
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('metadata.py')
+  await expect(page.locator('text=metadata.py')).toBeVisible()
+  await page.locator('text=metadata.py').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(
@@ -123,6 +127,19 @@ test('handles File->Save new file', async ({ page, utils }) => {
     .locator('[data-test=file-open-save-filename] input')
     .fill(`${prepend}/save_new.rb`)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+
+  // If the file already exists from a previous parallel run, handle the overwrite dialog
+  const overwriteDialog = page.locator(
+    'text=Are you sure you want to overwrite',
+  )
+  if (await overwriteDialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await overwriteDialog.click()
+    await page.locator('button:has-text("Overwrite")').click()
+  }
+
+  await expect(
+    page.getByRole('dialog').filter({ hasText: 'File Save As...' }),
+  ).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(
     'INST/procedures/save_new.rb',
   )
@@ -138,10 +155,26 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   await page.locator('textarea').fill('puts "File Save overwrite"')
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save File').click()
+  await expect(page.locator('text=File Save As')).toBeVisible()
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('INST/procedures/save_overwrite.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+
+  // If the file already exists from a previous parallel run, handle the overwrite dialog
+  const overwriteDialog = page.locator(
+    'text=Are you sure you want to overwrite',
+  )
+  if (await overwriteDialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await overwriteDialog.click()
+    await page.locator('button:has-text("Overwrite")').click()
+  }
+
+  await expect(
+    page.getByRole('dialog').filter({ hasText: 'File Save As...' }),
+  ).not.toBeVisible()
+  // Wait for save to complete before continuing
+  await expect(page.getByText('Saving...')).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(
     'INST/procedures/save_overwrite.rb',
   )
@@ -187,6 +220,16 @@ test('handles Download', async ({ page, utils }) => {
     'INST/download.txt',
   )
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+
+  // If the file already exists from a previous parallel run, handle the overwrite dialog
+  const overwriteDialog = page.locator(
+    'text=Are you sure you want to overwrite',
+  )
+  if (await overwriteDialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await overwriteDialog.click()
+    await page.locator('button:has-text("Overwrite")').click()
+  }
+
   await expect(page.locator('#sr-controls')).toContainText('INST/download.txt')
   // Download the file
   await page.locator('[data-test=script-runner-file]').click()
