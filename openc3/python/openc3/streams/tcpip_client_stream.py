@@ -14,6 +14,7 @@ import socket
 
 from openc3.config.config_parser import ConfigParser
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
+from openc3.top_level import close_socket
 
 
 # Data {Stream} which reads and writes to TCPIP sockets. This class creates
@@ -75,10 +76,15 @@ class TcpipClientStream(TcpipSocketStream):
 
     # Connect the socket(s)
     def connect(self):
-        if self.write_socket:
-            self._connect(self.write_socket, self.hostname, self.write_port)
-        if self.read_socket and self.read_socket != self.write_socket:
-            self._connect(self.read_socket, self.hostname, self.read_port)
+        try:
+            if self.write_socket:
+                self._connect(self.write_socket, self.hostname, self.write_port)
+            if self.read_socket and self.read_socket != self.write_socket:
+                self._connect(self.read_socket, self.hostname, self.read_port)
+        except Exception:
+            close_socket(self.write_socket)
+            close_socket(self.read_socket)
+            raise
         super().connect()
 
     def _connect(self, socket, hostname, port):

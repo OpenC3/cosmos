@@ -243,7 +243,11 @@ class Microservice:
                 MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
                 if self.microservice_status_sleeper.sleep(self.microservice_status_period_seconds):
                     break
-            except Exception as error:
+            except Exception:
+                # If cancelled during exception handling exit silently
+                # This happens most frequently during unit tests
+                if self.cancel_thread:
+                    break
                 try:
                     self.logger.error(f"{self.name} status thread died: {traceback.format_exc()}")
                 except Exception:
@@ -252,4 +256,7 @@ class Microservice:
                         f"{self.name} status thread died: {traceback.format_exc()}",
                         file=sys.stderr,
                     )
-                raise error
+                # Exit the loop cleanly rather than raising an unhandled exception
+                # in this background thread. The status thread is
+                # non-critical so logging the error and exiting is sufficient.
+                break
