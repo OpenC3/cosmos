@@ -13,30 +13,30 @@
 // ============================================================================
 
 // Backgrounds (darkest → lightest)
-$dg-bg-body:            #08080c;
-$dg-bg-chrome:          #0c0c12;  // sidebar, topbar, footer, GSB
-$dg-bg-surface:         #13131a;  // cards, tables, panels
-$dg-bg-surface-alt:     #14141c;  // sidebar gradient end
-$dg-bg-surface-header:  #1e1e28;  // card titles, toolbars, calendar
-$dg-bg-interactive-muted: #222230;
-$dg-bg-hover:           #2a2a38;
-$dg-bg-selected:        #32323f;
+$dg-bg-body:            #1a1a24;
+$dg-bg-chrome:          #1e1e2a;  // sidebar, topbar, footer, GSB
+$dg-bg-surface:         #24242f;  // cards, tables, panels
+$dg-bg-surface-alt:     #262632;  // sidebar gradient end
+$dg-bg-surface-header:  #2c2c3a;  // card titles, toolbars, calendar
+$dg-bg-interactive-muted: #323240;
+$dg-bg-hover:           #383848;
+$dg-bg-selected:        #3e3e4e;
 
 // Borders
-$dg-border-muted:       #2e2e40;
-$dg-border-default:     #424258;
+$dg-border-muted:       #3a3a4c;
+$dg-border-default:     #4a4a5e;
 
 // Accent (indigo)
-$dg-accent:             #4338CA;
-$dg-accent-hover:       #4F46E5;
-$dg-accent-light:       #6366F1;
-$dg-accent-muted:       #352E8C;  // buttons — darker so large fills don't overpower
+$dg-accent:             #5B52E0;
+$dg-accent-hover:       #6C63F0;
+$dg-accent-light:       #7C7AF5;
+$dg-accent-muted:       #453DAA;  // buttons — darker so large fills don't overpower
 
 // Text
-$dg-text-primary:       #e4e8f0;
-$dg-text-secondary:     #a0aec4;
-$dg-text-muted:         #8892a6;
-$dg-text-sidebar:       #c8cdd8;
+$dg-text-primary:       #d0d4dc;
+$dg-text-secondary:     #9ca3b4;
+$dg-text-muted:         #7e8696;
+$dg-text-sidebar:       #b8bcc8;
 
 // Semantic status
 $dg-green:              #56f000;
