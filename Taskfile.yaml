@@ -6,6 +6,11 @@ vars:
   ENV_FILE: '{{.ENV_FILE | default ".env"}}'
   COMPOSE_FILE: compose.yaml
   COMPOSE_BUILD_FILE: compose-build.yaml
+  PORT: '{{.PORT | default "2900"}}'
+  # ANSI color codes for terminal output
+  YELLOW_BOLD: '\033[1;33m'
+  CYAN_BOLD: '\033[1;36m'
+  RESET: '\033[0m'
 
 tasks:
   # ============================================================================
@@ -14,6 +19,7 @@ tasks:
 
   default:
     desc: Show available tasks
+    silent: true
     cmds:
       - task --list
 
@@ -28,7 +34,8 @@ tasks:
 
       In runtime environments, this will just start the containers.
 
-      Access COSMOS at: http://localhost:2900
+      Access COSMOS at: http://localhost:{{.PORT}}
+    silent: true
     cmds:
       - task: _check-root
       - |
@@ -44,7 +51,7 @@ tasks:
         echo "  OpenC3 COSMOS is now running!"
         echo "=========================================="
         echo ""
-        echo "  Web Interface: http://localhost:2900"
+        echo "  Web Interface: http://localhost:{{.PORT}}"
         echo ""
         echo "  Useful commands:"
         echo "    task ps      - Show container status"
@@ -57,7 +64,7 @@ tasks:
     summary: |
       Start all OpenC3 COSMOS containers in detached mode.
 
-      Containers will run in the background. Access COSMOS at http://localhost:2900
+      Containers will run in the background. Access COSMOS at http://localhost:{{.PORT}}
 
       Common services:
         - openc3-operator - Main orchestration service
@@ -65,11 +72,17 @@ tasks:
         - openc3-cosmos-script-runner-api - Script execution service
         - openc3-redis - Redis database
         - openc3-buckets - Object storage
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
       - task: _check-root
       - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} up -d"
+      - |
+        echo ""
+        echo -e "{{.YELLOW_BOLD}}COSMOS is started. Access the web interface at:{{.RESET}}"
+        echo -e "  {{.CYAN_BOLD}}http://localhost:{{.PORT}}{{.RESET}}"
+        echo ""
 
   stop:
     desc: Stop all COSMOS containers gracefully
@@ -80,14 +93,22 @@ tasks:
         1. Stops operator, script-runner-api, and cmd-tlm-api containers
         2. Waits 5 seconds for graceful shutdown
         3. Runs docker compose down with 30 second timeout
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
+      - echo "Stopping COSMOS containers..."
+      - echo "  Stopping openc3-operator (if running)..."
       - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-operator"
+      - echo "  Stopping openc3-cosmos-script-runner-api (if running)..."
       - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-cosmos-script-runner-api"
+      - echo "  Stopping openc3-cosmos-cmd-tlm-api (if running)..."
       - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} stop openc3-cosmos-cmd-tlm-api"
+      - echo "  Waiting 5 seconds for graceful shutdown..."
       - sleep 5
+      - echo "  Running docker compose down..."
       - "{{.CONTAINER_BIN}} compose -f {{.COMPOSE_FILE}} down -t 30"
+      - echo "COSMOS containers stopped."
 
   logs:
     desc: Follow logs from all containers
@@ -95,6 +116,7 @@ tasks:
       Follow logs from all COSMOS containers.
 
       Use Ctrl+C to stop following logs.
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
@@ -102,6 +124,7 @@ tasks:
 
   ps:
     desc: Show status of COSMOS containers
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
@@ -241,6 +264,7 @@ tasks:
         task cli -- generate plugin MyPlugin       # Generate new plugin
 
       The current directory is mounted as /openc3/local inside the container.
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
@@ -260,6 +284,7 @@ tasks:
       Same as 'cli' but runs as root user for elevated privileges.
 
       Usage: task cliroot -- <command> [options]
+    silent: true
     dotenv:
       - "{{.ENV_FILE}}"
     cmds:
@@ -274,6 +299,7 @@ tasks:
 
   cli-help:
     desc: Show COSMOS CLI help
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -292,6 +318,7 @@ tasks:
         - plugin.txt (plugin configuration)
         - targets/<NAME>/ (target directory)
         - Rakefile (for building the gem)
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -305,6 +332,7 @@ tasks:
       Usage: task generate:target -- <TARGET_NAME>
 
       Example: task generate:target -- MY_TARGET
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -316,6 +344,7 @@ tasks:
       Validate an OpenC3 COSMOS plugin gem file.
 
       Usage: task cli-validate -- <plugin.gem>
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -327,6 +356,7 @@ tasks:
       Load an OpenC3 COSMOS plugin.
 
       Usage: task cli-load -- <plugin.gem>
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -347,6 +377,7 @@ tasks:
 
       Note: XTCE files can also be used directly by placing them in
       a target's cmd_tlm folder without conversion.
+    silent: true
     cmds:
       - task: cli
         vars:
@@ -362,6 +393,7 @@ tasks:
       Example: task xtce-export -- openc3-cosmos-demo.gem --output ./xtce_output
 
       One .xtce file will be created per target in the plugin.
+    silent: true
     cmds:
       - task: cli
         vars:
