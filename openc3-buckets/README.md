@@ -79,7 +79,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 # 3. Migrate all data from old MINIO volume to running versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 ./scripts/linux/openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./scripts/linux/openc3_migrate_s3.sh cleanup
 ```
 
 ### Migration Script Features
