@@ -119,14 +119,14 @@ def setup_system(targets=None):
 
 
 def mock_redis(self):
-    """Ensure the store builds a new instance of redis and doesn't
-    reuse the existing instance which results in a reused FakeRedis
+    """Ensure the store builds a new instance of valkey and doesn't
+    reuse the existing instance which results in a reused FakeValkey
     """
     EphemeralStore.my_instance = None
     Store.my_instance = None
     EphemeralStoreQueued.my_instance = None
     StoreQueued.my_instance = None
-    redis = fakeredis.FakeRedis()
+    redis = fakeredis.FakeValkey()
     redis.flushall()
     patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
