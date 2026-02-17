@@ -47,7 +47,7 @@ Performance characterization was performed in Azure on a Standard D4s v5 (4 vcpu
 | cosmos-enterprise-project-openc3-metrics-1                  | 0.01%         | 0.00%        | 105.2MiB    | 83.87MiB   |
 | cosmos-enterprise-project-openc3-redis-ephemeral-1          | 4.05%         | 1.89%        | 46.22MiB    | 69.84MiB   |
 | cosmos-enterprise-project-openc3-redis-1                    | 1.56%         | 0.72%        | 12.82MiB    | 9.484MiB   |
-| cosmos-enterprise-project-openc3-minio-1                    | 0.01%         | 0.00%        | 152.9MiB    | 169.8MiB   |
+| cosmos-enterprise-project-openc3-buckets-1                  | 0.01%         | 0.00%        | 152.9MiB    | 169.8MiB   |
 | cosmos-enterprise-project-openc3-postgresql-1               | 0.00%         | 0.39%        | 37.33MiB    | 41.02MiB   |
 
 - memory profiles are similar between the two platforms
@@ -74,7 +74,7 @@ The larger packets and data rate of the LoadSim target caused both platforms to 
 | cosmos-enterprise-project-openc3-metrics-1                  | 0.01%         | 0.01%        | 106.3MiB    | 84.87MiB   |
 | cosmos-enterprise-project-openc3-redis-ephemeral-1          | 19.63%        | 3.91%        | 333.8MiB    | 370.8MiB   |
 | cosmos-enterprise-project-openc3-redis-1                    | 7.42%         | 1.49%        | 15.87MiB    | 11.81MiB   |
-| cosmos-enterprise-project-openc3-minio-1                    | 0.10%         | 0.02%        | 167.8MiB    | 179.2MiB   |
+| cosmos-enterprise-project-openc3-buckets-1                  | 0.10%         | 0.02%        | 167.8MiB    | 179.2MiB   |
 | cosmos-enterprise-project-openc3-postgresql-1               | 0.00%         | 0.00%        | 35.4MiB     | 42.93MiB   |
 
 - memory profiles are similar between the two platforms

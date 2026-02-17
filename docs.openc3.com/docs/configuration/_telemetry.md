@@ -10,7 +10,7 @@ sidebar_custom_props:
 
 ## Telemetry Concepts
 
-When COSMOS receives a telemetry packet from a target, the system will log the raw packet, decommutate it to engineering values, and log the decommutated data. This data is stored in log files and in Redis, and it is made available via the CmdTlmApi Server:
+When COSMOS receives a telemetry packet from a target, the system will log the raw packet to a binary log file, decommutate it to engineering values, and write the decommutated data to the time-series database (TSDB), [QuestDB](https://questdb.io/). The raw binary logs are stored in S3-compatible bucket storage while the decommutated data is stored in QuestDB for fast time-series queries. Both raw and decommutated data are also streamed through Valkey (Redis) for real-time access. All data is made available via the CmdTlmApi Server:
 
 ![Telemetry Processing Diagram](/img/tlm-processing.png)
 

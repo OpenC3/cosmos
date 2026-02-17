@@ -1,12 +1,42 @@
 ---
 sidebar_position: 1
-title: Key Concepts
-description: Projects, Containerization, Frontend, Backend
+title: Architecture
+description: Architecture, Projects, Containerization, Frontend, Backend
 sidebar_custom_props:
-  myEmoji: 💡
+  myEmoji: 🏗️
 ---
 
-# OpenC3 COSMOS Key Concepts
+# OpenC3 COSMOS Architecture
+
+## COSMOS Core Architecture
+
+![COSMOS Core Architecture](/img/core-architecture.png)
+
+COSMOS Core is a cloud native, containerized, microservice oriented command and control system deployed with Docker Compose. The **init** container seeds the initial configuration and plugin data into the system on startup. The **operator** manages the lifecycle of all COSMOS microservices including interfaces that connect to external embedded systems (Targets). Two Rails-based APIs power the system: **cmd-tlm-api** provides the REST API for command and telemetry operations, while **script-runner-api** handles script execution. The **traefik** reverse proxy routes all user browser traffic to the appropriate API. Two **Valkey** (Redis) data stores are used: **redis** holds persistent configuration and the current value table, while **redis-ephemeral** handles real-time data streams. The **buckets** service provides S3-compatible object storage (powered by Versitygw) for plugins, targets, configuration data, text logs, and binary logs of all raw data. The time-series database (**tsdb**), powered by [QuestDB](https://questdb.io/), stores all decommutated command and telemetry data for fast historical queries.
+
+## COSMOS Enterprise Architecture
+
+![COSMOS Enterprise Architecture](/img/enterprise-architecture.png)
+
+COSMOS Enterprise extends Core with additional services and is optionally deployed on a Kubernetes cluster using **Helm** charts as shown above. The core services (cmd-tlm-api, script-runner-api, traefik, init, operator) remain the same and are deployed by the **openc3** chart. Data services (tsdb, buckets, redis, redis-ephemeral) are deployed by a separate **openc3-db** chart. Enterprise adds **Keycloak** for full identity and access management with role-based permissions, backed by a **PostgreSQL** database. A **Grafana** instance and **metrics** collector provide system monitoring and observability dashboards. The **COSMOS NFS** chart provides shared network file storage across the cluster. All services are orchestrated by Kubernetes, enabling horizontal scaling, high availability, and production-grade deployment.
+
+## Terminology
+
+| Term                                        | Definition                                                                                                                                                                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Target](/docs/configuration/target)        | A COSMOS target is an embedded system that the COSMOS Command and Telemetry Server connects to using an interface in order to send commands to and/or receive telemetry from.                                                     |
+| [Command](/docs/configuration/command)      | A packet of information telling a target to perform an action of some sort.                                                                                                                                                       |
+| [Telemetry](/docs/configuration/telemetry)  | A packet of information providing status from a target.                                                                                                                                                                           |
+| [Interface](/docs/configuration/interfaces) | A physical connection to a target that sends commands to and/or receives telemetry from a target. COSMOS comes with interfaces that support TCP/IP, UDP, and serial connections. Custom interfaces are easy to add to the system. |
+| [Configuration Files](/docs/configuration)  | COSMOS uses simple plain text configuration files to define commands and telemetry packets, and to configure each COSMOS application. These files are easily human readable/editable and machine readable/editable.               |
+| [Tool](/docs/tools)                         | Another name for a COSMOS application.                                                                                                                                                                                            |
+
+Key aspects of this architecture:
+
+- COSMOS can connect to many different kinds of targets. The examples include things like Flight software (FSW), Ground Support Equipment (GSE), Labview, and COTS targets such as an Agilent power supply. Any embedded system that provides a communication interface can be connected to COSMOS. The flexibility of [interfaces](/docs/configuration/interfaces), [protocols](/docs/configuration/protocols), and [accessors](/docs/configuration/accessors) mean we adapt to your hardware, not the other way around!
+- All realtime communication with targets flows through the COSMOS system. This ensures all commands and telemetry are logged.
+- Every tool is configured with plain text configuration files.
+- Program specific tools can be written using the COSMOS libraries that can interact with the realtime command and telemetry streams and can process logged data.
 
 ## Projects
 
@@ -38,6 +68,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-buckets-1                  | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files  |
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                        |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://valkey.io/topics/streams-intro/) containing the raw and decomutated data |
+| cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data       |
 
 The container list for [COSMOS Enterprise](https://openc3.com/enterprise) consists of the following:
 
@@ -85,7 +116,7 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 ### Valkey
 
-[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/key-concepts#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Valkey Cluster](https://valkey.io/topics/cluster-tutorial/) to perform horizontal scaling where data is shared across multiple nodes.
+[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/architecture#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Valkey Cluster](https://valkey.io/topics/cluster-tutorial/) to perform horizontal scaling where data is shared across multiple nodes.
 
 ### Versitygw
 
@@ -97,9 +128,50 @@ The COSMOS API and Script Runner backends are powered by [Ruby on Rails](https:/
 
 ### QuestDB
 
-COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets.
+COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets. Data is ingested into QuestDB via the [ILP HTTP protocol](https://questdb.io/docs/reference/api/ilp/overview/).
 
-While Redis stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax.
+While Valkey stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax. Each telemetry and command packet gets its own QuestDB table using the naming convention `TLM__TARGET__PACKET` or `CMD__TARGET__PACKET`.
+
+#### Data Type Mapping
+
+COSMOS maps its data types to QuestDB column types as follows:
+
+| COSMOS Type | Bit Size    | QuestDB Type   | Notes                                                   |
+| ----------- | ----------- | -------------- | ------------------------------------------------------- |
+| INT         | < 32        | int            | Small signed integers and bitfields                     |
+| INT         | 32          | long           | Promoted to long (QuestDB uses int MIN as NULL)         |
+| INT         | 64          | DECIMAL(20, 0) | Full 64-bit signed range                                |
+| UINT        | < 32        | int            | Fits in signed int                                      |
+| UINT        | 32          | long           | Needs 33 bits for full unsigned range                   |
+| UINT        | 64          | DECIMAL(20, 0) | Full 64-bit unsigned range                              |
+| FLOAT       | 32          | float          | IEEE 754 single precision                               |
+| FLOAT       | 64          | double         | IEEE 754 double precision                               |
+| STRING      | var         | varchar        | Variable-length text                                    |
+| BLOCK       | var         | varchar        | Base64-encoded binary                                   |
+| ARRAY       | var         | varchar        | JSON-serialized arrays                                  |
+| DERIVED     | var         | varies         | Based on converted_type/bit_size; defaults to varchar   |
+
+#### Special Float Value Handling
+
+QuestDB does not support IEEE 754 special values directly. The following sentinel values are used:
+
+| Special Value | 64-bit (double) Sentinel                               | 32-bit (float) Sentinel                      |
+| ------------- | ------------------------------------------------------ | -------------------------------------------- |
+| `Infinity`    | `1.7976931348623155e+308` (near `DBL_MAX`)             | `3.4028233e+38` (near `FLT_MAX`)             |
+| `-Infinity`   | `-1.7976931348623155e+308` (near `-DBL_MAX`)           | `-3.4028233e+38` (near `-FLT_MAX`)           |
+| `NaN`         | `-1.7976931348623153e+308` (negative, near `-DBL_MAX`) | `-3.4028231e+38` (negative, near `-FLT_MAX`) |
+
+These sentinels allow special float values to be stored and retrieved without data loss.
+
+#### Other Limitations
+
+- Integer `MIN_VALUE` is used as NULL sentinel in QuestDB
+- Arrays are always stored as JSON-serialized strings for consistency
+- 64-bit integer values are sent as strings via ILP; QuestDB casts them to DECIMAL
+
+#### Historical Data Migration
+
+COSMOS provides a [migration plugin](https://store.openc3.com/cosmos_plugins/21) for ingesting historical decommutated telemetry and command data from binary log files into QuestDB. The plugin reads COSMOS binary packet log files (`.bin` and `.bin.gz`) from S3-compatible storage and batch-ingests the data into QuestDB. It processes files in reverse chronological order (newest first) and rate-limits ingestion to avoid overwhelming operational systems.
 
 ### Keycloak (Enterprise)
 

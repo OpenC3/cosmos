@@ -1,6 +1,6 @@
 # OpenC3 S3 Gateway (versitygw)
 
-This directory contains the Dockerfile and configuration for the versitygw S3 gateway, which replaces MINIO as the S3-compatible storage backend in COSMOS 7+.
+This directory contains the Dockerfile and configuration for the versitygw S3 gateway used as the S3-compatible storage backend in COSMOS 7+.
 
 ## About versitygw
 
@@ -22,7 +22,7 @@ The container downloads pre-built binaries from [versitygw GitHub releases](http
 | `VGW_BACKEND`     | Storage backend type              | `posix` |
 | `VGW_BACKEND_ARG` | Backend argument (path for posix) | `/data` |
 
-For compatibility, the entrypoint also accepts MINIO-style credentials:
+For compatibility, the entrypoint also accepts legacy credentials:
 
 - `MINIO_ROOT_USER` (mapped to `ROOT_ACCESS_KEY`)
 - `MINIO_ROOT_PASSWORD` (mapped to `ROOT_SECRET_KEY`)
@@ -69,7 +69,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 ./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 
-# 3. Migrate all data from old MINIO volume to running versitygw
+# 3. Migrate all data from old COSMOS 6 MINIO volume to running versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 
 # 4. Verify your data migrated correctly

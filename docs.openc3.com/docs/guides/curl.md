@@ -173,7 +173,7 @@ Date: Wed, 28 Jan 2026 14:50:06 GMT
 
 The response contains both a new access token and a new refresh token. Each time you refresh, you receive a fresh refresh token, and the previous one is invalidated. The refresh token idle timeout (default: 30 minutes) is reset with each refresh request.
 
-For more details on token types and lifespans, see [Keycloak](/docs/getting-started/key-concepts#keycloak-enterprise) in Key Concepts.
+For more details on token types and lifespans, see [Keycloak](/docs/getting-started/architecture#keycloak-enterprise) in Architecture.
 
 ## Suite Runner Example
 

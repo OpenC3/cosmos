@@ -9,11 +9,15 @@ The COSMOS [Bucket Explorer](../tools/bucket-explorer.md) tool provides a way to
 
 ![Bucket Explorer](/img/guides/logging/logs.png)
 
-Note the config and logs buckets are organized by scopes of which there initially is just one: DEFAULT. Clicking the DEFAULT folder in the logs bucket shows the decom_logs, raw_logs, text_logs and tool_logs.
+Note the config and logs buckets are organized by scopes of which there initially is just one: DEFAULT. Clicking the DEFAULT folder in the logs bucket shows the raw_logs, text_logs and tool_logs.
 
-### decom_logs & raw_logs
+:::info COSMOS 5 & 6
+In COSMOS 5 and 6, the logs bucket also contained a decom_logs folder with decommutated command and telemetry data stored as JSON in binary log files. Starting in COSMOS 7, decommutated data is stored in the time-series database (TSDB), [QuestDB](https://questdb.io/), instead of log files. This provides more efficient storage and faster historical queries. If you are upgrading from COSMOS 5 or 6, see the [Upgrading](../getting-started/upgrading.md) guide for migration details.
+:::
 
-The decom_logs and raw_logs folders contain the decommutated and raw command and telemetry data. Both are further broken down by target, packet, then date. For example, browsing into the DEFAULT/raw_logs/tlm/INST2/&lt;YYYYMMDD&gt;/ directory:
+### raw_logs
+
+The raw_logs folder contains raw command and telemetry binary data. It is further broken down by target, packet, then date. For example, browsing into the DEFAULT/raw_logs/tlm/INST2/&lt;YYYYMMDD&gt;/ directory:
 
 ![raw_tlm_logs](/img/guides/logging/raw_tlm_logs.png)
 

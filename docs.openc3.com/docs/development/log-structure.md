@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 ## Packet Log File Format
 
-Packet logs in OpenC3 COSMOS 5 & 6 are used to store raw binary packets as received from various targets, as well as decommutated packets stored as JSON structures.
+In COSMOS 5 and 6, packet log files were used to store both raw binary packets as received from various targets and decommutated packets stored as JSON structures. Starting in COSMOS 7, decommutated data is no longer written to log files. Instead, it is stored directly in the time-series database (TSDB), [QuestDB](https://questdb.io/), which provides more efficient storage and faster historical queries. Packet log files in COSMOS 7 only contain raw binary packet data. The log file format itself remains unchanged for backwards compatibility, but the JSON/CBOR Packet and Key Map entry types are no longer written by COSMOS 7.
 
 ### File Header
 

@@ -49,7 +49,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 ### Clone Project
 
-We recommend using the COSMOS [project template](key-concepts#projects) to get started.
+We recommend using the COSMOS [project template](architecture#projects) to get started.
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git
