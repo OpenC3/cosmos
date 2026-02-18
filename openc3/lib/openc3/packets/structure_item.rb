@@ -334,7 +334,7 @@ module OpenC3
         hash['variable_bit_size'] = @variable_bit_size
       end
       if self.parent_item
-        hash['parent_item'] = self.parent_item.as_json
+        hash['parent_item'] = self.parent_item
       end
       if self.structure
         hash['structure'] = self.structure.as_json

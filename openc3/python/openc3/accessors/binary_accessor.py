@@ -126,11 +126,12 @@ class BinaryAccessor(Accessor):
         if item.data_type == "DERIVED":
             return None
         if item.parent_item is not None:
-            if item.parent_item.variable_bit_size:
-                self.handle_read_variable_bit_size(item.parent_item, buffer)
+            parent_item = self.packet.get_item(item.parent_item)
+            if parent_item.variable_bit_size:
+                self.handle_read_variable_bit_size(parent_item, buffer)
             # Structure is used to read items with parent, not accessor
-            structure_buffer = self.read_item(item.parent_item, buffer)
-            structure = item.parent_item.structure
+            structure_buffer = self.read_item(parent_item, buffer)
+            structure = parent_item.structure
             return structure.read(item.key, "RAW", structure_buffer)
         else:
             if item.variable_bit_size:
@@ -286,13 +287,14 @@ class BinaryAccessor(Accessor):
         if item.data_type == "DERIVED":
             return None
         if item.parent_item is not None:
+            parent_item = self.packet.get_item(item.parent_item)
             # Structure is used to write items with parent, not accessor
-            structure_buffer = self.read_item(item.parent_item, buffer)
-            structure = item.parent_item.structure
+            structure_buffer = self.read_item(parent_item, buffer)
+            structure = parent_item.structure
             structure.write(item.key, value, "RAW", structure_buffer)
-            if item.parent_item.variable_bit_size:
-                self.handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer)
-            BinaryAccessor.class_write_item(item.parent_item, structure_buffer, buffer)
+            if parent_item.variable_bit_size:
+                self.handle_write_variable_bit_size(parent_item, structure_buffer, buffer)
+            BinaryAccessor.class_write_item(parent_item, structure_buffer, buffer)
         else:
             if item.variable_bit_size:
                 self.handle_write_variable_bit_size(item, value, buffer)

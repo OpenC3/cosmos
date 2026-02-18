@@ -1015,11 +1015,11 @@ module OpenC3
 
         # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
         item1 = p.define_item("json_struct.item1", 32, 0, :UINT)
-        item1.parent_item = parent_item
+        item1.parent_item = "JSON_STRUCT"
         item2 = p.define_item("json_struct.item2", 32, 0, :STRING)
-        item2.parent_item = parent_item
+        item2.parent_item = "JSON_STRUCT"
         item3 = p.define_item("json_struct.item3", 32, 0, :INT)
-        item3.parent_item = parent_item
+        item3.parent_item = "JSON_STRUCT"
 
         # Should not complain about the items with parent_item even though they share bit_offset
         expect(p.check_bit_offsets).to eq []

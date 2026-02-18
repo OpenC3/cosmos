@@ -550,10 +550,10 @@ class TestStructureItem(unittest.TestCase):
     def test_as_json_with_parent_item(self):
         parent = StructureItem("parent", 0, 32, "BLOCK", "BIG_ENDIAN", None)
         child = StructureItem("child", 0, 8, "UINT", "BIG_ENDIAN", None)
-        child.parent_item = parent
+        child.parent_item = "PARENT"
         result = child.as_json()
         self.assertIn("parent_item", result)
-        self.assertEqual(result["parent_item"]["name"], "PARENT")
+        self.assertEqual(result["parent_item"], "PARENT")
 
     def test_as_json_with_structure(self):
         from openc3.packets.packet import Packet

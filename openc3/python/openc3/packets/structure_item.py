@@ -304,7 +304,7 @@ class StructureItem:
         if self.variable_bit_size is not None:
             result["variable_bit_size"] = self.variable_bit_size
         if self.parent_item is not None:
-            result["parent_item"] = self.parent_item.as_json()
+            result["parent_item"] = self.parent_item
         if self.structure is not None:
             result["structure"] = self.structure.as_json()
         return result

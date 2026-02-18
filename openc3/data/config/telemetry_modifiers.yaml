@@ -259,6 +259,15 @@ TEMPLATE:
       description: The template string which should be enclosed in quotes
       values: "['\"].*['\"]"
   since: 5.0.10
+TEMPLATE_BASE64:
+  summary: Defines a template binary as base64 used to to pull telemetry values from a string buffer
+  description: Base64 encoded binary data
+  parameters:
+    - name: Template
+      required: true
+      description: The template string as base64 data
+      values: .+
+  since: 7.0.0
 TEMPLATE_FILE:
   summary: Defines a template file used to pull telemetry values from a string buffer
   parameters:

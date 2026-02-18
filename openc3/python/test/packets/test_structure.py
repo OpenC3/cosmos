@@ -1005,7 +1005,7 @@ class TestStructureRecalculateBitOffsets(unittest.TestCase):
         parent = s.append_item("parent", 32, "BLOCK")
         s.append_item("child", 8, "UINT")
         child = s.get_item("child")
-        child.parent_item = parent
+        child.parent_item = "PARENT"
         # Just verify it doesn't crash when processing parented items
         s.recalculate_bit_offsets()
 

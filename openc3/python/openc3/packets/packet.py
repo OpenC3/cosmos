@@ -372,7 +372,7 @@ class Packet(Structure):
         for item in self.sorted_items:
             # Skip items with a parent_item since those are accessor-based items within a structure
             # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
-            if item.parent_item:
+            if item.parent_item is not None:
                 continue
             if expected_next_offset and (item.bit_offset < expected_next_offset) and not item.overlap:
                 msg = f"Bit definition overlap at bit offset {item.bit_offset} for packet {self.target_name} {self.packet_name} items {item.name} and {previous_item.name}"
@@ -523,7 +523,7 @@ class Packet(Structure):
             cloned_item = sorted_item.clone()
             cloned_item.key = cloned_item.name
             cloned_item.name = f"{item.name}.{cloned_item.name}"
-            cloned_item.parent_item = item
+            cloned_item.parent_item = item.name
             cloned_item.bit_offset = item.bit_offset
             if sorted_item.bit_size <= 0:
                 cloned_item.bit_size = item.bit_size
@@ -1051,9 +1051,8 @@ class Packet(Structure):
         if self.validator:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
             config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
-        # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
         if self.template:
-            config += f"  TEMPLATE '{self.template}'\n"
+            config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode("ascii")}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
