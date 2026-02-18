@@ -107,6 +107,7 @@ class TestCommands(unittest.TestCase):
         tf.write('  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
         tf.write('    KEY $.more.item5\n')
         tf.write('COMMAND tgt2 HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"\n')
+        tf.write('  APPEND_ID_PARAMETER ID 32 UINT MIN MAX 0\n')
         tf.write('  APPEND_PARAMETER JSON_LENGTH 32 UINT MIN MAX 0\n')
         tf.write('    HIDDEN\n')
         tf.write('  APPEND_STRUCTURE JSON 0 CMD tgt2 JSONSTRUCT\n')

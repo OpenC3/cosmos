@@ -116,6 +116,7 @@ module OpenC3
       tf.puts '  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"'
       tf.puts '    KEY $.more.item5'
       tf.puts 'COMMAND tgt2 HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"'
+      tf.puts '  APPEND_ID_PARAMETER ID 32 UINT MIN MAX 0'
       tf.puts '  APPEND_PARAMETER JSON_LENGTH 32 UINT MIN MAX 0'
       tf.puts '    HIDDEN'
       tf.puts '  APPEND_STRUCTURE JSON 0 CMD tgt2 JSONSTRUCT'
@@ -212,7 +213,7 @@ module OpenC3
 
     describe "identify" do
       it "return nil with a nil buffer" do
-        expect(@cmd.identify(nil)).to be_nil
+        expect(@cmd.identify(nil, ["TGTX"])).to be_nil
       end
 
       it "only checks the targets given" do
