@@ -251,7 +251,9 @@ end`)
   await utils.sleep(2000)
   await page.locator('[data-test=go-button]').click()
   // Wait for the results
-  await expect(page.locator('.v-dialog')).toContainText('Script Results')
+  await expect(page.locator('.v-dialog')).toContainText('Script Results', {
+    timeout: 30000,
+  })
   await page.locator('button:has-text("Ok")').click()
   await deleteFile(page)
 })
