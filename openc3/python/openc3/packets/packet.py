@@ -1052,7 +1052,7 @@ class Packet(Structure):
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
             config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
         if self.template:
-            config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode("ascii")}\n"
+            config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode('ascii')}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
