@@ -599,7 +599,7 @@ module OpenC3
       when 'TEMPLATE'
         usage = "#{keyword} <Template string>"
         parser.verify_num_parameters(1, 1, usage)
-        @current_packet.template = params[0]
+        @current_packet.template = params[0].force_encoding('ascii-8bit')
 
       when 'TEMPLATE_BASE64'
         usage = "#{keyword} <Template string>"
@@ -611,7 +611,7 @@ module OpenC3
         parser.verify_num_parameters(1, 1, usage)
 
         begin
-          @current_packet.template = parser.read_file(params[0])
+          @current_packet.template = parser.read_file(params[0]).force_encoding('ascii-8bit')
         rescue Exception => e
           raise parser.error(e.formatted)
         end

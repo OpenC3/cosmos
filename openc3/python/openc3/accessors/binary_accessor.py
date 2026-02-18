@@ -348,7 +348,10 @@ class BinaryAccessor(Accessor):
         if (bit_size <= 0) and ((data_type == "STRING") or (data_type == "BLOCK")):
             bit_size = (len(buffer) * 8) - bit_offset + bit_size
             if bit_size == 0:
-                return ""
+                if data_type == "STRING":
+                    return ""
+                else:
+                    return bytearray(b'')
             elif bit_size < 0:
                 cls.raise_buffer_error("read", buffer, data_type, given_bit_offset, given_bit_size)
 
