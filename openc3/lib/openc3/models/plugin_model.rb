@@ -192,9 +192,11 @@ module OpenC3
         tf = nil
 
         # Get the gem from local gem server if it hasn't been passed
-        unless gem_file_path
+        if gem_file_path.nil?
           gem_name = plugin_hash['name'].split("__")[0]
           gem_file_path = OpenC3::GemModel.get(gem_name)
+        else
+          gem_name = File.basename(gem_file_path)
         end
 
         # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
