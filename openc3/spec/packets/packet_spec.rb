@@ -1652,7 +1652,7 @@ module OpenC3
         expect(json['packet_name']).to eql 'PKT'
         expect(json['items']).to eql []
         expect(json['accessor']).to eql "OpenC3::BinaryAccessor"
-        expect(json['template']).to eql Base64.encode64("\x00\x01\x02\x03")
+        expect(json['template']).to eql Base64.strict_encode64("\x00\x01\x02\x03")
       end
 
       it "handles many items" do

@@ -1047,7 +1047,7 @@ class PacketCheckBitOffsets(unittest.TestCase):
         # that don't have meaningful bit positions - they share the parent's bit_offset
         p = Packet("tgt1", "pkt1")
         p.define_item("header", 0, 32, "UINT")
-        parent_item = p.define_item("json_struct", 32, 0, "BLOCK")
+        p.define_item("json_struct", 32, 0, "BLOCK")
 
         # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
         item1 = p.define_item("json_struct.item1", 32, 0, "UINT")

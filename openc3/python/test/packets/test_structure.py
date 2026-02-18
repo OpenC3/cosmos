@@ -1002,7 +1002,7 @@ class TestStructureCalculateTotalBitSize(unittest.TestCase):
 class TestStructureRecalculateBitOffsets(unittest.TestCase):
     def test_skips_parented_items(self):
         s = Structure("BIG_ENDIAN")
-        parent = s.append_item("parent", 32, "BLOCK")
+        s.append_item("parent", 32, "BLOCK")
         s.append_item("child", 8, "UINT")
         child = s.get_item("child")
         child.parent_item = "PARENT"
