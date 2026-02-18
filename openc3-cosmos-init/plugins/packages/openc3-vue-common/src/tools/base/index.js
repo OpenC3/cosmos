@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -18,6 +18,7 @@ import ClockFooter from './ClockFooter.vue'
 import Login from './Login.vue'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 import TimeCheck from './TimeCheck.vue'
 import UserMenu from './UserMenu.vue'
 import ContextTag from './ContextTag.vue'
@@ -30,6 +31,7 @@ export {
   Login,
   Notifications,
   ScopeSelector,
+  ThemeSwitcher,
   TimeCheck,
   UserMenu,
   ContextTag,

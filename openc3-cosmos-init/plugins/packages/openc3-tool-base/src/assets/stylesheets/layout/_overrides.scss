@@ -33,30 +33,14 @@
 // .v-application .primary {
 //   background-color: var(--color-background-interactive-default) !important;
 // }
-.v-theme--cosmosDark.v-btn:not(
-    .v-btn--variant-outlined,
-    .v-btn--icon,
-    .v-btn--round,
-    .v-btn--variant-text,
-    .v-tab
-  ) {
+@include themed('.v-btn:not(.v-btn--variant-outlined, .v-btn--icon, .v-btn--round, .v-btn--variant-text, .v-tab)') {
   background-color: var(--button-color-background-primary-default) !important;
   color: var(--color-text-inverse) !important;
 }
-.v-theme--cosmosDark.v-btn:not(
-    .v-btn--variant-outlined,
-    .v-btn--icon,
-    .v-btn--round,
-    .v-btn--variant-text
-  ):hover {
+@include themed('.v-btn:not(.v-btn--variant-outlined, .v-btn--icon, .v-btn--round, .v-btn--variant-text):hover') {
   background-color: var(--button-color-background-primary-hover) !important;
 }
-.v-theme--cosmosDark.v-btn--variant-outlined:not(
-    .text-red,
-    .v-btn--icon,
-    .v-btn--round,
-    .v-btn--variant-text
-  ) {
+@include themed('.v-btn--variant-outlined:not(.text-red, .v-btn--icon, .v-btn--round, .v-btn--variant-text)') {
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
@@ -65,12 +49,7 @@
   color: var(--color-text-interactive-default) !important;
   opacity: 0.4 !important;
 }
-.v-theme--cosmosDark.v-btn--variant-outlined:not(
-    .text-red,
-    .v-btn--icon,
-    .v-btn--round,
-    .v-btn--variant-text
-  ):hover {
+@include themed('.v-btn--variant-outlined:not(.text-red, .v-btn--icon, .v-btn--round, .v-btn--variant-text):hover') {
   border-color: var(--button-color-border-primary-hover) !important;
 }
 
@@ -78,10 +57,10 @@
   text-transform: inherit !important;
 }
 
-body,
-.v-theme--cosmosDark.v-application,
-.v-theme--cosmosDark.v-main,
-.v-theme--cosmosDark.v-content {
+body {
+  background-color: var(--color-background-base-default);
+}
+@include themed(('.v-application', '.v-main', '.v-content')) {
   background-color: var(--color-background-base-default);
 }
 .single-spa-container {
@@ -91,40 +70,34 @@ body,
   min-height: 0 !important; // Vuetify's `:full-height="false"` prop seems to not be working
 }
 
-.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab--disabled,
-.v-theme--cosmosDark
-  .v-tabs
-  > .v-slide-group__container
-  .v-tab:not(.v-tab--selected),
-.v-theme--cosmosDark
-  .v-tabs
-  > .v-slide-group__container
-  .v-tab:not(.v-tab--selected).v-btn,
-.v-theme--cosmosDark
-  .v-tabs
-  > .v-slide-group__container
-  .v-tab:not(.v-tab--selected).v-icon {
-  color: var(--color-text-interactive-default) !important;
+@include themed() {
+  .v-tabs > .v-slide-group__container .v-tab--disabled,
+  .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected),
+  .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-btn,
+  .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-icon {
+    color: var(--color-text-interactive-default) !important;
+  }
 }
 .v-tab--selected {
   background-color: var(--color-background-surface-selected) !important;
   color: var(--color-text-interactive-default) !important;
 }
-.v-theme--cosmosDark.v-tabs .v-tab:hover {
-  background-color: var(--color-background-surface-hover) !important;
+@include themed('.v-tabs') {
+  .v-tab:hover {
+    background-color: var(--color-background-surface-hover) !important;
+  }
 }
 
 .v-card-title,
 .v-card-subtitle,
-.v-theme--cosmosDark.v-tab,
-.v-theme--cosmosDark.v-tabs-bar,
 .v-expansion-panel-title,
-.v-navigation-drawer,
-.v-theme--cosmosDark.v-toolbar,
-.v-theme--cosmosDark.v-date-picker-header {
+.v-navigation-drawer {
   background-color: var(
     --color-background-surface-header
   ); // don't do !important here (it breaks TlmGrapher)
+}
+@include themed(('.v-tab', '.v-tabs-bar', '.v-toolbar', '.v-date-picker-header')) {
+  background-color: var(--color-background-surface-header);
 }
 
 .v-navigation-drawer .v-treeview-item {
@@ -166,44 +139,48 @@ body,
 
 table,
 .v-stepper,
-.v-expansion-panel-text,
-.v-theme--cosmosDark.v-banner,
-.v-theme--cosmosDark.v-data-table,
-.v-theme--cosmosDark.v-card,
-.v-theme--cosmosDark.v-date-picker-table,
-.v-theme--cosmosDark.v-time-picker-clock__container,
-.v-theme--cosmosDark.v-expansion-panel,
-.v-theme--cosmosDark.v-expansion-panels,
-.v-theme--cosmosDark.p-menubar {
+.v-expansion-panel-text {
   background-color: var(--color-background-surface-default) !important;
 }
-.v-theme--cosmosDark.v-list {
+@include themed(('.v-banner', '.v-data-table', '.v-card', '.v-date-picker-table', '.v-time-picker-clock__container', '.v-expansion-panel', '.v-expansion-panels', '.p-menubar')) {
+  background-color: var(--color-background-surface-default) !important;
+}
+@include themed('.v-list') {
   background-color: var(--color-background-base-default);
 }
 .v-list {
   color: white !important;
 }
 
-.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list {
+@include themed('.v-list', $prefix: '.v-menu > .v-overlay__content > ') {
   background-color: var(--color-background-surface-selected);
-}
-.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list .v-list-item:hover {
-  background-color: var(--color-background-interactive-muted) !important;
+  .v-list-item:hover {
+    background-color: var(--color-background-interactive-muted) !important;
+  }
 }
 
-.v-theme--cosmosDark.v-list-item:hover,
-.v-theme--cosmosDark.v-treeview--hoverable .v-treeview-node__root:hover,
-.v-theme--cosmosDark.v-treeview
-  .v-treeview-node--click
-  > .v-treeview-node__root:hover,
-.v-theme--cosmosDark.v-data-table
-  > .v-data-table__wrapper
-  > table
-  > tbody
-  > tr:hover:not(.v-data-table__expanded__content):not(
-    .v-data-table__empty-wrapper
-  ) {
+@include themed('.v-list-item:hover') {
   background-color: var(--color-background-surface-hover) !important;
+}
+@include themed('.v-treeview--hoverable') {
+  .v-treeview-node__root:hover {
+    background-color: var(--color-background-surface-hover) !important;
+  }
+}
+@include themed('.v-treeview') {
+  .v-treeview-node--click > .v-treeview-node__root:hover {
+    background-color: var(--color-background-surface-hover) !important;
+  }
+}
+@include themed('.v-data-table') {
+  > .v-data-table__wrapper
+    > table
+    > tbody
+    > tr:hover:not(.v-data-table__expanded__content):not(
+      .v-data-table__empty-wrapper
+    ) {
+    background-color: var(--color-background-surface-hover) !important;
+  }
 }
 .v-data-table__th {
   background-color: var(--color-background-surface-default) !important;
@@ -217,34 +194,39 @@ table,
 }
 
 // The next several styles effectively styles like an Astro select
-.v-theme--cosmosDark.v-autocomplete {
+@include themed('.v-autocomplete') {
   border-color: var(--button-color-border-interactive-default) !important;
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;
 }
-.v-theme--cosmosDark.v-select [role='combobox'] {
-  border-color: var(--button-color-border-interactive-default) !important;
-  color: var(--color-text-interactive-default) !important;
-  background-color: var(--color-background-base-default) !important;
+@include themed('.v-select') {
+  [role='combobox'] {
+    border-color: var(--button-color-border-interactive-default) !important;
+    color: var(--color-text-interactive-default) !important;
+    background-color: var(--color-background-base-default) !important;
+  }
 }
 
-.v-theme--cosmosDark.v-autocomplete label,
-.v-theme--cosmosDark.v-select label {
-  color: whitesmoke !important;
+@include themed(('.v-autocomplete', '.v-select')) {
+  label {
+    color: whitesmoke !important;
+  }
 }
 
-.v-theme--cosmosDark.v-select fieldset {
-  border: 1px solid var(--color-border-interactive-muted);
-  background-color: var(--color-background-base-default);
-}
-.v-theme--cosmosDark.v-select input {
-  color: var(--color-background-interactive-default) !important;
-}
-.v-theme--cosmosDark.v-select input:disabled {
-  color: var(--color-background-interactive-muted) !important;
-}
-.v-theme--cosmosDark.v-select .v-select__selection-text {
-  color: var(--color-text-interactive-default) !important;
+@include themed('.v-select') {
+  fieldset {
+    border: 1px solid var(--color-border-interactive-muted);
+    background-color: var(--color-background-base-default);
+  }
+  input {
+    color: var(--color-background-interactive-default) !important;
+  }
+  input:disabled {
+    color: var(--color-background-interactive-muted) !important;
+  }
+  .v-select__selection-text {
+    color: var(--color-text-interactive-default) !important;
+  }
 }
 
 // This formats the icon with a box around it but I don't really like it
@@ -322,6 +304,13 @@ input {
 // Fix spacing between checkbox/radio and label in menu items
 .v-list-item-action .v-selection-control {
   gap: 24px;
+}
+
+// Alternating row background for admin list views
+@include themed('.v-list') {
+  div:nth-child(odd) .v-list-item {
+    background-color: var(--color-background-base-selected) !important;
+  }
 }
 
 .blink {

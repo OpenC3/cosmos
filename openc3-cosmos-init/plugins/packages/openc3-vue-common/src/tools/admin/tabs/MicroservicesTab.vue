@@ -548,9 +548,6 @@ export default {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
 }
-.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
-  background-color: var(--color-background-base-selected) !important;
-}
 .rotating-icon {
   animation: spin 1s linear infinite;
 }
