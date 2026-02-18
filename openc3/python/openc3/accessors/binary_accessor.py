@@ -351,7 +351,7 @@ class BinaryAccessor(Accessor):
                 if data_type == "STRING":
                     return ""
                 else:
-                    return bytearray(b'')
+                    return bytearray(b"")
             elif bit_size < 0:
                 cls.raise_buffer_error("read", buffer, data_type, given_bit_offset, given_bit_size)
 
