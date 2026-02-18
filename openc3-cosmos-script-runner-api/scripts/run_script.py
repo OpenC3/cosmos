@@ -233,10 +233,13 @@ finally:
 
         running = ScriptStatusModel.all(scope=scope, type="running")
 
-        # Inform script channel it is complete
+        # Inform script channel it is complete (include suite report if available to avoid race condition)
+        complete_msg = {"type": "complete", "state": script_status.state}
+        if running_script and running_script.suite_report:
+            complete_msg["report"] = running_script.suite_report
         running_script_anycable_publish(
             f"running-script-channel:{id}",
-            {"type": "complete", "state": script_status.state},
+            complete_msg,
         )
 
         # Inform frontend of number of running scripts in this scope

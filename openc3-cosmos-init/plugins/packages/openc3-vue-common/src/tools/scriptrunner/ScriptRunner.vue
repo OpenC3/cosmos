@@ -2138,11 +2138,16 @@ export default {
           case 'script':
             this.handleScript(data)
             break
+          // DEPRECATED because the 'complete' message now includes the report
           case 'report':
             this.results.text = data.report
             this.results.show = true
             break
           case 'complete':
+            if (data.report) {
+              this.results.text = data.report
+              this.results.show = true
+            }
             this.removeAllMarkers()
             this.scriptComplete()
             break
