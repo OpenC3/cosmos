@@ -352,7 +352,7 @@ class LoggedStreamingThread < StreamingThread
 
       objects.each do |object|
         break if @cancel_thread
-        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
+        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
         tables[table_name] = object.cmd_or_tlm
 
         if object.start_time
@@ -629,7 +629,7 @@ class LoggedStreamingThread < StreamingThread
       break if @cancel_thread
       objects.each do |object|
         break if @cancel_thread
-        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
+        table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
         key = [table_name, object.stream_mode]
         objects_by_table_and_mode[key] ||= []
         objects_by_table_and_mode[key] << object
@@ -923,7 +923,7 @@ class LoggedStreamingThread < StreamingThread
     objects_by_table = {}
     packet_objects.each do |object|
       # Same sanitization as tsdb_microservice.py create_table()
-      table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
+      table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
       objects_by_table[table_name] ||= []
       objects_by_table[table_name] << object
     end
@@ -1047,7 +1047,7 @@ class LoggedStreamingThread < StreamingThread
     # Group objects by table and stream_mode for efficient querying
     objects_by_table_and_mode = {}
     packet_objects.each do |object|
-      table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm)
+      table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
       key = [table_name, object.stream_mode]
       objects_by_table_and_mode[key] ||= []
       objects_by_table_and_mode[key] << object

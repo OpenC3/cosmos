@@ -231,7 +231,7 @@ class CvtModel(Model):
                 current_position += 1
                 continue
 
-            table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+            table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name, scope=scope)
             tables[table_name] = 1
 
             # Find the index of this table

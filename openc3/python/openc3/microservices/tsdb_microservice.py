@@ -73,7 +73,7 @@ class TsdbMicroservice(Microservice):
             packet = get_tlm(target_name, packet_name)
             cmd_or_tlm = "TLM"
             retain_time = self.tlm_decom_retain_time
-        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time)
+        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time, scope=self.scope)
 
     def read_topics(self):
         """Read topics and write data to QuestDB"""
@@ -104,7 +104,7 @@ class TsdbMicroservice(Microservice):
                 cmd_or_tlm = "CMD" if "__DECOMCMD__" in topic else "TLM"
 
                 # Get sanitized table name
-                table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name, cmd_or_tlm)
+                table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name, cmd_or_tlm, scope=self.scope)
 
                 # Get packet timestamp (packet_time) and received timestamp (received_time) in nanoseconds
                 time_bytes = msg_hash.get(b"time")
