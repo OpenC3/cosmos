@@ -199,7 +199,7 @@ Second, the JSON API no longer accepts plaintext passwords. You must instead use
 
 ### MINIO to Versitygw Migration
 
-COSMOS 7 replaces MINIO with [Versity Gateway (versitygw)](https://github.com/versity/versitygw) as the S3-compatible storage backend. Versitygw uses a POSIX filesystem backend rather than MINIO's internal object format, so existing data must be migrated via the S3 API. A migration script is provided at [`scripts/linux/openc3_migrate_s3.sh`](https://github.com/OpenC3/cosmos/blob/main/scripts/linux/openc3_migrate_s3.sh) that handles this automatically. The script runs the MINIO client (`mc`) via Docker, so no local installation is required.
+COSMOS 7 uses [Versity Gateway (versitygw)](https://github.com/versity/versitygw) as the S3-compatible storage backend. Versitygw uses a POSIX filesystem backend rather than MINIO's internal object format, so existing data must be migrated via the S3 API. A migration script is provided at [`scripts/linux/openc3_migrate_s3.sh`](https://github.com/OpenC3/cosmos/blob/main/scripts/linux/openc3_migrate_s3.sh) that handles this automatically. The script runs the MINIO client (`mc`) via Docker, so no local installation is required.
 
 #### Migration Script Commands
 
@@ -254,7 +254,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 ./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 
-# 3. Migrate all data from old MINIO volume to running versitygw
+# 3. Migrate all data from old COSMOS 6 MINIO volume to the running versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 
 # 4. Verify your data migrated correctly
@@ -287,7 +287,7 @@ OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linu
 The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
 :::
 
-After verifying COSMOS 7 works correctly, you can remove the old MINIO volume:
+After verifying COSMOS 7 works correctly, you can remove the old COSMOS 6 MINIO volume:
 
 ```bash
 docker volume rm openc3-bucket-v

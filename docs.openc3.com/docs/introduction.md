@@ -10,13 +10,9 @@ This site aims to be a comprehensive guide to OpenC3 COSMOS. We'll cover topics 
 
 COSMOS is a suite of applications that can be used to control a set of embedded systems. These systems can be anything from test equipment (power supplies, oscilloscopes, switched power strips, UPS devices, etc), to development boards (Arduinos, Raspberry Pi, Beaglebone, etc), to satellites.
 
-### COSMOS Architecture
+![COSMOS Clean Room](/img/cosmos-cleanroom.png)
 
-![COSMOS Architecture](/img/architecture.png)
-
-COSMOS is a cloud native, containerized, microservice oriented command and control system. All the COSMOS microservices are docker containers which is why Docker is shown containing the entire COSMOS system. The green boxes on the left represent external embedded systems (Targets) which COSMOS connects to. The Redis data store contains the configuration for all the microservices, the current value table, as well as data streams containing decommutated data. The bucket data store contains plugins, targets, configuration data, text logs as well as binary logs of all the raw and decommutated data. Users interact with COSMOS from a web browser which routes through the internal Traefik load balancer.
-
-Keep reading for an in-depth discussion of each of the COSMOS Tools.
+COSMOS is a cloud native, containerized, microservice oriented command and control system. See the [Architecture](/docs/getting-started/architecture) page for a detailed breakdown of both the Core and Enterprise architectures.
 
 ## Helpful Hints
 
