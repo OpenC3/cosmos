@@ -23,7 +23,7 @@
       v-model="drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
-       <img
+      <img
         :src="wordmark"
         class="cosmos-wordmark"
         alt="COSMOS"

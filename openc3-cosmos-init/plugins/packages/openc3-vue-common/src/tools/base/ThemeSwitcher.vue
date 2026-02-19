@@ -13,7 +13,13 @@
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
 
-const VALID_THEMES = new Set(['cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo', 'cosmosDarkSlate', 'cosmosDarkEmerald'])
+const VALID_THEMES = new Set([
+  'cosmosDark',
+  'cosmosDarkCobalt',
+  'cosmosDarkIndigo',
+  'cosmosDarkSlate',
+  'cosmosDarkEmerald',
+])
 
 export default {
   created: function () {
