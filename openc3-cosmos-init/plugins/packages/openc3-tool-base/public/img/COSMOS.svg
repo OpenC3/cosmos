@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2609.65 337.22">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-1, .cls-2 {
+        fill: none;
+        stroke: #ffffff;
+        stroke-width: 65px;
+      }
+
+      .cls-2 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </defs>
+  <rect class="cls-1" x="412.96" y="40.46" width="327.83" height="256.3" rx="51" ry="51"/>
+  <rect class="cls-1" x="1800.05" y="40.46" width="327.83" height="256.3" rx="51" ry="51"/>
+  <path class="cls-1" d="M311.83,293.77H86c-28.17,0-51-22.83-51-51V88.47c0-28.17,22.83-51,51-51h225.83"/>
+  <polyline class="cls-2" points="1182.56 40.46 882.65 40.46 882.65 40.46 882 168.61 882 168.61 1182.24 168.61 1182.24 168.61 1181.65 296.76 1181.65 296.76 882.32 296.76"/>
+  <polyline class="cls-2" points="2569.65 40.46 2269.74 40.46 2269.74 40.46 2269.09 168.61 2269.09 168.61 2569.33 168.61 2569.33 168.61 2568.73 296.76 2568.73 296.76 2269.41 296.76"/>
+  <polyline class="cls-2" points="1323.77 297.22 1324.95 40 1491.3 169.07 1657.66 40 1658.84 297.22"/>
+</svg>

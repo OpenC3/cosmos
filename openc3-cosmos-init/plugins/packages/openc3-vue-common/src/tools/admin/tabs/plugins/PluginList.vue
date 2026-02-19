@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -137,8 +137,5 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
-}
-.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
-  background-color: var(--color-background-base-selected) !important;
 }
 </style>

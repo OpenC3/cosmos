@@ -45,3 +45,27 @@ $topbarSearchInputColor: #ffffff;
 
 /* Footer */
 $footerBgColor: rgb(24, 38, 53);
+
+/* Cosmos Themes — add new Vuetify theme names here */
+$cosmos-themes: 'cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo', 'cosmosDarkSlate', 'cosmosDarkEmerald';
+
+// Generates selectors targeting all cosmos themes for Vuetify components.
+// Single:  @include themed('.v-select') { ... }
+// List:    @include themed(('.v-tab', '.v-toolbar')) { ... }
+// No arg:  @include themed() { .child { ... } }  (descendant nesting via SCSS)
+// Prefix:  @include themed('.v-list', $prefix: '.v-menu > ') { ... }
+@mixin themed($components: (''), $prefix: '') {
+  $selectors: ();
+  @each $theme in $cosmos-themes {
+    @each $component in $components {
+      $selectors: append(
+        $selectors,
+        '#{$prefix}.v-theme--#{$theme}#{$component}',
+        comma
+      );
+    }
+  }
+  #{$selectors} {
+    @content;
+  }
+}
