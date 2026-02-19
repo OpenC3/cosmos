@@ -191,7 +191,7 @@ export default {
       drawer: true,
       appNav: {},
       logo: '/img/logo.png',
-      wordmark: '/img/COSMOS.png',
+      wordmark: '/img/COSMOS.svg',
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
