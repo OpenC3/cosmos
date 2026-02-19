@@ -2080,8 +2080,11 @@ export default {
         case 'stopped':
         case 'crashed':
         case 'killed':
+          // Only remove markers here - full cleanup is handled by the
+          // 'complete' message in processReceived() which always follows.
+          // Calling scriptComplete() here would unsubscribe the channel
+          // before the 'complete' message (with suite report) arrives.
           this.removeAllMarkers()
-          this.scriptComplete()
           break
 
         default:
