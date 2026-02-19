@@ -162,9 +162,10 @@ module OpenC3
     # @param target_name [String] Target name
     # @param packet_name [String] Packet name
     # @param cmd_or_tlm [String, Symbol] "CMD" or "TLM" prefix (default "TLM")
+    # @param scope [String] Scope name (default "DEFAULT")
     # @return [String] Sanitized table name
-    def self.sanitize_table_name(target_name, packet_name, cmd_or_tlm = "TLM")
-      "#{cmd_or_tlm}__#{target_name}__#{packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
+    def self.sanitize_table_name(target_name, packet_name, cmd_or_tlm = "TLM", scope: "DEFAULT")
+      "#{scope}__#{cmd_or_tlm}__#{target_name}__#{packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
     end
 
     # Sanitize a column name for QuestDB.

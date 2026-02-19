@@ -397,7 +397,7 @@ class QuestDBClient:
             return "varchar", True
 
     @classmethod
-    def sanitize_table_name(cls, target_name, packet_name, cmd_or_tlm="TLM"):
+    def sanitize_table_name(cls, target_name, packet_name, cmd_or_tlm="TLM", scope="DEFAULT"):
         """
         Create a valid QuestDB table name from target and packet names.
 
@@ -405,11 +405,12 @@ class QuestDBClient:
             target_name: Target name
             packet_name: Packet name
             cmd_or_tlm: "CMD" or "TLM" prefix (default "TLM")
+            scope: Scope name (default "DEFAULT")
 
         Returns:
             Tuple of (sanitized_table_name, original_table_name)
         """
-        orig_table_name = f"{cmd_or_tlm}__{target_name}__{packet_name}"
+        orig_table_name = f"{scope}__{cmd_or_tlm}__{target_name}__{packet_name}"
         table_name = re.sub(cls.TABLE_NAME_INVALID_CHARS, "_", orig_table_name)
         return table_name, orig_table_name
 
@@ -496,7 +497,7 @@ class QuestDBClient:
             # TypeError: can occur in unit tests with mock cursors
             return None
 
-    def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None):
+    def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None, scope="DEFAULT"):
         """
         Create a QuestDB table for a target/packet combination.
 
@@ -506,11 +507,12 @@ class QuestDBClient:
             packet: Packet definition dict with 'items' list
             cmd_or_tlm: "CMD" or "TLM" prefix (default "TLM")
             retain_time: Optional Time To Live for the table (e.g., "30d", "1y")
+            scope: Scope name (default "DEFAULT")
 
         Returns:
             The sanitized table name that was created
         """
-        table_name, orig_table_name = self.sanitize_table_name(target_name, packet_name, cmd_or_tlm)
+        table_name, orig_table_name = self.sanitize_table_name(target_name, packet_name, cmd_or_tlm, scope=scope)
 
         if table_name != orig_table_name:
             self._log_warn(
