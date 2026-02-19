@@ -43,7 +43,13 @@
       <v-card-subtitle
         class="d-flex align-center justify-content-space-between"
       >
-        <div>{{ author }}</div>
+        <div>
+          By <strong>{{ author }}</strong>
+          <span v-if="author_extra?.badge_text" class="ml-1 font-italic">
+            {{ author_extra.badge_text }}
+          </span>
+          <v-icon v-if="author_extra?.badge_icon" :icon="author_extra.badge_icon" :size="18" class="ml-1" />
+        </div>
       </v-card-subtitle>
       <!--
       <v-card-subtitle
@@ -66,13 +72,15 @@
       </v-card-subtitle>
       -->
       <v-card-text>
-        <v-img v-if="image_url" :src="image_url" />
+        <div class="plugin-image-backdrop">
+          <v-img v-if="image_url" :src="image_url" />
+        </div>
         <v-img
           v-if="imageContentsWithMimeType"
           :src="imageContentsWithMimeType"
         />
         <div class="mt-3" v-text="description" />
-        <div class="mt-3 text-caption">
+        <div class="mt-3 text-caption font-italic">
           Keywords:
           <template v-if="keywords">
             <v-chip
@@ -98,6 +106,19 @@
           >
             {{ license }}
           </v-chip>
+        </div>
+        <div class="mt-3">
+          <span class="text-caption font-italic"> Minimum COSMOS version: </span>
+          {{ minimum_cosmos_version }}
+          <v-tooltip v-if="versionsAreCompatible !== null" :open-delay="600" location="top">
+            <template #activator="{ props }">
+              <span v-bind="props">
+                <v-icon :icon="versionsAreCompatible ? 'mdi-check-circle' : 'mdi-alert'" size="small" />
+              </span>
+            </template>
+            <span v-if="versionsAreCompatible"> Your version of COSMOS meets the requirements. </span>
+            <span v-else> Your version of COSMOS is out of date. You can still install this plugin, but it might not work correctly. </span>
+          </v-tooltip>
         </div>
         <v-text-field
           v-model="checksum"
@@ -167,6 +188,8 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
+import * as semver from 'semver'
 import PluginProps from './PluginProps'
 
 export default {
@@ -179,6 +202,7 @@ export default {
     return {
       showDialog: false,
       showCopiedTooltip: false,
+      installedCosmosVersion: null,
     }
   },
   computed: {
@@ -194,6 +218,17 @@ export default {
     formattedStoreLink: function () {
       return this._storeUrl.split('://').at(-1)
     },
+    versionsAreCompatible: function () {
+      if (!this.installedCosmosVersion || !this.minimum_cosmos_version) {
+        return null
+      }
+      return semver.gte(this.installedCosmosVersion, this.minimum_cosmos_version)
+    },
+  },
+  created: function () {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.installedCosmosVersion = data.version
+    })
   },
   methods: {
     openDialog: function () {
@@ -218,3 +253,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.plugin-image-backdrop {
+  background-color: rgb(156, 163, 175);
+}
+</style>

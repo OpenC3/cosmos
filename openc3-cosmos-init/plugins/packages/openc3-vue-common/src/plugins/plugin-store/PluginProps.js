@@ -24,6 +24,7 @@ export default {
     // titleSlug: String,
     author: String,
     // authorSlug: String,
+    author_extra: Object,
     description: String,
     keywords: Array,
     img_path: String, // Set for local plugins
@@ -34,6 +35,7 @@ export default {
     homepage: String,
     repository: String,
     gem_url: String,
+    minimum_cosmos_version: String,
     checksum: String,
   },
   data: function () {
@@ -52,6 +54,7 @@ export default {
         // titleSlug: this.titleSlug,
         author: this.author,
         // authorSlug: this.authorSlug,
+        author_extra: this.author_extra,
         description: this.description,
         keywords: this.keywords,
         img_path: this.img_path,
@@ -62,6 +65,7 @@ export default {
         homepage: this.homepage,
         repository: this.repository,
         gem_url: this.gem_url,
+        minimum_cosmos_version: this.minimum_cosmos_version,
         checksum: this.checksum,
       }
     },
