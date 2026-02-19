@@ -22,7 +22,7 @@
     <v-alert v-model="successSaving" type="success" closable density="compact">
       Saved! (Refresh the page to see changes)
     </v-alert>
-    <v-card-text class="pb-0">
+    <v-card-text class="pt-4 pb-0">
       <v-select
         v-model="selectedTheme"
         label="Theme"
