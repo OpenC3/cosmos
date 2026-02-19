@@ -12,10 +12,9 @@
 import select
 import struct
 import unittest
-from unittest.mock import *
+from unittest.mock import patch
 
-from openc3.io.udp_sockets import *
-from test.test_helper import *
+from openc3.io.udp_sockets import UdpReadSocket, UdpReadWriteSocket, UdpWriteSocket, socket
 
 
 class TestUdpWriteSocket(unittest.TestCase):
@@ -27,8 +26,8 @@ class TestUdpWriteSocket(unittest.TestCase):
         udp = UdpWriteSocket("224.0.1.1", 8888, 7888, "127.0.0.1", 3)
         self.assertEqual(udp.getsockname()[1], 7888)
         self.assertEqual(udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL), 3)
-        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
-        self.assertEqual(socket.inet_ntoa(bytes), "127.0.0.1")
+        _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
+        self.assertEqual(socket.inet_ntoa(_bytes), "127.0.0.1")
         udp.close()
 
     def test_writes_data(self):
@@ -64,8 +63,8 @@ class TestUdpReadSocket(unittest.TestCase):
         self.assertEqual(udp.getsockname()[1], 8888)
         udp.close()
         udp = UdpReadSocket(8888, "224.0.1.1")
-        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
-        self.assertEqual(socket.inet_ntoa(bytes), "0.0.0.0")
+        _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
+        self.assertEqual(socket.inet_ntoa(_bytes), "0.0.0.0")
         udp.close()
 
     def test_reads_data(self):
@@ -108,9 +107,9 @@ class TestUdpReadWriteSocket(unittest.TestCase):
         udp = UdpReadWriteSocket(8888, "0.0.0.0", 1234, "224.0.1.1")
         self.assertEqual(udp.getpeername()[0], "224.0.1.1")
         self.assertEqual(udp.getpeername()[1], 1234)
-        bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
+        _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(udp.getsockname()[1], 8888)
-        self.assertEqual(socket.inet_ntoa(bytes), "0.0.0.0")
+        self.assertEqual(socket.inet_ntoa(_bytes), "0.0.0.0")
         udp.close()
 
     def test_reads_data(self):
