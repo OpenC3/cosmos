@@ -40,6 +40,11 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.redis = mock_redis(self)
         setup_system()
 
+        # Prevent microservice status thread from leaking between tests
+        patcher = patch("openc3.microservices.microservice.Microservice._status_thread")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
         # Set up required environment variables
         os.environ["OPENC3_SCOPE"] = "DEFAULT"
         os.environ["OPENC3_TSDB_HOSTNAME"] = "localhost"

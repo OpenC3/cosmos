@@ -341,6 +341,7 @@ class RunningScript
   attr_accessor :user_input
   attr_accessor :prompt_id
   attr_reader :script_status
+  attr_reader :suite_report
   attr_accessor :execute_while_paused_info
 
   # This REGEX is also found in scripts_controller.rb
@@ -1210,7 +1211,7 @@ class RunningScript
       elsif parts[0] and init_split.length > 1
         parts[0] += "_#{init_split[-1]}"
       end
-      running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :report, report: OpenC3::SuiteRunner.suite_results.report })
+      @suite_report = OpenC3::SuiteRunner.suite_results.report
       # Write out the report to a local file
       log_dir = File.join(RAILS_ROOT, 'log')
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))

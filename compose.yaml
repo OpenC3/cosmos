@@ -40,7 +40,11 @@ services:
     healthcheck:
       # Test that S3-compatible storage (versitygw) is responding on port 9000
       # A 403 Forbidden response means the server is healthy and responding
-      test: ["CMD-SHELL", "wget -O- http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -O- http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -72,7 +76,11 @@ services:
     healthcheck:
       # Test that QuestDB can actually execute queries via the REST API
       # This verifies both the HTTP server and the database engine are working
-      test: ["CMD-SHELL", "curl -f -u \"$${QDB_HTTP_USER}:$${QDB_HTTP_PASSWORD}\" 'http://localhost:9000/exec?query=SELECT+1' | grep -q '\"query\":\"SELECT 1\"' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'curl -f -u "$${QDB_HTTP_USER}:$${QDB_HTTP_PASSWORD}" ''http://localhost:9000/exec?query=SELECT+1'' | grep -q ''"query":"SELECT 1"'' || exit 1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -99,7 +107,8 @@ services:
     healthcheck:
       # Test Redis with PING command - use default connection (no auth in healthcheck)
       # Redis will respond with NOAUTH if it's running, which is sufficient for health
-      test: ["CMD-SHELL", "redis-cli ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
+      test:
+        ["CMD-SHELL", "redis-cli ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -127,7 +136,11 @@ services:
     healthcheck:
       # Test ephemeral Redis with PING command on port 6380
       # Redis will respond with NOAUTH if it's running, which is sufficient for health
-      test: ["CMD-SHELL", "redis-cli -p 6380 ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -p 6380 ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1",
+        ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -211,12 +224,11 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
-      # By not setting a value it pases the environment variable from the shell
-      # straight to the container and doesn't complain if CI is not set
-      CI: "true"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
+      # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
+      # List syntax passes through host CI only if set, omits it otherwise
+      - CI
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
     env_file:
       - .env
     extra_hosts:
@@ -280,12 +292,11 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
-      # By not setting a value it pases the environment variable from the shell
-      # straight to the container and doesn't complain if CI is not set
-      CI: "true"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
+      # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
+      # List syntax passes through host CI only if set, omits it otherwise
+      - CI
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
     env_file:
       - .env
 

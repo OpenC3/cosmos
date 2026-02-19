@@ -91,7 +91,7 @@ end
 # Check the wheels
 Dir.chdir(File.join(__dir__, '../../openc3/python')) do
   puts "\nChecking outdated wheels in openc3/python:"
-  puts `poetry show -o`
+  puts `uv pip list --outdated`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
   puts "\nChecking outdated wheels in openc3-cosmos-demo:"

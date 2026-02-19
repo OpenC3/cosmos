@@ -48,11 +48,18 @@ chmod +x openc3_migrate_s3.sh
 
 # 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
 ./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
 
 # 3. Stop COSMOS 6
 ./openc3.sh stop
 
-# 4. Upgrade to COSMOS 7+ and start
+# 4. Rerun the migration (only copies new files since the previous migration)
+./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
+
+# 5. Upgrade to COSMOS 7+ and start
 ./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 ```
@@ -71,9 +78,8 @@ Stop COSMOS 6 first, then migrate after upgrading:
 
 # 3. Migrate all data from old MINIO volume to running versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
-
-# 4. Verify your data migrated correctly
 ./scripts/linux/openc3_migrate_s3.sh status
+./scripts/linux/openc3_migrate_s3.sh cleanup
 ```
 
 ### Migration Script Features

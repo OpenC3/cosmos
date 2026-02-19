@@ -36,7 +36,6 @@ class TestTcpipClientInterface(unittest.TestCase):
             ConnectionRefusedError,
         ):
             i.connect()
-        # ResourceWarning: unclosed <socket.socket
 
     def test_initially_returns_false(self):
         i = TcpipClientInterface("localhost", "8888", "8889", "5", "5", "burst")

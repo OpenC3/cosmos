@@ -22,6 +22,7 @@ on:
 
 env:
   OPENC3_CLOUD: local
+  OPENC3_REDIS_HOSTNAME: localhost
 
 jobs:
   unit-test:
