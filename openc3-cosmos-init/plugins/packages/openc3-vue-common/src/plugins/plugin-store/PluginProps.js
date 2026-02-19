@@ -91,9 +91,15 @@ export default {
       }
       return undefined
     },
+    _navigableStoreUrl: function () {
+      return this._storeUrl.replace(
+        'host.docker.internal',
+        'localhost',
+      )
+    },
     storeLink: function () {
-      if (this.hasStoreListing) {
-        return new URL(`/cosmos_plugins/${this.id}`, this._storeUrl)
+      if (this.hasStoreListing && this._navigableStoreUrl) {
+        return new URL(`/cosmos_plugins/${this.id}`, this._navigableStoreUrl)
       }
       return null
     },

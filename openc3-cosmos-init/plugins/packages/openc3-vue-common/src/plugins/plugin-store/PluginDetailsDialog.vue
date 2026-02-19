@@ -12,7 +12,6 @@
 -->
 
 <template>
-  <slot name="activator" :props="{ onClick: openDialog }"></slot>
   <v-dialog v-model="isDialogOpen" max-width="500">
     <v-card>
       <v-toolbar height="24">
@@ -48,7 +47,12 @@
           <span v-if="author_extra?.badge_text" class="ml-1 font-italic">
             {{ author_extra.badge_text }}
           </span>
-          <v-icon v-if="author_extra?.badge_icon" :icon="author_extra.badge_icon" :size="18" class="ml-1" />
+          <v-icon
+            v-if="author_extra?.badge_icon"
+            :icon="author_extra.badge_icon"
+            :size="18"
+            class="ml-1"
+          />
         </div>
       </v-card-subtitle>
       <!--
@@ -73,12 +77,12 @@
       -->
       <v-card-text>
         <div class="plugin-image-backdrop">
-          <v-img v-if="image_url" :src="image_url" />
+          <v-img
+            v-if="imageContentsWithMimeType"
+            :src="imageContentsWithMimeType"
+          />
+          <v-img v-else-if="image_url" :src="image_url" />
         </div>
-        <v-img
-          v-if="imageContentsWithMimeType"
-          :src="imageContentsWithMimeType"
-        />
         <div class="mt-3" v-text="description" />
         <div class="mt-3 text-caption font-italic">
           Keywords:
@@ -108,16 +112,32 @@
           </v-chip>
         </div>
         <div class="mt-3">
-          <span class="text-caption font-italic"> Minimum COSMOS version: </span>
+          <span class="text-caption font-italic">
+            Minimum COSMOS version:
+          </span>
           {{ minimum_cosmos_version }}
-          <v-tooltip v-if="versionsAreCompatible !== null" :open-delay="600" location="top">
+          <v-tooltip
+            v-if="versionsAreCompatible !== null"
+            :open-delay="600"
+            location="top"
+          >
             <template #activator="{ props }">
               <span v-bind="props">
-                <v-icon :icon="versionsAreCompatible ? 'mdi-check-circle' : 'mdi-alert'" size="small" />
+                <v-icon
+                  :icon="
+                    versionsAreCompatible ? 'mdi-check-circle' : 'mdi-alert'
+                  "
+                  size="small"
+                />
               </span>
             </template>
-            <span v-if="versionsAreCompatible"> Your version of COSMOS meets the requirements. </span>
-            <span v-else> Your version of COSMOS is out of date. You can still install this plugin, but it might not work correctly. </span>
+            <span v-if="versionsAreCompatible">
+              Your version of COSMOS meets the requirements.
+            </span>
+            <span v-else>
+              Your version of COSMOS is out of date. You can still install this
+              plugin, but it might not work correctly.
+            </span>
           </v-tooltip>
         </div>
         <v-text-field
@@ -216,13 +236,16 @@ export default {
       },
     },
     formattedStoreLink: function () {
-      return this._storeUrl.split('://').at(-1)
+      return this._navigableStoreUrl.split('://').at(-1)
     },
     versionsAreCompatible: function () {
       if (!this.installedCosmosVersion || !this.minimum_cosmos_version) {
         return null
       }
-      return semver.gte(this.installedCosmosVersion, this.minimum_cosmos_version)
+      return semver.gte(
+        this.installedCosmosVersion,
+        this.minimum_cosmos_version,
+      )
     },
   },
   created: function () {
