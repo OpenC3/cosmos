@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -39,37 +39,21 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  props: {
-    modelValue: {
-      type: Boolean,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-    },
-    text: {
-      type: String,
-      required: true,
-    },
-    width: {
-      type: String,
-      required: true,
-    },
+<script setup>
+const show = defineModel({ type: Boolean, required: true })
+
+defineProps({
+  title: {
+    type: String,
+    required: true,
   },
-  emits: ['update:modelValue'],
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
+  text: {
+    type: String,
+    required: true,
   },
-  methods: {},
-}
+  width: {
+    type: String,
+    required: true,
+  },
+})
 </script>

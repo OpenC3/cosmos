@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,52 +43,39 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue'
 import { format } from 'date-fns'
 
-export default {
-  components: {},
-  props: {
-    modelValue: {
-      type: Boolean,
-      required: true,
-    },
-    text: {
-      type: String,
-      required: true,
-    },
+const props = defineProps({
+  text: {
+    type: String,
+    required: true,
   },
-  emits: ['update:modelValue'],
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  mounted() {
-    // Focus the OK button so it's easy to hit Enter to close
-    setTimeout(() => {
-      this.$refs.okButton.$el.focus()
-    })
-  },
-  methods: {
-    downloadResults() {
-      const blob = new Blob([this.text], {
-        type: 'text/plain',
-      })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute(
-        'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_suite_results.txt',
-      )
-      link.click()
-    },
-  },
+})
+
+const show = defineModel({ type: Boolean, required: true })
+
+const okButton = ref(null)
+
+function downloadResults() {
+  const blob = new Blob([props.text], {
+    type: 'text/plain',
+  })
+  // Make a link and then 'click' on it to start the download
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.setAttribute(
+    'download',
+    format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_suite_results.txt',
+  )
+  link.click()
 }
+
+onMounted(() => {
+  // Focus the OK button so it's easy to hit Enter to close
+  setTimeout(() => {
+    okButton.value?.$el?.focus()
+  })
+})
 </script>

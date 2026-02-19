@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -78,89 +78,62 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 
-export default {
-  components: {},
-  props: {
-    modelValue: {
-      type: Boolean,
-      required: true,
-    },
-  },
-  emits: ['update:modelValue'],
-  data() {
-    return {
-      api: null,
-      overrides: [],
-      search: '',
-      headers: [
-        { text: 'Target', value: 'target_name' },
-        { text: 'Packet', value: 'packet_name' },
-        { text: 'Item', value: 'item_name' },
-        { text: 'Type', value: 'value_type' },
-        { text: 'Value', value: 'value' },
-        { text: 'Delete', value: 'delete' },
-      ],
-    }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  created: function () {
-    this.api = new OpenC3Api()
-    this.getOverrides()
-  },
-  methods: {
-    getOverrides: function () {
-      this.api.get_overrides().then((result) => {
-        this.overrides = result
-      })
-    },
-    clearOverrides: function () {
-      const items = [
-        ...new Map(
-          this.overrides.map((item) => [
-            // Create a key based on target, packet, item so we remove duplicates
-            `${item.target_name}__${item.packet_name}__${item.item_name}`,
-            item,
-          ]),
-        ).values(),
-      ]
-      for (let item of items) {
-        this.api
-          .normalize_tlm(
-            item.target_name,
-            item.packet_name,
-            item.item_name,
-            'ALL',
-          )
-          .then((result) => {
-            this.overrides = []
-          })
-      }
-    },
-    deleteOverride: function (item) {
-      this.api
-        .normalize_tlm(
-          item.target_name,
-          item.packet_name,
-          item.item_name,
-          item.value_type,
-        )
-        .then((result) => {
-          let index = this.overrides.indexOf(item)
-          this.overrides.splice(index, 1)
-        })
-    },
-  },
+const show = defineModel({ type: Boolean, required: true })
+
+const api = new OpenC3Api()
+const overrides = ref([])
+const search = ref('')
+const headers = [
+  { text: 'Target', value: 'target_name' },
+  { text: 'Packet', value: 'packet_name' },
+  { text: 'Item', value: 'item_name' },
+  { text: 'Type', value: 'value_type' },
+  { text: 'Value', value: 'value' },
+  { text: 'Delete', value: 'delete' },
+]
+
+async function getOverrides() {
+  const result = await api.get_overrides()
+  overrides.value = result
 }
+
+async function clearOverrides() {
+  const items = [
+    ...new Map(
+      overrides.value.map((item) => [
+        // Create a key based on target, packet, item so we remove duplicates
+        `${item.target_name}__${item.packet_name}__${item.item_name}`,
+        item,
+      ]),
+    ).values(),
+  ]
+  for (const item of items) {
+    await api.normalize_tlm(
+      item.target_name,
+      item.packet_name,
+      item.item_name,
+      'ALL',
+    )
+    overrides.value = []
+  }
+}
+
+async function deleteOverride(item) {
+  await api.normalize_tlm(
+    item.target_name,
+    item.packet_name,
+    item.item_name,
+    item.value_type,
+  )
+  const index = overrides.value.indexOf(item)
+  overrides.value.splice(index, 1)
+}
+
+onMounted(() => {
+  getOverrides()
+})
 </script>
