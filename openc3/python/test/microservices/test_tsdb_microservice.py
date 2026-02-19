@@ -1713,7 +1713,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"ANGLE__C" varchar', create_table_sql)
 
         # The __C column should be registered for JSON serialization so integer values get stringified
-        self.assertIn("TLM__TEST__PKT__ANGLE__C", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PKT__ANGLE__C", tsdb.questdb.json_columns)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
