@@ -306,10 +306,10 @@ input {
   gap: 24px;
 }
 
-// Alternating row background for admin list views
-@include themed('.v-list') {
+// Alternating row background for admin list views (scoped to .list class)
+@include themed('.v-list.list') {
   div:nth-child(odd) .v-list-item {
-    background-color: var(--color-background-base-selected) !important;
+    background-color: rgba(var(--v-theme-on-surface), 0.05) !important;
   }
 }
 

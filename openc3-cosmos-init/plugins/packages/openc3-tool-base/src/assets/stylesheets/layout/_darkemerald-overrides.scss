@@ -1,0 +1,171 @@
+// Dark Theme - Neutral Grey with Emerald Accent
+// Scoped under html.theme-dark-emerald
+
+// ============================================================================
+// Color Palette
+// ============================================================================
+
+// Backgrounds — clean neutral grey, no green tint
+$dg-bg-body: #181A1C;
+$dg-bg-chrome: #1E2022;
+$dg-bg-surface: #222428;
+$dg-bg-surface-alt: #26282C;
+$dg-bg-surface-header: #1C1E20;
+$dg-bg-interactive-muted: #2C2E32;
+$dg-bg-hover: #343840;
+$dg-bg-selected: #1A3838; // emerald tint only in selection highlight
+
+// Borders — neutral grey
+$dg-border-muted: #363840;
+$dg-border-default: #484C56;
+
+// Accent — vivid emerald (the only green in the theme)
+$dg-accent: #00897B;
+$dg-accent-hover: #26A69A;
+$dg-accent-light: #4DB6AC;
+$dg-accent-muted: #006E62;
+
+// Text — neutral, no green cast
+$dg-text-primary: #D4D8DC;
+$dg-text-secondary: #A0A8B0;
+$dg-text-muted: #6E7680;
+$dg-text-sidebar: #B0B8C0;
+
+$dg-green: #56f000;
+$dg-yellow: #fce83a;
+$dg-red: #ff3838;
+$dg-blue: #2dccff;
+$dg-purple: rgb(200, 0, 200);
+
+// ============================================================================
+// Overrides
+// ============================================================================
+
+html.theme-dark-emerald {
+  --color-background-base-default: #{$dg-bg-body} !important;
+  --color-background-base-header: #{$dg-bg-body} !important;
+  --color-background-surface-default: #{$dg-bg-surface} !important;
+  --color-background-surface-header: #{$dg-bg-surface-header} !important;
+  --color-background-surface-hover: #{$dg-bg-hover} !important;
+  --color-background-surface-selected: #{$dg-bg-selected} !important;
+  --color-background-interactive-default: #{$dg-accent} !important;
+  --color-background-interactive-muted: #{$dg-bg-interactive-muted} !important;
+
+  --color-text-inverse: #{$dg-text-primary} !important;
+  --color-text-interactive-default: #{$dg-text-secondary} !important;
+  --color-text-primary: #{$dg-text-primary} !important;
+  --color-text-secondary: #{$dg-text-muted} !important;
+
+  --color-border-interactive-muted: #{$dg-border-muted} !important;
+  --color-border-interactive-default: #{$dg-border-default} !important;
+
+  --button-color-background-primary-default: #{$dg-accent-muted} !important;
+  --button-color-background-primary-hover: #{$dg-accent} !important;
+  --button-color-border-primary-default: #{$dg-accent-muted} !important;
+  --button-color-border-primary-hover: #{$dg-accent} !important;
+  --button-color-border-interactive-default: #{$dg-accent-muted} !important;
+
+  --gsb-color-background: #{$dg-bg-chrome} !important;
+  --gsb-color-text: #{$dg-text-primary} !important;
+  --gsb-icon-color-fill-default: #{$dg-text-secondary} !important;
+  --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
+
+  --clock-datetime-color-background: #{$dg-bg-body} !important;
+}
+
+html.theme-dark-emerald .openc3-green {
+  color: #{$dg-green} !important;
+}
+
+html.theme-dark-emerald .openc3-yellow {
+  color: #{$dg-yellow} !important;
+}
+
+html.theme-dark-emerald .openc3-red {
+  color: #{$dg-red} !important;
+}
+
+html.theme-dark-emerald .openc3-blue {
+  color: #{$dg-blue} !important;
+}
+
+html.theme-dark-emerald .openc3-purple {
+  color: #{$dg-purple} !important;
+}
+
+html.theme-dark-emerald {
+
+  .v-calendar,
+  .v-calendar-weekly__day-label,
+  .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+    background-color: $dg-bg-surface-header !important;
+  }
+
+  .v-calendar-weekly__head-weekday {
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-top: 1px solid $dg-border-default !important;
+  }
+
+  .v-calendar-month__day {
+    background-color: $dg-bg-body !important;
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-bottom: 1px solid $dg-border-default !important;
+  }
+}
+
+html.theme-dark-emerald {
+  .layout-sidebar {
+    background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
+  }
+
+  .layout-sidebar .layout-menu a {
+    color: $dg-text-sidebar !important;
+  }
+
+  .layout-sidebar .layout-menu a:hover {
+    background-color: $dg-bg-hover !important;
+  }
+
+  .layout-sidebar .layout-menu a.active-route {
+    color: $dg-accent-light !important;
+    background-color: rgba($dg-accent, 0.1) !important;
+  }
+}
+
+html.theme-dark-emerald {
+
+  .layout-topbar,
+  #openc3-app-toolbar {
+    background-color: $dg-bg-chrome !important;
+  }
+
+  #openc3-app-toolbar rux-icon {
+    color: $dg-accent !important;
+    cursor: pointer;
+  }
+
+  #openc3-app-toolbar rux-icon:hover {
+    color: $dg-accent-hover !important;
+  }
+}
+
+html.theme-dark-emerald #footer {
+  background-color: $dg-bg-chrome !important;
+}
+
+@include themed('', $prefix: 'html.theme-dark-emerald ') {
+  --v-theme-primary: #{red($dg-accent)},
+  #{green($dg-accent)},
+  #{blue($dg-accent)};
+  --v-theme-on-primary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+  --v-theme-secondary: #{red($dg-text-secondary)},
+  #{green($dg-text-secondary)},
+  #{blue($dg-text-secondary)};
+  --v-theme-on-secondary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+}

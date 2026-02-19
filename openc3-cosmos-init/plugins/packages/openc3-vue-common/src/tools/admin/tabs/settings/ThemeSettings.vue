@@ -55,8 +55,10 @@ export default {
       selectedTheme: 'cosmosDark',
       themeOptions: [
         { label: 'Astro (Default)', value: 'cosmosDark' },
-        { label: 'Dark Blue', value: 'cosmosDarkBlue' },
+        { label: 'Dark Cobalt', value: 'cosmosDarkCobalt' },
         { label: 'Dark Indigo', value: 'cosmosDarkIndigo' },
+        { label: 'Dark Slate', value: 'cosmosDarkSlate' },
+        { label: 'Dark Emerald', value: 'cosmosDarkEmerald' },
       ],
     }
   },

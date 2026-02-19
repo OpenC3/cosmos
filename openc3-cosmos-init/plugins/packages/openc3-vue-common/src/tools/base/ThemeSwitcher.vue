@@ -13,7 +13,7 @@
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
 
-const VALID_THEMES = ['cosmosDark', 'cosmosDarkBlue', 'cosmosDarkIndigo']
+const VALID_THEMES = ['cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo', 'cosmosDarkSlate', 'cosmosDarkEmerald']
 
 export default {
   created: function () {
@@ -23,13 +23,21 @@ export default {
       .then((response) => {
         if (!VALID_THEMES.includes(response)) return
         switch (response) {
-          case 'cosmosDarkBlue':
-            this.$vuetify.theme.global.name = 'cosmosDarkBlue'
-            document.documentElement.classList.add('theme-dark-blue')
+          case 'cosmosDarkCobalt':
+            this.$vuetify.theme.global.name = 'cosmosDarkCobalt'
+            document.documentElement.classList.add('theme-dark-cobalt')
             break
           case 'cosmosDarkIndigo':
             this.$vuetify.theme.global.name = 'cosmosDarkIndigo'
             document.documentElement.classList.add('theme-dark-indigo')
+            break
+          case 'cosmosDarkSlate':
+            this.$vuetify.theme.global.name = 'cosmosDarkSlate'
+            document.documentElement.classList.add('theme-dark-slate')
+            break
+          case 'cosmosDarkEmerald':
+            this.$vuetify.theme.global.name = 'cosmosDarkEmerald'
+            document.documentElement.classList.add('theme-dark-emerald')
             break
           // default: cosmosDark — no action needed, it's the default theme
         }

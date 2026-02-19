@@ -1,0 +1,197 @@
+// Dark Theme - Neutral Grey with Cobalt Blue Accent
+// Astro design token and layout overrides for the cosmosDarkCobalt Vuetify theme.
+// Vuetify colors (primary, surface, background, etc.) are handled by
+// cosmosThemeDarkCobalt.js via the Vuetify theme API.
+// This file covers only what Vuetify can't reach: Astro web components,
+// hardcoded values, and layout chrome. Loaded last in layout.scss.
+//
+// All rules are scoped under html.theme-dark-cobalt so they only activate
+// when the ThemeSwitcher mixin adds that class to <html>.
+
+// ============================================================================
+// Color Palette — tweak these to experiment with the whole theme at once
+// ============================================================================
+
+// Backgrounds — #1f1f1f (31,31,31) surfaces, #161616 (22,22,22) body so cards stand out
+$dg-bg-body: #161616; // page background — darker so cards/panels are distinct (22,22,22)
+$dg-bg-chrome: #1f1f1f; // sidebar, topbar, footer, GSB (31,31,31)
+$dg-bg-surface: #1f1f1f; // cards, tables, panels (31,31,31)
+$dg-bg-surface-alt: #1c1c1c; // sidebar gradient end
+$dg-bg-surface-header: #181818; // card titles, toolbars, calendar — recessed (24,24,24)
+$dg-bg-interactive-muted: #2a2a2a;
+$dg-bg-hover: #2e2e2e; // list/item hover — lighter than base for visibility
+$dg-bg-selected: #1a3a5c; // selection highlight (blue-tinted)
+
+// Borders — visible against #1f1f1f base
+$dg-border-muted: #383838;
+$dg-border-default: #444444;
+
+// Accent — #007ad0 (0,122,208)
+$dg-accent: #007ad0;
+$dg-accent-hover: #1a8ada;
+$dg-accent-light: #4da3e0;
+$dg-accent-muted: #005fa0; // buttons — darker so large fills don't overpower
+
+// Text
+$dg-text-primary: #d4d4d4;
+$dg-text-secondary: #cccccc;
+$dg-text-muted: #858585;
+$dg-text-sidebar: #cccccc;
+
+// Semantic status — slightly desaturated for comfort
+$dg-green: #56f000;
+$dg-yellow: #fce83a;
+$dg-red: #ff3838;
+$dg-blue: #2dccff;
+$dg-purple: rgb(200, 0, 200);
+
+// ============================================================================
+// Overrides
+// ============================================================================
+
+// === Astro Design Token Overrides ===
+html.theme-dark-cobalt {
+  // Backgrounds - layered dark grey palette with strong contrast steps
+  // Body (deepest) → Surface (cards/panels) → Headers → Hover/Selected → Interactive
+  --color-background-base-default: #{$dg-bg-body} !important;
+  --color-background-base-header: #{$dg-bg-body} !important;
+  --color-background-surface-default: #{$dg-bg-surface} !important;
+  --color-background-surface-header: #{$dg-bg-surface-header} !important;
+  --color-background-surface-hover: #{$dg-bg-hover} !important;
+  --color-background-surface-selected: #{$dg-bg-selected} !important;
+  --color-background-interactive-default: #{$dg-accent} !important;
+  --color-background-interactive-muted: #{$dg-bg-interactive-muted} !important;
+
+  // Text
+  --color-text-inverse: #{$dg-text-primary} !important;
+  --color-text-interactive-default: #{$dg-text-secondary} !important;
+  --color-text-primary: #{$dg-text-primary} !important;
+  --color-text-secondary: #{$dg-text-muted} !important;
+
+  // Borders
+  --color-border-interactive-muted: #{$dg-border-muted} !important;
+  --color-border-interactive-default: #{$dg-border-default} !important;
+
+  // Buttons — muted fill so large areas don't overpower
+  --button-color-background-primary-default: #{$dg-accent-muted} !important;
+  --button-color-background-primary-hover: #{$dg-accent} !important;
+  --button-color-border-primary-default: #{$dg-accent-muted} !important;
+  --button-color-border-primary-hover: #{$dg-accent} !important;
+  --button-color-border-interactive-default: #{$dg-accent-muted} !important;
+
+  // Astro Global Status Bar (footer bar)
+  --gsb-color-background: #{$dg-bg-chrome} !important;
+  --gsb-color-text: #{$dg-text-primary} !important;
+  --gsb-icon-color-fill-default: #{$dg-text-secondary} !important;
+  --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
+
+  // Astro Clock
+  --clock-datetime-color-background: #{$dg-bg-body} !important;
+}
+
+// === OpenC3 Semantic Color Overrides ===
+html.theme-dark-cobalt .openc3-green {
+  color: #{$dg-green} !important;
+}
+
+html.theme-dark-cobalt .openc3-yellow {
+  color: #{$dg-yellow} !important;
+}
+
+html.theme-dark-cobalt .openc3-red {
+  color: #{$dg-red} !important;
+}
+
+html.theme-dark-cobalt .openc3-blue {
+  color: #{$dg-blue} !important;
+}
+
+html.theme-dark-cobalt .openc3-purple {
+  color: #{$dg-purple} !important;
+}
+
+// === Hardcoded color fixes from _overrides.scss ===
+// Calendar styles that used hardcoded hex values
+html.theme-dark-cobalt {
+
+  .v-calendar,
+  .v-calendar-weekly__day-label,
+  .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+    background-color: $dg-bg-surface-header !important;
+  }
+
+  .v-calendar-weekly__head-weekday {
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-top: 1px solid $dg-border-default !important;
+  }
+
+  .v-calendar-month__day {
+    background-color: $dg-bg-body !important;
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-bottom: 1px solid $dg-border-default !important;
+  }
+}
+
+// === Menu / Sidebar Overrides ===
+html.theme-dark-cobalt {
+  .layout-sidebar {
+    background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
+  }
+
+  .layout-sidebar .layout-menu a {
+    color: $dg-text-sidebar !important;
+  }
+
+  .layout-sidebar .layout-menu a:hover {
+    background-color: $dg-bg-hover !important;
+  }
+
+  .layout-sidebar .layout-menu a.active-route {
+    color: $dg-accent-light !important;
+    background-color: rgba($dg-accent, 0.1) !important;
+  }
+}
+
+// === Topbar / App Bar Overrides ===
+html.theme-dark-cobalt {
+
+  .layout-topbar,
+  #openc3-app-toolbar {
+    background-color: $dg-bg-chrome !important;
+  }
+
+  // Astro nav icon (hamburger/apps icon) in the app bar
+  #openc3-app-toolbar rux-icon {
+    color: $dg-accent !important;
+    cursor: pointer;
+  }
+
+  #openc3-app-toolbar rux-icon:hover {
+    color: $dg-accent-hover !important;
+  }
+}
+
+// === Footer Overrides ===
+html.theme-dark-cobalt #footer {
+  background-color: $dg-bg-chrome !important;
+}
+
+// === Vuetify theme variable overrides for tool micro-frontends ===
+// Tools create their own Vuetify instance defaulting to cosmosDark.
+// Override the CSS vars so color="primary"/color="secondary" resolve to cobalt accent colors.
+@include themed('', $prefix: 'html.theme-dark-cobalt ') {
+  --v-theme-primary: #{red($dg-accent)},
+  #{green($dg-accent)},
+  #{blue($dg-accent)};
+  --v-theme-on-primary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+  --v-theme-secondary: #{red($dg-text-secondary)},
+  #{green($dg-text-secondary)},
+  #{blue($dg-text-secondary)};
+  --v-theme-on-secondary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+}

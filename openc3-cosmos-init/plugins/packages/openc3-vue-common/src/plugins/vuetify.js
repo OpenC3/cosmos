@@ -15,16 +15,20 @@ import { createVuetify } from 'vuetify'
 import { mdi } from 'vuetify/iconsets/mdi'
 import { AstroIconVuetifySets, CustomIconSet } from '@/icons'
 import cosmosDark from './cosmosThemeDark'
-import cosmosDarkBlue from './cosmosThemeDarkBlue'
+import cosmosDarkCobalt from './cosmosThemeDarkCobalt'
 import cosmosDarkIndigo from './cosmosThemeDarkIndigo'
+import cosmosDarkSlate from './cosmosThemeDarkSlate'
+import cosmosDarkEmerald from './cosmosThemeDarkEmerald'
 
 export default createVuetify({
   theme: {
     defaultTheme: 'cosmosDark',
     themes: {
       cosmosDark,
-      cosmosDarkBlue,
-      cosmosDarkIndigo
+      cosmosDarkCobalt,
+      cosmosDarkIndigo,
+      cosmosDarkSlate,
+      cosmosDarkEmerald
     },
   },
   defaults: {
