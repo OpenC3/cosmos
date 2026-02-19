@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-bucketexplorer",
-  "version": "7.0.0-rc2",
+  "version": "7.0.0-rc3",
   "private": true,
   "type": "module",
   "scripts": {
