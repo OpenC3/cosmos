@@ -200,8 +200,16 @@ module OpenC3
         @cmd = parameters.dup
         # Automatically use UV venv Python for user microservices to ensure openc3 module is found
         # Replace 'python', 'python3', or 'python3.X' with the correct Python binary
-        if @cmd[0] =~ /^python3?(\.[\d]+)?$/
-          @cmd[0] = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        # Handles both split form: CMD python start.py -> ["python", "start.py"]
+        # and quoted single-string form: CMD "python start.py" -> ["python start.py"]
+        python_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        # Handle split form:  CMD python start.py  => @cmd = ["python", "start.py"]
+        if @cmd[0] =~ /^python3?(\.\d+)*$/
+          @cmd[0] = python_bin
+        # Handle quoted single-string form: CMD "python start.py" => @cmd = ["python start.py"]
+        elsif @cmd[0] =~ /^python3?(\.\d+)*\s+/
+          _exe, rest = @cmd[0].split(/\s+/, 2)
+          @cmd = [python_bin, rest]
         end
       when 'OPTION'
         parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Values>")
