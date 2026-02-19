@@ -71,10 +71,28 @@ The Secrets tab allows you to create secrets that can be used by Interfaces or M
 
 ### Settings
 
-The Settings tab contains various settings used throughout COSMOS. These including clearing saved tool configuration, hiding the Astro Clock, changing the system time zone, adding a top and bottom banner, creating a subtitle in the navigation bar, and changing the URLs of the various package libraries.
+The Settings tab contains various settings used throughout COSMOS. These including clearing saved tool configuration, hiding the Astro Clock, changing the system time zone, adding a top and bottom banner, creating a subtitle in the navigation bar, changing the theme, and changing the URLs of the various package libraries.
 
 ![Settings1](/img/admin/settings1.png)
 ![Settings2](/img/admin/settings2.png)
+
+#### Theme
+
+COSMOS includes several built-in color themes that change the look and feel of the entire application. To change the theme, select one from the Theme dropdown and click Save. Refresh the page to see the changes.
+
+![Themes](/img/admin/themes.png)
+
+The available themes are:
+
+| Theme | Description |
+|-------|-------------|
+| Astro (Default) | Standard Astro dark theme with blue accents |
+| Dark Cobalt | Neutral grey with cobalt blue accent |
+| Dark Indigo | Cool grey with indigo/purple accent |
+| Dark Slate | Blue-grey with teal/cyan accent |
+| Dark Emerald | Neutral grey with emerald green accent |
+
+The selected theme is a system-wide setting that applies to all users. After saving, each user must refresh their browser to see the updated theme.
 
 ### Roles (Enterprise)
 
