@@ -13,7 +13,7 @@ OpenC3 releases new versions of COSMOS on a monthy or better cadence. This is do
 COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, apply the upgrade, and run the new release.
 
 :::info Release Notes
-Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0 and then 6.0.0 before proceeding. See [Upgrade Migration Process](https://docs.openc3.com/docs/getting-started/upgrading#upgrade-migration-process) for more information.
+Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0, then 6.0.0, then 7.0.0 before proceeding. See [Upgrade Migration Process](/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
 This example assumes an existing COSMOS project at `cosmos-project`. This should first be performed on a non-production machine that has the same set of plugins as your production system.
@@ -115,12 +115,13 @@ The following table identifies key release milestones which changed the COSMOS p
 
 Versions 5.13.0 and 6.0.0 _REQUIRE_ a stop to evaluate the upgrade. Thus if you're currently at 5.9.0 you must first upgrade to 5.13.0, then 6.0.0, then to the latest.
 
-| Version                                                             | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| :------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| \*[5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0)\* | Breaking change to non-root containers and renamed bucket volume. Requires running the [Core migration shell script](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.sh) / [Core migration batch file](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.bat) or [Enterprise migration shell script](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.sh) / [Enterprise migration batch file](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.bat) to preserve previous data.<br/><br/>NOTE: Read the script! The You must set `GITHUB_PAT` in Enterprise or simply comment out the lines with `GITHUB_PAT`. |
-| [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0)     | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| \*[6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)\*   | Upgrade to Vue 3 and Vuetify 3 requires custom GUI tools to follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Version                                                             | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| :------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| \*[5.13.0](https://github.com/OpenC3/cosmos/releases/tag/v5.13.0)\* | Breaking change to non-root containers and renamed minio volume. Requires running the [Core migration shell script](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.sh) / [Core migration batch file](https://github.com/OpenC3/cosmos-project/blob/v5.13.0.0/migrate_5_12_to_5_13.bat) or [Enterprise migration shell script](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.sh) / [Enterprise migration batch file](https://github.com/OpenC3/cosmos-enterprise-project/blob/v5.13.0.0/migrate_5_12_to_5_13_enterprise.bat) to preserve previous data.<br/><br/>NOTE: Read the script! The You must set `GITHUB_PAT` in Enterprise or simply comment out the lines with `GITHUB_PAT`. |
+| [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0)     | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| \*[6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)\*   | Upgrade to Vue 3 and Vuetify 3 requires custom GUI tools to follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [7.0.0](https://github.com/OpenC3/cosmos/releases/tag/v7.0.0-rc1)   | Added a new time series database (TSDB) container. Switched from MINIO to versitygw and renamed the container from openc3-bucket to openc3-buckets. Running the migration script is required. See [MINIO to Versitygw Migration](/docs/getting-started/upgrading#minio-to-versitygw-migration). Once COSMOS 7 is running the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin (also on the [App Store](https://store.openc3.com/cosmos_plugins/21)) is required to move data from existing bin files to the new TSDB.                                                                                                                                                                                                                     |
 
 :::warning Downgrades
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
@@ -214,29 +215,30 @@ The script is **idempotent** — it uses `mc mirror --preserve` which only copie
 
 #### Recommended Migration Workflow
 
-**Option A: Pre-Migration (Minimizes Downtime)**
+**Option A: Pre-Migration (Recommended - Minimizes Downtime)**
 
-Pre-migrate your data while COSMOS 6 is still running, then perform a final sync after shutdown:
+Migrate your data while COSMOS 6 is still running, then upgrade:
 
 ```bash
-# 1. While COSMOS 6 is running, do the initial data migration
-./scripts/linux/openc3_migrate_s3.sh start
-./scripts/linux/openc3_migrate_s3.sh migrate
+# 1. While COSMOS 6 is running, pull the migration script from COSMOS 7
+curl -O https://raw.githubusercontent.com/OpenC3/cosmos/main/scripts/linux/openc3_migrate_s3.sh
+chmod +x openc3_migrate_s3.sh
 
-# 2. Stop COSMOS 6
+# 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
+./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
+
+# 3. Stop COSMOS 6
 ./openc3.sh stop
 
-# 3. Upgrade to COSMOS 7
+# 4. Rerun the migration (only copies new files since the previous migration)
+./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
+
+# 5. Upgrade to COSMOS 7+ and start
 ./openc3.sh upgrade v7.0.0
-
-# 4. Run a final migration to sync any data written since the first migration
-./scripts/linux/openc3_migrate_s3.sh migrate
-
-# 5. Verify and clean up
-./scripts/linux/openc3_migrate_s3.sh status
-./scripts/linux/openc3_migrate_s3.sh cleanup
-
-# 6. Start COSMOS 7
 ./openc3.sh run
 ```
 
@@ -248,7 +250,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 # 1. Stop COSMOS 6
 ./openc3.sh stop
 
-# 2. Upgrade to COSMOS 7 and start (versitygw will be running)
+# 2. Upgrade to COSMOS 7+ and start (versitygw will be running)
 ./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 
@@ -257,8 +259,6 @@ Stop COSMOS 6 first, then migrate after upgrading:
 
 # 4. Verify your data migrated correctly
 ./scripts/linux/openc3_migrate_s3.sh status
-
-# 5. Clean up temporary containers
 ./scripts/linux/openc3_migrate_s3.sh cleanup
 ```
 
@@ -321,6 +321,7 @@ The following target configuration keywords are silently ignored during parsing 
 | `REDUCER_DISABLED`               | No replacement (removed) |
 | `REDUCER_MAX_CPU_UTILIZATION`    | No replacement (removed) |
 | `REDUCED_MAX_CPU_UTILIZATION`    | No replacement (removed) |
+| `OPTIMIZE_THROUGHPUT`            | `UPDATE_INTERVAL`        |
 
 #### New Keywords
 

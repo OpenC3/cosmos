@@ -183,10 +183,14 @@ ensure_network() {
     # Create migration network if needed
     if ! network_exists "$MIGRATION_NETWORK"; then
         log_info "Creating migration network: $MIGRATION_NETWORK"
-        docker network create "$MIGRATION_NETWORK" >/dev/null
+        if ! docker network create "$MIGRATION_NETWORK" >/dev/null; then
+            log_error "Failed to create migration network"
+            return 1
+        fi
     fi
     DOCKER_NETWORK="$MIGRATION_NETWORK"
     log_info "Using migration network: $DOCKER_NETWORK"
+    return 0
 }
 
 # Detect the current environment and set up source/destination
@@ -207,7 +211,7 @@ detect_environment() {
             log_error "Old MINIO volume '$OLD_VOLUME' not found"
             echo "This volume should exist from your COSMOS 6 installation."
             echo "If you haven't run COSMOS 6 before, there's nothing to migrate."
-            exit 1
+            return 1
         fi
     else
         log_info "Found old MINIO volume: $OLD_VOLUME"
@@ -265,6 +269,7 @@ detect_environment() {
     fi
 
     ensure_network
+    return $?
 }
 
 # Start temporary MINIO container
@@ -323,7 +328,7 @@ start_temp_minio() {
 
     log_error "MINIO failed to start"
     docker logs "$MINIO_MIGRATION_CONTAINER"
-    exit 1
+    return 1
 }
 
 # Start temporary versitygw container
@@ -370,7 +375,7 @@ start_temp_versity() {
 
     log_error "versitygw failed to start"
     docker logs "$VERSITY_MIGRATION_CONTAINER"
-    exit 1
+    return 1
 }
 
 # Run mc command via docker using old init container with patched mc
@@ -386,16 +391,16 @@ run_mc() {
 
 # Start command - ensure containers are running
 cmd_start() {
-    detect_environment
+    detect_environment || return 1
 
     # Start temp MINIO if no live MINIO
     if [[ -z "$MINIO_SOURCE" ]]; then
-        start_temp_minio
+        start_temp_minio || return 1
     fi
 
     # Start temp versitygw if no live versitygw
     if [[ -z "$VERSITY_DEST" ]]; then
-        start_temp_versity
+        start_temp_versity || return 1
     fi
 
     echo ""
@@ -404,20 +409,21 @@ cmd_start() {
     echo "  versitygw destination: $VERSITY_DEST"
     echo ""
     echo "Run '$0 migrate' to start migration"
+    return 0
 }
 
 # Migrate command - sync data from MINIO to versitygw
 cmd_migrate() {
-    detect_environment
+    detect_environment || return 1
 
     # Ensure source is available
     if [[ -z "$MINIO_SOURCE" ]]; then
-        start_temp_minio
+        start_temp_minio || return 1
     fi
 
     # Ensure destination is available
     if [[ -z "$VERSITY_DEST" ]]; then
-        start_temp_versity
+        start_temp_versity || return 1
     fi
 
     echo ""
@@ -426,19 +432,12 @@ cmd_migrate() {
     echo "  Destination: $VERSITY_DEST (volume: $NEW_VOLUME)"
     echo ""
 
-    # List buckets in MINIO
-    log_info "Buckets in MINIO (source):"
-    run_mc ls minio/ 2>/dev/null || true
-    echo ""
-
-    # Get list of buckets
-    local buckets
-    buckets=$(run_mc ls minio/ 2>/dev/null | awk '{print $NF}' | tr -d '/' | grep -v '^$' || true)
-
-    if [[ -z "$buckets" ]]; then
-        log_warn "No buckets found in MINIO - nothing to migrate"
-        return 0
-    fi
+    # Only migrate config and logs buckets
+    # Tools are installed and updated by the init container
+    local config_bucket="${OPENC3_CONFIG_BUCKET:-config}"
+    local logs_bucket="${OPENC3_LOGS_BUCKET:-logs}"
+    local buckets="$config_bucket $logs_bucket"
+    local failed=0
 
     # Migrate each bucket
     local bucket
@@ -458,23 +457,19 @@ cmd_migrate() {
             log_info "Bucket $bucket migrated successfully"
         else
             log_warn "Some files may have failed - check output above"
+            failed=1
         fi
     done
 
     echo ""
     log_info "Migration complete!"
     echo ""
-    echo "Next steps:"
-    echo "  1. Verify data: $0 status"
-    echo "  2. If COSMOS 6 is still running, you can run '$0 migrate' again to sync new data"
-    echo "  3. When ready, stop COSMOS 6, run final '$0 migrate', then '$0 cleanup'"
-    echo "  4. Start COSMOS 7: ./openc3.sh run"
-    echo ""
+    return $failed
 }
 
 # Status command - show migration status
 cmd_status() {
-    detect_environment
+    detect_environment || return 1
 
     echo ""
     log_step "Migration Status"
@@ -510,19 +505,22 @@ cmd_status() {
         echo ""
         echo "Bucket sizes (source -> destination):"
         echo ""
+        local config_bucket="${OPENC3_CONFIG_BUCKET:-config}"
+        local logs_bucket="${OPENC3_LOGS_BUCKET:-logs}"
         echo "  MINIO (source):"
-        run_mc du minio/config 2>/dev/null | sed 's/^/    /' || echo "    config: (unable to get size)"
-        run_mc du minio/logs 2>/dev/null | sed 's/^/    /' || echo "    logs: (unable to get size)"
-        run_mc du minio/tools 2>/dev/null | sed 's/^/    /' || echo "    tools: (unable to get size)"
+        run_mc du "minio/${config_bucket}" 2>/dev/null | sed 's/^/    /' || echo "    ${config_bucket}: (unable to get size)"
+        run_mc du "minio/${logs_bucket}" 2>/dev/null | sed 's/^/    /' || echo "    ${logs_bucket}: (unable to get size)"
         echo ""
         echo "  versitygw (destination):"
         # versitygw uses POSIX storage, so check disk usage and file count directly
-        docker exec "$VERSITY_DEST" sh -c 'for dir in config logs tools; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf "    %sMiB\t%s files\t%s\n" "$size" "$count" "$dir"; done' 2>/dev/null || echo "    (unable to get size)"
+        docker exec "$VERSITY_DEST" sh -c "for dir in ${config_bucket} ${logs_bucket}; do size=\$(du -sm /data/\$dir 2>/dev/null | cut -f1); count=\$(find /data/\$dir -type f 2>/dev/null | wc -l); printf '    %sMiB\t%s files\t%s\n' \"\$size\" \"\$count\" \"\$dir\"; done" 2>/dev/null || echo "    (unable to get size)"
         echo ""
-        log_info "If file counts match, migration was successful!"
+        log_info "Tools are not migrated - they are installed and updated by the init container."
+        log_info "File counts will only match if running migration when COSMOS is shutdown. If COSMOS 6 is still running the MINIO (source) will be producing new log files. If COSMOS 7 is running the versitygw (destination) will be producing new log files."
     fi
 
     echo ""
+    return 0
 }
 
 # Cleanup command - remove temporary containers
@@ -564,21 +562,26 @@ cmd_cleanup() {
     echo "After verifying COSMOS 7 works correctly, you can remove the old volume:"
     echo "  docker volume rm $OLD_VOLUME"
     echo ""
+    return 0
 }
 
 # Main
 case "${1:-help}" in
     start)
         cmd_start
+        exit $?
         ;;
     migrate)
         cmd_migrate
+        exit $?
         ;;
     status)
         cmd_status
+        exit $?
         ;;
     cleanup)
         cmd_cleanup
+        exit $?
         ;;
     help|--help|-h|*)
         usage

@@ -361,43 +361,31 @@ echo   Source: %MINIO_SOURCE% (volume: %OLD_VOLUME%)
 echo   Destination: %VERSITY_DEST% (volume: %NEW_VOLUME%)
 echo.
 
-REM List buckets in MINIO
-echo [INFO] Buckets in MINIO (source):
-call :run_mc ls minio/
-echo.
+REM Only migrate config and logs buckets
+REM Tools are installed and updated by the init container
+if "%OPENC3_CONFIG_BUCKET%"=="" set "OPENC3_CONFIG_BUCKET=config"
+if "%OPENC3_LOGS_BUCKET%"=="" set "OPENC3_LOGS_BUCKET=logs"
+for %%b in (%OPENC3_CONFIG_BUCKET% %OPENC3_LOGS_BUCKET%) do (
+    echo.
+    echo [==>] Processing bucket: %%b
 
-REM Get list of buckets and migrate each
-for /f "tokens=5" %%b in ('docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" "%MC_IMAGE%" mc ls minio/ 2^>nul') do (
-    set "BUCKET=%%b"
-    set "BUCKET=!BUCKET:/=!"
-    if not "!BUCKET!"=="" (
-        echo.
-        echo [==>] Processing bucket: !BUCKET!
-
-        REM Create bucket if it doesn't exist
-        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc ls "versity/!BUCKET!" >nul 2>&1
-        if errorlevel 1 (
-            echo [INFO] Creating bucket: !BUCKET!
-            docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mb "versity/!BUCKET!" 2>nul
-        )
-
-        REM Mirror data
-        echo [INFO] Mirroring data...
-        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mirror --preserve "minio/!BUCKET!" "versity/!BUCKET!"
-        echo [INFO] Bucket !BUCKET! migrated
+    REM Create bucket if it doesn't exist
+    docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc ls "versity/%%b" >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] Creating bucket: %%b
+        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mb "versity/%%b" 2>nul
     )
+
+    REM Mirror data
+    echo [INFO] Mirroring data...
+    docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mirror --preserve "minio/%%b" "versity/%%b"
+    echo [INFO] Bucket %%b migrated
 )
 
 echo.
 echo ==========================================
 echo Migration complete!
 echo ==========================================
-echo.
-echo Next steps:
-echo   1. Verify data: %~nx0 status
-echo   2. If COSMOS 6 is still running, you can run '%~nx0 migrate' again to sync new data
-echo   3. When ready, stop COSMOS 6, run final '%~nx0 migrate', then '%~nx0 cleanup'
-echo   4. Start COSMOS 7: openc3.bat run
 echo.
 exit /b 0
 
@@ -431,15 +419,17 @@ if not "%MINIO_SOURCE%"=="" if not "%VERSITY_DEST%"=="" (
     echo.
     echo Bucket sizes (source -^> destination):
     echo.
+    if "%OPENC3_CONFIG_BUCKET%"=="" set "OPENC3_CONFIG_BUCKET=config"
+    if "%OPENC3_LOGS_BUCKET%"=="" set "OPENC3_LOGS_BUCKET=logs"
     echo   MINIO (source):
-    call :run_mc du minio/config 2>nul
-    call :run_mc du minio/logs 2>nul
-    call :run_mc du minio/tools 2>nul
+    call :run_mc du minio/%OPENC3_CONFIG_BUCKET% 2>nul
+    call :run_mc du minio/%OPENC3_LOGS_BUCKET% 2>nul
     echo.
     echo   versitygw (destination):
     REM versitygw uses POSIX storage, so check disk usage and file count directly
-    docker exec "%VERSITY_DEST%" sh -c "for dir in config logs tools; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf '    %%sMiB\t%%s files\t%%s\n' \"$size\" \"$count\" \"$dir\"; done" 2>nul
+    docker exec "%VERSITY_DEST%" sh -c "for dir in %OPENC3_CONFIG_BUCKET% %OPENC3_LOGS_BUCKET%; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf '    %%sMiB\t%%s files\t%%s\n' \"$size\" \"$count\" \"$dir\"; done" 2>nul
     echo.
+    echo [INFO] Tools are not migrated - they are installed and updated by the init container.
     echo [INFO] If file counts match, migration was successful!
 )
 

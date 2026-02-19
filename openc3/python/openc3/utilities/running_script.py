@@ -270,6 +270,7 @@ class RunningScript:
         self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
         self.output_time_value = time.time()
         self.script_globals = globals()
+        self.suite_report = None
 
         self.initialize_variables()
         self.update_running_script_store("init")
@@ -927,10 +928,7 @@ class RunningScript:
                 parts[1] += f"_{init_split[-1]}"
             elif len(parts) == 1 and len(init_split) > 1:
                 parts[0] += f"_{init_split[-1]}"
-            running_script_anycable_publish(
-                f"running-script-channel:{self.script_status.id}",
-                {"type": "report", "report": SuiteRunner.suite_results.report()},
-            )
+            self.suite_report = SuiteRunner.suite_results.report()
             # Write out the report to a local file
             log_dir = os.path.join(RAILS_ROOT, "log")
             filename = os.path.join(log_dir, build_timestamped_filename(["sr", "__".join(parts)]))

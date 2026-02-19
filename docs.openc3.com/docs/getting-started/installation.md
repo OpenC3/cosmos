@@ -16,12 +16,16 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 <div style={{display: 'flex', justifyContent: 'center', gap: '20px'}}>
   <div style={{textAlign: 'center'}}>
-    <iframe width="400" height="225" src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <iframe width="320" height="180" src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
     <p><strong>Windows 11</strong></p>
   </div>
   <div style={{textAlign: 'center'}}>
-    <iframe width="400" height="225" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <iframe width="320" height="180" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
     <p><strong>macOS</strong></p>
+  </div>
+  <div style={{textAlign: 'center'}}>
+    <iframe width="320" height="180" src="https://www.youtube.com/embed/aLqAMvFjqY8" title="Getting Started with COSMOS on Linux Ubuntu" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <p><strong>Linux Ubuntu</strong></p>
   </div>
 </div>
 

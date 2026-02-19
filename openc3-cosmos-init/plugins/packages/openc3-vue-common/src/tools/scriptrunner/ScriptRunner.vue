@@ -2080,8 +2080,11 @@ export default {
         case 'stopped':
         case 'crashed':
         case 'killed':
+          // Only remove markers here - full cleanup is handled by the
+          // 'complete' message in processReceived() which always follows.
+          // Calling scriptComplete() here would unsubscribe the channel
+          // before the 'complete' message (with suite report) arrives.
           this.removeAllMarkers()
-          this.scriptComplete()
           break
 
         default:
@@ -2138,11 +2141,16 @@ export default {
           case 'script':
             this.handleScript(data)
             break
+          // DEPRECATED because the 'complete' message now includes the report
           case 'report':
             this.results.text = data.report
             this.results.show = true
             break
           case 'complete':
+            if (data.report) {
+              this.results.text = data.report
+              this.results.show = true
+            }
             this.removeAllMarkers()
             this.scriptComplete()
             break

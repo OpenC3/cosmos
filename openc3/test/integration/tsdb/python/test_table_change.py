@@ -93,7 +93,7 @@ class TestIntToFloat:
     def test_int_to_float(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "INT_TO_FLOAT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as INT 32 (long), write an integer
@@ -130,7 +130,7 @@ class TestIntToString:
     def test_int_to_string(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "INT_TO_STRING"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as INT 32 (long), write an integer
@@ -165,7 +165,7 @@ class TestFloatToString:
     def test_float_to_string(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "FLOAT_TO_STRING"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as FLOAT 64 (double), write a float
@@ -200,7 +200,7 @@ class TestFloatToInt:
     def test_float_to_int(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "FLOAT_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as FLOAT 64 (double), write a float
@@ -237,7 +237,7 @@ class TestStringToInt:
     def test_string_to_int(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "STRING_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as STRING (varchar), write a numeric string
@@ -272,7 +272,7 @@ class TestStringToFloat:
     def test_string_to_float(self, questdb_client, clean_table, wait_for_data):
         target = "TBLCHG"
         packet = "STRING_TO_FLOAT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Phase A: Create as STRING (varchar), write a numeric string

@@ -92,7 +92,7 @@ class TestCastFloatToIntColumn:
     def test_float_cast_to_int(self, questdb_client, clean_table, wait_for_data):
         target = "CAST"
         packet = "FLOAT_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         # Create table as INT 32 (LONG column)
@@ -125,7 +125,7 @@ class TestCastFloatToIntColumn:
     ):
         target = "CAST"
         packet = "NEG_FLOAT_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(
@@ -158,7 +158,7 @@ class TestCastStringToIntColumn:
     ):
         target = "CAST"
         packet = "NUMSTR_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(
@@ -189,7 +189,7 @@ class TestCastStringToIntColumn:
         """Non-numeric string can't be cast to int, stored as NULL."""
         target = "CAST"
         packet = "BADSTR_TO_INT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(
@@ -223,7 +223,7 @@ class TestCastStringToFloatColumn:
     ):
         target = "CAST"
         packet = "NUMSTR_TO_FLOAT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(
@@ -252,7 +252,7 @@ class TestCastStringToFloatColumn:
     ):
         target = "CAST"
         packet = "BADSTR_TO_FLOAT"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(
@@ -283,7 +283,7 @@ class TestCastToStringColumn:
     def test_int_cast_to_string(self, questdb_client, clean_table, wait_for_data):
         target = "CAST"
         packet = "INT_TO_STRING"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(target, packet, _make_packet_def("STRING"))
@@ -309,7 +309,7 @@ class TestCastToStringColumn:
     def test_float_cast_to_string(self, questdb_client, clean_table, wait_for_data):
         target = "CAST"
         packet = "FLOAT_TO_STRING"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(target, packet, _make_packet_def("STRING"))
@@ -341,7 +341,7 @@ class TestColumnTypeUnchanged:
         """Write multiple mismatched values — column type must stay LONG throughout."""
         target = "CAST"
         packet = "TYPE_PRESERVED"
-        table_name = clean_table(f"TLM__{target}__{packet}")
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
         base_ts = int(time.time() * 1e9)
 
         questdb_client.create_table(

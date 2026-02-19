@@ -30,6 +30,7 @@ require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
 require 'openc3/accessors'
+require 'base64'
 require 'nokogiri'
 require 'ostruct'
 require 'fileutils'
@@ -239,7 +240,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'CATCHALL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'CATCHALL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_BASE64', 'TEMPLATE_FILE',\
               'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR', 'SUBPACKET', 'SUBPACKETIZER',\
               'STRUCTURE', 'APPEND_STRUCTURE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
@@ -598,14 +599,19 @@ module OpenC3
       when 'TEMPLATE'
         usage = "#{keyword} <Template string>"
         parser.verify_num_parameters(1, 1, usage)
-        @current_packet.template = params[0]
+        @current_packet.template = params[0].force_encoding('ascii-8bit')
+
+      when 'TEMPLATE_BASE64'
+        usage = "#{keyword} <Template string>"
+        parser.verify_num_parameters(1, 1, usage)
+        @current_packet.template = Base64.decode64(params[0])
 
       when 'TEMPLATE_FILE'
         usage = "#{keyword} <Template file path>"
         parser.verify_num_parameters(1, 1, usage)
 
         begin
-          @current_packet.template = parser.read_file(params[0])
+          @current_packet.template = parser.read_file(params[0]).force_encoding('ascii-8bit')
         rescue Exception => e
           raise parser.error(e.formatted)
         end

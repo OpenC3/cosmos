@@ -26,8 +26,9 @@ module OpenC3
     def read_item(item, buffer)
       if item.parent_item
         # Structure is used to read items with parent, not accessor
-        structure_buffer = read_item(item.parent_item, buffer)
-        structure = item.parent_item.structure
+        parent_item = @packet.get_item(item.parent_item)
+        structure_buffer = read_item(parent_item, buffer)
+        structure = parent_item.structure
         structure.read(item.key, :RAW, structure_buffer)
       else
         self.class.read_item(item, buffer)
@@ -37,10 +38,11 @@ module OpenC3
     def write_item(item, value, buffer)
       if item.parent_item
         # Structure is used to write items with parent, not accessor
-        structure_buffer = read_item(item.parent_item, buffer)
-        structure = item.parent_item.structure
+        parent_item = @packet.get_item(item.parent_item)
+        structure_buffer = read_item(parent_item, buffer)
+        structure = parent_item.structure
         structure.write(item.key, value, :RAW, structure_buffer)
-        self.class.write_item(item.parent_item, structure_buffer, buffer)
+        self.class.write_item(parent_item, structure_buffer, buffer)
       else
         self.class.write_item(item, value, buffer)
       end

@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -20,22 +20,21 @@
     v-model="show"
     persistent
     width="800"
-    @keydown.enter="success()"
+    @keydown.enter="disableButtons ? null : success()"
     @keydown.esc="disableButtons ? null : (show = false)"
   >
     <v-card>
-      <v-overlay :model-value="loading">
-        <v-progress-circular
-          indeterminate
-          absolute
-          size="64"
-        ></v-progress-circular>
-      </v-overlay>
       <form @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
           <v-spacer />
+          <v-progress-linear
+            :active="disableButtons"
+            indeterminate
+            location="bottom"
+            absolute
+          />
         </v-toolbar>
         <v-card-text>
           <div class="pa-3">
@@ -70,7 +69,7 @@
                 hide-details
                 label="Filename"
                 data-test="file-open-save-filename"
-                :disabled="type === 'open'"
+                :disabled="disableButtons || type === 'open'"
               />
             </v-row>
             <v-row dense>
@@ -152,10 +151,9 @@ export default {
       items: [],
       search: null,
       selectedFile: null,
-      disableButtons: false,
+      disableButtons: true,
       targets: [],
       targetsRetrieved: [],
-      loading: true,
     }
   },
   computed: {
@@ -229,7 +227,7 @@ export default {
     Api.get('/openc3-api/targets').then((response) => {
       this.targets = response.data
       this.targets.push('__TEMP__') // Also support __TEMP__
-      this.targets.forEach((target) => {
+      const loadPromises = this.targets.map((target) => {
         // Name not found so push the item and add a children array
         this.items.push({
           id: target,
@@ -239,9 +237,11 @@ export default {
           path: target,
         })
         // Load the targets 1 by 1 in the background
-        this.loadFiles(target)
+        return this.loadFiles(target)
       })
-      this.loading = false
+      Promise.all(loadPromises).then(() => {
+        this.disableButtons = false
+      })
     })
   },
   methods: {
@@ -249,7 +249,7 @@ export default {
       return fileIcon(filename)
     },
     loadFiles: function (target) {
-      Api.get(this.apiUrl, { params: { target } })
+      return Api.get(this.apiUrl, { params: { target } })
         .then((response) => {
           if (response.data.length === 0) {
             // Delete from items since there is no data
@@ -328,7 +328,11 @@ export default {
     },
     success: function () {
       // Only process the success call if a file is selected and no error
-      if (this.selectedFile !== null && this.error === null) {
+      if (
+        this.selectedFile !== null &&
+        this.error === null &&
+        !this.disableButtons
+      ) {
         if (this.type === 'open') {
           this.openSuccess()
         } else {

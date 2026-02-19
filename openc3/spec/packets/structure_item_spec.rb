@@ -318,10 +318,10 @@ module OpenC3
       it "includes parent_item when present" do
         parent = StructureItem.new("parent", 0, 32, :BLOCK, :BIG_ENDIAN, nil)
         child = StructureItem.new("child", 0, 8, :UINT, :BIG_ENDIAN, nil)
-        child.parent_item = parent
+        child.parent_item = parent.name
         hash = child.as_json()
         expect(hash.keys).to include('parent_item')
-        expect(hash["parent_item"]['name']).to eql 'PARENT'
+        expect(hash["parent_item"]).to eql 'PARENT'
       end
     end
   end

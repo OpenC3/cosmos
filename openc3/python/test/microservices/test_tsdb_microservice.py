@@ -40,6 +40,11 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.redis = mock_redis(self)
         setup_system()
 
+        # Prevent microservice status thread from leaking between tests
+        patcher = patch("openc3.microservices.microservice.Microservice._status_thread")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
         # Set up required environment variables
         os.environ["OPENC3_SCOPE"] = "DEFAULT"
         os.environ["OPENC3_TSDB_HOSTNAME"] = "localhost"
@@ -256,7 +261,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Check that table was created with correct name (TLM__ prefix for telemetry)
         calls = mock_cursor.execute.call_args_list
-        self.assertTrue(any("TLM__INST__HEALTH_STATUS" in str(call) for call in calls))
+        self.assertTrue(any("DEFAULT__TLM__INST__HEALTH_STATUS" in str(call) for call in calls))
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -409,7 +414,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Verify data was written to QuestDB
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")
+        self.assertEqual(call_args[0][0], "DEFAULT__TLM__INST__HEALTH_STATUS")
         self.assertIn("TEMP1", call_args[1]["columns"])
         self.assertEqual(call_args[1]["columns"]["TEMP1"], 42)
 
@@ -858,7 +863,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Setup mock to raise IngressError on first call, succeed on second
         error_msg = (
-            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: TEMP1; "
+            "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: TEMP1; "
             'cast error from protocol type: FLOAT to column type: LONG","line":1'
         )
         mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
@@ -920,7 +925,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Setup mock to raise IngressError for array-to-scalar conversion on first call,
         # then succeed on retry after JSON serialization
         error_msg = (
-            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: JSON_ITEM; "
+            "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: JSON_ITEM; "
             'cast error from protocol type: DOUBLE[] to column type: INT","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
@@ -947,7 +952,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("Serializing as JSON string", stdout.getvalue())
 
         # Column should be registered for JSON serialization
-        self.assertIn("TLM__INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -984,7 +989,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Setup mock to raise IngressError for ARRAY (no brackets) to VARCHAR conversion
         # This matches the error format from QuestDB when sending array to varchar column
         error_msg = (
-            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: ITEM7; "
+            "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: ITEM7; "
             'cast error from protocol type: ARRAY to column type: VARCHAR","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
@@ -1011,7 +1016,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("Serializing as JSON string", stdout.getvalue())
 
         # Column should be registered for JSON serialization
-        self.assertIn("TLM__INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1105,8 +1110,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"STRING_ARRAY" varchar', create_table_sql)
 
         # Non-numeric arrays should be registered for JSON serialization
-        self.assertIn("TLM__TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
-        self.assertIn("TLM__TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__MIXED_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__STRING_ARRAY", tsdb.questdb.json_columns)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1251,26 +1256,26 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"DERIVED_OBJECT" varchar', create_table_sql)
 
         # Only untyped/complex DERIVED items should be registered for JSON serialization
-        self.assertIn("TLM__TEST__PACKET__DERIVED_NO_CONV", tsdb.questdb.json_columns)
-        self.assertIn("TLM__TEST__PACKET__DERIVED_NIL_TYPE", tsdb.questdb.json_columns)
-        self.assertIn("TLM__TEST__PACKET__DERIVED_ARRAY", tsdb.questdb.json_columns)
-        self.assertIn("TLM__TEST__PACKET__DERIVED_OBJECT", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_NO_CONV", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_NIL_TYPE", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_ARRAY", tsdb.questdb.json_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_OBJECT", tsdb.questdb.json_columns)
 
         # Typed DERIVED items should NOT be registered for JSON serialization
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_FLOAT32", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_FLOAT64", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_INT16", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_UINT32", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_STRING", tsdb.questdb.json_columns)
-        self.assertNotIn("TLM__TEST__PACKET__DERIVED_TIME", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT32", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT64", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_INT16", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_UINT32", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_STRING", tsdb.questdb.json_columns)
+        self.assertNotIn("DEFAULT__TLM__TEST__PACKET__DERIVED_TIME", tsdb.questdb.json_columns)
 
         # Float columns should be registered with correct bit sizes
-        self.assertEqual(tsdb.questdb.float_bit_sizes.get("TLM__TEST__PACKET__DERIVED_FLOAT32"), 32)
-        self.assertEqual(tsdb.questdb.float_bit_sizes.get("TLM__TEST__PACKET__DERIVED_FLOAT64"), 64)
+        self.assertEqual(tsdb.questdb.float_bit_sizes.get("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT32"), 32)
+        self.assertEqual(tsdb.questdb.float_bit_sizes.get("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT64"), 64)
 
         # 64-bit integer columns should be registered for DECIMAL conversion
-        self.assertIn("TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.decimal_int_columns)
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.decimal_int_columns)
 
     def test_convert_value_arrays_json_serialized(self):
         """Test that all arrays are JSON serialized to avoid QuestDB type conflicts"""
@@ -1577,7 +1582,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             )
 
         # Verify the table name is correct (TLM__ prefix for telemetry)
-        self.assertEqual(call_args[0][0], "TLM__INST__HEALTH_STATUS")
+        self.assertEqual(call_args[0][0], "DEFAULT__TLM__INST__HEALTH_STATUS")
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")

@@ -639,6 +639,15 @@ Generally the template string is formatted in JSON or HTML and then values are f
 |-----------|-------------|----------|
 | Template | The template string which should be enclosed in quotes | True |
 
+### TEMPLATE_BASE64
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Defines a template binary as base64 used to initialize the command before default values are filled in**
+
+Base64 encoded binary data
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template | The template string as base64 data | True |
+
 ### TEMPLATE_FILE
 <span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to initialize the command before default values are filled in**
 

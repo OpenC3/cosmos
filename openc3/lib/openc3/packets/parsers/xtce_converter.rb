@@ -173,8 +173,16 @@ module OpenC3
       algorithm_xml = Nokogiri::XML::Builder.new do |alg_xml|
         alg_xml.AlgorithmSet do
           derived.each do |packet_name, item|
+            rc = item.read_conversion
+            # PythonProxy overrides .class to return a String, so handle both cases
+            conv_name = if rc
+              rc_class = rc.class
+              rc_class.is_a?(String) ? rc_class : rc_class.name
+            else
+              "NoConversion"
+            end
             alg_xml.CustomAlgorithm("name" => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_" \
-                                    "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_#{item.read_conversion.class.name}") do
+                                    "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_#{conv_name}") do
               alg_xml.ExternalAlgorithmSet do
                 alg_xml.ExternalAlgorithm("implementationName" => "TODO", "algorithmLocation" => "TODO")
               end

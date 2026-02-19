@@ -4,7 +4,8 @@ version = "7.0.0-rc2"
 description = "Python support for OpenC3 COSMOS"
 authors = [{ name = "Support", email = "support@openc3.com" }]
 maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
-license = { file = "LICENSE.md" }
+license = "LicenseRef-OpenC3-Builders-License"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.10,<4.0"
 readme = "README.md"
 keywords = [
@@ -18,7 +19,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OpenC3 Builder License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

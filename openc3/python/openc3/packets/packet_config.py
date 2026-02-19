@@ -12,6 +12,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import base64
 import os
 import tempfile
 import traceback
@@ -251,6 +252,7 @@ class PacketConfig:
                         | "VALIDATOR"
                         | "SUBPACKETIZER"
                         | "TEMPLATE"
+                        | "TEMPLATE_BASE64"
                         | "TEMPLATE_FILE"
                         | "RESPONSE"
                         | "ERROR_RESPONSE"
@@ -763,6 +765,11 @@ class PacketConfig:
                 usage = f"{keyword} <Template string>"
                 parser.verify_num_parameters(1, 1, usage)
                 self.current_packet.template = bytearray(params[0], "ascii")
+
+            case "TEMPLATE_BASE64":
+                usage = f"{keyword} <Template base64>"
+                parser.verify_num_parameters(1, 1, usage)
+                self.current_packet.template = bytearray(base64.b64decode(params[0]))
 
             case "TEMPLATE_FILE":
                 usage = f"{keyword} <Template file path>"

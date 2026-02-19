@@ -159,7 +159,7 @@ module OpenC3
           current_position += 1
           next
         end
-        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name, scope: scope)
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
 
