@@ -79,6 +79,52 @@ module OpenC3
       tf.puts '  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN'
       tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"'
       tf.puts '    OBFUSCATE'
+      tf.puts 'COMMAND tgt2 JSONSTRUCT BIG_ENDIAN "JSON Structure"'
+      tf.puts '  VIRTUAL'
+      tf.puts '  ACCESSOR JsonAccessor'
+      tf.puts '  TEMPLATE \'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }\''
+      tf.puts '  APPEND_PARAMETER ITEM0 32 INT 1 1 1 "Int Item"'
+      tf.puts '    KEY $.id_item'
+      tf.puts '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"'
+      tf.puts '    KEY $.item1'
+      tf.puts '    UNITS CELSIUS C'
+      tf.puts '  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"'
+      tf.puts '    KEY $.more.item2'
+      tf.puts '    FORMAT_STRING "0x%X"'
+      tf.puts '  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"'
+      tf.puts '    KEY $.more.item3'
+      tf.puts '  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"'
+      tf.puts '    KEY $.more.item4'
+      tf.puts '  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"'
+      tf.puts '    KEY $.more.item5'
+      tf.puts 'COMMAND tgt2 CBORSTRUCT BIG_ENDIAN "CBOR Structure"'
+      tf.puts '  VIRTUAL'
+      tf.puts '  ACCESSOR CborAccessor'
+      tf.puts '  TEMPLATE_BASE64 o2dpZF9pdGVtAmVpdGVtMRhlZG1vcmWkZWl0ZW0yDGVpdGVtM/tACR64UeuFH2VpdGVtNGdFeGFtcGxlZWl0ZW01hAQDAgE='
+      tf.puts '  APPEND_PARAMETER ITEM0 32 INT 2 2 2 "Int Item"'
+      tf.puts '    KEY $.id_item'
+      tf.puts '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"'
+      tf.puts '    KEY $.item1'
+      tf.puts '    UNITS CELSIUS C'
+      tf.puts '  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"'
+      tf.puts '    KEY $.more.item2'
+      tf.puts '    FORMAT_STRING "0x%X"'
+      tf.puts '  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"'
+      tf.puts '    KEY $.more.item3'
+      tf.puts '  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"'
+      tf.puts '    KEY $.more.item4'
+      tf.puts '  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"'
+      tf.puts '    KEY $.more.item5'
+      tf.puts 'COMMAND tgt2 HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"'
+      tf.puts '  APPEND_ID_PARAMETER ID 32 UINT MIN MAX 0'
+      tf.puts '  APPEND_PARAMETER JSON_LENGTH 32 UINT MIN MAX 0'
+      tf.puts '    HIDDEN'
+      tf.puts '  APPEND_STRUCTURE JSON 0 CMD tgt2 JSONSTRUCT'
+      tf.puts '    VARIABLE_BIT_SIZE JSON_LENGTH'
+      tf.puts '  APPEND_PARAMETER CBOR_LENGTH 32 UINT MIN MAX 0'
+      tf.puts '    HIDDEN'
+      tf.puts '  APPEND_STRUCTURE CBOR 0 CMD tgt2 CBORSTRUCT'
+      tf.puts '    VARIABLE_BIT_SIZE CBOR_LENGTH'
       tf.close
 
       pc = PacketConfig.new
@@ -111,12 +157,15 @@ module OpenC3
 
       it "returns all packets target TGT2" do
         pkts = @cmd.packets("TGT2")
-        expect(pkts.length).to eql 5
+        expect(pkts.length).to eql 8
         expect(pkts.keys).to include("PKT3")
         expect(pkts.keys).to include("PKT4")
         expect(pkts.keys).to include("PKT5")
         expect(pkts.keys).to include("PKT6")
         expect(pkts.keys).to include("PKT7")
+        expect(pkts.keys).to include("JSONSTRUCT")
+        expect(pkts.keys).to include("CBORSTRUCT")
+        expect(pkts.keys).to include("HYBRIDCMD")
       end
     end
 
@@ -164,7 +213,7 @@ module OpenC3
 
     describe "identify" do
       it "return nil with a nil buffer" do
-        expect(@cmd.identify(nil)).to be_nil
+        expect(@cmd.identify(nil, ["TGTX"])).to be_nil
       end
 
       it "only checks the targets given" do
@@ -314,6 +363,11 @@ module OpenC3
             expect(cmd.item2).to eql 2
             expect(cmd.item3).to eql 3
             expect(cmd.item4).to eql 4
+            cmd = @cmd.build_cmd("TGT2", "HYBRIDCMD")
+            expect(cmd.read("JSON_LENGTH")).to eql 106
+            expect(cmd.read("CBOR_LENGTH")).to eql 71
+            expect(cmd.read("JSON.ITEM0")).to eql 1
+            expect(cmd.read("CBOR.ITEM0")).to eql 2
           end
 
           it "creates a command packet with override item values" do

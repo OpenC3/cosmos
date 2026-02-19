@@ -602,7 +602,7 @@ module OpenC3
         cloned_item = sorted_item.clone
         cloned_item.key = cloned_item.name
         cloned_item.name = "#{item.name}.#{cloned_item.name}"
-        cloned_item.parent_item = item
+        cloned_item.parent_item = item.name
         cloned_item.bit_offset = item.bit_offset
         if sorted_item.bit_size <= 0
           cloned_item.bit_size = item.bit_size
@@ -1140,9 +1140,8 @@ module OpenC3
       if @validator
         config << "  VALIDATOR #{@validator.class} #{@validator.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
-      # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
       if @template
-        config << "  TEMPLATE '#{@template}'\n"
+        config << "  TEMPLATE_BASE64 #{Base64.strict_encode64(@template)}\n"
       end
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
@@ -1228,7 +1227,7 @@ module OpenC3
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
       config['validator'] = @validator.class.to_s if @validator
-      config['template'] = Base64.encode64(@template) if @template
+      config['template'] = Base64.strict_encode64(@template) if @template
       config['config_name'] = self.config_name
       config['obfuscated_items'] = @obfuscated_items&.map(&:name) || []
 

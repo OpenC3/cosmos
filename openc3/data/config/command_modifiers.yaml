@@ -266,6 +266,15 @@ TEMPLATE:
       description: The template string which should be enclosed in quotes
       values: "['\"].*['\"]"
   since: 5.0.10
+TEMPLATE_BASE64:
+  summary: Defines a template binary as base64 used to initialize the command before default values are filled in
+  description: Base64 encoded binary data
+  parameters:
+    - name: Template
+      required: true
+      description: The template string as base64 data
+      values: .+
+  since: 7.0.0
 TEMPLATE_FILE:
   summary: Defines a template file used to initialize the command before default values are filled in
   description: Generally the template file is formatted in JSON or HTML and then values are filled in with
