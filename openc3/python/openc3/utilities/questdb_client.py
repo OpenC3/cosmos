@@ -467,16 +467,15 @@ class QuestDBClient:
             return None
 
     # Maps SQL type strings used in CREATE TABLE to canonical type names returned by SHOW COLUMNS
-    QUESTDB_TYPE_MAP = {
-        "float": "FLOAT",
-        "double": "DOUBLE",
-        "int": "INT",
-        "long": "LONG",
-        "varchar": "VARCHAR",
-        "DECIMAL(20, 0)": "DECIMAL",
-        "timestamp_ns": "TIMESTAMP_NS",
-        "SYMBOL": "SYMBOL",
-    }
+    @staticmethod
+    def _canonical_type(sql_type):
+        """Normalize a SQL type string for comparison.
+
+        Uppercases and strips internal whitespace so that e.g.
+        'DECIMAL(20, 0)' and 'DECIMAL(20,0)' compare equal,
+        while preserving parameters so DECIMAL(20,0) != DECIMAL(22,0).
+        """
+        return re.sub(r"\s+", "", sql_type.upper())
 
     def _get_existing_columns(self, table_name):
         """Query QuestDB for existing column names and types.
@@ -586,13 +585,15 @@ class QuestDBClient:
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
                     converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
-                    col_type, _ = self._get_column_type_from_conversion(
+                    col_type, needs_json = self._get_column_type_from_conversion(
                         table_name,
                         f"{item_name}__C",
                         converted_type,
                         converted_bit_size,
                     )
                     desired_columns[f"{item_name}__C"] = col_type
+                    if needs_json:
+                        self.json_columns[f"{table_name}__{item_name}__C"] = True
 
                 if item.get("format_string") or item.get("units"):
                     desired_columns[f"{item_name}__F"] = "varchar"
@@ -606,8 +607,9 @@ class QuestDBClient:
             try:
                 with self.query.cursor() as cur:
                     for col_name, desired_sql_type in desired_columns.items():
-                        desired_canonical = self.QUESTDB_TYPE_MAP.get(desired_sql_type, desired_sql_type.upper())
-                        existing_type = existing_columns.get(col_name)
+                        desired_canonical = self._canonical_type(desired_sql_type)
+                        existing_raw = existing_columns.get(col_name)
+                        existing_type = self._canonical_type(existing_raw) if existing_raw else None
 
                         if existing_type is None:
                             # Column doesn't exist yet — add it
@@ -993,6 +995,9 @@ class QuestDBClient:
             casted = self._cast_value_to_column_type(value, column_type)
             if casted is not None:
                 columns[column_name] = casted
+                # Persist tracking so convert_value() handles future rows
+                if column_type in ("VARCHAR", "STRING"):
+                    self.varchar_columns[f"{err_table_name}__{column_name}"] = True
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "
                     f"expected {column_type} but received {protocol_type}. "
