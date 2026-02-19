@@ -21,7 +21,13 @@
         <v-card-subtitle
           class="d-flex align-center justify-content-space-between"
         >
-          <div>{{ author }}</div>
+          <div>
+            By <strong>{{ author }}</strong>
+            <span v-if="author_extra?.badge_text" class="ml-1 font-italic">
+              {{ author_extra.badge_text }}
+            </span>
+            <v-icon v-if="author_extra?.badge_icon" :icon="author_extra.badge_icon" :size="18" class="ml-1" />
+          </div>
           <!--
           <v-spacer />
           <v-rating
@@ -34,7 +40,9 @@
           -->
         </v-card-subtitle>
         <v-card-text>
-          <v-img v-if="image_url" :src="image_url" max-height="160" />
+          <div class="plugin-image-backdrop">
+            <v-img v-if="image_url" :src="image_url" max-height="160" />
+          </div>
           <div
             :class="{
               'truncate-description': true,
@@ -92,5 +100,9 @@ export default {
 .truncate-10 {
   line-clamp: 10;
   -webkit-line-clamp: 10;
+}
+
+.plugin-image-backdrop {
+  background-color: rgb(156, 163, 175);
 }
 </style>

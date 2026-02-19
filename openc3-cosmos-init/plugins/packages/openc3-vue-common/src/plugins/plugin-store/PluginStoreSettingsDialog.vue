@@ -25,14 +25,6 @@
       <v-alert v-model="errorSaving" type="error" closable density="compact">
         Error saving due to {{ errorText }}
       </v-alert>
-      <v-alert
-        v-model="successSaving"
-        type="success"
-        closable
-        density="compact"
-      >
-        Saved!
-      </v-alert>
       <v-card-text>
         <v-text-field
           v-model="storeUrl"
