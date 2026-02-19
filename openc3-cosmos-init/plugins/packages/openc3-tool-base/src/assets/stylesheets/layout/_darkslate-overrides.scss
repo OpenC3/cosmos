@@ -49,10 +49,9 @@ $dg-purple: rgb(200, 0, 200);
 // Overrides
 // ============================================================================
 
-// === Astro Design Token Overrides ===
+// === All Overrides ===
 html.theme-dark-slate {
-  // Backgrounds - layered dark grey palette with strong contrast steps
-  // Body (deepest) → Surface (cards/panels) → Headers → Hover/Selected → Interactive
+  // Astro Design Tokens
   --color-background-base-default: #{$dg-bg-body} !important;
   --color-background-base-header: #{$dg-bg-body} !important;
   --color-background-surface-default: #{$dg-bg-surface} !important;
@@ -62,58 +61,35 @@ html.theme-dark-slate {
   --color-background-interactive-default: #{$dg-accent} !important;
   --color-background-interactive-muted: #{$dg-bg-interactive-muted} !important;
 
-  // Text
   --color-text-inverse: #{$dg-text-primary} !important;
   --color-text-interactive-default: #{$dg-text-secondary} !important;
   --color-text-primary: #{$dg-text-primary} !important;
   --color-text-secondary: #{$dg-text-muted} !important;
 
-  // Borders
   --color-border-interactive-muted: #{$dg-border-muted} !important;
   --color-border-interactive-default: #{$dg-border-default} !important;
 
-  // Buttons — muted fill so large areas don't overpower
   --button-color-background-primary-default: #{$dg-accent-muted} !important;
   --button-color-background-primary-hover: #{$dg-accent} !important;
   --button-color-border-primary-default: #{$dg-accent-muted} !important;
   --button-color-border-primary-hover: #{$dg-accent} !important;
   --button-color-border-interactive-default: #{$dg-accent-muted} !important;
 
-  // Astro Global Status Bar (footer bar)
   --gsb-color-background: #{$dg-bg-chrome} !important;
   --gsb-color-text: #{$dg-text-primary} !important;
   --gsb-icon-color-fill-default: #{$dg-text-secondary} !important;
   --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
 
-  // Astro Clock
   --clock-datetime-color-background: #{$dg-bg-body} !important;
-}
 
-// === OpenC3 Semantic Color Overrides ===
-html.theme-dark-slate .openc3-green {
-  color: #{$dg-green} !important;
-}
+  // Semantic colors
+  .openc3-green { color: #{$dg-green} !important; }
+  .openc3-yellow { color: #{$dg-yellow} !important; }
+  .openc3-red { color: #{$dg-red} !important; }
+  .openc3-blue { color: #{$dg-blue} !important; }
+  .openc3-purple { color: #{$dg-purple} !important; }
 
-html.theme-dark-slate .openc3-yellow {
-  color: #{$dg-yellow} !important;
-}
-
-html.theme-dark-slate .openc3-red {
-  color: #{$dg-red} !important;
-}
-
-html.theme-dark-slate .openc3-blue {
-  color: #{$dg-blue} !important;
-}
-
-html.theme-dark-slate .openc3-purple {
-  color: #{$dg-purple} !important;
-}
-
-// === Hardcoded color fixes from _overrides.scss ===
-// Calendar styles that used hardcoded hex values
-html.theme-dark-slate {
-
+  // Calendar
   .v-calendar,
   .v-calendar-weekly__day-label,
   .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
@@ -132,10 +108,8 @@ html.theme-dark-slate {
     border-right: 1px solid $dg-border-default !important;
     border-bottom: 1px solid $dg-border-default !important;
   }
-}
 
-// === Menu / Sidebar Overrides ===
-html.theme-dark-slate {
+  // Sidebar
   .layout-sidebar {
     background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
   }
@@ -152,17 +126,13 @@ html.theme-dark-slate {
     color: $dg-accent-light !important;
     background-color: rgba($dg-accent, 0.1) !important;
   }
-}
 
-// === Topbar / App Bar Overrides ===
-html.theme-dark-slate {
-
+  // Topbar / App Bar
   .layout-topbar,
   #openc3-app-toolbar {
     background-color: $dg-bg-chrome !important;
   }
 
-  // Astro nav icon (hamburger/apps icon) in the app bar
   #openc3-app-toolbar rux-icon {
     color: $dg-accent !important;
     cursor: pointer;
@@ -171,11 +141,11 @@ html.theme-dark-slate {
   #openc3-app-toolbar rux-icon:hover {
     color: $dg-accent-hover !important;
   }
-}
 
-// === Footer Overrides ===
-html.theme-dark-slate #footer {
-  background-color: $dg-bg-chrome !important;
+  // Footer
+  #footer {
+    background-color: $dg-bg-chrome !important;
+  }
 }
 
 // === Vuetify theme variable overrides for tool micro-frontends ===

@@ -42,6 +42,7 @@ $dg-purple: rgb(200, 0, 200);
 // ============================================================================
 
 html.theme-dark-emerald {
+  // Astro Design Tokens
   --color-background-base-default: #{$dg-bg-body} !important;
   --color-background-base-header: #{$dg-bg-body} !important;
   --color-background-surface-default: #{$dg-bg-surface} !important;
@@ -71,30 +72,15 @@ html.theme-dark-emerald {
   --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
 
   --clock-datetime-color-background: #{$dg-bg-body} !important;
-}
 
-html.theme-dark-emerald .openc3-green {
-  color: #{$dg-green} !important;
-}
+  // Semantic colors
+  .openc3-green { color: #{$dg-green} !important; }
+  .openc3-yellow { color: #{$dg-yellow} !important; }
+  .openc3-red { color: #{$dg-red} !important; }
+  .openc3-blue { color: #{$dg-blue} !important; }
+  .openc3-purple { color: #{$dg-purple} !important; }
 
-html.theme-dark-emerald .openc3-yellow {
-  color: #{$dg-yellow} !important;
-}
-
-html.theme-dark-emerald .openc3-red {
-  color: #{$dg-red} !important;
-}
-
-html.theme-dark-emerald .openc3-blue {
-  color: #{$dg-blue} !important;
-}
-
-html.theme-dark-emerald .openc3-purple {
-  color: #{$dg-purple} !important;
-}
-
-html.theme-dark-emerald {
-
+  // Calendar
   .v-calendar,
   .v-calendar-weekly__day-label,
   .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
@@ -113,9 +99,8 @@ html.theme-dark-emerald {
     border-right: 1px solid $dg-border-default !important;
     border-bottom: 1px solid $dg-border-default !important;
   }
-}
 
-html.theme-dark-emerald {
+  // Sidebar
   .layout-sidebar {
     background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
   }
@@ -132,10 +117,8 @@ html.theme-dark-emerald {
     color: $dg-accent-light !important;
     background-color: rgba($dg-accent, 0.1) !important;
   }
-}
 
-html.theme-dark-emerald {
-
+  // Topbar / App Bar
   .layout-topbar,
   #openc3-app-toolbar {
     background-color: $dg-bg-chrome !important;
@@ -149,10 +132,11 @@ html.theme-dark-emerald {
   #openc3-app-toolbar rux-icon:hover {
     color: $dg-accent-hover !important;
   }
-}
 
-html.theme-dark-emerald #footer {
-  background-color: $dg-bg-chrome !important;
+  // Footer
+  #footer {
+    background-color: $dg-bg-chrome !important;
+  }
 }
 
 @include themed('', $prefix: 'html.theme-dark-emerald ') {

@@ -13,7 +13,7 @@
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
 
-const VALID_THEMES = ['cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo', 'cosmosDarkSlate', 'cosmosDarkEmerald']
+const VALID_THEMES = new Set(['cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo', 'cosmosDarkSlate', 'cosmosDarkEmerald'])
 
 export default {
   created: function () {
@@ -21,7 +21,7 @@ export default {
     api
       .get_setting('theme')
       .then((response) => {
-        if (!VALID_THEMES.includes(response)) return
+        if (!VALID_THEMES.has(response)) return
         switch (response) {
           case 'cosmosDarkCobalt':
             this.$vuetify.theme.global.name = 'cosmosDarkCobalt'
