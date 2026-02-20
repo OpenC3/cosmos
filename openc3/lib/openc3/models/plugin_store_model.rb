@@ -18,7 +18,7 @@ module OpenC3
   class PluginStoreModel < Model
     PRIMARY_KEY = 'openc3_plugin_store'
     DEFAULT_STORE_URL = 'https://store.openc3.com'
-    JSON_ENDPOINT = '/api/v1.1/cosmos_plugins'
+    JSON_ENDPOINT = '/api/v1.2/cosmos_plugins'
 
     def self.set(plugin_store_data)
       Store.set(PRIMARY_KEY, plugin_store_data)

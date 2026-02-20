@@ -31,14 +31,14 @@ class PluginsController < ModelController
     @model_class = OpenC3::PluginModel
   end
 
-  def check_localhost_reachability(gem_url, store_id)
+  def check_localhost_reachability(gem_url, store_plugin_id)
     uri = URI.parse(gem_url)
     return gem_url unless ['localhost', '127.0.0.1'].include? uri.host
 
     api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
     api_key = api_key_setting['data'] if api_key_setting
 
-    test_url = "http://#{uri.host}:#{uri.port}/api/v1.1/cosmos_plugins/#{store_id}"
+    test_url = "http://#{uri.host}:#{uri.port}/api/v1.2/cosmos_plugins/#{store_plugin_id}"
     begin
       uri_obj = URI(test_url)
       req = Net::HTTP::Get.new(uri_obj)
@@ -79,9 +79,11 @@ class PluginsController < ModelController
       store_plugins = JSON.parse(store_plugins)
       if store_plugins.is_a?(Array) # as opposed to a Hash, which indicates an error
         plugins.each do |plugin_name, plugin|
-          if plugin['store_id']
-            store_data = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_id'] }
-            plugin.merge!(store_data) if store_data
+          if plugin['store_plugin_id']
+            store_plugin = store_plugins.find { |store_plugin| store_plugin['id'] == plugin['store_plugin_id'] }
+            store_version_id = plugin['store_version_id'] || store_plugin['current_version_id']
+            store_version = store_plugin['versions'].find { |store_version| store_version['id'] == store_version_id }
+            plugin.merge!(store_version) if store_version
           end
         end
       end
@@ -89,9 +91,11 @@ class PluginsController < ModelController
       render json: plugins
     else
       plugin = @model_class.get(name: params[:id], scope: params[:scope])
-      if plugin && plugin['store_id']
-        store_data = OpenC3::PluginStoreModel.get_by_id(plugin['store_id'])
-        plugin.merge!(store_data) if store_data
+      if plugin && plugin['store_plugin_id']
+        store_plugin = OpenC3::PluginStoreModel.get_by_id(plugin['store_plugin_id'])
+        store_version_id = plugin['store_version_id'] || store_plugin['current_version_id']
+        store_version = store_plugin['versions'].find { |store_version| store_version['id'] == store_version_id }
+        plugin.merge!(store_version) if store_version
       end
 
       render json: plugin
@@ -104,15 +108,20 @@ class PluginsController < ModelController
   # Add a new plugin
   def create(update = false)
     return unless authorization('admin')
-    file = if params[:store_id]
-      store_data = OpenC3::PluginStoreModel.get_by_id(params[:store_id])
-      if store_data.nil? || store_data['gem_url'].nil?
-        render json: { status: 'error', message: 'Unable to fetch requested plugin.' }, status: 500
+    file = if params[:store_plugin_id]
+      store_data = OpenC3::PluginStoreModel.get_by_id(params[:store_plugin_id])
+      unless store_data.nil?
+        store_version_id = params[:store_version_id] || store_data['current_version_id']
+        store_version_id = Integer(store_version_id)
+        store_version = store_data['versions'].find { |version| version['id'] == store_version_id }
+      end
+      if store_version.nil? || store_version['gem_url'].nil?
+        render json: { status: 'error', message: 'Unable to fetch requested plugin version.' }, status: 500
         return
       end
 
       # Try to find the correct hostname (in case it's localhost and needs to be host.docker.internal)
-      adjusted_gem_url = check_localhost_reachability(store_data['gem_url'], params[:store_id])
+      adjusted_gem_url = check_localhost_reachability(store_version['gem_url'], params[:store_plugin_id])
       if adjusted_gem_url.nil?
         render json: { status: 'error', message: 'Gem could not be downloaded. Host is not reachable.' }, status: 500
         return
@@ -127,13 +136,13 @@ class PluginsController < ModelController
         tempfile = Down.download(adjusted_gem_url)
       end
       checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
-      expected = store_data['checksum'].downcase
+      expected = store_version['checksum'].downcase
       unless checksum == expected
         render json: { status: 'error', message: "Checksum verification failed. Expected #{expected} but got #{checksum}" }, status: 500
         return
       end
 
-      original_filename = File.basename(store_data['gem_filename'])
+      original_filename = File.basename(store_version['gem_filename'])
       tempfile
     else
       params[:plugin]
@@ -149,9 +158,9 @@ class PluginsController < ModelController
         gem_file_path = temp_dir + '/' + original_filename
         FileUtils.cp(tempfile.path, gem_file_path)
         if @existing_model
-          result = OpenC3::PluginModel.install_phase1(gem_file_path, existing_variables: @existing_model['variables'], existing_plugin_txt_lines: @existing_model['plugin_txt_lines'], store_id: params[:store_id], scope: scope)
+          result = OpenC3::PluginModel.install_phase1(gem_file_path, existing_variables: @existing_model['variables'], existing_plugin_txt_lines: @existing_model['plugin_txt_lines'], store_plugin_id: params[:store_plugin_id], store_version_id: params[:store_version_id], scope: scope)
         else
-          result = OpenC3::PluginModel.install_phase1(gem_file_path, store_id: params[:store_id], scope: scope)
+          result = OpenC3::PluginModel.install_phase1(gem_file_path, store_plugin_id: params[:store_plugin_id], store_version_id: params[:store_version_id], scope: scope)
         end
         render json: result
       rescue OpenC3::EmptyGemFileError => error

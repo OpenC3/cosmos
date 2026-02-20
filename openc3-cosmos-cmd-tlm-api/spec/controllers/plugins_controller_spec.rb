@@ -132,7 +132,8 @@ RSpec.describe PluginsController, type: :controller do
         "/tmp/test/test-plugin.gem",
         existing_variables: {"VAR1" => "value1"},
         existing_plugin_txt_lines: ["line1", "line2"],
-        store_id: nil,
+        store_plugin_id: nil,
+        store_version_id: nil,
         scope: "DEFAULT"
       ).and_return(install_result)
 
@@ -230,7 +231,8 @@ RSpec.describe PluginsController, type: :controller do
         "/tmp/test/test-plugin.gem",
         existing_variables: {"VAR1" => "existing_value"},
         existing_plugin_txt_lines: ["existing_line"],
-        store_id: nil,
+        store_plugin_id: nil,
+        store_version_id: nil,
         scope: "DEFAULT"
       ).and_return(install_result)
 
