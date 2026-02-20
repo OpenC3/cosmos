@@ -235,7 +235,8 @@ module OpenC3
           full_default_path = File.join(gem_path, default_img_path)
           img_path = default_img_path if File.exist? full_default_path
         end
-        plugin_model.img_path = File.join('gems', gem_name.split(".gem")[0], img_path) if img_path # convert this filesystem path to volumes mount path
+        package_name = "#{pkg.spec.name}-#{pkg.spec.version}"
+        plugin_model.img_path = File.join('gems', package_name, img_path) if img_path # convert this filesystem path to volumes mount path
         plugin_model.update() unless validate_only
 
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
