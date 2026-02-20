@@ -266,6 +266,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return([])
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")
@@ -320,6 +322,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return([])
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")
@@ -352,6 +356,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return([])
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")
@@ -386,6 +392,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")
@@ -421,6 +429,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return([])
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")
@@ -431,7 +441,7 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" =>'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -529,7 +539,8 @@ module OpenC3
           'variables' => {},
           'plugin_txt_lines' => [],
           'needs_dependencies' => false,
-          'store_id' => nil,
+          'store_plugin_id' => nil,
+          'store_version_id' => nil,
           'updated_at' => Time.now.to_nsec_from_epoch
         }
         Store.hset("DEFAULT__openc3_plugins", old_plugin_name, JSON.generate(old_plugin_data))
@@ -553,6 +564,8 @@ module OpenC3
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
         allow(spec).to receive(:runtime_dependencies).and_return([])
         allow(spec).to receive(:metadata).and_return({})
         allow(spec).to receive(:summary).and_return("Test plugin")

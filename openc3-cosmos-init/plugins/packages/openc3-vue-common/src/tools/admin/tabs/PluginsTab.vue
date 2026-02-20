@@ -135,7 +135,8 @@
       :variables="variables"
       :plugin-txt="pluginTxt"
       :existing-plugin-txt="existingPluginTxt"
-      :store-id="storeId"
+      :store-plugin-id="storePluginId"
+      :store-version-id="storeVersionId"
       :min-cosmos-version="minCosmosVersion"
       @callback="pluginCallback"
     />
@@ -183,7 +184,8 @@ export default {
       // Control state
       pluginName: null,
       variables: {},
-      storeId: null,
+      storePluginId: null,
+      storeVersionId: null,
       minCosmosVersion: null,
       pluginTxt: '',
       file: null,
@@ -268,7 +270,8 @@ export default {
     resetControlState: function () {
       this.pluginName = null
       this.variables = {}
-      this.storeId = null
+      this.storePluginId = null
+      this.storeVersionId = null
       this.minCosmosVersion = null
       this.pluginTxt = ''
       this.file = null
@@ -334,7 +337,8 @@ export default {
       if (storeData === null) {
         formData.append('plugin', this.file, this.file.name)
       } else {
-        formData.append('store_id', storeData.id)
+        formData.append('store_plugin_id', storeData.id)
+        formData.append('store_version_id', storeData.version_id)
       }
       let self = this
       const promise = Api[method](path, {
@@ -365,7 +369,8 @@ export default {
           let pluginTxt = response.data.plugin_txt_lines.join('\n')
           this.pluginName = response.data.name
           this.variables = response.data.variables
-          this.storeId = response.data.store_id
+          this.storePluginId = response.data.store_plugin_id
+          this.storeVersionId = response.data.store_version_id
           this.minCosmosVersion = response.data.minimum_cosmos_version
           this.pluginTxt = pluginTxt
           this.existingPluginTxt = existingPluginTxt
@@ -418,7 +423,8 @@ export default {
         this.variables = {}
         this.pluginTxt = ''
         this.existingPluginTxt = null
-        this.storeId = null
+        this.storePluginId = null
+        this.storeVersionId = null
         setTimeout(() => {
           this.showAlert = false
           this.updateProcesses()

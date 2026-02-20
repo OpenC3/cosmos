@@ -87,6 +87,7 @@
     </td>
   </tr>
   <plugin-details-dialog
+    v-if="showCard"
     v-model="showCard"
     v-bind="plugin"
     @trigger-uninstall="deletePrompt"
@@ -94,6 +95,7 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {
