@@ -19,6 +19,7 @@ from unittest.mock import patch
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
+from openc3.system.system import System
 from openc3.utilities.store import Store
 from test.test_helper import BucketMock, capture_io, mock_redis, setup_system
 
@@ -394,3 +395,48 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
         model = MicroserviceModel.get_model(name="DEFAULT__DECOM__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
+
+
+# Tests for GitHub issue #2855:
+# Stale tlmcnt Redis keys cause interface disconnect loops.
+# When a plugin is upgraded and packets are removed, old Redis TELEMETRYCNTS keys
+# remain. When the interface receives a packet and tries to sync counts, it calls
+# System.telemetry.packet() for every key in Redis — including the stale ones —
+# which raises RuntimeError and causes the interface to disconnect and reconnect.
+class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        # Reset class-level sync state between tests
+        TargetModel.sync_packet_count_data = {}
+        TargetModel.sync_packet_count_time = None
+        TargetModel.sync_packet_count_delay_seconds = 1.0
+
+    def test_init_tlm_packet_counts_raises_for_stale_redis_key(self):
+        # Simulate a stale Redis key left over from a removed packet definition.
+        # INST currently defines HEALTH_STATUS, ADCS, PARAMS, IMAGE, MECH, HIDDEN —
+        # OLD_PACKET was removed when the plugin was upgraded but its Redis key remains.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+        # init_tlm_packet_counts iterates every key returned by hgetall on the
+        # TELEMETRYCNTS hash and calls System.telemetry.packet() for each one.
+        # The stale key causes a RuntimeError, which in production propagates up
+        # through the interface microservice and triggers a disconnect/reconnect loop.
+        with self.assertRaises(RuntimeError):
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+
+    def test_sync_tlm_packet_counts_raises_for_stale_redis_key(self):
+        # Simulate a stale Redis key left over from a removed packet definition.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+
+        # sync_packet_count_time=None forces the periodic Redis sync to run
+        # immediately on the first call rather than waiting for the delay to expire.
+        TargetModel.sync_packet_count_time = None
+
+        # During the sync the code does hgetall on the TELEMETRYCNTS hash and then
+        # calls System.telemetry.packet() for every key in the result, including the
+        # stale OLD_PACKET key, which raises RuntimeError.
+        with self.assertRaises(RuntimeError):
+            TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
