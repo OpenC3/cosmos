@@ -474,6 +474,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         # Reset sync state so the full pipeline sync fires on the first packet
         TargetModel.sync_packet_count_data = {}
         TargetModel.sync_packet_count_time = None
+        TargetModel.stale_packet_keys_warned = set()
 
         for stdout in capture_io():
             thread = threading.Thread(target=im.run)
@@ -489,6 +490,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
             self.assertNotIn("Connection Lost", stdout.getvalue())
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
 
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
