@@ -95,6 +95,7 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {
