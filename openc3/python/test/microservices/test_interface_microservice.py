@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -423,3 +423,97 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual("READ", im.interface.protocol_read_write)
         self.assertEqual(3, im.interface.protocol_index)
         im.shutdown()
+
+    def test_supports_update_interval_option_to_enable_queued_writes(self):
+        # Update the model to use UPDATE_INTERVAL option
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0.2"]],
+        )
+        model.update()
+
+        # Reset the store update intervals to 0 to verify they get set
+        StoreQueued.instance().set_update_interval(0)
+        EphemeralStoreQueued.instance().set_update_interval(0)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.assertEqual(im.queued, True)
+        self.assertEqual(StoreQueued.instance().update_interval, 0.2)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, 0.2)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    # Test for GitHub issue #2855:
+    # Stale tlmcnt Redis keys cause interface disconnect loops.
+    # When a plugin is upgraded and a packet is removed, the old TELEMETRYCNTS
+    # Redis key remains. On the next sync the interface calls
+    # System.telemetry.packet() for every key in the hash — including the stale
+    # one — which raises RuntimeError, propagates through handle_packet() →
+    # handle_connection_lost() → disconnect(), and triggers a reconnect loop.
+    # Test for GitHub issue #2855:
+    # Stale tlmcnt Redis keys cause interface disconnect loops.
+    # When a plugin is upgraded and a packet is removed, the old TELEMETRYCNTS
+    # Redis key remains. On the next sync the interface calls
+    # System.telemetry.packet() for every key in the hash — including the stale
+    # one — which raises RuntimeError, propagates through handle_packet() →
+    # handle_connection_lost() → disconnect(), and triggers a reconnect loop.
+    def test_stale_tlmcnt_redis_key_does_not_disconnect_interface(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        im.interface.reconnect_delay = 0.1
+        # Ensure shutdown is called even if assertions fail, so the thread doesn't hang
+        self.addCleanup(im.shutdown)
+
+        # Inject the stale key AFTER init so init_tlm_packet_counts succeeds.
+        # This simulates a plugin upgrade mid-operation where a packet is removed
+        # but its TELEMETRYCNTS Redis key is left behind.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+        # Reset sync state so the full pipeline sync fires on the first packet
+        TargetModel.sync_packet_count_data = {}
+        TargetModel.sync_packet_count_time = None
+
+        for stdout in capture_io():
+            thread = threading.Thread(target=im.run)
+            thread.start()
+            time.sleep(0.2)  # Allow connect + at least one packet + sync cycle
+
+            # The interface should remain CONNECTED after encountering the stale key
+            # and must not have triggered a disconnect at any point.
+            # With the bug, RuntimeError raised by System.telemetry.packet("INST", "OLD_PACKET")
+            # propagates through handle_packet() → handle_connection_lost() → disconnect(),
+            # causing the disconnect_count to increment and the interface to cycle.
+            self.assertEqual(im.interface.disconnect_count, 0)
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+            self.assertNotIn("Connection Lost", stdout.getvalue())
+
+    def test_supports_optimize_throughput_option_for_backward_compatibility(self):
+        # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["OPTIMIZE_THROUGHPUT", "0.3"]],
+        )
+        model.update()
+
+        # Reset the store update intervals to 0 to verify they get set
+        StoreQueued.instance().set_update_interval(0)
+        EphemeralStoreQueued.instance().set_update_interval(0)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.assertEqual(im.queued, True)
+        self.assertEqual(StoreQueued.instance().update_interval, 0.3)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, 0.3)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
