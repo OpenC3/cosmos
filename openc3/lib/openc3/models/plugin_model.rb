@@ -53,7 +53,8 @@ module OpenC3
     attr_accessor :plugin_txt_lines
     attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
-    attr_accessor :store_id
+    attr_accessor :store_plugin_id
+    attr_accessor :store_version_id
     attr_accessor :title
     attr_accessor :description
     attr_accessor :licenses
@@ -78,7 +79,7 @@ module OpenC3
 
     # Called by the PluginsController to parse the plugin variables
     # Doesn't actually create the plugin during the phase
-    def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, store_id: nil, process_existing: false, scope:, validate_only: false)
+    def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, store_plugin_id: nil, store_version_id: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
 
       temp_dir = Dir.mktmpdir
@@ -167,8 +168,9 @@ module OpenC3
           end
         end
 
-        store_id = Integer(store_id) if store_id
-        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_id: store_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
+        store_plugin_id = Integer(store_plugin_id) if store_plugin_id
+        store_version_id = Integer(store_version_id) if store_version_id
+        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
         result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
@@ -377,7 +379,8 @@ module OpenC3
       plugin_txt_lines: [],
       minimum_cosmos_version: nil,
       needs_dependencies: false,
-      store_id: nil,
+      store_plugin_id: nil,
+      store_version_id: nil,
       title: nil,
       description: nil,
       keywords: nil,
@@ -393,7 +396,8 @@ module OpenC3
       @plugin_txt_lines = plugin_txt_lines
       @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
-      @store_id = store_id
+      @store_plugin_id = store_plugin_id
+      @store_version_id = store_version_id
       @title = title
       @description = description
       @keywords = keywords
@@ -420,7 +424,8 @@ module OpenC3
         'plugin_txt_lines' => @plugin_txt_lines,
         'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
-        'store_id' => @store_id,
+        'store_plugin_id' => @store_plugin_id,
+        'store_version_id' => @store_version_id,
         'title' => @title,
         'description' => @description,
         'keywords' => @keywords,

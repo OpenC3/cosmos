@@ -37,6 +37,8 @@ export default {
     gem_url: String,
     minimum_cosmos_version: String,
     checksum: String,
+    versions: Array,
+    current_version_id: Number,
   },
   data: function () {
     return {
@@ -67,6 +69,8 @@ export default {
         gem_url: this.gem_url,
         minimum_cosmos_version: this.minimum_cosmos_version,
         checksum: this.checksum,
+        versions: this.versions,
+        current_version_id: this.current_version_id,
       }
     },
     imageContentsWithMimeType: function () {
@@ -92,10 +96,7 @@ export default {
       return undefined
     },
     _navigableStoreUrl: function () {
-      return this._storeUrl.replace(
-        'host.docker.internal',
-        'localhost',
-      )
+      return this._storeUrl.replace('host.docker.internal', 'localhost')
     },
     storeLink: function () {
       if (this.hasStoreListing && this._navigableStoreUrl) {

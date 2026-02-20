@@ -195,7 +195,12 @@ export default {
       required: false,
       default: null,
     },
-    storeId: {
+    storePluginId: {
+      type: Number,
+      required: false,
+      default: null,
+    },
+    storeVersionId: {
       type: Number,
       required: false,
       default: null,
@@ -437,7 +442,8 @@ export default {
         name: this.pluginName,
         variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
-        store_id: this.storeId,
+        store_plugin_id: this.storePluginId,
+        store_version_id: this.storeVersionId,
       }
       this.$emit('callback', pluginHash)
     },

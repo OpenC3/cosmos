@@ -90,8 +90,11 @@ export default {
     openDialog: function () {
       this.showDialog = true
     },
-    install: function () {
-      this.$emit('triggerInstall', this.plugin)
+    install: function (event) {
+      this.$emit('triggerInstall', {
+        id: this.id,
+        version_id: event?.version_id || this.current_version_id,
+      })
     },
   },
 }

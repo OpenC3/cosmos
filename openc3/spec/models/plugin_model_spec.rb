@@ -529,7 +529,8 @@ module OpenC3
           'variables' => {},
           'plugin_txt_lines' => [],
           'needs_dependencies' => false,
-          'store_id' => nil,
+          'store_plugin_id' => nil,
+          'store_version_id' => nil,
           'updated_at' => Time.now.to_nsec_from_epoch
         }
         Store.hset("DEFAULT__openc3_plugins", old_plugin_name, JSON.generate(old_plugin_data))
