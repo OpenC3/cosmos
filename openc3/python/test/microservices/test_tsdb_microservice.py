@@ -1719,9 +1719,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
-    def test_reconcile_skips_alter_when_decimal_types_match(
-        self, mock_system, mock_psycopg, mock_sender, mock_get_tlm
-    ):
+    def test_reconcile_skips_alter_when_decimal_types_match(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that reconciliation does not ALTER when existing DECIMAL(20,0) matches desired DECIMAL(20, 0)"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query

@@ -19,6 +19,7 @@ from unittest.mock import patch
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
+from openc3.system.system import System
 from openc3.utilities.store import Store
 from test.test_helper import BucketMock, capture_io, mock_redis, setup_system
 
@@ -394,3 +395,69 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
         model = MicroserviceModel.get_model(name="DEFAULT__DECOM__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
+
+
+# Tests for GitHub issue #2855:
+# Stale tlmcnt Redis keys cause interface disconnect loops.
+# When a plugin is upgraded and packets are removed, old Redis TELEMETRYCNTS keys
+# remain. When the interface receives a packet and tries to sync counts, it calls
+# System.telemetry.packet() for every key in Redis — including the stale ones —
+# which raises RuntimeError and causes the interface to disconnect and reconnect.
+class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        # Reset class-level sync state between tests
+        TargetModel.sync_packet_count_data = {}
+        TargetModel.sync_packet_count_time = None
+        TargetModel.sync_packet_count_delay_seconds = 1.0
+        TargetModel.stale_packet_keys_warned = set()
+
+    def test_init_tlm_packet_counts_skips_stale_redis_key(self):
+        # Simulate a stale Redis key left over from a removed packet definition.
+        # INST currently defines HEALTH_STATUS, ADCS, PARAMS, IMAGE, MECH, HIDDEN —
+        # OLD_PACKET was removed when the plugin was upgraded but its Redis key remains.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+        # init_tlm_packet_counts must skip the stale key rather than raising RuntimeError.
+        # It resets the warned-keys set on each call (each interface restart is a new epoch),
+        # so the warning fires once per restart — useful for operators diagnosing stale state.
+        for stdout in capture_io():
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
+
+            # A second init (e.g. reconnect) resets the epoch and warns again
+            stdout.truncate(0)
+            stdout.seek(0)
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
+
+        # The known packet's count must still be updated correctly
+        self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
+
+    def test_sync_tlm_packet_counts_skips_stale_redis_key(self):
+        # Simulate a stale Redis key left over from a removed packet definition.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+
+        # sync_packet_count_time=None forces the periodic Redis sync to run
+        # immediately on the first call rather than waiting for the delay to expire.
+        TargetModel.sync_packet_count_time = None
+
+        for stdout in capture_io():
+            # The stale key must be skipped; no RuntimeError raised
+            TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
+            # A warning must be logged exactly once for the stale key
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
+
+            # Calling again (forcing another sync) must NOT repeat the warning
+            TargetModel.sync_packet_count_time = None
+            stdout.truncate(0)
+            stdout.seek(0)
+            TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
+            self.assertNotIn("Stale tlmcnt Redis key", stdout.getvalue())
+
+        # Known packet counts must still be updated correctly
+        self.assertGreater(packet.received_count, 0)
