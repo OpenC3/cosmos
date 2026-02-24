@@ -101,7 +101,7 @@ class TcpipSocketStream(Stream):
                         if writeable:
                             continue
                         else:
-                            raise RuntimeError("Write Timeout") from error
+                            raise TimeoutError("Write Timeout") from error
                     else:
                         # Any other socket error (e.g. ECONNRESET, EPIPE) is not
                         # recoverable - re-raise immediately to avoid an infinite loop

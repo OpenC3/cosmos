@@ -159,7 +159,7 @@ class TestTcpipSocketStream(unittest.TestCase):
         ss.connect()
         with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
             mock_select.return_value = ([], [], [])
-            with self.assertRaisesRegex(RuntimeError, "Write Timeout"):
+            with self.assertRaisesRegex(TimeoutError, "Write Timeout"):
                 ss.write(b"test")
         ss.disconnect()
 
