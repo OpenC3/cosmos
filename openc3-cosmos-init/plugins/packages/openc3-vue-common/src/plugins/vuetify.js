@@ -28,7 +28,7 @@ export default createVuetify({
       cosmosDarkCobalt,
       cosmosDarkIndigo,
       cosmosDarkSlate,
-      cosmosDarkEmerald
+      cosmosDarkEmerald,
     },
   },
   defaults: {
