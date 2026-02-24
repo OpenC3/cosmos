@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import pytest
+
 from openc3.utilities.logger import Logger
 
 

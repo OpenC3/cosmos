@@ -156,6 +156,11 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["--verbose", "--strict-markers", "--strict-config", "--tb=short"]
+filterwarnings = [
+    # valkey's internal FLUSHALL implementation calls get_connection with a
+    # deprecated argument - not actionable from our code, suppress until fixed upstream
+    "ignore:Call to 'get_connection' function with deprecated usage:DeprecationWarning:valkey",
+]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
