@@ -14,17 +14,17 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### Installation Videos
 
-<div style={{display: 'flex', justifyContent: 'center', gap: '20px'}}>
-  <div style={{textAlign: 'center'}}>
-    <iframe width="320" height="180" src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+<div style={{display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap'}}>
+  <div style={{textAlign: 'center', flex: '1 1 280px', minWidth: '280px', maxWidth: '400px'}}>
+    <iframe style={{width: '100%', aspectRatio: '16/9'}} src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
     <p><strong>Windows 11</strong></p>
   </div>
-  <div style={{textAlign: 'center'}}>
-    <iframe width="320" height="180" src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+  <div style={{textAlign: 'center', flex: '1 1 280px', minWidth: '280px', maxWidth: '400px'}}>
+    <iframe style={{width: '100%', aspectRatio: '16/9'}} src="https://www.youtube.com/embed/hmhOVIzg4-M" title="Getting Started with COSMOS on macOS" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
     <p><strong>macOS</strong></p>
   </div>
-  <div style={{textAlign: 'center'}}>
-    <iframe width="320" height="180" src="https://www.youtube.com/embed/aLqAMvFjqY8" title="Getting Started with COSMOS on Linux Ubuntu" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+  <div style={{textAlign: 'center', flex: '1 1 280px', minWidth: '280px', maxWidth: '400px'}}>
+    <iframe style={{width: '100%', aspectRatio: '16/9'}} src="https://www.youtube.com/embed/aLqAMvFjqY8" title="Getting Started with COSMOS on Linux Ubuntu" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
     <p><strong>Linux Ubuntu</strong></p>
   </div>
 </div>
