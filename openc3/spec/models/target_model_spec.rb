@@ -946,5 +946,120 @@ module OpenC3
         expect(model.topics).to include("DEFAULT__TELEMETRY__{INST}__NEW_TLM")
       end
     end
+
+    # Tests for GitHub issue #2855:
+    # Stale tlmcnt Redis keys cause interface disconnect loops.
+    # When a plugin is upgraded and packets are removed, old Redis TELEMETRYCNTS keys
+    # remain. When the interface receives a packet and tries to sync counts, it calls
+    # System.telemetry.packet() for every key in Redis — including the stale ones —
+    # which raises RuntimeError and causes the interface to disconnect and reconnect.
+    describe "stale tlmcnt Redis key handling" do
+      before(:each) do
+        setup_system()
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+        # Reset class-level sync state between tests
+        TargetModel.class_variable_set(:@@sync_packet_count_data, {})
+        TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+        TargetModel.class_variable_set(:@@stale_packet_keys_warned, Set.new)
+      end
+
+      describe "self.init_tlm_packet_counts" do
+        it "skips stale Redis key and logs a warning" do
+          # Simulate a stale Redis key left over from a removed packet definition.
+          # INST currently defines HEALTH_STATUS, ADCS, PARAMS, IMAGE, MECH, HIDDEN —
+          # OLD_PACKET was removed when the plugin was upgraded but its Redis key remains.
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+          # init_tlm_packet_counts must skip the stale key rather than raising RuntimeError.
+          expect { TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT") }.not_to raise_error
+        end
+
+        it "logs a warning for the stale key" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+        end
+
+        it "warns only once per stale key per init (epoch reset)" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+          warn_count = 0
+          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("OLD_PACKET") }
+
+          # First init — warns once
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+          expect(warn_count).to eq(1)
+
+          # Second init resets the epoch and warns again
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+          expect(warn_count).to eq(2)
+        end
+
+        it "still updates counts for known packets" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+          allow(Logger).to receive(:warn)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(System.telemetry.packet("INST", "HEALTH_STATUS").received_count).to eq(10)
+        end
+      end
+
+      describe "self.sync_tlm_packet_counts" do
+        it "skips stale Redis key and logs a warning" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+          packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+          # sync_packet_count_time=nil forces the periodic Redis sync to run immediately
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+
+          expect { TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT") }.not_to raise_error
+        end
+
+        it "logs a warning for the stale key" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+          packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+        end
+
+        it "warns only once per stale key within an epoch" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+          packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+
+          warn_count = 0
+          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("OLD_PACKET") }
+
+          # First sync — warns once
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+          expect(warn_count).to eq(1)
+
+          # Second sync (forcing another Redis sync) must NOT repeat the warning
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+          expect(warn_count).to eq(1)
+        end
+
+        it "still updates counts for known packets" do
+          packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+
+          expect(packet.received_count).to be > 0
+        end
+      end
+    end
   end
 end

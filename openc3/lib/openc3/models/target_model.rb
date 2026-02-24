@@ -33,6 +33,7 @@ require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'fileutils'
 require 'ostruct'
+require 'set'
 require 'tmpdir'
 
 module OpenC3
@@ -55,6 +56,7 @@ module OpenC3
     @@sync_packet_count_data = {}
     @@sync_packet_count_time = nil
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    @@stale_packet_keys_warned = Set.new # Track stale keys already warned about
 
     attr_accessor :folder_name
     attr_accessor :requires
@@ -1235,17 +1237,34 @@ module OpenC3
 
     def self.init_tlm_packet_counts(tlm_target_names, scope:)
       @@sync_packet_count_time = Time.now
+      @@stale_packet_keys_warned = Set.new
 
       # Get all the packet counts with the global counters
       tlm_target_names.each do |target_name|
         get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
-          update_packet = System.telemetry.packet(target_name, packet_name)
-          update_packet.received_count = count.to_i
+          begin
+            update_packet = System.telemetry.packet(target_name, packet_name)
+            update_packet.received_count = count.to_i
+          rescue RuntimeError
+            key = "#{target_name} #{packet_name}"
+            unless @@stale_packet_keys_warned.include?(key)
+              @@stale_packet_keys_warned.add(key)
+              Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+            end
+          end
         end
       end
       get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
-        update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-        update_packet.received_count = count.to_i
+        begin
+          update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+          update_packet.received_count = count.to_i
+        rescue RuntimeError
+          key = "UNKNOWN #{packet_name}"
+          unless @@stale_packet_keys_warned.include?(key)
+            @@stale_packet_keys_warned.add(key)
+            Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+          end
+        end
       end
     end
 
@@ -1291,14 +1310,30 @@ module OpenC3
           end
           tlm_target_names.each do |target_name|
             result[inc_count].each do |packet_name, count|
-              update_packet = System.telemetry.packet(target_name, packet_name)
-              update_packet.received_count = count.to_i
+              begin
+                update_packet = System.telemetry.packet(target_name, packet_name)
+                update_packet.received_count = count.to_i
+              rescue RuntimeError
+                key = "#{target_name} #{packet_name}"
+                unless @@stale_packet_keys_warned.include?(key)
+                  @@stale_packet_keys_warned.add(key)
+                  Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+                end
+              end
             end
             inc_count += 1
           end
           result[inc_count].each do |packet_name, count|
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-            update_packet.received_count = count.to_i
+            begin
+              update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+              update_packet.received_count = count.to_i
+            rescue RuntimeError
+              key = "UNKNOWN #{packet_name}"
+              unless @@stale_packet_keys_warned.include?(key)
+                @@stale_packet_keys_warned.add(key)
+                Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+              end
+            end
           end
         end
       end
