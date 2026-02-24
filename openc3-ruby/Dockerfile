@@ -18,6 +18,7 @@ ENV ALPINE_VERSION=${ALPINE_VERSION}
 ENV APK_URL=${APK_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_INDEX_URL=${PYPI_URL}/simple
 
 # NOTE: This must match the alpine image used above in FROM
 RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \

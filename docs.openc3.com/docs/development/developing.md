@@ -43,13 +43,41 @@ openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago  
 
 :::info Offline Building
 
-If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
+If you're building in an offline environment or want to use a private Rubygems, NPM, APK, or PyPI server (e.g. Nexus, Artifactory), you can update the following environment variables in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 
     ALPINE_VERSION=3.22<br/>
     ALPINE_BUILD=3<br/>
     RUBYGEMS_URL=https://rubygems.org<br/>
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>
+    PYPI_URL=https://pypi.org<br/>
+
+`PYPI_URL` must be set in `.env` before running `./openc3.sh build`. It is passed as a Docker build argument via `compose-build.yaml` and set as `UV_INDEX_URL` in the image, redirecting all Python package downloads through your proxy. Without this build argument, uv will always download packages directly from pypi.org regardless of any other configuration.
+
+For example, to use a corporate Nexus proxy, update your `.env`:
+
+```
+PYPI_URL=https://nexus.company.com/repository/pypi-proxy
+```
+
+Then build as normal:
+
+```bash
+./openc3.sh build
+```
+
+:::
+
+:::caution Rebuilding uv.lock for Non-Mirror Proxies
+
+If your proxy serves **different artifacts** than pypi.org (e.g. internally repackaged or patched wheels), the SHA-256 hashes in `uv.lock` will not match and the build will fail. In this case you must regenerate `uv.lock` against your proxy before building:
+
+```bash
+cd openc3/python
+UV_INDEX_URL=https://your-proxy.company.com/simple uv lock
+```
+
+If you have forked the repository, commit the updated `uv.lock` to your fork before running `./openc3.sh build`. A true pass-through/caching proxy (one that serves the exact same files as PyPI) does not require this step — `PYPI_URL` alone is sufficient.
 
 :::
 

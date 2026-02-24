@@ -12,6 +12,7 @@ ARG RUBYGEMS_URL=https://rubygems.org
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ARG PYPI_URL=https://pypi.org
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_INDEX_URL=${PYPI_URL}/simple
 
 # We require a local certificate file so set that up.
 # You must place a valid cacert.pem file in your OpenC3 development folder for this work
