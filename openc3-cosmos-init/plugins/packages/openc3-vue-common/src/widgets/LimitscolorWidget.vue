@@ -176,10 +176,8 @@ export default {
   },
   created() {
     this.appliedSettings.forEach((setting) => {
-      switch (setting[0]) {
-        case 'ASTRO':
-          this.astro = setting[1]?.toLowerCase() !== 'false'
-          break
+      if (setting[0] === 'ASTRO') {
+        this.astro = setting[1]?.toLowerCase() !== 'false'
       }
     })
     if (this.parameters[4]) {
