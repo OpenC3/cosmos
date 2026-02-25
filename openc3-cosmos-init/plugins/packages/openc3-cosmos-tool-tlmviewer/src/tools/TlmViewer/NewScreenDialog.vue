@@ -45,6 +45,7 @@
               v-model="selectedTarget"
               label="Select Target"
               :items="targets"
+              :disabled="targets.length === 0"
               item-title="label"
               item-value="value"
               data-test="new-screen-target"
