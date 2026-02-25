@@ -47,7 +47,7 @@ module OpenC3
     end
 
     def ensure_public(bucket)
-      unless ENV['OPENC3_NO_BUCKET_POLICY']
+      unless ENV.fetch('OPENC3_NO_BUCKET_POLICY', false)
         policy = <<~EOL
         {
           "Version": "2012-10-17",
