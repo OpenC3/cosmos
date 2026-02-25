@@ -49,6 +49,7 @@ class TargetModel(Model):
     sync_packet_count_data = {}
     sync_packet_count_time = None
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
+    stale_packet_keys_warned = set()  # Track stale keys already warned about
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -304,15 +305,28 @@ class TargetModel(Model):
     @classmethod
     def init_tlm_packet_counts(cls, tlm_target_names, scope):
         cls.sync_packet_count_time = time.time()
+        cls.stale_packet_keys_warned = set()
 
         # Get all the packet counts with the global counters
         for target_name in tlm_target_names:
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
-                update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                update_packet.received_count = int(count)
+                try:
+                    update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                    update_packet.received_count = int(count)
+                except RuntimeError:
+                    key = f"{target_name} {packet_name.decode()}"
+                    if key not in cls.stale_packet_keys_warned:
+                        cls.stale_packet_keys_warned.add(key)
+                        Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
         for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
-            update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
-            update_packet.received_count = int(count)
+            try:
+                update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
+                update_packet.received_count = int(count)
+            except RuntimeError:
+                key = f"UNKNOWN {packet_name.decode()}"
+                if key not in cls.stale_packet_keys_warned:
+                    cls.stale_packet_keys_warned.add(key)
+                    Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
@@ -372,12 +386,24 @@ class TargetModel(Model):
                         Store.instance().redis_pool.pipelines[thread_id] = None
                 for target_name in tlm_target_names:
                     for packet_name, count in result[inc_count].items():
-                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                        update_packet.received_count = int(count)
+                        try:
+                            update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                            update_packet.received_count = int(count)
+                        except RuntimeError:
+                            key = f"{target_name} {packet_name.decode()}"
+                            if key not in cls.stale_packet_keys_warned:
+                                cls.stale_packet_keys_warned.add(key)
+                                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
-                    update_packet.received_count = int(count)
+                    try:
+                        update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
+                        update_packet.received_count = int(count)
+                    except RuntimeError:
+                        key = f"UNKNOWN {packet_name.decode()}"
+                        if key not in cls.stale_packet_keys_warned:
+                            cls.stale_packet_keys_warned.add(key)
+                            Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):

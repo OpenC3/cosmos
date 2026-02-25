@@ -11,7 +11,6 @@
 
 import base64
 import json
-import math
 import os
 import re
 import time
@@ -22,16 +21,14 @@ from unittest.mock import Mock, patch
 from questdb.ingress import IngressError
 
 from openc3.microservices.tsdb_microservice import TsdbMicroservice
-from openc3.utilities.questdb_client import (
-    FLOAT64_NAN_SENTINEL,
-    FLOAT64_NEG_INF_SENTINEL,
-    FLOAT64_POS_INF_SENTINEL,
-)
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
-from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.questdb_client import (
+    FLOAT64_NAN_SENTINEL,
+    FLOAT64_POS_INF_SENTINEL,
+)
 from test.test_helper import System, capture_io, mock_redis, setup_system
 
 
@@ -1719,9 +1716,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
-    def test_reconcile_skips_alter_when_decimal_types_match(
-        self, mock_system, mock_psycopg, mock_sender, mock_get_tlm
-    ):
+    def test_reconcile_skips_alter_when_decimal_types_match(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
         """Test that reconciliation does not ALTER when existing DECIMAL(20,0) matches desired DECIMAL(20, 0)"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query

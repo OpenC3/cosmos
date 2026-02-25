@@ -84,9 +84,9 @@ lint-stats:
 lint-unsafe:
     -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts --fix --unsafe-fixes
 
-# Run all tests
-test:
-    uv run pytest
+# Run all tests, or a specific file/pattern: `just test test/path/to/test.py`
+test *ARGS:
+    uv run pytest {{ ARGS }}
 
 # Run tests that failed in the last run
 test-failed:
