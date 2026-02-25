@@ -466,4 +466,20 @@ header {
   width: 0px;
   padding-left: 0px;
 }
+/* Make the entire treeview item row clickable, not just the icon/text */
+#openc3-nav-drawer .v-treeview-item .v-treeview-item__root {
+  position: relative;
+}
+#openc3-nav-drawer .v-treeview-item .v-list-item-title > a::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+#openc3-nav-drawer .v-treeview-item .v-treeview-item__append {
+  position: relative;
+  z-index: 1;
+}
 </style>
