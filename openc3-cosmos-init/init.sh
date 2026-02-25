@@ -95,10 +95,7 @@ if [ -z "${OPENC3_NO_MIGRATE}" ]; then
     ruby /openc3/bin/openc3cli runmigrations || exit 1
 fi
 
-if [ "${OPENC3_CLOUD}" = "local" ]; then
-    ruby /openc3/bin/openc3cli initbuckets || exit 1
-fi
-
+ruby /openc3/bin/openc3cli initbuckets || exit 1
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-iframe-*.gem || exit 1

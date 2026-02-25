@@ -30,8 +30,7 @@ module OpenC3
       @use_checksum = if ENV.key?('OPENC3_NO_S3_CHECKSUM')
         ENV['OPENC3_NO_S3_CHECKSUM'].to_s.empty?  # Empty string means use checksum
       else
-        # If OPENC3_BUCKET_URL is set, we're using a non-AWS S3 backend
-        !ENV.key?('OPENC3_BUCKET_URL')
+        ENV.fetch('OPENC3_CLOUD', 'local').downcase == 'aws'
       end
     end
 
