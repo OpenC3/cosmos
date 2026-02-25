@@ -16,6 +16,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  # Maintain Python dependencies via uv
+  - package-ecosystem: "uv"
+    directory: "/openc3/python"
+    schedule:
+      interval: "weekly"
 # Ignore all npm updates as we have a process for uding them with package_audit.rb
 #   - package-ecosystem: "npm"
 #     directories: # Location of package manifests

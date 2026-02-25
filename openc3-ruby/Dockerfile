@@ -37,8 +37,8 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 COPY .gemrc /root/.gemrc
-RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
-RUN cp /root/.gemrc /etc/gemrc
+RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc \
+  && cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
 COPY anycable* /usr/bin
@@ -68,7 +68,6 @@ RUN apk update \
   openblas-dev \
   openssl \
   openssl-dev \
-  py3-pip \
   python3 \
   python3-dev \
   rbspy \
@@ -85,8 +84,9 @@ RUN apk update \
   && gem install grpc \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
-  && bundle config git.allow_insecure true \
-  && python3 -m pip install --break-system-packages uv
+  && bundle config git.allow_insecure true
+
+COPY --from=ghcr.io/astral-sh/uv:0.10.4 /uv /uvx /bin/
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
@@ -98,8 +98,8 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
-RUN cd /opt \
-  && tar -xzf libsocketcan-0.0.12.tar.gz \
+WORKDIR /opt
+RUN tar -xzf libsocketcan-0.0.12.tar.gz \
   && cd libsocketcan-0.0.12 \
   && autoreconf --force --install --symlink -Wall \
   && ./configure \
@@ -111,8 +111,8 @@ RUN cd /opt \
 
 # libcsp - https://github.com/libcsp/libcsp
 COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
-RUN cd /opt \
-  && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
+WORKDIR /opt
+RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
   && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
   # Patches to fix compilation issues
   && sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c \
@@ -135,8 +135,8 @@ ENV GROUP_ID=1001
 # The build time venv is at /openc3/python/.venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
 ENV PYTHONPATH=/openc3/python/.venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
-RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
-RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
+RUN addgroup -g "${GROUP_ID}" -S "${IMAGE_GROUP}" \
+  && adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}"
 
 # Switch to user
 USER ${USER_ID}:${GROUP_ID}
