@@ -56,7 +56,8 @@
           variant="outlined"
           density="compact"
           hide-details
-          style="max-width: 300px; margin-right: 10px"
+          class="mr-2"
+          style="max-width: 300px"
           data-test="state-filter"
         >
           <template #selection="{ item, index }">
