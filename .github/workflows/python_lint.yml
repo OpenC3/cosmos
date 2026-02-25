@@ -39,6 +39,7 @@ jobs:
         uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
+          working-directory: openc3/python
       - name: Set up Python
         run: uv python install
         working-directory: openc3/python
