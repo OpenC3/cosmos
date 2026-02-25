@@ -60,8 +60,7 @@
           style="max-width: 300px"
           data-test="state-filter"
         >
-          <!-- eslint-disable-next-line vue/no-unused-vars -->
-          <template #selection="{ item, index }">
+          <template #selection="{ index }">
             <span v-if="index === 0"> {{ stateFilter.length }} selected </span>
           </template>
           <template #item="{ props: itemProps, item: selectItem }">
