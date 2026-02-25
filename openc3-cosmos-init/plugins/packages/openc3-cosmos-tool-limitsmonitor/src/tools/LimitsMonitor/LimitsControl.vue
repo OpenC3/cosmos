@@ -60,18 +60,14 @@
           style="max-width: 300px"
           data-test="state-filter"
         >
+          <!-- eslint-disable-next-line vue/no-unused-vars -->
           <template #selection="{ item, index }">
-            <span v-if="index === 0">
-              {{ stateFilter.length }} selected
-            </span>
+            <span v-if="index === 0"> {{ stateFilter.length }} selected </span>
           </template>
           <template #item="{ props: itemProps, item: selectItem }">
             <v-list-item v-bind="itemProps">
               <template #prepend>
-                <rux-status
-                  :status="selectItem.raw.status"
-                  class="mr-2"
-                />
+                <rux-status :status="selectItem.raw.status" class="mr-2" />
               </template>
             </v-list-item>
           </template>
