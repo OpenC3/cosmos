@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -142,7 +137,7 @@
         />
       </v-toolbar>
 
-      <v-expand-transition>
+      <v-expand-transition @after-enter="resize">
         <div v-show="expand" id="chart" ref="chart" class="pa-1">
           <div :id="`chart${id}`"></div>
           <div id="betweenCharts"></div>
@@ -309,10 +304,17 @@ import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
 import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
 
 const DEFAULT_X_AXIS_ITEM = '__time'
+// Max milliseconds to spend processing buffered data per animation frame
+// before yielding back to the browser for rendering
+// We're calling requestAnimationFrame which is typically 60Hz or every 16.667ms
+// A good rule of thumb is to stay within roughly half the frame budget, so 8–10ms.
+// This leaves the other ~7–8ms for the browser to do layout, paint, compositing, and GC.
+const MAX_PROCESSING_MS = 10
 
 export default {
   components: {
@@ -399,6 +401,10 @@ export default {
     'start',
     'started',
   ],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data() {
     return {
       api: null,
@@ -445,6 +451,9 @@ export default {
       cable: new Cable(),
       subscription: null,
       needToUpdate: false,
+      pendingData: [],
+      processingRAF: null,
+      lastRenderTime: 0,
       errorDialog: false,
       errors: [],
       colorIndex: 0,
@@ -548,13 +557,13 @@ export default {
       return this.itemSubscriptionKeys.includes(this.actualXAxisItem)
     },
     playbackMode: function () {
-      return this.$store.state.playback.playbackMode
+      return this.store.playback.playbackMode
     },
     playbackDateTime: function () {
-      return this.$store.state.playback.playbackDateTime
+      return this.store.playback.playbackDateTime
     },
     playbackStep: function () {
-      return this.$store.state.playback.playbackStep
+      return this.store.playback.playbackStep
     },
   },
   watch: {
@@ -594,8 +603,8 @@ export default {
         } else {
           // Track that we're waiting for playback data
           // Increment store counter so skip buttons are disabled until all graphs finish loading
-          this.$store.commit('playback', {
-            playbackLoading: this.$store.state.playback.playbackLoading + 1,
+          this.store.updatePlayback({
+            playbackLoading: this.store.playback.playbackLoading + 1,
           })
           this.api
             .get_tlm_values(
@@ -633,10 +642,10 @@ export default {
                 }
               }
               // Decrement store counter now that playback data has been processed
-              this.$store.commit('playback', {
+              this.store.updatePlayback({
                 playbackLoading: Math.max(
                   0,
-                  this.$store.state.playback.playbackLoading - 1,
+                  this.store.playback.playbackLoading - 1,
                 ),
               })
               this.dataChanged = true
@@ -1067,6 +1076,11 @@ export default {
       }, this.refreshIntervalMs)
     },
     stopGraph: function () {
+      if (this.processingRAF !== null) {
+        cancelAnimationFrame(this.processingRAF)
+        this.processingRAF = null
+      }
+      this.pendingData = []
       if (this.subscription) {
         this.subscription.unsubscribe()
         this.subscription = null
@@ -1081,10 +1095,18 @@ export default {
       if (this.state === 'pause' || !this.dataChanged) {
         return
       }
+      // Throttle renders while still receiving/processing burst data
+      // to avoid expensive re-renders every 200ms during historical data floods
+      if (this.pendingData.length > 0 || this.processingRAF !== null) {
+        if (performance.now() - this.lastRenderTime < 1000) {
+          return
+        }
+      }
       this.graph.setData(this.data)
       if (this.overview) {
         this.overview.setData(this.data)
       }
+      this.lastRenderTime = performance.now()
 
       const xAxisData = this.data[0]
       if (xAxisData && xAxisData.length) {
@@ -1188,6 +1210,7 @@ export default {
       this.$emit('edit')
     },
     resize: function () {
+      if (!this.graph) return
       this.graph.setSize(this.getSize('chart'))
       if (this.overview) {
         this.overview.setSize(this.getSize('overview'))
@@ -1743,11 +1766,39 @@ export default {
     },
     received: function (data) {
       this.cable.recordPing()
-      // TODO: Shouldn't get errors but should we handle this every time?
-      // if (json_data.error) {
-      //   console.log(json_data.error)
-      //   return
-      // }
+      // Buffer incoming data and schedule processing via requestAnimationFrame
+      // to prevent blocking the main thread during historical data floods
+      this.pendingData.push(data)
+      if (this.processingRAF === null) {
+        this.processingRAF = requestAnimationFrame(() =>
+          this.processReceivedData(),
+        )
+      }
+    },
+    // Drains the pendingData buffer in a time-boxed loop. Each call is
+    // triggered by a single requestAnimationFrame scheduled in received().
+    // When processing exceeds MAX_PROCESSING_MS we schedule another frame
+    // so the browser can paint and handle user input between batches.
+    processReceivedData: function () {
+      // The rAF that invoked us has already fired, so clear the handle
+      this.processingRAF = null
+      const startTime = performance.now()
+      while (this.pendingData.length > 0) {
+        const batch = this.pendingData.shift()
+        this.processDataBatch(batch)
+        // Yield to the browser if processing is taking too long
+        if (
+          performance.now() - startTime > MAX_PROCESSING_MS &&
+          this.pendingData.length > 0
+        ) {
+          this.processingRAF = requestAnimationFrame(() =>
+            this.processReceivedData(),
+          )
+          break
+        }
+      }
+    },
+    processDataBatch: function (data) {
       for (let i = 0; i < data.length; i++) {
         if (!data[i].hasOwnProperty(this.actualXAxisItem)) {
           // This happens if the streaming thread was already sending something when we switched xAxisItems.
@@ -1762,29 +1813,16 @@ export default {
             this.data[j].push(null)
           }
           this.setDataAtIndex(this.data[0].length - 1, xAxisVal, data[i])
+        } else if (xAxisVal === this.data[0][length - 1]) {
+          // Same timestamp as last point - merge data into existing slot
+          this.setDataAtIndex(length - 1, xAxisVal, data[i])
         } else {
           let index = bs(this.data[0], xAxisVal, this.bsComparator)
           if (index >= 0) {
-            // Found a slot with the exact same time value
-            // Handle duplicate time by subtracting a small amount until we find an open slot
-            if (!Number.isFinite(xAxisVal)) {
-              // Make sure this exists so that we don't create an infinite loop
-              // (Infinity or NaN -= 1e-5 results in Infinity or NaN)
-              throw new RangeError(`Invalid x-axis value: ${xAxisVal}`)
-            }
-            while (index >= 0) {
-              xAxisVal -= 1e-5 // Subtract a small amount (10 microseconds if x-axis is time in seconds)
-              index = bs(this.data[0], xAxisVal, this.bsComparator)
-            }
-            // Now that we have a unique time, insert at the ideal index
-            const idealIndex = -index - 1
-            for (let j = 0; j < this.data.length; j++) {
-              this.data[j].splice(idealIndex, 0, null)
-            }
-            // Use the adjusted time but keep the original data
-            this.setDataAtIndex(idealIndex, xAxisVal, data[i])
+            // Found a slot with the exact same time value - merge data into it
+            this.setDataAtIndex(index, xAxisVal, data[i])
           } else {
-            // Insert a new null slot at the ideal index
+            // Insert a new null slot at the ideal index for a new out-of-order timestamp
             const idealIndex = -index - 1
             for (let j = 0; j < this.data.length; j++) {
               this.data[j].splice(idealIndex, 0, null)

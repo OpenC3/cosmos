@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -169,7 +164,8 @@ module OpenC3
         microservice_name = "#{@scope}__#{type}__#{@name}"
         if config_params[0] and File.extname(config_params[0]) == '.py'
           work_dir.sub!('openc3/lib', 'openc3/python')
-          @cmd = ["python", "#{type.downcase}_microservice.py", microservice_name]
+          # Use venv Python to ensure editable packages are found
+          @cmd = [ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python', "#{type.downcase}_microservice.py", microservice_name]
         else
           # If there are no config_params we assume ruby
           @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
@@ -346,7 +342,7 @@ module OpenC3
       when 'DONT_LOG'
         Logger.warn "DONT_LOG is deprecated and does nothing."
 
-      when 'LOG_STREAM', 'LOG_RAW'
+      when 'LOG_STREAM'
         parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
         @log_stream = parameters.dup # Even if it is empty we copy it to set it as not nil
 

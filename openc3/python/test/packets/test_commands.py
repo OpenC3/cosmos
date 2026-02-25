@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -75,6 +70,56 @@ class TestCommands(unittest.TestCase):
         tf.write('  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN\n')
         tf.write('  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"\n')
         tf.write("    OBFUSCATE\n")
+        tf.write('COMMAND tgt2 JSONSTRUCT BIG_ENDIAN "JSON Structure"\n')
+        tf.write("  VIRTUAL\n")
+        tf.write("  ACCESSOR JsonAccessor\n")
+        tf.write(
+            '  TEMPLATE \'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }\'\n'
+        )
+        tf.write('  APPEND_PARAMETER ITEM0 32 INT 1 1 1 "Int Item"\n')
+        tf.write("    KEY $.id_item\n")
+        tf.write('  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"\n')
+        tf.write("    KEY $.item1\n")
+        tf.write("    UNITS CELSIUS C\n")
+        tf.write('  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"\n')
+        tf.write("    KEY $.more.item2\n")
+        tf.write('    FORMAT_STRING "0x%X"\n')
+        tf.write('  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"\n')
+        tf.write("    KEY $.more.item3\n")
+        tf.write('  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"\n')
+        tf.write("    KEY $.more.item4\n")
+        tf.write('  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
+        tf.write("    KEY $.more.item5\n")
+        tf.write('COMMAND tgt2 CBORSTRUCT BIG_ENDIAN "CBOR Structure"\n')
+        tf.write("  VIRTUAL\n")
+        tf.write("  ACCESSOR CborAccessor\n")
+        tf.write(
+            "  TEMPLATE_BASE64 o2dpZF9pdGVtAmVpdGVtMRhlZG1vcmWkZWl0ZW0yDGVpdGVtM/tACR64UeuFH2VpdGVtNGdFeGFtcGxlZWl0ZW01hAQDAgE=\n"
+        )
+        tf.write('  APPEND_PARAMETER ITEM0 32 INT 2 2 2 "Int Item"\n')
+        tf.write("    KEY $.id_item\n")
+        tf.write('  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"\n')
+        tf.write("    KEY $.item1\n")
+        tf.write("    UNITS CELSIUS C\n")
+        tf.write('  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"\n')
+        tf.write("    KEY $.more.item2\n")
+        tf.write('    FORMAT_STRING "0x%X"\n')
+        tf.write('  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"\n')
+        tf.write("    KEY $.more.item3\n")
+        tf.write('  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"\n')
+        tf.write("    KEY $.more.item4\n")
+        tf.write('  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
+        tf.write("    KEY $.more.item5\n")
+        tf.write('COMMAND tgt2 HYBRIDCMD BIG_ENDIAN "Hybrid Accessor Command"\n')
+        tf.write("  APPEND_ID_PARAMETER ID 32 UINT MIN MAX 0\n")
+        tf.write("  APPEND_PARAMETER JSON_LENGTH 32 UINT MIN MAX 0\n")
+        tf.write("    HIDDEN\n")
+        tf.write("  APPEND_STRUCTURE JSON 0 CMD tgt2 JSONSTRUCT\n")
+        tf.write("    VARIABLE_BIT_SIZE JSON_LENGTH\n")
+        tf.write("  APPEND_PARAMETER CBOR_LENGTH 32 UINT MIN MAX 0\n")
+        tf.write("    HIDDEN\n")
+        tf.write("  APPEND_STRUCTURE CBOR 0 CMD tgt2 CBORSTRUCT\n")
+        tf.write("    VARIABLE_BIT_SIZE CBOR_LENGTH\n")
         tf.seek(0)
 
         pc = PacketConfig()
@@ -102,12 +147,15 @@ class TestCommands(unittest.TestCase):
 
     def test_packets_returns_all_packets_target_tgt2(self):
         pkts = self.cmd.packets("TGT2")
-        self.assertEqual(len(pkts), 5)
+        self.assertEqual(len(pkts), 8)
         self.assertIn("PKT3", pkts.keys())
         self.assertIn("PKT4", pkts.keys())
         self.assertIn("PKT5", pkts.keys())
         self.assertIn("PKT6", pkts.keys())
         self.assertIn("PKT7", pkts.keys())
+        self.assertIn("JSONSTRUCT", pkts.keys())
+        self.assertIn("CBORSTRUCT", pkts.keys())
+        self.assertIn("HYBRIDCMD", pkts.keys())
 
     def test_params_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
@@ -258,7 +306,10 @@ class TestCommands(unittest.TestCase):
     def test_build_cmd_complains_about_missing_required_parameters(self):
         for range_checking in [True, False]:
             for raw in [True, False]:
-                with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Required command parameter 'TGT2 PKT3 ITEM2' not given",
+                ):
                     self.cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw)
 
     def test_creates_a_command_packet_with_mixed_endianness(self):
@@ -290,6 +341,11 @@ class TestCommands(unittest.TestCase):
                 self.assertEqual(cmd.read("item2"), 2)
                 self.assertEqual(cmd.read("item3"), 3)
                 self.assertEqual(cmd.read("item4"), 4)
+        cmd = self.cmd.build_cmd("TGT2", "HYBRIDCMD")
+        self.assertEqual(cmd.read("JSON_LENGTH"), 106)
+        self.assertEqual(cmd.read("CBOR_LENGTH"), 71)
+        self.assertEqual(cmd.read("JSON.ITEM0"), 1)
+        self.assertEqual(cmd.read("CBOR.ITEM0"), 2)
 
     def test_build_cmd_creates_a_command_packet_with_override_item_values(self):
         for range_checking in [True, False]:
@@ -586,7 +642,9 @@ class TestCommands(unittest.TestCase):
         cmd = Commands(pc, System)
         self.assertTrue(cmd.cmd_subpacket_unique_id_mode("TGT1"))
 
-    def test_build_cmd_skips_auto_managed_length_fields_for_variable_bit_size_arrays(self):
+    def test_build_cmd_skips_auto_managed_length_fields_for_variable_bit_size_arrays(
+        self,
+    ):
         """
         Test that build_cmd skips writing length fields that are auto-managed by
         variable_bit_size arrays. This prevents the bug where writing the length

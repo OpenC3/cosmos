@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -194,7 +189,13 @@ class Telemetry:
     # @return The value. 'FORMATTED' values are always returned
     #   as Strings. 'RAW' values will match their data_type. 'CONVERTED' values
     #   can be any type.
-    def value(self, target_name: str, packet_name: str, item_name: str, value_type: str = "CONVERTED") -> Any:
+    def value(
+        self,
+        target_name: str,
+        packet_name: str,
+        item_name: str,
+        value_type: str = "CONVERTED",
+    ) -> Any:
         packet, _ = self.packet_and_item(target_name, packet_name, item_name)  # Handles LATEST
         return packet.read(item_name, value_type)
 
@@ -264,7 +265,10 @@ class Telemetry:
     # @return [Packet] The identified packet with its data set to the given
     #   packet_data buffer. Returns nil if no packet could be identified.
     def identify_and_set_buffer(
-        self, packet_data: bytes, target_names: list[str] | None = None, subpackets: bool = False
+        self,
+        packet_data: bytes,
+        target_names: list[str] | None = None,
+        subpackets: bool = False,
     ) -> Optional["Packet"]:
         identified_packet = self.identify(packet_data, target_names, subpackets=subpackets)
         if identified_packet:
@@ -279,7 +283,10 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
     def identify(
-        self, packet_data: bytes, target_names: list[str] | None = None, subpackets: bool = False
+        self,
+        packet_data: bytes,
+        target_names: list[str] | None = None,
+        subpackets: bool = False,
     ) -> Optional["Packet"]:
         if target_names is None:
             target_names = self.target_names()
@@ -336,7 +343,10 @@ class Telemetry:
         return None
 
     def identify_and_define_packet(
-        self, packet: "Packet", target_names: list[str] | None = None, subpackets: bool = False
+        self,
+        packet: "Packet",
+        target_names: list[str] | None = None,
+        subpackets: bool = False,
     ) -> Optional["Packet"]:
         if not packet.identified():
             identified_packet = self.identify(packet.buffer_no_copy(), target_names, subpackets=subpackets)

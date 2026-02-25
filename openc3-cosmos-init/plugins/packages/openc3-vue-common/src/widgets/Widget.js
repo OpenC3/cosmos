@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -22,6 +17,7 @@
 
 import { ConfigParserError } from '@openc3/js-common/services'
 import WidgetComponents from './WidgetComponents'
+import { useStore } from '@/plugins/store'
 
 export default {
   mixins: [WidgetComponents],
@@ -107,9 +103,7 @@ export default {
       const that = this
       return {
         getNamedWidget: function (widgetName) {
-          return that.$store.getters.namedWidget(
-            that.toQualifiedWidgetName(widgetName),
-          )
+          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
         },
         open: function (target, screen) {
           that.$emit('open', target, screen)
@@ -139,18 +133,11 @@ export default {
       }, {})
     },
   },
-  watch: {
-    widgetName: function (newName, oldName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(oldName),
-      )
-      this.$store.commit('setNamedWidget', {
-        [this.toQualifiedWidgetName(newName)]: this,
-      })
-    },
-  },
   created() {
+    // Initialize the Pinia store using the app's Pinia instance ($pinia global property)
+    // This is more reliable than useStore() in setup() for async components in single-spa
+    this.store = useStore(this.$pinia)
+
     // Look through the settings and get a reference to the screen
     this.screenId = this.settings
       .find((setting) => setting[0] === '__SCREEN_ID__')
@@ -159,6 +146,12 @@ export default {
     this.widgetName = this.settings
       .find((setting) => setting[0] === 'NAMED_WIDGET')
       ?.at(1)
+
+    if (this.widgetName) {
+      this.store.setNamedWidget({
+        [this.toQualifiedWidgetName(this.widgetName)]: this,
+      })
+    }
 
     // Figure out any subsettings that apply
     this.appliedSettings = this.settings
@@ -181,10 +174,7 @@ export default {
   },
   beforeUnmount() {
     if (this.widgetName) {
-      this.$store.commit(
-        'clearNamedWidget',
-        this.toQualifiedWidgetName(this.widgetName),
-      )
+      this.store.clearNamedWidget(this.toQualifiedWidgetName(this.widgetName))
     }
   },
   methods: {

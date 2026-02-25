@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -28,7 +23,13 @@ class UnixTimeConversion(Conversion):
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def __init__(self, seconds_item_name, microseconds_item_name=None, seconds_type="RAW", microseconds_type="RAW"):
+    def __init__(
+        self,
+        seconds_item_name,
+        microseconds_item_name=None,
+        seconds_type="RAW",
+        microseconds_type="RAW",
+    ):
         super().__init__()
         self.seconds_item_name = seconds_item_name
         self.microseconds_item_name = microseconds_item_name

@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -329,7 +324,7 @@ module OpenC3
         @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('PreidentifiedProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -342,7 +337,7 @@ module OpenC3
         @interface.add_protocol(PreidentifiedProtocol, ["DEAD", 50], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['sync_pattern']).to eq("\xDE\xAD".inspect)
         expect(details['max_length']).to eq(50)
       end
@@ -353,7 +348,7 @@ module OpenC3
         @interface.add_protocol(PreidentifiedProtocol, [], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('PreidentifiedProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -366,7 +361,7 @@ module OpenC3
         @interface.add_protocol(PreidentifiedProtocol, ["0x1234", 200], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['sync_pattern']).to eq("\x12\x34".inspect)
         expect(details['max_length']).to eq(200)
       end

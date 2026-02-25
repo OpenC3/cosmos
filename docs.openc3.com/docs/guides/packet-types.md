@@ -48,6 +48,27 @@ The [STRUCTURE](/docs/configuration/telemetry#structure) and [APPEND_STRUCTURE](
 
 Packets marked [VIRTUAL](/docs/configuration/telemetry#virtual) are also automatically marked HIDDEN and DISABLED.
 
+## Stored Packets
+
+Packets can be marked as "stored" which means they represent non-realtime data such as back-orbit data, recorded data playback, or data read from files. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but they **do not update the Current Value Table (CVT)**. This means stored telemetry will not affect real-time displays like Packet Viewer or Telemetry Viewer.
+
+The stored flag is primarily set in two ways:
+
+1. **By an Interface** - The [File Interface](../configuration/interfaces#file-interface) has a `Stored` parameter (default: true) that automatically marks all telemetry read from files as stored.
+2. **By a Protocol** - Custom protocols can set `packet.stored = true` in their `read_packet()` method. The [Preidentified Protocol](../configuration/protocols#preidentified-protocol) also encodes and decodes the stored flag in its packet header.
+
+When building a [Custom Interface](../configuration/interfaces#custom-interfaces), you can set the stored flag on packets returned by the `read` method. When building a [Custom Protocol](../configuration/protocols#custom-protocols), the `read_packet()` method is the appropriate place to set the stored flag. See those sections for more details.
+
+Common use cases for stored packets include:
+
+- Processing archived telemetry files through the [File Interface](../configuration/interfaces#file-interface)
+- Replaying recorded data without disrupting real-time displays
+- Ingesting back-orbit or store-and-forward data from a spacecraft
+
+:::note
+Stored packets are still logged and available in tools like Telemetry Grapher and Data Extractor. The only difference is they do not update the CVT, so they won't change values shown in Packet Viewer, Telemetry Viewer, or affect LATEST packet lookups.
+:::
+
 ## Hidden Packets
 
 [HIDDEN](/docs/configuration/command#hidden-1) packets are regular packets that are intentionally hidden from packet chooser widgets and from code completion. Hidden command packets can still be sent from scripts. Hidden telemetry packet data can still be used in TlmViewer screens.

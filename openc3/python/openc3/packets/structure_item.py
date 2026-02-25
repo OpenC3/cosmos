@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -25,7 +20,18 @@ class StructureItem:
     create_index = 0
 
     # Valid data types adds DERIVED to those defined by BinaryAccessor
-    DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "DERIVED"]
+    DATA_TYPES = [
+        "INT",
+        "UINT",
+        "FLOAT",
+        "STRING",
+        "BLOCK",
+        "BOOL",
+        "OBJECT",
+        "ARRAY",
+        "ANY",
+        "DERIVED",
+    ]
 
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
@@ -298,7 +304,7 @@ class StructureItem:
         if self.variable_bit_size is not None:
             result["variable_bit_size"] = self.variable_bit_size
         if self.parent_item is not None:
-            result["parent_item"] = self.parent_item.as_json()
+            result["parent_item"] = self.parent_item
         if self.structure is not None:
             result["structure"] = self.structure.as_json()
         return result

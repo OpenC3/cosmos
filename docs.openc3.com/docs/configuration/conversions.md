@@ -68,7 +68,7 @@ There are a lot of comments to help you know what to do. The primary things to m
 The `converted_type` is the resulting type of the converted value. It lets consumers of the converted value know the resulting type. In our case we're doubling the input value and since this could be applied to an unsigned integer as well as a floating point value we'll choose `FLOAT`.
 
 ```python
-    self.converted_type = 'FLOAT'
+self.converted_type = 'FLOAT'
 ```
 
 ### converted_bit_size
@@ -76,7 +76,7 @@ The `converted_type` is the resulting type of the converted value. It lets consu
 The `converted_bit_size` is the resulting size of the converted value. It lets consumers of the converted value know the resulting size. Since we chose `FLOAT` as the type we'll choose `32` as the bit size. We could have also chosen `64` bits. Sometimes you know the type and size of the resulting conversion and can simply hard code them. Other times you need to pass them in as parameters and let the user decide.
 
 ```python
-    self.converted_bit_size = 32
+self.converted_bit_size = 32
 ```
 
 ### call
@@ -114,10 +114,10 @@ TELEMETRY GSE DATA BIG_ENDIAN "Data packet"
 
 The generic conversion is meant to be a quick and easy way to apply a conversion to a single telemetry item. It must be parsed and evaluated and thus is not as performant as a dedicated conversion class.
 
-| Parameter | Description                                                                                                                        | Required                          |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Parameter | Description                                                                                                                                                  | Required                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
 | Type      | Data type after the conversion is applied<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, BOOL, ARRAY, OBJECT, ANY, TIME</span> | False (warning will be generated) |
-| Size      | Data size in bits after the conversion is applied                                                                                  | False (warning will be generated) |
+| Size      | Data size in bits after the conversion is applied                                                                                                            | False (warning will be generated) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">

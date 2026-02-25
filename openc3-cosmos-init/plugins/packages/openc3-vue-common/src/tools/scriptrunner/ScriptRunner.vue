@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -388,11 +383,63 @@
       padding: 0px;
     "
   >
-    <v-tabs v-model="inlineTab" density="compact">
-      <v-tab value="script" text="Script" data-test="script-tab" />
-      <v-tab value="messages" text="Messages" data-test="messages-tab" />
-    </v-tabs>
-
+    <v-row no-gutters justify="right">
+      <v-tabs v-model="inlineTab" density="compact">
+        <v-tab value="script" text="Script" data-test="script-tab" />
+        <v-tab value="messages" text="Messages" data-test="messages-tab" />
+      </v-tabs>
+      <v-tooltip
+        location="bottom"
+        :text="filenameSelect"
+        :disabled="!filenameSelect || filenameSelect.length <= 45"
+      >
+        <template #activator="{ props }">
+          <div v-bind="props" style="width: 32rem">
+            <v-select
+              id="inline-filename"
+              v-model="filenameSelect"
+              :items="fileList"
+              :disabled="fileList.length <= 1"
+              label="Filename"
+              data-test="filename"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @update:model-value="fileNameChanged"
+            />
+          </div>
+        </template>
+      </v-tooltip>
+      <v-text-field
+        v-model="scriptId"
+        label="Script ID"
+        data-test="id"
+        class="shrink ml-2 script-state"
+        style="max-width: 100px"
+        density="compact"
+        variant="outlined"
+        readonly
+        hide-details
+      />
+      <v-text-field
+        v-model="stateTimer"
+        label="Script State"
+        data-test="state"
+        :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
+        style="max-width: 120px"
+        density="compact"
+        variant="outlined"
+        readonly
+        hide-details
+      />
+      <v-progress-circular
+        v-if="state === 'Connecting...'"
+        :size="40"
+        class="mx-2"
+        indeterminate
+        color="primary"
+      />
+    </v-row>
     <v-tabs-window v-model="inlineTab">
       <v-tabs-window-item value="script">
         <v-row>
@@ -709,6 +756,12 @@ export default {
       default: false,
     },
     body: {
+      type: String,
+      default: null,
+    },
+    // Optional filename to use when running inline scripts
+    // This allows relative path resolution to work correctly
+    initialFilename: {
       type: String,
       default: null,
     },
@@ -1367,6 +1420,10 @@ export default {
       if (this.body) {
         this.editor.setValue(this.body)
         this.editor.clearSelection()
+        // If initialFilename is provided, use it for path resolution
+        if (this.initialFilename) {
+          this.filename = this.initialFilename
+        }
       }
     }
     this.updateInterval = setInterval(async () => {
@@ -2023,8 +2080,11 @@ export default {
         case 'stopped':
         case 'crashed':
         case 'killed':
+          // Only remove markers here - full cleanup is handled by the
+          // 'complete' message in processReceived() which always follows.
+          // Calling scriptComplete() here would unsubscribe the channel
+          // before the 'complete' message (with suite report) arrives.
           this.removeAllMarkers()
-          this.scriptComplete()
           break
 
         default:
@@ -2081,11 +2141,16 @@ export default {
           case 'script':
             this.handleScript(data)
             break
+          // DEPRECATED because the 'complete' message now includes the report
           case 'report':
             this.results.text = data.report
             this.results.show = true
             break
           case 'complete':
+            if (data.report) {
+              this.results.text = data.report
+              this.results.show = true
+            }
             this.removeAllMarkers()
             this.scriptComplete()
             break
@@ -2729,17 +2794,22 @@ class TestSuite(Suite):
               if (language === 'unknown') {
                 language = AceEditorUtils.getDefaultScriptingLanguage()
               }
+              const uuid = crypto.randomUUID().split('-')[0]
               if (language === 'ruby') {
                 this.tempFilename =
                   TEMP_FOLDER +
                   '/' +
                   format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_' +
+                  uuid +
                   '_temp.rb'
               } else if (language === 'python') {
                 this.tempFilename =
                   TEMP_FOLDER +
                   '/' +
                   format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_' +
+                  uuid +
                   '_temp.py'
               } else {
                 // No autosave for unknown language

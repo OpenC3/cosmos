@@ -30,12 +30,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.1.0
+  OPENC3_VERSITYGW_VERSION=v1.2.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.1.0
+  OPENC3_VERSITYGW_VERSION=v1.2.0
 fi
 
 # Setup cacert.pem
@@ -93,7 +93,6 @@ fi
 
 cd ../openc3
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -106,7 +105,6 @@ docker buildx build \
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -171,12 +169,11 @@ if [[ "${1:-default}" == "ubi" ]]; then
   fi
 else
   # Standard build uses Valkey alpine image
+  # OPENC3_REDIS_IMAGE and OPENC3_REDIS_VERSION default in the Dockerfile
   docker buildx build \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
@@ -186,8 +183,6 @@ else
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-    --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
-    --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
@@ -325,7 +320,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.6.5
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.7
+  OPENC3_TRAEFIK_RELEASE=v3.6.8
 fi
 cd ../openc3-traefik
 docker buildx build \

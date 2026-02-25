@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -66,10 +61,20 @@ class TestMessagesBatchSize(unittest.TestCase):
         # Simulate receiving multiple batches
         batch_100_a = [{"time": i * 1000000000, "level": "INFO", "message": f"Batch A Message {i}"} for i in range(100)]
         batch_100_b = [
-            {"time": (i + 100) * 1000000000, "level": "INFO", "message": f"Batch B Message {i}"} for i in range(100)
+            {
+                "time": (i + 100) * 1000000000,
+                "level": "INFO",
+                "message": f"Batch B Message {i}",
+            }
+            for i in range(100)
         ]
         batch_100_c = [
-            {"time": (i + 200) * 1000000000, "level": "INFO", "message": f"Batch C Message {i}"} for i in range(100)
+            {
+                "time": (i + 200) * 1000000000,
+                "level": "INFO",
+                "message": f"Batch C Message {i}",
+            }
+            for i in range(100)
         ]
 
         mock_stream_instance.read.side_effect = [
@@ -88,7 +93,11 @@ class TestMessagesBatchSize(unittest.TestCase):
                     break
                 all_batches.append(batch)
                 # Assert no batch has 101 messages (the bug)
-                self.assertLessEqual(len(batch), 100, f"Batch size should never exceed 100, got {len(batch)}")
+                self.assertLessEqual(
+                    len(batch),
+                    100,
+                    f"Batch size should never exceed 100, got {len(batch)}",
+                )
                 self.assertNotEqual(len(batch), 101, "Batch size should never be 101 (off-by-one bug)")
 
             self.assertEqual(len(all_batches), 3, "Should receive 3 batches")
@@ -139,7 +148,11 @@ class TestMessagesBatchSize(unittest.TestCase):
         # 10 full batches of 100
         for batch_num in range(10):
             batch = [
-                {"time": (batch_num * 100 + i) * 1000000000, "level": "INFO", "message": f"Msg {batch_num}-{i}"}
+                {
+                    "time": (batch_num * 100 + i) * 1000000000,
+                    "level": "INFO",
+                    "message": f"Msg {batch_num}-{i}",
+                }
                 for i in range(100)
             ]
             batches.append(batch)
@@ -147,7 +160,12 @@ class TestMessagesBatchSize(unittest.TestCase):
 
         # 1 partial batch of 37
         partial_batch = [
-            {"time": (1000 + i) * 1000000000, "level": "INFO", "message": f"Msg final-{i}"} for i in range(37)
+            {
+                "time": (1000 + i) * 1000000000,
+                "level": "INFO",
+                "message": f"Msg final-{i}",
+            }
+            for i in range(37)
         ]
         batches.append(partial_batch)
         responses.append(json.dumps({"message": partial_batch}))
@@ -167,7 +185,11 @@ class TestMessagesBatchSize(unittest.TestCase):
 
             # Check first 10 batches are exactly 100
             for i in range(10):
-                self.assertEqual(len(received_batches[i]), 100, f"Batch {i} should have exactly 100 messages")
+                self.assertEqual(
+                    len(received_batches[i]),
+                    100,
+                    f"Batch {i} should have exactly 100 messages",
+                )
 
             # Check last batch is 37
             self.assertEqual(len(received_batches[10]), 37, "Final batch should have 37 messages")
@@ -260,7 +282,11 @@ class TestMessagesBatchSize(unittest.TestCase):
 
         for batch_num in range(5):
             batch = [
-                {"time": (batch_num * 100 + i) * 1000000000, "level": "INFO", "message": f"Historical {i}"}
+                {
+                    "time": (batch_num * 100 + i) * 1000000000,
+                    "level": "INFO",
+                    "message": f"Historical {i}",
+                }
                 for i in range(100)
             ]
             batches_data.append(batch)
@@ -307,7 +333,11 @@ class TestBatchSizeDocumentation(unittest.TestCase):
 
         # Document that 101 is not valid
         INVALID_BATCH_SIZE = 101
-        self.assertGreater(INVALID_BATCH_SIZE, EXPECTED_MAX_BATCH_SIZE, "101 message batches indicate off-by-one bug")
+        self.assertGreater(
+            INVALID_BATCH_SIZE,
+            EXPECTED_MAX_BATCH_SIZE,
+            "101 message batches indicate off-by-one bug",
+        )
 
 
 if __name__ == "__main__":

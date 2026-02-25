@@ -1,0 +1,167 @@
+// Dark Theme - Blue-Grey with Teal/Cyan Accent
+// Astro design token and layout overrides for the cosmosDarkSlate Vuetify theme.
+// Vuetify colors (primary, surface, background, etc.) are handled by
+// cosmosThemeDarkSlate.js via the Vuetify theme API.
+// This file covers only what Vuetify can't reach: Astro web components,
+// hardcoded values, and layout chrome. Loaded last in layout.scss.
+//
+// All rules are scoped under html.theme-dark-slate so they only activate
+// when the ThemeSwitcher mixin adds that class to <html>.
+
+// ============================================================================
+// Color Palette — tweak these to experiment with the whole theme at once
+// ============================================================================
+
+// Backgrounds (darkest → lightest)
+$dg-bg-body: #1A2027;
+$dg-bg-chrome: #1E262E; // sidebar, topbar, footer, GSB
+$dg-bg-surface: #242D36; // cards, tables, panels
+$dg-bg-surface-alt: #263038; // sidebar gradient end
+$dg-bg-surface-header: #2A343E; // card titles, toolbars, calendar
+$dg-bg-interactive-muted: #2E3A44;
+$dg-bg-hover: #354250;
+$dg-bg-selected: #1A4050;
+
+// Borders
+$dg-border-muted: #384450;
+$dg-border-default: #48586A;
+
+// Accent (teal/cyan)
+$dg-accent: #0097A7;
+$dg-accent-hover: #26C6DA;
+$dg-accent-light: #4DD0E1;
+$dg-accent-muted: #00798A; // buttons — darker so large fills don't overpower
+
+// Text
+$dg-text-primary: #D4DCE4;
+$dg-text-secondary: #9EAAB8;
+$dg-text-muted: #708090;
+$dg-text-sidebar: #B0BEC5;
+
+// Semantic status
+$dg-green: #56f000;
+$dg-yellow: #fce83a;
+$dg-red: #ff3838;
+$dg-blue: #2dccff;
+$dg-purple: rgb(200, 0, 200);
+
+// ============================================================================
+// Overrides
+// ============================================================================
+
+// === All Overrides ===
+html.theme-dark-slate {
+  // Astro Design Tokens
+  --color-background-base-default: #{$dg-bg-body} !important;
+  --color-background-base-header: #{$dg-bg-body} !important;
+  --color-background-surface-default: #{$dg-bg-surface} !important;
+  --color-background-surface-header: #{$dg-bg-surface-header} !important;
+  --color-background-surface-hover: #{$dg-bg-hover} !important;
+  --color-background-surface-selected: #{$dg-bg-selected} !important;
+  --color-background-interactive-default: #{$dg-accent} !important;
+  --color-background-interactive-muted: #{$dg-bg-interactive-muted} !important;
+
+  --color-text-inverse: #{$dg-text-primary} !important;
+  --color-text-interactive-default: #{$dg-text-secondary} !important;
+  --color-text-primary: #{$dg-text-primary} !important;
+  --color-text-secondary: #{$dg-text-muted} !important;
+
+  --color-border-interactive-muted: #{$dg-border-muted} !important;
+  --color-border-interactive-default: #{$dg-border-default} !important;
+
+  --button-color-background-primary-default: #{$dg-accent-muted} !important;
+  --button-color-background-primary-hover: #{$dg-accent} !important;
+  --button-color-border-primary-default: #{$dg-accent-muted} !important;
+  --button-color-border-primary-hover: #{$dg-accent} !important;
+  --button-color-border-interactive-default: #{$dg-accent-muted} !important;
+
+  --gsb-color-background: #{$dg-bg-chrome} !important;
+  --gsb-color-text: #{$dg-text-primary} !important;
+  --gsb-icon-color-fill-default: #{$dg-text-secondary} !important;
+  --gsb-icon-color-fill-hover: #{$dg-accent-light} !important;
+
+  --clock-datetime-color-background: #{$dg-bg-body} !important;
+
+  // Semantic colors
+  .openc3-green { color: #{$dg-green} !important; }
+  .openc3-yellow { color: #{$dg-yellow} !important; }
+  .openc3-red { color: #{$dg-red} !important; }
+  .openc3-blue { color: #{$dg-blue} !important; }
+  .openc3-purple { color: #{$dg-purple} !important; }
+
+  // Calendar
+  .v-calendar,
+  .v-calendar-weekly__day-label,
+  .v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+    background-color: $dg-bg-surface-header !important;
+  }
+
+  .v-calendar-weekly__head-weekday {
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-top: 1px solid $dg-border-default !important;
+  }
+
+  .v-calendar-month__day {
+    background-color: $dg-bg-body !important;
+    border-left: 1px solid $dg-border-default !important;
+    border-right: 1px solid $dg-border-default !important;
+    border-bottom: 1px solid $dg-border-default !important;
+  }
+
+  // Sidebar
+  .layout-sidebar {
+    background: linear-gradient(to bottom, $dg-bg-chrome, $dg-bg-surface-alt) !important;
+  }
+
+  .layout-sidebar .layout-menu a {
+    color: $dg-text-sidebar !important;
+  }
+
+  .layout-sidebar .layout-menu a:hover {
+    background-color: $dg-bg-hover !important;
+  }
+
+  .layout-sidebar .layout-menu a.active-route {
+    color: $dg-accent-light !important;
+    background-color: rgba($dg-accent, 0.1) !important;
+  }
+
+  // Topbar / App Bar
+  .layout-topbar,
+  #openc3-app-toolbar {
+    background-color: $dg-bg-chrome !important;
+  }
+
+  #openc3-app-toolbar rux-icon {
+    color: $dg-accent !important;
+    cursor: pointer;
+  }
+
+  #openc3-app-toolbar rux-icon:hover {
+    color: $dg-accent-hover !important;
+  }
+
+  // Footer
+  #footer {
+    background-color: $dg-bg-chrome !important;
+  }
+}
+
+// === Vuetify theme variable overrides for tool micro-frontends ===
+// Tools create their own Vuetify instance defaulting to cosmosDark.
+// Override the CSS vars so color="primary"/color="secondary" resolve to dark-slate accent colors.
+@include themed('', $prefix: 'html.theme-dark-slate ') {
+  --v-theme-primary: #{red($dg-accent)},
+  #{green($dg-accent)},
+  #{blue($dg-accent)};
+  --v-theme-on-primary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+  --v-theme-secondary: #{red($dg-text-secondary)},
+  #{green($dg-text-secondary)},
+  #{blue($dg-text-secondary)};
+  --v-theme-on-secondary: #{red($dg-text-primary)},
+  #{green($dg-text-primary)},
+  #{blue($dg-text-primary)};
+}

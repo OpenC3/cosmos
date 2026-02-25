@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -55,7 +50,8 @@ class Packet(Structure):
         "RECEIVED_TIMESECONDS",
         "RECEIVED_TIMEFORMATTED",
         "RECEIVED_COUNT",
-        "COSMOS_DATA_TAG",  # Reserved for QuestDB time series database
+        "COSMOS_DATA_TAG",
+        "COSMOS_EXTRA",
     }
     ANY_STATE = "ANY"
     # Valid format types
@@ -109,6 +105,7 @@ class Packet(Structure):
         self.subpacketizer = None
         self.obfuscated_items = []
         self.obfuscated_items_hash = {}
+        self.catchall = False
 
     @property
     def target_name(self):
@@ -375,7 +372,7 @@ class Packet(Structure):
         for item in self.sorted_items:
             # Skip items with a parent_item since those are accessor-based items within a structure
             # (e.g., JSON, CBOR) that don't have meaningful bit positions - they share the parent's bit_offset
-            if item.parent_item:
+            if item.parent_item is not None:
                 continue
             if expected_next_offset and (item.bit_offset < expected_next_offset) and not item.overlap:
                 msg = f"Bit definition overlap at bit offset {item.bit_offset} for packet {self.target_name} {self.packet_name} items {item.name} and {previous_item.name}"
@@ -526,7 +523,7 @@ class Packet(Structure):
             cloned_item = sorted_item.clone()
             cloned_item.key = cloned_item.name
             cloned_item.name = f"{item.name}.{cloned_item.name}"
-            cloned_item.parent_item = item
+            cloned_item.parent_item = item.name
             cloned_item.bit_offset = item.bit_offset
             if sorted_item.bit_size <= 0:
                 cloned_item.bit_size = item.bit_size
@@ -1054,15 +1051,16 @@ class Packet(Structure):
         if self.validator:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
             config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
-        # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
         if self.template:
-            config += f"  TEMPLATE '{self.template}'\n"
+            config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode('ascii')}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
             config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
+        if self.catchall:
+            config += "  CATCHALL\n"
         if self.virtual:
             config += "  VIRTUAL\n"
         elif self.disabled:
@@ -1123,6 +1121,8 @@ class Packet(Structure):
             config["hazardous_description"] = self.hazardous_description
         if self.messages_disabled:
             config["messages_disabled"] = True
+        if self.catchall:
+            config["catchall"] = True
         if self.disabled:
             config["disabled"] = True
         if self.hidden:
@@ -1198,11 +1198,6 @@ class Packet(Structure):
     def decom(self):
         # Read all the RAW at once because this could be optimized by the accessor
         json_hash = self.read_items(self.sorted_items)
-
-        # Decom extra into the values (overrides packet items)
-        if self.extra is not None:
-            for key, value in self.extra.items():
-                json_hash[key.upper()] = value
 
         # Now read all other value types - no accessor required
         for item in self.sorted_items:

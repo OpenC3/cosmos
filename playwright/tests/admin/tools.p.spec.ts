@@ -2,15 +2,10 @@
 # Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 */
 
 // @ts-check
@@ -74,6 +69,10 @@ test('adds a new tool', async ({ page, context, utils }) => {
   await page.getByLabel('Tool Name').fill('OpenC3Home')
   await page.getByLabel('Tool Url').fill('https://openc3.com')
   await page.locator('[data-test="toolAdd"]').click()
+  // Wait for the tool to be added before reloading
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'OpenC3Home',
+  )
   await page.reload()
   const pagePromise = context.waitForEvent('page')
   await page.getByRole('link', { name: 'OpenC3Home' }).click()

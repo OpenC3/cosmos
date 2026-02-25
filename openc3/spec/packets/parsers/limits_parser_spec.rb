@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -108,6 +103,7 @@ module OpenC3
       it "sets a warning if a new limits set persistence isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5'
@@ -120,6 +116,7 @@ module OpenC3
       it "sets a warning if a new limits set enable isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 3 DISABLED 1 2 6 7 3 5'
@@ -132,6 +129,7 @@ module OpenC3
       it "records 2 warnings if a new limits set persistence and enable isn't consistent with DEFAULT" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+        tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5'

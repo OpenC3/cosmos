@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -46,12 +41,11 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '6.10.5.pre.beta0'
-  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+  s.version = '7.0.0.pre.rc3'
+  s.license = "OpenC3"
 
   # Executables
   s.executables << 'openc3cli'
-  s.executables << 'rubysloc'
   s.executables << 'cstol_converter'
 
   if RUBY_ENGINE == 'ruby'
@@ -65,14 +59,13 @@ spec = Gem::Specification.new do |s|
     s.extensions << 'ext/openc3/ext/packet/extconf.rb'
     s.extensions << 'ext/openc3/ext/platform/extconf.rb'
     s.extensions << 'ext/openc3/ext/polynomial_conversion/extconf.rb'
-    s.extensions << 'ext/openc3/ext/reducer_microservice/extconf.rb'
     s.extensions << 'ext/openc3/ext/string/extconf.rb'
     s.extensions << 'ext/openc3/ext/tabbed_plots_config/extconf.rb'
     s.extensions << 'ext/openc3/ext/telemetry/extconf.rb'
   end
 
   # Files are defined in Manifest.txt
-  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
+  s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.md Rakefile README.md)
 
   # Runtime Dependencies
   s.add_runtime_dependency 'erb',       '~> 6.0'
@@ -124,7 +117,6 @@ spec = Gem::Specification.new do |s|
 
   # Development Dependencies
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
-  s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'flog', '~> 4.6'
@@ -135,7 +127,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'rspec-rails', '~> 8.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
-  s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
+  s.add_development_dependency 'ruby-prof', '~> 2.0' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.22'
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
   s.add_development_dependency 'simplecov-cobertura', '~> 3.0'

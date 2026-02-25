@@ -1,10 +1,11 @@
 [project]
 name = "openc3"
-version = "6.10.5-beta0"
+version = "7.0.0-rc3"
 description = "Python support for OpenC3 COSMOS"
 authors = [{ name = "Support", email = "support@openc3.com" }]
 maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
-license = { file = "LICENSE.txt" }
+license = "LicenseRef-OpenC3-Builders-License"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.10,<4.0"
 readme = "README.md"
 keywords = [
@@ -18,7 +19,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -32,6 +32,7 @@ classifiers = [
 dependencies = [
     "boto3 (>=1.36.13,<2.0.0)",
     "cbor2 (>=5.6.5,<6.0.0)",
+    "Deprecated (>=1.2.15,<2.0.0)",
     "jsonpath-ng (>=1.7.0,<2.0.0)",
     "orjson>=3.10.0,<4.0.0",
     "lxml (>=6.0.0,<7.0.0)",
@@ -155,6 +156,11 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["--verbose", "--strict-markers", "--strict-config", "--tb=short"]
+filterwarnings = [
+    # valkey's internal FLUSHALL implementation calls get_connection with a
+    # deprecated argument - not actionable from our code, suppress until fixed upstream
+    "ignore:Call to 'get_connection' function with deprecated usage:DeprecationWarning:valkey",
+]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",

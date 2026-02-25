@@ -13,7 +13,7 @@ OpenC3 releases new versions of COSMOS on a monthy or better cadence. This is do
 COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, apply the upgrade, and run the new release.
 
 :::info Release Notes
-Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0 and then 6.0.0 before proceeding. See [Upgrade Migration Process](https://docs.openc3.com/docs/getting-started/upgrading#upgrade-migration-process) for more information.
+Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0, then 6.0.0, then 7.0.0 before proceeding. See [Upgrade Migration Process](/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
 This example assumes an existing COSMOS project at `cosmos-project`. This should first be performed on a non-production machine that has the same set of plugins as your production system.
@@ -121,6 +121,7 @@ Versions 5.13.0 and 6.0.0 _REQUIRE_ a stop to evaluate the upgrade. Thus if you'
 | [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0)     | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | \*[6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)\*   | Upgrade to Vue 3 and Vuetify 3 requires custom GUI tools to follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [7.0.0](https://github.com/OpenC3/cosmos/releases/tag/v7.0.0-rc1)   | Added a new time series database (TSDB) container. Switched from MINIO to versitygw and renamed the container from openc3-bucket to openc3-buckets. Running the migration script is required. See [MINIO to Versitygw Migration](/docs/getting-started/upgrading#minio-to-versitygw-migration). Once COSMOS 7 is running the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin (also on the [App Store](https://store.openc3.com/cosmos_plugins/21)) is required to move data from existing bin files to the new TSDB.                                                                                                                                                                                                                     |
 
 :::warning Downgrades
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
@@ -186,6 +187,8 @@ git commit -m "Upgrade to Enterprise vX.Y.Z"
 
 ## Migrating From COSMOS 6 to COSMOS 7
 
+We removed and deprecated a number of [API methods](../guides/scripting-api#migration-from-cosmos-v6-to-v7) in COSMOS 7.
+
 ### Passwords
 
 If you are using COSMOS Enterprise, you can skip this section. COSOMS 7 Core introduces some security enhancements around the handling of the user password.
@@ -194,7 +197,140 @@ First, we have switched the password hashing algorithm from SHA-256 to the indus
 
 Second, the JSON API no longer accepts plaintext passwords. You must instead use a session token. Please see the note at the bottom of our [JSON API documentation](../development/json-api#further-debugging) for how to acquire a session token for the API.
 
+### MINIO to Versitygw Migration
+
+COSMOS 7 uses [Versity Gateway (versitygw)](https://github.com/versity/versitygw) as the S3-compatible storage backend. Versitygw uses a POSIX filesystem backend rather than MINIO's internal object format, so existing data must be migrated via the S3 API. A migration script is provided at [`scripts/linux/openc3_migrate_s3.sh`](https://github.com/OpenC3/cosmos/blob/main/scripts/linux/openc3_migrate_s3.sh) that handles this automatically. The script runs the MINIO client (`mc`) via Docker, so no local installation is required.
+
+#### Migration Script Commands
+
+| Command   | Description                                        |
+| :-------- | :------------------------------------------------- |
+| `start`   | Start temporary containers needed for migration    |
+| `migrate` | Mirror data from MINIO to versitygw (idempotent)   |
+| `status`  | Check migration status and compare bucket contents |
+| `cleanup` | Remove temporary migration containers              |
+| `help`    | Show usage information                             |
+
+The script is **idempotent** — it uses `mc mirror --preserve` which only copies new or changed files, making it safe to run multiple times. This enables incremental syncing to minimize downtime.
+
+#### Recommended Migration Workflow
+
+**Option A: Pre-Migration (Recommended - Minimizes Downtime)**
+
+Migrate your data while COSMOS 6 is still running, then upgrade:
+
+```bash
+# 1. While COSMOS 6 is running, pull the migration script from COSMOS 7
+curl -O https://raw.githubusercontent.com/OpenC3/cosmos/main/scripts/linux/openc3_migrate_s3.sh
+chmod +x openc3_migrate_s3.sh
+
+# 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
+./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
+
+# 3. Stop COSMOS 6
+./openc3.sh stop
+
+# 4. Rerun the migration (only copies new files since the previous migration)
+./openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
+
+# 5. Upgrade to COSMOS 7+ and start
+./openc3.sh upgrade v7.0.0
+./openc3.sh run
+```
+
+**Option B: Post-Migration**
+
+Stop COSMOS 6 first, then migrate after upgrading:
+
+```bash
+# 1. Stop COSMOS 6
+./openc3.sh stop
+
+# 2. Upgrade to COSMOS 7+ and start (versitygw will be running)
+./openc3.sh upgrade v7.0.0
+./openc3.sh run
+
+# 3. Migrate all data from old COSMOS 6 MINIO volume to the running versitygw
+./scripts/linux/openc3_migrate_s3.sh migrate
+
+# 4. Verify your data migrated correctly
+./scripts/linux/openc3_migrate_s3.sh status
+./scripts/linux/openc3_migrate_s3.sh cleanup
+```
+
+#### Custom Credentials
+
+If you customized your bucket credentials in your `.env` file, pass them as environment variables:
+
+```bash
+# COSMOS 6 MINIO credentials (check your old .env file)
+MINIO_ROOT_USER=your_user MINIO_ROOT_PASSWORD=your_pass ./scripts/linux/openc3_migrate_s3.sh migrate
+
+# COSMOS 7 versitygw credentials (check your current .env file)
+OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linux/openc3_migrate_s3.sh migrate
+```
+
+| Variable                 | Description                          | Default                |
+| :----------------------- | :----------------------------------- | :--------------------- |
+| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`      |
+| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
+| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
+| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
+| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
+| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
+
+:::tip Docker Compose Volume Prefixes
+The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
+:::
+
+After verifying COSMOS 7 works correctly, you can remove the old COSMOS 6 MINIO volume:
+
+```bash
+docker volume rm openc3-bucket-v
+```
+
+### COSMOS Configuration Changes
+
+#### Removed
+
+- **`rubysloc` CLI command** — The `./openc3.sh cli rubysloc` command has been removed. Use external tools for line counting if needed.
+- **`LOG_RAW`** — Previously deprecated in favor of `LOG_STREAM`. Now fully removed. Replace any `LOG_RAW` usage with [`LOG_STREAM`](../configuration/plugins.md).
+- **Reducer microservices** — All reduced data microservices (REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY) have been removed. Reduced data is now handled by QuestDB using `SAMPLE BY` queries. You can safely delete all REDUCED_MINUTE, REDUCED_HOUR, and REDUCED_DAY data once you perform the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration).
+
+#### Deprecated Keywords (Silently Ignored)
+
+The following target configuration keywords are silently ignored during parsing and can be safely removed from your plugin configuration files:
+
+| Deprecated Keyword               | Replacement              |
+| :------------------------------- | :----------------------- |
+| `CMD_DECOM_LOG_CYCLE_TIME`       | `CMD_DECOM_RETAIN_TIME`  |
+| `CMD_DECOM_LOG_CYCLE_SIZE`       | `CMD_DECOM_RETAIN_TIME`  |
+| `CMD_DECOM_LOG_RETAIN_TIME`      | `CMD_DECOM_RETAIN_TIME`  |
+| `TLM_DECOM_LOG_CYCLE_TIME`       | `TLM_DECOM_RETAIN_TIME`  |
+| `TLM_DECOM_LOG_CYCLE_SIZE`       | `TLM_DECOM_RETAIN_TIME`  |
+| `TLM_DECOM_LOG_RETAIN_TIME`      | `TLM_DECOM_RETAIN_TIME`  |
+| `REDUCED_MINUTE_LOG_RETAIN_TIME` | No replacement (removed) |
+| `REDUCED_HOUR_LOG_RETAIN_TIME`   | No replacement (removed) |
+| `REDUCED_DAY_LOG_RETAIN_TIME`    | No replacement (removed) |
+| `REDUCED_LOG_RETAIN_TIME`        | No replacement (removed) |
+| `REDUCER_DISABLE`                | No replacement (removed) |
+| `REDUCER_DISABLED`               | No replacement (removed) |
+| `REDUCER_MAX_CPU_UTILIZATION`    | No replacement (removed) |
+| `REDUCED_MAX_CPU_UTILIZATION`    | No replacement (removed) |
+| `OPTIMIZE_THROUGHPUT`            | `UPDATE_INTERVAL`        |
+
+#### New Keywords
+
+- **`CMD_DECOM_RETAIN_TIME`** — Sets the retention time for command decommutation data in QuestDB. Accepts a time value with a unit suffix: `h` (hours), `d` (days), `w` (weeks), `M` (months), or `y` (years). Example: `CMD_DECOM_RETAIN_TIME 30d`
+- **`TLM_DECOM_RETAIN_TIME`** — Sets the retention time for telemetry decommutation data in QuestDB. Same format as above. Example: `TLM_DECOM_RETAIN_TIME 1y`
+
 ## Migrating From COSMOS 5 to COSMOS 6
+
+We removed a few rarely used [API methods](../guides/scripting-api#migration-from-cosmos-v5-to-v6) in COSMOS 6.
 
 :::info Developers Only
 If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6 other than updating your traefik configuration file. Simply follow the normal upgrade instructions above.

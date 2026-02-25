@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -61,11 +56,16 @@ test('hides the astro clock', async ({ page, utils }) => {
   await expect(page.locator('.rux-clock')).toBeVisible()
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!')).toBeVisible()
   await page.reload()
+  // Wait for the page to re-render
+  await expect(page.getByText('Hide Astro Clock')).toBeVisible()
   await expect(page.locator('.rux-clock')).not.toBeVisible()
   await page.getByText('Hide Astro Clock').click()
   await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!')).toBeVisible()
   await page.reload()
+  await expect(page.getByText('Hide Astro Clock')).toBeVisible()
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
 
@@ -128,6 +128,7 @@ test('changes the source url', async ({ page, utils }) => {
     .locator('input')
     .fill('https://openc3.com')
   await page.locator('[data-test=save-source-url]').click()
+  await expect(page.getByText('Source code URL').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('footer a')).toHaveAttribute(
     'href',
@@ -142,6 +143,7 @@ test('changes the rubygems url', async ({ page, utils }) => {
     .fill('https://myrubygems.com')
   await page.locator('[data-test=save-rubygems-url]').click()
   await page.reload()
+  await expect(page.getByText('Rubygems URL').first()).toBeVisible()
   await expect(
     page.locator('[data-test="rubygems-url"]').locator('input'),
   ).toHaveValue('https://myrubygems.com')
@@ -154,6 +156,7 @@ test('changes the pypi url', async ({ page, utils }) => {
     .fill('https://mypypi.com')
   await page.locator('[data-test=save-pypi-url]').click()
   await page.reload()
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
   await expect(
     page.locator('[data-test="pypi-url"]').locator('input'),
   ).toHaveValue('https://mypypi.com')

@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -66,7 +61,11 @@ class SerialDriver:
             raise ValueError(f"Invalid stop bits: {stop_bits}")
 
         # Convert parity to pyserial constants
-        parity_map = {"ODD": serial.PARITY_ODD, "EVEN": serial.PARITY_EVEN, "NONE": serial.PARITY_NONE}
+        parity_map = {
+            "ODD": serial.PARITY_ODD,
+            "EVEN": serial.PARITY_EVEN,
+            "NONE": serial.PARITY_NONE,
+        }
         serial_parity = parity_map[parity]
 
         # Convert stop bits to pyserial constants

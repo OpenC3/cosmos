@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 */
 
 /*
@@ -67,6 +62,7 @@ static ID id_ivar_restricted = 0;
 static ID id_ivar_subpacket = 0;
 static ID id_ivar_subpacketizer = 0;
 static ID id_ivar_obfuscated_items = 0;
+static ID id_ivar_catchall = 0;
 
 /* Sets the target name this packet is associated with. Unidentified packets
  * will have target name set to nil.
@@ -297,6 +293,7 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
   rb_ivar_set(self, id_ivar_subpacket, Qfalse);
   rb_ivar_set(self, id_ivar_subpacketizer, Qnil);
   rb_ivar_set(self, id_ivar_obfuscated_items, Qnil);
+  rb_ivar_set(self, id_ivar_catchall, Qfalse);
   return self;
 }
 
@@ -344,6 +341,7 @@ void Init_packet(void)
   id_ivar_subpacket = rb_intern("@subpacket");
   id_ivar_subpacketizer = rb_intern("@subpacketizer");
   id_ivar_obfuscated_items = rb_intern("@obfuscated_items");
+  id_ivar_catchall = rb_intern("@catchall");
 
   cPacket = rb_define_class_under(mOpenC3, "Packet", cStructure);
   rb_define_method(cPacket, "initialize", packet_initialize, -1);

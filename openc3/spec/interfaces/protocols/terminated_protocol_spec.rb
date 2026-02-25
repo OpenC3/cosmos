@@ -3,21 +3,16 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -192,7 +187,7 @@ module OpenC3
         @interface.add_protocol(TerminatedProtocol, ['0xCDEF', ''], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('TerminatedProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -205,7 +200,7 @@ module OpenC3
         @interface.add_protocol(TerminatedProtocol, ['0xCDEF', '0xABCD'], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['write_termination_characters']).to eq("\xCD\xEF".inspect)
       end
     end
@@ -215,7 +210,7 @@ module OpenC3
         @interface.add_protocol(TerminatedProtocol, ['', '0xABCD', true], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('TerminatedProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -228,7 +223,7 @@ module OpenC3
         @interface.add_protocol(TerminatedProtocol, ['', '0xABCD', false, 2, 'DEAD', true], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['read_termination_characters']).to eq("\xAB\xCD".inspect)
         expect(details['strip_read_termination']).to eq(false)
       end

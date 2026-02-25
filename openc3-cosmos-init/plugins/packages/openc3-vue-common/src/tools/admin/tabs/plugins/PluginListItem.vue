@@ -2,15 +2,10 @@
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -76,6 +71,12 @@
             @click="upgrade"
           />
           <v-list-item
+            :title="`View Microservices (${microserviceCount})`"
+            prepend-icon="mdi-tab"
+            data-test="view-microservices"
+            @click="viewMicroservices"
+          />
+          <v-list-item
             title="Delete"
             prepend-icon="mdi-delete"
             data-test="delete-plugin"
@@ -93,7 +94,6 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
 import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {
@@ -109,6 +109,10 @@ export default {
       },
     },
     isModified: Boolean,
+    microservices: {
+      type: Object,
+      default: () => ({}),
+    },
   },
   emits: ['edit', 'delete', 'upgrade'],
   data() {
@@ -124,6 +128,20 @@ export default {
       return this.name
         .replace(/^openc3-cosmos-/, '')
         .replace(/-?\d+\.\d+\.\d+(?:\.pre\.beta\d+\.\d+)?\.gem(?:__\d+)?$/, '') // '-6.6.1.pre.beta0.20250801182255.gem__20250801182444' or '6.6.1.gem'
+    },
+    getMicroservicesForPlugin: function () {
+      const names = []
+      for (const [microserviceName, microservice] of Object.entries(
+        this.microservices,
+      )) {
+        if (microservice.plugin === this.name) {
+          names.push(microserviceName)
+        }
+      }
+      return names
+    },
+    microserviceCount: function () {
+      return this.getMicroservicesForPlugin.length
     },
   },
   methods: {
@@ -173,6 +191,13 @@ export default {
     },
     upgrade: function () {
       this.$emit('upgrade')
+    },
+    viewMicroservices: function () {
+      const servicesParam = this.getMicroservicesForPlugin.join(',')
+      this.$router.push({
+        path: '/tools/admin/microservices',
+        query: { services: servicesParam },
+      })
     },
     deletePrompt: function () {
       this.showCard = false

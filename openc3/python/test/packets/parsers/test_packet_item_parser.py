@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -101,7 +96,10 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ARRAY_ITEM ITEM[0] 0 32 FLOAT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: ITEM\[0\]"):
+        with self.assertRaisesRegex(
+            ConfigParser.Error,
+            r"ARRAY items cannot have brackets in their name: ITEM\[0\]",
+        ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -109,7 +107,10 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ARRAY_ITEM DATA[1] 8 UINT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: DATA\[1\]"):
+        with self.assertRaisesRegex(
+            ConfigParser.Error,
+            r"ARRAY items cannot have brackets in their name: DATA\[1\]",
+        ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -193,9 +194,17 @@ class TestPacketItemParserTlm(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         packet = self.pc.commands["TGT1"]["PKT1"]
         self.assertTrue(
-            {"ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7", "ITEM8", "ITEM9"}.issubset(
-                set(packet.items.keys())
-            )
+            {
+                "ITEM1",
+                "ITEM2",
+                "ITEM3",
+                "ITEM4",
+                "ITEM5",
+                "ITEM6",
+                "ITEM7",
+                "ITEM8",
+                "ITEM9",
+            }.issubset(set(packet.items.keys()))
         )
         self.assertEqual(packet.items["ITEM1"].default, True)
         self.assertEqual(packet.items["ITEM2"].default, False)
@@ -400,7 +409,10 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ARRAY_PARAMETER PARAM[0] 0 32 UINT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: PARAM\[0\]"):
+        with self.assertRaisesRegex(
+            ConfigParser.Error,
+            r"ARRAY items cannot have brackets in their name: PARAM\[0\]",
+        ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -408,7 +420,10 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  APPEND_ARRAY_PARAMETER VALUES[2] 16 INT 64\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, r"ARRAY items cannot have brackets in their name: VALUES\[2\]"):
+        with self.assertRaisesRegex(
+            ConfigParser.Error,
+            r"ARRAY items cannot have brackets in their name: VALUES\[2\]",
+        ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 

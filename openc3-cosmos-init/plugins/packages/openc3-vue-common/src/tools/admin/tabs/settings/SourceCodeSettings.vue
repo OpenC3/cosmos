@@ -1,16 +1,11 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -20,8 +15,7 @@
   <v-card>
     <v-card-title> Source code URL </v-card-title>
     <v-card-subtitle>
-      This sets the URL for the "Source" link in the footer. This is required
-      under the AGPL license.
+      This sets the URL for the "Source" link in the footer.
     </v-card-subtitle>
     <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}

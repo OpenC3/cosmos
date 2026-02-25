@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2024, OpenC3, Inc.
@@ -22,6 +17,7 @@
 
 import { createApp } from 'vue'
 import { vuetify } from '@/plugins'
+import { useStore } from '@/plugins/store'
 import Toast from './Toast.vue'
 
 class Notify {
@@ -29,7 +25,7 @@ class Notify {
    * This gets called by the `install()` function below
    */
   constructor(options = {}) {
-    this.$store = options.store
+    this.store = null // Will be initialized lazily when needed
     this.mounted = false
     this.$root = null
     if (window.$cosmosNotify?.$root) {
@@ -38,6 +34,13 @@ class Notify {
     } else {
       window.$cosmosNotify = this
     }
+  }
+
+  getStore() {
+    if (!this.store) {
+      this.store = useStore()
+    }
+    return this.store
   }
 
   /*
@@ -78,7 +81,7 @@ class Notify {
       }
     }
     if (saveToHistory) {
-      this.$store.commit('notifyAddHistory', { title, body, message, level })
+      this.getStore().notifyAddHistory({ title, body, message, level })
     }
     this[method]({ title, body, message, level, duration, type })
   }

@@ -17,57 +17,44 @@ So what can you use this for? We use it to test about everything we create and O
 After configuring OpenC3 COSMOS to talk to your hardware, you can immediately use the following tools:
 
 1. **Command and Telemetry Server**
-
    - This provides status of all the target connections within the OpenC3 COSMOS system. It allows interfaces to be connected and disconnected and allows raw packet data to be viewed.
 
 1. **Limits Monitor**
-
    - The Limits Monitor tool provides an overview of all telemetry points in the system that are currently out of limits. It also maintains a log of limits changes and continues to display items that have gone out of limits even after they have been restored to green status.
 
 1. **Command Sender**
-
    - Command Sender allows you to manually send one-off commands with convenient drop downs and descriptions of each command and command parameter.
 
 1. **Script Runner**
-
    - Script Runner allows for running OpenC3 COSMOS test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At any time during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
 
    - Script Runner also allows you to break your operational or test procedures down into discrete test cases that each complete with either SUCCESS or FAILURE. After running, a script report is automatically created for you. Convenient features such as the ability to loop testing help get the kinks out of your system before formal runs.
 
 1. **Packet Viewer**
-
    - Packet Viewer provides a simple key-value list of each telemetry item in the system, giving you full view of the most recent real-time value of any telemetry point.
 
 1. **Telemetry Viewer**
-
    - Create custom organized telemetry screens using a wide variety of available telemetry widgets for display. Provide exactly the views that your users need to see for each subsystem in your system.
 
 1. **Telemetry Grapher**
-
    - Real-time and offline line graphing of telemetry points. Multiple telemetry points per graphs and multiple graphs per window allow you to efficiently organize your data. Great for graphing temperatures and voltages both in real time and post-test.
 
 1. **Data Extractor**
-
    - Used for offline analysis of command and telemetry data. Extracts a given list of items into a CSV file for further analysis in other tools such as Excel or Matlab.
 
 1. **Data Viewer**
-
    - Used to view packet data or individual item data in both the past and in real time. Great solution for non-text based data like memory dumps.
 
 1. **Bucket Explorer**
-
    - Used to view configuration and log data which is stored in either Versitygw (local server) or cloud based object storage (AWS S3, Google Cloud Storage).
 
 1. **Table Manager**
-
    - Binary file editor used to create and edit files such as flight tables.
 
 1. **Handbooks**
-
    - Formats the command and telemetry database for easy viewing.
 
 1. **Documentation**
-
    - All the COSMOS documentation is bundled as an application for easy viewing, even when offline.
 
 OpenC3 COSMOS was originally created by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) and is built and maintained by OpenC3, Inc.
@@ -91,8 +78,8 @@ Contributing is easy.
 
 Most importantly:
 
-FOR ALL CONTRIBUTIONS TO THE OPENC3 COSMOS PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS. YOU ARE AGREEING TO OUR CONTRIBUTOR LICENSE AGREEMENT WHEN SUBMITTING CODE TO THIS PROJECT: See [CONTRIBUTING.txt](CONTRIBUTING.txt)
+FOR ALL CONTRIBUTIONS TO THE OPENC3 COSMOS PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS. YOU ARE AGREEING TO OUR CONTRIBUTOR LICENSE AGREEMENT WHEN SUBMITTING CODE TO THIS PROJECT: See the Contributions section of [LICENSE.md](LICENSE.md)
 
 ## License
 
-OpenC3 COSMOS is released under the AGPL v3 with a few addendums. See [LICENSE.txt](LICENSE.txt)
+OpenC3 COSMOS is released under the OpenC3 Builder's License. See [LICENSE.md](LICENSE.md)

@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -158,15 +153,11 @@ class StreamingThread
     time = msg_hash['time'].to_i
     if first_object.stream_mode == :RAW
       return handle_raw_packet(msg_hash['buffer'], objects, time)
-    else # @stream_mode == :DECOM or :REDUCED_X
-      # Parse json_data to extract extra field containing username and other metadata
+    else # @stream_mode == :DECOM
       json_data = msg_hash["json_data"]
       extra = nil
-      if json_data
-        parsed = JSON.parse(json_data, allow_nan: true, create_additions: true)
-        if parsed['extra']
-          extra = JSON.parse(parsed['extra'], allow_nan: true, create_additions: true)
-        end
+      if msg_hash["extra"]
+        extra = JSON.parse(msg_hash["extra"], allow_nan: true, create_additions: true)
       end
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
         time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data, extra: extra)
@@ -180,7 +171,7 @@ class StreamingThread
     return nil if objects.length <= 0
     result = {}
     result['__time'] = time.to_nsec_from_epoch
-    result['__extra'] = json_packet.extra if json_packet.extra
+    result['COSMOS_EXTRA'] = JSON.generate(json_packet.extra, allow_nan: true) if json_packet.extra
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
       if object.item_name
@@ -245,7 +236,7 @@ class StreamingThread
       offset = offsets[index]
       my_index = my_topics.index(topic)
       if my_index
-        my_offset = my_offsets[index]
+        my_offset = my_offsets[my_index]
         if offset >= my_offset
           # Caught up
           handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)

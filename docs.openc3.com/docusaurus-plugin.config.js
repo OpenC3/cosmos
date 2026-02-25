@@ -135,6 +135,10 @@ const config = {
           { to: "/docs/meta/contributing", from: "/docs/v5/contributing" },
           { to: "/docs/meta/philosophy", from: "/docs/v5/philosophy" },
           { to: "/docs/meta/xtce", from: "/docs/v5/xtce" },
+          {
+            to: "/docs/getting-started/architecture",
+            from: "/docs/getting-started/key-concepts",
+          },
         ],
       },
     ],

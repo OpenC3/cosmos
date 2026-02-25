@@ -3,15 +3,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -124,12 +119,15 @@ module OpenC3
         end
       end
 
-      # DERIVED items are JSON-encoded (could be any type)
+      # DERIVED items with declared converted_type are stored as typed columns
+      # (float, int, etc.) and will be returned as non-strings, handled above.
+      # DERIVED items without declared type or with complex types (ARRAY, OBJECT, ANY)
+      # are stored as VARCHAR and JSON-encoded.
       if data_type == 'DERIVED'
         begin
           return JSON.parse(value, allow_nan: true, create_additions: true)
         rescue JSON::ParserError
-          # Could be a plain string from DERIVED
+          # Could be a plain string from DERIVED with converted_type=STRING
           return value
         end
       end
@@ -164,9 +162,10 @@ module OpenC3
     # @param target_name [String] Target name
     # @param packet_name [String] Packet name
     # @param cmd_or_tlm [String, Symbol] "CMD" or "TLM" prefix (default "TLM")
+    # @param scope [String] Scope name (default "DEFAULT")
     # @return [String] Sanitized table name
-    def self.sanitize_table_name(target_name, packet_name, cmd_or_tlm = "TLM")
-      "#{cmd_or_tlm}__#{target_name}__#{packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
+    def self.sanitize_table_name(target_name, packet_name, cmd_or_tlm = "TLM", scope: "DEFAULT")
+      "#{scope}__#{cmd_or_tlm}__#{target_name}__#{packet_name}".gsub(/[?,'"\\\/:\)\(\+\*\%~]/, '_')
     end
 
     # Sanitize a column name for QuestDB.
@@ -177,22 +176,6 @@ module OpenC3
     # ILP protocol special characters that must be sanitized in column names
     def self.sanitize_column_name(item_name)
       item_name.to_s.gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
-    end
-
-    # Get the column suffix for a given value type.
-    # Used when building SQL queries to select the appropriate column.
-    #
-    # @param value_type [String] Value type: 'RAW', 'CONVERTED', 'FORMATTED'
-    # @return [String, nil] Column suffix ('__C', '__F') or nil for RAW
-    def self.column_suffix_for_value_type(value_type)
-      case value_type
-      when 'FORMATTED'
-        '__F'
-      when 'CONVERTED'
-        '__C'
-      else
-        nil
-      end
     end
 
     # Convert a PG timestamp to UTC.

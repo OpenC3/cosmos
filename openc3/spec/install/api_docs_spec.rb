@@ -1,17 +1,12 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -21,8 +16,7 @@ require 'find'
 
 module OpenC3
   describe OpenC3 do
-    DEPRECATED_APIS = %w(require_utility check_tolerance_raw wait_raw wait_check_raw wait_tolerance_raw wait_check_tolerance_raw)
-    DEPRECATED_APIS.concat(%w(tlm_variable save_setting check_with_units tlm_with_units))
+    DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units)
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))

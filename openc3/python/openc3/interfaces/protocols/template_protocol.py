@@ -1,15 +1,10 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -108,7 +103,7 @@ class TemplateProtocol(TerminatedProtocol):
         except Empty:
             pass
 
-        if self.initial_read_delay:
+        if self.initial_read_delay is not None:
             self.connect_complete_time = time.time() + self.initial_read_delay
 
     def disconnect_reset(self):
@@ -122,7 +117,7 @@ class TemplateProtocol(TerminatedProtocol):
         # Drop all data until the initial_read_delay is complete.
         # This gets rid of unused welcome messages,
         # prompts, and other junk on initial connections
-        if self.initial_read_delay and self.initial_read_delay_needed and self.connect_complete_time:
+        if self.initial_read_delay is not None and self.initial_read_delay_needed and self.connect_complete_time:
             if time.time() < self.connect_complete_time:
                 return ("STOP", extra)
             self.initial_read_delay_needed = False
@@ -192,7 +187,7 @@ class TemplateProtocol(TerminatedProtocol):
     def write_packet(self, packet):
         # Make sure we are past the initial data dropping period
         if (
-            self.initial_read_delay
+            self.initial_read_delay is not None
             and self.initial_read_delay_needed
             and self.connect_complete_time
             and time.time() < self.connect_complete_time

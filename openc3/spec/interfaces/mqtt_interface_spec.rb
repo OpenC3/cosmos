@@ -1,17 +1,12 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -170,14 +165,14 @@ module OpenC3
     describe "details" do
       it "returns detailed interface information" do
         i = MqttInterface.new('test-server', '1883', true)
-        
+
         details = i.details
-        
+
         expect(details).to be_a(Hash)
         expect(details['hostname']).to eql('test-server')
         expect(details['port']).to eql(1883)
         expect(details['ssl']).to be true
-        
+
         # Check that base interface details are included
         expect(details['name']).to eql('MqttInterface')
         expect(details).to have_key('read_allowed')
@@ -192,15 +187,15 @@ module OpenC3
         i.set_option('CERT', ['cert_content'])
         i.set_option('KEY', ['key_content'])
         i.set_option('CA_FILE', ['ca_content'])
-        
+
         details = i.details
-        
+
         expect(details['username']).to eql('test_user')
         expect(details['password']).to eql('Set')
         expect(details['cert']).to eql('Set')
         expect(details['key']).to eql('Set')
         expect(details['ca_file']).to eql('Set')
-        
+
         # Verify sensitive options are removed from options hash
         expect(details['options']).to_not have_key('PASSWORD')
         expect(details['options']).to_not have_key('CERT')
@@ -210,9 +205,9 @@ module OpenC3
 
       it "handles missing sensitive fields" do
         i = MqttInterface.new('test-server', '1883')
-        
+
         details = i.details
-        
+
         expect(details).to_not have_key('password')
         expect(details).to_not have_key('cert')
         expect(details).to_not have_key('key')

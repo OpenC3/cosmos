@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -138,10 +133,11 @@ module OpenC3
     def read_item(item, buffer)
       return nil if item.data_type == :DERIVED
       if item.parent_item
-        handle_read_variable_bit_size(item.parent_item, buffer) if item.parent_item.variable_bit_size
+        parent_item = @packet.get_item(item.parent_item)
+        handle_read_variable_bit_size(parent_item, buffer) if parent_item.variable_bit_size
         # Structure is used to read items with parent, not accessor
-        structure_buffer = read_item(item.parent_item, buffer)
-        structure = item.parent_item.structure
+        structure_buffer = read_item(parent_item, buffer)
+        structure = parent_item.structure
         structure.read(item.key, :RAW, structure_buffer)
       else
         handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
@@ -280,11 +276,12 @@ module OpenC3
       return nil if item.data_type == :DERIVED
       if item.parent_item
         # Structure is used to write items with parent, not accessor
-        structure_buffer = read_item(item.parent_item, buffer)
-        structure = item.parent_item.structure
+        parent_item = @packet.get_item(item.parent_item)
+        structure_buffer = read_item(parent_item, buffer)
+        structure = parent_item.structure
         structure.write(item.key, value, :RAW, structure_buffer)
-        handle_write_variable_bit_size(item.parent_item, structure_buffer, buffer) if item.parent_item.variable_bit_size
-        self.class.write_item(item.parent_item, structure_buffer, buffer)
+        handle_write_variable_bit_size(parent_item, structure_buffer, buffer) if parent_item.variable_bit_size
+        self.class.write_item(parent_item, structure_buffer, buffer)
       else
         handle_write_variable_bit_size(item, value, buffer) if item.variable_bit_size
         self.class.write_item(item, value, buffer)

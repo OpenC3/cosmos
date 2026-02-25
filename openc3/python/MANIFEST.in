@@ -1,5 +1,5 @@
 # Include the license file
-include LICENSE.txt
+include LICENSE.md
 
 # Include the example files
 recursive-include examples *

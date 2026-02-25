@@ -10,7 +10,7 @@ sidebar_custom_props:
 
 ## Telemetry Concepts
 
-When COSMOS receives a telemetry packet from a target, the system will log the raw packet, decommutate it to engineering values, and log the decommutated data. This data is stored in log files and in Redis, and it is made available via the CmdTlmApi Server:
+When COSMOS receives a telemetry packet from a target, the system will log the raw packet to a binary log file, decommutate it to engineering values, and write the decommutated data to the time-series database (TSDB), [QuestDB](https://questdb.io/). The raw binary logs are stored in S3-compatible bucket storage while the decommutated data is stored in QuestDB for fast time-series queries. Both raw and decommutated data are also streamed through Valkey (Redis) for real-time access. All data is made available via the CmdTlmApi Server:
 
 ![Telemetry Processing Diagram](/img/tlm-processing.png)
 
@@ -383,7 +383,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 ```
 
 ### ID_ITEM
-**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet.**
+**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet. A warning will be generated for packets without ID_ITEMs unless the CATCHALL keyword is used.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -584,6 +584,15 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 |-----------|-------------|----------|
 | Template | The template string which should be enclosed in quotes | True |
 
+### TEMPLATE_BASE64
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Defines a template binary as base64 used to to pull telemetry values from a string buffer**
+
+Base64 encoded binary data
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template | The template string as base64 data | True |
+
 ### TEMPLATE_FILE
 <span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to pull telemetry values from a string buffer**
 
@@ -595,6 +604,12 @@ Defines a class used to break up the packet into subpackets before decom. Defaul
 <span class="badge badge--secondary since-right">Since 5.16.0</span>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
+
+### CATCHALL
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Marks this packet as an intentional catch-all packet**
+
+Suppresses the warning that is normally generated for packets defined without ID_ITEMs. Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
 
 
 ### VIRTUAL

@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -23,8 +18,8 @@ class RequestError(RuntimeError):
     RequestError
 
     Parameters:
-        message (str): The Request Error from Cosmos v5
-        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
+        message (str): The Request Error from Cosmos
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest
     """
 
     def __init__(self, message: str, request):
@@ -37,8 +32,8 @@ class ResponseError(RuntimeError):
     ResponseError
 
     Parameters:
-        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
-        response (openc3.exceptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse v5
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest
+        response (openc3.exceptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse
     """
 
     def __init__(self, request, response):

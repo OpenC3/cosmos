@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -166,8 +161,12 @@ ensure
 
     running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
 
-    # Inform script channel it is complete
-    running_script_anycable_publish("running-script-channel:#{id}", { type: :complete, state: script_status.state })
+    # Inform script channel it is complete (include suite report if available to avoid race condition)
+    complete_msg = { type: :complete, state: script_status.state }
+    if running_script&.suite_report
+      complete_msg[:report] = running_script.suite_report
+    end
+    running_script_anycable_publish("running-script-channel:#{id}", complete_msg)
 
     # Inform frontend of number of running scripts in this scope
     running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })

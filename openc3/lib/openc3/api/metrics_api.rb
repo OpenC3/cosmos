@@ -3,15 +3,10 @@
 # Copyright 2023 OpenC3, Inc
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -36,12 +31,6 @@ module OpenC3
 
     DURATION_METRICS = {}
     DURATION_METRICS['decom_duration_seconds'] = 0.0
-    DURATION_METRICS['reducer_minute_processing_sample_seconds'] = 0.0
-    DURATION_METRICS['reducer_hour_processing_sample_seconds'] = 0.0
-    DURATION_METRICS['reducer_day_processing_sample_seconds'] = 0.0
-    DURATION_METRICS['reducer_minute_processing_max_seconds'] = 0.0
-    DURATION_METRICS['reducer_hour_processing_max_seconds'] = 0.0
-    DURATION_METRICS['reducer_day_processing_max_seconds'] = 0.0
 
     SUM_METRICS = {}
     SUM_METRICS['cleanup_total'] = 0
@@ -54,12 +43,6 @@ module OpenC3
     SUM_METRICS['log_total'] = 0
     SUM_METRICS['log_error_total'] = 0
     SUM_METRICS['periodic_total'] = 0
-    SUM_METRICS['reducer_minute_total'] = 0
-    SUM_METRICS['reducer_hour_total'] = 0
-    SUM_METRICS['reducer_day_total'] = 0
-    SUM_METRICS['reducer_minute_error_total'] = 0
-    SUM_METRICS['reducer_hour_error_total'] = 0
-    SUM_METRICS['reducer_day_error_total'] = 0
     SUM_METRICS['router_cmd_total'] = 0
     SUM_METRICS['router_tlm_total'] = 0
     SUM_METRICS['router_directive_total'] = 0

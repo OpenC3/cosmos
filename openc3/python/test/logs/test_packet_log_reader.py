@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -130,7 +125,17 @@ class TestPacketLogReaderWithJsonTelemetry(unittest.TestCase):
             data = self.pkt_data
 
         for t in self.times:
-            plw.write(raw_or_json, cmd_or_tlm, target_name, packet_name, t, True, data, None, "0-0")
+            plw.write(
+                raw_or_json,
+                cmd_or_tlm,
+                target_name,
+                packet_name,
+                t,
+                True,
+                data,
+                None,
+                "0-0",
+            )
 
         self.logfile = plw.filename
         plw.shutdown()
@@ -178,7 +183,17 @@ class TestPacketLogReaderWithJsonCommands(unittest.TestCase):
         packet_name = "COLLECT"
 
         for t in self.times:
-            plw.write("JSON_PACKET", "CMD", target_name, packet_name, t, True, self.pkt_data, None, "0-0")
+            plw.write(
+                "JSON_PACKET",
+                "CMD",
+                target_name,
+                packet_name,
+                t,
+                True,
+                self.pkt_data,
+                None,
+                "0-0",
+            )
 
         self.logfile = plw.filename
         plw.shutdown()
@@ -227,7 +242,17 @@ class TestPacketLogReaderWithRawTelemetry(unittest.TestCase):
         packet_name = "HEALTH_STATUS"
 
         for t in self.times:
-            plw.write("RAW_PACKET", "TLM", target_name, packet_name, t, True, self.pkt_data, None, "0-0")
+            plw.write(
+                "RAW_PACKET",
+                "TLM",
+                target_name,
+                packet_name,
+                t,
+                True,
+                self.pkt_data,
+                None,
+                "0-0",
+            )
 
         self.logfile = plw.filename
         plw.shutdown()
@@ -274,7 +299,17 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
         packet_name = "HEALTH_STATUS"
 
         for t in self.times:
-            plw.write("JSON_PACKET", "TLM", target_name, packet_name, t, True, pkt_data, None, "0-0")
+            plw.write(
+                "JSON_PACKET",
+                "TLM",
+                target_name,
+                packet_name,
+                t,
+                True,
+                pkt_data,
+                None,
+                "0-0",
+            )
 
         self.logfile = plw.filename
         plw.shutdown()
@@ -352,8 +387,28 @@ class TestPacketLogReaderProperties(unittest.TestCase):
         """Create a simple test log file."""
         plw = PacketLogWriter(self.temp_dir, "spec")
         time_nsec = int(time.time() * 1e9)
-        plw.write("JSON_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec, True, {"VALUE": 1}, None, "0-0")
-        plw.write("JSON_PACKET", "TLM", "INST", "HEALTH_STATUS", time_nsec + 1000, True, {"VALUE": 2}, None, "0-0")
+        plw.write(
+            "JSON_PACKET",
+            "TLM",
+            "INST",
+            "HEALTH_STATUS",
+            time_nsec,
+            True,
+            {"VALUE": 1},
+            None,
+            "0-0",
+        )
+        plw.write(
+            "JSON_PACKET",
+            "TLM",
+            "INST",
+            "HEALTH_STATUS",
+            time_nsec + 1000,
+            True,
+            {"VALUE": 2},
+            None,
+            "0-0",
+        )
         filename = plw.filename
         plw.shutdown()
         return filename
@@ -469,7 +524,13 @@ class TestJsonPacket(unittest.TestCase):
         received_time_nsec = time_nsec + 1000
 
         packet = JsonPacket(
-            "TLM", "INST", "HEALTH_STATUS", time_nsec, False, {}, received_time_nsec_since_epoch=received_time_nsec
+            "TLM",
+            "INST",
+            "HEALTH_STATUS",
+            time_nsec,
+            False,
+            {},
+            received_time_nsec_since_epoch=received_time_nsec,
         )
 
         self.assertEqual(packet.time_nsec, time_nsec)

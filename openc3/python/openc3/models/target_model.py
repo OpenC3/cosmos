@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -54,6 +49,7 @@ class TargetModel(Model):
     sync_packet_count_data = {}
     sync_packet_count_time = None
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
+    stale_packet_keys_warned = set()  # Track stale keys already warned about
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -309,15 +305,28 @@ class TargetModel(Model):
     @classmethod
     def init_tlm_packet_counts(cls, tlm_target_names, scope):
         cls.sync_packet_count_time = time.time()
+        cls.stale_packet_keys_warned = set()
 
         # Get all the packet counts with the global counters
         for target_name in tlm_target_names:
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
-                update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                update_packet.received_count = int(count)
+                try:
+                    update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                    update_packet.received_count = int(count)
+                except RuntimeError:
+                    key = f"{target_name} {packet_name.decode()}"
+                    if key not in cls.stale_packet_keys_warned:
+                        cls.stale_packet_keys_warned.add(key)
+                        Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
         for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
-            update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
-            update_packet.received_count = int(count)
+            try:
+                update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
+                update_packet.received_count = int(count)
+            except RuntimeError:
+                key = f"UNKNOWN {packet_name.decode()}"
+                if key not in cls.stale_packet_keys_warned:
+                    cls.stale_packet_keys_warned.add(key)
+                    Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
@@ -358,7 +367,10 @@ class TargetModel(Model):
                     Store.instance().redis_pool.pipelines[thread_id] = pipeline
                     try:
                         # Increment global counters for packets received
-                        for target_name, packet_data in cls.sync_packet_count_data.items():
+                        for (
+                            target_name,
+                            packet_data,
+                        ) in cls.sync_packet_count_data.items():
                             for packet_name, count in packet_data.items():
                                 TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
                                 inc_count += 1
@@ -374,12 +386,24 @@ class TargetModel(Model):
                         Store.instance().redis_pool.pipelines[thread_id] = None
                 for target_name in tlm_target_names:
                     for packet_name, count in result[inc_count].items():
-                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                        update_packet.received_count = int(count)
+                        try:
+                            update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                            update_packet.received_count = int(count)
+                        except RuntimeError:
+                            key = f"{target_name} {packet_name.decode()}"
+                            if key not in cls.stale_packet_keys_warned:
+                                cls.stale_packet_keys_warned.add(key)
+                                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
-                    update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
-                    update_packet.received_count = int(count)
+                    try:
+                        update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
+                        update_packet.received_count = int(count)
+                    except RuntimeError:
+                        key = f"UNKNOWN {packet_name.decode()}"
+                        if key not in cls.stale_packet_keys_warned:
+                            cls.stale_packet_keys_warned.add(key)
+                            Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
@@ -460,24 +484,15 @@ class TargetModel(Model):
         cmd_log_cycle_time=600,
         cmd_log_cycle_size=50_000_000,
         cmd_log_retain_time=None,
-        cmd_decom_log_cycle_time=600,
-        cmd_decom_log_cycle_size=50_000_000,
-        cmd_decom_log_retain_time=None,
         tlm_buffer_depth=60,
         tlm_log_cycle_time=600,
         tlm_log_cycle_size=50_000_000,
         tlm_log_retain_time=None,
-        tlm_decom_log_cycle_time=600,
-        tlm_decom_log_cycle_size=50_000_000,
-        tlm_decom_log_retain_time=None,
-        reduced_minute_log_retain_time=None,
-        reduced_hour_log_retain_time=None,
-        reduced_day_log_retain_time=None,
-        cleanup_poll_time=600,
+        cmd_decom_retain_time=None,
+        tlm_decom_retain_time=None,
+        cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices=None,
-        reducer_disable=False,
-        reducer_max_cpu_utilization=30.0,
         disable_erb=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
@@ -511,7 +526,11 @@ class TargetModel(Model):
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(f"{self.scope}__openc3tlm__{target_name}", packet_name, json.dumps(packet.as_json()))
+                    Store.hset(
+                        f"{self.scope}__openc3tlm__{target_name}",
+                        packet_name,
+                        json.dumps(packet.as_json()),
+                    )
                 except Exception as e:
                     Logger.error(f"Invalid text present in {target_name} {packet_name} tlm packet")
                     raise e
@@ -534,7 +553,11 @@ class TargetModel(Model):
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(f"{self.scope}__openc3cmd__{target_name}", packet_name, json.dumps(packet.as_json()))
+                    Store.hset(
+                        f"{self.scope}__openc3cmd__{target_name}",
+                        packet_name,
+                        json.dumps(packet.as_json()),
+                    )
                 except Exception as e:
                     Logger.error(f"Invalid text present in {target_name} {packet_name} cmd packet")
                     raise e
@@ -598,30 +621,29 @@ class TargetModel(Model):
         if cmd_or_tlm == "TELEMETRY":
             Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__PACKETLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMLOG__{self.name}", decom_topics)
-            Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
         else:
             Topic.write_topic(
                 f"MICROSERVICE__{self.scope}__COMMANDLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(raw_topics, cls=JsonEncoder)},
+                {
+                    "command": "ADD_TOPICS",
+                    "topics": json.dumps(raw_topics, cls=JsonEncoder),
+                },
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
-            Topic.write_topic(
-                f"MICROSERVICE__{self.scope}__DECOMCMDLOG__{self.name}",
-                {"command": "ADD_TOPICS", "topics": json.dumps(decom_topics, cls=JsonEncoder)},
-            )
-            self.add_topics_to_microservice(f"{self.scope}__DECOMCMDLOG__{self.name}", decom_topics)
 
     def add_topics_to_microservice(self, microservice_name, topics):
         model = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)

@@ -16,7 +16,7 @@ export default defineConfig({
       formats: ['umd'],
     },
     rollupOptions: {
-      external: ['vue', 'vuetify'],
+      external: ['single-spa', 'vue', 'pinia', 'vue-router', 'vuetify'],
     },
   },
   plugins: [vue(), VitePluginStyleInject()],

@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -1020,11 +1015,11 @@ module OpenC3
 
         # Simulate what structurize_item does: create child items with same bit_offset and parent_item reference
         item1 = p.define_item("json_struct.item1", 32, 0, :UINT)
-        item1.parent_item = parent_item
+        item1.parent_item = "JSON_STRUCT"
         item2 = p.define_item("json_struct.item2", 32, 0, :STRING)
-        item2.parent_item = parent_item
+        item2.parent_item = "JSON_STRUCT"
         item3 = p.define_item("json_struct.item3", 32, 0, :INT)
-        item3.parent_item = parent_item
+        item3.parent_item = "JSON_STRUCT"
 
         # Should not complain about the items with parent_item even though they share bit_offset
         expect(p.check_bit_offsets).to eq []
@@ -1657,7 +1652,7 @@ module OpenC3
         expect(json['packet_name']).to eql 'PKT'
         expect(json['items']).to eql []
         expect(json['accessor']).to eql "OpenC3::BinaryAccessor"
-        expect(json['template']).to eql Base64.encode64("\x00\x01\x02\x03")
+        expect(json['template']).to eql Base64.strict_encode64("\x00\x01\x02\x03")
       end
 
       it "handles many items" do

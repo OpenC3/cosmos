@@ -1,16 +1,11 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -36,7 +31,7 @@
           class="toggle-icon"
           style="padding-right: 10px"
         >
-          {{ node.isOpen ? 'mdi-menu-down' : 'mdi-menu-right' }}
+          {{ node.isOpen || search ? 'mdi-menu-down' : 'mdi-menu-right' }}
         </v-icon>
         <v-icon v-if="node.children" size="small" style="padding-right: 10px">
           {{ 'mdi-folder' }}
@@ -79,7 +74,7 @@
       </div>
     </div>
     <div v-else></div>
-    <div v-if="node.children && node.isOpen" class="children">
+    <div v-if="node.children && (node.isOpen || search)" class="children">
       <tree-node
         v-for="child in node.children"
         :key="child.id"

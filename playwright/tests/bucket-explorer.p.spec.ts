@@ -1,16 +1,11 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 */
 
 // @ts-check
@@ -230,7 +225,13 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     '/ DEFAULT /',
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+  if (process.env.ENTERPRISE === '1') {
+    await expect(page.locator('tbody > tr').first()).toHaveText(/notebooks/)
+    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
+  } else {
+    await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
+  }
   // Reload and ensure we get to the same place
   await page.reload()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
@@ -253,7 +254,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
   if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(23)
+    await expect(page.locator('tbody > tr')).toHaveCount(24)
   } else {
     await expect(page.locator('tbody > tr')).toHaveCount(17)
   }

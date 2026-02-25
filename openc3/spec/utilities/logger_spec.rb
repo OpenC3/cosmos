@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -296,7 +291,7 @@ module OpenC3
       context "with nested hash" do
         it "merges nested hash into log data" do
           stdout = setup_stdout
-          
+
           other = {
             request_id: '12345',
             metadata: {
@@ -304,9 +299,9 @@ module OpenC3
               version: '1.0'
             }
           }
-          
+
           Logger.info("Test message", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['message']).to eq('Test message')
           expect(json['request_id']).to eq('12345')
@@ -319,14 +314,14 @@ module OpenC3
       context "with array values" do
         it "includes array values in log data" do
           stdout = setup_stdout
-          
+
           other = {
             tags: ['error', 'critical', 'alert'],
             items: [1, 2, 3]
           }
-          
+
           Logger.warn("Warning message", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['tags']).to eq(['error', 'critical', 'alert'])
           expect(json['items']).to eq([1, 2, 3])
@@ -336,15 +331,15 @@ module OpenC3
       context "with Time objects" do
         it "converts Time objects to strings" do
           stdout = setup_stdout
-          
+
           time = Time.parse("2025-01-15 12:30:45 UTC")
           other = {
             start_time: time,
             end_time: time + 3600
           }
-          
+
           Logger.info("Time test", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['start_time']).to be_a(String)
           expect(json['end_time']).to be_a(String)
@@ -354,14 +349,14 @@ module OpenC3
       context "with Symbol values" do
         it "converts symbols to strings" do
           stdout = setup_stdout
-          
+
           other = {
             status: :success,
             operation: :read
           }
-          
+
           Logger.info("Symbol test", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['status']).to eq('success')
           expect(json['operation']).to eq('read')
@@ -371,21 +366,21 @@ module OpenC3
       context "with special float values" do
         it "handles Infinity, -Infinity, and NaN" do
           stdout = setup_stdout
-          
+
           other = {
             pos_infinity: Float::INFINITY,
             neg_infinity: -Float::INFINITY,
             not_a_number: Float::NAN
           }
-          
+
           Logger.info("Float test", other: other)
-          
+
           # When create_additions: true, the special floats are reconstructed
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['pos_infinity']).to eq(Float::INFINITY)
           expect(json['neg_infinity']).to eq(-Float::INFINITY)
           expect(json['not_a_number'].nan?).to be true
-          
+
           # Verify the raw JSON contains the special representation
           raw_output = stdout.string
           expect(raw_output).to include('"json_class":"Float"')
@@ -398,17 +393,17 @@ module OpenC3
       context "with Exception object" do
         it "serializes exception details" do
           stdout = setup_stdout
-          
+
           begin
             raise StandardError.new("Test error")
           rescue => e
             other = {
               exception: e
             }
-            
+
             Logger.error("Exception occurred", other: other)
           end
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['exception']).to be_a(Hash)
           expect(json['exception']['class']).to eq('StandardError')
@@ -420,13 +415,13 @@ module OpenC3
       context "with Regexp values" do
         it "converts regexp to string" do
           stdout = setup_stdout
-          
+
           other = {
             pattern: /test.*pattern/i
           }
-          
+
           Logger.info("Regexp test", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['pattern']).to eq('(?i-mx:test.*pattern)')
         end
@@ -435,7 +430,7 @@ module OpenC3
       context "with mixed complex types" do
         it "handles deeply nested structures with various types" do
           stdout = setup_stdout
-          
+
           other = {
             request: {
               id: 'req-123',
@@ -452,9 +447,9 @@ module OpenC3
               count: 10
             }
           }
-          
+
           Logger.info("Complex test", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['request']).to be_a(Hash)
           expect(json['request']['id']).to eq('req-123')
@@ -468,15 +463,15 @@ module OpenC3
       context "with nil and empty values" do
         it "handles nil values correctly" do
           stdout = setup_stdout
-          
+
           other = {
             value1: nil,
             value2: '',
             value3: []
           }
-          
+
           Logger.info("Nil test", other: other)
-          
+
           json = JSON.parse(stdout.string, allow_nan: true, create_additions: true)
           expect(json['value1']).to be_nil
           expect(json['value2']).to eq('')

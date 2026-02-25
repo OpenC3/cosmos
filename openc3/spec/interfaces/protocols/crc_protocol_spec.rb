@@ -3,21 +3,16 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -450,7 +445,7 @@ module OpenC3
         expect(packet.buffer.length).to eql 12
         expect(packet.buffer).to eql $buffer
       end
-  
+
       context "with a specified CRC poly, seed, xor, and reflect" do
         it "reads the 8 bit CRC field and compares to the CRC" do
           @interface.instance_variable_set(:@stream, CrcStream.new)
@@ -820,7 +815,7 @@ module OpenC3
         packet.buffer = "\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
         expect { @interface.write(packet) }.to raise_error(/Packet item 'TGT PKT MYCRC' does not exist/)
       end
-  
+
       it "calculates and writes the 8 bit CRC item" do
         @interface.instance_variable_set(:@stream, CrcStream.new)
         @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
@@ -1027,7 +1022,7 @@ module OpenC3
         @interface.add_protocol(CrcProtocol, [nil, 'TRUE', 'ERROR', -16, 16], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('CrcProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -1040,7 +1035,7 @@ module OpenC3
         @interface.add_protocol(CrcProtocol, ['CRC_FIELD', 'FALSE', 'ERROR', -32, 32, 'BIG_ENDIAN', 0x1234, 0x5678, 'TRUE', 'FALSE'], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['write_item_name']).to eq('CRC_FIELD')
         expect(details['endianness']).to eq(:BIG_ENDIAN)
         expect(details['bit_offset']).to eq(-32)
@@ -1053,7 +1048,7 @@ module OpenC3
         @interface.add_protocol(CrcProtocol, [nil, 'TRUE', 'ERROR', -16, 16], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('CrcProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -1066,7 +1061,7 @@ module OpenC3
         @interface.add_protocol(CrcProtocol, ['CRC_FIELD', 'FALSE', 'DISCONNECT', -32, 32, 'LITTLE_ENDIAN', 0x1234, 0x5678, 'TRUE', 'FALSE'], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['strip_crc']).to eq(false)
         expect(details['bad_strategy']).to eq('DISCONNECT')
         expect(details['endianness']).to eq(:LITTLE_ENDIAN)

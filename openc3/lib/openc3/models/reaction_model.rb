@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -235,16 +230,20 @@ module OpenC3
 
     def notify_enable
       @enabled = true
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'enabled')
-      # update() will be called by the reaction_microservice
+      # update() will also be called by the reaction_microservice
     end
 
     def notify_disable
       @enabled = false
       # disabling clears the snooze so when it's enabled it can immediately run
       @snoozed_until = nil
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
       notify(kind: 'disabled')
-      # update() will be called by the reaction_microservice
+      # update() will also be called by the reaction_microservice
     end
 
     def notify_execute

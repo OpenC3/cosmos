@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -178,8 +173,16 @@ module OpenC3
       algorithm_xml = Nokogiri::XML::Builder.new do |alg_xml|
         alg_xml.AlgorithmSet do
           derived.each do |packet_name, item|
+            rc = item.read_conversion
+            # PythonProxy overrides .class to return a String, so handle both cases
+            conv_name = if rc
+              rc_class = rc.class
+              rc_class.is_a?(String) ? rc_class : rc_class.name
+            else
+              "NoConversion"
+            end
             alg_xml.CustomAlgorithm("name" => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_" \
-                                    "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_#{item.read_conversion.class.name}") do
+                                    "#{item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_#{conv_name}") do
               alg_xml.ExternalAlgorithmSet do
                 alg_xml.ExternalAlgorithm("implementationName" => "TODO", "algorithmLocation" => "TODO")
               end

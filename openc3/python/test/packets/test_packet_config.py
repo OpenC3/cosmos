@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -230,7 +225,15 @@ class TestPacketConfig(unittest.TestCase):
             # The following have 0 parameters
             ignore.append("OVERLAP")
             # The following are command only
-            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE", "OBFUSCATE"])
+            ignore.extend(
+                [
+                    "REQUIRED",
+                    "MINIMUM_VALUE",
+                    "MAXIMUM_VALUE",
+                    "DEFAULT_VALUE",
+                    "OBFUSCATE",
+                ]
+            )
             if keyword in ignore:
                 continue
 
@@ -578,6 +581,67 @@ class TestPacketConfig(unittest.TestCase):
             self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].disabled)
             self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].virtual)
 
+    def test_warns_for_telemetry_packet_with_no_id_items(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertIn(
+                "Telemetry packet TGT1 PKT1 has no ID_ITEMS and will match all buffers",
+                self.pc.warnings,
+            )
+
+    def test_warns_for_command_packet_with_no_id_items(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  PARAMETER item1 0 8 UINT 0 255 0\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertIn(
+                "Command packet TGT1 PKT1 has no ID_ITEMS and will match all buffers",
+                self.pc.warnings,
+            )
+
+    def test_does_not_warn_for_packets_with_id_items(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  APPEND_ID_ITEM item1 8 UINT 1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
+            self.assertEqual(len(no_id_warnings), 0)
+
+    def test_does_not_warn_for_virtual_packets(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  VIRTUAL\n")
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
+            self.assertEqual(len(no_id_warnings), 0)
+
+    def test_does_not_warn_for_disabled_packets(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  DISABLED\n")
+            tf.write("  PARAMETER item1 0 8 UINT 0 255 0\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
+            self.assertEqual(len(no_id_warnings), 0)
+
+    def test_does_not_warn_for_catchall_packets(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("  CATCHALL\n")
+            tf.write("  ITEM item1 0 8 UINT\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            no_id_warnings = [w for w in self.pc.warnings if "no ID_ITEMS" in w]
+            self.assertEqual(len(no_id_warnings), 0)
+
     def test_sets_the_accessor_for_the_packet(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -586,8 +650,14 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ACCESSOR CborAccessor\n")  # Still works with the deprecated class name syntax
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
-            self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__, "XmlAccessor")
-            self.assertEqual(self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__, "CborAccessor")
+            self.assertEqual(
+                self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__,
+                "XmlAccessor",
+            )
+            self.assertEqual(
+                self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__,
+                "CborAccessor",
+            )
 
     def test_handles_bad_accessors(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -595,7 +665,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ACCESSOR openc3/accessors/nope_accessor.py\n")
             tf.seek(0)
             with self.assertRaisesRegex(
-                ConfigParser.Error, "ModuleNotFoundError parsing openc3/accessors/nope_accessor.py. Usage: ACCESSOR"
+                ConfigParser.Error,
+                "ModuleNotFoundError parsing openc3/accessors/nope_accessor.py. Usage: ACCESSOR",
             ):
                 self.pc.process_file(tf.name, "SYSTEM")
 
@@ -796,7 +867,12 @@ class TestPacketConfig(unittest.TestCase):
                 data = {
                     "id_item": 2,
                     "item1": 101,
-                    "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+                    "more": {
+                        "item2": 12,
+                        "item3": 3.14,
+                        "item4": "Example",
+                        "item5": [4, 3, 2, 1],
+                    },
                 }
                 dump(data, fp)
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -828,7 +904,12 @@ class TestPacketConfig(unittest.TestCase):
             {
                 "id_item": 2,
                 "item1": 101,
-                "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+                "more": {
+                    "item2": 12,
+                    "item3": 3.14,
+                    "item4": "Example",
+                    "item5": [4, 3, 2, 1],
+                },
             },
         )
         self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
@@ -839,7 +920,16 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             loads(self.pc.commands["TGT1"]["PKT1"].buffer),
             # id_item remains 2 from template since it wasn't written
-            {"id_item": 2, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
+            {
+                "id_item": 2,
+                "item1": 202,
+                "more": {
+                    "item2": 333,
+                    "item3": 7.89,
+                    "item4": "TEST",
+                    "item5": [6, 7, 8, 9],
+                },
+            },
         )
         os.remove(os.path.join(os.getcwd(), "unittest.txt"))
 
@@ -1144,8 +1234,15 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("    VARIABLE_BIT_SIZE LEN 16 8\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            vbs = {"length_item_name": "LEN", "length_bits_per_count": 16, "length_value_bit_offset": 8}
-            self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size, vbs)
+            vbs = {
+                "length_item_name": "LEN",
+                "length_bits_per_count": 16,
+                "length_value_bit_offset": 8,
+            }
+            self.assertEqual(
+                self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size,
+                vbs,
+            )
 
     def test_allows_item_overlap(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -1156,7 +1253,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("    OVERLAP\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(0, len(self.pc.warnings))
+            overlap_warnings = [w for w in self.pc.warnings if "overlap" in w]
+            self.assertEqual(0, len(overlap_warnings))
 
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
@@ -1166,9 +1264,9 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.process_file(tf.name, "TGT1")
             # Items with same bit_offset are sorted by create_index, so item1 comes first
             # When item2 is checked, it overlaps with item1
-            self.assertEqual(
+            self.assertIn(
                 "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-                self.pc.warnings[0],
+                self.pc.warnings,
             )
 
     def test_required_only_applies_to_a_command_parameter(self):
@@ -1366,7 +1464,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("  ITEM item2 4 4 UINT\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(len(self.pc.warnings), 0)
+            overlap_warnings = [w for w in self.pc.warnings if "overlap" in w]
+            self.assertEqual(len(overlap_warnings), 0)
 
     def test_hex_states(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:

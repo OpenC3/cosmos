@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -32,7 +27,8 @@ module OpenC3
   # Packet adds is the ability to apply formatting to PacketItem values as well
   # as managing PacketItem's limit states.
   class Packet < Structure
-    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze].freeze
+    RESERVED_ITEM_NAMES = Set['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze,
+      'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze, 'COSMOS_DATA_TAG'.freeze, 'COSMOS_EXTRA'.freeze].freeze
     ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with
@@ -119,6 +115,9 @@ module OpenC3
     # @return [Subpacketizer] Subpacketizer class (optional)
     attr_accessor :subpacketizer
 
+    # @return [Boolean] Catchall flag - Used to prevent warnings for catchall packets
+    attr_accessor :catchall
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
 
@@ -165,6 +164,7 @@ module OpenC3
         @subpacket = false
         @subpacketizer = nil
         @obfuscated_items = nil
+        @catchall = false
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -602,7 +602,7 @@ module OpenC3
         cloned_item = sorted_item.clone
         cloned_item.key = cloned_item.name
         cloned_item.name = "#{item.name}.#{cloned_item.name}"
-        cloned_item.parent_item = item
+        cloned_item.parent_item = item.name
         cloned_item.bit_offset = item.bit_offset
         if sorted_item.bit_size <= 0
           cloned_item.bit_size = item.bit_size
@@ -1140,13 +1140,13 @@ module OpenC3
       if @validator
         config << "  VALIDATOR #{@validator.class} #{@validator.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
-      # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
       if @template
-        config << "  TEMPLATE '#{@template}'\n"
+        config << "  TEMPLATE_BASE64 #{Base64.strict_encode64(@template)}\n"
       end
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
+      config << "  CATCHALL" if @catchall
       if @virtual
         config << "  VIRTUAL\n"
       elsif @disabled
@@ -1217,6 +1217,7 @@ module OpenC3
       config['hazardous'] = true if @hazardous
       config['hazardous_description'] = @hazardous_description.to_s if @hazardous_description
       config['messages_disabled'] = true if @messages_disabled
+      config['catchall'] = true if @catchall
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['virtual'] = true if @virtual
@@ -1226,7 +1227,7 @@ module OpenC3
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
       config['validator'] = @validator.class.to_s if @validator
-      config['template'] = Base64.encode64(@template) if @template
+      config['template'] = Base64.strict_encode64(@template) if @template
       config['config_name'] = self.config_name
       config['obfuscated_items'] = @obfuscated_items&.map(&:name) || []
 
@@ -1286,13 +1287,6 @@ module OpenC3
     def decom
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
-
-      # Decom extra into the values (all raw)
-      if @extra
-        @extra.each do |key, value|
-          json_hash[key.upcase] = value
-        end
-      end
 
       # Now read all other value types - no accessor required
       @sorted_items.each do |item|

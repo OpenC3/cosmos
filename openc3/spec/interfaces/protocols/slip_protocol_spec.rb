@@ -1,17 +1,12 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -268,7 +263,7 @@ module OpenC3
         @interface.add_protocol(SlipProtocol, [], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('SlipProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -281,7 +276,7 @@ module OpenC3
         @interface.add_protocol(SlipProtocol, ["0xC0", "false", "true", "false", "0xC0", "0xDB", "0xDC", "0xDD"], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['start_char']).to eq("\xC0".inspect)
         expect(details['write_enable_escaping']).to eq(false)
         expect(details['end_char']).to eq("\xC0".inspect)
@@ -296,7 +291,7 @@ module OpenC3
         @interface.add_protocol(SlipProtocol, [], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('SlipProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -309,7 +304,7 @@ module OpenC3
         @interface.add_protocol(SlipProtocol, ["0xA0", "true", "false", "true", "0xE0", "0xE1", "0xE2", "0xE3"], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['start_char']).to eq("\xA0".inspect)
         expect(details['read_strip_characters']).to eq(true)
         expect(details['read_enable_escaping']).to eq(false)

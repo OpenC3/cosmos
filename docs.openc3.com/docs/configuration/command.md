@@ -412,7 +412,7 @@ APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
 ```
 
 ### ID_PARAMETER
-**Defines an identification command parameter in the current command packet**
+**Defines an identification command parameter in the current command packet. Note, packets defined without one or more ID_PARAMETERs are "catch-all" packets which will match all incoming data. A warning will be generated for packets without ID_PARAMETERs unless the CATCHALL keyword is used.**
 
 ID parameters are used to identify the binary block of data as a particular command. A command packet may have one or more ID_PARAMETERs and all must match the binary data for the command to be identified.
 
@@ -639,6 +639,15 @@ Generally the template string is formatted in JSON or HTML and then values are f
 |-----------|-------------|----------|
 | Template | The template string which should be enclosed in quotes | True |
 
+### TEMPLATE_BASE64
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Defines a template binary as base64 used to initialize the command before default values are filled in**
+
+Base64 encoded binary data
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template | The template string as base64 data | True |
+
 ### TEMPLATE_FILE
 <span class="badge badge--secondary since-right">Since 5.0.10</span>**Defines a template file used to initialize the command before default values are filled in**
 
@@ -680,6 +689,12 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 |-----------|-------------|----------|
 | Target Name | Target Name of related telemetry screen | True |
 | Screen Name | Screen Name of related telemetry screen | True |
+
+### CATCHALL
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Marks this packet as an intentional catch-all packet**
+
+Suppresses the warning that is normally generated for packets defined without ID_PARAMETERs. Use this when a packet is intentionally designed to match all incoming data that doesn't match other packets.
+
 
 ### VIRTUAL
 <span class="badge badge--secondary since-right">Since 5.18.0</span>**Marks this packet as virtual and not participating in identification**

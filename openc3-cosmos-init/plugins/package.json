@@ -7,9 +7,9 @@
   "devDependencies": {
     "@vue/eslint-config-prettier": "10.2.0",
     "eslint": "9.39.2",
-    "eslint-plugin-vue": "10.7.0",
+    "eslint-plugin-vue": "10.8.0",
     "eslint-plugin-vuetify": "2.5.3",
-    "globals": "17.2.0",
-    "vue-eslint-parser": "10.2.0"
+    "globals": "17.3.0",
+    "vue-eslint-parser": "10.4.0"
   }
 }

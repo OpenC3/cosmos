@@ -3,15 +3,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -75,7 +70,7 @@ check_container_version(client, containers, 'traefik')
 check_versitygw(client, versitygw_version)
 check_build_files(versitygw_version, traefik_version)
 check_container_version(client, containers, 'redis') # valkey base image
-base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
+base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
@@ -96,7 +91,7 @@ end
 # Check the wheels
 Dir.chdir(File.join(__dir__, '../../openc3/python')) do
   puts "\nChecking outdated wheels in openc3/python:"
-  puts `poetry show -o`
+  puts `uv pip list --outdated`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
   puts "\nChecking outdated wheels in openc3-cosmos-demo:"

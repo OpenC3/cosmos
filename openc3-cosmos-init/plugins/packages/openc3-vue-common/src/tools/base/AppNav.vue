@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -25,13 +20,16 @@
     <v-navigation-drawer
       v-if="!chromeless"
       id="openc3-nav-drawer"
-      :model-value="drawer"
+      v-model="drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
-      <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
-        COSMOS
-      </div>
-      <div style="text-align: center; font-size: 18pt">
+      <img
+        :src="wordmark"
+        class="cosmos-wordmark"
+        alt="COSMOS"
+        @click="showUpgradeToEnterpriseDialog = true"
+      />
+      <div class="cosmos">
         {{ subtitle }}
       </div>
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
@@ -132,23 +130,22 @@
             <span id="openc3-menu" />
           </v-row>
         </v-col>
-        <v-col>
-          <v-row class="clock flex-nowrap mt-0">
-            <rux-clock
-              v-if="!astro.hideClock"
-              date-in=""
-              :timezone="astroTimeZone"
-            />
+        <v-col style="margin: auto">
+          <v-row v-if="!astro.hideClock" class="clock flex-nowrap mt-0">
+            <rux-clock date-in="" :timezone="astroTimeZone" />
           </v-row>
         </v-col>
         <v-col align-self="center" class="mt-2">
           <v-row class="flex-nowrap">
             <v-spacer />
             <context-tag />
-            <scope-selector class="mr-6 mt-4" />
+            <div>
+              <scope-selector class="mr-6 mt-4" />
+            </div>
             <notifications class="mr-6" data-test="notifications" />
-            <user-menu class="mr-6" /> </v-row
-        ></v-col>
+            <user-menu class="mr-6" />
+          </v-row>
+        </v-col>
       </v-row>
     </v-app-bar>
     <upgrade-to-enterprise-dialog
@@ -194,6 +191,7 @@ export default {
       drawer: true,
       appNav: {},
       logo: '/img/logo.png',
+      wordmark: '/img/COSMOS.svg',
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
@@ -391,18 +389,23 @@ export default {
   text-align: center;
   font-size: 18pt;
 }
+.cosmos-wordmark {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+  padding: 8px 0;
+  cursor: pointer;
+}
 div a {
   color: white;
+  font-size: 16px;
   display: block;
   height: 100%;
   width: 100%;
 }
 a.fixcenter {
   display: flex;
-}
-#openc3-app-toolbar .top-bar-divider-full-height {
-  margin: -4px 4px;
-  min-height: calc(100% + 8px);
 }
 </style>
 
@@ -451,6 +454,7 @@ header {
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item {
   padding-left: 0px;
+  padding-right: 8px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {
   width: 0px;

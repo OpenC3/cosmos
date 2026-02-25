@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -274,6 +269,7 @@ import {
   SaveConfigDialog,
   TopBar,
 } from '@openc3/vue-common/components'
+import { useStore } from '@openc3/vue-common/plugins'
 import NewScreenDialog from './NewScreenDialog'
 import { TimeFilters } from '@openc3/vue-common/util'
 
@@ -287,6 +283,10 @@ export default {
     SaveConfigDialog,
   },
   mixins: [Config, TimeFilters],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data() {
     return {
       title: 'Telemetry Viewer',
@@ -304,7 +304,6 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
-      playbackAvailable: false,
       playbackStep: 1,
       playbackSkip: 10,
       playbackDate: '',
@@ -317,7 +316,7 @@ export default {
   },
   computed: {
     playbackLoading: function () {
-      return this.$store.state.playback.playbackLoading > 0
+      return this.store.playback.playbackLoading > 0
     },
     menus: function () {
       return [
@@ -328,7 +327,6 @@ export default {
               label: 'Playback Mode',
               checkbox: true,
               checked: this.playbackMode === 'playback',
-              disabled: this.playbackAvailable === false,
               command: () => {
                 this.playbackMode =
                   this.playbackMode === 'playback' ? 'realtime' : 'playback'
@@ -391,7 +389,7 @@ export default {
       deep: true,
     },
     playbackMode: function (mode) {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,
@@ -407,7 +405,7 @@ export default {
       }
     },
     playbackDateTime: function () {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,
@@ -429,7 +427,7 @@ export default {
       }
     },
     playbackStep: function () {
-      this.$store.commit('playback', {
+      this.store.updatePlayback({
         playbackMode: this.playbackMode,
         playbackDateTime: this.playbackDateTime,
         playbackStep: this.playbackStep,
@@ -446,11 +444,11 @@ export default {
       localStorage[`${this.configKey}__time`] = this.playbackTime
     },
   },
-  created() {
+  async created() {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    this.api
+    await this.api
       .get_setting('time_zone')
       .then((response) => {
         if (response) {
@@ -460,48 +458,46 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    Api.get('/openc3-api/tsdb', {
-      headers: {
-        // Since we're just checking for existence, 404 is possible so ignore it
-        'Ignore-Errors': '404',
-      },
-    })
-      .then((_response) => {
-        this.playbackAvailable = true
-      })
-      .catch((_error) => {
-        this.playbackAvailable = false
-      })
-    Api.get('/openc3-api/screens').then((response) => {
-      response.data.forEach((filename) => {
-        let parts = filename.split('/')
-        if (this.screens[parts[0]] === undefined) {
-          this.screens[parts[0]] = []
-        }
-        this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
-      })
-      // Select the first target and screen as an optimization
-      this.selectedTarget = Object.keys(this.screens)[0]
-      this.selectedScreen = this.screens[this.selectedTarget][0]
+    Api.get('/openc3-api/screens')
+      .then((response) => {
+        response.data.forEach((filename) => {
+          let parts = filename.split('/')
+          if (this.screens[parts[0]] === undefined) {
+            this.screens[parts[0]] = []
+          }
+          this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
+        })
+        // Select the first target and screen as an optimization
+        this.selectedTarget = Object.keys(this.screens)[0]
+        this.selectedScreen = this.screens[this.selectedTarget][0]
 
-      // Called like /tools/tlmviewer?config=ground
-      if (this.$route.query && this.$route.query.config) {
-        this.openConfiguration(this.$route.query.config, true) // routed
-      } else if (this.$route.params.target && this.$route.params.screen) {
-        // If we're passed in a target / packet as part of the route
-        this.targetSelect(this.$route.params.target.toUpperCase())
-        this.screenSelect(this.$route.params.screen.toUpperCase())
-      } else {
-        let config = this.loadDefaultConfig()
-        // Only apply the config if it's not an empty object (config does not exist)
-        if (JSON.stringify(config) !== '{}') {
-          this.applyConfig(this.loadDefaultConfig())
+        // Called like /tools/tlmviewer?config=ground
+        if (this.$route.query && this.$route.query.config) {
+          this.openConfiguration(this.$route.query.config, true) // routed
+        } else if (this.$route.params.target && this.$route.params.screen) {
+          // If we're passed in a target / packet as part of the route
+          this.targetSelect(this.$route.params.target.toUpperCase())
+          this.screenSelect(this.$route.params.screen.toUpperCase())
+        } else {
+          let config = this.loadDefaultConfig()
+          // Only apply the config if it's not an empty object (config does not exist)
+          if (JSON.stringify(config) !== '{}') {
+            this.applyConfig(this.loadDefaultConfig())
+          }
         }
-      }
-    })
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.keywords = response.data
-    })
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Error loading screens:', error)
+      })
+    Api.get('/openc3-api/autocomplete/keywords/screen')
+      .then((response) => {
+        this.keywords = response.data
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Error loading screen keywords:', error)
+      })
 
     if (localStorage[`${this.configKey}__step`]) {
       this.playbackStep = localStorage[`${this.configKey}__step`]
@@ -587,6 +583,7 @@ export default {
       )
       if (!def) {
         this.loadScreen(target, screen).then((response) => {
+          if (!response || !response.data) return
           this.pushScreen({
             id: this.counter++,
             target: target,

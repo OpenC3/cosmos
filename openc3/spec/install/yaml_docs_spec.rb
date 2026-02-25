@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -28,7 +23,9 @@ require 'openc3/config/meta_config_parser'
 module OpenC3
   describe OpenC3 do
     # These are not expected to be documented as they are deprecated
-    DEPRECATED = %w(DONT_LOG)
+    DEPRECATED = %w(DONT_LOG CMD_DECOM_LOG_CYCLE_TIME CMD_DECOM_LOG_CYCLE_SIZE CMD_DECOM_LOG_RETAIN_TIME TLM_DECOM_LOG_CYCLE_TIME TLM_DECOM_LOG_CYCLE_SIZE TLM_DECOM_LOG_RETAIN_TIME)
+    DEPRECATED.concat(%w(REDUCED_MINUTE_LOG_RETAIN_TIME REDUCED_HOUR_LOG_RETAIN_TIME REDUCED_DAY_LOG_RETAIN_TIME))
+    DEPRECATED.concat(%w(REDUCER_DISABLE REDUCER_DISABLED REDUCED_LOG_RETAIN_TIME REDUCER_MAX_CPU_UTILIZATION REDUCED_MAX_CPU_UTILIZATION))
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC CMD_RESPONSE OVERRIDE IGNORE_PACKET))

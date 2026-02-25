@@ -136,8 +136,11 @@ class FprimeSubpacketizer(Subpacketizer):
 
         # Return the parent packet and subpackets
         return packets
+```
 
-# The Subpacketizer is then referenced in a packet definition like this:
+The Subpacketizer is then referenced in a packet definition like this:
+
+```
 TELEMETRY <%= target_name %> TELEMETRY BIG_ENDIAN "Channelized Telemetry Packet"
   SUBPACKETIZER fprime_subpacketizer.py
   APPEND_ITEM FPRIME_SIZE 32 UINT
@@ -192,8 +195,11 @@ module OpenC3
     end
   end
 end
+```
 
-# The Subpacketizer is then referenced in a packet definition like this:
+The Subpacketizer is then referenced in a packet definition like this:
+
+```
 TELEMETRY <%= target_name %> TELEMETRY BIG_ENDIAN "Channelized Telemetry Packet"
   SUBPACKETIZER fprime_subpacketizer.rb
   APPEND_ITEM FPRIME_SIZE 32 UINT
@@ -201,7 +207,6 @@ TELEMETRY <%= target_name %> TELEMETRY BIG_ENDIAN "Channelized Telemetry Packet"
   APPEND_ITEM CHANNELS -32 BLOCK
     HIDDEN
   ITEM CRC32 -32 32 UINT
-
 ```
 
 </TabItem>

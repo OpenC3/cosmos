@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -35,7 +30,7 @@ class WebSocketApi:
     Base class - Do not use directly
     """
 
-    USER_AGENT = "OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)"
+    USER_AGENT = "OpenC3 / v7 (ruby/openc3/lib/io/web_socket_api)"
 
     def __init__(
         self,
@@ -92,7 +87,7 @@ class WebSocketApi:
                             raise RuntimeError("Unauthorized")
                         if msg_type == "reject_subscription":
                             raise RuntimeError("Subscription Rejected")
-                        if timeout:
+                        if timeout is not None:
                             end_time = time.time()
                             if (end_time - start_time) > timeout:
                                 raise TimeoutError("No Data Timeout")
@@ -623,6 +618,6 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                     break
                 else:
                     data += batch
-                if timeout and (time.time() - read_all_start_time) > timeout:
+                if timeout is not None and (time.time() - read_all_start_time) > timeout:
                     break
         return data

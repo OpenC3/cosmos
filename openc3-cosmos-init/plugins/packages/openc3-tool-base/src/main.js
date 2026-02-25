@@ -17,7 +17,7 @@ const app = createApp(App)
 app.use(store)
 app.use(vuetify)
 app.use(router)
-app.use(Notify, { store })
+app.use(Notify)
 
 const options = OpenC3Auth.getInitOptions()
 OpenC3Auth.init(options).then(() => {

@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -204,10 +199,10 @@ module OpenC3
 
       it "returns nil on successful map" do
         TargetModel.new(name: "INST2", scope: "DEFAULT").create
-        
+
         expect_any_instance_of(RouterModel).to receive(:map_target)
         result = @api.map_target_to_router("INST2", "ROUTE_INT")
-        
+
         expect(result).to be_nil
       end
     end
@@ -267,10 +262,10 @@ module OpenC3
 
       it "returns nil on successful unmap" do
         TargetModel.new(name: "INST2", scope: "DEFAULT").create
-        
+
         expect_any_instance_of(RouterModel).to receive(:unmap_target)
         result = @api.unmap_target_from_router("INST2", "ROUTE_INT")
-        
+
         expect(result).to be_nil
       end
     end

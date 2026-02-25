@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -68,12 +63,7 @@ module OpenC3
 
       areas = [
         ["#{@scope}/raw_logs/cmd/#{target_name}", target.cmd_log_retain_time],
-        ["#{@scope}/decom_logs/cmd/#{target_name}", target.cmd_decom_log_retain_time],
         ["#{@scope}/raw_logs/tlm/#{target_name}", target.tlm_log_retain_time],
-        ["#{@scope}/decom_logs/tlm/#{target_name}", target.tlm_decom_log_retain_time],
-        ["#{@scope}/reduced_minute_logs/tlm/#{target_name}", target.reduced_minute_log_retain_time],
-        ["#{@scope}/reduced_hour_logs/tlm/#{target_name}", target.reduced_hour_log_retain_time],
-        ["#{@scope}/reduced_day_logs/tlm/#{target_name}", target.reduced_day_log_retain_time],
       ]
       return areas, target.cleanup_poll_time
     end

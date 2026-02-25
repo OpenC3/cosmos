@@ -1,21 +1,17 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 import importlib
 import inspect
+import warnings
 
 from openc3.environment import OPENC3_CLOUD
 
@@ -39,6 +35,14 @@ class Bucket:
         except ModuleNotFoundError:
             my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3enterprise.utilities")
         return getattr(my_module, bucket_class)()
+
+    @classmethod
+    def getClient(cls):  # noqa: N802
+        """Deprecated: Use get_client() instead. This camelCase method is provided for backwards compatibility."""
+        warnings.warn(
+            "Bucket.getClient() is deprecated, use Bucket.get_client() instead", DeprecationWarning, stacklevel=2
+        )
+        return cls.get_client()
 
     def create(self, bucket):
         raise NotImplementedError(

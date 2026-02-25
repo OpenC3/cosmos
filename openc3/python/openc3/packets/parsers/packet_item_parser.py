@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -72,7 +67,10 @@ class PacketItemParser:
         if "ARRAY" in self.parser.keyword:
             item_name = self.parser.parameters[0]
             if "[" in item_name or "]" in item_name:
-                raise self.parser.error(f"ARRAY items cannot have brackets in their name: {item_name}", self.usage)
+                raise self.parser.error(
+                    f"ARRAY items cannot have brackets in their name: {item_name}",
+                    self.usage,
+                )
 
     def create_packet_item(self, packet, cmd_or_tlm):
         try:
@@ -115,7 +113,9 @@ class PacketItemParser:
                 item = packet.define(item)
             if "STRUCTURE" in self.parser.keyword:
                 structure = self._lookup_packet(
-                    self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name()
+                    self._get_cmd_or_tlm(),
+                    self._get_target_name(),
+                    self._get_packet_name(),
                 )
                 packet.structurize_item(item, structure)
             return item
@@ -149,7 +149,9 @@ class PacketItemParser:
                 return int(bit_size, 0)
             else:
                 structure = self._lookup_packet(
-                    self._get_cmd_or_tlm(), self._get_target_name(), self._get_packet_name()
+                    self._get_cmd_or_tlm(),
+                    self._get_target_name(),
+                    self._get_packet_name(),
                 )
                 return structure.defined_length_bits
 

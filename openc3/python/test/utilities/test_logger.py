@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -248,7 +243,14 @@ class TestLogMessage(unittest.TestCase):
         sys.stdout = StringIO()
 
         logger = Logger()
-        logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url="http://example.com")
+        logger.log_message(
+            "INFO",
+            "Test",
+            scope="TEST",
+            user=None,
+            type=Logger.LOG,
+            url="http://example.com",
+        )
 
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
@@ -277,7 +279,15 @@ class TestLogMessage(unittest.TestCase):
 
         logger = Logger()
         other = {"request_id": "12345", "custom_field": "custom_value"}
-        logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=other)
+        logger.log_message(
+            "INFO",
+            "Test",
+            scope="TEST",
+            user=None,
+            type=Logger.LOG,
+            url=None,
+            other=other,
+        )
 
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
@@ -293,7 +303,15 @@ class TestLogMessage(unittest.TestCase):
 
         logger = Logger()
         other = {"metadata": "true", "tag": "error"}
-        logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=other)
+        logger.log_message(
+            "INFO",
+            "Test",
+            scope="TEST",
+            user=None,
+            type=Logger.LOG,
+            url=None,
+            other=other,
+        )
 
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
@@ -308,7 +326,15 @@ class TestLogMessage(unittest.TestCase):
         sys.stdout = StringIO()
 
         logger = Logger()
-        logger.log_message("INFO", "Test", scope="TEST", user=None, type=Logger.LOG, url=None, other=None)
+        logger.log_message(
+            "INFO",
+            "Test",
+            scope="TEST",
+            user=None,
+            type=Logger.LOG,
+            url=None,
+            other=None,
+        )
 
         output = sys.stdout.getvalue()
         sys.stdout = orig_stdout
@@ -565,7 +591,14 @@ class TestLogMessage(unittest.TestCase):
         logger = Logger()
 
         def log_from_thread(n):
-            logger.log_message("INFO", f"Message {n}", scope="TEST", user=None, type=Logger.LOG, url=None)
+            logger.log_message(
+                "INFO",
+                f"Message {n}",
+                scope="TEST",
+                user=None,
+                type=Logger.LOG,
+                url=None,
+            )
 
         threads = [threading.Thread(target=log_from_thread, args=(i,)) for i in range(10)]
         for t in threads:

@@ -1,15 +1,10 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -179,7 +174,15 @@ def _log_cmd(cmd, raw, no_range, no_hazardous):
         print(f"WARN: Command {cmd['target_name']} {cmd['cmd_name']} being sent ignoring range checks")
     if no_hazardous:
         print(f"WARN: Command {cmd['target_name']} {cmd['cmd_name']} being sent ignoring hazardous warnings")
-    print(_cmd_string(cmd["target_name"], cmd["cmd_name"], cmd["cmd_params"], raw, cmd["obfuscated_items"]))
+    print(
+        _cmd_string(
+            cmd["target_name"],
+            cmd["cmd_name"],
+            cmd["cmd_params"],
+            raw,
+            cmd["obfuscated_items"],
+        )
+    )
 
 
 def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
@@ -239,7 +242,12 @@ def _cmd(
         try:
             try:
                 command = getattr(openc3.script.API_SERVER, cmd)(
-                    *args, timeout=timeout, log_message=log_message, validate=validate, queue=queue, scope=scope
+                    *args,
+                    timeout=timeout,
+                    log_message=log_message,
+                    validate=validate,
+                    queue=queue,
+                    scope=scope,
                 )
                 if log_message is None or log_message:
                     _log_cmd(command, raw, no_range, no_hazardous)
@@ -255,7 +263,12 @@ def _cmd(
                     error.hazardous_description,
                 )
                 command = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
-                    *args, timeout=timeout, log_message=log_message, validate=validate, queue=queue, scope=scope
+                    *args,
+                    timeout=timeout,
+                    log_message=log_message,
+                    validate=validate,
+                    queue=queue,
+                    scope=scope,
                 )
                 if log_message is None or log_message:
                     _log_cmd(command, raw, no_range, no_hazardous)

@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,7 +36,6 @@ module OpenC3
                        'tlm_raw',
                        'tlm_formatted',
                        'tlm_with_units', # DEPRECATED
-                       'tlm_variable', # DEPRECATED
                        'set_tlm',
                        'inject_tlm',
                        'override_tlm',
@@ -94,11 +88,6 @@ module OpenC3
     # @deprecated Use tlm_formatted
     def tlm_with_units(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
-    end
-
-    # @deprecated Use tlm with type:
-    def tlm_variable(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args[0..-2], type: args[-1].intern, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     # Set a telemetry item in the current value table.

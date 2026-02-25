@@ -1,15 +1,10 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -148,21 +143,27 @@ class TestLimits(unittest.TestCase):
         self.assertFalse(self.limits.enabled("TGT1", "PKT1", "ITEM1"))
 
     def test_gets_the_limits_for_an_item_with_limits(self):
-        self.assertEqual(self.limits.get("TGT1", "PKT1", "ITEM1"), ["DEFAULT", 1, True, 1.0, 2.0, 4.0, 5.0, None, None])
+        self.assertEqual(
+            self.limits.get("TGT1", "PKT1", "ITEM1"),
+            ["DEFAULT", 1, True, 1.0, 2.0, 4.0, 5.0, None, None],
+        )
 
     def test_handles_an_item_without_limits(self):
         self.assertEqual(
-            self.limits.get("TGT1", "PKT1", "ITEM5"), [None, None, None, None, None, None, None, None, None]
+            self.limits.get("TGT1", "PKT1", "ITEM5"),
+            [None, None, None, None, None, None, None, None, None],
         )
 
     def test_supports_a_specified_limits_set(self):
         self.assertEqual(
-            self.limits.get("TGT1", "PKT1", "ITEM1", "TVAC"), ["TVAC", 1, True, 6.0, 7.0, 12.0, 13.0, 9.0, 10.0]
+            self.limits.get("TGT1", "PKT1", "ITEM1", "TVAC"),
+            ["TVAC", 1, True, 6.0, 7.0, 12.0, 13.0, 9.0, 10.0],
         )
 
     def test_handles_an_item_without_limits_for_the_given_limits_set(self):
         self.assertEqual(
-            self.limits.get("TGT1", "PKT2", "ITEM1", "TVAC"), [None, None, None, None, None, None, None, None, None]
+            self.limits.get("TGT1", "PKT2", "ITEM1", "TVAC"),
+            [None, None, None, None, None, None, None, None, None],
         )
 
     def test_sets_limits_for_an_item(self):
@@ -173,7 +174,8 @@ class TestLimits(unittest.TestCase):
 
     def test_enforces_setting_default_limits_first(self):
         with self.assertRaisesRegex(
-            RuntimeError, "DEFAULT limits must be defined for TGT1 PKT1 ITEM5 before setting limits set CUSTOM"
+            RuntimeError,
+            "DEFAULT limits must be defined for TGT1 PKT1 ITEM5 before setting limits set CUSTOM",
         ):
             self.limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4)
         self.assertEqual(
@@ -181,7 +183,8 @@ class TestLimits(unittest.TestCase):
             ["DEFAULT", 1, True, 5.0, 6.0, 7.0, 8.0, None, None],
         )
         self.assertEqual(
-            self.limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4), ["CUSTOM", 1, True, 1.0, 2.0, 3.0, 4.0, None, None]
+            self.limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4),
+            ["CUSTOM", 1, True, 1.0, 2.0, 3.0, 4.0, None, None],
         )
 
     def test_allows_setting_other_limits_sets(self):

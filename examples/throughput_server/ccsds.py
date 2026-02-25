@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 """CCSDS packet encoding and decoding utilities."""
 
@@ -110,9 +105,7 @@ def parse_ccsds_command(data: bytes) -> CcsdsCommand:
     )
 
 
-def build_ccsds_telemetry(
-    tlm: CcsdsTelemetry, use_current_time: bool = True
-) -> bytes:
+def build_ccsds_telemetry(tlm: CcsdsTelemetry, use_current_time: bool = True) -> bytes:
     """Build a CCSDS telemetry packet.
 
     CCSDS Telemetry Header (16 bytes):

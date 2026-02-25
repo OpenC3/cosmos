@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -17,26 +12,39 @@
 import json
 import os
 import sys
+import time
 import traceback
 
 from questdb.ingress import IngressError
 
-from openc3.api.cmd_api import get_all_cmd_names, get_cmd
-from openc3.api.tlm_api import get_all_tlm_names, get_tlm
+from openc3.api.cmd_api import get_cmd
+from openc3.api.tlm_api import get_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):
+    TRIM_KEEP_MS = 60000  # 1 minute
+
     def __init__(self, *args):
         super().__init__(*args)
 
         Topic.update_topic_offsets(self.topics)
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
+
+        # Extract retain time options from microservice config
+        self.cmd_decom_retain_time = None
+        self.tlm_decom_retain_time = None
+        for option in self.config.get("options", []):
+            if option[0] == "CMD_DECOM_RETAIN_TIME":
+                self.cmd_decom_retain_time = option[1]
+            elif option[0] == "TLM_DECOM_RETAIN_TIME":
+                self.tlm_decom_retain_time = option[1]
 
         # Use shared QuestDB client
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
@@ -52,57 +60,33 @@ class TsdbMicroservice(Microservice):
                 continue
             self._create_table(target_name, packet_name, topic)
 
+        # Setup first trim time
+        self.next_trim_time_ms = int(time.time() * 1000) + self.TRIM_KEEP_MS
+
     def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
         if "__DECOMCMD__" in topic:
             packet = get_cmd(target_name, packet_name)
             cmd_or_tlm = "CMD"
+            retain_time = self.cmd_decom_retain_time
         else:
             packet = get_tlm(target_name, packet_name)
             cmd_or_tlm = "TLM"
-        self.questdb.create_table(target_name, packet_name, packet, cmd_or_tlm)
-
-    def sync_topics(self):
-        """Update local topics based on config events"""
-        config = ConfigTopic.read(offset=self.topic_offset, scope=os.environ.get("OPENC3_SCOPE"))
-        if not config:
-            return
-
-        self.topic_offset = config[0][0]
-        config_data = config[0][1]
-
-        if config_data.get(b"type") == b"target":
-            kind_bytes = config_data.get(b"kind")
-            name_bytes = config_data.get(b"name")
-            if not kind_bytes or not name_bytes:
-                return
-            kind = kind_bytes.decode()
-            target_name = name_bytes.decode()
-
-            if kind == "created":
-                self.logger.info(f"New target {target_name} created")
-                # Add telemetry packets
-                tlm_packets = get_all_tlm_names(target_name)
-                for packet_name in tlm_packets:
-                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOM__{{{target_name}}}__{packet_name}"
-                    self._create_table(target_name, packet_name, topic)
-                    self.topics.append(topic)
-                # Add command packets
-                cmd_packets = get_all_cmd_names(target_name)
-                for packet_name in cmd_packets:
-                    topic = f"{os.environ.get('OPENC3_SCOPE')}__DECOMCMD__{{{target_name}}}__{packet_name}"
-                    self._create_table(target_name, packet_name, topic)
-                    self.topics.append(topic)
-            elif kind == "deleted":
-                self.logger.info(f"Target {target_name} deleted")
-                self.topics = [topic for topic in self.topics if f"__{{{target_name}}}__" not in topic]
+            retain_time = self.tlm_decom_retain_time
+        self.questdb.create_table(
+            target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time, scope=self.scope
+        )
 
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            for topic, _, msg_hash, _ in Topic.read_topics(self.topics):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics):
                 if self.cancel_thread:
                     break
+
+                if topic == self.microservice_topic:
+                    self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    continue
 
                 target_name_bytes = msg_hash.get(b"target_name")
                 packet_name_bytes = msg_hash.get(b"packet_name")
@@ -122,7 +106,9 @@ class TsdbMicroservice(Microservice):
                 cmd_or_tlm = "CMD" if "__DECOMCMD__" in topic else "TLM"
 
                 # Get sanitized table name
-                table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name, cmd_or_tlm)
+                table_name, _ = QuestDBClient.sanitize_table_name(
+                    target_name, packet_name, cmd_or_tlm, scope=self.scope
+                )
 
                 # Get packet timestamp (packet_time) and received timestamp (received_time) in nanoseconds
                 time_bytes = msg_hash.get(b"time")
@@ -142,6 +128,11 @@ class TsdbMicroservice(Microservice):
                     self.logger.warn(f"QuestDB: No valid items found for {target_name} {packet_name}")
                     continue
 
+                # Extract extra field from message hash
+                extra_data = msg_hash.get(b"extra")
+                if extra_data:
+                    values["COSMOS_EXTRA"] = extra_data.decode()
+
                 # Write to QuestDB with packet timestamp and received timestamp
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
 
@@ -149,8 +140,20 @@ class TsdbMicroservice(Microservice):
             self.questdb.flush()
 
         except IngressError as error:
-            # Try to handle the error (may alter schema for real-time ingestion)
+            # Cast the value to fit the column type and retry
             self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
+
+    def trim_topics(self):
+        current_time_ms = int(time.time() * 1000)
+        if current_time_ms > self.next_trim_time_ms:
+            self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
+            trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
+            trim_offset = f"{trim_time_ms}-0"
+            redis = EphemeralStore.instance()
+            pipeline = redis.pipeline(transaction=False)
+            for topic in self.topics:
+                pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
+            pipeline.execute()
 
     def run(self):
         """Main run loop"""
@@ -158,8 +161,8 @@ class TsdbMicroservice(Microservice):
             if self.cancel_thread:
                 break
             try:
-                self.sync_topics()
                 self.read_topics()
+                self.trim_topics()
                 self.count += 1
             except Exception as error:
                 self.error = error

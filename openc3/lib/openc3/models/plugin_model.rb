@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -197,9 +192,11 @@ module OpenC3
         tf = nil
 
         # Get the gem from local gem server if it hasn't been passed
-        unless gem_file_path
+        if gem_file_path.nil?
           gem_name = plugin_hash['name'].split("__")[0]
           gem_file_path = OpenC3::GemModel.get(gem_name)
+        else
+          gem_name = File.basename(gem_file_path)
         end
 
         # Attempt to remove all older versions of this same plugin before install to prevent version conflicts

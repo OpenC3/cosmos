@@ -40,14 +40,7 @@ with open(sys.argv[1]) as file:
             line = f"class {class_name}(unittest.TestCase):\n"
         m = re.compile(r".*it \"(.*)\" do.*").match(line)
         if m:
-            test_name = (
-                m.group(1)
-                .replace(" ", "_")
-                .replace("'", "")
-                .replace("-", "_")
-                .replace(",", "")
-                .lower()
-            )
+            test_name = m.group(1).replace(" ", "_").replace("'", "").replace("-", "_").replace(",", "").lower()
             # No trailing : because that's added later
             line = f"    def test_{test_name}(self)\n"
 
@@ -122,15 +115,11 @@ with open(sys.argv[1]) as file:
             line = re.sub(r"\)\.to be (.*)", r", \1)", line)
         if "expect {" in line:
             line = line.replace("expect ", "")
-            m = re.compile(
-                r"(\s*)\{(.*)\}\.to raise_error\(.* [\"\/](.*)[\"\/]\)"
-            ).match(line)
+            m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* [\"\/](.*)[\"\/]\)").match(line)
             if m:
                 name = m.group(2).replace("self.", "")
                 string = m.group(3).replace("#{", "{").replace("@", "self.")
-                out.write(
-                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{string}"):\n'
-                )
+                out.write(f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{string}"):\n')
                 line = f"{m.group(1)}    {m.group(2)}\n"
         if "expect(" in line and ".to match(" in line:
             m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/(.*)/\)").match(line)

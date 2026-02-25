@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -24,9 +19,6 @@ services:
   openc3-buckets:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    # Uncomment to run unit tests against the S3 server
-    # ports:
-    #   - "127.0.0.1:9000:9000"
     volumes:
       - "openc3-object-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -45,15 +37,29 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test that S3-compatible storage (versitygw) is responding on port 9000
+      # A 403 Forbidden response means the server is healthy and responding
+      test:
+        [
+          "CMD-SHELL",
+          "wget -O- http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   openc3-tsdb:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    ports:
-      - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
-      # The Postgresql port doesn't typically need to be exposed to the host
-      # but if you have external software that needs to connect to QuestDB
-      # you can uncomment the following line to expose it.
-      # - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
+    # ports:
+    #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
+    #   - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
+    #   - "127.0.0.1:9003:9003" # QuestDB health endpoint
+    #   # The Postgresql port doesn't typically need to be exposed to the host
+    #   # but if you have external software that needs to connect to QuestDB
+    #   # you can uncomment the following line to expose it.
+    #   - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
     volumes:
       - "openc3-tsdb-v:/var/lib/questdb"
     restart: "unless-stopped"
@@ -67,6 +73,18 @@ services:
       QDB_PG_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
       QDB_HTTP_USER: "${OPENC3_TSDB_USERNAME}"
       QDB_HTTP_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
+    healthcheck:
+      # Test that QuestDB can actually execute queries via the REST API
+      # This verifies both the HTTP server and the database engine are working
+      test:
+        [
+          "CMD-SHELL",
+          'curl -f -u "$${QDB_HTTP_USER}:$${QDB_HTTP_PASSWORD}" ''http://localhost:9000/exec?query=SELECT+1'' | grep -q ''"query":"SELECT 1"'' || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   openc3-redis:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -86,6 +104,15 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test Redis with PING command - use default connection (no auth in healthcheck)
+      # Redis will respond with NOAUTH if it's running, which is sufficient for health
+      test:
+        ["CMD-SHELL", "redis-cli ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-redis-ephemeral:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -106,6 +133,18 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test ephemeral Redis with PING command on port 6380
+      # Redis will respond with NOAUTH if it's running, which is sufficient for health
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -p 6380 ping 2>&1 | grep -E 'PONG|NOAUTH' || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-cosmos-cmd-tlm-api:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -185,12 +224,11 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
-      # By not setting a value it pases the environment variable from the shell
-      # straight to the container and doesn't complain if CI is not set
-      CI: "true"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
+      # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
+      # List syntax passes through host CI only if set, omits it otherwise
+      - CI
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
     env_file:
       - .env
     extra_hosts:
@@ -227,6 +265,13 @@ services:
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
+    healthcheck:
+      # Test that Traefik process is running - ping endpoint is not configured
+      test: ["CMD-SHELL", "pgrep traefik || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openc3-cosmos-init:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -247,12 +292,11 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
-      # By not setting a value it pases the environment variable from the shell
-      # straight to the container and doesn't complain if CI is not set
-      CI: "true"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
+      # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
+      # List syntax passes through host CI only if set, omits it otherwise
+      - CI
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
     env_file:
       - .env
 
@@ -260,6 +304,5 @@ volumes:
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-object-v:
-    name: openc3-object-v # Fixed name to match migration script (no project prefix)
+  openc3-object-v: {}
   openc3-gems-v: {}

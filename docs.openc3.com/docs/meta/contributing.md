@@ -12,10 +12,8 @@ So you've got an awesome idea to throw into COSMOS. Great! This is the basic pro
 1. Make your changes
 1. Submit a pull request
 
-:::note Don't Forget the Contributor License Agreement!
-By contributing to this project, you accept our Contributor License Agreement which is found here: [Contributor License Agreement](https://github.com/OpenC3/cosmos/blob/main/CONTRIBUTING.txt)
-
-This protects both you and us and you retain full rights to any code you write.
+:::note Contributor Terms
+By contributing to this project, you agree to the following terms in our OpenC3 Builder License: [LICENSE.md](https://github.com/OpenC3/cosmos/blob/main/LICENSE.md)
 :::
 
 ## Test Dependencies

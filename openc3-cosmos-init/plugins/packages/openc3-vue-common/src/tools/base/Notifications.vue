@@ -2,18 +2,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -179,6 +174,7 @@ import {
   AstroStatusIndicator,
   UnknownToAstroStatus,
 } from '@/icons'
+import { useStore } from '@/plugins/store'
 import { AstroStatus } from '@/util'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
@@ -195,6 +191,10 @@ export default {
     },
   },
   emits: ['ephemeral'],
+  setup() {
+    const store = useStore()
+    return { store }
+  },
   data: function () {
     return {
       AstroStatusColors,
@@ -281,7 +281,7 @@ export default {
     this.showToast = localStorage.notoast === 'false'
     this.subscribe()
     // TODO How does this get updated after initialization
-    this.alerts = this.$store.state.notifyHistory
+    this.alerts = this.store.notifyHistory
     // Get the initial number of running scripts
     Api.get('/script-api/running-script').then((response) => {
       this.numScripts = response.data.total

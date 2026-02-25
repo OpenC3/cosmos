@@ -1,16 +1,11 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -29,6 +24,7 @@
         v-bind="plugin"
         :targets="pluginTargets(plugin.name)"
         :is-modified="isModified(plugin.name)"
+        :microservices="microservices"
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
@@ -38,6 +34,7 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import PluginListItem from './PluginListItem.vue'
 
 export default {
@@ -67,6 +64,7 @@ export default {
     return {
       showPluginDetails: false,
       detailPlugin: null,
+      microservices: {},
     }
   },
   computed: {
@@ -94,6 +92,9 @@ export default {
       }
       return pluginsToShow
     },
+  },
+  mounted() {
+    this.fetchMicroservices()
   },
   methods: {
     showDetails: function (plugin) {
@@ -123,6 +124,11 @@ export default {
     deletePrompt: function (plugin) {
       this.$emit('delete', plugin)
     },
+    fetchMicroservices: function () {
+      Api.get('/openc3-api/microservices/all').then((response) => {
+        this.microservices = response.data
+      })
+    },
   },
 }
 </script>
@@ -131,8 +137,5 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
-}
-.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
-  background-color: var(--color-background-base-selected) !important;
 }
 </style>

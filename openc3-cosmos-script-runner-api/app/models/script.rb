@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -79,7 +74,8 @@ class Script < OpenC3::TargetFile
     if new_process or python
       if python
         runner_path = File.join(RAILS_ROOT, 'scripts', 'run_suite_analysis.py')
-        process = ChildProcess.build('python', runner_path.to_s, scope, temp.path)
+        process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        process = ChildProcess.build(process_name, runner_path.to_s, scope, temp.path)
       else
         runner_path = File.join(RAILS_ROOT, 'scripts', 'run_suite_analysis.rb')
         process = ChildProcess.build('ruby', runner_path.to_s, scope, temp.path)
@@ -125,6 +121,8 @@ class Script < OpenC3::TargetFile
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+      # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
+      process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
       ENV.each do |key, _value|
@@ -228,7 +226,8 @@ class Script < OpenC3::TargetFile
       temp.close
 
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_instrument.py')
-      process = ChildProcess.build('python', runner_path.to_s, temp.path)
+      process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+      process = ChildProcess.build(process_name, runner_path.to_s, temp.path)
       process.cwd = File.join(RAILS_ROOT, 'scripts')
 
       stdout = Tempfile.new("child-stdout")
@@ -302,7 +301,7 @@ class Script < OpenC3::TargetFile
     if script_engine_model
       script_engine = script_engine_model.filename
       if File.extname(script_engine).to_s.downcase == '.py'
-        process_name = 'python'
+        process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
         runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.py')
       else
         process_name = 'ruby'
@@ -384,7 +383,8 @@ class Script < OpenC3::TargetFile
         tf = Tempfile.new((['syntax', '.py']))
         tf.write(text)
         tf.close()
-        results, status = Open3.capture2e("python -m py_compile #{tf.path}")
+        process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        results, status = Open3.capture2e("#{process_name} -m py_compile #{tf.path}")
         lines = []
         success = status.respond_to?(:success?) ? status.success? : status == 0
         if !success || (results and results.length > 0)
@@ -413,7 +413,7 @@ class Script < OpenC3::TargetFile
       if script_engine_model
         script_engine = script_engine_model.filename
         if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = 'python'
+          process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
           runner_path = File.join(RAILS_ROOT, 'scripts', 'script_engine_cmd.py')
         else
           process_name = 'ruby'

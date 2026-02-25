@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -161,47 +156,6 @@ module OpenC3
 
       it "processes parameters" do
         expect(@api.tlm_with_units("INST", "HEALTH_STATUS", "TEMP1")).to eql "-100.000 C"
-      end
-    end
-
-    # DEPRECATED
-    describe "tlm_variable" do
-      it "complains about unknown targets, commands, and parameters" do
-        expect { @api.tlm_variable("BLAH HEALTH_STATUS COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST UNKNOWN COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST HEALTH_STATUS BLAH", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("BLAH", "HEALTH_STATUS", "COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST", "UNKNOWN", "COLLECTS", :RAW) }.to raise_error(/does not exist/)
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "BLAH", :RAW) }.to raise_error(/does not exist/)
-      end
-
-      it "processes a string" do
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST HEALTH_STATUS TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "returns the value using LATEST" do
-        expect(@api.tlm_variable("INST LATEST TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST LATEST TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST LATEST TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST LATEST TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "processes parameters" do
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :CONVERTED)).to eql(-100.0)
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :RAW)).to eql 0
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :FORMATTED)).to eql "-100.000 C"
-        expect(@api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :WITH_UNITS)).to eql "-100.000 C"
-      end
-
-      it "complains with too many parameters" do
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", "TEMP2", :CONVERTED) }.to raise_error(/Invalid number of arguments/)
-      end
-
-      it "complains with an unknown conversion" do
-        expect { @api.tlm_variable("INST", "HEALTH_STATUS", "TEMP1", :NOPE) }.to raise_error(/Unknown type 'NOPE'/)
       end
     end
 

@@ -1,16 +1,11 @@
 <!--
-# Copyright 2025, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -155,7 +150,7 @@ export default {
       default: true,
     },
   },
-  emits: ['command-changed', 'build-cmd'],
+  emits: ['command-changed', 'build-cmd', 'command-loaded'],
   data() {
     return {
       search: '',
@@ -332,13 +327,19 @@ export default {
 
                 // Populate with parsed parameters if available
                 this.populateParametersFromParsed()
+                this.$emit('command-loaded', command)
+              } else {
+                this.$emit('command-loaded', null)
               }
             },
             (error) => {
               // eslint-disable-next-line no-console
               console.error('Error getting command parameters:', error)
+              this.$emit('command-loaded', null)
             },
           )
+      } else {
+        this.$emit('command-loaded', null)
       }
     },
     triggerUpdateCmdParams() {

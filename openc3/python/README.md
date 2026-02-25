@@ -1,8 +1,8 @@
-## Python support for OpenC3 COSMOS v5
+## Python support for OpenC3 COSMOS
 
 ---
 
-This project allows accessing the COSMOS v5 API from the python programming language.
+This project allows accessing the COSMOS API from the python programming language.
 Additional functionality and support will be added over time.
 
 ---
@@ -35,6 +35,7 @@ pipx install just
 ```
 
 Or using your system package manager:
+
 - **macOS**: `brew install uv ruff just`
 - **Linux**: See [UV docs](https://docs.astral.sh/uv/getting-started/installation/), [Ruff docs](https://docs.astral.sh/ruff/installation/), [Just docs](https://github.com/casey/just#installation)
 - **Windows**: See tool documentation links above

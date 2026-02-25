@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -637,7 +632,7 @@ module OpenC3
         @interface.add_protocol(LengthProtocol, [16, 32, 16, 2, 'LITTLE_ENDIAN', 2, '0xDEADBEEF', 100, true], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('LengthProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -650,7 +645,7 @@ module OpenC3
         @interface.add_protocol(LengthProtocol, [8, 16, 4, 1, 'BIG_ENDIAN', 0, nil, 200, false], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['length_bit_offset']).to eq(8)
         expect(details['length_bit_size']).to eq(16)
         expect(details['length_value_offset']).to eq(4)
@@ -665,7 +660,7 @@ module OpenC3
         @interface.add_protocol(LengthProtocol, [0, 8, 0, 1, 'BIG_ENDIAN'], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('LengthProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -678,7 +673,7 @@ module OpenC3
         @interface.add_protocol(LengthProtocol, [16, 32, 8, 2, 'LITTLE_ENDIAN', 4, '0x1234', 150, true], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['length_bit_offset']).to eq(16)
         expect(details['length_bit_size']).to eq(32)
         expect(details['length_value_offset']).to eq(8)

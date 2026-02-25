@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -45,7 +40,6 @@ module OpenC3
           json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED, packet.buffer, given_raw) if item.format_string
         end
       end
-      json_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)
       msg_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       EphemeralStoreQueued.write_topic(topic, msg_hash)

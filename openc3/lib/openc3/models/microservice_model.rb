@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -203,6 +198,19 @@ module OpenC3
       when 'CMD'
         parser.verify_num_parameters(1, nil, "#{keyword} <Args>")
         @cmd = parameters.dup
+        # Automatically use UV venv Python for user microservices to ensure openc3 module is found
+        # Replace 'python', 'python3', or 'python3.X' with the correct Python binary
+        # Handles both split form: CMD python start.py -> ["python", "start.py"]
+        # and quoted single-string form: CMD "python start.py" -> ["python start.py"]
+        python_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+        # Handle split form:  CMD python start.py  => @cmd = ["python", "start.py"]
+        if @cmd[0] =~ /^python3?(\.\d+)*$/
+          @cmd[0] = python_bin
+        # Handle quoted single-string form: CMD "python start.py" => @cmd = ["python start.py"]
+        elsif @cmd[0] =~ /^python3?(\.\d+)*\s+/
+          _exe, rest = @cmd[0].split(/\s+/, 2)
+          @cmd = [python_bin, rest]
+        end
       when 'OPTION'
         parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Values>")
         @options << parameters.dup

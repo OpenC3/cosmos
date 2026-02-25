@@ -1,15 +1,10 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -22,13 +17,13 @@ from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 class LocalMode:
     LOCAL_MODE_PATH = OPENC3_LOCAL_MODE_PATH or "/plugins"
-    # When updating update local_mode.rb, PluginsTab.vue, plugins.spec.ts
+    # When updating update local_mode.rb, PluginsTab.vue, plugins.p.spec.ts
     DEFAULT_PLUGINS = [
         "openc3-cosmos-tool-admin",
         "openc3-cosmos-tool-bucketexplorer",
         "openc3-cosmos-tool-cmdsender",
-        "openc3-cosmos-tool-cmdqueue",
-        "openc3-cosmos-tool-cmdhistory",
+        "openc3-cosmos-tool-cmdqueue",  # Enterprise only
+        "openc3-cosmos-tool-cmdhistory",  # Enterprise only
         "openc3-cosmos-tool-cmdtlmserver",
         "openc3-cosmos-tool-dataextractor",
         "openc3-cosmos-tool-dataviewer",
@@ -41,13 +36,14 @@ class LocalMode:
         "openc3-cosmos-tool-tablemanager",
         "openc3-cosmos-tool-tlmgrapher",
         "openc3-cosmos-tool-tlmviewer",
-        "openc3-cosmos-enterprise-tool-admin",
-        "openc3-cosmos-tool-autonomic",
-        "openc3-cosmos-tool-calendar",
-        "openc3-cosmos-tool-grafana",
-        "openc3-cosmos-tool-systemhealth",
-        "openc3-cosmos-tool-logexplorer",
-        "openc3-enterprise-tool-base",
+        "openc3-cosmos-enterprise-tool-admin",  # Enterprise only
+        "openc3-cosmos-tool-autonomic",  # Enterprise only
+        "openc3-cosmos-tool-calendar",  # Enterprise only
+        "openc3-cosmos-tool-grafana",  # Enterprise only
+        "openc3-cosmos-tool-logexplorer",  # Enterprise only
+        "openc3-cosmos-tool-notebooks",  # Enterprise only
+        "openc3-cosmos-tool-systemhealth",  # Enterprise only
+        "openc3-enterprise-tool-base",  # Enterprise only
         "openc3-tool-base",
     ]
 

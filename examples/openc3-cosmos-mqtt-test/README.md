@@ -57,3 +57,7 @@ Then install the plugin using the following values. Note the port is 8884, the u
 ![MQTT Cert](./img/install_cert.png)
 
 The interface should connect and you can send and receive data.
+
+## License
+
+OpenC3 COSMOS is released under the OpenC3 Builder's License. See [LICENSE.md](LICENSE.md)

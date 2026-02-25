@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -17,6 +12,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import base64
 import os
 import tempfile
 import traceback
@@ -49,7 +45,18 @@ class PacketConfig:
     COMMAND_STRING = "Command"
     TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
-    CONVERTED_DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK", "BOOL", "OBJECT", "ARRAY", "ANY", "TIME"]
+    CONVERTED_DATA_TYPES = [
+        "INT",
+        "UINT",
+        "FLOAT",
+        "STRING",
+        "BLOCK",
+        "BOOL",
+        "OBJECT",
+        "ARRAY",
+        "ANY",
+        "TIME",
+    ]
 
     def __init__(self):
         self.name = None
@@ -240,10 +247,12 @@ class PacketConfig:
                         | "DISABLED"
                         | "SUBPACKET"
                         | "VIRTUAL"
+                        | "CATCHALL"
                         | "ACCESSOR"
                         | "VALIDATOR"
                         | "SUBPACKETIZER"
                         | "TEMPLATE"
+                        | "TEMPLATE_BASE64"
                         | "TEMPLATE_FILE"
                         | "RESPONSE"
                         | "ERROR_RESPONSE"
@@ -402,6 +411,17 @@ class PacketConfig:
             warnings = self.current_packet.check_bit_offsets()
             if len(warnings) > 0:
                 self.warnings += warnings
+            if (
+                not self.current_packet.virtual
+                and not self.current_packet.disabled
+                and not self.current_packet.catchall
+                and self.current_packet.target_name != "UNKNOWN"
+                and not self.current_packet.id_items
+            ):
+                pkt_type = "Command" if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING else "Telemetry"
+                self.warnings.append(
+                    f"{pkt_type} packet {self.current_packet.target_name} {self.current_packet.packet_name} has no ID_ITEMS and will match all buffers"
+                )
             if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
@@ -455,7 +475,10 @@ class PacketConfig:
                     )
                 else:
                     self.build_id_metadata(
-                        packet, self.cmd_id_value_hash, self.cmd_id_signature, self.cmd_unique_id_mode
+                        packet,
+                        self.cmd_id_value_hash,
+                        self.cmd_id_signature,
+                        self.cmd_unique_id_mode,
                     )
         else:
             self.telemetry[packet.target_name][packet.packet_name] = packet
@@ -479,7 +502,10 @@ class PacketConfig:
                     )
                 else:
                     self.build_id_metadata(
-                        packet, self.tlm_id_value_hash, self.tlm_id_signature, self.tlm_unique_id_mode
+                        packet,
+                        self.tlm_id_value_hash,
+                        self.tlm_id_signature,
+                        self.tlm_unique_id_mode,
                     )
 
     def build_id_metadata(self, packet, id_value_hash, id_signature_hash, unique_id_mode_hash):
@@ -689,6 +715,13 @@ class PacketConfig:
                     raise parser.error(f"{keyword} requires a current packet")
                 self.current_packet.restricted = True
 
+            case "CATCHALL":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                if not self.current_packet:
+                    raise parser.error(f"{keyword} requires a current packet")
+                self.current_packet.catchall = True
+
             case "ACCESSOR" | "VALIDATOR" | "SUBPACKETIZER":
                 usage = f"{keyword} <File name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
@@ -720,7 +753,11 @@ class PacketConfig:
 
                 keyword_attr = keyword.lower()
                 if len(params) > 1:
-                    setattr(self.current_packet, keyword_attr, klass(self.current_packet, *params[1:]))
+                    setattr(
+                        self.current_packet,
+                        keyword_attr,
+                        klass(self.current_packet, *params[1:]),
+                    )
                 else:
                     setattr(self.current_packet, keyword_attr, klass(self.current_packet))
 
@@ -728,6 +765,11 @@ class PacketConfig:
                 usage = f"{keyword} <Template string>"
                 parser.verify_num_parameters(1, 1, usage)
                 self.current_packet.template = bytearray(params[0], "ascii")
+
+            case "TEMPLATE_BASE64":
+                usage = f"{keyword} <Template base64>"
+                parser.verify_num_parameters(1, 1, usage)
+                self.current_packet.template = bytearray(base64.b64decode(params[0]))
 
             case "TEMPLATE_FILE":
                 usage = f"{keyword} <Template file path>"
@@ -983,7 +1025,10 @@ class PacketConfig:
                     "VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>",
                 )
 
-                variable_bit_size = {"length_bits_per_count": 8, "length_value_bit_offset": 0}
+                variable_bit_size = {
+                    "length_bits_per_count": 8,
+                    "length_value_bit_offset": 0,
+                }
                 variable_bit_size["length_item_name"] = params[0].upper()
                 if len(params) > 1:
                     variable_bit_size["length_bits_per_count"] = int(params[1])

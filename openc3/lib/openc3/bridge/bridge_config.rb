@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -143,7 +138,7 @@ module OpenC3
           current_interface_or_router.config_params = params[1..-1]
           @interfaces[interface_name] = current_interface_or_router
 
-        when 'RECONNECT_DELAY', 'LOG_STREAM', 'LOG_RAW', 'OPTION', 'PROTOCOL'
+        when 'RECONNECT_DELAY', 'LOG_STREAM', 'OPTION', 'PROTOCOL'
           raise parser.error("No current interface or router for #{keyword}") unless current_interface_or_router
 
           case keyword
@@ -152,7 +147,7 @@ module OpenC3
             parser.verify_num_parameters(1, 1, "#{keyword} <Delay in Seconds>")
             current_interface_or_router.reconnect_delay = Float(params[0])
 
-          when 'LOG_STREAM', 'LOG_RAW'
+          when 'LOG_STREAM'
             parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Parameters (optional)>")
             current_interface_or_router.stream_log_pair = StreamLogPair.new(current_interface_or_router.name, params)
             current_interface_or_router.start_raw_logging

@@ -206,7 +206,6 @@ if should_build "openc3-base-ubi"; then
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
   docker build \
-    -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \

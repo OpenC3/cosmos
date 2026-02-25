@@ -2,18 +2,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -25,7 +20,7 @@ test.use({
   toolName: 'CmdTlmServer',
 })
 
-test.fixme('displays the list of targets', async ({ page, utils }) => {
+test('displays the list of targets', async ({ page, utils }) => {
   await expect(page.locator('[data-test=targets-table]')).toContainText('INST')
   await expect(page.locator('[data-test=targets-table]')).toContainText('INST2')
   await expect(page.locator('[data-test=targets-table]')).toContainText(
@@ -36,7 +31,7 @@ test.fixme('displays the list of targets', async ({ page, utils }) => {
   )
 })
 
-test.fixme('displays the interfaces', async ({ page, utils }) => {
+test('displays the interfaces', async ({ page, utils }) => {
   await expect(page.locator('[data-test=targets-table]')).toContainText(
     'INST_INT',
   )

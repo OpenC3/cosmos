@@ -148,12 +148,19 @@ echo [==>] Detecting environment...
 
 REM Check for old volume
 set "VOLUME_FOUND="
+set "VOLUME_PREFIX="
 for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
 if "%VOLUME_FOUND%"=="" (
-    REM Check with cosmos_ prefix
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%OLD_VOLUME%"') do (
-        set "OLD_VOLUME=cosmos_%OLD_VOLUME%"
+    REM Check for prefixed volume (docker compose adds project name)
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
+        set "PREFIXED_VOL=%%i"
         set "VOLUME_FOUND=1"
+    )
+    if "!VOLUME_FOUND!"=="1" (
+        REM Extract prefix by removing the old volume name from the end
+        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
+        set "OLD_VOLUME=!PREFIXED_VOL!"
+        echo [INFO] Found old volume with prefix: !OLD_VOLUME!
     )
 )
 if "%VOLUME_FOUND%"=="" (
@@ -162,17 +169,17 @@ if "%VOLUME_FOUND%"=="" (
     echo If you haven't run COSMOS 6 before, there's nothing to migrate.
     exit /b 1
 )
-echo [INFO] Found old MINIO volume: %OLD_VOLUME%
+if "%VOLUME_PREFIX%"=="" echo [INFO] Found old MINIO volume: %OLD_VOLUME%
+
+REM Apply the same prefix to new volume if one was detected
+if not "%VOLUME_PREFIX%"=="" (
+    set "NEW_VOLUME=%VOLUME_PREFIX%%NEW_VOLUME%"
+    echo [INFO] Using matching prefix for new volume: !NEW_VOLUME!
+)
 
 REM Check for new volume
 set "NEW_VOL_FOUND="
 for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%NEW_VOLUME%"') do set "NEW_VOL_FOUND=1"
-if "%NEW_VOL_FOUND%"=="" (
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "cosmos_%NEW_VOLUME%"') do (
-        set "NEW_VOLUME=cosmos_%NEW_VOLUME%"
-        set "NEW_VOL_FOUND=1"
-    )
-)
 if "%NEW_VOL_FOUND%"=="" (
     echo [INFO] New volume '%NEW_VOLUME%' will be created
 ) else (
@@ -354,43 +361,31 @@ echo   Source: %MINIO_SOURCE% (volume: %OLD_VOLUME%)
 echo   Destination: %VERSITY_DEST% (volume: %NEW_VOLUME%)
 echo.
 
-REM List buckets in MINIO
-echo [INFO] Buckets in MINIO (source):
-call :run_mc ls minio/
-echo.
+REM Only migrate config and logs buckets
+REM Tools are installed and updated by the init container
+if "%OPENC3_CONFIG_BUCKET%"=="" set "OPENC3_CONFIG_BUCKET=config"
+if "%OPENC3_LOGS_BUCKET%"=="" set "OPENC3_LOGS_BUCKET=logs"
+for %%b in (%OPENC3_CONFIG_BUCKET% %OPENC3_LOGS_BUCKET%) do (
+    echo.
+    echo [==>] Processing bucket: %%b
 
-REM Get list of buckets and migrate each
-for /f "tokens=5" %%b in ('docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" "%MC_IMAGE%" mc ls minio/ 2^>nul') do (
-    set "BUCKET=%%b"
-    set "BUCKET=!BUCKET:/=!"
-    if not "!BUCKET!"=="" (
-        echo.
-        echo [==>] Processing bucket: !BUCKET!
-
-        REM Create bucket if it doesn't exist
-        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc ls "versity/!BUCKET!" >nul 2>&1
-        if errorlevel 1 (
-            echo [INFO] Creating bucket: !BUCKET!
-            docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mb "versity/!BUCKET!" 2>nul
-        )
-
-        REM Mirror data
-        echo [INFO] Mirroring data...
-        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mirror --preserve "minio/!BUCKET!" "versity/!BUCKET!"
-        echo [INFO] Bucket !BUCKET! migrated
+    REM Create bucket if it doesn't exist
+    docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc ls "versity/%%b" >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] Creating bucket: %%b
+        docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mb "versity/%%b" 2>nul
     )
+
+    REM Mirror data
+    echo [INFO] Mirroring data...
+    docker run --rm --network "%DOCKER_NETWORK%" --entrypoint "" -e "MC_HOST_minio=http://%MINIO_USER%:%MINIO_PASS%@%MINIO_SOURCE%:9000" -e "MC_HOST_versity=http://%VERSITY_USER%:%VERSITY_PASS%@%VERSITY_DEST%:9000" "%MC_IMAGE%" mc mirror --preserve "minio/%%b" "versity/%%b"
+    echo [INFO] Bucket %%b migrated
 )
 
 echo.
 echo ==========================================
 echo Migration complete!
 echo ==========================================
-echo.
-echo Next steps:
-echo   1. Verify data: %~nx0 status
-echo   2. If COSMOS 6 is still running, you can run '%~nx0 migrate' again to sync new data
-echo   3. When ready, stop COSMOS 6, run final '%~nx0 migrate', then '%~nx0 cleanup'
-echo   4. Start COSMOS 7: openc3.bat run
 echo.
 exit /b 0
 
@@ -424,15 +419,17 @@ if not "%MINIO_SOURCE%"=="" if not "%VERSITY_DEST%"=="" (
     echo.
     echo Bucket sizes (source -^> destination):
     echo.
+    if "%OPENC3_CONFIG_BUCKET%"=="" set "OPENC3_CONFIG_BUCKET=config"
+    if "%OPENC3_LOGS_BUCKET%"=="" set "OPENC3_LOGS_BUCKET=logs"
     echo   MINIO (source):
-    call :run_mc du minio/config 2>nul
-    call :run_mc du minio/logs 2>nul
-    call :run_mc du minio/tools 2>nul
+    call :run_mc du minio/%OPENC3_CONFIG_BUCKET% 2>nul
+    call :run_mc du minio/%OPENC3_LOGS_BUCKET% 2>nul
     echo.
     echo   versitygw (destination):
     REM versitygw uses POSIX storage, so check disk usage and file count directly
-    docker exec "%VERSITY_DEST%" sh -c "for dir in config logs tools; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf '    %%sMiB\t%%s files\t%%s\n' \"$size\" \"$count\" \"$dir\"; done" 2>nul
+    docker exec "%VERSITY_DEST%" sh -c "for dir in %OPENC3_CONFIG_BUCKET% %OPENC3_LOGS_BUCKET%; do size=$(du -sm /data/$dir 2>/dev/null | cut -f1); count=$(find /data/$dir -type f 2>/dev/null | wc -l); printf '    %%sMiB\t%%s files\t%%s\n' \"$size\" \"$count\" \"$dir\"; done" 2>nul
     echo.
+    echo [INFO] Tools are not migrated - they are installed and updated by the init container.
     echo [INFO] If file counts match, migration was successful!
 )
 
@@ -440,6 +437,21 @@ echo.
 exit /b 0
 
 :cleanup
+REM Resolve volume names with prefix detection for display
+set "VOLUME_FOUND="
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
+if "%VOLUME_FOUND%"=="" (
+    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
+        set "PREFIXED_VOL=%%i"
+        set "VOLUME_FOUND=1"
+    )
+    if "!VOLUME_FOUND!"=="1" (
+        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
+        set "OLD_VOLUME=!PREFIXED_VOL!"
+        set "NEW_VOLUME=!VOLUME_PREFIX!%NEW_VOLUME%"
+    )
+)
+
 echo [==>] Cleaning up migration containers...
 
 set "CONTAINER_EXISTS="

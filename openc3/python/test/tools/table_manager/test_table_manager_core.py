@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -253,7 +248,10 @@ class TestTableManagerCore(unittest.TestCase):
         result["tables"][0]["rows"][2][1]["value"] = "ENABLE"
         result["tables"][0]["rows"][2][2]["value"] = "UNCHECKED"
         binary = TableManagerCore.save(def_path, result["tables"])
-        self.assertEqual(binary, b"\x00\x00\x00\x01\x01\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x03\x01\x00")
+        self.assertEqual(
+            binary,
+            b"\x00\x00\x00\x01\x01\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x03\x01\x00",
+        )
 
     def test_load_binary_mismatch(self):
         """Test loading a binary file that doesn't match the definition size"""

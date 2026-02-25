@@ -3,18 +3,13 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -186,16 +181,16 @@ module OpenC3
       it "returns detailed interface information" do
         i = TcpipServerInterface.new('8888', '8889', '5.0', '10.0', 'burst')
         i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
-        
+
         details = i.details
-        
+
         expect(details).to be_a(Hash)
         expect(details['write_port']).to eql(8888)
         expect(details['read_port']).to eql(8889)
         expect(details['write_timeout']).to eql(5.0)
         expect(details['read_timeout']).to eql(10.0)
         expect(details['listen_address']).to eql('127.0.0.1')
-        
+
         # Check that base interface details are included
         expect(details['name']).to eql('TcpipServerInterface')
         expect(details).to have_key('read_allowed')
@@ -205,9 +200,9 @@ module OpenC3
 
       it "handles default listen address" do
         i = TcpipServerInterface.new('8888', '8889', '5.0', '10.0', 'burst')
-        
+
         details = i.details
-        
+
         expect(details['write_port']).to eql(8888)
         expect(details['read_port']).to eql(8889)
         expect(details['listen_address']).to eql('0.0.0.0')
@@ -215,9 +210,9 @@ module OpenC3
 
       it "handles nil values correctly" do
         i = TcpipServerInterface.new('8888', 'nil', 'nil', '10.0', 'burst')
-        
+
         details = i.details
-        
+
         expect(details['write_port']).to eql(8888)
         expect(details['read_port']).to be_nil
         expect(details['write_timeout']).to be_nil

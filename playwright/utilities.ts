@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -30,40 +25,42 @@ export class Utilities {
   }
 
   async selectTargetPacketItem(target: string, packet?: string, item?: string) {
-    await expect(this.page.locator('[data-test="select-target"]')).toBeEnabled()
+    // Wait for component initialization to complete.
+    // The component sets internalDisabled=true on creation and only clears it
+    // after both target names and initial packet names load from the API.
+    // This disables the actual <input> elements inside each v-autocomplete.
     await expect(
-      this.page.locator('[data-test="select-target"]'),
-    ).not.toBeEmpty()
-    if (packet) {
-      await expect(
-        this.page.locator('[data-test="select-packet"]'),
-      ).toBeEnabled()
-      await expect(
-        this.page.locator('[data-test="select-packet"]'),
-      ).not.toBeEmpty()
-    }
-    if (item) {
-      await expect(this.page.locator('[data-test="select-item"]')).toBeEnabled()
-      await expect(
-        this.page.locator('[data-test="select-item"]'),
-      ).not.toBeEmpty()
-    }
+      this.page.locator('[data-test="select-target"] input'),
+    ).toBeEnabled()
+
     await this.page.locator('[data-test=select-target]').click()
     await this.page.getByRole('option', { name: target, exact: true }).click()
     await expect(
       this.page.locator('[data-test="select-target"]'),
     ).toContainText(target)
+
+    // Wait for packets to load after target change (internalDisabled cycle)
+    await expect(
+      this.page.locator('[data-test="select-packet"] input'),
+    ).toBeEnabled()
+    await this.sleep(100) // Give the menu a little more time to load
+
     if (packet) {
-      await this.sleep(500) // Wait for packets to populate
       await this.page.locator('[data-test=select-packet]').click()
       await this.page.getByRole('option', { name: packet, exact: true }).click()
       await expect(
         this.page.locator('[data-test="select-packet"]'),
       ).toContainText(packet)
+
       if (item) {
-        await this.sleep(500) // Wait for items to populate
+        // Wait for items to load after packet change
+        await expect(
+          this.page.locator('[data-test="select-item"] input'),
+        ).toBeEnabled()
+        await this.sleep(100) // Give the menu a little more time to load
+
         await this.page.locator('[data-test=select-item] i').click()
-        // Need to fill the item to allow filtering since the item list can be long
+        // Fill to filter since the item list can be long
         await this.page
           .getByRole('combobox', { name: 'Select Item' })
           .fill(item)
@@ -71,18 +68,13 @@ export class Utilities {
         await expect(
           this.page.locator('[data-test="select-item"]'),
         ).toContainText(item)
-      } else {
-        // If we're only selecting a packet wait for items to populate
-        await this.sleep(500)
       }
-    } else {
-      // If we're only selecting a target wait for packets to populate
-      await this.sleep(500)
     }
   }
 
   async addTargetPacketItem(target: string, packet?: string, item?: string) {
     await this.selectTargetPacketItem(target, packet, item)
+    await expect(this.page.locator('[data-test=select-send]')).toBeEnabled()
     await this.page.locator('[data-test=select-send]').click()
   }
 

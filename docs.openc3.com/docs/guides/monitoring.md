@@ -152,11 +152,11 @@ scrape_configs:
     static_configs:
       - targets: ["openc3-script-runner-api:2902"]
 
-  - job_name: minio-job
-    metrics_path: /minio/v2/metrics/cluster
+  - job_name: versitygw-job
+    metrics_path: /metrics
     scheme: http
     static_configs:
-    - targets: ['openc3-minio:9000']
+    - targets: ['openc3-buckets:9000']
 ```
 
 Dockerfile

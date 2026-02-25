@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -164,7 +159,7 @@ module OpenC3
           current_position += 1
           next
         end
-        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        table_name = QuestDBClient.sanitize_table_name(target_name, packet_name, scope: scope)
         tables[table_name] = 1
         index = tables.find_index {|k,v| k == table_name }
 
@@ -411,7 +406,7 @@ module OpenC3
       # If a start_time is passed we're doing a QuestDB lookup and directly return the results
       # TODO: This currently does NOT support the override values
       if start_time
-        return tsdb_lookup(items, start_time: start_time, end_time: end_time)
+        return tsdb_lookup(items, start_time: start_time, end_time: end_time, scope: scope)
       end
 
       # First generate a lookup hash of all the items represented so we can query the CVT

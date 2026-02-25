@@ -1,15 +1,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -36,13 +31,13 @@ class TcpipSocketStream(Stream):
         self.write_socket = write_socket
         self.read_socket = read_socket
         self.write_timeout = ConfigParser.handle_none(write_timeout)
-        if self.write_timeout:
+        if self.write_timeout is not None:
             self.write_timeout = float(write_timeout)
         else:
             Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
-        if self.read_timeout:
+        if self.read_timeout is not None:
             self.read_timeout = float(read_timeout)
 
         # Mutex on write is needed to protect from commands coming in from more
@@ -106,7 +101,11 @@ class TcpipSocketStream(Stream):
                         if writeable:
                             continue
                         else:
-                            raise RuntimeError("Write Timeout") from error
+                            raise TimeoutError("Write Timeout") from error
+                    else:
+                        # Any other socket error (e.g. ECONNRESET, EPIPE) is not
+                        # recoverable - re-raise immediately to avoid an infinite loop
+                        raise
                 total_bytes_sent += bytes_sent
                 if total_bytes_sent >= num_bytes_to_send:
                     break

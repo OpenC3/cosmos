@@ -1,15 +1,10 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -27,8 +22,9 @@ class Accessor:
     def read_item(self, item, buffer):
         if item.parent_item is not None:
             # Structure is used to read items with parent, not accessor
-            structure_buffer = self.read_item(item.parent_item, buffer)
-            structure = item.parent_item.structure
+            parent_item = self.packet.get_item(item.parent_item)
+            structure_buffer = self.read_item(parent_item, buffer)
+            structure = parent_item.structure
             return structure.read(item.key, "RAW", structure_buffer)
         else:
             return self.__class__.class_read_item(item, buffer)
@@ -36,10 +32,11 @@ class Accessor:
     def write_item(self, item, value, buffer):
         if item.parent_item is not None:
             # Structure is used to write items with parent, not accessor
-            structure_buffer = self.read_item(item.parent_item, buffer)
-            structure = item.parent_item.structure
+            parent_item = self.packet.get_item(item.parent_item)
+            structure_buffer = self.read_item(parent_item, buffer)
+            structure = parent_item.structure
             structure.write(item.key, value, "RAW", structure_buffer)
-            return self.__class__.class_write_item(item.parent_item, structure_buffer, buffer)
+            return self.__class__.class_write_item(parent_item, structure_buffer, buffer)
         else:
             return self.__class__.class_write_item(item, value, buffer)
 

@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -516,7 +511,7 @@ export default {
       }
       this.saveDefaultConfig(this.currentConfig)
     },
-    addGraph: function (checkExisting = true) {
+    addGraph: async function (checkExisting = true) {
       const id = this.counter
       let halfWidth = false
       let halfHeight = false
@@ -529,6 +524,10 @@ export default {
           halfHeight = true
         }
       }
+      // Set selectedGraphId before pushing so the expansion panel renders
+      // the full chooser content before the graph mounts and calls getSize()
+      this.selectedGraphId = id
+      await this.$nextTick()
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
@@ -536,7 +535,6 @@ export default {
           active: false,
         })
         this.grid.show(items)
-        this.selectedGraphId = id
         // Make the new graph match the first one
         if (halfWidth) {
           this.$refs[`graph${id}`][0].collapseWidth()
@@ -637,7 +635,7 @@ export default {
 
       let graphs = config.graphs
       for (let graph of graphs) {
-        this.addGraph(false) // Don't check existing graphs
+        await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
       const that = this

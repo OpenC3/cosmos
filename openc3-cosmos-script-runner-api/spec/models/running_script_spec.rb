@@ -1,17 +1,12 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 require "rails_helper"
 require "tempfile"
@@ -67,7 +62,7 @@ RSpec.describe RunningScript, type: :model do
     end
 
     it "spawns a python script process" do
-      expect(ChildProcess).to receive(:build).with("python", anything, "1", "DEFAULT")
+      expect(ChildProcess).to receive(:build).with("/openc3/python/.venv/bin/python", anything, "1", "DEFAULT")
 
       result = RunningScript.spawn("DEFAULT", "script.py")
       expect(result).to eq(1)

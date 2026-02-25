@@ -3,15 +3,10 @@
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -168,7 +163,7 @@ module OpenC3
         @interface.add_protocol(CmdResponseProtocol, [], :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('CmdResponseProtocol')
         expect(details.key?('write_data_input_time')).to be true
@@ -181,7 +176,7 @@ module OpenC3
         @interface.add_protocol(CmdResponseProtocol, %w(2.0 0.05 true), :READ_WRITE)
         protocol = @interface.write_protocols[0]
         details = protocol.write_details
-        
+
         expect(details['response_timeout']).to eq(2.0)
         expect(details['response_polling_period']).to eq(0.05)
         expect(details['raise_exceptions']).to eq(true)
@@ -193,7 +188,7 @@ module OpenC3
         @interface.add_protocol(CmdResponseProtocol, [], :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details).to be_a(Hash)
         expect(details['name']).to eq('CmdResponseProtocol')
         expect(details.key?('read_data_input_time')).to be true
@@ -206,7 +201,7 @@ module OpenC3
         @interface.add_protocol(CmdResponseProtocol, %w(3.0 0.1 false), :READ_WRITE)
         protocol = @interface.read_protocols[0]
         details = protocol.read_details
-        
+
         expect(details['response_timeout']).to eq(3.0)
         expect(details['response_polling_period']).to eq(0.1)
         expect(details['raise_exceptions']).to eq(false)

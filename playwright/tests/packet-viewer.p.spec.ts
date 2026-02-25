@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -177,9 +172,9 @@ test('changes the polling rate', async ({ page, utils }) => {
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
   // Verify the dialog opens with default value of 1 second
-  await expect(
-    page.locator('[data-test=refresh-interval] input'),
-  ).toHaveValue('1')
+  await expect(page.locator('[data-test=refresh-interval] input')).toHaveValue(
+    '1',
+  )
   // Change to 5 seconds (input is in seconds, not milliseconds)
   await page.locator('[data-test=refresh-interval] input').fill('5')
   // Test Cancel button - should NOT save changes
@@ -188,9 +183,9 @@ test('changes the polling rate', async ({ page, utils }) => {
   // Re-open and verify value is still 1 (cancel didn't save)
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await expect(
-    page.locator('[data-test=refresh-interval] input'),
-  ).toHaveValue('1')
+  await expect(page.locator('[data-test=refresh-interval] input')).toHaveValue(
+    '1',
+  )
   // Now change to 5 seconds and Save
   await page.locator('[data-test=refresh-interval] input').fill('5')
   await page.locator('[data-test=options-save-btn]').click()
@@ -208,9 +203,9 @@ test('changes the polling rate', async ({ page, utils }) => {
   // Verify the saved value persists
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await expect(
-    page.locator('[data-test=refresh-interval] input'),
-  ).toHaveValue('5')
+  await expect(page.locator('[data-test=refresh-interval] input')).toHaveValue(
+    '5',
+  )
   // Set it back to 1 second
   await page.locator('[data-test=refresh-interval] input').fill('1')
   await page.locator('[data-test=options-save-btn]').click()

@@ -1,15 +1,10 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -25,7 +20,16 @@ from openc3.utilities.json import JsonDecoder, JsonEncoder
 
 class DecomInterfaceTopic(Topic):
     @classmethod
-    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, timeout=5, scope=OPENC3_SCOPE):
+    def build_cmd(
+        cls,
+        target_name,
+        cmd_name,
+        cmd_params,
+        range_check,
+        raw,
+        timeout=5,
+        scope=OPENC3_SCOPE,
+    ):
         data = {}
         data["target_name"] = target_name.upper()
         data["cmd_name"] = cmd_name.upper()

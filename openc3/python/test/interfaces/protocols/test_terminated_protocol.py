@@ -1,15 +1,10 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
-#
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -169,7 +164,11 @@ class TestTerminatedProtocol(unittest.TestCase):
         self.assertEqual(TestTerminatedProtocol.buffer, b"\xde\xad\x00\x01\x02\x03\xcd\xef")
 
     def test_write_details_returns_correct_information(self):
-        self.interface.add_protocol(TerminatedProtocol, ["0xCDEF", "0xABCD", True, 2, "DEAD", False], "READ_WRITE")
+        self.interface.add_protocol(
+            TerminatedProtocol,
+            ["0xCDEF", "0xABCD", True, 2, "DEAD", False],
+            "READ_WRITE",
+        )
         protocol = self.interface.write_protocols[0]
         details = protocol.write_details()
 
@@ -189,7 +188,11 @@ class TestTerminatedProtocol(unittest.TestCase):
         self.assertEqual(details["write_termination_characters"], "bytearray(b'\\xcd\\xef')")
 
     def test_read_details_returns_correct_information(self):
-        self.interface.add_protocol(TerminatedProtocol, ["0xCDEF", "0xABCD", False, 1, "BEEF", True], "READ_WRITE")
+        self.interface.add_protocol(
+            TerminatedProtocol,
+            ["0xCDEF", "0xABCD", False, 1, "BEEF", True],
+            "READ_WRITE",
+        )
         protocol = self.interface.read_protocols[0]
         details = protocol.read_details()
 

@@ -3,15 +3,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -346,6 +341,7 @@ class RunningScript
   attr_accessor :user_input
   attr_accessor :prompt_id
   attr_reader :script_status
+  attr_reader :suite_report
   attr_accessor :execute_while_paused_info
 
   # This REGEX is also found in scripts_controller.rb
@@ -392,7 +388,7 @@ class RunningScript
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
-      process_name = 'python'
+      process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
     elsif extension == '.rb'
       process_name = 'ruby'
@@ -405,7 +401,7 @@ class RunningScript
       if script_engine_model
         script_engine = script_engine_model.filename
         if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = 'python'
+          process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
           runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
         else
           process_name = 'ruby'
@@ -503,6 +499,8 @@ class RunningScript
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
     process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+    # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
+    process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
 
     # Spawned process should not be controlled by same Bundler constraints as spawning process
     ENV.each do |key, _value|
@@ -1213,7 +1211,7 @@ class RunningScript
       elsif parts[0] and init_split.length > 1
         parts[0] += "_#{init_split[-1]}"
       end
-      running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :report, report: OpenC3::SuiteRunner.suite_results.report })
+      @suite_report = OpenC3::SuiteRunner.suite_results.report
       # Write out the report to a local file
       log_dir = File.join(RAILS_ROOT, 'log')
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))

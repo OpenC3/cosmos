@@ -2,15 +2,10 @@
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
-# This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Affero General Public License
-# as published by the Free Software Foundation; version 3 with
-# attribution addendums as found in the LICENSE.txt
-#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
 # All changes Copyright 2026, OpenC3, Inc.
@@ -44,11 +39,18 @@ async function showScreen(
   await page.getByRole('option', { name: target, exact: true }).click()
   await page.locator('[data-test="select-screen"]').click()
   await page.getByRole('option', { name: screen, exact: true }).click()
-  await utils.sleep(500) // Allow screen to display so we don't double display
-  await page.locator('[data-test="show-screen"]').click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
-  ).toBeVisible()
+  // Navigating to a screen displays it automatically unless already selected
+  // In that case we need to click the Show button
+  try {
+    await expect(
+      page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+    ).toBeVisible({ timeout: 3000 })
+  } catch {
+    await page.locator('[data-test="show-screen"]').click()
+    await expect(
+      page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
+    ).toBeVisible()
+  }
   await callback()
   await page.locator('[data-test=close-screen-icon]').click()
   await expect(
@@ -233,12 +235,11 @@ test('displays INST WEB', async ({ page, utils }) => {
 test('creates new blank screen', async ({ page, utils }) => {
   await page.locator('[data-test="new-screen"]').click()
   await expect(page.locator(`.v-toolbar:has-text("New Screen")`)).toBeVisible()
-  await page
-    .getByRole('dialog')
-    .getByRole('combobox')
-    .filter({ hasText: 'Select Target' })
-    .click()
+  await page.locator('[data-test="new-screen-target"]').click()
   await page.getByRole('option', { name: 'INST2' }).click()
+  await expect(
+    page.locator('[data-test="new-screen-target"]'),
+  ).toContainText('INST2')
   // Check trying to create an existing screen
   await page
     .locator('[data-test="new-screen-name"] input')

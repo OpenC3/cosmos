@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "6.10.5-beta0",
+  "version": "7.0.0-rc3",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -14,7 +14,7 @@
   "dependencies": {
     "@angular/animations": "^18.2.6",
     "@angular/cdk": "^18.2.6",
-    "@angular/common": "^21.1.2",
+    "@angular/common": "^18.2.6",
     "@angular/compiler": "^18.2.6",
     "@angular/core": "^18.2.6",
     "@angular/forms": "^18.2.6",
