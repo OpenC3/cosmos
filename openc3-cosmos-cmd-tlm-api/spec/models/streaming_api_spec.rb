@@ -587,7 +587,7 @@ RSpec.describe StreamingApi, type: :model do
 
         # Verify first message contains aggregated data
         first_entry = @messages[0][0]
-        expect(first_entry['__type']).to eq('items')
+        expect(first_entry['__type']).to eq('ITEMS')
         expect(first_entry['__time']).to_not be_nil
       end
 

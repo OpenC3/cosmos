@@ -1348,12 +1348,21 @@ if not ARGV[0].nil? # argument(s) given
       exit 0
     end
     client = OpenC3::Bucket.getClient()
-    ENV.map do |key, value|
-      if key.match(/^OPENC3_(.+)_BUCKET$/) && !value.empty?
-        client.create(value)
+    if ENV.fetch('OPENC3_CLOUD', 'local') == 'local'
+      # In local mode we want to create all buckets to ensure they exist
+      # Cloud deployments will have created buckets during provisioning
+      # so we only need to ensure the correct policies and permissions are in place
+      ENV.map do |key, value|
+        if key.match(/^OPENC3_(.+)_BUCKET$/) && !value.empty?
+          client.create(value)
+        end
       end
     end
-    client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+    # Unless explicitly disabled, ensure the tools bucket is public
+    unless ENV.fetch("OPENC3_NO_BUCKET_POLICY", false)
+      client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+    end
+    # Always ensure the scriptrunner policy is in place since it is required for script execution
     client.ensure_scriptrunner_policy(ENV['OPENC3_CONFIG_BUCKET'], ENV['OPENC3_LOGS_BUCKET'])
 
   when 'runmigrations'
