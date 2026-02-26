@@ -261,6 +261,8 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
+      OPENC3_TOOLS_BUCKET: "${OPENC3_TOOLS_BUCKET}"
+      OPENC3_BUCKET_URL: "${OPENC3_BUCKET_URL}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"

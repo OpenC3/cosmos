@@ -1099,8 +1099,16 @@ HORIZONTAL
 END
 LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
 LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
+LIMITSCOLOR INST HEALTH_STATUS TEMP4
+  SETTING ASTRO TRUE
 ```
 ![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
+
+The following settings apply to LIMITSCOLOR. They are applied using the SETTING keyword.
+#### ASTRO
+**Display Astro status icons instead of a colored circle**
+
+When set, the LIMITSCOLOR renders an Astro (rux-status) icon whose shape reflects the severity level, improving accessibility for colorblind users. Limits colors are automatically mapped to Astro statuses (GREEN to normal, RED to critical, YELLOW to caution, BLUE to standby).
 
 
 ### VALUELIMITSBAR

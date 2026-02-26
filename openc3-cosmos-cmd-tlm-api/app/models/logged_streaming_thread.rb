@@ -528,7 +528,7 @@ class LoggedStreamingThread < StreamingThread
             done = true
           else
             result.each do |tuples|
-              entry = { "__type" => "items" }
+              entry = { "__type" => "ITEMS" }
               timestamp_values = {}  # Store timestamp column values for calculation
               tuples.each_with_index do |tuple, index|
                 col_name = tuple[0]
@@ -742,7 +742,7 @@ class LoggedStreamingThread < StreamingThread
               table_done = true
             else
               result.each do |tuples|
-                entry = { "__type" => "items" }
+                entry = { "__type" => "ITEMS" }
 
                 tuples.each do |tuple|
                   col_name = tuple[0]

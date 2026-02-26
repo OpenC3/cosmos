@@ -1,5 +1,16 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 ---
-# Listen for everything coming in on the standard HTTP port
+# Listen for everything coming in on the COSMOS HTTP port
+# We don't bind to 80 because traefik isn't running as root
 entrypoints:
   web:
     address: ":2900"
@@ -8,6 +19,8 @@ entrypoints:
         # Allow encoded slashes (%2F) in URL paths
         # Required for Traefik v3.6.4+ which blocks them by default
         allowEncodedSlash: true
+ping:
+  entryPoint: "web"
 http:
   middlewares:
     # Removes the first part of the url before passing onto the service
@@ -26,6 +39,11 @@ http:
       replacePathRegex:
         regex: "^/(.*)"
         replacement: "/tools/base/$1"
+    # Changes a /tools url to the actual tools bucket name
+    changeTools:
+      replacePathRegex:
+        regex: "^/([^/]*)/(.*)"
+        replacement: '/{{env "OPENC3_TOOLS_BUCKET"}}/$2'
     # Adds index.html to the end of the given url
     # ie. /tools/staticdocs/ becomes /tools/staticdocs/index.html
     addIndexHtml:
@@ -69,6 +87,8 @@ http:
     # Matches any path with a file extension which is assumed to be a static file
     tools-router:
       rule: PathRegexp(`^/tools/.+/.+\.[a-zA-Z0-9]+$`)
+      middlewares:
+        - "changeTools"
       service: service-bucket
       priority: 6
     # Route to other tool plugins hosted statically in bucket storage
@@ -77,6 +97,7 @@ http:
     statictools-index-router:
       rule: PathRegexp(`^/tools/static.*/$`)
       middlewares:
+        - "changeTools"
         # add index.html to the end
         - "addIndexHtml"
       service: service-bucket
@@ -87,6 +108,7 @@ http:
     statictools-dothtml-router:
       rule: PathRegexp(`^/tools/static.*`)
       middlewares:
+        - "changeTools"
         # add .html to the end
         - "addDotHtml"
       service: service-bucket
@@ -107,6 +129,7 @@ http:
         - "contentSecurityPolicy"
         # add /tools/base to the beginning
         - "addToolsBase"
+        - "changeTools"
       service: service-bucket
       priority: 2
     # This is the default route for everything that doesn't match a more specific route
@@ -117,6 +140,7 @@ http:
         - "contentSecurityPolicy"
         # Serve /tools/base/index.html from bucket storage
         - "gotoToolsBaseIndex"
+        - "changeTools"
       service: service-bucket
       priority: 1
   services:
@@ -149,7 +173,7 @@ http:
       loadBalancer:
         passHostHeader: false
         servers:
-          - url: "http://openc3-buckets:9000"
+          - url: '{{ env "OPENC3_BUCKET_URL" }}'
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:
@@ -157,16 +181,15 @@ providers:
   http:
     endpoint: "http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/traefik"
     pollInterval: "5s"
-
 accessLog: {}
 # api:
 #   dashboard: true
 #   insecure: true
 # log:
-#   filePath: '/etc/traefik/traefik.log'
-#   level: 'DEBUG'
+#   filePath: "/etc/traefik/traefik.log"
+#   level: "DEBUG"
 # accessLog:
-#   filePath: '/etc/traefik/access.log'
+#   filePath: "/etc/traefik/access.log"
 #   fields:
 #     defaultMode: keep
 #     headers:
