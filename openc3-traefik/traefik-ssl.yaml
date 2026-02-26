@@ -77,6 +77,11 @@ http:
       replacePathRegex:
         regex: "^(.*)$"
         replacement: "$1.html"
+    # Set Content-Security-Policy header based on OPENC3_ALLOW_HTTP flag
+    contentSecurityPolicy:
+      headers:
+        contentSecurityPolicy: >-
+          {{ if env "OPENC3_ALLOW_HTTP" }}default-src 'self' blob: data: http: https:; script-src 'unsafe-inline' 'unsafe-eval' http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none';{{ else }}default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'unsafe-inline' 'unsafe-eval' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none';{{ end }}
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
     # Route to the openc3 cmd/tlm api websockets
@@ -150,6 +155,7 @@ http:
     base-router:
       rule: PathRegexp(`^/.+\.[a-zA-Z0-9]+$`)
       middlewares:
+        - "contentSecurityPolicy"
         # add /tools/base to the beginning
         - "addToolsBase"
         - "changeTools"
@@ -161,6 +167,7 @@ http:
     web-router:
       rule: HostRegexp(`.*`)
       middlewares:
+        - "contentSecurityPolicy"
         # Serve /tools/base/index.html from bucket storage
         - "gotoToolsBaseIndex"
         - "changeTools"

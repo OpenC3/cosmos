@@ -459,7 +459,7 @@ def check_tool_base(path, base_pkgs)
       FileUtils.rm(existing)
 
       # Now update the files with references to materialdesignicons
-      files = %w(public/index.html public/index-allow-http.html)
+      files = ["public/index.html"]
       # The base also has to update index.html in openc3-tool-base
       files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
@@ -546,13 +546,11 @@ def check_tool_base(path, base_pkgs)
           validate_outfile(outfile, package, latest)
         end
         FileUtils.rm existing
-        # Now update the files with references to <package>-<version>.min.js
-        %w(public/index.html public/index-allow-http.html).each do |filename|
-          html = File.read(filename)
-          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
-          File.open(filename, 'w') {|file| file.puts html }
-        end
+        # Now update the public/index.html with references to <package>-<version>.min.js
+        html = File.read("public/index.html")
+        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        File.open("public/index.html", 'w') {|file| file.puts html }
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
           html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
