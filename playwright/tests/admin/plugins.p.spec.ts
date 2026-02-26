@@ -181,7 +181,7 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
   )
 })
 
-test.only('downloads the demo plugin', async ({ page, utils }) => {
+test('downloads the demo plugin', async ({ page, utils }) => {
   const plugin = 'openc3-cosmos-demo'
   await page
     .locator('[data-test=plugin-list-item]')
