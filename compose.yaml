@@ -263,12 +263,11 @@ services:
     environment:
       OPENC3_TOOLS_BUCKET: "${OPENC3_TOOLS_BUCKET}"
       OPENC3_BUCKET_URL: "${OPENC3_BUCKET_URL}"
+      OPENC3_ALLOW_HTTP: "${OPENC3_ALLOW_HTTP}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
-    env_file:
-      - .env
     healthcheck:
       # Test that Traefik process is running - ping endpoint is not configured
       test: ["CMD-SHELL", "pgrep traefik || exit 1"]
