@@ -49,6 +49,7 @@ import LabelvaluelimitscolumnWidget from './LabelvaluelimitscolumnWidget.vue'
 import LabelvaluerangebarWidget from './LabelvaluerangebarWidget.vue'
 import Layout from './Layout'
 import LedWidget from './LedWidget.vue'
+import { limitsColor, astroStatus } from './LimitsColor'
 import LimitsbarWidget from './LimitsbarWidget.vue'
 import LimitscolorWidget from './LimitscolorWidget.vue'
 import LimitscolumnWidget from './LimitscolumnWidget.vue'
@@ -117,6 +118,8 @@ export {
   LabelvaluerangebarWidget,
   Layout,
   LedWidget,
+  limitsColor,
+  astroStatus,
   LimitsbarWidget,
   LimitscolorWidget,
   LimitscolumnWidget,

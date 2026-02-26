@@ -76,6 +76,11 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     GENERIC_READ_CONVERSION_END
   PROCESSOR TEMP1STAT openc3/processors/statistics_processor.py TEMP1 100
   PROCESSOR TEMP1WATER openc3/processors/watermark_processor.py TEMP1
+  ITEM ZERO 0 0 DERIVED
+    GENERIC_READ_CONVERSION_START INT 16
+      0
+    GENERIC_READ_CONVERSION_END
+    LIMITS DEFAULT 1 ENABLED -20 -10 10 20 -5 5
 
 TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
   META TYPE 'struct adcs'
