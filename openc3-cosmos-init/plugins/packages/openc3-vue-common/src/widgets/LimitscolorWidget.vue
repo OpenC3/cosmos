@@ -20,20 +20,38 @@
     <v-tooltip v-if="!tooltipText" :open-delay="600" location="top">
       <template #activator="{ props }">
         <div
+          v-if="!astro"
           :class="ledClass"
           :style="cssProps"
           v-bind="props"
           @contextmenu="showContextMenu"
         ></div>
+        <div
+          v-else
+          class="astroled align-self-center"
+          :class="staleClass"
+          v-bind="props"
+          @contextmenu="showContextMenu"
+        >
+          <rux-status :status="astroStatus" />
+        </div>
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
     <div
-      v-else
+      v-else-if="!astro"
       :class="ledClass"
       :style="cssProps"
       @contextmenu="showContextMenu"
     ></div>
+    <div
+      v-else
+      class="astroled align-self-center"
+      :class="staleClass"
+      @contextmenu="showContextMenu"
+    >
+      <rux-status :status="astroStatus" />
+    </div>
     <label-widget
       v-if="displayLabel"
       :parameters="labelName"
@@ -73,6 +91,7 @@ export default {
   mixins: [VWidget],
   data() {
     return {
+      astro: false,
       radius: 15,
       fullLabelDisplay: false,
       displayLabel: true,
@@ -140,6 +159,12 @@ export default {
         '--width': this.radius + 'px',
       }
     },
+    staleClass() {
+      if (this._limitsState === 'STALE') {
+        return 'stale'
+      }
+      return ''
+    },
     myComputedStyle() {
       // Remove the flex property from the computedStyle object
       // because if they choose not to display the label
@@ -150,6 +175,11 @@ export default {
     },
   },
   created() {
+    this.appliedSettings.forEach((setting) => {
+      if (setting[0] === 'ASTRO') {
+        this.astro = setting[1]?.toLowerCase() !== 'false'
+      }
+    })
     if (this.parameters[4]) {
       this.radius = Number.parseInt(this.parameters[4])
     }
@@ -206,6 +236,11 @@ export default {
 }
 .purple {
   background-color: rgb(200, 0, 200);
+}
+.astroled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .stale {
   filter: blur(2px) brightness(0.6);
