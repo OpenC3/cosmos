@@ -46,7 +46,6 @@
               label="Select Target"
               :disabled="targets.length === 0"
               :items="targets"
-              :disabled="targets.length === 0"
               item-title="label"
               item-value="value"
               data-test="new-screen-target"
