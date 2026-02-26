@@ -62,7 +62,7 @@ http:
     contentSecurityPolicy:
       headers:
         contentSecurityPolicy: >-
-          {{- if env "OPENC3_ALLOW_HTTP" }}default-src 'self' blob: data: http: https:; script-src 'unsafe-inline' 'unsafe-eval' http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none';{{- else }}default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'unsafe-inline' 'unsafe-eval' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none';{{- end }}
+          {{ if env "OPENC3_ALLOW_HTTP" }}default-src 'self' blob: data: http: https:; script-src 'unsafe-inline' 'unsafe-eval' http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none';{{ else }}default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'unsafe-inline' 'unsafe-eval' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none';{{ end }}
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
     # Route to the openc3 cmd/tlm api websockets
