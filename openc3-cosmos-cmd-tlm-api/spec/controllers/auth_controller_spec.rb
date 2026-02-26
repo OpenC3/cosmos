@@ -82,4 +82,34 @@ RSpec.describe AuthController, :type => :controller do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe "rate limiting" do
+    # Actually testing that rate limiting is enforced is done in Playwright
+    # because Rails does this in middleware that isn't included in the request
+    # pipeline for unit testing. But we can ensure that the config is read.
+
+    it "uses default rate limit values from environment" do
+      expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('10')
+      expect(ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']).to eq('120')
+    end
+
+    it "respects custom rate limit values from environment" do
+      original_to = ENV['OPENC3_AUTH_RATE_LIMIT_TO']
+      original_within = ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']
+
+      begin
+        ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = '5'
+        ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN'] = '60'
+
+        load Rails.root.join('app', 'controllers', 'auth_controller.rb')
+
+        expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('5')
+        expect(ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']).to eq('60')
+      ensure
+        ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = original_to
+        ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN'] = original_within
+        load Rails.root.join('app', 'controllers', 'auth_controller.rb')
+      end
+    end
+  end
 end

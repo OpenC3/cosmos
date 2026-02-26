@@ -19,6 +19,10 @@ require 'openc3'
 require 'openc3/models/auth_model'
 
 class AuthController < ApplicationController
+  rate_limit to: ENV.fetch('OPENC3_AUTH_RATE_LIMIT_TO', '10').to_i,
+             within: ENV.fetch('OPENC3_AUTH_RATE_LIMIT_WITHIN', '120').to_i.seconds,
+             except: :token_exists # Prevent thrashing this controller
+
   def token_exists
     result = OpenC3::AuthModel.set?
     render json: {
