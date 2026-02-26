@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -94,6 +94,7 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
 
 export default {

@@ -182,6 +182,26 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
   )
 })
 
+test.only('downloads the demo plugin', async ({ page, utils }) => {
+  const plugin = 'openc3-cosmos-demo'
+  await page
+    .locator('[data-test=plugin-list-item]')
+    .filter({ hasText: plugin })
+    .locator('[data-test=plugin-actions]')
+    .click()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('[data-test=download-plugin]').click(),
+  ])
+  const filename = download.suggestedFilename()
+  expect(filename).toMatch(/openc3-cosmos-demo.*\.gem/)
+  // Verify the download completes successfully and has content
+  const path = await download.path()
+  expect(path).toBeTruthy()
+  const stat = fs.statSync(path!)
+  expect(stat.size).toBeGreaterThan(0)
+})
+
 test('shows targets associated with plugins', async ({ page, utils }) => {
   // Check that the openc3-demo contains the following targets:
   await expect(
