@@ -417,9 +417,7 @@ def get_cmd_value(
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()")
     if target_name is None or command_name is None:
-        raise RuntimeError(
-            'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or ("TGT", "CMD", "PARAM")'
-        )
+        raise RuntimeError('Usage: get_cmd_value("TGT CMD PARAM") or get_cmd_value("TGT", "CMD", "PARAM")')
 
     authorize(
         permission="cmd_info",

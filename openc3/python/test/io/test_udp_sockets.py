@@ -26,8 +26,8 @@ class TestUdpWriteSocket(unittest.TestCase):
         udp = UdpWriteSocket("224.0.1.1", 8888, 7888, "127.0.0.1", 3)
         self.assertEqual(udp.getsockname()[1], 7888)
         self.assertEqual(udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL), 3)
-        _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
-        self.assertEqual(socket.inet_ntoa(_bytes), "127.0.0.1")
+        data = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
+        self.assertEqual(socket.inet_ntoa(data), "127.0.0.1")
         udp.close()
 
     def test_writes_data(self):
