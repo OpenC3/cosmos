@@ -94,8 +94,8 @@ RSpec.describe AuthController, :type => :controller do
     end
 
     it "respects custom rate limit values from environment" do
-      original_to = ENV['OPENC3_AUTH_RATE_LIMIT_TO']
-      original_within = ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']
+      original_to = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_TO', '10')
+      original_within = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_WITHIN', '120')
 
       begin
         ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = '5'

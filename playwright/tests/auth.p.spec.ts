@@ -17,7 +17,7 @@ test.describe('Auth API', () => {
       return
     }
 
-    const maxRequests = parseInt(process.env.OPENC3_AUTH_RATE_LIMIT_TO || '10')
+    const maxRequests = Number.parseInt(process.env.OPENC3_AUTH_RATE_LIMIT_TO || '10')
 
     let gotRateLimited = false
     for (let i = 0; i <= maxRequests; i++) {
