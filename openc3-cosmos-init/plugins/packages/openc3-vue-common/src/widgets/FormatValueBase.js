@@ -80,7 +80,7 @@ export default {
           str = '-' + str
         }
         if (widthStr) {
-          const width = parseInt(widthStr)
+          const width = Number.parseInt(widthStr)
           if (flags.includes('-')) {
             str = str.padEnd(width, ' ')
           } else {
