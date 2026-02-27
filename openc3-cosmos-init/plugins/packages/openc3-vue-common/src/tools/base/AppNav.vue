@@ -357,7 +357,10 @@ export default {
     window.addEventListener('single-spa:routing-event', this.updateActiveItem)
   },
   beforeUnmount() {
-    window.removeEventListener('single-spa:routing-event', this.updateActiveItem)
+    window.removeEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
   },
   methods: {
     navigateToUrl,
