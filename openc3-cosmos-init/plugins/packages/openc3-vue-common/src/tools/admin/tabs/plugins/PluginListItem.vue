@@ -87,6 +87,7 @@
     </td>
   </tr>
   <plugin-details-dialog
+    v-if="showCard"
     v-model="showCard"
     v-bind="plugin"
     @trigger-uninstall="deletePrompt"

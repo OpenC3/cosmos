@@ -12,12 +12,11 @@
 -->
 
 <template>
-  <slot name="activator" :props="{ onClick: openDialog }"></slot>
   <v-dialog v-model="isDialogOpen" max-width="500">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
-        <span v-text="title" />
+        <span v-text="versionTitle" />
         <v-spacer />
         <v-tooltip location="top">
           <template #activator="{ props }">
@@ -41,9 +40,32 @@
         />
       </v-toolbar>
       <v-card-subtitle
-        class="d-flex align-center justify-content-space-between"
+        class="d-flex align-center justify-space-between subtitle-with-version"
       >
-        <div>{{ author }}</div>
+        <div>
+          By <strong>{{ author }}</strong>
+          <span v-if="author_extra?.badge_text" class="ml-1 font-italic">
+            {{ author_extra.badge_text }}
+          </span>
+          <v-icon
+            v-if="author_extra?.badge_icon"
+            :icon="author_extra.badge_icon"
+            :size="18"
+            class="ml-1"
+          />
+        </div>
+        <v-select
+          v-if="hasVersions"
+          v-model="selectedVersionId"
+          :items="versionOptions"
+          item-title="title"
+          item-value="value"
+          label="Version"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="version-select"
+        />
       </v-card-subtitle>
       <!--
       <v-card-subtitle
@@ -66,17 +88,19 @@
       </v-card-subtitle>
       -->
       <v-card-text>
-        <v-img v-if="image_url" :src="image_url" />
-        <v-img
-          v-if="imageContentsWithMimeType"
-          :src="imageContentsWithMimeType"
-        />
-        <div class="mt-3" v-text="description" />
-        <div class="mt-3 text-caption">
+        <div class="plugin-image-backdrop">
+          <v-img
+            v-if="imageContentsWithMimeType"
+            :src="imageContentsWithMimeType"
+          />
+          <v-img v-else-if="versionImageUrl" :src="versionImageUrl" />
+        </div>
+        <div class="mt-3" v-text="versionDescription" />
+        <div class="mt-3 text-caption font-italic">
           Keywords:
-          <template v-if="keywords">
+          <template v-if="versionKeywords">
             <v-chip
-              v-for="keyword in keywords"
+              v-for="keyword in versionKeywords"
               :key="keyword"
               variant="flat"
               color="primary"
@@ -91,7 +115,7 @@
         <div class="mt-3 text-caption font-italic">
           Licenses:
           <v-chip
-            v-for="license in licenses"
+            v-for="license in versionLicenses"
             :key="license"
             size="x-small"
             class="ml-1"
@@ -99,8 +123,37 @@
             {{ license }}
           </v-chip>
         </div>
+        <div class="mt-3">
+          <span class="text-caption font-italic">
+            Minimum COSMOS version:
+          </span>
+          {{ versionMinimumCosmosVersion }}
+          <v-tooltip
+            v-if="versionsAreCompatible !== null"
+            :open-delay="600"
+            location="top"
+          >
+            <template #activator="{ props }">
+              <span v-bind="props">
+                <v-icon
+                  :icon="
+                    versionsAreCompatible ? 'mdi-check-circle' : 'mdi-alert'
+                  "
+                  size="small"
+                />
+              </span>
+            </template>
+            <span v-if="versionsAreCompatible">
+              Your version of COSMOS meets the requirements.
+            </span>
+            <span v-else>
+              Your version of COSMOS is out of date. You can still install this
+              plugin, but it might not work correctly.
+            </span>
+          </v-tooltip>
+        </div>
         <v-text-field
-          v-model="checksum"
+          v-model="versionChecksum"
           class="mt-3"
           label="SHA256"
           variant="solo"
@@ -146,19 +199,19 @@
           @click="install"
         />
         <v-btn
-          v-if="repository"
+          v-if="versionRepository"
           text="Repository"
           append-icon="mdi-open-in-new"
           variant="outlined"
-          :href="repository"
+          :href="versionRepository"
           target="_blank"
         />
         <v-btn
-          v-if="homepage"
+          v-if="versionHomepage"
           text="Homepage"
           append-icon="mdi-open-in-new"
           variant="outlined"
-          :href="homepage"
+          :href="versionHomepage"
           target="_blank"
         />
       </v-card-actions>
@@ -167,6 +220,8 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
+import * as semver from 'semver'
 import PluginProps from './PluginProps'
 
 export default {
@@ -179,6 +234,8 @@ export default {
     return {
       showDialog: false,
       showCopiedTooltip: false,
+      installedCosmosVersion: null,
+      selectedVersionId: null,
     }
   },
   computed: {
@@ -191,9 +248,78 @@ export default {
         this.$emit('update:modelValue', val)
       },
     },
-    formattedStoreLink: function () {
-      return this._storeUrl.split('://').at(-1)
+    hasVersions: function () {
+      return this.versions && this.versions.length > 0
     },
+    selectedVersion: function () {
+      if (!this.hasVersions) {
+        return null
+      }
+      const versionId = this.selectedVersionId || this.current_version_id
+      return this.versions.find((v) => v.id === versionId) || this.versions[0]
+    },
+    versionOptions: function () {
+      if (!this.hasVersions) {
+        return []
+      }
+      return this.versions.map((v) => ({
+        title: v.version_number,
+        value: v.id,
+      }))
+    },
+    versionTitle: function () {
+      return this.selectedVersion?.title || this.title
+    },
+    versionDescription: function () {
+      return this.selectedVersion?.description || this.description
+    },
+    versionKeywords: function () {
+      return this.selectedVersion?.keywords || this.keywords
+    },
+    versionLicenses: function () {
+      return this.selectedVersion?.licenses || this.licenses
+    },
+    versionHomepage: function () {
+      return this.selectedVersion?.homepage || this.homepage
+    },
+    versionRepository: function () {
+      return this.selectedVersion?.repository || this.repository
+    },
+    versionGemUrl: function () {
+      return this.selectedVersion?.gem_url || this.gem_url
+    },
+    versionMinimumCosmosVersion: function () {
+      return (
+        this.selectedVersion?.minimum_cosmos_version ||
+        this.minimum_cosmos_version
+      )
+    },
+    versionChecksum: function () {
+      return this.selectedVersion?.checksum || this.checksum
+    },
+    versionImageUrl: function () {
+      return this.selectedVersion?.image_url || this.image_url
+    },
+    formattedStoreLink: function () {
+      return this._navigableStoreUrl.split('://').at(-1)
+    },
+    versionsAreCompatible: function () {
+      if (!this.installedCosmosVersion || !this.versionMinimumCosmosVersion) {
+        return null
+      }
+      return semver.gte(
+        this.installedCosmosVersion,
+        this.versionMinimumCosmosVersion,
+      )
+    },
+  },
+  created: function () {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.installedCosmosVersion = data.version
+    })
+  },
+  mounted: function () {
+    this.selectedVersionId = this.current_version_id
   },
   methods: {
     openDialog: function () {
@@ -203,13 +329,19 @@ export default {
       this.isDialogOpen = false
     },
     install: function () {
-      this.$emit('triggerInstall', this.gemUrl)
+      this.$emit('triggerInstall', {
+        id: this.id,
+        version_id: this.selectedVersionId || this.current_version_id,
+      })
     },
     uninstall: function () {
-      this.$emit('triggerUninstall', this.gemUrl)
+      this.$emit('triggerUninstall', {
+        id: this.id,
+        version_id: this.selectedVersionId || this.current_version_id,
+      })
     },
     copyChecksum: function () {
-      navigator.clipboard.writeText(this.checksum)
+      navigator.clipboard.writeText(this.versionChecksum)
       this.showCopiedTooltip = true
       setTimeout(() => {
         this.showCopiedTooltip = false
@@ -218,3 +350,19 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.plugin-image-backdrop {
+  background-color: rgb(156, 163, 175);
+}
+
+.subtitle-with-version {
+  width: 100%;
+  min-height: 48px;
+}
+
+.version-select {
+  max-width: 120px;
+  min-width: 120px;
+}
+</style>
