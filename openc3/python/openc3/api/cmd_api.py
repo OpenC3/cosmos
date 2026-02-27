@@ -393,7 +393,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
 # Returns a value from the specified command
 def get_cmd_value(
     *args,
-    type="CONVERTED",
+    some_type="CONVERTED",
     scope=OPENC3_SCOPE,
     manual=False,
 ):
@@ -412,7 +412,7 @@ def get_cmd_value(
             target_name = args[0].upper()
             command_name = args[1].upper()
             parameter_name = args[2].upper()
-            type = args[3].upper()
+            some_type = args[3].upper()
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()")
@@ -426,7 +426,7 @@ def get_cmd_value(
         scope=scope,
         manual=manual,
     )
-    return CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type=type, scope=scope)
+    return CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type=some_type, scope=scope)
 
 
 # Returns the time the most recent command was sent

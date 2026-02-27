@@ -15,7 +15,6 @@ import traceback
 from threading import Lock
 
 from requests import Session
-from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from openc3.environment import OPENC3_API_PASSWORD, OPENC3_API_TOKEN, OPENC3_API_USER, OPENC3_KEYCLOAK_URL
 from openc3.utilities.authentication import (
@@ -198,10 +197,7 @@ class JsonApiObject:
                 self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
                 self.response_data = resp.text
                 return resp
-            except (
-                RequestsConnectionError,
-                OSError,
-            ) as e:
+            except OSError as e:
                 # Connection errors are retryable - reconnect and try again
                 retry += 1
                 self.log[2] = f"{method} Exception: {traceback.format_exc()}"
