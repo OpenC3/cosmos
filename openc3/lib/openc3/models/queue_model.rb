@@ -40,7 +40,7 @@ module OpenC3
     end
     # END NOTE
 
-    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, username:, scope:)
+    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: true, timeout: nil, username:, scope:)
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
@@ -53,7 +53,7 @@ module OpenC3
         end
 
         # Build command data with support for both formats
-        command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
+        command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch, validate: validate, timeout: timeout }
         if target_name && cmd_name
           # New format: store target_name, cmd_name, and cmd_params separately
           command_data[:target_name] = target_name
@@ -142,7 +142,7 @@ module OpenC3
       notify(kind: 'command')
     end
 
-    def update_command(id:, command:, username:)
+    def update_command(id:, command:, username:, validate: nil, timeout: nil)
       if @state == 'DISABLE'
         raise QueueError, "Queue '#{@name}' is disabled. Command at id #{id} not updated."
       end
@@ -156,6 +156,8 @@ module OpenC3
       # Remove the existing command and add the new one at the same id
       Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
       command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
+      command_data[:validate] = validate unless validate.nil?
+      command_data[:timeout] = timeout unless timeout.nil?
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
