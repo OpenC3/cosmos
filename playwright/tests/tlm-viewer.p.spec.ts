@@ -237,13 +237,13 @@ test('creates new blank screen', async ({ page, utils }) => {
   await expect(page.locator(`.v-toolbar:has-text("New Screen")`)).toBeVisible()
   await page.locator('[data-test="new-screen-target"]').click()
   await page.getByRole('option', { name: 'INST2' }).click()
+  // Wait for the dropdown to close before interacting with other fields
+  await expect(page.getByRole('listbox')).not.toBeVisible()
   await expect(page.locator('[data-test="new-screen-target"]')).toContainText(
     'INST2',
   )
   // Check trying to create an existing screen
-  await page
-    .locator('[data-test="new-screen-name"] input')
-    .pressSequentially('adcs')
+  await page.locator('[data-test="new-screen-name"] input').fill('adcs')
   await expect(page.locator('.v-dialog')).toContainText(
     'Screen ADCS already exists!',
   )
