@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,12 +29,63 @@ export default {
         return JSON.stringify(value).replace(/\\n/g, '')
       }
       if (formatString && value) {
+        if (typeof value === 'bigint') {
+          return this.formatBigInt(value, formatString)
+        }
         return sprintf(formatString, value)
       }
       if (value === null || value === undefined) {
         return 'null'
       }
       return String(value)
+    },
+    // sprintf-js doesn't support BigInt values so we handle common
+    // integer format specifiers manually to preserve full precision
+    formatBigInt(value, formatString) {
+      const match = formatString.match(
+        /^([^%]*)%([#0 +-]*)(\d+)?\.?(\d+)?([diouxX])(.*)$/,
+      )
+      if (match) {
+        const [, prefix, flags, widthStr, , specifier, suffix] = match
+        let isNeg = value < 0n
+        let absVal = isNeg ? -value : value
+        let str
+        switch (specifier) {
+          case 'd':
+          case 'i':
+          case 'u':
+            str = absVal.toString(10)
+            break
+          case 'o':
+            str = absVal.toString(8)
+            break
+          case 'x':
+            str = absVal.toString(16)
+            break
+          case 'X':
+            str = absVal.toString(16).toUpperCase()
+            break
+        }
+        if (flags.includes('#')) {
+          if (specifier === 'x') str = '0x' + str
+          else if (specifier === 'X') str = '0X' + str
+          else if (specifier === 'o' && !str.startsWith('0')) str = '0' + str
+        }
+        if (isNeg && (specifier === 'd' || specifier === 'i')) {
+          str = '-' + str
+        }
+        if (widthStr) {
+          const width = parseInt(widthStr)
+          if (flags.includes('-')) {
+            str = str.padEnd(width, ' ')
+          } else {
+            str = str.padStart(width, flags.includes('0') ? '0' : ' ')
+          }
+        }
+        return prefix + str + suffix
+      }
+      // Unsupported format specifier, return as string
+      return value.toString()
     },
     isJsonString(value) {
       return (

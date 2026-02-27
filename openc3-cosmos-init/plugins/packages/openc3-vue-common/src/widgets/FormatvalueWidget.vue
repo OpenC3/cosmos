@@ -56,6 +56,11 @@ export default {
       'ch',
       12 + INPUT_PADDING,
     )
+    // Apply monospace font for hex/octal format strings so digits align
+    const formatString = this.parameters[3]
+    if (formatString && /%-?#?\d*[xXo]/.test(formatString)) {
+      this.appliedSettings.push(['RAW', 'font-family', 'monospace'])
+    }
   },
 }
 </script>
