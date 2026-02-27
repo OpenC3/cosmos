@@ -354,10 +354,10 @@ export default {
     )
   },
   mounted() {
-    window.addEventListener('single-spa:routing-event', this.updateActiveItem)
+    globalThis.addEventListener('single-spa:routing-event', this.updateActiveItem)
   },
   beforeUnmount() {
-    window.removeEventListener(
+    globalThis.removeEventListener(
       'single-spa:routing-event',
       this.updateActiveItem,
     )
@@ -365,7 +365,7 @@ export default {
   methods: {
     navigateToUrl,
     updateActiveItem() {
-      const path = window.location.pathname
+      const path = globalThis.location.pathname
       const allTools = this.items.flatMap((item) =>
         item.children ? item.children : [item],
       )
