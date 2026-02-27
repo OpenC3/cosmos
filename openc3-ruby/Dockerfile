@@ -68,6 +68,7 @@ RUN apk update \
   openblas-dev \
   openssl \
   openssl-dev \
+  py3-pip \
   python3 \
   python3-dev \
   rbspy \
@@ -84,9 +85,8 @@ RUN apk update \
   && gem install grpc \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
-  && bundle config git.allow_insecure true
-
-COPY --from=ghcr.io/astral-sh/uv:0.10.4 /uv /uvx /bin/
+  && bundle config git.allow_insecure true \
+  && python3 -m pip install --break-system-packages uv
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
