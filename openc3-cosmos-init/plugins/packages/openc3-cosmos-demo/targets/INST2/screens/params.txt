@@ -61,11 +61,18 @@ VERTICAL
         SETTING LED_COLOR BAD RED
     END
     VERTICAL
-      LABELVALUE <%= target_name %> PARAMS.PKT P_2.2,2
-      LABELVALUE <%= target_name %> PARAMS.PKT P-3+3=3
-      LABELVALUE <%= target_name %> PARAMS.PKT P4!@#$%^&*?
-      LABELVALUE <%= target_name %> PARAMS.PKT P</5|\>
-      LABELVALUE <%= target_name %> PARAMS.PKT P(:6;)
+      LABELVALUE <%= target_name %> PARAMS.PKT P_2.2,2 COVERTED 23
+      LABELVALUE <%= target_name %> PARAMS.PKT P-3+3=3 COVERTED 23
+      LABELVALUE <%= target_name %> PARAMS.PKT P4!@#$%^&*? COVERTED 23
+      LABELVALUE <%= target_name %> PARAMS.PKT P</5|\> COVERTED 23
+      LABELVALUE <%= target_name %> PARAMS.PKT P(:6;) COVERTED 23
+    END
+    VERTICAL
+      FORMATVALUE <%= target_name %> PARAMS.PKT P_2.2,2 0x%x CONVERTED 19
+      FORMATVALUE <%= target_name %> PARAMS.PKT P-3+3=3 0x%x CONVERTED 19
+      FORMATVALUE <%= target_name %> PARAMS.PKT P4!@#$%^&*? 0x%x CONVERTED 19
+      FORMATVALUE <%= target_name %> PARAMS.PKT P</5|\> 0x%x CONVERTED 19
+      FORMATVALUE <%= target_name %> PARAMS.PKT P(:6;) 0x%x CONVERTED 19
     END
   END
 
