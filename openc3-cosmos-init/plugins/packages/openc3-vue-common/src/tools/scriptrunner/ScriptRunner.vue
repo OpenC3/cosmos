@@ -343,7 +343,7 @@ import {
   SimpleTextDialog,
   TopBar,
 } from '@/components'
-import { ClassificationBanners } from '@/tools/base'
+import { useClassificationBanner } from '@/tools/base'
 import { fileIcon } from '@/util'
 import { EventListDialog } from '@/tools/calendar'
 
@@ -401,7 +401,6 @@ export default {
     ScriptDebugPanel,
     ScriptRunnerInline,
   },
-  mixins: [ClassificationBanners],
   beforeRouteUpdate: async function (to, from, next) {
     if (to.params.id) {
       await this.tryLoadRunningScript(to.params.id)
@@ -455,6 +454,8 @@ export default {
       promptDialogCallback,
     } = useScriptPrompts()
 
+    const { classificationStyles } = useClassificationBanner()
+
     return {
       containerHeight,
       editor,
@@ -476,6 +477,7 @@ export default {
       fileDialogCallback,
       handleScript,
       promptDialogCallback,
+      classificationStyles,
     }
   },
   data() {

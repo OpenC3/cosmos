@@ -14,6 +14,7 @@
 import AppFooter from './AppFooter.vue'
 import AppNav from './AppNav.vue'
 import ClassificationBanners from './ClassificationBanners.vue'
+export { useClassificationBanner } from './useClassificationBanner'
 import ClockFooter from './ClockFooter.vue'
 import Login from './Login.vue'
 import Notifications from './Notifications.vue'
