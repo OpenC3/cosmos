@@ -365,6 +365,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    hideLegend: {
+      type: Boolean,
+      default: false,
+    },
     sparkline: {
       type: Boolean,
       default: false,
@@ -567,6 +571,9 @@ export default {
     },
   },
   watch: {
+    hideLegend: function (newVal) {
+      this.applyHideLegend(newVal)
+    },
     state: function (newState, oldState) {
       switch (newState) {
         case 'start':
@@ -1021,6 +1028,7 @@ export default {
         )
       }
       this.moveLegend(this.legendPosition)
+      this.applyHideLegend(this.hideLegend)
 
       // Allow the charts to dynamically resize when the window resizes
       window.addEventListener('resize', this.resize)
@@ -1146,6 +1154,14 @@ export default {
         }
         return `${item.itemName} (${description})`
       }
+    },
+    applyHideLegend: function (hide) {
+      if (!this.graph) return
+      const legend = this.graph.root.querySelector('.u-legend')
+      if (legend) {
+        legend.style.display = hide ? 'none' : ''
+      }
+      this.resize()
     },
     moveLegend: function (desired) {
       switch (desired) {
