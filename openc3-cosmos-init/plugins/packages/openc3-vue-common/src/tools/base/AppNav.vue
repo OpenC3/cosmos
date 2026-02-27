@@ -354,7 +354,10 @@ export default {
     )
   },
   mounted() {
-    globalThis.addEventListener('single-spa:routing-event', this.updateActiveItem)
+    globalThis.addEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
   },
   beforeUnmount() {
     globalThis.removeEventListener(
