@@ -170,10 +170,10 @@ class SuiteRunner:
                                 "scripts": [],
                             }
                         cur_suite["groups"][group_class.__name__]["scripts"].extend(group_class.scripts())
-                        # Make uniq!
-                        temp = set(cur_suite["groups"][group_class.__name__]["scripts"])
-                        cur_suite["groups"][group_class.__name__]["scripts"] = list(temp)
-                        cur_suite["groups"][group_class.__name__]["scripts"].sort()
+                        # Make uniq! while preserving order
+                        cur_suite["groups"][group_class.__name__]["scripts"] = list(
+                            dict.fromkeys(cur_suite["groups"][group_class.__name__]["scripts"])
+                        )
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
                         if "teardown" in dir(group_class):
@@ -188,10 +188,10 @@ class SuiteRunner:
                         # Explicitly check for this method and raise an error if it does not exist
                         if script in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["scripts"].append(script)
-                            # Make uniq!
-                            temp = set(cur_suite["groups"][group_class.__name__]["scripts"])
-                            cur_suite["groups"][group_class.__name__]["scripts"] = list(temp)
-                            cur_suite["groups"][group_class.__name__]["scripts"].sort()
+                            # Make uniq! while preserving order
+                            cur_suite["groups"][group_class.__name__]["scripts"] = list(
+                                dict.fromkeys(cur_suite["groups"][group_class.__name__]["scripts"])
+                            )
                         else:
                             raise Exception(f"{group_class} does not have a {script} method defined.")
 

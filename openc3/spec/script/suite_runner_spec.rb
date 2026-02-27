@@ -44,6 +44,36 @@ module OpenC3
         expect(suites["SuiteRunnerSpecSuite"][:groups]["SuiteRunnerSpecGroup"].keys).to eql %i(setup teardown scripts)
         expect(suites["SuiteRunnerSpecSuite"][:groups]["SuiteRunnerSpecGroup"][:scripts]).to eql %w(test_test)
       end
+
+      it "preserves add_script insertion order" do
+        contents = <<~DOC
+          class OrderedGroup < OpenC3::Group
+            def test_z_last
+            end
+            def test_a_first
+            end
+            def test_m_middle
+            end
+          end
+          class OrderedSuite < OpenC3::Suite
+            def initialize
+              add_script('OrderedGroup', 'test_m_middle')
+              add_script('OrderedGroup', 'test_z_last')
+              add_script('OrderedGroup', 'test_a_first')
+            end
+          end
+        DOC
+        temp = Tempfile.new(%w[suite .rb])
+        temp.write(contents)
+        temp.close
+        require temp.path
+        temp.unlink
+
+        suites = SuiteRunner.build_suites
+        expect(suites.keys).to include "OrderedSuite"
+        # Scripts should be in the order they were added, not alphabetical
+        expect(suites["OrderedSuite"][:groups]["OrderedGroup"][:scripts]).to eql %w(test_m_middle test_z_last test_a_first)
+      end
     end
   end
 end
