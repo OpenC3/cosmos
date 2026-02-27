@@ -17,15 +17,6 @@
     <meta name="theme-color" content="#172635" />
     <!-- OPENC3EE KEYCLOAK PLACEHOLDER -->
 
-    <!--
-      This CSP allows any SSL-enabled host and for arbitrary eval(), but you should limit these directives further to increase your app's security.
-      Learn more about CSP policies at https://content-security-policy.com/#directive
-    -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'unsafe-inline' 'unsafe-eval' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none';"
-    />
-
     <meta name="importmap-type" content="systemjs-importmap" />
     <!-- If you wish to turn off import-map-overrides for specific environments (prod), uncomment the line below -->
     <!-- More info at https://github.com/joeldenning/import-map-overrides/blob/master/docs/configuration.md#domain-list -->

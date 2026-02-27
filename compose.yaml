@@ -240,7 +240,7 @@ services:
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"
-      # - "./openc3-traefik/traefik-allow-http.yaml:/etc/traefik/traefik.yaml:z"
+      # To allow HTTP, uncomment OPENC3_ALLOW_HTTP in .env
       # - "./openc3-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/cert.key:/etc/traefik/cert.key:z"
@@ -261,6 +261,9 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
+      OPENC3_TOOLS_BUCKET: "${OPENC3_TOOLS_BUCKET}"
+      OPENC3_BUCKET_URL: "${OPENC3_BUCKET_URL}"
+      OPENC3_ALLOW_HTTP: "${OPENC3_ALLOW_HTTP}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"

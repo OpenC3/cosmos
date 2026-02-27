@@ -44,6 +44,7 @@
             <v-select
               v-model="selectedTarget"
               label="Select Target"
+              :disabled="targets.length === 0"
               :items="targets"
               item-title="label"
               item-value="value"

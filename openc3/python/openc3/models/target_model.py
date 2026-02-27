@@ -180,7 +180,7 @@ class TargetModel(Model):
         if len(found) != len(items):  # we didn't find them all
             found_items = [item["name"] for item in found]
             not_found = []
-            for item in list(set(items) - set(found_items)):
+            for item in set(items) - set(found_items):
                 not_found.append(f"'{target_name} {packet_name} {item}'")
             # 'does not exist' not grammatically correct but we use it in every other exception
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")

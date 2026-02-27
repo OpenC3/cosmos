@@ -109,7 +109,7 @@ The above "echo ip_tables" line is added because RHEL 9.x uses nftables by defau
    ```
 
    Edit compose.yaml and uncomment the user: 0:0 lines and comment the user: `"${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"` lines.
-   You may also want to update the traefik configuration to allow access from the internet by removing 127.0.0.1 and probably switching to either an SSL config file, or the allow http one. Also make sure your firewall allows
+   You may also want to update the traefik configuration to allow access from the internet by removing 127.0.0.1 and probably switching to an SSL config file. To allow HTTP connections, uncomment `OPENC3_ALLOW_HTTP=1` in `.env`. Also make sure your firewall allows
    whatever port you choose to use in. Rootless podman will need to use a higher numbered port (not 1-1023).
 
 1. Run COSMOS

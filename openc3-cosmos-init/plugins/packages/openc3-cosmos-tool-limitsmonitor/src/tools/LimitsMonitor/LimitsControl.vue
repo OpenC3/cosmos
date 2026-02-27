@@ -45,6 +45,32 @@
           data-test="limits-set"
         />
         <v-spacer></v-spacer>
+        <v-select
+          v-model="stateFilter"
+          :items="stateFilterOptions"
+          item-title="label"
+          item-value="value"
+          label="Filter by State"
+          multiple
+          clearable
+          variant="outlined"
+          density="compact"
+          hide-details
+          class="mr-2"
+          style="max-width: 300px"
+          data-test="state-filter"
+        >
+          <template #selection="{ index }">
+            <span v-if="index === 0"> {{ stateFilter.length }} selected </span>
+          </template>
+          <template #item="{ props: itemProps, item: selectItem }">
+            <v-list-item v-bind="itemProps">
+              <template #prepend>
+                <rux-status :status="selectItem.raw.status" class="mr-2" />
+              </template>
+            </v-list-item>
+          </template>
+        </v-select>
         <v-text-field
           v-model="search"
           label="Search"
@@ -65,6 +91,7 @@
         :items="items"
         :search="search"
         :custom-filter="customFilter"
+        :row-props="rowProps"
         item-value="key"
         data-test="limits-table"
         class="limits-table"
@@ -214,6 +241,13 @@ export default {
       updateCounter: 0,
       itemsPerPage: 25,
       search: '',
+      stateFilter: [],
+      stateFilterOptions: [
+        { value: 'RED', label: 'Critical', status: 'critical' },
+        { value: 'YELLOW', label: 'Caution', status: 'caution' },
+        { value: 'GREEN', label: 'Normal', status: 'normal' },
+        { value: 'BLUE', label: 'Standby', status: 'standby' },
+      ],
       headers: [
         {
           title: 'Timestamp',
@@ -342,6 +376,15 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    rowProps({ item }) {
+      if (
+        this.stateFilter.length > 0 &&
+        !this.stateFilter.some((filter) => item.limitsState?.includes(filter))
+      ) {
+        return { class: 'state-filtered-row' }
+      }
+      return {}
+    },
     // Escape brackets in item names so VWidget doesn't interpret them as array indexes
     escapeBrackets(itemName) {
       if (itemName.includes('[')) {
@@ -371,6 +414,7 @@ export default {
             key: item.slice(0, 3).join('__'),
             parameters: [item[0], item[1], this.escapeBrackets(item[2])],
             timestamp: this.formatDateTime(new Date(), this.timeZone),
+            limitsState: item[3],
           }
           if (item[3].includes('YELLOW') && this.overallState !== 'RED') {
             this.overallState = 'YELLOW'
@@ -473,6 +517,7 @@ export default {
         // If we find an existing item we update the state and re-calc overall state
         if (index !== -1) {
           this.itemList[index] = `${itemName}__${message.new_limits_state}`
+          this.items[index].limitsState = message.new_limits_state
           this.calcOverallState()
           continue
         }
@@ -498,6 +543,7 @@ export default {
             message.packet_name,
             this.escapeBrackets(message.item_name),
           ],
+          limitsState: message.new_limits_state,
         }
         if (
           message.new_limits_state == 'YELLOW' ||
@@ -604,5 +650,9 @@ export default {
 .limits-table :deep(th) {
   font-weight: bold;
   background-color: var(--color-background-base-default);
+}
+
+.limits-table :deep(.state-filtered-row) {
+  display: none;
 }
 </style>

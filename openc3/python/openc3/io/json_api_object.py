@@ -15,10 +15,9 @@ import traceback
 from threading import Lock
 
 from requests import Session
-from requests.exceptions import ChunkedEncodingError
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from openc3.environment import *
+from openc3.environment import OPENC3_API_PASSWORD, OPENC3_API_TOKEN, OPENC3_API_USER, OPENC3_KEYCLOAK_URL
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
@@ -200,10 +199,7 @@ class JsonApiObject:
                 self.response_data = resp.text
                 return resp
             except (
-                ChunkedEncodingError,
                 RequestsConnectionError,
-                ConnectionResetError,
-                BrokenPipeError,
                 OSError,
             ) as e:
                 # Connection errors are retryable - reconnect and try again

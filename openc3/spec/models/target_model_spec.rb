@@ -903,11 +903,20 @@ module OpenC3
         tsdb_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__TSDB__INST", scope: @scope)
         tsdb_model.create
 
+        ENV['OPENC3_CLOUD'] = 'aws' # Checksum should be used
         pkts = Store.hgetall("#{@scope}__openc3cmd__#{@target}")
         expect(pkts.keys).to_not include("NEW_CMD")
         expect(pkts.keys).to include("ABORT")
 
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt", body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
+        expect(@s3).to receive(:put_object).with(
+          bucket: 'config',
+          key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt",
+          body: anything,
+          cache_control: nil,
+          content_type: nil,
+          metadata: nil,
+          checksum_algorithm: anything
+        )
 
         @model.dynamic_update([packet], :COMMAND)
 
@@ -928,11 +937,20 @@ module OpenC3
         tsdb_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__TSDB__INST", scope: @scope)
         tsdb_model.create
 
+        ENV['OPENC3_CLOUD'] = 'aws' # Checksum should be used unless ...
+        ENV['OPENC3_NO_S3_CHECKSUM'] = "1" # Explicitly disable checksum
         pkts = Store.hgetall("#{@scope}__openc3tlm__#{@target}")
         expect(pkts.keys).to_not include("NEW_TLM")
         expect(pkts.keys).to include("HEALTH_STATUS")
 
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt", body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
+        expect(@s3).to receive(:put_object).with(
+          bucket: 'config',
+          key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt",
+          body: anything,
+          cache_control: nil,
+          content_type: nil,
+          metadata: nil
+        )
 
         @model.dynamic_update([packet], :TELEMETRY)
 
