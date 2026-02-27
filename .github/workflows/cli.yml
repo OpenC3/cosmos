@@ -37,7 +37,10 @@ jobs:
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
+        run: |
+          echo "OPENC3_AUTH_RATE_LIMIT_TO=${OPENC3_AUTH_RATE_LIMIT_TO}" >> .env
+          echo "OPENC3_AUTH_RATE_LIMIT_WITHIN=${OPENC3_AUTH_RATE_LIMIT_WITHIN}" >> .env
+          ./openc3.sh build
       - name: openc3.sh run
         shell: 'script -q -e -c "bash {0}"'
         run: |
