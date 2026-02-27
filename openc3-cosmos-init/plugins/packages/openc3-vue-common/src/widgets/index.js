@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -49,7 +49,6 @@ import LabelvaluelimitscolumnWidget from './LabelvaluelimitscolumnWidget.vue'
 import LabelvaluerangebarWidget from './LabelvaluerangebarWidget.vue'
 import Layout from './Layout'
 import LedWidget from './LedWidget.vue'
-import { limitsColor, astroStatus } from './LimitsColor'
 import LimitsbarWidget from './LimitsbarWidget.vue'
 import LimitscolorWidget from './LimitscolorWidget.vue'
 import LimitscolumnWidget from './LimitscolumnWidget.vue'
@@ -118,8 +117,6 @@ export {
   LabelvaluerangebarWidget,
   Layout,
   LedWidget,
-  limitsColor,
-  astroStatus,
   LimitsbarWidget,
   LimitscolorWidget,
   LimitscolumnWidget,
@@ -149,3 +146,5 @@ export {
   Widget,
   WidgetComponents,
 }
+
+export { limitsColor, astroStatus } from './LimitsColor'

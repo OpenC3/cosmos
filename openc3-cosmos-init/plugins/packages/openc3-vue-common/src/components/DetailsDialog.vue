@@ -38,7 +38,11 @@
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Raw Value</v-col>
             <v-col :class="limitsColorClass" class="d-flex align-center">
-              <rux-status v-if="astroStatus" class="mr-1" :status="astroStatus" />
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
               {{ rawValue }}
             </v-col>
           </v-row>
@@ -46,7 +50,11 @@
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Converted Value</v-col>
             <v-col :class="limitsColorClass" class="d-flex align-center">
-              <rux-status v-if="astroStatus" class="mr-1" :status="astroStatus" />
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
               {{ convertedValue }}
             </v-col>
           </v-row>
@@ -54,7 +62,11 @@
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Formatted Value</v-col>
             <v-col :class="limitsColorClass" class="d-flex align-center">
-              <rux-status v-if="astroStatus" class="mr-1" :status="astroStatus" />
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
               {{ formattedValue }}
             </v-col>
           </v-row>
