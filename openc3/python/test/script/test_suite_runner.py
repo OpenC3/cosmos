@@ -18,12 +18,15 @@ from openc3.script.suite_runner import SuiteRunner
 
 class OrderedGroup(Group):
     def test_z_last(self):
+        # Empty test method to verify order of test methods in suite runner
         pass
 
     def test_a_first(self):
+        # Empty test method to verify order of test methods in suite runner
         pass
 
     def test_m_middle(self):
+        # Empty test method to verify order of test methods in suite runner
         pass
 
 
