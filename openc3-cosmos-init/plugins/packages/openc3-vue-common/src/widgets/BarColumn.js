@@ -181,7 +181,7 @@ export default {
       return limitsSettings
     },
     calcPosition(value, limitsSettings) {
-      if (!value || !limitsSettings) {
+      if (value == null || !limitsSettings) {
         return
       }
       let lowValue = limitsSettings[0] - 10 * this.scale
