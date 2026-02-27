@@ -203,7 +203,10 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: 'id is required' }, status: 400
         return
       end
-      model.update_command(id: id, username: username(), command: command, validate: params[:validate], timeout: params[:timeout])
+      # validate should be true or false, default to true if not given
+      validate = params[:validate].nil? ? true : params[:validate]
+      # timeout can be nil which means use system default timeout
+      model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)

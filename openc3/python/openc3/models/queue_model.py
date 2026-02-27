@@ -47,7 +47,9 @@ class QueueModel(Model):
     # because it is being called by the cmd_api.py _cmd_implementation.
     # However we need a lot of methods to enable cls.get_model and model.notify
     @classmethod
-    def queue_command(cls, name: str, command: str, username: str, scope: str, validate: bool = True, timeout: float = None):
+    def queue_command(
+        cls, name: str, command: str, username: str, scope: str, validate: bool = True, timeout: float = None
+    ):
         model = cls.get_model(name=name, scope=scope)
         if not model:
             raise QueueError(f"Queue '{name}' not found in scope '{scope}'")
