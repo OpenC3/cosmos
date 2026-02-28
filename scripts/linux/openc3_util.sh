@@ -16,17 +16,45 @@ then
 fi
 
 usage() {
-  echo "Usage: $1 [encode, hash, save, load, tag, push, clean, hostsetup]" >&2
+  echo "Usage: $1 [encode, hash, save, load, tag, push, pull, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
   echo "*  hash: hash a string using SHA-256" >&2
   echo "*  save: save images to a tar file" >&2
   echo "*  load: load images from a tar file" >&2
   echo "*  tag: tag images" >&2
   echo "*  push: push images" >&2
+  echo "*  pull: pull images from a registry" >&2
   echo "*  clean: remove node_modules, coverage, etc" >&2
   echo "*  hostsetup: configure host for redis" >&2
   echo "*  hostenter: sh into vm host" >&2
   exit 1
+}
+
+pullImages() {
+  if [[ "$#" -lt 1 ]]; then
+    echo "Usage: pull <TAG> [REPO] [NAMESPACE] [SUFFIX]" >&2
+    echo "e.g. pull 7.0.0" >&2
+    echo "e.g. pull 7.0.0 docker.io openc3inc" >&2
+    exit 1
+  fi
+  tag=$1
+  repo=${2:-docker.io}
+  namespace=${3:-openc3inc}
+  suffix=""
+  if [[ -n "$4" ]]; then
+    suffix=$4
+  fi
+
+  set -x
+  docker pull $repo/$namespace/openc3-operator$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
+  docker pull $repo/$namespace/openc3-redis$suffix:$tag
+  docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
+  docker pull $repo/$namespace/openc3-buckets$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
+  set +x
 }
 
 saveTar() {
@@ -218,6 +246,27 @@ case $1 in
       exit 0
     fi
     echo -n $2 | shasum -a 256 | sed 's/-//'
+    ;;
+  pull )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 pull REPO NAMESPACE TAG [SUFFIX]"
+      echo ""
+      echo "Pull all OpenC3 docker images from a registry."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO        Docker repository (e.g., docker.io)"
+      echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
+      echo "  TAG         Image tag (e.g., latest or 5.1.0)"
+      echo "  SUFFIX      Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 pull docker.io openc3inc 5.1.0"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    pullImages "${@:2}"
     ;;
   save )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
