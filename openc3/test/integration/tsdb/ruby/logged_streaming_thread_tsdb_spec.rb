@@ -160,7 +160,7 @@ RSpec.describe LoggedStreamingThread, :questdb do
     expect(streaming_api.transmitted_results.length).to eq(expected.length)
     expected.each_with_index do |exp_val, i|
       result = streaming_api.transmitted_results[i]
-      expect(result['__type']).to eq('items')
+      expect(result['__type']).to eq('ITEMS')
       actual = result[obj.item_key]
       if comparator
         comparator.call(exp_val, actual, i)
@@ -462,7 +462,7 @@ RSpec.describe LoggedStreamingThread, :questdb do
       expected_start = Time.parse(test_params['start_time'])
 
       streaming_api.transmitted_results.each_with_index do |result, i|
-        expect(result['__type']).to eq('items')
+        expect(result['__type']).to eq('ITEMS')
         expect(result['__time']).to be_a(Integer), "Expected __time to be Integer, got #{result['__time'].class}"
         expect(result['__time']).to be > 1_000_000_000_000_000_000, "Expected nanosecond timestamp for __time, got #{result['__time']}"
         actual = result[obj.item_key]

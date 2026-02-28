@@ -463,8 +463,9 @@ RSpec.describe StreamingApi, type: :model do
 
         base_time = @file_start_time / 1_000_000_000
         # Mock data with all packet columns - including __C suffix for CONVERTED values
+        # Include __pkt_time_ns and __rx_time_ns columns from CAST(timestamp_ns AS LONG) in query
         pg_data = [
-          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.5], ["VALUE2", 200], ["VALUE2__C", 20.5]]
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.5], ["VALUE2", 200], ["VALUE2__C", 20.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
@@ -506,12 +507,13 @@ RSpec.describe StreamingApi, type: :model do
 
         base_time = @file_start_time / 1_000_000_000
         # Multiple packets with different timestamps
+        # Include __pkt_time_ns and __rx_time_ns columns from CAST(timestamp_ns AS LONG) in query
         pg_data = [
-          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 100)], ["tag", "test"], ["VALUE1", 200], ["VALUE1__C", 20.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 200)], ["tag", "test"], ["VALUE1", 300], ["VALUE1__C", 30.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 300)], ["tag", "test"], ["VALUE1", 400], ["VALUE1__C", 40.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 400)], ["tag", "test"], ["VALUE1", 500], ["VALUE1__C", 50.0]]
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.0], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 100)], ["tag", "test"], ["VALUE1", 200], ["VALUE1__C", 20.0], ["__pkt_time_ns", @file_start_time + 100_000_000_000], ["__rx_time_ns", @file_start_time + 100_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 200)], ["tag", "test"], ["VALUE1", 300], ["VALUE1__C", 30.0], ["__pkt_time_ns", @file_start_time + 200_000_000_000], ["__rx_time_ns", @file_start_time + 200_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 300)], ["tag", "test"], ["VALUE1", 400], ["VALUE1__C", 40.0], ["__pkt_time_ns", @file_start_time + 300_000_000_000], ["__rx_time_ns", @file_start_time + 300_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 400)], ["tag", "test"], ["VALUE1", 500], ["VALUE1__C", 50.0], ["__pkt_time_ns", @file_start_time + 400_000_000_000], ["__rx_time_ns", @file_start_time + 400_000_000_000]]
         ]
         pg_data.define_singleton_method(:ntuples) { 5 }
 
