@@ -22,7 +22,7 @@ class StreamingObjectFileReader
   def initialize(collection, scope:)
     @scope = scope
     @collection = collection
-    targets_and_types, start_time, end_time, packets_by_target = collection.target_info
+    targets_and_types, start_time, end_time, _packets_by_target = collection.target_info
     @historical_file_list = {}
     build_file_list(targets_and_types, start_time, end_time, overlap: true)
     BucketFileCache.hint(@file_list)
@@ -60,7 +60,7 @@ class StreamingObjectFileReader
     if not @file_list[0]
       if @extend_file_list
         # See if any new files have showed up once
-        targets_and_types, start_time, end_time, packets_by_target = @collection.target_info
+        targets_and_types, _start_time, end_time, _packets_by_target = @collection.target_info
         build_file_list(targets_and_types, @current_time, end_time)
         BucketFileCache.hint(@file_list)
         @extend_file_list = false
@@ -70,7 +70,7 @@ class StreamingObjectFileReader
     end
 
     @file_list.each do |bucket_path|
-      file_start_time, file_end_time = get_file_times(bucket_path)
+      file_start_time, _file_end_time = get_file_times(bucket_path)
       if file_start_time <= @current_time
         bucket_file = BucketFileCache.reserve(bucket_path)
         bplr = OpenC3::BufferedPacketLogReader.new(bucket_file)
@@ -157,7 +157,7 @@ class StreamingObjectFileReader
 
   def get_file_times(bucket_path)
     basename = File.basename(bucket_path)
-    file_start_timestamp, file_end_timestamp, other = basename.split("__")
+    file_start_timestamp, file_end_timestamp, _other = basename.split("__")
     file_start_time = DateTime.strptime(file_start_timestamp, FILE_TIMESTAMP_FORMAT).to_time
     file_end_time = DateTime.strptime(file_end_timestamp, FILE_TIMESTAMP_FORMAT).to_time
     return file_start_time, file_end_time

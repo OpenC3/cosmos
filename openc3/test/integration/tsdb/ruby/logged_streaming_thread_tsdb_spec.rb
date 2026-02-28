@@ -34,7 +34,7 @@ class MockStreamingObject
   attr_accessor :key, :target_name, :packet_name, :item_name, :value_type
   attr_accessor :start_time, :end_time, :offset, :item_key, :topic, :stream_mode, :cmd_or_tlm
 
-  def initialize(target:, packet:, item: nil, value_type: :RAW, start_time: nil, end_time: nil)
+  def initialize(target:, packet:, item: nil, value_type: :RAW, start_time: nil, end_time: nil, cmd_or_tlm: :TLM)
     @target_name = target
     @packet_name = packet
     @item_name = item
@@ -42,16 +42,18 @@ class MockStreamingObject
     @start_time = start_time
     @end_time = end_time
     @stream_mode = :DECOM
-    @cmd_or_tlm = :TLM
+    @cmd_or_tlm = cmd_or_tlm
     @offset = '0-0'
+    ct = cmd_or_tlm.to_s
+    topic_type = (cmd_or_tlm == :CMD) ? 'DECOMCMD' : 'DECOM'
     if item
-      @key = "DECOM__TLM__#{target}__#{packet}__#{item}__#{value_type}"
+      @key = "DECOM__#{ct}__#{target}__#{packet}__#{item}__#{value_type}"
       @item_key = "#{target}__#{packet}__#{item}__#{value_type}"
     else
-      @key = "DECOM__TLM__#{target}__#{packet}__#{value_type}"
+      @key = "DECOM__#{ct}__#{target}__#{packet}__#{value_type}"
       @item_key = nil
     end
-    @topic = "DEFAULT__DECOM__{#{target}}__#{packet}"
+    @topic = "DEFAULT__#{topic_type}__{#{target}}__#{packet}"
   end
 end
 
@@ -117,9 +119,9 @@ RSpec.describe LoggedStreamingThread, :questdb do
   let(:token) { nil }
 
   # Helper to create a LoggedStreamingThread with mocked dependencies
-  def create_thread(objects)
+  def create_thread(objects, max_batch_size: 100)
     collection = MockCollection.new(objects)
-    thread = LoggedStreamingThread.new(streaming_api, collection, 100, scope: scope, token: token)
+    thread = LoggedStreamingThread.new(streaming_api, collection, max_batch_size, scope: scope, token: token)
     thread.class.class_variable_set(:@@conn, nil) if thread.class.class_variable_defined?(:@@conn)
     thread
   end
@@ -756,6 +758,622 @@ RSpec.describe LoggedStreamingThread, :questdb do
       done = thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
 
       expect(done).to be false
+    end
+  end
+
+  describe 'Multi-table k-way merge streaming' do
+    # Helper to create streaming objects and mocks from write_multi_table_data result
+    def setup_multi_table_stream(test_params, value_type: :RAW)
+      objects = []
+      available_items = []
+
+      test_params['tables'].each do |table_info|
+        target = table_info['target_name']
+        packet = table_info['packet_name']
+        ct = table_info['cmd_or_tlm'] == 'CMD' ? :CMD : :TLM
+
+        obj = MockStreamingObject.new(
+          target: target,
+          packet: packet,
+          item: 'VALUE',
+          value_type: value_type,
+          start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+          end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000,
+          cmd_or_tlm: ct
+        )
+        objects << obj
+
+        packet_def = table_info['packet_def']
+        if ct == :CMD
+          allow(OpenC3::TargetModel).to receive(:packet)
+            .with(target, packet, hash_including(type: :CMD))
+            .and_return(packet_def)
+          allow(OpenC3::TargetModel).to receive(:packet_item)
+            .with(target, packet, 'VALUE', hash_including(type: :CMD))
+            .and_return(packet_def['items'].first)
+        else
+          allow(OpenC3::TargetModel).to receive(:packet)
+            .with(target, packet, hash_including(type: :TLM))
+            .and_return(packet_def)
+          available_items << "#{target}__#{packet}__VALUE__#{value_type}"
+        end
+      end
+
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      objects
+    end
+
+    def build_objects_by_topic(objects)
+      objects_by_topic = {}
+      objects.each do |obj|
+        objects_by_topic[obj.topic] ||= []
+        objects_by_topic[obj.topic] << obj
+      end
+      objects_by_topic
+    end
+
+    it 'merges two tables with interleaved timestamps in correct order' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'MERGE', 'packet' => 'TLM_A',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 100 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 200 } },
+              { 'offset_ms' => 4000, 'values' => { 'VALUE' => 300 } }
+            ]
+          },
+          {
+            'target' => 'MERGE', 'packet' => 'TLM_B',
+            'data_type' => 'FLOAT', 'bit_size' => 64, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 1.5 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 2.5 } },
+              { 'offset_ms' => 5000, 'values' => { 'VALUE' => 3.5 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      objects = setup_multi_table_stream(test_params)
+      thread = create_thread(objects)
+
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(6)
+
+      # Verify timestamp ordering: A(0), B(1000), A(2000), B(3000), A(4000), B(5000)
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort), "Results not in timestamp order: #{times}"
+
+      # Verify interleaving: A, B, A, B, A, B
+      item_key_a = objects[0].item_key
+      item_key_b = objects[1].item_key
+      expected_keys = [item_key_a, item_key_b, item_key_a, item_key_b, item_key_a, item_key_b]
+      actual_keys = results.map { |r| r.key?(item_key_a) ? item_key_a : item_key_b }
+      expect(actual_keys).to eq(expected_keys)
+
+      # Verify values
+      expect(results[0][item_key_a]).to eq(100)
+      expect(results[1][item_key_b]).to eq(1.5)
+      expect(results[2][item_key_a]).to eq(200)
+      expect(results[3][item_key_b]).to eq(2.5)
+      expect(results[4][item_key_a]).to eq(300)
+      expect(results[5][item_key_b]).to eq(3.5)
+
+      # Each result should only have its own item key, not the other table's
+      results.each_with_index do |r, i|
+        if actual_keys[i] == item_key_a
+          expect(r).not_to have_key(item_key_b), "Result #{i} from table A should not have table B's key"
+        else
+          expect(r).not_to have_key(item_key_a), "Result #{i} from table B should not have table A's key"
+        end
+      end
+    end
+
+    it 'merges three tables in correct timestamp order' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'MERGE3', 'packet' => 'PKT_A',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 10 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 40 } },
+              { 'offset_ms' => 6000, 'values' => { 'VALUE' => 70 } }
+            ]
+          },
+          {
+            'target' => 'MERGE3', 'packet' => 'PKT_B',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 20 } },
+              { 'offset_ms' => 4000, 'values' => { 'VALUE' => 50 } },
+              { 'offset_ms' => 7000, 'values' => { 'VALUE' => 80 } }
+            ]
+          },
+          {
+            'target' => 'MERGE3', 'packet' => 'PKT_C',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 30 } },
+              { 'offset_ms' => 5000, 'values' => { 'VALUE' => 60 } },
+              { 'offset_ms' => 8000, 'values' => { 'VALUE' => 90 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      objects = setup_multi_table_stream(test_params)
+      thread = create_thread(objects)
+
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(9)
+
+      # Verify strict timestamp ordering
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort), "Results not in timestamp order"
+
+      # Verify interleaving: A,B,C,A,B,C,A,B,C
+      item_keys = objects.map(&:item_key)
+      expected_pattern = item_keys * 3
+      actual_pattern = results.map { |r| item_keys.find { |k| r.key?(k) } }
+      expect(actual_pattern).to eq(expected_pattern)
+
+      # Verify values in order
+      expected_values = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+      actual_values = results.map { |r| item_keys.map { |k| r[k] }.compact.first }
+      expect(actual_values).to eq(expected_values)
+    end
+
+    it 'merges sporadic CMD packets with dense TLM in correct order' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'CMDTLM', 'packet' => 'TELEM',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 3 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 4 } },
+              { 'offset_ms' => 4000, 'values' => { 'VALUE' => 5 } }
+            ]
+          },
+          {
+            'target' => 'CMDTLM', 'packet' => 'CMD1',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'CMD',
+            'rows' => [
+              { 'offset_ms' => 1500, 'values' => { 'VALUE' => 99 }, 'cosmos_extra' => '{"username":"admin"}' },
+              { 'offset_ms' => 3500, 'values' => { 'VALUE' => 98 }, 'cosmos_extra' => '{"username":"operator"}' }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      objects = setup_multi_table_stream(test_params)
+      thread = create_thread(objects)
+
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(7)
+
+      # Verify timestamp ordering
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort), "Results not in timestamp order"
+
+      # Verify interleaving: TLM(0), TLM(1000), CMD(1500), TLM(2000), TLM(3000), CMD(3500), TLM(4000)
+      tlm_key = objects[0].item_key
+      cmd_key = objects[1].item_key
+      expected_keys = [tlm_key, tlm_key, cmd_key, tlm_key, tlm_key, cmd_key, tlm_key]
+      actual_keys = results.map { |r| r.key?(tlm_key) ? tlm_key : cmd_key }
+      expect(actual_keys).to eq(expected_keys)
+
+      # CMD results should have COSMOS_EXTRA, TLM should not
+      results.each_with_index do |r, i|
+        if actual_keys[i] == cmd_key
+          expect(r).to have_key('COSMOS_EXTRA'), "CMD result #{i} should have COSMOS_EXTRA"
+        else
+          expect(r).not_to have_key('COSMOS_EXTRA'), "TLM result #{i} should not have COSMOS_EXTRA"
+        end
+      end
+    end
+
+    it 'filters tables with no data in the queried range' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'FILTER', 'packet' => 'EARLY',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 3 } }
+            ]
+          },
+          {
+            'target' => 'FILTER', 'packet' => 'LATE',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 10000, 'values' => { 'VALUE' => 100 } },
+              { 'offset_ms' => 11000, 'values' => { 'VALUE' => 200 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      # Create objects but narrow the time range to only cover EARLY table
+      early_table = test_params['tables'][0]
+      early_start = early_table['timestamps_ns'].min
+      early_end = early_table['timestamps_ns'].max + 1_000_000_000
+
+      objects = []
+      test_params['tables'].each do |table_info|
+        target = table_info['target_name']
+        packet = table_info['packet_name']
+
+        obj = MockStreamingObject.new(
+          target: target,
+          packet: packet,
+          item: 'VALUE',
+          value_type: :RAW,
+          start_time: early_start,
+          end_time: early_end
+        )
+        objects << obj
+
+        allow(OpenC3::TargetModel).to receive(:packet)
+          .with(target, packet, hash_including(type: :TLM))
+          .and_return(table_info['packet_def'])
+      end
+
+      available_items = objects.map { |o| "#{o.target_name}__#{o.packet_name}__VALUE__RAW" }
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      thread = create_thread(objects)
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(3)
+
+      # All results should be from EARLY table only
+      early_key = objects[0].item_key
+      results.each do |r|
+        expect(r).to have_key(early_key), "Expected only EARLY table results"
+      end
+      expect(results.map { |r| r[early_key] }).to eq([1, 2, 3])
+    end
+
+    it 'computes calculated timestamps correctly across tables' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'MTIME', 'packet' => 'TBL_A',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 2 } }
+            ]
+          },
+          {
+            'target' => 'MTIME', 'packet' => 'TBL_B',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 10 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 20 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      # Create objects requesting PACKET_TIMEFORMATTED from each table
+      objects = []
+      test_params['tables'].each do |table_info|
+        target = table_info['target_name']
+        packet = table_info['packet_name']
+
+        obj = MockStreamingObject.new(
+          target: target,
+          packet: packet,
+          item: 'PACKET_TIMEFORMATTED',
+          value_type: :RAW,
+          start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+          end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000
+        )
+        obj.item_key = "#{target}__#{packet}__PACKET_TIMEFORMATTED__RAW"
+        objects << obj
+
+        allow(OpenC3::TargetModel).to receive(:packet)
+          .with(target, packet, hash_including(type: :TLM))
+          .and_return(table_info['packet_def'])
+      end
+
+      available_items = objects.map { |o| "#{o.target_name}__#{o.packet_name}__PACKET_TIMEFORMATTED__RAW" }
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      thread = create_thread(objects)
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(4)
+
+      # Verify timestamp ordering
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort)
+
+      # Each result's formatted time should match its own __time
+      results.each_with_index do |r, i|
+        item_key = objects.map(&:item_key).find { |k| r.key?(k) }
+        expect(item_key).not_to be_nil, "Result #{i} should have a PACKET_TIMEFORMATTED key"
+
+        formatted = r[item_key]
+        expect(formatted).to be_a(String), "Expected String at index #{i}"
+        expect(formatted).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
+          "Expected ISO 8601 format at index #{i}, got #{formatted}"
+
+        # Verify the formatted time matches __time
+        parsed_time = Time.parse(formatted)
+        time_from_ns = r['__time'] / 1_000_000_000.0
+        expect(parsed_time.to_f).to be_within(0.001).of(time_from_ns),
+          "Formatted time mismatch at index #{i}: #{formatted} vs __time #{r['__time']}"
+      end
+    end
+
+    it 'handles batch boundaries correctly with small max_batch_size' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'BATCH', 'packet' => 'TBL_A',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 3 } },
+              { 'offset_ms' => 4000, 'values' => { 'VALUE' => 5 } },
+              { 'offset_ms' => 6000, 'values' => { 'VALUE' => 7 } }
+            ]
+          },
+          {
+            'target' => 'BATCH', 'packet' => 'TBL_B',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 4 } },
+              { 'offset_ms' => 5000, 'values' => { 'VALUE' => 6 } },
+              { 'offset_ms' => 7000, 'values' => { 'VALUE' => 8 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      objects = setup_multi_table_stream(test_params)
+      thread = create_thread(objects, max_batch_size: 3)
+
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(8)
+
+      # All 8 results should be in strict timestamp order regardless of batching
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort), "Results not in timestamp order across batch boundaries"
+
+      # Verify values in order: 1,2,3,4,5,6,7,8
+      item_keys = objects.map(&:item_key)
+      actual_values = results.map { |r| item_keys.map { |k| r[k] }.compact.first }
+      expect(actual_values).to eq([1, 2, 3, 4, 5, 6, 7, 8])
+    end
+
+    it 'returns no results when all tables have data outside the queried range' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'EMPTY', 'packet' => 'TBL_A',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 } }
+            ]
+          },
+          {
+            'target' => 'EMPTY', 'packet' => 'TBL_B',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 10 } },
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 20 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      # Query 1 hour before the data
+      base_ns = test_params['base_time_ns']
+      early_start = base_ns - 7_200_000_000_000  # 2 hours before
+      early_end = base_ns - 3_600_000_000_000     # 1 hour before
+
+      objects = []
+      test_params['tables'].each do |table_info|
+        target = table_info['target_name']
+        packet = table_info['packet_name']
+
+        obj = MockStreamingObject.new(
+          target: target,
+          packet: packet,
+          item: 'VALUE',
+          value_type: :RAW,
+          start_time: early_start,
+          end_time: early_end
+        )
+        objects << obj
+
+        allow(OpenC3::TargetModel).to receive(:packet)
+          .with(target, packet, hash_including(type: :TLM))
+          .and_return(table_info['packet_def'])
+      end
+
+      available_items = objects.map { |o| "#{o.target_name}__#{o.packet_name}__VALUE__RAW" }
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      thread = create_thread(objects)
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      expect(streaming_api.transmitted_results).to be_empty
+    end
+
+    it 'streams multiple items from same packet alongside another table' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'MULTI', 'packet' => 'VALS',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 100 } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 200 } }
+            ]
+          },
+          {
+            'target' => 'MULTI', 'packet' => 'OTHER',
+            'data_type' => 'INT', 'bit_size' => 32, 'cmd_or_tlm' => 'TLM',
+            'rows' => [
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 50 } },
+              { 'offset_ms' => 3000, 'values' => { 'VALUE' => 75 } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      start_ns = Time.parse(test_params['start_time']).to_i * 1_000_000_000
+      end_ns = Time.parse(test_params['end_time']).to_i * 1_000_000_000
+
+      vals_info = test_params['tables'][0]
+      other_info = test_params['tables'][1]
+
+      # Table A: VALUE (RAW) + PACKET_TIMESECONDS - same packet, two items
+      obj_raw = MockStreamingObject.new(
+        target: vals_info['target_name'],
+        packet: vals_info['packet_name'],
+        item: 'VALUE',
+        value_type: :RAW,
+        start_time: start_ns,
+        end_time: end_ns
+      )
+      obj_ts = MockStreamingObject.new(
+        target: vals_info['target_name'],
+        packet: vals_info['packet_name'],
+        item: 'PACKET_TIMESECONDS',
+        value_type: :RAW,
+        start_time: start_ns,
+        end_time: end_ns
+      )
+      obj_ts.item_key = "#{vals_info['target_name']}__#{vals_info['packet_name']}__PACKET_TIMESECONDS__RAW"
+
+      # Table B: VALUE (RAW) only
+      obj_other = MockStreamingObject.new(
+        target: other_info['target_name'],
+        packet: other_info['packet_name'],
+        item: 'VALUE',
+        value_type: :RAW,
+        start_time: start_ns,
+        end_time: end_ns
+      )
+
+      objects = [obj_raw, obj_ts, obj_other]
+
+      allow(OpenC3::TargetModel).to receive(:packet)
+        .with(vals_info['target_name'], vals_info['packet_name'], hash_including(type: :TLM))
+        .and_return(vals_info['packet_def'])
+      allow(OpenC3::TargetModel).to receive(:packet)
+        .with(other_info['target_name'], other_info['packet_name'], hash_including(type: :TLM))
+        .and_return(other_info['packet_def'])
+
+      available_items = [
+        "#{obj_raw.target_name}__#{obj_raw.packet_name}__VALUE__RAW",
+        "#{obj_ts.target_name}__#{obj_ts.packet_name}__PACKET_TIMESECONDS__RAW",
+        "#{obj_other.target_name}__#{obj_other.packet_name}__VALUE__RAW"
+      ]
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available).and_return(available_items)
+
+      thread = create_thread(objects)
+      objects_by_topic = build_objects_by_topic(objects)
+      topics = objects_by_topic.keys
+      offsets = objects.map(&:offset)
+      thread.send(:stream_items, objects_by_topic, topics, offsets)
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(4)
+
+      # Verify timestamp ordering
+      times = results.map { |r| r['__time'] }
+      expect(times).to eq(times.sort)
+
+      raw_key = obj_raw.item_key
+      ts_key = obj_ts.item_key
+      other_key = obj_other.item_key
+
+      # Table A rows (indices 0, 2) should have both VALUE and PACKET_TIMESECONDS keys
+      [0, 2].each do |i|
+        expect(results[i]).to have_key(raw_key), "Table A result at #{i} should have VALUE RAW key"
+        expect(results[i]).to have_key(ts_key), "Table A result at #{i} should have PACKET_TIMESECONDS key"
+        expect(results[i][ts_key]).to be_a(Float), "PACKET_TIMESECONDS should be Float"
+        expect(results[i]).not_to have_key(other_key), "Table A result at #{i} should not have Table B's key"
+      end
+
+      # Table B rows (indices 1, 3) should have only VALUE RAW key
+      [1, 3].each do |i|
+        expect(results[i]).to have_key(other_key), "Table B result at #{i} should have RAW key"
+        expect(results[i]).not_to have_key(raw_key), "Table B result at #{i} should not have Table A's RAW key"
+        expect(results[i]).not_to have_key(ts_key), "Table B result at #{i} should not have Table A's TIMESECONDS key"
+      end
     end
   end
 end

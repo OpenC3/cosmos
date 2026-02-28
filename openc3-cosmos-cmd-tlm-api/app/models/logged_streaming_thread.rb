@@ -360,7 +360,7 @@ class LoggedStreamingThread < StreamingThread
           item_keys: [],
           item_types: [],
           stored_timestamp_item_keys: {},
-          calculated_timestamp_items: {},
+          calculated_positions: {},  # local_index => { source:, format: }
           timestamp_source_columns: {},
           topics: Set.new
         }
@@ -383,12 +383,14 @@ class LoggedStreamingThread < StreamingThread
         end
 
         # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
+        # These get a positional slot (NULL in SQL) and are computed in-place during result processing
         if OpenC3::QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
           calc_info = OpenC3::QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
-          meta[:calculated_timestamp_items][object.item_key] = {
-            source: calc_info[:source],
-            format: calc_info[:format]
-          }
+          local_idx = meta[:names].length
+          meta[:names] << nil  # placeholder - not a SQL column
+          meta[:item_keys] << object.item_key
+          meta[:item_types] << { 'data_type' => 'CALCULATED_TIMESTAMP', 'array_size' => nil }
+          meta[:calculated_positions][local_idx] = { source: calc_info[:source], format: calc_info[:format] }
           meta[:timestamp_source_columns][calc_info[:source]] ||= nil
           item_index += 1
           next
@@ -457,145 +459,231 @@ class LoggedStreamingThread < StreamingThread
       per_table.select! { |table_name, _| tsdb_table_has_data?(table_name, start_time, end_time) }
     end
 
-    # Build unified column mappings across all tables for UNION ALL result processing.
-    # Each table's item columns occupy a contiguous range; other tables get NULL at those positions.
-    unified_item_keys = []
-    unified_item_types = []
-    unified_stored_ts_keys = {}
-    unified_calc_ts_items = {}
-    needs_received_ts = false
-    table_column_ranges = {} # table_name => [start_idx, end_idx]
+    # Build per-table queries independently — no UNION ALL, no NULL padding.
+    # Each table gets its own simple SELECT with only its columns.
+    # Results are merged by timestamp using a k-way merge.
+    cursors = []
 
     per_table.each do |table_name, meta|
-      start_idx = unified_item_keys.length
-      unified_item_keys.concat(meta[:item_keys])
-      unified_item_types.concat(meta[:item_types])
-      meta[:stored_timestamp_item_keys].each { |k, v| unified_stored_ts_keys[k] = v }
-      meta[:calculated_timestamp_items].each { |k, v| unified_calc_ts_items[k] = v.merge(table: table_name) }
-      table_column_ranges[table_name] = [start_idx, start_idx + meta[:names].length - 1]
-      needs_received_ts = true if meta[:timestamp_source_columns].any? { |k, _| k.include?('RECEIVED_TIMESECONDS') }
-    end
+      needs_received_ts = meta[:timestamp_source_columns].any? { |k, _| k.include?('RECEIVED_TIMESECONDS') }
 
-    if per_table.size <= 1
-      # Single table: simple query, no UNION needed
-      table_name, meta = per_table.first
-      if table_name.nil?
-        # No tables with data
-        return past_end_time?(end_time) ? true : false
-      end
-      query_names = meta[:names].dup
+      query_names = meta[:names].compact.dup  # compact removes nil (calculated) placeholders
       query_names << "CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
-      if needs_received_ts
-        query_names << "RECEIVED_TIMESECONDS"
+      query_names << "RECEIVED_TIMESECONDS" if needs_received_ts
+      query_names << "COSMOS_EXTRA" if meta[:cmd_or_tlm] == :CMD
+
+      # Pre-compute mapping from SQL column index to local meta index.
+      # Calculated positions (names[i] == nil) have no SQL column.
+      sql_to_local = []
+      meta[:names].each_with_index do |name, i|
+        sql_to_local << i unless name.nil?
       end
-      if meta[:cmd_or_tlm] == :CMD
-        query_names << "COSMOS_EXTRA"
-      end
-      query = "SELECT #{query_names.join(", ")} FROM #{table_name}"
+
+      query = "SELECT #{query_names.join(', ')} FROM #{table_name}"
       query += tsdb_time_where(start_time, end_time)
-    else
-      # Multiple tables: build UNION ALL with consistent column count.
-      # Item columns are positional (index-based), with NULLs for other tables' positions.
-      # Fixed columns (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_EXTRA) are appended.
-      total_item_cols = unified_item_keys.length
-      sub_queries = []
+      OpenC3::Logger.debug("QuestDB per-table query: #{query}")
 
-      per_table.each do |table_name, meta|
-        range = table_column_ranges[table_name]
-        selects = []
-
-        # Build item columns: this table's columns at their positions, NULL elsewhere
-        total_item_cols.times do |i|
-          if i >= range[0] && i <= range[1]
-            selects << meta[:names][i - range[0]]
-          else
-            selects << "NULL"
-          end
-        end
-
-        # Fixed columns (same position in every sub-query)
-        selects << "CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
-        selects << (needs_received_ts ? "RECEIVED_TIMESECONDS" : "NULL")
-        selects << (meta[:cmd_or_tlm] == :CMD ? "COSMOS_EXTRA" : "NULL")
-
-        sub_query = "SELECT #{selects.join(", ")} FROM #{table_name}"
-        sub_query += tsdb_time_where(start_time, end_time)
-        sub_queries << sub_query
-      end
-
-      query = sub_queries.join(" UNION ALL ")
-      query += " ORDER BY PACKET_TIMESECONDS"
+      cursors << {
+        query: query,
+        meta: meta,
+        sql_to_local: sql_to_local,
+        result: nil,      # current PG::Result page
+        row_index: 0,      # position within current page
+        offset: 0,         # LIMIT offset for next fetch
+        exhausted: false,
+        table_name: table_name
+      }
     end
 
-    tsdb_query_each_page(query, label: "query") do |result|
-      results = []
-      result.each do |tuples|
-        entry = { "__type" => "ITEMS" }
-        timestamp_values = {}
-        tuples.each_with_index do |tuple, index|
-          col_name = tuple[0]
-          if col_name == 'PACKET_TIMESECONDS'
-            time_ns = tuple[1].to_i
-            entry['__time'] = time_ns
-            pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
-            timestamp_values['PACKET_TIMESECONDS'] = pkt_time
-            next
-          elsif col_name == 'COSMOS_EXTRA'
-            entry['COSMOS_EXTRA'] = tuple[1] if tuple[1]
-            next
-          elsif col_name == 'RECEIVED_TIMESECONDS'
-            timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
-            if index < unified_item_keys.length && unified_stored_ts_keys.key?(unified_item_keys[index])
-              ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-              entry[unified_item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-            end
-          elsif index < unified_item_keys.length
-            next if tuple[1].nil? # NULL from other table's column position
-            type_info = unified_item_types[index] || {}
-            if unified_stored_ts_keys.key?(unified_item_keys[index])
-              ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-              entry[unified_item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-            else
-              entry[unified_item_keys[index]] = OpenC3::QuestDBClient.decode_value(
-                tuple[1],
-                data_type: type_info['data_type'],
-                array_size: type_info['array_size']
-              )
-            end
-          end
-        end
+    if cursors.empty?
+      return past_end_time?(end_time) ? true : false
+    end
 
-        # Determine which table this row belongs to by finding a non-NULL item column
-        row_table = nil
-        if per_table.size > 1
-          table_column_ranges.each do |tbl, range|
-            (range[0]..range[1]).each do |i|
-              if entry.key?(unified_item_keys[i])
-                row_table = tbl
-                break
-              end
-            end
-            break if row_table
-          end
-        end
+    # Initialize: fetch first page for each cursor
+    cursors.each { |c| tsdb_advance_cursor(c) }
 
-        # Calculate timestamp items (TIMEFORMATTED) - only for the row's source table
-        unified_calc_ts_items.each do |item_key, info|
-          next if row_table && info[:table] != row_table
-          ts_value = timestamp_values[info[:source]]
-          next unless ts_value
-          ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(ts_value)
-          calculated_value = OpenC3::QuestDBClient.format_timestamp(ts_utc, info[:format])
-          entry[item_key] = calculated_value if calculated_value
-        end
+    # K-way merge loop: always pick the cursor with the lowest PACKET_TIMESECONDS
+    results = []
+    loop do
+      break if @cancel_thread
 
-        # Track the latest timestamp per topic for TSDB→STREAM bridge
+      # Find cursor with lowest timestamp (linear scan — table count is small)
+      min_cursor = nil
+      min_time = nil
+      cursors.each do |c|
+        next if c[:exhausted]
+        row_time = tsdb_cursor_time(c)
+        if row_time && (min_time.nil? || row_time < min_time)
+          min_time = row_time
+          min_cursor = c
+        end
+      end
+
+      break unless min_cursor # All cursors exhausted
+
+      # Process this row
+      entry = process_tsdb_row(min_cursor)
+      if entry
         objects_by_topic.each_key { |t| track_tsdb_time(t, entry['__time']) }
         results << entry
       end
-      @streaming_api.transmit_results(results)
+
+      # Advance cursor
+      min_cursor[:row_index] += 1
+      if min_cursor[:result].nil? || min_cursor[:row_index] >= min_cursor[:result].ntuples
+        tsdb_advance_cursor(min_cursor)
+      end
+
+      # Transmit batch when full
+      if results.length >= @max_batch_size
+        @streaming_api.transmit_results(results)
+        results = []
+      end
     end
+
+    # Transmit remaining results
+    @streaming_api.transmit_results(results) unless results.empty?
     past_end_time?(end_time) ? true : false
+  end
+
+  # Returns the PACKET_TIMESECONDS value for the current row of a cursor
+  def tsdb_cursor_time(cursor)
+    return nil if cursor[:exhausted] || cursor[:result].nil?
+    row = cursor[:result][cursor[:row_index]]
+    return nil unless row
+    # Row may be a Hash (real PG::Result) or array of [col, val] pairs (mock).
+    # Iterate to find PACKET_TIMESECONDS reliably in both cases.
+    row.each do |tuple|
+      return tuple[1].to_i if tuple[0] == 'PACKET_TIMESECONDS'
+    end
+    nil
+  end
+
+  # Fetches the next page for a cursor, or marks it as exhausted
+  def tsdb_advance_cursor(cursor)
+    return if cursor[:exhausted]
+    retry_count = 0
+    begin
+      @@conn_mutex.synchronize do
+        @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
+                                      port: ENV['OPENC3_TSDB_QUERY_PORT'],
+                                      user: ENV['OPENC3_TSDB_USERNAME'],
+                                      password: ENV['OPENC3_TSDB_PASSWORD'],
+                                      dbname: 'qdb')
+        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
+        end
+        query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
+        OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
+        result = @@conn.exec(query_offset)
+        cursor[:offset] += @max_batch_size
+        if result.nil? || result.ntuples == 0
+          cursor[:result] = nil
+          cursor[:exhausted] = true
+        else
+          cursor[:result] = result
+          cursor[:row_index] = 0
+        end
+      end
+    rescue IOError, PG::Error => e
+      retry_count += 1
+      if retry_count > 4
+        raise "Error querying QuestDB (cursor fetch): #{e.message}"
+      end
+      OpenC3::Logger.warn("QuestDB cursor fetch: retry #{retry_count} - #{e.message}")
+      @@conn_mutex.synchronize do
+        if @@conn && !@@conn.finished?
+          @@conn.finish()
+        end
+        @@conn = nil
+      end
+      sleep 0.1
+      retry
+    end
+  end
+
+  # Process one row from a single table's query result into an entry hash.
+  # Row iteration uses [col_name, value] tuple pattern compatible with both
+  # real PG::Result (Hash#each yields [key,val]) and test mocks (Array of pairs).
+  def process_tsdb_row(cursor)
+    result = cursor[:result]
+    return nil unless result
+    row_index = cursor[:row_index]
+    return nil if row_index >= result.ntuples
+
+    meta = cursor[:meta]
+    sql_to_local = cursor[:sql_to_local]
+    num_sql_item_cols = sql_to_local.length
+
+    entry = { "__type" => "ITEMS" }
+    timestamp_values = {}
+    time_ns = nil
+    cosmos_extra = nil
+
+    # Values array indexed by local meta position
+    values = Array.new(meta[:item_keys].length)
+
+    # Iterate over the row's columns as [col_name, value] tuples
+    row = result[row_index]
+    row.each_with_index do |tuple, sql_index|
+      col_name = tuple[0]
+      value = tuple[1]
+
+      # Fixed columns come after item columns
+      if sql_index >= num_sql_item_cols
+        case col_name
+        when 'PACKET_TIMESECONDS'
+          time_ns = value.to_i
+          pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
+          timestamp_values['PACKET_TIMESECONDS'] = pkt_time
+        when 'RECEIVED_TIMESECONDS'
+          timestamp_values['RECEIVED_TIMESECONDS'] = value if value
+        when 'COSMOS_EXTRA'
+          cosmos_extra = value
+        end
+        next
+      end
+
+      # Map SQL column index to local meta index
+      local_idx = sql_to_local[sql_index]
+
+      # Track timestamp values from item columns
+      if col_name == 'RECEIVED_TIMESECONDS'
+        timestamp_values['RECEIVED_TIMESECONDS'] = value
+      end
+
+      next if value.nil?
+
+      type_info = meta[:item_types][local_idx] || {}
+      if meta[:stored_timestamp_item_keys].key?(meta[:item_keys][local_idx])
+        ts_utc = tsdb_coerce_to_utc(value)
+        values[local_idx] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds) if ts_utc
+      else
+        values[local_idx] = OpenC3::QuestDBClient.decode_value(
+          value,
+          data_type: type_info['data_type'],
+          array_size: type_info['array_size']
+        )
+      end
+    end
+
+    # Build ordered entry hash with calculated items in their natural position
+    meta[:item_keys].each_with_index do |item_key, local_idx|
+      if meta[:calculated_positions].key?(local_idx)
+        calc_info = meta[:calculated_positions][local_idx]
+        ts_value = timestamp_values[calc_info[:source]]
+        next unless ts_value
+        ts_utc = tsdb_coerce_to_utc(ts_value)
+        calculated_value = OpenC3::QuestDBClient.format_timestamp(ts_utc, calc_info[:format])
+        entry[item_key] = calculated_value if calculated_value
+      elsif !values[local_idx].nil?
+        entry[item_key] = values[local_idx]
+      end
+    end
+
+    entry['__time'] = time_ns if time_ns
+    entry['COSMOS_EXTRA'] = cosmos_extra if cosmos_extra
+    entry
   end
 
   # Stream reduced (aggregated) items using QuestDB SAMPLE BY
@@ -1044,6 +1132,29 @@ class LoggedStreamingThread < StreamingThread
   end
 
   # Returns true if the given TSDB table exists and has at least one row in the
+  # Coerce a PG timestamp value (which QuestDB may return as Float, Integer,
+  # String, or PG timestamp object) into a Ruby UTC Time.
+  def tsdb_coerce_to_utc(value)
+    return nil unless value
+    case value
+    when Time
+      # QuestDB timestamps have no timezone; PG may tag them with local tz.
+      # Rebuild as UTC from components to avoid double-conversion.
+      Time.utc(value.year, value.month, value.day, value.hour, value.min, value.sec, value.usec)
+    when Float
+      # Seconds since epoch (with fractional microseconds)
+      Time.at(value).utc
+    when Integer
+      # Nanoseconds since epoch
+      Time.at(value / 1_000_000_000, value % 1_000_000_000, :nsec, in: '+00:00').utc
+    when String
+      Time.parse(value).utc
+    else
+      # PG timestamp object (responds to year, month, etc.)
+      OpenC3::QuestDBClient.pg_timestamp_to_utc(value)
+    end
+  end
+
   # time range. Tables that have never received data don't exist in QuestDB and
   # would cause UNION ALL queries to fail.
   def tsdb_table_has_data?(table_name, start_time, end_time)
