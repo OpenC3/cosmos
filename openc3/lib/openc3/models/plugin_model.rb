@@ -390,7 +390,9 @@ module OpenC3
       repository: nil,
       img_path: nil,
       updated_at: nil,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @variables = variables

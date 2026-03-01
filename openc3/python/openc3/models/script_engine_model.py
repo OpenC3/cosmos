@@ -45,6 +45,8 @@ class ScriptEngineModel(Model):
         plugin=None,
         filename=None,
         scope=None,
+        # Absorb unknown keywords in the event of a migration skip or failure
+        **kwargs,
     ):
         super().__init__(
             self.PRIMARY_KEY,

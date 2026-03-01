@@ -62,7 +62,9 @@ module OpenC3
       updated_at: nil,
       plugin: nil,
       filename: nil,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       super(PRIMARY_KEY, name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @filename = filename

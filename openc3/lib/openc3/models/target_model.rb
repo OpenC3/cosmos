@@ -391,7 +391,9 @@ module OpenC3
       target_microservices: {},
       disable_erb: nil,
       shard: 0,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
         cmd_buffer_depth: cmd_buffer_depth, cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,

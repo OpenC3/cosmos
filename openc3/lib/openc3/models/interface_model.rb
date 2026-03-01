@@ -122,7 +122,9 @@ module OpenC3
       container: nil,
       prefix: nil,
       shard: 0,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       if self.class._get_type == 'INTERFACE'
         super("#{scope}__#{INTERFACES_PRIMARY_KEY}", name: name, updated_at: updated_at, plugin: plugin, scope: scope)

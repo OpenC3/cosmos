@@ -10,9 +10,11 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/migration'
+require 'openc3/utilities/bucket'
 require 'openc3/models/scope_model'
 require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
+require 'openc3/models/plugin_model'
 
 module OpenC3
   class RemoveDecomLogSettings < Migration
@@ -48,6 +50,30 @@ module OpenC3
           %w(DECOMCMDLOG DECOMLOG REDUCER).each do |type|
             microservice = MicroserviceModel.get_model(name: "#{scope}__#{type}__#{name}", scope: scope)
             microservice.destroy if microservice
+          end
+        end
+      end
+
+      # Reinstall all plugins to regenerate microservice configs with correct settings
+      # This must happen after removing deprecated keys above
+      client = Bucket.getClient()
+      unless client.exist?(ENV['OPENC3_CONFIG_BUCKET']) && client.exist?(ENV['OPENC3_TOOLS_BUCKET'])
+        Logger.info("Skipping plugin reinstall - buckets do not exist yet (fresh install or new storage backend)")
+        return
+      end
+
+      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+        plugins = PluginModel.all(scope: scope)
+        plugins.each do |plugin_name, plugin_data|
+          begin
+            Logger.info("Reinstalling plugin #{plugin_name} in scope #{scope}")
+            plugin_model = PluginModel.from_json(plugin_data, scope: scope)
+            plugin_model.undeploy
+            plugin_model.restore
+            Logger.info("Successfully reinstalled plugin #{plugin_name} in scope #{scope}")
+          rescue Exception => e
+            Logger.error("Error reinstalling plugin #{plugin_name} in scope #{scope}: #{e.formatted}")
+            # Continue with other plugins even if one fails
           end
         end
       end

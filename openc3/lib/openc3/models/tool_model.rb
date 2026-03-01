@@ -134,7 +134,9 @@ module OpenC3
       needs_dependencies: false,
       disable_erb: nil,
       import_map_items: nil,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @folder_name = folder_name

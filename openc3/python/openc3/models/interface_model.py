@@ -88,6 +88,8 @@ class InterfaceModel(Model):
         prefix=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
+        # Absorb unknown keywords in the event of a migration skip or failure
+        **kwargs,
     ):
         type = self.__class__._get_type()
         if type == "INTERFACE":

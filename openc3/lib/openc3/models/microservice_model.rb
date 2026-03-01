@@ -105,7 +105,9 @@ module OpenC3
       ignore_changes: nil,
       shard: 0,
       enabled: true,
-      scope:
+      scope:,
+      # Absorb unknown keywords in the event of a migration skip or failure
+      **_kwargs
     )
       parts = name.split("__")
       if parts.length != 3

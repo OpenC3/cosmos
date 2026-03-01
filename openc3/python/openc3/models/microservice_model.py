@@ -71,6 +71,8 @@ class MicroserviceModel(Model):
         shard=0,
         enabled: bool = True,
         scope: str = OPENC3_SCOPE,
+        # Absorb unknown keywords in the event of a migration skip or failure
+        **kwargs,
     ):
         parts = name.split("__")
         if len(parts) != 3:
