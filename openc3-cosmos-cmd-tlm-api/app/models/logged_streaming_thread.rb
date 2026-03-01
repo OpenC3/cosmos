@@ -342,8 +342,8 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Build per-table metadata: each table gets its own column names, item keys,
-    # item types, and timestamp tracking. Tables are queried independently to avoid
-    # JOIN issues (ASOF JOIN loses non-T0 rows, SPLICE JOIN can't chain 3+ tables).
+    # item types, and timestamp tracking. Tables are queried independently and
+    # merged by timestamp using a k-way merge.
     per_table = {} # table_name => { cmd_or_tlm:, names:, item_keys:, ... }
 
     item_index = 0
@@ -454,12 +454,12 @@ class LoggedStreamingThread < StreamingThread
       end
     end
 
-    # Filter to tables that exist and have data (non-existent tables break UNION ALL)
+    # Filter to tables that exist and have data in the queried range
     if per_table.size > 1
       per_table.select! { |table_name, _| tsdb_table_has_data?(table_name, start_time, end_time) }
     end
 
-    # Build per-table queries independently — no UNION ALL, no NULL padding.
+    # Build per-table queries independently.
     # Each table gets its own simple SELECT with only its columns.
     # Results are merged by timestamp using a k-way merge.
     cursors = []
@@ -1131,16 +1131,13 @@ class LoggedStreamingThread < StreamingThread
     end_time and end_time <= Time.now.to_nsec_from_epoch
   end
 
-  # Returns true if the given TSDB table exists and has at least one row in the
   # Coerce a PG timestamp value (which QuestDB may return as Float, Integer,
   # String, or PG timestamp object) into a Ruby UTC Time.
   def tsdb_coerce_to_utc(value)
     return nil unless value
     case value
     when Time
-      # QuestDB timestamps have no timezone; PG may tag them with local tz.
-      # Rebuild as UTC from components to avoid double-conversion.
-      Time.utc(value.year, value.month, value.day, value.hour, value.min, value.sec, value.usec)
+      value.utc
     when Float
       # Seconds since epoch (with fractional microseconds)
       Time.at(value).utc
@@ -1155,8 +1152,8 @@ class LoggedStreamingThread < StreamingThread
     end
   end
 
-  # time range. Tables that have never received data don't exist in QuestDB and
-  # would cause UNION ALL queries to fail.
+  # Returns true if the given TSDB table exists and has at least one row in the
+  # time range. Tables that have never received data don't exist in QuestDB.
   def tsdb_table_has_data?(table_name, start_time, end_time)
     query = "SELECT 1 FROM #{table_name}"
     query += tsdb_time_where(start_time, end_time)
