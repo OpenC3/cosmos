@@ -613,13 +613,13 @@ class QuestDBClient:
 
                         if existing_type is None:
                             # Column doesn't exist yet — add it
-                            alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
+                            alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
                             cur.execute(alter)
                             self._log_info(f"QuestDB: Added column: {alter}")
                             altered = True
                         elif existing_type != desired_canonical:
                             # Type mismatch — ALTER the column type
-                            alter = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
+                            alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
                             cur.execute(alter)
                             self._log_info(
                                 f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
