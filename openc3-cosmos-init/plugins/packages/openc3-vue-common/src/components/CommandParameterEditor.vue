@@ -40,9 +40,29 @@
         placeholder="Select..."
         min-width="120px"
         data-test="cmd-param-select"
-        @update:model-value="handleChange"
+        @update:model-value="handleStateSelect"
       />
       <v-text-field
+        v-if="manuallyEntered"
+        :model-value="textFieldValue"
+        hide-details
+        density="compact"
+        variant="outlined"
+        min-width="60px"
+        data-test="cmd-param-value"
+        @update:model-value="handleChange"
+      />
+      <v-tooltip v-if="manuallyEntered" location="top">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" class="ml-1">mdi-information-outline</v-icon>
+        </template>
+        <span
+          >Enter a raw value (e.g. numeric) for this parameter.<br />State names
+          are not accepted here.</span
+        >
+      </v-tooltip>
+      <v-text-field
+        v-else
         :model-value="stateValue"
         disabled
         hide-details
@@ -77,8 +97,17 @@ export default {
       type: Boolean,
       default: false,
     },
+    allowManualEntry: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ['update:modelValue', 'hazardous-change'],
+  data() {
+    return {
+      manuallyEntered: false,
+    }
+  },
   computed: {
     textFieldValue() {
       return this.convertToString(this.modelValue)
@@ -91,6 +120,9 @@ export default {
       }
     },
     selectValue() {
+      if (this.manuallyEntered) {
+        return '__manual__'
+      }
       // this makes the placeholder prop work
       return this.modelValue === '' ? null : this.modelValue
     },
@@ -98,12 +130,16 @@ export default {
       if (!this.states) {
         return null
       }
-      return Object.keys(this.states).map((label) => {
+      const options = Object.keys(this.states).map((label) => {
         return {
           label,
           ...this.states[label],
         }
       })
+      if (this.allowManualEntry) {
+        options.push({ label: 'MANUALLY_ENTERED', value: '__manual__' })
+      }
+      return options
     },
     hazardous() {
       if (!this.states) {
@@ -126,10 +162,24 @@ export default {
         this.$emit('hazardous-change', newVal)
       },
     },
+    allowManualEntry(newVal) {
+      if (!newVal) {
+        this.manuallyEntered = false
+      }
+    },
   },
   methods: {
     handleChange(value) {
       this.$emit('update:modelValue', value)
+    },
+    handleStateSelect(value) {
+      if (value === '__manual__') {
+        this.manuallyEntered = true
+        this.$emit('update:modelValue', '')
+      } else {
+        this.manuallyEntered = false
+        this.$emit('update:modelValue', value)
+      }
     },
   },
 }
