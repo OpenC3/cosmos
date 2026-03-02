@@ -28,6 +28,8 @@ module OpenC3
   end
 end
 
+class QuestDbError < StandardError; end
+
 class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
@@ -470,7 +472,7 @@ class LoggedStreamingThread < StreamingThread
       query_names = meta[:names].compact.dup  # compact removes nil (calculated) placeholders
       query_names << "CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
       query_names << "RECEIVED_TIMESECONDS" if needs_received_ts
-      query_names << "COSMOS_EXTRA" if meta[:cmd_or_tlm] == :CMD
+      query_names << "COSMOS_EXTRA"
 
       # Pre-compute mapping from SQL column index to local meta index.
       # Calculated positions (names[i] == nil) have no SQL column.
@@ -588,7 +590,7 @@ class LoggedStreamingThread < StreamingThread
     rescue IOError, PG::Error => e
       retry_count += 1
       if retry_count > 4
-        raise "Error querying QuestDB (cursor fetch): #{e.message}"
+        raise QuestDbError, "Error querying QuestDB (cursor fetch): #{e.message}"
       end
       OpenC3::Logger.warn("QuestDB cursor fetch: retry #{retry_count} - #{e.message}")
       @@conn_mutex.synchronize do
@@ -640,8 +642,9 @@ class LoggedStreamingThread < StreamingThread
           timestamp_values['RECEIVED_TIMESECONDS'] = value if value
         when 'COSMOS_EXTRA'
           cosmos_extra = value
+        else
+          next # Ignore unexpected columns without breaking processing of item columns
         end
-        next
       end
 
       # Map SQL column index to local meta index
@@ -1221,7 +1224,7 @@ class LoggedStreamingThread < StreamingThread
       rescue IOError, PG::Error => e
         retry_count += 1
         if retry_count > 4
-          raise "Error querying QuestDB (#{label}): #{e.message}"
+          raise QuestDbError, "Error querying QuestDB (#{label}): #{e.message}"
         end
         OpenC3::Logger.warn("QuestDB #{label}: retry #{retry_count} - #{e.message}")
         OpenC3::Logger.warn("QuestDB #{label}: last query: #{query}")

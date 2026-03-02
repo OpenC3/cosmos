@@ -231,7 +231,7 @@ class StreamingThread
 
   def handoff(collection)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
-    my_topics, my_offsets, _, _ = @collection.topics_offsets_and_objects
+    my_topics, my_offsets, _item_objects_by_topic, _packet_objects_by_topic = @collection.topics_offsets_and_objects
     topics.each_with_index do |topic, index|
       offset = offsets[index]
       my_index = my_topics.index(topic)

@@ -1019,10 +1019,7 @@ export default {
             const isoMs = new Date(timeMs).toISOString() // "...T12:34:56.789Z"
             // Replace ".789Z" with ".789000000Z" using the remaining nanoseconds
             const subMs = String(subMillis).padStart(6, '0')
-            row[0] = isoMs.replace(
-              /\.(\d{3})Z$/,
-              (_, ms) => `.${ms}${subMs}Z`,
-            )
+            row[0] = isoMs.replace(/\.(\d{3})Z$/, (_, ms) => `.${ms}${subMs}Z`)
             row[1] = targetName
             row[2] = packetName
             // Add username and approver columns for command data
