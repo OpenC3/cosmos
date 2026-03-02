@@ -70,7 +70,7 @@ class MicroserviceModel(Model):
         ignore_changes=None,
         shard=0,
         enabled: bool = True,
-        scope: str = OPENC3_SCOPE
+        scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
         if len(parts) != 3:

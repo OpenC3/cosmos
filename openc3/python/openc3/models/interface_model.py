@@ -87,7 +87,7 @@ class InterfaceModel(Model):
         container=None,
         prefix=None,
         shard=0,
-        scope: str = OPENC3_SCOPE
+        scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
         if type == "INTERFACE":

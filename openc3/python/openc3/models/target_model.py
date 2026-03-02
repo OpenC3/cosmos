@@ -495,7 +495,7 @@ class TargetModel(Model):
         target_microservices=None,
         disable_erb=None,
         shard=0,
-        scope: str = OPENC3_SCOPE
+        scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
             target_microservices = {"REDUCER": [[]]}
