@@ -424,7 +424,13 @@ RSpec.describe QueuesController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command updated")
-      expect(queue_model).to have_received(:update_command).with(id: id, username: "anonymous", command: "UPDATED COMMAND")
+      expect(queue_model).to have_received(:update_command).with(
+        id: id,
+        username: "anonymous",
+        command: "UPDATED COMMAND",
+        validate: true, # Even when not provided, validate should default to true
+        timeout: nil
+      )
     end
 
     it "returns 404 when the queue is not found" do
@@ -537,7 +543,15 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd).with("TEST COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("TEST COMMAND",
+        {
+          queue: false,
+          validate: true,
+          timeout: nil,
+          scope: "DEFAULT",
+          token: anything
+        }
+      )
 
       post :exec_command, params: {name: "QUEUE1", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
@@ -558,7 +572,15 @@ RSpec.describe QueuesController, type: :controller do
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd).with("idED COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("idED COMMAND",
+        {
+          queue: false,
+          validate: true,
+          timeout: nil,
+          scope: "DEFAULT",
+          token: anything
+        }
+      )
       id = "3.5"
 
       post :exec_command, params: {name: "QUEUE1", id: id, scope: "DEFAULT"}
@@ -611,11 +633,20 @@ RSpec.describe QueuesController, type: :controller do
         "username" => "user3",
         "value" => "INTEGER INDEX COMMAND",
         "timestamp" => 3000,
+        "validate" => true,
         "id" => 5.0
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd).with("INTEGER INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("INTEGER INDEX COMMAND",
+        {
+          queue: false,
+          validate: true,
+          timeout: nil,
+          scope: "DEFAULT",
+          token: anything
+        }
+      )
       id = 5
 
       post :exec_command, params: {name: "QUEUE1", id: id, scope: "DEFAULT"}
@@ -630,11 +661,20 @@ RSpec.describe QueuesController, type: :controller do
         "username" => "user4",
         "value" => "FRACTIONAL INDEX COMMAND",
         "timestamp" => 4000,
+        "timeout" => 0,
         "id" => 2.7
       }
       allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
       allow(queue_model).to receive(:remove_command).and_return(command_data)
-      allow(controller).to receive(:cmd).with("FRACTIONAL INDEX COMMAND", {queue: false, scope: "DEFAULT", token: anything})
+      allow(controller).to receive(:cmd).with("FRACTIONAL INDEX COMMAND",
+        {
+          queue: false,
+          validate: true,
+          timeout: 0,
+          scope: "DEFAULT",
+          token: anything
+        }
+      )
       id = "2.7"
 
       post :exec_command, params: {name: "QUEUE1", id: id, scope: "DEFAULT"}

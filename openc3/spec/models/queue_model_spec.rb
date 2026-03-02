@@ -103,7 +103,7 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
       end
 
       it "queues command when queue is in RELEASE state" do
@@ -114,7 +114,7 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
       end
 
       it "sends command notification" do
@@ -139,12 +139,12 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything },
-          { "username" => "anonymous", "value" => command, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timeout" => nil, "timestamp" => anything },
+          { "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
 
         list = model.list()
-        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "timestamp" => anything, "id" => 1.0 },
-          { "username" => "anonymous", "value" => command, "timestamp" => anything, "id" => 2.0 })
+        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timeout" => nil, "timestamp" => anything, "id" => 1.0 },
+          { "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything, "id" => 2.0 })
       end
 
       it "queues command with target_name, cmd_name, and cmd_params (new format)" do
@@ -160,6 +160,8 @@ module OpenC3
           "target_name" => "INST",
           "cmd_name" => "COLLECT",
           "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
+          "validate" => true,
+          "timeout" => nil,
           "timestamp" => anything
         })
       end
@@ -176,6 +178,44 @@ module OpenC3
           "username" => "test_user",
           "target_name" => "INST",
           "cmd_name" => "ABORT",
+          "validate" => true,
+          "timeout" => nil,
+          "timestamp" => anything
+        })
+      end
+
+      it "queues command with validate false and timeout 0" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", command: command, username: 'anonymous', validate: false, timeout: 0, scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "anonymous",
+          "value" => command,
+          "validate" => false,
+          "timeout" => 0,
+          "timestamp" => anything
+        })
+      end
+
+      it "queues new format command with validate false and timeout 0" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "HOLD")
+        model.create
+        allow(QueueTopic).to receive(:write_notification)
+
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'test_user', validate: false, timeout: 0, scope: "DEFAULT")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands).to contain_exactly({
+          "username" => "test_user",
+          "target_name" => "INST",
+          "cmd_name" => "COLLECT",
+          "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
+          "validate" => false,
+          "timeout" => 0,
           "timestamp" => anything
         })
       end

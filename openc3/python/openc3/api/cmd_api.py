@@ -695,7 +695,9 @@ def _cmd_implementation(
     if queue:
         # Pull the command out of the script string, e.g. cmd("INST ABORT")
         queued = cmd_string.split('("')[1].split('")')[0]
-        QueueModel.queue_command(queue, command=queued, username=username, scope=scope)
+        QueueModel.queue_command(
+            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout
+        )
     else:
         CommandTopic.send_command(command, timeout=timeout, scope=scope)
     return command

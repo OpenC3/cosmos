@@ -152,7 +152,10 @@ class QueuesController < ApplicationController
         id = params[:id].to_f
       end
       # If params[:id] is not given this will be nil which means insert at the end
-      model.insert_command(id, { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch })
+      command_data = { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch }
+      command_data[:validate] = params[:validate] unless params[:validate].nil?
+      command_data[:timeout] = params[:timeout] unless params[:timeout].nil?
+      model.insert_command(id, command_data)
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -200,7 +203,10 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: 'id is required' }, status: 400
         return
       end
-      model.update_command(id: id, username: username(), command: command)
+      # validate should be true or false, default to true if not given
+      validate = params[:validate].nil? ? true : params[:validate]
+      # timeout can be nil which means use system default timeout
+      model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)
@@ -226,6 +232,8 @@ class QueuesController < ApplicationController
         token = get_token(username(), scope: params[:scope])
         begin
           # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
+          validate = command_data.key?('validate') ? command_data['validate'] : true
+          timeout = command_data['timeout'] # Default is nil which means use system default timeout
           if command_data['target_name'] && command_data['cmd_name']
             # New format: use 3-parameter cmd() method
             if command_data['cmd_params']
@@ -234,16 +242,16 @@ class QueuesController < ApplicationController
               cmd_params = {}
             end
             if hazardous
-              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
             else
-              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, scope: params[:scope], token: token)
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
             end
           elsif command_data['value']
             # Legacy format: use single string parameter
             if hazardous
-              cmd_no_hazardous_check(command_data['value'], queue: false, scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['value'], queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
             else
-              cmd(command_data['value'], queue: false, scope: params[:scope], token: token)
+              cmd(command_data['value'], queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
             end
           else
             log_error("Invalid command format in queue: #{command_data}")
