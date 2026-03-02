@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -59,6 +59,28 @@ RSpec.describe AuthController, :type => :controller do
 
       post :set, params: { token: 'PASSWORD2', old_token: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "set" do
+    it "revokes old sessions and issues a new token on password change" do
+      # Set initial password and get a session token
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+      old_token = response.body
+      expect(old_token).not_to be_empty
+
+      # Change password
+      post :set, params: { password: 'PASSWORD2', old_password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+      new_token = response.body
+      expect(new_token).not_to be_empty
+      expect(new_token).not_to eq(old_token)
+
+      # Old token should be invalid
+      expect(OpenC3::AuthModel.verify(old_token)).to eq(false)
+      # New token should be valid
+      expect(OpenC3::AuthModel.verify(new_token)).to eq(true)
     end
   end
 
