@@ -643,8 +643,9 @@ class LoggedStreamingThread < StreamingThread
         when 'COSMOS_EXTRA'
           cosmos_extra = value
         else
-          next # Ignore unexpected columns without breaking processing of item columns
+          next # Redundant with outer next but satisfies static analysis
         end
+        next # Fixed columns are fully handled above
       end
 
       # Map SQL column index to local meta index

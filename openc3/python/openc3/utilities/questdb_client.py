@@ -648,8 +648,8 @@ class QuestDBClient:
                             COSMOS_DATA_TAG symbol """
 
                     # COSMOS command packets have an extra field for command information: user, approver, etc
-                    if cmd_or_tlm == "CMD":
-                        sql += ",\nCOSMOS_EXTRA varchar"
+                    # COSMOS telemetry packets may also have an extra field for additional information that doesn't fit in defined items
+                    sql += ",\nCOSMOS_EXTRA varchar"
                     if columns_sql:
                         sql += f",\n{columns_sql}"
 
