@@ -495,9 +495,7 @@ class TargetModel(Model):
         target_microservices=None,
         disable_erb=None,
         shard=0,
-        scope: str = OPENC3_SCOPE,
-        # Absorb unknown keywords in the event of a migration skip or failure
-        **kwargs,
+        scope: str = OPENC3_SCOPE
     ):
         if target_microservices is None:
             target_microservices = {"REDUCER": [[]]}

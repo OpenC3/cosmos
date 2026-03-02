@@ -70,9 +70,7 @@ class MicroserviceModel(Model):
         ignore_changes=None,
         shard=0,
         enabled: bool = True,
-        scope: str = OPENC3_SCOPE,
-        # Absorb unknown keywords in the event of a migration skip or failure
-        **kwargs,
+        scope: str = OPENC3_SCOPE
     ):
         parts = name.split("__")
         if len(parts) != 3:

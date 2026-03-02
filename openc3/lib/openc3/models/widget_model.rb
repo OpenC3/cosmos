@@ -87,9 +87,7 @@ module OpenC3
       items: false,
       needs_dependencies: false,
       disable_erb: nil,
-      scope:,
-      # Absorb unknown keywords in the event of a migration skip or failure
-      **_kwargs
+      scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @full_name = @name.capitalize + 'Widget'

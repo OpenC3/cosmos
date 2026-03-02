@@ -87,9 +87,7 @@ class InterfaceModel(Model):
         container=None,
         prefix=None,
         shard=0,
-        scope: str = OPENC3_SCOPE,
-        # Absorb unknown keywords in the event of a migration skip or failure
-        **kwargs,
+        scope: str = OPENC3_SCOPE
     ):
         type = self.__class__._get_type()
         if type == "INTERFACE":
