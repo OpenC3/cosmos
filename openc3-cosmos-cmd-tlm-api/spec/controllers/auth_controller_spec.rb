@@ -85,8 +85,9 @@ RSpec.describe AuthController, :type => :controller do
 
   describe "rate limiting" do
     # Actually testing that rate limiting is enforced is done in Playwright
-    # because Rails does this in middleware that isn't included in the request
-    # pipeline for unit testing. But we can ensure that the config is read.
+    # because the bad attempt counters in the controller are shared across
+    # all requests/tests. But we can ensure that the config is read and that
+    # successful attempts don't get rate limited.
 
     it "uses default rate limit values from environment" do
       expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('10')
@@ -109,6 +110,17 @@ RSpec.describe AuthController, :type => :controller do
         ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = original_to
         ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN'] = original_within
         load Rails.root.join('app', 'controllers', 'auth_controller.rb')
+      end
+    end
+
+    it "does not rate limit successful password attempts" do
+      # Note: testing rate limit for bad attempts is done in Playwright
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      20.times do
+        post :verify, params: { password: 'PASSWORD' }
+        expect(response).to have_http_status(:ok)
       end
     end
   end
