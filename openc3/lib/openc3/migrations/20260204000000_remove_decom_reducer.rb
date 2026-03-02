@@ -19,7 +19,7 @@ require 'openc3/models/plugin_model'
 module OpenC3
   class RemoveDecomLogSettings < Migration
     def self.run
-      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+      ScopeModel.get_all_models(scope: nil).each do |scope, _scope_model|
         target_models = TargetModel.all(scope: scope)
         target_models.each do |name, target_model|
           # Remove deprecated decom log settings from target model
@@ -62,7 +62,7 @@ module OpenC3
         return
       end
 
-      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+      ScopeModel.get_all_models(scope: nil).each do |scope, _scope_model|
         plugins = PluginModel.all(scope: scope)
         plugins.each do |plugin_name, plugin_data|
           begin
