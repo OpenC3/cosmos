@@ -309,7 +309,7 @@ export default {
               checkbox: true,
               checked: this.cmdRaw,
               command: () => {
-                this.cmdRaw = !this.cmdRaw.checked
+                this.cmdRaw = !this.cmdRaw
               },
             },
             {
