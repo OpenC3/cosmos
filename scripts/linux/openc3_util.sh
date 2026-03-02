@@ -8,6 +8,7 @@ then
   then
     function docker() {
       podman $@
+      return $?
     }
   else
     echo "Neither docker nor podman found!!!"
@@ -28,9 +29,10 @@ usage() {
   echo "*  hostsetup: configure host for redis" >&2
   echo "*  hostenter: sh into vm host" >&2
   exit 1
+  return 1
 }
 
-pullImages() {
+pull_images() {
   if [[ "$#" -lt 1 ]]; then
     echo "Usage: pull <TAG> [REPO] [NAMESPACE] [SUFFIX]" >&2
     echo "e.g. pull 7.0.0" >&2
@@ -46,18 +48,19 @@ pullImages() {
   fi
 
   set -x
-  docker pull $repo/$namespace/openc3-operator$suffix:$tag
-  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
-  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
-  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
-  docker pull $repo/$namespace/openc3-redis$suffix:$tag
-  docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
   docker pull $repo/$namespace/openc3-buckets$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-operator$suffix:$tag
+  docker pull $repo/$namespace/openc3-redis$suffix:$tag
+  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
+  docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
   set +x
+  return 0
 }
 
-saveTar() {
+save_tar() {
   if [[ "$#" -lt 3 ]]; then
     echo "Usage: save <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. save docker.io openc3inc 5.1.0" >&2
@@ -72,33 +75,28 @@ saveTar() {
   mkdir -p tmp
 
   set -x
-  docker pull $repo/$namespace/openc3-ruby$suffix:$tag
-  docker pull $repo/$namespace/openc3-node$suffix:$tag
-  docker pull $repo/$namespace/openc3-base$suffix:$tag
-  docker pull $repo/$namespace/openc3-operator$suffix:$tag
-  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
-  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
-  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
-  docker pull $repo/$namespace/openc3-redis$suffix:$tag
-  docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
   docker pull $repo/$namespace/openc3-buckets$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-operator$suffix:$tag
+  docker pull $repo/$namespace/openc3-redis$suffix:$tag
+  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
+  docker pull $repo/$namespace/openc3-tsdb$suffix:$tag
 
-  docker save $repo/$namespace/openc3-ruby$suffix:$tag -o tmp/openc3-ruby$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-node$suffix:$tag -o tmp/openc3-node$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-base$suffix:$tag -o tmp/openc3-base$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-operator$suffix:$tag -o tmp/openc3-operator$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag -o tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag -o tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-traefik$suffix:$tag -o tmp/openc3-traefik$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-redis$suffix:$tag -o tmp/openc3-redis$suffix-$tag.tar
-  docker save $repo/$namespace/openc3-tsdb$suffix:$tag -o tmp/openc3-tsdb$suffix-$tag.tar
   docker save $repo/$namespace/openc3-buckets$suffix:$tag -o tmp/openc3-buckets$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag -o tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
   docker save $repo/$namespace/openc3-cosmos-init$suffix:$tag -o tmp/openc3-cosmos-init$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag -o tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-operator$suffix:$tag -o tmp/openc3-operator$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-redis$suffix:$tag -o tmp/openc3-redis$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-traefik$suffix:$tag -o tmp/openc3-traefik$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-tsdb$suffix:$tag -o tmp/openc3-tsdb$suffix-$tag.tar
   set +x
+  return 0
 }
 
-loadTar() {
+load_tar() {
   if [[ -z "$1" ]]; then
     tag="latest"
   else
@@ -109,18 +107,16 @@ loadTar() {
     suffix=$2
   fi
   set -x
-  docker load -i tmp/openc3-ruby$suffix-$tag.tar
-  docker load -i tmp/openc3-node$suffix-$tag.tar
-  docker load -i tmp/openc3-base$suffix-$tag.tar
-  docker load -i tmp/openc3-operator$suffix-$tag.tar
-  docker load -i tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
-  docker load -i tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
-  docker load -i tmp/openc3-traefik$suffix-$tag.tar
-  docker load -i tmp/openc3-redis$suffix-$tag.tar
-  docker load -i tmp/openc3-tsdb$suffix-$tag.tar
   docker load -i tmp/openc3-buckets$suffix-$tag.tar
+  docker load -i tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
   docker load -i tmp/openc3-cosmos-init$suffix-$tag.tar
+  docker load -i tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
+  docker load -i tmp/openc3-operator$suffix-$tag.tar
+  docker load -i tmp/openc3-redis$suffix-$tag.tar
+  docker load -i tmp/openc3-traefik$suffix-$tag.tar
+  docker load -i tmp/openc3-tsdb$suffix-$tag.tar
   set +x
+  return 0
 }
 
 tag() {
@@ -149,18 +145,16 @@ tag() {
   fi
 
   set -x
-  docker tag $repo1/$namespace1/openc3-ruby$suffix:$tag1 $repo2/$namespace2/openc3-ruby$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-node$suffix:$tag1 $repo2/$namespace2/openc3-node$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-base$suffix:$tag1 $repo2/$namespace2/openc3-base$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-operator$suffix:$tag1 $repo2/$namespace2/openc3-operator$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-cosmos-cmd-tlm-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-cmd-tlm-api$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-cosmos-script-runner-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-script-runner-api$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
-  docker tag $repo1/$namespace1/openc3-tsdb$suffix:$tag1 $repo2/$namespace2/openc3-tsdb$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-buckets$suffix:$tag1 $repo2/$namespace2/openc3-buckets$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-cosmos-cmd-tlm-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-cmd-tlm-api$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-cosmos-init$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-init$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-cosmos-script-runner-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-script-runner-api$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-operator$suffix:$tag1 $repo2/$namespace2/openc3-operator$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-tsdb$suffix:$tag1 $repo2/$namespace2/openc3-tsdb$suffix:$tag2
   set +x
+  return 0
 }
 
 push() {
@@ -178,27 +172,26 @@ push() {
   fi
 
   set -x
-  docker push $repo/$namespace/openc3-ruby$suffix:$tag
-  docker push $repo/$namespace/openc3-node$suffix:$tag
-  docker push $repo/$namespace/openc3-base$suffix:$tag
-  docker push $repo/$namespace/openc3-operator$suffix:$tag
-  docker push $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
-  docker push $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
-  docker push $repo/$namespace/openc3-traefik$suffix:$tag
-  docker push $repo/$namespace/openc3-redis$suffix:$tag
-  docker push $repo/$namespace/openc3-tsdb$suffix:$tag
   docker push $repo/$namespace/openc3-buckets$suffix:$tag
+  docker push $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
   docker push $repo/$namespace/openc3-cosmos-init$suffix:$tag
+  docker push $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker push $repo/$namespace/openc3-operator$suffix:$tag
+  docker push $repo/$namespace/openc3-redis$suffix:$tag
+  docker push $repo/$namespace/openc3-traefik$suffix:$tag
+  docker push $repo/$namespace/openc3-tsdb$suffix:$tag
   set +x
+  return 0
 }
 
-cleanFiles() {
+clean_files() {
   find . -type d -name "node_modules" | xargs -I {} echo "Removing {}"; rm -rf {}
   find . -type d -name "coverage" | xargs -I {} echo "Removing {}"; rm -rf {}
   # Prompt for removing pnpm-lock.yaml files
   find . -type f -name "pnpm-lock.yaml" | xargs -I {} rm -i {}
   # Prompt for removing Gemfile.lock files
   find . -type f -name "Gemfile.lock" | xargs -I {} rm -i {}
+  return 0
 }
 
 if [[ "$#" -eq 0 ]]; then
@@ -266,7 +259,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    pullImages "${@:2}"
+    pull_images "${@:2}"
     ;;
   save )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -287,7 +280,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    saveTar "${@:2}"
+    save_tar "${@:2}"
     ;;
   load )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -306,7 +299,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    loadTar "${@:2}"
+    load_tar "${@:2}"
     ;;
   tag )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -369,7 +362,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    cleanFiles
+    clean_files
     ;;
   hostsetup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
