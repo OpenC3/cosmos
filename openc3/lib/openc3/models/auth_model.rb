@@ -109,6 +109,7 @@ module OpenC3
       Store.set(key, pw_hash)
       @@pw_hash_cache = nil
       @@pw_hash_cache_time = nil
+      logout
     end
 
     # Creates a new session token. DO NOT CALL BEFORE VERIFYING.

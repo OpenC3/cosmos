@@ -61,6 +61,14 @@ module OpenC3
         expect(AuthModel.verify(token)).to eq(false)
       end
 
+      it "revokes all sessions on password change" do
+        token = AuthModel.generate_session
+        expect(AuthModel.verify(token)).to eq(true)
+
+        AuthModel.set('newpassword', AUTH_INITIAL_PASSWORD)
+        expect(AuthModel.verify(token)).to eq(false)
+      end
+
       it "raises when stored password hash is SHA256" do
         @redis.set(PW_HASH_PRIMARY_KEY, Digest::SHA256.hexdigest(AUTH_INITIAL_PASSWORD))
         expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any) }.to \
