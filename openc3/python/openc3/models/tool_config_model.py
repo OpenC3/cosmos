@@ -9,11 +9,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
 from typing import Any
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.local_mode import LocalMode
 from openc3.utilities.store import Store
+
+PATH_TRAVERSAL_PATTERN = re.compile(r"[/\\]|\.\.")
 
 
 class ToolConfigModel:
@@ -26,11 +29,17 @@ class ToolConfigModel:
 
     @classmethod
     def list_configs(cls, tool: str, scope: str = OPENC3_SCOPE):
+        if PATH_TRAVERSAL_PATTERN.search(tool):
+            raise RuntimeError(f"Invalid tool name: {tool}")
         keys = Store.hkeys(f"{scope}__config__{tool}")
         return [key.decode() for key in keys]
 
     @classmethod
     def load_config(cls, tool: str, name: str, scope: str = OPENC3_SCOPE):
+        if PATH_TRAVERSAL_PATTERN.search(tool):
+            raise RuntimeError(f"Invalid tool name: {tool}")
+        if PATH_TRAVERSAL_PATTERN.search(name):
+            raise RuntimeError(f"Invalid config name: {name}")
         return Store.hget(f"{scope}__config__{tool}", name).decode()
 
     @classmethod
@@ -42,12 +51,20 @@ class ToolConfigModel:
         local_mode: bool = True,
         scope: str = OPENC3_SCOPE,
     ):
+        if PATH_TRAVERSAL_PATTERN.search(tool):
+            raise RuntimeError(f"Invalid tool name: {tool}")
+        if PATH_TRAVERSAL_PATTERN.search(name):
+            raise RuntimeError(f"Invalid config name: {name}")
         Store.hset(f"{scope}__config__{tool}", name, data)
         if local_mode:
             LocalMode.save_tool_config(scope, tool, name, data)
 
     @classmethod
     def delete_config(cls, tool: str, name: str, local_mode: bool = True, scope: str = OPENC3_SCOPE):
+        if PATH_TRAVERSAL_PATTERN.search(tool):
+            raise RuntimeError(f"Invalid tool name: {tool}")
+        if PATH_TRAVERSAL_PATTERN.search(name):
+            raise RuntimeError(f"Invalid config name: {name}")
         Store.hdel(f"{scope}__config__{tool}", name)
         if local_mode:
             LocalMode.delete_tool_config(scope, tool, name)

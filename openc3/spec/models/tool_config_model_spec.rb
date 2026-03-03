@@ -43,6 +43,23 @@ module OpenC3
         names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
         expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
       end
+
+      it "rejects path traversal in tool name" do
+        expect { ToolConfigModel.save_config('../evil', 'name', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil/sub', 'name', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil\\sub', 'name', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+        expect { ToolConfigModel.delete_config('../evil', 'name', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+        expect { ToolConfigModel.load_config('../evil', 'name', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+        expect { ToolConfigModel.list_configs('../evil', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid tool name/)
+      end
+
+      it "rejects path traversal in config name" do
+        expect { ToolConfigModel.save_config('tool', '../../etc/passwd', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', 'sub/dir', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', 'sub\\dir', '{}', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid config name/)
+        expect { ToolConfigModel.delete_config('tool', '../evil', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid config name/)
+        expect { ToolConfigModel.load_config('tool', '../evil', scope: 'DEFAULT') }.to raise_error(RuntimeError, /Invalid config name/)
+      end
     end
   end
 end

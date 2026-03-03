@@ -26,19 +26,26 @@ module OpenC3
     end
 
     def self.list_configs(tool, scope: $openc3_scope)
+      raise "Invalid tool name: #{tool}" if tool.match?(%r{[/\\]|\.\.})
       Store.hkeys("#{scope}__config__#{tool}")
     end
 
     def self.load_config(tool, name, scope: $openc3_scope)
+      raise "Invalid tool name: #{tool}" if tool.match?(%r{[/\\]|\.\.})
+      raise "Invalid config name: #{name}" if name.match?(%r{[/\\]|\.\.})
       Store.hget("#{scope}__config__#{tool}", name)
     end
 
     def self.save_config(tool, name, data, local_mode: true, scope: $openc3_scope)
+      raise "Invalid tool name: #{tool}" if tool.match?(%r{[/\\]|\.\.})
+      raise "Invalid config name: #{name}" if name.match?(%r{[/\\]|\.\.})
       Store.hset("#{scope}__config__#{tool}", name, data)
       LocalMode.save_tool_config(scope, tool, name, data) if local_mode
     end
 
     def self.delete_config(tool, name, local_mode: true, scope: $openc3_scope)
+      raise "Invalid tool name: #{tool}" if tool.match?(%r{[/\\]|\.\.})
+      raise "Invalid config name: #{name}" if name.match?(%r{[/\\]|\.\.})
       Store.hdel("#{scope}__config__#{tool}", name)
       LocalMode.delete_tool_config(scope, tool, name) if local_mode
     end
