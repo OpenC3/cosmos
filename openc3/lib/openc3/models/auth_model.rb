@@ -84,7 +84,7 @@ module OpenC3
 
       # Check stored password hash
       pw_hash = Store.get(PRIMARY_KEY)
-      raise "invalid password hash" unless pw_hash.start_with?("$argon2") # Catch users who didn't run the migration utility when upgrading to COSMOS 7
+      raise "invalid password hash" if pw_hash.nil? || !pw_hash.start_with?("$argon2") # Catch users who didn't run the migration utility when upgrading to COSMOS 7
       @@pw_hash_cache = pw_hash
       @@pw_hash_cache_time = time
       return Argon2::Password.verify_password(token, @@pw_hash_cache)
