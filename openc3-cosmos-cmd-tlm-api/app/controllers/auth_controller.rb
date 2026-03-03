@@ -44,7 +44,7 @@ class AuthController < ApplicationController
     end
 
     begin
-      if OpenC3::AuthModel.verify_no_service(params[:password], no_password: false)
+      if OpenC3::AuthModel.verify_no_service(params[:password], mode: :password)
         render :plain => OpenC3::AuthModel.generate_session()
       else
         record_user_bad_attempt

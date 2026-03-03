@@ -43,8 +43,8 @@ module OpenC3
           raise_error(/old_password incorrect/)
 
         AuthModel.set('newpassword', AUTH_INITIAL_PASSWORD)
-        expect(AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, no_password: false)).to eq(false)
-        expect(AuthModel.verify_no_service('newpassword', no_password: false)).to eq(true)
+        expect(AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any)).to eq(false)
+        expect(AuthModel.verify_no_service('newpassword', mode: :any)).to eq(true)
       end
 
       it "self.verify" do
@@ -63,7 +63,7 @@ module OpenC3
 
       it "raises when stored password hash is SHA256" do
         @redis.set(PW_HASH_PRIMARY_KEY, Digest::SHA256.hexdigest(AUTH_INITIAL_PASSWORD))
-        expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, no_password: false) }.to \
+        expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any) }.to \
           raise_error(/invalid password hash/)
       end
     end
