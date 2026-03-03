@@ -347,10 +347,14 @@ class CvtModel(Model):
             else:
                 query += f"ASOF JOIN {table_name} as T{index} "
 
+        query_params = []
         if start_time and not end_time:
-            query += f"WHERE T0.PACKET_TIMESECONDS < '{start_time}' LIMIT -1"
+            query += "WHERE T0.PACKET_TIMESECONDS < %s LIMIT -1"
+            query_params.append(start_time)
         elif start_time and end_time:
-            query += f"WHERE T0.PACKET_TIMESECONDS >= '{start_time}' AND T0.PACKET_TIMESECONDS < '{end_time}'"
+            query += "WHERE T0.PACKET_TIMESECONDS >= %s AND T0.PACKET_TIMESECONDS < %s"
+            query_params.append(start_time)
+            query_params.append(end_time)
 
         retry_count = 0
         while retry_count <= 4:
@@ -366,7 +370,7 @@ class CvtModel(Model):
                         )
 
                     with cls._conn.cursor(binary=True, row_factory=dict_row) as cursor:
-                        cursor.execute(query)
+                        cursor.execute(query, query_params or None)
                         result = cursor.fetchall()
 
                         if not result:
