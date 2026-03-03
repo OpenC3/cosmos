@@ -215,6 +215,7 @@ Rails.application.routes.draw do
     post "/auth/verify" => "auth#verify"
     post "/auth/verify_service" => "auth#verify_service"
     post "/auth/set" => "auth#set"
+    get "/auth/otp" => "auth#get_otp"
 
     get "/internal/health" => "internal_health#health"
     get "/internal/metrics" => "internal_metrics#index"
