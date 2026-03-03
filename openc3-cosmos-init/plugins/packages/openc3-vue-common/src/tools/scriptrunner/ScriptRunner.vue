@@ -335,6 +335,7 @@ import 'splitpanes/dist/splitpanes.css'
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
 import { ref, useTemplateRef } from 'vue'
+import { useAsyncState } from '@vueuse/core'
 import {
   CriticalCmdDialog,
   EnvironmentDialog,
@@ -431,7 +432,6 @@ export default {
   setup() {
     const containerHeight = useContainerHeight()
 
-    // Reactive state
     const state = ref(null)
     const { handleWaiting, waitingTime } = useHandleWaiting(state)
 
@@ -458,11 +458,36 @@ export default {
 
     const { classificationStyles } = useClassificationBanner()
 
+    const cable = new Cable('/script-api/cable')
+
+    const api = new OpenC3Api()
+    const { state: screenKeywords } = useAsyncState(
+      Api.get(
+        '/openc3-api/autocomplete/keywords/screen',
+        (response) => response.data,
+      ),
+      null,
+    )
+
+    const { state: timeZone } = useAsyncState(
+      api
+        .get_setting('time_zone')
+        .then((response) => response)
+        .catch(() => {}),
+      'local',
+    )
+
     return {
+      api,
+      cable,
       containerHeight,
       editor,
       editorRef,
+      // Make NEW_FILENAME available to the template
+      NEW_FILENAME,
+      screenKeywords,
       state,
+      timeZone,
       handleWaiting,
       waitingTime,
       // Script prompts
@@ -533,7 +558,6 @@ export default {
       showEditingToast: false,
       showSaveAs: false,
       subscription: null,
-      cable: null,
       updateInterval: null,
       receivedEvents: [],
       messages: [],
@@ -550,10 +574,7 @@ export default {
       showScripts: false,
       showOverrides: false,
       overridesCount: 0,
-      api: null,
-      timeZone: 'local',
       screens: [],
-      screenKeywords: null,
       idCounter: 0,
       updateCounter: 0,
       recent: [],
@@ -881,22 +902,9 @@ export default {
   },
   created: async function () {
     // Ensure Offline Access Is Setup For the Current User
-    this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    try {
-      const response = await this.api.get_setting('time_zone')
-      if (response) {
-        this.timeZone = response
-      }
-    } catch (error) {
-      // Do nothing
-    }
 
     await this.updateOverridesCount()
-
-    // Make NEW_FILENAME available to the template
-    this.NEW_FILENAME = NEW_FILENAME
-
     let user = OpenC3Auth.user()
     let roles = OpenC3Auth.userroles()
     this.readOnlyUser = true
@@ -943,15 +951,8 @@ export default {
       this.alertText = text
       this.showAlert = true
     }
-
-    const keywordsResponse = await Api.get(
-      '/openc3-api/autocomplete/keywords/screen',
-    )
-    this.screenKeywords = keywordsResponse.data
   },
   mounted: async function () {
-    this.cable = new Cable('/script-api/cable')
-
     if (!this.inline && localStorage['script_runner__recent']) {
       this.recent = JSON.parse(localStorage['script_runner__recent'])
       // Rebuild the command since that doesn't get stringified
