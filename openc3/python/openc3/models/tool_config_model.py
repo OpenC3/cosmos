@@ -23,6 +23,8 @@ from openc3.environment import OPENC3_SCOPE
 
 PATH_TRAVERSAL_PATTERN = re.compile(r"[/\\]|\.\.")
 
+PATH_TRAVERSAL_PATTERN = re.compile(r"[/\\]|\.\.")
+
 
 class ToolConfigModel:
     @classmethod
