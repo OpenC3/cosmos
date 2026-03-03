@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -146,6 +146,9 @@ export default {
     error: function () {
       if (!this.configName) {
         return 'Config must have a name'
+      }
+      if (/[/\\]|\.\./.test(this.configName)) {
+        return 'Config name must not contain / \\ or ..'
       }
       return null
     },
