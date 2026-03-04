@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,15 +31,21 @@ require 'openc3/utilities/running_script'
 
 # Load the bucket client code to ensure we authenticate outside ENV vars
 OpenC3::Bucket.getClient()
-# Clear the ENV vars for security purposes
-ENV['OPENC3_BUCKET_USERNAME'] = nil
-ENV['OPENC3_BUCKET_PASSWORD'] = nil
-
 # Preload Store and remove Redis secrets from ENV
 OpenC3::Store.instance
 OpenC3::EphemeralStore.instance
+
+# Clear ENV vars for security purposes
+ENV['OPENC3_BUCKET_USERNAME'] = nil
+ENV['OPENC3_BUCKET_PASSWORD'] = nil
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
+ENV['OPENC3_TSDB_USERNAME'] = nil
+ENV['OPENC3_TSDB_PASSWORD'] = nil
+ENV['OPENC3_API_PASSWORD'] = nil
+ENV['OPENC3_SERVICE_PASSWORD'] = nil
+# This actually contains the password via redis://openc3:openc3password@openc3-redis:6379
+ENV['ANYCABLE_REDIS_URL'] = nil
 
 id = ARGV[0]
 scope = ARGV[1]

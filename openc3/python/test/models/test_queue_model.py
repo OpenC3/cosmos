@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -75,7 +75,9 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.assert_called_once_with(name="TEST", scope="DEFAULT")
         mock_store.zrevrange.assert_called_once_with("DEFAULT:TEST", 0, 0, withscores=True)
 
-        expected_data = json.dumps({"username": "user", "value": "CMD", "timestamp": 1234567890})
+        expected_data = json.dumps(
+            {"username": "user", "value": "CMD", "validate": True, "timeout": None, "timestamp": 1234567890}
+        )
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", {expected_data: 1.0})
         mock_model.notify.assert_called_once_with(kind="command")
 

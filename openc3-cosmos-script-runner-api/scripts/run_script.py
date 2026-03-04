@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -70,10 +70,48 @@ def run_script_log(id, message, color="BLACK", message_log=True):
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
     running_script_anycable_publish(
-        f"running-script-channel:{id}",
+        f"running-script-channel:{script_id}",
         {"type": "output", "line": line_to_write, "color": color},
     )
 
+
+start_time = time.time()
+# Load the bucket client code to ensure we authenticate outside ENV vars
+Bucket.get_client()
+# Preload Store and remove Redis secrets from ENV
+Store.instance()
+EphemeralStore.instance()
+
+# Clear ENV vars for security purposes
+del os.environ["OPENC3_BUCKET_USERNAME"]
+del os.environ["OPENC3_BUCKET_PASSWORD"]
+os.unsetenv("OPENC3_BUCKET_USERNAME")
+os.unsetenv("OPENC3_BUCKET_PASSWORD")
+del os.environ["OPENC3_REDIS_USERNAME"]
+del os.environ["OPENC3_REDIS_PASSWORD"]
+os.unsetenv("OPENC3_TSDB_USERNAME")
+os.unsetenv("OPENC3_TSDB_PASSWORD")
+del os.environ["OPENC3_TSDB_USERNAME"]
+del os.environ["OPENC3_TSDB_PASSWORD"]
+os.unsetenv("OPENC3_API_PASSWORD")
+del os.environ["OPENC3_API_PASSWORD"]
+os.unsetenv("OPENC3_SERVICE_PASSWORD")
+del os.environ["OPENC3_SERVICE_PASSWORD"]
+# This actually contains the password via redis://openc3:openc3password@openc3-redis:6379
+os.unsetenv("ANYCABLE_REDIS_URL")
+del os.environ["ANYCABLE_REDIS_URL"]
+
+
+script_id = sys.argv[1]
+scope = sys.argv[2]
+script_status = ScriptStatusModel.get_model(name=script_id, scope=scope)
+if script_status is None:
+    raise RuntimeError(f"Unknown script ID {script_id} for scope {scope}")
+if script_status.state != "spawning":
+    raise RuntimeError(f"Script in unexpected state: {script_status.state}")
+
+startup_time = time.time() - start_time
+path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", script_status.filename)
 
 running_script = None
 try:
@@ -81,7 +119,7 @@ try:
     Logger.microservice_name = "Script Runner"
     running_script = RunningScript(script_status)
     run_script_log(
-        id,
+        script_id,
         f"Script {path} spawned in {startup_time} seconds <python {sys.version}>",
         "BLACK",
     )
@@ -95,7 +133,7 @@ try:
                 message
                 + f"\n{o['target_name']} {o['packet_name']} {o['item_name']} = {o['value']}, type: :{o['value_type']}"
             )
-        run_script_log(id, message, "YELLOW")
+        run_script_log(script_id, message, "YELLOW")
 
     # Start the script in another thread
     running_script.run()
@@ -115,13 +153,13 @@ try:
     # Subscribe to the pub sub channel for this script
     redis = Store.instance().build_redis()
     p = redis.pubsub(ignore_subscribe_messages=True)
-    p.subscribe(f"script-api:cmd-running-script-channel:{id}")
+    p.subscribe(f"script-api:cmd-running-script-channel:{script_id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if not parsed_cmd == "shutdown" or (
             isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
         ):
-            run_script_log(id, f"Script {path} received command: {msg['data']}")
+            run_script_log(script_id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
             case "go":
                 running_script.do_go()
@@ -168,13 +206,13 @@ try:
                                             parsed_cmd["multiple"]
                                         )
                                         run_script_log(
-                                            id,
+                                            script_id,
                                             f"Multiple input: {running_script.user_input}",
                                         )
                                     elif "open_file" in parsed_cmd["method"]:
                                         running_script.user_input = parsed_cmd["answer"]
                                         run_script_log(
-                                            id, f"File(s): {running_script.user_input}"
+                                            script_id, f"File(s): {running_script.user_input}"
                                         )
                                     else:
                                         running_script.user_input = str(
@@ -187,7 +225,7 @@ try:
                                                 )
                                             )
                                         run_script_log(
-                                            id,
+                                            script_id,
                                             f"User input: {running_script.user_input}",
                                         )
                                     running_script.do_continue()
@@ -196,7 +234,7 @@ try:
                                     if "prompt_id" in parsed_cmd:
                                         prompt_id = parsed_cmd["prompt_id"]
                                     run_script_log(
-                                        id,
+                                        script_id,
                                         f"INFO: Received answer for prompt {prompt_id} when looking for {running_script.prompt_id}.",
                                     )
                             else:
@@ -204,12 +242,12 @@ try:
                                 if "prompt_id" in parsed_cmd:
                                     prompt_id = parsed_cmd["prompt_id"]
                                 run_script_log(
-                                    id,
+                                    script_id,
                                     f"INFO: Unexpectedly received answer for unknown prompt {prompt_id}.",
                                 )
                         case "backtrace":
                             running_script_anycable_publish(
-                                f"running-script-channel:{id}",
+                                f"running-script-channel:{script_id}",
                                 {
                                     "type": "script",
                                     "method": "backtrace",
@@ -217,30 +255,24 @@ try:
                                 },
                             )
                         case "debug":
-                            run_script_log(
-                                id, f"DEBUG: {parsed_cmd['args']}"
-                            )  # Log what we were passed
-                            running_script.debug(
-                                parsed_cmd["args"]
-                            )  # debug() logs the output of the command
+                            run_script_log(script_id, f"DEBUG: {parsed_cmd['args']}")  # Log what we were passed
+                            running_script.debug(parsed_cmd["args"])  # debug() logs the output of the command
                         case "executewhilepaused":
                             run_script_log(
-                                id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
+                                script_id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
                             )  # Log what we were passed
                             running_script.execute_while_paused(*parsed_cmd["args"])
                         case _:
                             run_script_log(
-                                id,
+                                script_id,
                                 f"ERROR: Script method not handled: {parsed_cmd['method']}",
                                 "RED",
                             )
                 else:
-                    run_script_log(
-                        id, f"ERROR: Script command not handled: {msg['data']}", "RED"
-                    )
+                    run_script_log(script_id, f"ERROR: Script command not handled: {msg['data']}", "RED")
 except Exception:
     tb = traceback.format_exc()
-    run_script_log(id, tb, "RED")
+    run_script_log(script_id, tb, "RED")
     script_status.state = "crashed"
     if script_status.errors is None:
         script_status.errors = []
@@ -260,7 +292,7 @@ finally:
 
         # Inform script channel it is complete
         running_script_anycable_publish(
-            f"running-script-channel:{id}", {"type": "complete", "state": script_status.state}
+            f"running-script-channel:{script_id}", {"type": "complete", "state": script_status.state}
         )
 
         # Inform frontend of number of running scripts in this scope
