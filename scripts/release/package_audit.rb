@@ -26,6 +26,7 @@ version_tag = ARGV[0] || "latest"
 traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
+tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
@@ -68,6 +69,7 @@ summary_report = build_summary_report(containers)
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_versitygw(client, versitygw_version)
+check_tsdb(client, tsdb_version)
 check_build_files(versitygw_version, traefik_version)
 check_container_version(client, containers, 'redis') # valkey base image
 base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)

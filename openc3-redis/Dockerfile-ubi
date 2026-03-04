@@ -34,7 +34,7 @@ RUN microdnf update -y \
     && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???*
 
-COPY valkey-9.0.2.tar.gz /tmp/valkey.tar.gz
+COPY valkey-9.0.3.tar.gz /tmp/valkey.tar.gz
 
 WORKDIR /tmp
 
