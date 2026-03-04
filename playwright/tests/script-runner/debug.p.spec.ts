@@ -254,7 +254,8 @@ puts "e"`)
       timeout: 20000,
     },
   )
-  await expect(page.locator('[data-test=start-button]')).toBeVisible()
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+  await utils.sleep(500) // Allow script to fully complete
 
   // Disable the breakpoint
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })
@@ -317,3 +318,43 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   )
 })
 
+// If this fails update openc3-cosmos-script-runner-api/scripts/run_script.py
+test('does not expose secrets in python', async ({ page, utils }) => {
+  await page.locator('textarea').fill(`import os
+print(os.environ)`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'username',
+    { ignoreCase: true },
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'password',
+    { ignoreCase: true },
+  )
+})
+
+// If this fails update openc3-cosmos-script-runner-api/scripts/run_script.rb
+test('does not expose secrets in ruby', async ({ page, utils }) => {
+  await page.locator('textarea').fill('puts `env`')
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 20000,
+    },
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'username',
+    { ignoreCase: true },
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'password',
+    { ignoreCase: true },
+  )
+})

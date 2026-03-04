@@ -1866,10 +1866,6 @@ export default {
         })
     },
     async scriptComplete() {
-      this.scriptId = null // No current scriptId
-      sessionStorage.removeItem('script_runner__script_id')
-      this.currentFilename = null // No current file running
-      this.files = {} // Clear the file cache
       // Make sure we process no more events
       if (this.subscription) {
         await this.subscription.unsubscribe()
@@ -1884,6 +1880,9 @@ export default {
       if (this.readOnlyUser == false && !this.inline) {
         this.editor.setReadOnly(false)
       }
+
+      this.scriptId = null // No current scriptId
+      sessionStorage.removeItem('script_runner__script_id')
 
       // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
