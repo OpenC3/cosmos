@@ -111,6 +111,18 @@
           />
         </template>
 
+        <v-tooltip
+          v-if="legendHidden"
+          text="Legend hidden. Restore via Graph > Settings dialog."
+          location="bottom"
+        >
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" class="mx-1">
+              mdi-information-outline
+            </v-icon>
+          </template>
+        </v-tooltip>
+
         <v-btn
           v-if="expand"
           icon="mdi-window-minimize"
@@ -279,7 +291,13 @@
         </v-list-item>
         <v-list-item @click="moveLegend('right')">
           <v-list-item-title style="cursor: pointer">
-            Legend RIght
+            Legend Right
+          </v-list-item-title>
+        </v-list-item>
+        <v-divider />
+        <v-list-item @click="legendHide">
+          <v-list-item-title style="cursor: pointer">
+            Hide Legend
           </v-list-item-title>
         </v-list-item>
       </v-list>
@@ -404,6 +422,7 @@ export default {
     'resize',
     'start',
     'started',
+    'hide-legend',
   ],
   setup() {
     const store = useStore()
@@ -429,6 +448,7 @@ export default {
       legendMenu: false,
       legendMenuX: 0,
       legendMenuY: 0,
+      legendHidden: this.hideLegend,
       legendPosition: 'bottom',
       selectedItem: null,
       hideToolbarData: this.hideToolbar,
@@ -572,6 +592,9 @@ export default {
   },
   watch: {
     hideLegend: function (newVal) {
+      this.legendHidden = newVal
+    },
+    legendHidden: function (newVal) {
       this.applyHideLegend(newVal)
     },
     state: function (newState, oldState) {
@@ -1028,7 +1051,7 @@ export default {
         )
       }
       this.moveLegend(this.legendPosition)
-      this.applyHideLegend(this.hideLegend)
+      this.applyHideLegend(this.legendHidden)
 
       // Allow the charts to dynamically resize when the window resizes
       window.addEventListener('resize', this.resize)
@@ -1162,6 +1185,10 @@ export default {
         legend.style.display = hide ? 'none' : ''
       }
       this.resize()
+    },
+    legendHide: function () {
+      this.legendHidden = true
+      this.$emit('hide-legend')
     },
     moveLegend: function (desired) {
       switch (desired) {

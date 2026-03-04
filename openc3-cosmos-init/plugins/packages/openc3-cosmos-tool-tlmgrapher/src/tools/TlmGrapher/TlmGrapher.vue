@@ -131,6 +131,7 @@
           @pause="() => (state = 'pause')"
           @start="() => (state = 'start')"
           @click="() => graphSelected(graph)"
+          @hide-legend="hideLegend"
           @edit="saveDefaultConfig(currentConfig)"
           @started="graphStarted"
         />
@@ -393,6 +394,10 @@ export default {
       for (const key in newValues) {
         this.settings[key].value = newValues[key]
       }
+    },
+    hideLegend() {
+      this.settings.hideLegend.value = true
+      this.saveDefaultConfig(this.currentConfig)
     },
     setup: function () {
       this.grid = new Muuri('.grid', {
