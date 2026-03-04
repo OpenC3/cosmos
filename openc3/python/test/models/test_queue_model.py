@@ -71,7 +71,9 @@ class TestQueueModel(unittest.TestCase):
         mock_get_model.assert_called_once_with(name="TEST", scope="DEFAULT")
         mock_store.zrevrange.assert_called_once_with("DEFAULT:TEST", 0, 0, withscores=True)
 
-        expected_data = json.dumps({"username": "user", "value": "CMD", "validate": True, "timeout": None, "timestamp": 1234567890})
+        expected_data = json.dumps(
+            {"username": "user", "value": "CMD", "validate": True, "timeout": None, "timestamp": 1234567890}
+        )
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", {expected_data: 1.0})
         mock_model.notify.assert_called_once_with(kind="command")
 
@@ -88,7 +90,9 @@ class TestQueueModel(unittest.TestCase):
         with patch("time.time_ns", return_value=1234567890):
             QueueModel.queue_command("TEST", command="CMD", username="user", scope="DEFAULT", validate=False, timeout=0)
 
-        expected_data = json.dumps({"username": "user", "value": "CMD", "validate": False, "timeout": 0, "timestamp": 1234567890})
+        expected_data = json.dumps(
+            {"username": "user", "value": "CMD", "validate": False, "timeout": 0, "timestamp": 1234567890}
+        )
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", {expected_data: 1.0})
 
     @patch("openc3.models.queue_model.Store")

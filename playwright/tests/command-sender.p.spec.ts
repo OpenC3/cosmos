@@ -169,7 +169,7 @@ test('warns for required parameters', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
   await expect(page.locator('.v-dialog')).toContainText(
-    "Required command parameter 'INST COLLECT TYPE' not given",
+    "not one of NORMAL, SPECIAL",
   )
   await page.locator('button:has-text("Ok")').click()
 })
@@ -750,3 +750,48 @@ for (const target of ['INST', 'INST2']) {
       .toMatch(/\[\s*4,\s*5\s*\]/)
   })
 }
+
+test('sends manually entered state values', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await expect(page.locator('main')).toContainText(
+    'Starts a collect on the INST target',
+  )
+
+  // Enable Ignore Range Checks to unlock manual entry
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText('Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
+
+  // Select MANUALLY_ENTERED from the TYPE state dropdown
+  let row = page.locator('tr:has(td:text-is("TYPE"))')
+  await row.locator('[data-test=cmd-param-select]').click({ force: true })
+  await page.getByRole('option', { name: 'MANUALLY_ENTERED' }).click()
+
+  // Enter a raw numeric value in the manual entry text field
+  await row.locator('[data-test=cmd-param-value] input').first().fill('0')
+  await row.locator('[data-test=cmd-param-value] input').first().press('Enter')
+
+  // Send the command
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd_no_range_check("INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0") sent',
+  )
+  await checkHistory(
+    page,
+    'cmd_no_range_check("INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0")',
+  )
+
+  // Disable Ignore Range Checks and verify MANUALLY_ENTERED option is gone
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText('Ignore Range Checks').click()
+  await page.locator('[data-test=command-sender-mode]').click()
+
+  // The TYPE dropdown should no longer have MANUALLY_ENTERED
+  await row.locator('[data-test=cmd-param-select]').click({ force: true })
+  await expect(
+    page.getByRole('option', { name: 'MANUALLY_ENTERED' }),
+  ).not.toBeVisible()
+  // Close the dropdown by pressing Escape
+  await page.keyboard.press('Escape')
+})

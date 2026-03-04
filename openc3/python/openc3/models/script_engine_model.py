@@ -38,14 +38,7 @@ class ScriptEngineModel(Model):
             tools[key] = json.loads(value)
         return tools
 
-    def __init__(
-        self,
-        name,
-        updated_at=None,
-        plugin=None,
-        filename=None,
-        scope=None,
-    ):
+    def __init__(self, name, updated_at=None, plugin=None, filename=None, scope=None):
         super().__init__(
             self.PRIMARY_KEY,
             name=name,

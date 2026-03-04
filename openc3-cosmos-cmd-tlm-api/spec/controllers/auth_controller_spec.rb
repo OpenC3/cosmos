@@ -57,6 +57,28 @@ RSpec.describe AuthController, :type => :controller do
     end
   end
 
+  describe "set" do
+    it "revokes old sessions and issues a new token on password change" do
+      # Set initial password and get a session token
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+      old_token = response.body
+      expect(old_token).not_to be_empty
+
+      # Change password
+      post :set, params: { password: 'PASSWORD2', old_password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+      new_token = response.body
+      expect(new_token).not_to be_empty
+      expect(new_token).not_to eq(old_token)
+
+      # Old token should be invalid
+      expect(OpenC3::AuthModel.verify(old_token)).to eq(false)
+      # New token should be valid
+      expect(OpenC3::AuthModel.verify(new_token)).to eq(true)
+    end
+  end
+
   describe "verify" do
     it "requires token" do
       post :verify
@@ -80,6 +102,48 @@ RSpec.describe AuthController, :type => :controller do
 
       post :verify_service, params: { password: 'openc3service' }
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "rate limiting" do
+    # Actually testing that rate limiting is enforced is done in Playwright
+    # because the bad attempt counters in the controller are shared across
+    # all requests/tests. But we can ensure that the config is read and that
+    # successful attempts don't get rate limited.
+
+    it "uses default rate limit values from environment" do
+      expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('10')
+      expect(ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']).to eq('120')
+    end
+
+    it "respects custom rate limit values from environment" do
+      original_to = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_TO', '10')
+      original_within = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_WITHIN', '120')
+
+      begin
+        ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = '5'
+        ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN'] = '60'
+
+        load Rails.root.join('app', 'controllers', 'auth_controller.rb')
+
+        expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('5')
+        expect(ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN']).to eq('60')
+      ensure
+        ENV['OPENC3_AUTH_RATE_LIMIT_TO'] = original_to
+        ENV['OPENC3_AUTH_RATE_LIMIT_WITHIN'] = original_within
+        load Rails.root.join('app', 'controllers', 'auth_controller.rb')
+      end
+    end
+
+    it "does not rate limit successful password attempts" do
+      # Note: testing rate limit for bad attempts is done in Playwright
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      20.times do
+        post :verify, params: { password: 'PASSWORD' }
+        expect(response).to have_http_status(:ok)
+      end
     end
   end
 end

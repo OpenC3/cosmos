@@ -58,4 +58,5 @@ RUN mkdir /gems && chown openc3:openc3 /gems \
 
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache
+ENV UV_CACHE_DIR=/gems/uv/
 USER ${USER_ID}:${GROUP_ID}
