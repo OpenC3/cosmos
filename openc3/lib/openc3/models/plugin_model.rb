@@ -268,16 +268,16 @@ module OpenC3
             if File.exist?(pyproject_path)
               Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
               if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "--no-warn-script-location -i #{pypi_url} #{gem_path}"
+                pip_args = "-i #{pypi_url} #{gem_path}"
               else
-                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
+                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
               end
             else
               Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
               if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "--no-warn-script-location -i #{pypi_url} -r #{requirements_path}"
+                pip_args = "-i #{pypi_url} -r #{requirements_path}"
               else
-                pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
+                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
               end
             end
             puts `/openc3/bin/pipinstall #{pip_args}`
