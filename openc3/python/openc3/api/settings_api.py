@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -13,6 +13,7 @@ from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.setting_model import SettingModel
 from openc3.utilities.authorization import authorize
+from openc3.utilities.logger import Logger
 from openc3.utilities.local_mode import LocalMode
 
 
@@ -60,6 +61,7 @@ def set_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
     SettingModel.set({"name": name, "data": data}, scope=scope)
     if local_mode:
         LocalMode.save_setting(scope, name, data)
+    Logger.info(f"Setting saved '{name}': {data}", scope=scope)
 
 
 # DEPRECATED
